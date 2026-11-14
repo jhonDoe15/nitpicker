@@ -1,21 +1,10 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
-import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
-import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
-import {
-  trackTemporaryPath,
-  untrackTemporaryPath,
-} from '../../../core/tooling/temporary-files.mjs';
+import { untrackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mjs';
-import { mutationFindings } from './mutation/python-mutation.mjs';
-import { applyRuleHints } from '../rules/rule-hints.mjs';
-import { readPythonFindings } from './python-reports.mjs';
-import { createToolContext, runPythonTools } from './python-tools.mjs';
-import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mts';
+import { readPythonFindings } from './python-reports.mts';
 import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -25,16 +14,38 @@ import {
 import {
   TROUBLESHOOTING_ANCHORS,
   testsFailAnchor,
-  withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
+import { fieldOf, fieldsOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import type { IngestedFinding } from './typed/report/report-types.mts';
+import type {
+  ParsedArguments,
+  RunnerOptions,
+  RunnerReport,
+  ToolFailure,
+} from './typed/runner/runner-types.mts';
+import {
+  analyzerDeadlineMs,
+  applyFindingPolicy,
+  applyRuleHints,
+  createToolContext,
+  mutationFindings,
+  parseSharedArguments,
+  readHeadPolicyFile,
+  runPythonTools,
+  trackTemporaryPath,
+  withTroubleshooting,
+} from './typed/runner/runner-views.mts';
 
-const UNEXPECTED_FAILURE_RULES = {
+const UNEXPECTED_FAILURE_RULES: Readonly<Record<string, string>> = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
   [MUTATION_ANALYZER_NAME]: 'mutation-failed',
 };
 const PYTHON_OPTIONS = ['--live-root', '--python-settings', '--part', '--baseline-moves-file'];
 
-function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
+function toolError(
+  { rule, message }: ToolFailure,
+  part: string = PYTHON_ANALYZER_NAME,
+): IngestedFinding {
   return {
     tool: part,
     rule,
@@ -47,7 +58,7 @@ function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
 
 const TEST_RULES = new Set([TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE, TESTS_NOT_RUN_RULE]);
 
-function fixAnchor({ rule }, part, snapshot) {
+function fixAnchor({ rule }: IngestedFinding, part: string, snapshot: string | undefined): unknown {
   if (TEST_RULES.has(rule)) {
     return testsFailAnchor(snapshot);
   }
@@ -59,7 +70,11 @@ function fixAnchor({ rule }, part, snapshot) {
     : TROUBLESHOOTING_ANCHORS.pythonToolFails;
 }
 
-function withFixLinks(findings, part, snapshot) {
+function withFixLinks(
+  findings: readonly IngestedFinding[],
+  part: string,
+  snapshot: string | undefined,
+): IngestedFinding[] {
   return findings.map((finding) =>
     finding.classification === 'tool-error'
       ? {
@@ -70,30 +85,34 @@ function withFixLinks(findings, part, snapshot) {
   );
 }
 
-function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot) {
+function toolContext(
+  { projectRoot, liveRoot, settings, policy, spawn }: RunnerOptions,
+  reportRoot: string,
+): unknown {
   return createToolContext({
     spawn,
     projectRoot,
     liveRoot,
-    settings: { ...settings, testSeconds: policy?.testSeconds },
+    settings: { ...settings, testSeconds: policy.testSeconds },
     reportRoot,
-    exclude: policy?.exclude,
-    duplicateSkippedFolders: policy?.duplicateSkippedFolders,
-    snapshot: policy?.snapshot,
-    quick: policy?.quick,
-    baselineRoot: policy?.baselineRoot,
-    conventions: policy?.conventions,
-    layout: policy?.layout,
-    policyRoot: policy?.policyRoot,
-    toolPrecedence: policy?.toolPrecedence,
-    mutationScope: policy?.mutationScope,
-    pytestAddopts: process.env.PYTEST_ADDOPTS,
+    exclude: policy.exclude,
+    duplicateSkippedFolders: policy.duplicateSkippedFolders,
+    snapshot: policy.snapshot,
+    quick: policy.quick,
+    baselineRoot: policy.baselineRoot,
+    conventions: policy.conventions,
+    layout: policy.layout,
+    policyRoot: policy.policyRoot,
+    toolPrecedence: policy.toolPrecedence,
+    mutationScope: policy.mutationScope,
+    pytestAddopts: process.env['PYTEST_ADDOPTS'],
     analyzerDeadlineMs: analyzerDeadlineMs(process.env),
   });
 }
 
-function withReportRoot(step) {
-  const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-')));
+function withReportRoot<Result>(step: (reportRoot: string) => Result): Result {
+  const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-'));
+  trackTemporaryPath(reportRoot);
   try {
     return step(reportRoot);
   } finally {
@@ -102,24 +121,30 @@ function withReportRoot(step) {
   }
 }
 
-function collectMutationFindings(options) {
-  return withReportRoot((reportRoot) =>
+function collectMutationFindings(options: RunnerOptions): IngestedFinding[] {
+  return withReportRoot((reportRoot: string) =>
     applyFindingPolicy(
       applyPythonExceptions(
         applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
-        options.settings?.exceptions,
+        options.settings.exceptions,
       ),
       {
-        exclude: options.policy?.exclude,
-        exceptions: options.policy?.exceptions,
+        exclude: options.policy.exclude,
+        exceptions: options.policy.exceptions,
         routeRule: pythonRouteRule,
       },
     ),
   );
 }
 
-function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn }) {
-  return withReportRoot((reportRoot) => {
+function collectPythonFindings({
+  projectRoot,
+  liveRoot,
+  settings,
+  policy,
+  spawn,
+}: RunnerOptions): RunnerReport {
+  return withReportRoot((reportRoot: string) => {
     const failures = runPythonTools(
       toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot),
     );
@@ -144,8 +169,11 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
   });
 }
 
-export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options }) {
-  const snapshot = options.policy?.snapshot;
+export function analyzePythonSnapshot({
+  part = PYTHON_ANALYZER_NAME,
+  ...options
+}: RunnerOptions & { readonly part?: string }): RunnerReport {
+  const snapshot = options.policy.snapshot;
   try {
     const report =
       part === MUTATION_ANALYZER_NAME
@@ -158,7 +186,7 @@ export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options 
         [
           toolError(
             {
-              rule: error.rule ?? UNEXPECTED_FAILURE_RULES[part],
+              rule: textOf(fieldOf(error, 'rule') ?? UNEXPECTED_FAILURE_RULES[part]),
               message: error instanceof Error ? error.message : String(error),
             },
             part,
@@ -171,21 +199,19 @@ export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options 
   }
 }
 
-export function parsePythonArguments(arguments_) {
-  const own = new Map();
-  const shared = [];
-  const remaining = arguments_.values();
+export function parsePythonArguments(argumentList: readonly string[]): ParsedArguments {
+  const own = new Map<string, string | undefined>();
+  const shared: string[] = [];
+  const remaining = argumentList.values();
   for (const argument of remaining) {
     if (PYTHON_OPTIONS.includes(argument)) {
-      own.set(argument, remaining.next().value);
+      const next = remaining.next();
+      own.set(argument, next.done === true ? undefined : next.value);
     } else {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared, {
-    runner: 'python-runner.mjs',
-    precedenceTools: precedenceToolNames(),
-  });
+  const { projectRoot, policy } = parseSharedArguments(shared);
   const part = own.get('--part') ?? PYTHON_ANALYZER_NAME;
   if (!(part in UNEXPECTED_FAILURE_RULES)) {
     throw new Error(`--part must be one of: ${Object.keys(UNEXPECTED_FAILURE_RULES).join(', ')}`);
@@ -194,12 +220,15 @@ export function parsePythonArguments(arguments_) {
     part,
     projectRoot,
     liveRoot: own.get('--live-root') ?? projectRoot,
-    settings: JSON.parse(own.get('--python-settings') ?? '{}'),
+    settings: fieldsOf(parseJson(own.get('--python-settings') ?? '{}')),
     policy: { ...policy, baselineMovesFile: own.get('--baseline-moves-file') },
   };
 }
 
-export function runPython(runnerArguments, { spawn } = {}) {
+export function runPython(
+  runnerArguments: readonly string[],
+  { spawn }: { readonly spawn?: unknown } = {},
+): RunnerReport {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
   const headPolicy = readHeadPolicyFile();
   const { conventions, layout, history } = headPolicy;
@@ -213,7 +242,7 @@ export function runPython(runnerArguments, { spawn } = {}) {
   });
 }
 
-function main(runnerArguments) {
+function main(runnerArguments: readonly string[]): void {
   const report = runPython(runnerArguments);
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }

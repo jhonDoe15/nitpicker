@@ -1,16 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
-import { createFakeProjects } from './test-support/fake-project.mjs';
+import { fieldOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
+import { jscpdVersion } from './typed/tests/tools-test-views.mts';
+import { createFakeProjects } from './test-support/fake-project.mts';
 import { toolVersions } from './python-tools.mjs';
-import { pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
-import { resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { PYRIGHT_TOOL, pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
+import { resolveTypeChecker, TYPES_REPORT, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();
-const saved = new Map();
+const saved = new Map<string, string | undefined>();
 
-function setEnvironment(name, value) {
+function setEnvironment(name: string, value: string | undefined): void {
   if (!saved.has(name)) {
     saved.set(name, process.env[name]);
   }
@@ -29,8 +30,12 @@ afterEach(() => {
   fakes.cleanup();
 });
 
-function enabledErrorCodes(args) {
-  return args.filter((_arg, index) => args[index - 1] === '--enable-error-code');
+function argsOf(call: object | undefined): string[] {
+  return textsOf(fieldOf(call, 'args'));
+}
+
+function enabledErrorCodes(args: readonly string[]) {
+  return args.filter((_arg: string, index: number) => args[index - 1] === '--enable-error-code');
 }
 
 function logged() {
@@ -39,14 +44,14 @@ function logged() {
   return logFile;
 }
 
-const report = (reportRoot) =>
-  JSON.parse(readFileSync(path.join(reportRoot, 'type-check.json'), 'utf8'));
+const report = (reportRoot: string): unknown =>
+  parseJson(readFileSync(path.join(reportRoot, TYPES_REPORT), 'utf8'));
 
 describe('choosing the type checker', () => {
   it('uses the configured or detected checker without asking the environment', () => {
     const root = fakes.project({ 'pyrightconfig.json': '{}' });
 
-    expect(resolveTypeChecker(fakes.contextFor(root).context)).toBe('pyright');
+    expect(resolveTypeChecker(fakes.contextFor(root).context)).toBe(PYRIGHT_TOOL);
     expect(resolveTypeChecker(fakes.contextFor(root, { typeChecker: 'mypy' }).context)).toBe(
       'mypy',
     );
@@ -54,27 +59,28 @@ describe('choosing the type checker', () => {
 
   it('asks the environment when the project says nothing, mypy first', () => {
     const both = fakes.project();
-    const pyrightOnly = fakes.project({}, { tools: ['pyright', 'python'] });
+    const pyrightOnly = fakes.project({}, { tools: [PYRIGHT_TOOL, 'python'] });
     setEnvironment('PATH', fakes.temporaryRoot());
 
     expect(resolveTypeChecker(fakes.contextFor(both).context)).toBe('mypy');
-    expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
+    expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe(PYRIGHT_TOOL);
   });
 
   it('asks the environment when the project mentions both, and takes the one installed', () => {
     const tied = { 'pyrightconfig.json': '{}', 'mypy.ini': '[mypy]\n' };
     const both = fakes.project(tied);
-    const pyrightOnly = fakes.project(tied, { tools: ['pyright', 'python'] });
+    const pyrightOnly = fakes.project(tied, { tools: [PYRIGHT_TOOL, 'python'] });
     const neither = fakes.project(tied, { tools: ['python'] });
     setEnvironment('PATH', fakes.temporaryRoot());
 
     expect(resolveTypeChecker(fakes.contextFor(both).context)).toBe('mypy');
-    expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
+    expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe(PYRIGHT_TOOL);
     expect(resolveTypeChecker(fakes.contextFor(neither).context)).toBeUndefined();
   });
 
   it('detects basedpyright from its table or its dependency name', () => {
-    const detect = (files) => resolveTypeChecker(fakes.contextFor(fakes.project(files)).context);
+    const detect = (files: Readonly<Record<string, string>>): unknown =>
+      resolveTypeChecker(fakes.contextFor(fakes.project(files)).context);
 
     expect(detect({ 'pyproject.toml': '[tool.basedpyright]\n' })).toBe('basedpyright');
     expect(detect({ 'pyproject.toml': 'dev = ["basedpyright>=1.20"]\n' })).toBe('basedpyright');
@@ -109,8 +115,8 @@ describe('running mypy', () => {
       checker: 'mypy',
       output: 'src/demo/a.py:1: error: Oops  [misc]\n',
     });
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
-    expect(call.args).toEqual([
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--strict'));
+    expect(argsOf(call)).toEqual([
       '--config-file',
       path.join(reportRoot, 'mypy.ini'),
       '--python-executable',
@@ -128,7 +134,7 @@ describe('running mypy', () => {
       'src',
       'lib',
     ]);
-    expect(call.cwd).toBe(root);
+    expect(fieldOf(call, 'cwd')).toBe(root);
   });
 
   it('leaves --strict to the generated config when the project is listed', () => {
@@ -147,8 +153,8 @@ describe('running mypy', () => {
 
     const [call] = fakes
       .calls(logFile)
-      .filter(({ args }) => args.includes('--explicit-package-bases'));
-    expect(call.args).not.toContain('--strict');
+      .filter((entry) => argsOf(entry).includes('--explicit-package-bases'));
+    expect(argsOf(call)).not.toContain('--strict');
     expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
       '[mypy]\nstrict = true\ndisallow_untyped_defs = False\n',
     );
@@ -157,23 +163,21 @@ describe('running mypy', () => {
   it('passes nitpicker exclude as an --exclude argument when the project config is listed', () => {
     const logFile = logged();
     const root = fakes.project({ 'mypy.ini': '[mypy]\nexclude = (?x)(\n  ^legacy/\n  )\n' });
-    const { context, reportRoot } = fakes.contextFor(
+    const loose = fakes.contextFor(
       root,
       {},
-      {
-        exclude: ['src/gen/**'],
-        toolPrecedence: { mypy: ['project', 'nitpicker'] },
-        policyRoot: root,
-      },
+      { toolPrecedence: { mypy: ['project', 'nitpicker'] }, policyRoot: root },
     );
+    const { reportRoot } = loose;
+    const context = { ...loose.context, exclude: ['src/gen/**'] };
 
     typeCheck(context);
 
     const [call] = fakes
       .calls(logFile)
-      .filter(({ args }) => args.includes('--explicit-package-bases'));
+      .filter((entry) => argsOf(entry).includes('--explicit-package-bases'));
     expect(
-      call.args.slice(call.args.indexOf('--exclude'), call.args.indexOf('--exclude') + 2),
+      argsOf(call).slice(argsOf(call).indexOf('--exclude'), argsOf(call).indexOf('--exclude') + 2),
     ).toEqual(['--exclude', '^(?:(?:src/gen/.*)(?:/.*)?/?)$']);
     expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
       '[mypy]\nstrict = true\nexclude = (?x)(\n    ^legacy/\n    )\n',
@@ -193,8 +197,8 @@ describe('running mypy', () => {
 
     typeCheck(context);
 
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
-    expect(enabledErrorCodes(call.args)).toEqual(asked ? ['deprecated'] : []);
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--strict'));
+    expect(enabledErrorCodes(argsOf(call))).toEqual(asked ? ['deprecated'] : []);
   });
 
   it('adds the import roots to MYPYPATH before an existing value', () => {
@@ -205,8 +209,8 @@ describe('running mypy', () => {
 
     typeCheck(context);
 
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
-    expect(call.mypyPath).toBe(`${path.join(root, 'src')}${path.delimiter}/existing`);
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--strict'));
+    expect(fieldOf(call, 'mypyPath')).toBe(`${path.join(root, 'src')}${path.delimiter}/existing`);
   });
 
   it('checks with a generated config that keeps the environment and drops what skips checking', () => {
@@ -227,12 +231,14 @@ describe('running mypy', () => {
         '',
       ].join('\n'),
     });
-    const { context, reportRoot } = fakes.contextFor(root, {}, { exclude: ['src/gen/**'] });
+    const loose = fakes.contextFor(root, {});
+    const { reportRoot } = loose;
+    const context = { ...loose.context, exclude: ['src/gen/**'] };
 
     typeCheck(context);
 
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
-    expect(call.args.slice(0, 2)).toEqual([
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--strict'));
+    expect(argsOf(call).slice(0, 2)).toEqual([
       '--config-file',
       path.join(reportRoot, 'pyproject.toml'),
     ]);
@@ -277,12 +283,13 @@ describe('running mypy', () => {
     const root = fakes.project({ 'fail.json': JSON.stringify({ mypy: 'internal error' }) });
     const { context } = fakes.contextFor(root);
 
+    const internalError: unknown = expect.stringContaining('internal error');
     expect(() => {
       typeCheck(context);
     }).toThrow(
       expect.objectContaining({
         rule: 'types-failed',
-        message: expect.stringContaining('internal error'),
+        message: internalError,
       }),
     );
   });
@@ -300,8 +307,8 @@ describe('running basedpyright', () => {
       checker: 'basedpyright',
       output: '{"generalDiagnostics":[]}',
     });
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--outputjson'));
-    expect([call.tool, call.args]).toEqual([
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--outputjson'));
+    expect([call?.tool, argsOf(call)]).toEqual([
       'basedpyright',
       ['--outputjson', '--project', path.join(reportRoot, 'pyrightconfig.json')],
     ]);
@@ -330,16 +337,16 @@ describe('running pyright', () => {
   it('runs it with a strict project file in the report directory', () => {
     const logFile = logged();
     const root = fakes.project({ 'pyright.json': '{"generalDiagnostics":[]}' });
-    const { context, reportRoot } = fakes.contextFor(root, { typeChecker: 'pyright' });
+    const { context, reportRoot } = fakes.contextFor(root, { typeChecker: PYRIGHT_TOOL });
 
     typeCheck(context);
 
     expect(report(reportRoot)).toEqual({
-      checker: 'pyright',
+      checker: PYRIGHT_TOOL,
       output: '{"generalDiagnostics":[]}',
     });
-    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--outputjson'));
-    expect(call.args).toEqual([
+    const [call] = fakes.calls(logFile).filter((entry) => argsOf(entry).includes('--outputjson'));
+    expect(argsOf(call)).toEqual([
       '--outputjson',
       '--project',
       path.join(reportRoot, 'pyrightconfig.json'),

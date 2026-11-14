@@ -6,7 +6,7 @@ import { jscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mts';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 

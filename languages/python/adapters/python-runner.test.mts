@@ -1,50 +1,30 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
-import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
-import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mts';
+import { installFakeToolchain } from './test-support/fake-toolchain.mts';
+import type { IngestedFinding } from './typed/report/report-types.mts';
+import type { RunnerPolicy, RunnerSettings } from './typed/runner/runner-types.mts';
+import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mts';
+import { linkSentence } from './typed/tests/tools-test-views.mts';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-let savedTemporaryDirectory;
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-runner-')));
-  roots.push(root);
-  return root;
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-runner-');
 }
 
 afterEach(() => {
-  if (savedTemporaryDirectory !== undefined) {
-    process.env.TMPDIR = savedTemporaryDirectory.value;
-    if (savedTemporaryDirectory.value === undefined) {
-      delete process.env.TMPDIR;
-    }
-    savedTemporaryDirectory = undefined;
-  }
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+  vi.unstubAllEnvs();
 });
 
-function project(files = {}) {
+function project(files: Readonly<Record<string, string>> = {}): string {
   const root = temporaryRoot();
   installFakeToolchain(path.join(root, '.venv/bin'));
   mkdirSync(path.join(root, 'src/demo'), { recursive: true });
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
+  writeFiles(root, files);
   return root;
 }
 
@@ -57,16 +37,27 @@ const coverageReport = JSON.stringify({
   },
 });
 
-const withoutCoupling = ({ findings }) => findings.filter(({ tool }) => tool !== 'coupling');
+const withoutCoupling = ({ findings }: { findings: readonly IngestedFinding[] }) =>
+  findings.filter(({ tool }) => tool !== 'coupling');
 
-const analyze = (root, extra = {}) =>
+type Extra = {
+  part?: string;
+  settings?: RunnerSettings;
+  policy?: RunnerPolicy;
+  spawn?: unknown;
+};
+
+const analyze = (root: string, extra: Extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
 
-const analyzeMutation = (root, extra = {}) => analyze(root, { part: 'mutation', ...extra });
+const analyzeMutation = (root: string, extra: Extra = {}) =>
+  analyze(root, { part: 'mutation', ...extra });
 
-function enforceable(findings) {
+function enforceable(findings: readonly IngestedFinding[]) {
   return findings.filter(({ classification }) => classification !== 'descriptive');
 }
+
+const ANY_STRING: unknown = expect.any(String);
 
 describe('analyzing a Python snapshot', () => {
   it('turns the ruff, format and coverage reports into findings', () => {
@@ -112,7 +103,7 @@ describe('analyzing a Python snapshot', () => {
       `format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
     ]);
     expect(
-      enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
+      enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1)?.message,
     ).toBe(`File is not formatted with ruff. ${RUFF_FORMAT_ADVICE}`);
   });
 
@@ -315,7 +306,7 @@ describe('analyzing a Python snapshot', () => {
         tool: 'python',
         rule: 'baseline-expansion',
         path: 'src/demo/a.py',
-        identity: expect.any(String),
+        identity: ANY_STRING,
         message: 'Legacy allowance increased from 1 to 2 for F401',
         classification: 'enforceable',
       },
@@ -395,7 +386,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'python-failed',
         path: '.',
         identity: 'python-failed',
-        message: expect.any(String),
+        message: ANY_STRING,
         classification: 'tool-error',
       },
     ]);
@@ -404,8 +395,7 @@ describe('analyzing a Python snapshot', () => {
   it('removes its temporary report directory', () => {
     const scratch = temporaryRoot();
     const root = project();
-    savedTemporaryDirectory = { value: process.env.TMPDIR };
-    process.env.TMPDIR = scratch;
+    vi.stubEnv('TMPDIR', scratch);
 
     analyze(root);
     analyze(root, { settings: { environment: 'nowhere' } });
