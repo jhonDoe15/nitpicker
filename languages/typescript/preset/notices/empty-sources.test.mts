@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../../../../core/init/test-support/projects.mjs';
-import { EMPTY_SOURCES_TOOL, emptySourcesErrors, emptySourcesMessage } from './empty-sources.mjs';
+import { EMPTY_SOURCES_TOOL, emptySourcesErrors, emptySourcesMessage } from './empty-sources.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const project = useProjects();
@@ -81,7 +81,7 @@ describe('emptySourcesErrors', () => {
         path: '',
         message:
           'No TypeScript or JavaScript files under src; nothing was analyzed. Set "layout.sourceRoots" ' +
-          `(this repository has TypeScript files under packages/a/src). ${linkSentence('emptySourceRoots')}`,
+          `(this repository has TypeScript files under packages/a/src). ${String(linkSentence('emptySourceRoots'))}`,
       },
     ]);
   });

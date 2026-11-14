@@ -2,14 +2,17 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { hashFiles } from './hash.mjs';
+import { hashFiles as untypedHashFiles } from './hash.mjs';
 
-const roots = [];
+const hashFiles: (files: string[], extra: string[], options: { root: string }) => string =
+  untypedHashFiles;
+
+const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function fixture(files) {
+function fixture(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-hash-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) writeFileSync(path.join(root, name), text);

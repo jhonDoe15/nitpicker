@@ -1,5 +1,16 @@
-import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { EXCLUDED_PATH_PATTERN, resolveLayoutFor } from '../layout.mjs';
+import { outsideRootsNotice as untypedOutsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
+import { objectOf } from '../../../../shared/values/readers.mts';
+import type { Layout } from '../../adapters/typed/head-policy.mts';
+import { EXCLUDED_PATH_PATTERN, resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mjs';
+
+const outsideRootsNotice: (options: {
+  files: string[];
+  kind: string;
+  where: string;
+  effect: string;
+  destination: string;
+}) => string[] = untypedOutsideRootsNotice;
+const resolveLayoutFor: (policy: object) => Layout = untypedResolveLayoutFor;
 
 const TYPESCRIPT_FILE = /\.(?:ts|tsx|mts|cts)$/;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/;
@@ -7,8 +18,8 @@ const TOOL_CONFIGURATION = /(?:^|\/)[^/]*\.config\.[cm]?tsx?$/;
 const HIDDEN_FOLDER = /(?:^|\/)\.[^/]+\//;
 const EXCLUDED_FOLDER = new RegExp(EXCLUDED_PATH_PATTERN);
 
-export function outsideRootsNotices(changedFiles, headPolicy) {
-  const layout = resolveLayoutFor(headPolicy);
+export function outsideRootsNotices(changedFiles: Iterable<string>, headPolicy: unknown): string[] {
+  const layout = resolveLayoutFor(objectOf(headPolicy) ?? {});
   const roots = [...layout.sourceRoots, ...layout.testRoots].map((root) => `${root}/`);
   const outside = [...changedFiles]
     .map((file) => file.replaceAll('\\', '/'))
