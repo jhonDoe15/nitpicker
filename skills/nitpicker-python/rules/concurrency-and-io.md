@@ -6,6 +6,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather` over one database query per item is still one query per item (`io-in-loop`).
 - Accumulators: `append`, `extend` or `update` one list or dict in the loop, or build it with a comprehension or `itertools.chain.from_iterable`; never rebuild it from a copy of itself (`acc = acc + [x]`, `[*acc, x]`, `{**acc, k: v}`) on every pass (`accumulator-copy`).
 - Relationships: load what a loop reads in the query that fetches the rows (`select_related` or `prefetch_related` in Django, `selectinload` or `joinedload` in SQLAlchemy); never read a lazy relationship on each row (`lazy-relation-in-loop`).
+- Remote calls: none inside a transaction or while a lock is held (`remote-call-in-transaction`, `remote-call-under-lock`); call before the transaction or after the commit (`transaction.on_commit`), copy what you need out of the lock first, or record an outbox row and send it from a worker.
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`

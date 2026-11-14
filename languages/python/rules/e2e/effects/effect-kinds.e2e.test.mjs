@@ -122,6 +122,22 @@ describe.skipIf(!enabled)('effect kinds', () => {
         ),
         [],
       ],
+      [
+        'an HTTP session delete with a database write in a transaction',
+        code(
+          'import aiohttp',
+          'from django.db import transaction',
+          'from shop.models import Order',
+          '',
+          '',
+          'async def f(url):',
+          '    session = aiohttp.ClientSession()',
+          '    with transaction.atomic():',
+          '        Order.objects.create(url=url)',
+          '        await session.delete(url)',
+        ),
+        ['remote-call-in-transaction:10 session.delete()|transaction.atomic()'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -200,6 +216,21 @@ describe.skipIf(!enabled)('effect kinds', () => {
           'io-in-loop:8 order.asave()|database',
           'io-in-loop:9 order.arefresh_from_db()|database',
         ],
+      ],
+      [
+        'async writes in a transaction',
+        code(
+          'import requests',
+          'from django.db import transaction',
+          'from shop.models import Order',
+          '',
+          '',
+          'async def f(order):',
+          '    with transaction.atomic():',
+          '        await order.asave()',
+          '        requests.post("https://hooks.example.com", timeout=5)',
+        ),
+        ['remote-call-in-transaction:9 requests.post()|transaction.atomic()'],
       ],
     ]);
     expect(actual).toEqual(expected);
