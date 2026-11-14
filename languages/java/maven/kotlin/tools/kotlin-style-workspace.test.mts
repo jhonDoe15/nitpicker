@@ -2,9 +2,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import { withStyleWorkspace } from './kotlin-style-workspace.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 function project() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-workspace-'));
@@ -35,7 +36,7 @@ describe('withStyleWorkspace', () => {
         ktlintDefaults: '[*.{kt,kts}]\nindent_size = 2\n',
       },
     };
-    let seen;
+    let seen: { cwd: string; defaultsFile: string | undefined } | undefined;
 
     withStyleWorkspace({ module, options, files: [source] }, ({ cwd, defaultsFile }) => {
       seen = { cwd, defaultsFile };
@@ -43,11 +44,11 @@ describe('withStyleWorkspace', () => {
       expect(readFileSync(path.join(cwd, '.editorconfig'), 'utf8')).toBe(
         '[*.kt]\nindent_size = 4\n',
       );
-      expect(readFileSync(defaultsFile, 'utf8')).toBe('[*.{kt,kts}]\nindent_size = 2\n');
+      expect(readFileSync(textOf(defaultsFile), 'utf8')).toBe('[*.{kt,kts}]\nindent_size = 2\n');
       expect(path.basename(path.dirname(cwd))).toBe('service');
     });
 
-    expect(existsSync(seen.cwd)).toBe(false);
+    expect(existsSync(textOf(seen?.cwd))).toBe(false);
   });
 
   it('starts from a root editorconfig and no defaults when the style has none, and refuses a path outside the mirror', () => {
@@ -59,7 +60,7 @@ describe('withStyleWorkspace', () => {
         expect(workspace.defaultsFile).toBeUndefined();
       },
     );
-    expect(() =>
+    expect(() => {
       withStyleWorkspace(
         {
           module,
@@ -70,7 +71,7 @@ describe('withStyleWorkspace', () => {
           files: [source],
         },
         () => undefined,
-      ),
-    ).toThrow('outside the mirror');
+      );
+    }).toThrow('outside the mirror');
   });
 });

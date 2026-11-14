@@ -26,7 +26,7 @@ export function ktlintArguments({
 }: {
   readonly module: Pick<KotlinModule, 'basedir' | 'kotlin'>;
   readonly report: string;
-  readonly defaultsFile: string | undefined;
+  readonly defaultsFile?: string | undefined;
 }): string[] {
   return [
     '--relative',
@@ -42,7 +42,9 @@ export function ktfmtArguments({
   files,
 }: {
   readonly module: Pick<KotlinModule, 'basedir'>;
-  readonly options: Pick<KotlinOptions, 'ktfmtStyle' | 'ktfmtMaxWidth' | 'ktfmtEditorconfig'>;
+  readonly options: Pick<KotlinOptions, 'ktfmtStyle' | 'ktfmtEditorconfig'> & {
+    readonly ktfmtMaxWidth?: unknown;
+  };
   readonly files: readonly string[];
 }): string[] {
   return [
