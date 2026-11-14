@@ -27,7 +27,7 @@ const fixtures = {
     'export function heights(tree: Tree<string[]>): number { return tree.kids.length; }\n',
 };
 
-function parameterBelowReadonlyDeep(actual) {
+function parameterBelowReadonlyDeep(actual: string) {
   return [
     `Parameter should have an immutability of at least "ReadonlyDeep" (actual: "${actual}").`,
   ];
@@ -59,7 +59,7 @@ const compilerOptions = {
   types: [],
   noEmit: true,
 };
-const libraryFiles = new Map();
+const libraryFiles = new Map<string, ts.SourceFile | undefined>();
 
 function compilerHostSharingLibraryFiles() {
   const host = ts.createCompilerHost(compilerOptions);
@@ -84,7 +84,7 @@ function freshProgram() {
   );
 }
 
-function createLinter(program) {
+function createLinter(program: ts.Program) {
   return new ESLint({
     cwd: root,
     overrideConfigFile: true,
@@ -99,11 +99,14 @@ function createLinter(program) {
   });
 }
 
-async function lintInOrder(names) {
+async function lintInOrder(names: string[]) {
   const eslint = createLinter(freshProgram());
-  const found = {};
+  const found: Record<string, string[]> = {};
   for (const name of names) {
     const [result] = await eslint.lintFiles([path.join(directory, name)]);
+    if (result === undefined) {
+      throw new Error(`No lint result for ${name}`);
+    }
     found[name] = result.messages.map((message) => message.message);
   }
   return found;
@@ -114,7 +117,7 @@ const orders = {
   reversed: Object.keys(fixtures).toReversed(),
 };
 
-const linted = {};
+const linted: Record<string, Record<string, string[]>> = {};
 
 beforeAll(async () => {
   vi.stubEnv('NODE_ENV', 'production');
