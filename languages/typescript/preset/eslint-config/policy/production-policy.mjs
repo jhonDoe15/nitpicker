@@ -125,6 +125,7 @@ function productionGuardRules({ react, security, databaseWrites }) {
     'nitpicker/no-dual-write': 'error',
     'nitpicker/no-unatomic-writes': ['error', databaseWrites],
     'nitpicker/no-check-then-write': ['error', databaseWrites],
+    'nitpicker/no-unisolated-job-loop': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',

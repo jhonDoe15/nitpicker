@@ -141,6 +141,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Write related rows in one transaction and write through the transaction's own manager, never a repository
   injected from outside (`nitpicker/no-unatomic-writes`); decide a write from a read inside the transaction with a
   row lock, or with an atomic `upsert` or `update ... where version = ?` (`nitpicker/no-check-then-write`).
+- In a scheduled or queue job, isolate each item of a loop: `try`/`catch` and record the failure per item, queue
+  one job per item, or `Promise.allSettled` and report the failures, so one bad item does not skip the rest
+  (`nitpicker/no-unisolated-job-loop`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

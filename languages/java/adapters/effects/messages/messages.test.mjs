@@ -19,3 +19,25 @@ describe('the messages of the check-then-write rule', () => {
     );
   });
 });
+
+describe('the messages of the job loop rule', () => {
+  it('names the job, the call path and both allowed forms', () => {
+    const message = EFFECTS_MESSAGES.JobLoopWithoutItemIsolation({
+      method: 'NightlyJobs.closeOrders',
+      job: '@Scheduled',
+      kind: 'database',
+      path: ['OrderLoader.load()', 'OrderRepository.findById()'],
+    });
+
+    expect(message).toBe(
+      [
+        'Catch the failure of each item inside the loop and record it, or enqueue one job per item so the queue',
+        'isolates them: the loop in the `@Scheduled` job `NightlyJobs.closeOrders()` makes a query or write for',
+        'each item (calls `OrderLoader.load()`, which calls `OrderRepository.findById()`) with no `try` around',
+        'it, so the first item that throws skips every item after it until the next run, and an item that keeps',
+        'failing blocks all the others. A job that fails on purpose so that the whole run is retried goes in',
+        '`exceptions`.',
+      ].join(' '),
+    );
+  });
+});

@@ -85,6 +85,8 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/events/Retries.kt',
         'src/main/kotlin/shop/events/DualWrites.kt',
         'src/main/kotlin/shop/races/Registrations.kt',
+        'src/main/kotlin/shop/jobs/JobsAllowed.kt',
+        'src/main/kotlin/shop/jobs/NightlyJobs.kt',
         JAVA_LOOP,
       ]),
     );

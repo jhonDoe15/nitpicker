@@ -32,6 +32,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-whole-rows-for-one-value',
   'nitpicker/no-unatomic-writes',
   'nitpicker/no-check-then-write',
+  'nitpicker/no-unisolated-job-loop',
   'nitpicker/no-retry-without-idempotency',
   'nitpicker/no-stale-retry-after-conflict',
   'nitpicker/no-remote-call-under-lock',

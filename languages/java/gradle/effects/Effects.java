@@ -33,6 +33,7 @@ import nitpicker.effects.retries.StaleRetry;
 import nitpicker.effects.rows.Projections;
 import nitpicker.effects.rows.SetBasedUpdates;
 import nitpicker.effects.rules.RetryWrite;
+import nitpicker.effects.jobs.JobLoops;
 import nitpicker.effects.scopes.Scopes;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -110,6 +111,7 @@ public final class Effects {
     new Projections(program, report).run();
     new StaleRetry(program, summaries, report).run();
     new AsyncBlocking(program, summaries, report).run();
+    new JobLoops(program, summaries, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {
