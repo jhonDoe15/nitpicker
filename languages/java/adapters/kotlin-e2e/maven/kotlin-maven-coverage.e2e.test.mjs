@@ -140,6 +140,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'crap crap-score-limit classify',
       'structure function-parameters-limit sum',
       'structure function-statements-limit classify',
+      'structure near-duplicate classify2(Int)',
     ]);
     expect(rulesOf(result.newEnforceable, 'duplicates')).toEqual([
       'duplicates duplicate-clone Left.kt',
