@@ -9,23 +9,23 @@ import { listOf, numberOr, parseJson } from '../../../../shared/values/readers.m
 const CHECK = /^\[([\w.-]+)\]\s*/;
 const SUGGESTION = /^\s*Did you mean\b/;
 const LINE_NUMBER = /\bline \d+\b/g;
-interface IngestOptions {
+type IngestOptions = {
   readonly tool?: string;
   readonly resolvePath?: (file: string) => string | undefined;
   readonly guava?: (filePath: string) => boolean;
-}
+};
 
-interface Parsed {
+type Parsed = {
   readonly check: string;
   readonly summary: string;
   readonly message: string;
-}
+};
 
-interface Distinct {
+type Distinct = {
   readonly diagnostic: Diagnostic;
   readonly parsed: Parsed;
   readonly filePath: string;
-}
+};
 
 export function ingestErrorProne(
   json: string,
@@ -71,10 +71,10 @@ function distinctDiagnostics(
     });
 }
 
-interface FindingInput extends Distinct {
+type FindingInput = Distinct & {
   readonly tool: string;
   readonly unique: (identity: string) => string;
-}
+};
 
 function finding({ tool, filePath, parsed, diagnostic, unique }: FindingInput) {
   return {

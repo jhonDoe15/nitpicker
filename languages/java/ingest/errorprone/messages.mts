@@ -119,15 +119,15 @@ export function errorProneAllowedForm(check: string): string | undefined {
   return ALLOWED_FORMS.get(check);
 }
 
-export interface ErrorProneParts {
+export type ErrorProneParts = {
   readonly check: string;
   readonly summary: string;
   readonly suggestion?: string | undefined;
-}
+};
 
 export function errorProneMessage(
   { check, summary, suggestion }: ErrorProneParts,
-  { guava = true }: { readonly guava?: boolean } = {},
+  { guava }: { readonly guava: boolean } = { guava: true },
 ): string {
   const cleaned = suggestion === undefined ? undefined : cleanSuggestion(check, suggestion, guava);
   const parts = [readableSummary(check, summary, guava), ALLOWED_FORMS.get(check), cleaned];

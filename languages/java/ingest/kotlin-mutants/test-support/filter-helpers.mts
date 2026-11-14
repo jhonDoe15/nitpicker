@@ -40,7 +40,7 @@ export function filterFor(file: Fields = {}, mutants: unknown[] = []): MutantFil
   };
 }
 
-export function mutant(overrides: Fields) {
+export function mutant(overrides: Fields): Fields {
   return {
     status: 'SURVIVED',
     className: 'demo.DemoKt',
@@ -68,15 +68,15 @@ export const boundary = {
   mutatorName: 'ConditionalsBoundaryMutator',
   description: 'changed conditional boundary',
 };
-export function removed(call: string) {
+export function removed(call: string): { description: string } {
   return { description: `removed call to ${call}` };
 }
 
-export function lambda(fields: Fields) {
+export function lambda(fields: Fields): Fields {
   return { returnLines: [], discarded: false, projectCallee: false, unitCallee: false, ...fields };
 }
 
-export function fn(fields: Fields) {
+export function fn(fields: Fields): Fields {
   return {
     class: 'demo.DemoKt',
     suspend: false,

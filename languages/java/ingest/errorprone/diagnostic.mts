@@ -1,11 +1,11 @@
 import { fieldOf } from '../../../../shared/values/readers.mts';
 
-export interface Diagnostic {
+export type Diagnostic = {
   readonly file: unknown;
   readonly line: unknown;
   readonly column: unknown;
   readonly message: unknown;
-}
+};
 
 export function diagnosticOf(value: unknown): Diagnostic {
   return {
