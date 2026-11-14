@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { designRows, fn, owner } from './support.mjs';
+import { designRows, fn, owner } from './support.mts';
+import type { DesignType } from '../../go-types.mts';
+
+type Fields = { readonly [field: string]: unknown };
+type Site = readonly [string, string, string[]?];
 
 const method = owner('pay/method.go', 'Method', {
   kind: 'enum',
@@ -9,11 +13,14 @@ const order = owner('pay/order.go', 'Order', {
   fields: [{ name: 'Status' }, { name: 'Count' }],
 });
 
-function decider(file, name, decision) {
+function decider(file: string, name: string, decision: Fields) {
   return fn(owner(file), name, { decisions: [{ line: 4, otherwise: false, ...decision }] });
 }
 
-function run(types, decisions) {
+function run(
+  types: readonly DesignType[],
+  decisions: readonly (readonly [string, string, Fields])[],
+) {
   const callables = decisions.map(([file, name, decision]) => decider(file, name, decision));
   return designRows(
     {
@@ -61,7 +68,7 @@ describe('repeated-policy-decision on Go facts', () => {
     expect(rows.map(({ identity }) => identity)).toEqual(['pay/order.go#Order.Status|held,open']);
   });
 
-  it.each([
+  const PASSING: readonly (readonly [string, readonly Site[]])[] = [
     [
       'one file',
       [
@@ -83,12 +90,16 @@ describe('repeated-policy-decision on Go facts', () => {
         ['app/audit.go', 'Audit', ['Card', 'Paypal', 'Invoice', 'Cash']],
       ],
     ],
-  ])('passes %s', (_, sites) => {
-    const decisions = sites.map(([file, name, group = ['Card', 'Paypal']]) => [
-      file,
-      name,
-      { subject: method.id, groups: [group] },
-    ]);
+  ];
+
+  it.each(PASSING)('passes %s', (_, sites) => {
+    const decisions = sites.map(
+      ([file, name, group = ['Card', 'Paypal']]): [string, string, Fields] => [
+        file,
+        name,
+        { subject: method.id, groups: [group] },
+      ],
+    );
     expect(run([method], decisions)).toEqual([]);
   });
 });
@@ -99,13 +110,13 @@ describe('foreign-state-decision on Go facts', () => {
     fields: [{ name: 'Status' }, { name: 'Tier' }, { name: 'Name' }],
   });
 
-  function reader(file, name, decided) {
+  function reader(file: string, name: string, decided: readonly string[]) {
     return fn(owner(file), name, {
       reads: [{ type: account.id, fields: ['Name', ...decided], decided, line: 5 }],
     });
   }
 
-  function rows(sites) {
+  function rows(sites: readonly (readonly [string, string, readonly string[]])[]) {
     const callables = sites.map(([file, name, decided]) => reader(file, name, decided));
     const files = [...new Set(callables.map(({ file }) => file))];
     return designRows(
@@ -124,7 +135,7 @@ describe('foreign-state-decision on Go facts', () => {
     ).toEqual(['ledger/account.go#Account|Status,Tier']);
   });
 
-  it.each([
+  const UNDECIDED: readonly (readonly [string, readonly (readonly string[])[]])[] = [
     ['one decided field', [['Status'], ['Status']]],
     [
       'different fields',
@@ -133,11 +144,14 @@ describe('foreign-state-decision on Go facts', () => {
         ['Name', 'Tier'],
       ],
     ],
-  ])('passes %s', (_, decided) => {
+  ];
+
+  it.each(UNDECIDED)('passes %s', (_, decided) => {
+    const [first = [], second = []] = decided;
     expect(
       rows([
-        ['app/limit.go', 'Limit', decided[0]],
-        ['app/quota.go', 'Quota', decided[1]],
+        ['app/limit.go', 'Limit', first],
+        ['app/quota.go', 'Quota', second],
       ]),
     ).toEqual([]);
   });

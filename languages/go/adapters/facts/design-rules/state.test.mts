@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { MODULE, designRows, fn, owner } from './support.mjs';
+import { MODULE, designRows, fn, owner } from './support.mts';
+import type { DesignCallable } from '../../go-types.mts';
+
+type Fields = { readonly [field: string]: unknown };
 
 const cart = owner('orders/cart.go', 'Cart', {
   fields: [
@@ -13,11 +16,11 @@ const tags = fn(cart, 'Tags', { params: [], returnsField: 'Tags' });
 const total = fn(cart, 'Total', { params: [], returnsField: 'total' });
 const pay = owner('checkout/pay.go');
 
-function payWith(call) {
+function payWith(call: Fields) {
   return fn(pay, 'Pay', { line: 5, calls: [{ line: 6, ...call }] });
 }
 
-function escapes(members, call) {
+function escapes(members: readonly DesignCallable[], call: Fields) {
   return designRows(
     { types: [cart, pay], callables: [...members, payWith(call)] },
     'mutable-state-escape',

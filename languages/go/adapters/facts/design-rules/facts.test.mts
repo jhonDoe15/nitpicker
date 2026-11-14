@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { goFacts } from '../go-facts.mjs';
-import { MODULE, fn, goReport, owner } from './support.mjs';
+import { goFacts } from '../go-facts.mts';
+import { MODULE, fn, goReport, owner } from './support.mts';
 
 const cart = owner('orders/cart.go', 'Cart');
 const pay = owner('checkout/pay.go');

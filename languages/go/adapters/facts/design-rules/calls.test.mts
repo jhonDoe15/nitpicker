@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { MODULE, designRows, fn, owner } from './support.mjs';
+import { fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
+import { MODULE, designRows, fn, owner } from './support.mts';
+import type { DesignCallable } from '../../go-types.mts';
+
+type Fields = { readonly [field: string]: unknown };
 
 const session = owner('db/session.go', 'Session');
-const steps = ['Begin', 'Write', 'Commit', 'Rollback'].map((name) => fn(session, name));
-const [begin, write, commit, rollback] = steps;
+const begin = fn(session, 'Begin');
+const write = fn(session, 'Write');
+const commit = fn(session, 'Commit');
+const rollback = fn(session, 'Rollback');
+const steps = [begin, write, commit, rollback];
 
-function caller(file, name, calls) {
+function caller(file: string, name: string, calls: readonly Fields[]) {
   return fn(owner(file), name, {
-    calls: calls.map((call, line) => ({ receiver: 's', line: line + 3, ...call })),
+    calls: calls.map((call: Fields, line: number) => ({ receiver: 's', line: line + 3, ...call })),
   });
 }
 
-function sessionUsers(callers) {
+function sessionUsers(callers: readonly DesignCallable[]) {
   return {
     types: [session, ...callers.map(({ file }) => owner(file))],
     callables: [...steps, ...callers],
@@ -56,12 +63,15 @@ describe('protocol-contract on Go facts', () => {
     steps: ['Write'],
   };
 
-  function violations(calls, { receiver } = {}) {
+  function violations(calls: readonly Fields[], { receiver }: { receiver?: string } = {}) {
     const user = caller('app/save.go', 'Save', calls);
     const facts = sessionUsers([
       receiver === undefined
         ? user
-        : { ...user, calls: user.calls.map((c) => ({ ...c, receiver })) },
+        : {
+            ...user,
+            calls: listOf(user['calls']).map((call) => ({ ...fieldsOf(call), receiver })),
+          },
     ]);
     return designRows(facts, 'protocol-contract', {
       module: MODULE,

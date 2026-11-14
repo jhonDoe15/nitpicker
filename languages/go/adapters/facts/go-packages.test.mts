@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { goPackages } from './go-packages.mjs';
+import { goPackages } from '../typed/go-readers.mts';
 
-function file(path, name, { test = false, constrained = false } = {}) {
+function file(
+  path: string,
+  name: string,
+  { test = false, constrained = false }: { test?: boolean; constrained?: boolean } = {},
+) {
   return { path, package: name, test, generated: false, constrained };
 }
 

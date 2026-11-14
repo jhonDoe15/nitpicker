@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { goFactFindings } from './go-fact-findings.mjs';
-import { goFacts } from './go-facts.mjs';
+import { goFactFindings } from './go-fact-findings.mts';
+import { goFacts } from './go-facts.mts';
+import { reportUsage } from '../test-support/go-report-fixtures.mts';
+import type { FindingRow, GoDefinition, GoUsage } from '../go-types.mts';
 
 const BODY = [
   'func',
@@ -36,11 +38,11 @@ const BODY = [
   '}',
 ];
 
-function file(path, constrained = false) {
-  return { path, package: path.split('/')[0], test: false, generated: false, constrained };
+function file(path: string, constrained = false) {
+  return { path, package: path.split('/')[0] ?? '', test: false, generated: false, constrained };
 }
 
-function clamp(path, tokens = BODY, kind = 'function') {
+function clamp(path: string, tokens = BODY, kind = 'function'): GoDefinition {
   return {
     file: path,
     name: 'clamp',
@@ -54,11 +56,14 @@ function clamp(path, tokens = BODY, kind = 'function') {
   };
 }
 
-function usage(path, extra = {}) {
-  return { file: path, imports: [], names: [], selectors: [], local: ['clamp'], ...extra };
+function usage(path: string, extra: Partial<GoUsage> = {}) {
+  return reportUsage(path, { local: ['clamp'], ...extra });
 }
 
-function report(definitions, { constrained = [] } = {}) {
+function report(
+  definitions: readonly GoDefinition[],
+  { constrained = [] }: { constrained?: readonly string[] } = {},
+) {
   return {
     files: ['billing/total.go', 'report/sum.go'].map((path) =>
       file(path, constrained.includes(path)),
@@ -68,13 +73,13 @@ function report(definitions, { constrained = [] } = {}) {
   };
 }
 
-function duplicates(input) {
+function duplicates(input: ReturnType<typeof report>) {
   return goFactFindings(goFacts(input, { module: 'shop' })).map(
     ({ rule, path }) => `${rule} ${path}`,
   );
 }
 
-function rows(findings) {
+function rows(findings: readonly FindingRow[]) {
   return findings.map(({ rule, path, message }) => `${rule} ${path}: ${message}`);
 }
 

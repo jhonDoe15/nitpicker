@@ -1,10 +1,30 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
-import { inspectBaseline, readInspect } from '../structure/go-inspect.mjs';
-import { readTestRun } from '../tests/go-test.mjs';
-import { goFacts } from './go-facts.mjs';
+import { inspectBaseline, readInspect, readTestRun } from '../typed/go-readers.mts';
+import { goFacts } from './go-facts.mts';
+import { registeredFactRules } from '../typed/shared-readers.mts';
+import type { FindingRow, GoFacts } from '../go-types.mts';
+
+const sharedFactFindings: (
+  facts: unknown,
+  options: Readonly<Record<string, unknown>>,
+) => FindingRow[] = untypedSharedFactFindings;
+
+type Policy = {
+  exceptions?: readonly unknown[] | undefined;
+  layout?: unknown;
+  testConsole?: unknown;
+  protocols?: unknown;
+};
+type FactsLike = Omit<GoFacts, 'constrained'> & { constrained?: readonly string[] };
+type Baseline = { facts?: FactsLike | undefined; movesFile?: string };
+type ReadContext = {
+  reportRoot: string;
+  module: string;
+  snapshot: string;
+  baselineMovesFile?: string | undefined;
+};
 
 const ANALYZER_NAME = 'facts';
 const CONSOLE_ANALYZER_NAME = 'test-runtime';
@@ -18,7 +38,7 @@ const OWN_TOOL_RULES = new Set([
 ]);
 const COPIED_KIND = 'function';
 
-function copyFacts({ constrained = [], ...facts }) {
+function copyFacts({ constrained = [], ...facts }: FactsLike) {
   const variants = new Set(constrained);
   return {
     ...facts,
@@ -28,14 +48,14 @@ function copyFacts({ constrained = [], ...facts }) {
   };
 }
 
-export function readGoFacts(context) {
+export function readGoFacts(context: ReadContext): GoFacts {
   return goFacts(readInspect(context.reportRoot), {
     module: context.module,
     testRun: readTestRun(context.reportRoot),
   });
 }
 
-export function readGoBaseline(context) {
+export function readGoBaseline(context: ReadContext): Baseline | undefined {
   const base = context.snapshot === 'head' ? inspectBaseline(context) : undefined;
   return base === undefined
     ? undefined
@@ -47,7 +67,20 @@ export function readGoBaseline(context) {
       };
 }
 
-function findings(facts, { rules, policy, baseline, analyzerName = ANALYZER_NAME }) {
+function findings(
+  facts: unknown,
+  {
+    rules,
+    policy,
+    baseline,
+    analyzerName = ANALYZER_NAME,
+  }: {
+    rules: readonly string[];
+    policy: Policy;
+    baseline?: Baseline | undefined;
+    analyzerName?: string;
+  },
+) {
   return rules.length === 0
     ? []
     : sharedFactFindings(facts, {
@@ -68,13 +101,16 @@ function findings(facts, { rules, policy, baseline, analyzerName = ANALYZER_NAME
       });
 }
 
-function copyBaseline(baseline) {
+function copyBaseline(baseline: Baseline | undefined) {
   return baseline?.facts === undefined
     ? baseline
     : { ...baseline, facts: copyFacts(baseline.facts) };
 }
 
-export function goFactFindings({ constrained, ...facts }, { policy = {}, baseline } = {}) {
+export function goFactFindings(
+  { constrained, ...facts }: GoFacts,
+  { policy = {}, baseline }: { policy?: Policy; baseline?: Baseline | undefined } = {},
+): FindingRow[] {
   const registered = registeredFactRules(LANGUAGE);
   return [
     ...findings(copyFacts({ ...facts, constrained }), {

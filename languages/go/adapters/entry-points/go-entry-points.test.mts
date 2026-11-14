@@ -1,30 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { goFacts } from '../facts/go-facts.mjs';
-import { goEntryPointFindings, goReexports } from './go-entry-points.mjs';
+import { goFacts } from '../facts/go-facts.mts';
+import { goEntryPointFindings, goReexports } from './go-entry-points.mts';
+import { reportDefinition, reportFile, reportUsage } from '../test-support/go-report-fixtures.mts';
 
 const MODULE = 'example.com/shop';
 const ORDERS = `${MODULE}/sales/orders`;
 
-function file(path, extra = {}) {
-  return {
-    path,
-    package: path.split('/').at(-2) ?? 'shop',
-    test: path.endsWith('_test.go'),
-    generated: false,
-    constrained: false,
-    ...extra,
-  };
+function type(path: string, name: string, tokens = [name, 'struct', '{', '}']) {
+  return reportDefinition(path, name, { kind: 'type', lines: 1, exported: true, tokens });
 }
 
-function type(path, name, tokens = [name, 'struct', '{', '}']) {
-  return { file: path, name, kind: 'type', line: 3, lines: 1, exported: true, tokens };
-}
+const file = reportFile;
+const usage = reportUsage;
 
-function usage(path, extra = {}) {
-  return { file: path, imports: [], names: [], selectors: [], local: [], ...extra };
-}
-
-const orders = (from, qualifier = 'orders') =>
+const orders = (from: string, qualifier = 'orders') =>
   usage(from, {
     imports: [{ path: ORDERS, name: qualifier === 'orders' ? '' : qualifier, line: 3 }],
     selectors: [{ qualifier, name: 'Order' }],
@@ -73,7 +62,7 @@ describe('Go public alternatives', () => {
     expect(findings.map(({ path, rule }) => `${rule} ${path}`)).toEqual([
       'public-alternative-bypass billing/invoice.go',
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       `Order is imported from sales/orders/order.go, around its public entry point ${MODULE}/sales. Import Order from ${MODULE}/sales. If this is intended, add {"rule":"public-alternative-bypass","paths":["billing/invoice.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
     );
   });
