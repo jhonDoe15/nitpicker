@@ -17,10 +17,17 @@ import {
 } from '../../preset/test-console/console-report.mjs';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mts';
 import { consoleProducerPath, startTestConsole } from './test-console-run.mts';
+import { testOptions } from './typed/test-options.mts';
+import type { Environment } from './typed/runner-types.mts';
+import { parseJson } from '../../../../shared/values/readers.mts';
+
+function linesFileOf(environment: Environment): string {
+  return environment[LINES_VARIABLE] ?? '';
+}
 
 describe('the console capture of a test run', () => {
-  let projectRoot;
-  let reportPath;
+  let projectRoot: string;
+  let reportPath: string;
 
   beforeEach(() => {
     projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'test-console-run-')));
@@ -32,7 +39,7 @@ describe('the console capture of a test run', () => {
   });
 
   it('names the report, the project root and the lines file for the test process', () => {
-    const capture = startTestConsole({ projectRoot }, { collectsLines: true });
+    const capture = startTestConsole(testOptions({ projectRoot }), { collectsLines: true });
 
     expect(capture.enabled).toBe(true);
     expect(capture.environment).toEqual({
@@ -44,41 +51,41 @@ describe('the console capture of a test run', () => {
   });
 
   it('turns the readable lines of every test process into the normalized report, then removes them', () => {
-    const capture = startTestConsole({ projectRoot }, { collectsLines: true });
+    const capture = startTestConsole(testOptions({ projectRoot }), { collectsLines: true });
     const lines = [
       { file: '/p/a.test.js', test: 'one', content: `warn a in ${projectRoot}/src\n` },
       { file: '/p/b.test.js', test: '', content: 'warn b\n    at run (/a/b.js:1:2)' },
       { file: '/p/c.test.js', test: '', content: '{\n}' },
     ];
     for (const line of lines) {
-      appendFileSync(capture.environment[LINES_VARIABLE], `${JSON.stringify(line)}\n`);
+      appendFileSync(linesFileOf(capture.environment), `${JSON.stringify(line)}\n`);
     }
-    appendFileSync(capture.environment[LINES_VARIABLE], '{"file":"/p/d.test.js","te\n[1]\n');
+    appendFileSync(linesFileOf(capture.environment), '{"file":"/p/d.test.js","te\n[1]\n');
 
     capture.finish();
     capture.remove();
 
-    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({
+    expect(parseJson(readFileSync(reportPath, 'utf8'))).toEqual({
       entries: [
         { file: '/p/a.test.js', test: 'one', messages: ['warn a in <root>/src'] },
         { file: '/p/b.test.js', test: '', messages: ['warn b'] },
       ],
     });
-    expect(existsSync(capture.environment[LINES_VARIABLE])).toBe(false);
+    expect(existsSync(linesFileOf(capture.environment))).toBe(false);
   });
 
   it('writes an empty report when no test process printed anything', () => {
-    const capture = startTestConsole({ projectRoot }, { collectsLines: true });
+    const capture = startTestConsole(testOptions({ projectRoot }), { collectsLines: true });
 
     capture.finish();
 
-    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({ entries: [] });
+    expect(parseJson(readFileSync(reportPath, 'utf8'))).toEqual({ entries: [] });
   });
 
   it('leaves the report to a reporter that writes it, and clears the one of an earlier run', () => {
-    startTestConsole({ projectRoot }, { collectsLines: true }).finish();
+    startTestConsole(testOptions({ projectRoot }), { collectsLines: true }).finish();
 
-    const capture = startTestConsole({ projectRoot }, { collectsLines: false });
+    const capture = startTestConsole(testOptions({ projectRoot }), { collectsLines: false });
     capture.finish();
 
     expect(capture.environment).not.toHaveProperty(LINES_VARIABLE);
@@ -86,10 +93,10 @@ describe('the console capture of a test run', () => {
   });
 
   it('captures nothing when a few tests are run again to time them', () => {
-    startTestConsole({ projectRoot }, { collectsLines: true }).finish();
+    startTestConsole(testOptions({ projectRoot }), { collectsLines: true }).finish();
 
     const capture = startTestConsole(
-      { projectRoot, rerun: { files: [] } },
+      testOptions({ projectRoot, rerun: { files: [], namePattern: '' } }),
       { collectsLines: true },
     );
     capture.finish();
@@ -101,7 +108,7 @@ describe('the console capture of a test run', () => {
   });
 
   it('finds the producers of each runner inside the policy root', () => {
-    const options = { policyRoot: '/policy' };
+    const options = testOptions({ policyRoot: '/policy' });
 
     expect(consoleProducerPath(options, 'jest')).toBe(
       '/policy/languages/typescript/preset/test-console/runners/jest-reporter.config.mjs',

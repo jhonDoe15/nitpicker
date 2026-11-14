@@ -38,7 +38,7 @@ describe('the coverage globs nitpicker gives Jest', () => {
   });
 });
 
-function shown(config) {
+function shown(config: unknown): { status: number; stdout: string; stderr: string } {
   return { status: 0, stdout: `ready\n${JSON.stringify(config, null, '  ')}\n`, stderr: '' };
 }
 

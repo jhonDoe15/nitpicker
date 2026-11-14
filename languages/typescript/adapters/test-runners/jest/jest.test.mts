@@ -7,8 +7,10 @@ import {
   rulesOf,
   runArea,
   createRunnerProjects,
-} from '../test-support/runner-project.mjs';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+} from '../test-support/runner-project.mts';
+import { linkSentence } from '../typed/link-sentence.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 const projects = createRunnerProjects();
 
@@ -27,10 +29,10 @@ const NEST_JEST = {
 };
 
 function jestProject(
-  testText,
-  jest = { preset: 'ts-jest', testEnvironment: 'node' },
+  testText: string,
+  jest: object | undefined = { preset: 'ts-jest', testEnvironment: 'node' },
   test = 'jest',
-) {
+): string {
   return projects.project({
     'package.json': { name: 'p', private: true, scripts: { test }, jest },
     'tsconfig.json': TSCONFIG,
@@ -39,7 +41,7 @@ function jestProject(
   });
 }
 
-function uncoveredBranch(findings) {
+function uncoveredBranch(findings: readonly Finding[]): string | undefined {
   return findings.find(({ rule }) => rule === 'changed-branch-coverage')?.message;
 }
 
@@ -52,7 +54,12 @@ describe('coverage on a Jest project', () => {
     const findings = await runArea('coverage', jestProject(SAYS_YES));
 
     expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
-    expect(findings.find(({ identity }) => identity === 'test-count')?.metric).toEqual({
+    expect(
+      fieldOf(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+      ),
+    ).toEqual({
       name: 'testCount',
       value: 1,
     });
@@ -153,8 +160,8 @@ describe('coverage on a Jest project', () => {
     );
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(
-      /test\/pick\.test\.ts:3 > says no: .*expect\(received\)\.toBe/u,
+    expect(findings[0]?.message).toMatch(
+      /^.*test\/pick\.test\.ts:3 > says no: .*expect\(received\)\.toBe.*$/su,
     );
   });
 

@@ -2,12 +2,12 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-import { parseArguments } from '../../quality-areas/arguments.mts';
 import { runQualityArea } from '../../quality-areas-runner.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { areaOptions, compareFindings } from '../area-options.mts';
 
-function writeProjectFile(root, file, text) {
+function writeProjectFile(root: string, file: string, text: unknown) {
   const target = path.resolve(root, file);
   if (!target.startsWith(`${root}${path.sep}`)) {
     throw new Error(`Test project file is outside the project: ${file}`);
@@ -16,10 +16,16 @@ function writeProjectFile(root, file, text) {
   writeFileSync(target, typeof text === 'string' ? text : JSON.stringify(text));
 }
 
-export function createRunnerProjects() {
-  const parents = [];
+export function createRunnerProjects(): {
+  readonly project: (
+    files: Readonly<Record<string, unknown>>,
+    options?: { readonly linkDependencies?: false },
+  ) => string;
+  readonly remove: () => void;
+} {
+  const parents: string[] = [];
   return {
-    project(files, { linkDependencies = true } = {}) {
+    project(files: Readonly<Record<string, unknown>>, { linkDependencies = true } = {}) {
       const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
       parents.push(parent);
       const root = path.join(parent, 'head');
@@ -43,17 +49,11 @@ export function createRunnerProjects() {
   };
 }
 
-export function runArea(kind, projectRoot) {
-  return runQualityArea(
-    parseArguments([
-      ...['--analyzer-name', kind, '--kind', kind],
-      ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
-      ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-    ]),
-  );
+export function runArea(kind: string, projectRoot: string): Promise<readonly Finding[]> {
+  return runQualityArea(areaOptions(kind, projectRoot));
 }
 
-export function rulesOf(findings) {
+export function rulesOf(findings: readonly Finding[]): string[] {
   return findings.map(({ rule, classification }) => `${classification}:${rule}`);
 }
 
@@ -74,7 +74,7 @@ export const UNCOVERED_ELSE =
 
 const PRINTED = /^Tests print new console output: (.*?)\. Fix the cause/u;
 
-async function consoleFindings(projectRoot) {
+async function consoleFindings(projectRoot: string): Promise<readonly Finding[]> {
   const failures = (await runArea('coverage', projectRoot)).filter(
     ({ rule }) => rule === TESTS_FAILED_RULE,
   );
@@ -84,18 +84,26 @@ async function consoleFindings(projectRoot) {
   return runArea('test-console', projectRoot);
 }
 
-function printedRows(findings) {
+function printedRows(findings: readonly Finding[]): (string | undefined)[][] {
   return findings.map(({ rule, path: file, message }) => [rule, file, PRINTED.exec(message)?.[1]]);
 }
 
-export async function consoleOutput(projectRoot) {
+export async function consoleOutput(projectRoot: string): Promise<(string | undefined)[][]> {
   return printedRows(await consoleFindings(projectRoot));
 }
 
-export async function newConsoleOutput({ base, head }) {
-  const { newFindings } = compareFindings({
+export async function newConsoleOutput({
+  base,
+  head,
+}: {
+  readonly base: string;
+  readonly head: string;
+}): Promise<(string | undefined)[][]> {
+  const { newFindings = [] } = compareFindings({
     baseFindings: await consoleFindings(base),
     headFindings: await consoleFindings(head),
+    touchedCode: undefined,
+    unknownOnBase: undefined,
   });
   return printedRows(newFindings);
 }

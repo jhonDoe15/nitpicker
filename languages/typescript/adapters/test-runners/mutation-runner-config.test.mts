@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import {
   CRACO_JEST_CONFIG,
@@ -10,6 +10,11 @@ import {
   mutationRunnerConfig,
   unsupportedMutationRunner,
 } from './mutation-runner-config.mts';
+import { testOptions } from './typed/test-options.mts';
+import type { RunnerCommand, RunnerName } from './typed/runner-types.mts';
+import type { StrykerConfig } from '../quality-areas/typed/mutation.mts';
+import { textsOf } from '../../../../shared/values/readers.mts';
+import { temporaryRoots } from '../test-support/temporary-roots.mts';
 
 const SOURCE_CONFIG = {
   mutate: ['src/**/*.ts'],
@@ -20,15 +25,9 @@ const SOURCE_CONFIG = {
   tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
 };
 
-const roots = [];
+const roots = temporaryRoots();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-runner-')));
   roots.push(root);
   for (const [file, text] of Object.entries({ 'package.json': '{}', ...files })) {
@@ -38,19 +37,23 @@ function project(files) {
   return root;
 }
 
-function mochaProject(files) {
+function mochaProject(files: Readonly<Record<string, string>>): string {
   const root = project(files);
   symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   return root;
 }
 
+function pluginNames(config: StrykerConfig): (string | undefined)[] {
+  return textsOf(config['plugins']).map((plugin) => plugin.split('/').at(-4));
+}
+
 function configFor(
-  runner,
-  command,
+  runner: RunnerName,
+  command: Partial<RunnerCommand>,
   { projectRoot = '/p', testFiles = ['/p/test/a.test.ts'] } = {},
-) {
+): StrykerConfig {
   return mutationRunnerConfig({
-    options: { projectRoot },
+    options: testOptions({ projectRoot }),
     runner,
     command: { environment: {}, nodeArguments: [], arguments_: [], ...command },
     testFiles,
@@ -62,12 +65,9 @@ describe('the Stryker runner for each test runner', () => {
   it('keeps the Vitest companion config for Vitest', () => {
     const config = configFor('vitest', {});
 
-    expect(config.testRunner).toBe('vitest');
-    expect(config.vitest).toEqual({ configFile: 'vitest.quality.config.ts' });
-    expect(config.plugins.map((plugin) => plugin.split('/').at(-4))).toEqual([
-      'vitest-runner',
-      'typescript-checker',
-    ]);
+    expect(config['testRunner']).toBe('vitest');
+    expect(config['vitest']).toEqual({ configFile: 'vitest.quality.config.ts' });
+    expect(pluginNames(config)).toEqual(['vitest-runner', 'typescript-checker']);
   });
 
   it('runs Jest with its own config, a timeout fit for slow transforms, and type errors left to the checker', () => {
@@ -78,7 +78,7 @@ describe('the Stryker runner for each test runner', () => {
 
     expect({
       ...config,
-      plugins: config.plugins.map((plugin) => plugin.split('/').at(-4)),
+      plugins: pluginNames(config),
     }).toEqual({
       mutate: ['src/**/*.ts'],
       plugins: ['jest-runner', 'typescript-checker'],
@@ -104,7 +104,7 @@ describe('the Stryker runner for each test runner', () => {
     ],
     [{ launcher: 'craco' }, { configFile: CRACO_JEST_CONFIG }],
   ])('loads the Jest config of the command %j', (command, source) => {
-    expect(configFor('jest', command).jest).toEqual({
+    expect(configFor('jest', command)['jest']).toEqual({
       projectType: 'custom',
       enableFindRelatedTests: false,
       ...source,
@@ -123,11 +123,15 @@ describe('the Stryker runner for each test runner', () => {
       [CRACO_JEST_CONFIG]: cracoJestConfigText(),
     });
 
-    const createJestConfig = createRequire(path.join(root, 'package.json'))(
+    const createJestConfig: unknown = createRequire(path.join(root, 'package.json'))(
       `./${CRACO_JEST_CONFIG}`,
     );
 
-    expect(await createJestConfig()).toEqual({
+    expect(
+      typeof createJestConfig === 'function'
+        ? await Reflect.apply(createJestConfig, undefined, [])
+        : undefined,
+    ).toEqual({
       config: { loadedFor: { env: 'test' } },
       provider: 'cra',
       context: { env: 'test', paths: { appSrc: 'src' } },
@@ -152,8 +156,8 @@ describe('the Stryker runner for each test runner', () => {
     );
 
     expect({
-      testRunnerNodeArgs: config.testRunnerNodeArgs,
-      mochaOptions: config.mochaOptions,
+      testRunnerNodeArgs: config['testRunnerNodeArgs'],
+      mochaOptions: config['mochaOptions'],
     }).toEqual({
       testRunnerNodeArgs: ['--no-warnings', '--import=tsx'],
       mochaOptions: {
@@ -172,7 +176,7 @@ describe('the Stryker runner for each test runner', () => {
   it("leaves Mocha's own spec in place when neither the script nor nitpicker names test files", () => {
     const root = mochaProject({ 'package.json': '{"mocha":{"require":["test/env.js"]}}' });
 
-    expect(configFor('mocha', {}, { projectRoot: root, testFiles: [] }).mochaOptions).toEqual({
+    expect(configFor('mocha', {}, { projectRoot: root, testFiles: [] })['mochaOptions']).toEqual({
       'no-config': true,
       'no-package': true,
       require: ['test/env.js'],
@@ -190,8 +194,8 @@ describe('the Stryker runner for each test runner', () => {
     );
 
     expect({
-      testRunnerNodeArgs: config.testRunnerNodeArgs,
-      mochaOptions: config.mochaOptions,
+      testRunnerNodeArgs: config['testRunnerNodeArgs'],
+      mochaOptions: config['mochaOptions'],
     }).toEqual({
       testRunnerNodeArgs: ['--import=tsx', '--expose-gc'],
       mochaOptions: {
@@ -208,12 +212,14 @@ describe('the Stryker runner for each test runner', () => {
   it('explains that the Stryker Mocha runner cannot run Mocha 12', () => {
     const root = mochaProject({});
 
-    expect(unsupportedMutationRunner({ projectRoot: root }, 'mocha')).toBe(
+    expect(unsupportedMutationRunner(testOptions({ projectRoot: root }), 'mocha')).toBe(
       "mutation skipped: Stryker's Mocha runner (@stryker-mutator/mocha-runner 10) supports Mocha up to 11, " +
         'and this project uses Mocha 12. Coverage and CRAP still run; use Mocha 11 to get mutation testing.',
     );
-    expect(unsupportedMutationRunner({ projectRoot: root }, 'jest')).toBeUndefined();
-    expect(unsupportedMutationRunner({ projectRoot: project({}) }, 'mocha')).toBeUndefined();
+    expect(unsupportedMutationRunner(testOptions({ projectRoot: root }), 'jest')).toBeUndefined();
+    expect(
+      unsupportedMutationRunner(testOptions({ projectRoot: project({}) }), 'mocha'),
+    ).toBeUndefined();
   });
 
   it('runs node:test files through the TAP runner with the node options of the script', () => {
@@ -222,8 +228,8 @@ describe('the Stryker runner for each test runner', () => {
       nodeArguments: ['--import', 'tsx'],
     });
 
-    expect(config.testRunner).toBe('tap');
-    expect(config.tap).toEqual({
+    expect(config['testRunner']).toBe('tap');
+    expect(config['tap']).toEqual({
       testFiles: ['test/**/*.test.js'],
       nodeArgs: ['--import', 'tsx'],
       forceBail: true,

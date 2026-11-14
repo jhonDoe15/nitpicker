@@ -1,17 +1,34 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { watchJestConsole, withFormattedAssert } from './jest-assert.mts';
 
-const { BufferedConsole } = createRequire(import.meta.url)('@jest/console');
+type BufferedEntry = { readonly message: string; readonly origin: string };
+type TestConsole = {
+  assert: (...values: readonly unknown[]) => void;
+  getBuffer: () => BufferedEntry[] | undefined;
+};
+type ConsoleClass = new () => TestConsole;
 
-function bufferAfter(consoleClass, values) {
+function isConsoleClass(value: unknown): value is ConsoleClass {
+  return typeof value === 'function';
+}
+
+const jestConsole: unknown = createRequire(import.meta.url)('@jest/console');
+const loadedConsole = fieldOf(jestConsole, 'BufferedConsole');
+if (!isConsoleClass(loadedConsole)) {
+  throw new TypeError('@jest/console exports no BufferedConsole');
+}
+const BufferedConsole = loadedConsole;
+
+function bufferAfter(consoleClass: ConsoleClass, values: readonly unknown[]): BufferedEntry[] {
   const testConsole = new consoleClass();
   testConsole.assert(...values);
   return testConsole.getBuffer() ?? [];
 }
 
-function assertedBy(consoleClass, values) {
+function assertedBy(consoleClass: ConsoleClass, values: readonly unknown[]): string[] {
   return bufferAfter(consoleClass, values).map(({ message }) => message);
 }
 
@@ -52,11 +69,11 @@ describe('the Jest console.assert wrapper', () => {
     class Formatted extends BufferedConsole {}
     withFormattedAssert(Formatted);
 
-    const [{ origin }] = bufferAfter(Formatted, [false, 'bad %s', 'input']);
+    const origin = bufferAfter(Formatted, [false, 'bad %s', 'input'])[0]?.origin ?? '';
 
     const [first] = origin.split('\n');
 
-    expect([origin.includes('jest-assert.mjs'), first.includes('jest-assert.test.mjs')]).toEqual([
+    expect([origin.includes('jest-assert.mts'), first?.includes('jest-assert.test.mts')]).toEqual([
       false,
       true,
     ]);
@@ -65,14 +82,14 @@ describe('the Jest console.assert wrapper', () => {
   it('wraps the console class of @jest/console when it loads and nothing else', () => {
     class Formatted extends BufferedConsole {}
     class Other extends BufferedConsole {}
-    const modules = {
+    const modules: Record<string, { readonly BufferedConsole: ConsoleClass }> = {
       '@jest/console': { BufferedConsole: Formatted },
       other: { BufferedConsole: Other },
     };
-    const moduleClass = { _load: (request) => modules[request] };
+    const moduleClass = { _load: (request: string) => modules[request] };
     watchJestConsole(moduleClass);
 
-    expect(moduleClass._load('other')).toBe(modules.other);
+    expect(moduleClass._load('other')).toBe(modules['other']);
     expect(moduleClass._load('@jest/console')).toBe(modules['@jest/console']);
     const wrapped = Formatted.prototype.assert;
     moduleClass._load('@jest/console');

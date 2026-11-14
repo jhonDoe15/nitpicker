@@ -19,7 +19,7 @@ type SourceType = 'script' | 'module';
 
 export type V8CoverageFiles = {
   readonly coverageDirectory: string;
-  readonly sourcesDirectory: string;
+  readonly sourcesDirectory: string | undefined;
   readonly sourceFiles: readonly string[];
   readonly outputFile: string;
 };
@@ -113,7 +113,7 @@ function coverageScripts(coverage: unknown): CoveredScript[] {
 
 function loadedScripts(
   coverageDirectory: string,
-  sourcesDirectory: string,
+  sourcesDirectory: string | undefined,
   isCovered: (file: string) => boolean,
 ): CoveredScript[] {
   const loaded = readLoadedSources(sourcesDirectory);

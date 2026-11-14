@@ -1,19 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { mergedCoverage } from './merge-coverage.mts';
 
-const at = (line, column) => ({
-  start: { line, column },
-  end: { line, column: column + 1 },
-});
+type Place = {
+  readonly start: { readonly line: number; readonly column: number };
+  readonly end: { readonly line: number; readonly column: number };
+};
 
-const fn = (name, line, column) => ({ name, decl: at(line, column), loc: at(line, column), line });
+function at(line: number, column: number): Place {
+  return {
+    start: { line, column },
+    end: { line, column: column + 1 },
+  };
+}
 
-const branch = (line, column) => ({
-  type: 'cond-expr',
-  loc: at(line, column),
-  locations: [at(line, column), at(line, column + 1)],
-  line,
-});
+function fn(name: string, line: number, column: number): object {
+  return { name, decl: at(line, column), loc: at(line, column), line };
+}
+
+function branch(line: number, column: number): object {
+  return {
+    type: 'cond-expr',
+    loc: at(line, column),
+    locations: [at(line, column), at(line, column + 1)],
+    line,
+  };
+}
 
 const native = {
   path: '/p/src/pick.ts',
