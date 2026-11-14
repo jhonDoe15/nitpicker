@@ -54,6 +54,11 @@ export const STRUCTURE_NOTES = {
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
+  'shorter-condition': [
+    'A condition with an exactly equivalent form that has fewer operands: an operand that a later one implies, two operands that merge (complement, absorption, adjacent or overlapping ranges).',
+    'The longer condition says the same thing twice; agents repeat range checks and guards more than people do.',
+    'Write the printed shorter form. The message prints it from the original operands, in order, and names the operand that makes the other redundant.',
+  ],
   'duplicate-branch': [
     'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',

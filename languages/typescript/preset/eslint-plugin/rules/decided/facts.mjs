@@ -4,6 +4,7 @@ import {
   isComparison,
   key,
   not,
+  rangeKey,
   term,
   withRange,
 } from '../../../../../../shared/logic/terms.mjs';
@@ -25,10 +26,6 @@ const EFFECTS = new Set([
 const RELATIONS = new Set(['<', '<=', '>', '>=']);
 const MEMBER_KINDS = new Set(['member', 'index', 'call']);
 const NUMBER = ts.TypeFlags.NumberLike;
-
-function rangeKey(range) {
-  return `${String(range[0])}:${String(range[1])}`;
-}
 
 function isNumberTyped(services, node) {
   const parts = partsOf(services.getTypeAtLocation(node));

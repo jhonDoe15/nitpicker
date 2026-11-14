@@ -1,7 +1,7 @@
 import { isIntegerType } from '../../../../near-duplicates/proof/terms.mjs';
 import { fact } from '../../facts.mjs';
 import { isPlainLiteral } from '../arms/arms.mjs';
-import { binaryOf, sourceOf } from '../exits.mjs';
+import { sourceOf, valueEqualOf } from '../exits.mjs';
 
 const EXACT_TYPES = new Set(['String', 'boolean', 'Boolean', 'char', 'Character', 'Char']);
 
@@ -49,6 +49,6 @@ export function assignedFacts(node, flow) {
     return [];
   }
   const reason = `\`${sourceOf(target)}\` is set to \`${sourceOf(value)}\` on line ${String(node.start)}`;
-  const known = fact(binaryOf('==', target, value), flow.scope, { holds: true, reason });
+  const known = fact(valueEqualOf(target, value), flow.scope, { holds: true, reason });
   return known === undefined ? [] : [known];
 }

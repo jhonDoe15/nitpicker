@@ -1,4 +1,4 @@
-import { foldTerm, withRange } from '../../../../../../../shared/logic/terms.mjs';
+import { foldTerm, rangeKey, withRange } from '../../../../../../../shared/logic/terms.mjs';
 import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { inside } from '../syntax.mjs';
 
@@ -11,10 +11,6 @@ const INDEX_SEARCHES = new Map([
   ['findLastIndex', ['array']],
   ['search', ['string']],
 ]);
-
-function rangeKey(range) {
-  return `${String(range[0])}:${String(range[1])}`;
-}
 
 function kindOfPart(part, checker) {
   if ((part.flags & ts.TypeFlags.StringLike) !== 0) {

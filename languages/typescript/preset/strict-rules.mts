@@ -110,6 +110,7 @@ export const strictEslintRuleIds = [
   'nitpicker/require-process-timeout',
   'nitpicker/require-promise-reject',
   'nitpicker/require-test-process-timeout',
+  'nitpicker/shorter-boolean-logic',
   'nitpicker/simpler-boolean-logic',
   'nitpicker/strict-boolean-expressions',
   'nitpicker/test-tsconfig-pins-lib-and-types',

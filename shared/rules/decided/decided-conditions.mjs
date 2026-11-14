@@ -1,4 +1,5 @@
 import { decidedConditions } from './decided.mjs';
+import { labelParts } from '../../near-duplicates/proof/inline.mjs';
 import { predicateTable, withPredicates } from './helpers/predicates.mjs';
 import { getterTable, gettersOfFile } from './models/getters.mjs';
 import { modelledTree } from './models/annotate.mjs';
@@ -16,6 +17,10 @@ const OUTCOMES = {
   operand: { consequence: '', fix: 'Remove the operand, or fix the condition that was meant.' },
 };
 
+function isJvm(file) {
+  return file.endsWith('.java') || file.endsWith('.kt');
+}
+
 function modelled(unit, shared) {
   const getters = shared.getters;
   const scope = {
@@ -32,13 +37,25 @@ function modelled(unit, shared) {
   return scope.python ? modelledOnes : typedTree(modelledOnes, scope);
 }
 
+function topLevelKotlinNames(units) {
+  return new Set(
+    units
+      .filter((unit) => unit.file.endsWith('.kt'))
+      .map((unit) => labelParts(unit.name))
+      .filter((parts) => parts?.owner === '')
+      .map(({ name }) => name),
+  );
+}
+
 function unitFindings(unit, analyzerName, shared) {
   const seen = new Map();
   const tree = modelled(unit, shared);
   return decidedConditions(tree, {
     looseBooleans: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
+    references: isJvm(unit.file),
     unbounded: unit.file.endsWith('.py'),
+    defined: shared.defined,
   }).map(({ node, verdict, part, reason }) => {
     const condition = node.text ?? `the condition on line ${String(node.start)}`;
     const base = `${unit.file}#${unit.name}:${verdict}:${condition}`;
@@ -56,7 +73,11 @@ function unitFindings(unit, analyzerName, shared) {
 }
 
 export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
-  const shared = { getters: getterTable(units), helpers: predicateTable(units) };
+  const shared = {
+    getters: getterTable(units),
+    helpers: predicateTable(units),
+    defined: topLevelKotlinNames(units),
+  };
   return units
     .filter((unit) => unit.tree?.kind === 'function')
     .filter((unit) => !isExcepted(RULE_IDS.decidedCondition, unit.file))

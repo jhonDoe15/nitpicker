@@ -54,12 +54,18 @@ function importedGuarantee(callee, argument) {
   return kind === undefined ? undefined : { kind, argument };
 }
 
+function isStdlibCall(callee, scope) {
+  return scope.kotlin && !scope.shadowed.has(callee.text ?? callee.value);
+}
+
 function guaranteeOf(call, scope) {
   const [callee, first] = call.children;
   if (callee.kind === 'name') {
     return (
       importedGuarantee(callee, first) ??
-      (scope.kotlin ? { ...KOTLIN_CALLS.get(callee.value), argument: first } : undefined)
+      (isStdlibCall(callee, scope)
+        ? { ...KOTLIN_CALLS.get(callee.value), argument: first }
+        : undefined)
     );
   }
   const owner = callee.kind === 'member' ? callee.children[0] : undefined;

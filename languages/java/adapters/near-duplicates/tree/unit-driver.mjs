@@ -14,6 +14,7 @@ function convertedTree(root, names, language) {
       opaque(language.isStatementNode(source) ? 'statement' : 'expression', source),
     name: (text, source) => ({ ...at('name', source), ...nameNode(text, names) }),
     method: (text, source) => ({ ...at('name', source), ...methodNode(text, names) }),
+    unstable: (text) => (names.scope.unstable.has(text) ? { unstable: true } : {}),
   };
   for (const source of [...depthFirst(root, codeChildren)].toReversed()) {
     const convert = language.converters[source.type];

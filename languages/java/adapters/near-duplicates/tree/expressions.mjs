@@ -125,10 +125,12 @@ export const EXPRESSIONS = {
   null_literal: literal('null'),
   this: (source) => at('this', source),
   super: (source, context) => context.name('super', source),
-  field_access: (source, context) =>
-    at({ kind: 'member', value: field(source, 'field').text }, source, [
+  field_access: (source, context) => {
+    const name = field(source, 'field').text;
+    return at({ kind: 'member', value: name, ...context.unstable(name) }, source, [
       context.get(field(source, 'object')),
-    ]),
+    ]);
+  },
   method_invocation: invocationOf,
   object_creation_expression: creationOf,
   array_access: (source, context) =>

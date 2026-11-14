@@ -99,7 +99,8 @@ function navigationOf(source, context) {
   const [receiver, member] = codeChildren(source);
   const safe = source.children.some((child) => child.type === '?.');
   const value = member.type === 'identifier' ? member.text : textOf(member);
-  return at({ kind: 'member', value: safe ? `?.${value}` : value }, source, [
+  const unstable = context.unstable(value);
+  return at({ kind: 'member', value: safe ? `?.${value}` : value, ...unstable }, source, [
     context.get(receiver),
   ]);
 }

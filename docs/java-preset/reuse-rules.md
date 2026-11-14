@@ -90,6 +90,15 @@ object`. Instance methods are left to the duplicates check, as class methods are
   the arguments bound, through at most 2 levels and never through recursion; the message names the
   helper ("and `valid` tests `n > 0`"). SpotBugs `UC_USELESS_CONDITION` reports a few of
   these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
+- **`shorter-condition`.** The same trees again, over each maximal `&&`/`||`/`!` condition whose
+  operands have no effect, cannot fail and number at most 6 distinct atoms. It drops one operand or
+  merges two operands of one chain, and reports the shorter condition when a truth table or the
+  solver proves it equivalent: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)` is `a`,
+  `(x >= 0 && x < 10) || (x >= 10 && x < 20)` is `x >= 0 && x < 20`. The form is printed from the
+  original operands in their order. An operand that guards a later one (a null check before a member
+  read, bounds before an index) stays, a float comparison is never negated into another, and an
+  operand that the operands before it decide is left to `decided-condition`. PMD
+  `SimplifyBooleanExpressions` only sees boolean literals, so the two do not overlap.
 - **`duplicate-branch`.** The same trees again: two arms of an `else if` chain, two `switch`
   cases (not one that falls through or that a case falls into; arrow cases never do) or two `when`
   arms whose bodies have the same canonical tree, with the locals declared in the arm renamed,

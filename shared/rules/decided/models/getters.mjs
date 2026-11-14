@@ -7,7 +7,7 @@ function returnedField(tree) {
   const isField =
     (value?.kind === 'name' && value.binding === 'free') ||
     (value?.kind === 'member' && value.children[0].kind === 'this');
-  return rest.length === 0 && isField;
+  return rest.length === 0 && isField && value.unstable !== true;
 }
 
 /**

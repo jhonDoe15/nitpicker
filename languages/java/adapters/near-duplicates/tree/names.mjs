@@ -73,32 +73,50 @@ export function fileScope(program) {
   return { imported: importsOf(program), packageName: packageOf(program) };
 }
 
-function memberNames(body) {
-  const members = codeChildren(body);
-  const fieldNames = members
+function declaredFields(members) {
+  return members
     .filter(
       (member) => member.type === 'field_declaration' || member.type === 'constant_declaration',
     )
-    .flatMap((member) =>
-      member.childrenForFieldName('declarator').map((declarator) => field(declarator, 'name').text),
-    );
+    .map((member) => ({
+      names: member
+        .childrenForFieldName('declarator')
+        .map((declarator) => field(declarator, 'name').text),
+      isVolatile: codeChildren(member).some(
+        (child) => child.type === 'modifiers' && /\bvolatile\b/u.test(child.text),
+      ),
+    }));
+}
+
+function memberNames(body) {
+  const members = codeChildren(body);
+  const declared = declaredFields(members);
+  const fieldNames = declared.flatMap(({ names }) => names);
+  const unstable = declared.filter(({ isVolatile }) => isVolatile).flatMap(({ names }) => names);
   const constants = members
     .filter((member) => member.type === 'enum_constant')
     .map((member) => field(member, 'name').text);
   const methods = members
     .filter((member) => member.type === 'method_declaration')
     .map((member) => field(member, 'name').text);
-  return { fields: [...fieldNames, ...constants], methods };
+  return { fields: [...fieldNames, ...constants], methods, unstable };
 }
 
 export function classScope(outer, { qualifier, body }) {
-  const { fields, methods } = body === undefined ? { fields: [], methods: [] } : memberNames(body);
+  const none = { fields: [], methods: [], unstable: [] };
+  const { fields, methods, unstable } = body === undefined ? none : memberNames(body);
   const enumBody =
     body?.type === 'enum_body'
       ? codeChildren(body).find((child) => child.type === 'enum_body_declarations')
       : undefined;
-  const extra = enumBody === undefined ? { fields: [], methods: [] } : memberNames(enumBody);
+  const extra = enumBody === undefined ? none : memberNames(enumBody);
+  const own = new Set([...fields, ...extra.fields]);
   return {
+    unstable: new Set([
+      ...[...outer.unstable].filter((name) => !own.has(name)),
+      ...unstable,
+      ...extra.unstable,
+    ]),
     fields: new Map([
       ...outer.fields,
       ...[...fields, ...extra.fields].map((name) => [name, `${qualifier}#${name}`]),
@@ -110,14 +128,19 @@ export function classScope(outer, { qualifier, body }) {
   };
 }
 
-export const EMPTY_CLASS_SCOPE = Object.freeze({ fields: new Map(), methods: new Map() });
+export const EMPTY_CLASS_SCOPE = Object.freeze({
+  fields: new Map(),
+  methods: new Map(),
+  unstable: new Set(),
+});
 
 export function nameNode(text, { bound, scope, file }) {
   if (bound.has(text)) {
     return { kind: 'name', children: [], binding: 'bound', value: text, text };
   }
   const value = scope.fields.get(text) ?? file.imported.get(text) ?? text;
-  return { kind: 'name', children: [], binding: 'free', value, text };
+  const unstable = scope.unstable.has(text) ? { unstable: true } : {};
+  return { kind: 'name', children: [], binding: 'free', value, text, ...unstable };
 }
 
 export function methodNode(text, { scope, file }) {

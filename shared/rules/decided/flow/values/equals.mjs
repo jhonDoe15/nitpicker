@@ -50,7 +50,7 @@ function equalityOf(call, scope) {
   if (sides === undefined || !isValueEquality(sides, scope)) {
     return undefined;
   }
-  return { ...call, kind: 'binary', value: '==', children: sides };
+  return { ...call, kind: 'binary', value: '==', equal: true, children: sides };
 }
 
 function enumOf(node, scope) {
