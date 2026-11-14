@@ -41,6 +41,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...spring,
     springClasspath: springClasspath(classpaths),
+    effects: true,
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),

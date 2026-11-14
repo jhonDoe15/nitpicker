@@ -4,6 +4,7 @@ import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
 import { listNames } from '../../shared/messages/messages.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
+import { withKotlinRuleAliases } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
 import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
@@ -32,7 +33,7 @@ export function readConfigFile(projectRoot) {
       { cause: error },
     );
   }
-  return withoutSchemaKey(validateConfig(withCanonicalRules(parsed)));
+  return withoutSchemaKey(validateConfig(withCanonicalRules(withKotlinRuleAliases(parsed))));
 }
 
 function withoutSchemaKey(config) {

@@ -142,6 +142,12 @@ function installedBelow(project, minimum, spawn) {
     : jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
 }
 
+export function minimumJava({ tool, minimum, spawn = spawnSync }) {
+  const project = projectJava(spawn);
+  const installed = installedBelow(project, minimum, spawn);
+  return chooseToolJdk({ tool, project, installed, minimum });
+}
+
 export function toolJava({ tool, level, spawn = spawnSync }) {
   const minimum = Math.max(ERROR_PRONE_JDK, level ?? 0);
   const project = projectJava(spawn);

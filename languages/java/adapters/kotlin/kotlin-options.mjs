@@ -22,6 +22,9 @@ import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-tri
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
+const KOTLIN_PRESET = 'kotlin';
+const KOTLIN_RULE_ALIASES = new Map([['kotlin-source/IoCallInLoop', 'effects/IoCallInLoop']]);
+export const KOTLIN_DEPRECATED_RULES = [...KOTLIN_RULE_ALIASES.keys()];
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 export const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
@@ -41,13 +44,41 @@ export const KOTLIN_EXCEPTION_RULES = [
   ]),
 ];
 
+function aliasedEntries(config) {
+  return config?.preset === KOTLIN_PRESET && Array.isArray(config.exceptions)
+    ? config.exceptions.filter((entry) => KOTLIN_RULE_ALIASES.has(entry?.rule))
+    : [];
+}
+
+export function withKotlinRuleAliases(config) {
+  if (aliasedEntries(config).length === 0) {
+    return config;
+  }
+  return {
+    ...config,
+    exceptions: config.exceptions.map((entry) =>
+      KOTLIN_RULE_ALIASES.has(entry?.rule)
+        ? { ...entry, rule: KOTLIN_RULE_ALIASES.get(entry.rule) }
+        : entry,
+    ),
+  };
+}
+
+export function kotlinRuleAliasNotices(config) {
+  const renamed = [...new Set(aliasedEntries(config).map(({ rule }) => rule))];
+  return renamed.map(
+    (rule) =>
+      `The exception rule "${rule}" is now "${KOTLIN_RULE_ALIASES.get(rule)}": nitpicker reads the old name for now; rename it in nitpicker.config.json.`,
+  );
+}
+
 function isKotlinExceptionRule(printed) {
   const rule = canonicalRule(printed);
   return isKotlinFindingRule(rule) || KOTLIN_EXCEPTION_RULES.includes(rule);
 }
 
 function validateKotlinExceptions(config) {
-  if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
+  if (config.preset !== KOTLIN_PRESET || !Array.isArray(config.exceptions)) {
     return;
   }
   for (const [index, entry] of config.exceptions.entries()) {
@@ -69,7 +100,7 @@ export function validateKotlinOptions(config) {
   if (config.kotlin === undefined) {
     return;
   }
-  if (config.preset !== 'kotlin') {
+  if (config.preset !== KOTLIN_PRESET) {
     throw configError('"kotlin" is only supported with "preset": "kotlin"');
   }
   if (!isPlainObject(config.kotlin)) {

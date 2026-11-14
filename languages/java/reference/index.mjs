@@ -1,4 +1,5 @@
 import { catalogRuleEntries } from './catalog-rules.mjs';
+import { effectsEntries } from './effects/effects-rules.mjs';
 import { errorProneEntries } from './errorprone-rules.mjs';
 import { guardRuleEntries } from './guards/guard-rules.mjs';
 import { detektEntries } from './kotlin/detekt-rules.mjs';
@@ -19,6 +20,7 @@ export function jvmRuleEntries() {
     ...kotlinReviewEntries(new Set(javaEntries.map(({ id }) => id))),
     ...errorProneEntries(),
     ...jvmNitpickerEntries(),
+    ...effectsEntries(),
     ...guardRuleEntries(),
     ...detektEntries(),
     ...kotlinNitpickerEntries(),

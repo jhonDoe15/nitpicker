@@ -138,6 +138,20 @@ describe('the JDK Checkstyle and the Java formatters run on', () => {
   });
 });
 
+describe('the JDK the effects engine runs on', () => {
+  it('uses the project JDK from 17 on, else an installed JDK 17 or newer, else says so', () => {
+    const choose = (project, installed) =>
+      chooseToolJdk({ tool: 'The effects engine', project, installed, minimum: 17 });
+
+    expect(choose(jdk(21), [])).toStrictEqual({ java: jdk(21).java });
+    expect(choose(jdk(11), [jdk(8), jdk(21), jdk(17)])).toStrictEqual({ java: jdk(17).java });
+    expect(choose(jdk(11), [jdk(8)])).toStrictEqual({
+      problem:
+        'The effects engine needs JDK 17 or newer to run, and /jdk11/bin/java is JDK 11. nitpicker found no JDK 17 or newer in JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or /Library/Java/JavaVirtualMachines. Install one there; the project keeps compiling for its own release',
+    });
+  });
+});
+
 describe('the JDK nitpicker --fix formats Java on', () => {
   it('takes the newest JDK from 21 to 25, so the parser reads what a newer toolchain compiles', () => {
     const tool = 'google-java-format';

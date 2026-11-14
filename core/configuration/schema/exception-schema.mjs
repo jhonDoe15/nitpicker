@@ -15,7 +15,10 @@ import { PACKAGE_EXCEPTION_RULES } from '../../../shared/project-rules/hygiene-r
 import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../../languages/python/adapters/configuration/python-config.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mjs';
-import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import {
+  KOTLIN_DEPRECATED_RULES,
+  KOTLIN_EXCEPTION_RULES,
+} from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
 import {
   GO_EXCEPTION_RULES,
@@ -149,6 +152,11 @@ export const javaRestriction = ruleIs({
 export const kotlinRestriction = ruleIs({
   anyOf: [
     { enum: ruleSpellings(KOTLIN_EXCEPTION_RULES) },
+    {
+      enum: ruleSpellings(KOTLIN_DEPRECATED_RULES),
+      deprecated: true,
+      description: 'A deprecated spelling that still works; it names effects/IoCallInLoop.',
+    },
     { pattern: DETEKT_RULE.source },
     javaFinding,
   ],

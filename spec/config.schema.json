@@ -1967,7 +1967,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|effects|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2260,7 +2260,6 @@
                             "kotlin-source/UnclosedInlineResource",
                             "kotlin-source/LogStringConcatenation",
                             "kotlin-source/ShellCommand",
-                            "kotlin-source/IoCallInLoop",
                             "kotlin-source/StandardStreamOutsideEntryPoint",
                             "kotlin-source/CatchOnlyLogsOrReturnsDefault",
                             "kotlin-source/BooleanFlagParameter",
@@ -2290,6 +2289,7 @@
                             "kotlin-source/LegacyCalendarApi",
                             "kotlin-source/TimeUnitMismatch",
                             "kotlin-source/UriCreateDynamic",
+                            "effects/IoCallInLoop",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",
@@ -2403,9 +2403,14 @@
                             "kotlin-source/TimeoutWithoutSuspension"
                           ]
                         },
+                        {
+                          "enum": ["kotlin-source/IoCallInLoop"],
+                          "deprecated": true,
+                          "description": "A deprecated spelling that still works; it names effects/IoCallInLoop."
+                        },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|effects|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }

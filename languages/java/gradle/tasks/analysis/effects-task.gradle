@@ -1,0 +1,114 @@
+def reportDir = project.ext.nitpickerReportDir
+def pinned = project.ext.nitpickerPinned
+def effectsDirectory = new File(buildscript.sourceFile.parentFile, '../../effects').canonicalFile
+def moduleDir = rootDir.toPath().relativize(projectDir.toPath()).toString().replace(File.separator, '/') ?: '.'
+def effectsOptions = { ->
+    (gradle.startParameter.projectProperties['nitpicker.effects.options'] ?: '').toString().split(',')*.trim()
+        .findAll { it }
+        .findAll { !it.contains('@') || it.substring(it.lastIndexOf('@') + 1) == moduleDir }
+        .collect { it.contains('@') ? it.substring(0, it.lastIndexOf('@')) : it }
+}
+
+configurations {
+    nitpickerEffects { canBeConsumed = false }
+}
+dependencies {
+    nitpickerEffects "org.ow2.asm:asm:${pinned.asm}"
+    nitpickerEffects "org.ow2.asm:asm-tree:${pinned.asm}"
+    nitpickerEffects "org.ow2.asm:asm-analysis:${pinned.asm}"
+}
+configurations.nitpickerEffects.incoming.beforeResolve {
+    configurations.nitpickerEffects.resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.ow2.asm') {
+            details.useVersion(pinned.asm)
+        }
+    }
+}
+
+def toolchains = project.extensions.getByType(JavaToolchainService)
+def engineJdk = { ->
+    if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+        return [home: new File(System.getProperty('java.home')),
+                id: "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"]
+    }
+    try {
+        def metadata = toolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }.get().metadata
+        return [home: metadata.installationPath.asFile, id: "${metadata.vendor}|${metadata.jvmVersion}"]
+    } catch (Exception unavailable) {
+        return null
+    }
+}
+
+tasks.register('nitpickerEffects') {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    inputs.files(fileTree(effectsDirectory) { include '**/*.java' }).withPropertyName('engine')
+    inputs.files(sourceSets.main.output.classesDirs, sourceSets.main.compileClasspath).withPropertyName('classes')
+    inputs.files(configurations.nitpickerEffects).withPropertyName('asm')
+    inputs.property('options', providers.provider { effectsOptions().join(',') })
+    inputs.property('jdk', "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}")
+    outputs.file(reportDir.map { it.file('effects.json') }).withPropertyName('report')
+    doLast {
+        def directory = reportDir.get().asFile
+        directory.mkdirs()
+        def output = new File(directory, 'effects.json')
+        output.delete()
+        def jdk = engineJdk()
+        if (jdk == null) {
+            output.text = groovy.json.JsonOutput.toJson([unavailable: "The effects engine needs JDK 17 or newer, " +
+                "but Gradle runs on Java ${JavaVersion.current()} and no JDK 17 toolchain was found, so its rules " +
+                "did not run; run Gradle with JDK 17 or newer (JAVA_HOME or org.gradle.java.home) or install a " +
+                "JDK 17 toolchain"]) + '\n'
+            return
+        }
+        def sources = fileTree(effectsDirectory) { include '**/*.java' }.files.sort { it.absolutePath }
+        def libraries = configurations.nitpickerEffects.files.findAll { it.exists() }.sort { it.name }
+        def bin = { String name -> new File(jdk.home, "bin/${name}").absolutePath }
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        sources.each { digest.update((effectsDirectory.toPath().relativize(it.toPath()).toString() + '\u0000').bytes) }
+        sources.each { digest.update(it.bytes) }
+        digest.update("${pinned.asm}|${jdk.id}|17".bytes)
+        def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/effects')
+        def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
+        def run = { List<String> command ->
+            def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
+            def log = process.inputStream.getText('UTF-8')
+            if (process.waitFor() != 0) {
+                throw new GradleException("The effects engine failed: ${log.trim()}")
+            }
+        }
+        def classpath = libraries*.absolutePath.join(File.pathSeparator)
+        if (!classes.isDirectory()) {
+            def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
+            staging.mkdirs()
+            run([bin('javac'), '-proc:none', '-nowarn', '--release', '17', '-d', staging.absolutePath,
+                 '-cp', classpath] + sources*.absolutePath)
+            try {
+                java.nio.file.Files.move(staging.toPath(), classes.toPath(),
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+            } catch (java.nio.file.FileSystemException raced) {
+                staging.deleteDir()
+                if (!classes.isDirectory()) {
+                    throw raced
+                }
+            }
+        }
+        def mainClasses = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+        def input = new File(temporaryDir, 'effects-input.txt')
+        def ownBuild = buildDir.absolutePath + File.separator
+        def inBuild = { File entry ->
+            entry.absolutePath.startsWith(rootDir.absolutePath + File.separator) &&
+                !entry.absolutePath.startsWith(ownBuild) &&
+                (entry.directory || entry.name.endsWith('.jar'))
+        }
+        def compileFiles = sourceSets.main.compileClasspath.files.findAll { it.exists() }
+        input.text = (mainClasses.collect { "main ${it.absolutePath}" } +
+            compileFiles.collect { "classpath ${it.absolutePath}" } +
+            compileFiles.findAll(inBuild).collect { "dependency ${it.absolutePath}" } +
+            effectsOptions().collect { "option ${it}" })
+            .collect { it + '\n' }.join('')
+        run([bin('java'), '-cp', classes.absolutePath + File.pathSeparator + classpath, 'nitpicker.effects.Effects',
+             output.absolutePath, input.absolutePath])
+    }
+}
+tasks.named('nitpickerJava') { dependsOn 'nitpickerEffects' }

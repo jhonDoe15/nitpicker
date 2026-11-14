@@ -144,6 +144,7 @@ describe('configureJavaAnalyzer', () => {
       'crap',
       'dependencies',
       'duplicates',
+      'effects',
       'errorprone',
       'forbiddenapis',
       'google-java-format',
