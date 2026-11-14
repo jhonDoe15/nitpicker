@@ -139,7 +139,7 @@ export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {
       language,
       analyzerName: REUSE_TOOL,
       rules: REUSE_RULES,
-      policy: { exceptions },
+      policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
       baseline: baselineOf(projectRoot, policy),
       collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
     }),

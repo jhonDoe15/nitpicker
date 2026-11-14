@@ -313,6 +313,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
+- **A fix plan for near-duplicates.** The Go preset has no `near-duplicate` check (it has no near-duplicate
+  trees), so there is nothing to plan; `duplicates/duplicate-clone` keeps its own plan.
 
 ## Review findings
 

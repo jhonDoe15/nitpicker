@@ -138,20 +138,22 @@ it works on a `same` or `parameterizable` pair whose copies are in one file. The
 template: its body moves to a module-level function placed after the first copy, and both bodies
 become one call, so each signature stays.
 
-- A differing literal, or a parameter of the function that nothing writes, is passed as a value.
-  Any other differing expression is passed as an arrow function that is called where the
+- A differing literal is passed as a value. Any other differing expression is passed as an arrow function that is called where the
   expression was, so its timing, its count and its `this` do not change.
 - A copy that reads `this`, `super`, `arguments`, a generator or JSX, or a variable of an enclosing
   scope, is left alone. So is a function with type parameters, defaults, rest or destructured
   parameters, a differing value that reads a local or a parameter the function writes, a differing
-  module path in `import()` or `require()`, a copy whose second body has a comment the first lacks,
+  module path in `import()` or `require()`, a copy whose second body has a comment the first lacks
+  (also one before a closing brace), a string or template literal that spans lines (moving it would
+  re-indent its text),
   a copy in more than one pair, and a name that the file already uses.
 - Type holes are not turned into type parameters: the copies would need `new T()` or a type
   argument at each call, and the callers could change.
 - The compiler checks the edit before it is written, with the same in-memory comparison as the
   other project recipes.
+- A file that uses CRLF keeps CRLF in the inserted text.
 
-`typescript-extract-partial-run` is a safe recipe for the `partial-run` verdict of the same rule. It
+`typescript-extract-partial-run` is a review recipe for the `partial-run` verdict of the same rule: it runs only with `--fix --rule`, because a type check does not prove closures or aliasing. It
 takes the line span of the shared run from the finding, and works on a run of whole statements in
 one block of each function, with the two functions in one file.
 
@@ -161,12 +163,22 @@ one block of each function, with the two functions in one file.
   becomes `return call()`.
 - A run is left alone when it returns on only some paths, defines two or more values that the code
   after it uses, writes a variable declared before it,
-  reads a variable that changes after it from a closure, jumps out of itself, awaits or yields,
+  reads a variable that changes after it from a closure, calls code that may change a `let` the run
+  reads (a closure outside the run writes it), builds a closure over a `let` or `var` the run
+  declares, contains a string or template literal that spans lines, jumps out of itself, awaits or yields,
   declares a function, class, type or `var`, destructures the value used after it, or reads `this`,
   `arguments` or an enclosing scope. The two copies must produce the same kind of value, and throw
   the same exception classes.
 - The compiler checks the edit before it is written. A narrowed type at the call site that the new
   function does not see makes the check fail, and the finding stays.
+
+## Fix plans for near-duplicates
+
+`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
+fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
+It gives the signature of the function to extract (the parameters of the first copy, then one
+parameter for each value that differs), the arguments each copy passes, the nearest shared folder
+that the layout allows (`main/shared`, or the configured `layout.sharedRoots`), or the nearest common folder of the copies when both are in one feature, because `shared-used-by-one-feature` would then report the new module and why no recipe made the change. The TypeScript and JavaScript presets share the plan. For a pair in one file the plan names `typescript-extract-near-duplicate` (or `typescript-extract-partial-run`) and the `nitpicker --fix --rule structure/near-duplicate` command, or the reason the facts show it declines (a type that differs). The names it picks avoid every name in the two copies, and the parameter list of the first copy is read past decorators, annotations and function expressions.
 
 ## Not fixed, on purpose
 

@@ -77,6 +77,10 @@
           "description": "On a policy-loosened finding of a report: which kind of policy change it is, which picks the guidance its message gives.",
           "$ref": "#/$defs/nonEmptyString"
         },
+        "planFacts": {
+          "description": "Facts that the fix plan of the finding's rule reads and the message does not state, such as the two copies of a near-duplicate with the values that differ. Its fields depend on the rule. It is written to the findings files with the other fields, because `nitpicker aggregate` builds the fix plans from the findings files of the shards.",
+          "type": "object"
+        },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
         "ratchet": { "$ref": "#/$defs/ratchet" },

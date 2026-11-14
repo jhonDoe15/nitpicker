@@ -59,32 +59,38 @@ already covers it, and its edit overlaps the Error Prone one, so the second is s
 
 ## Near-duplicate extraction
 
-`java-extract-near-duplicate` is a safe recipe for `structure/near-duplicate`. It parses each main
+`java-extract-near-duplicate` is a review recipe for `structure/near-duplicate`: it runs only with `--fix --rule`, because nothing compiles the result. It parses each main
 source file with the tree-sitter grammar of the rule, finds the pairs with the engine and filters of
 the rule, and works on a `same` or `parameterizable` pair of methods in one class. The first copy
 becomes a private method placed after it, static when the body reads no instance state, and both
 bodies become one call. Signatures, `throws` clauses and annotations stay.
 
-- A differing literal, or a parameter of the method that nothing writes, becomes a parameter named
-  after what it flows into. A differing call or any other expression is not passed: a `Supplier`
+- A differing literal becomes a parameter named after what it flows into. A differing call or any other expression is not passed: a `Supplier`
   would need the static type of the expression, which the text does not give, so the finding stays.
-- A literal in a `case` label, an annotation or a loop condition, an `int` literal that could narrow
-  to `byte`, `short` or `char`, a method with type parameters or varargs, copies with different
+- A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
+  that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to
+  `byte`, `short` or `char`, an `int` literal that could narrow to them, a method with type parameters or varargs, copies with different
   `throws`, a copy that is the only static one, copies in an interface, an enum, a record or an
   anonymous class, a name the file already uses, and a copy in more than one pair are left alone.
+- The helper is static only when the code provably uses no instance state. A capitalized name that
+  a superclass or interface may declare, or a call whose name a static and an instance method (or a
+  supertype) could both match, is ambiguous, and the finding stays.
+- A file that uses CRLF keeps CRLF in the inserted text.
 - Type holes are not turned into type parameters: `new URL(text)` against `new URI(text)` cannot be
   written with a type parameter, and a changed signature would change callers.
 - Pairs in two classes or two files are not looked at. On gson, the URL and URI adapters are
   anonymous classes and the SqlDate and SqlTime adapters are in two files, so the recipe changes
   nothing there.
 
-`java-extract-partial-run` is the same for the `partial-run` verdict, for two methods of one class.
+`java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
 method. It takes the locals and parameters the run reads, and copies the `throws` clause that the
 two methods share.
 
 - The value the code after the run uses is returned, with the type of its declaration. A run that
-  ends with `return` becomes `return call()`. A `var` declaration, an array declarator or an
+  ends with `return` becomes `return call()`. An input declared with C-style brackets
+  (`String tags[]`) is typed with its brackets. A comment between the statements of the run that
+  only the second copy has declines. A `var` declaration, an array declarator or an
   annotation on that declaration is left alone, because the new method must name the type.
 - The rest of the cases are as for TypeScript, and a run inside a `try` that has a `catch` is left
   alone too, because the new method would have to declare the checked exceptions of the run.
@@ -112,6 +118,14 @@ two methods share.
   hunk filter cannot tell a partly kept fix from a whole one. Select these on a file you reviewed.
 
 The full list is `languages/java/fix/errorprone/checks/review-checks.mjs`.
+
+## Fix plans for near-duplicates
+
+`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
+fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
+It gives the signature of the function to extract (the parameters of the first copy, then one
+parameter for each value that differs), the arguments each copy passes, the nearest shared folder
+that the layout allows (`layout.sharedRoots`, else a `shared` folder), or the nearest common folder when both classes are in one feature and why no recipe made the change. The plan names a class in that folder, since a Java method needs one. For a pair in one class the plan names `java-extract-near-duplicate` (or `java-extract-partial-run`) and the `nitpicker --fix --rule structure/near-duplicate` command, or the reason the facts show it declines (a type or an expression that differs, two classes). The names it picks avoid every name in the two copies.
 
 ## Left out
 

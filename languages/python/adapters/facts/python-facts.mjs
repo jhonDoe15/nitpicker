@@ -131,7 +131,7 @@ export function readFactImports(reportRoot) {
   return (facts.imports ?? []).filter(({ from, to }) => production.has(from) && production.has(to));
 }
 
-export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFile } = {}) {
+export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFile, layout } = {}) {
   const facts = readReport(path.join(reportRoot, FACTS_REPORT));
   if (facts === undefined) {
     return [];
@@ -147,7 +147,7 @@ export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFil
     language: 'python',
     analyzerName: FACTS_TOOL,
     rules,
-    policy: { exceptions },
+    policy: { exceptions, ...(layout === undefined ? {} : { layout }) },
     duplicatesAcrossPackages: true,
     ...(baseFacts === undefined
       ? {}

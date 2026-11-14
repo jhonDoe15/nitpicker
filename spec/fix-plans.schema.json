@@ -33,6 +33,7 @@
             "strengthen-assertion",
             "kill-mutant",
             "remove-duplicate",
+            "extract-shared-function",
             "invert-dependency",
             "move-module",
             "parse-at-boundary",

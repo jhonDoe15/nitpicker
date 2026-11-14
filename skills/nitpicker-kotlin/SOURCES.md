@@ -70,6 +70,14 @@ ones.
   cause, or a custom exception class: `error()` and the lambda form change what a `null` message
   does.
 
+## Fix plans for near-duplicates
+
+`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
+fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
+It gives the signature of the function to extract (the parameters of the first copy, then one
+parameter for each value that differs), the arguments each copy passes, the nearest shared folder
+that the layout allows (`layout.sharedRoots`, else a `shared` folder), or the nearest common folder when both files are in one feature and why no recipe made the change. The plan is the Java one over the Kotlin trees. Kotlin has no extraction recipe, and the plan says so for a pair in one file. The names it picks avoid every name in the two copies.
+
 ## Not run here
 
 The Gradle and Maven Kotlin end-to-end samples were not run in this environment. The recipes have
