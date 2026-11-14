@@ -1,5 +1,5 @@
 import { readCpdFindings } from './cpd-duplicates.mts';
-import { readDependencyFindings } from './dependencies.mjs';
+import { readDependencyFindings } from './dependencies.mts';
 import { readForbiddenApiFindings } from './forbidden-apis.mts';
 import { readLintFindings } from './javac-lint.mjs';
 import { liesInProject } from '../builds/module-path.mjs';
