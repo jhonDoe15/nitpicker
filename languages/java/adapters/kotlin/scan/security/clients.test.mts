@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { httpWithoutTimeout, unsafeDeserialization } from './clients.mjs';
+import { type Check, type Ruled } from '../typed/typed-scan.mts';
+import { foundWrappedLines } from '../typed/scan-found.mts';
+import {
+  httpWithoutTimeout as untypedHttpWithoutTimeout,
+  unsafeDeserialization as untypedUnsafeDeserialization,
+} from './clients.mjs';
 
-function found(check, lines) {
-  const source = `fun call(url: String, uri: URI) {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => lineOf(scanned, reported.offset));
+const httpWithoutTimeout: Check<Ruled> = untypedHttpWithoutTimeout;
+const unsafeDeserialization: Check<Ruled> = untypedUnsafeDeserialization;
+
+function found(check: Check<Ruled>, lines: string[]) {
+  return foundWrappedLines(check, 'fun call(url: String, uri: URI) {', lines);
 }
 
 describe('httpWithoutTimeout', () => {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { parameterMutations } from './parameter-mutation.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { parameterMutations as untypedParameterMutations } from './parameter-mutation.mjs';
 
-function found(source) {
+const parameterMutations: Check<Subjected> = untypedParameterMutations;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return parameterMutations(scanned).map((reported) => [
     lineOf(scanned, reported.offset),
@@ -10,7 +12,7 @@ function found(source) {
   ]);
 }
 
-function inFunction(parameter, ...lines) {
+function inFunction(parameter: string, ...lines: string[]) {
   return `fun run(${parameter}) {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
 }
 
@@ -88,7 +90,7 @@ describe('parameterMutations', () => {
     ['a concurrent map', 'table: ConcurrentHashMap<String, Int>', 'table.put("a", 1)'],
     ['a blocking queue', 'queue: BlockingQueue<String>', 'queue.offer("x")'],
     ['a shared flow', 'flow: MutableSharedFlow<String>', 'flow.tryEmit("x")'],
-  ])('passes %s', (_name, parameter, ...lines) => {
+  ])('passes %s', (_name, parameter, ...lines: string[]) => {
     expect(found(inFunction(parameter, ...lines))).toEqual([]);
   });
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { compatibilityShims } from './compatibility-shims.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { compatibilityShims as untypedCompatibilityShims } from './compatibility-shims.mjs';
 
-function found(source) {
+const compatibilityShims: Check<Subjected> = untypedCompatibilityShims;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return compatibilityShims(scanned).map((reported) => [
     lineOf(scanned, reported.offset),

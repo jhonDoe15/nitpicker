@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { sqlStringBuilding } from './sql.mjs';
-import { kotlinDeclarations } from './sql-values.mjs';
+import { type Located, type Scanned, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { sqlStringBuilding as untypedSqlStringBuilding } from './sql.mjs';
+import { kotlinDeclarations as untypedKotlinDeclarations } from './sql-values.mjs';
+
+const sqlStringBuilding: (scanned: Scanned, context: { declarations: unknown }) => Located[] =
+  untypedSqlStringBuilding;
+const kotlinDeclarations: (scannedFiles: Scanned[]) => unknown = untypedKotlinDeclarations;
 
 const MODEL = [
   'enum class SortColumn(val sql: String) { NAME("name"), CREATED("created_at") }',
   'data class Order(val id: Long, val customer: String)',
 ].join('\n');
 
-function found(lines, header = 'fun f(id: String, name: String, limit: Int, order: Order) {') {
-  const source = `${header}\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
+function found(
+  lines: string[],
+  header = 'fun f(id: String, name: String, limit: Int, order: Order) {',
+) {
+  const source = `${header}\n${lines.map((line: string) => `    ${line}`).join('\n')}\n}\n`;
   const scanned = scanKotlinSource(source);
   const declarations = kotlinDeclarations([scanned, scanKotlinSource(MODEL)]);
   return sqlStringBuilding(scanned, { declarations }).map(({ offset }) => lineOf(scanned, offset));
@@ -23,7 +30,7 @@ describe('sqlStringBuilding', () => {
     ],
     [
       'a template expression',
-      ['val sql = "SELECT * FROM orders WHERE customer = \'${order.customer}\'"'],
+      [`val sql = "SELECT * FROM orders WHERE customer = '\${order.customer}'"`],
     ],
     ['a concatenation', ['val sql = "SELECT * FROM users WHERE name = \'" + name + "\'"']],
     [
@@ -48,7 +55,7 @@ describe('sqlStringBuilding', () => {
     ],
     [
       'a string member of a model',
-      ['val sql = "SELECT * FROM orders WHERE customer = ${order.customer}"'],
+      [`val sql = "SELECT * FROM orders WHERE customer = \${order.customer}"`],
     ],
   ])('flags %s', (_name, lines) => {
     expect(found(lines)).toEqual([2]);
@@ -72,30 +79,30 @@ describe('sqlStringBuilding', () => {
     ['a constant table', ['jdbc.query("SELECT * FROM $TABLE WHERE id = ?", mapper, id)']],
     [
       'a qualified constant',
-      ['jdbc.query("SELECT * FROM ${Tables.ORDERS} WHERE id = ?", mapper, id)'],
+      [`jdbc.query("SELECT * FROM \${Tables.ORDERS} WHERE id = ?", mapper, id)`],
     ],
     ['a numeric parameter', ['jdbc.query("SELECT * FROM users LIMIT $limit", mapper)']],
     [
       'a numeric model member',
-      ['jdbc.query("SELECT * FROM orders WHERE id = ${order.id}", mapper)'],
+      [`jdbc.query("SELECT * FROM orders WHERE id = \${order.id}", mapper)`],
     ],
     [
       'an enum column',
       [
         'val column: SortColumn = pick()',
-        'jdbc.query("SELECT * FROM users ORDER BY ${column.sql}", mapper)',
+        `jdbc.query("SELECT * FROM users ORDER BY \${column.sql}", mapper)`,
       ],
     ],
     [
       'a placeholder list',
       [
-        'jdbc.query("SELECT * FROM users WHERE id IN (${ids.joinToString(", ") { "?" }})", mapper, *ids)',
+        `jdbc.query("SELECT * FROM users WHERE id IN (\${ids.joinToString(", ") { "?" }})", mapper, *ids)`,
       ],
     ],
     [
       'placeholders from a list',
       [
-        'jdbc.query("SELECT * FROM users WHERE id IN (${List(ids.size) { "?" }.joinToString(",")})", mapper)',
+        `jdbc.query("SELECT * FROM users WHERE id IN (\${List(ids.size) { "?" }.joinToString(",")})", mapper)`,
       ],
     ],
     [
@@ -111,7 +118,7 @@ describe('sqlStringBuilding', () => {
         'val conditions = mutableListOf<String>()',
         'conditions.add("name = ?")',
         'conditions += "status = ?"',
-        'jdbc.query("SELECT * FROM users WHERE ${conditions.joinToString(" AND ")}", mapper)',
+        `jdbc.query("SELECT * FROM users WHERE \${conditions.joinToString(" AND ")}", mapper)`,
       ],
     ],
     [
@@ -168,7 +175,7 @@ describe('sqlStringBuilding', () => {
       found([
         'val conditions = mutableListOf<String>()',
         'conditions.add("name = \'$name\'")',
-        'jdbc.query("SELECT * FROM users WHERE ${conditions.joinToString(" AND ")}", mapper)',
+        `jdbc.query("SELECT * FROM users WHERE \${conditions.joinToString(" AND ")}", mapper)`,
       ]),
     ).toEqual([4]);
   });
