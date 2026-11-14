@@ -37,7 +37,7 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
-  with `--base`, `--fix`, sharding or `--defer-exit`.
+  with `--base`, sharding or `--defer-exit`, and takes `--fix` only with `--rule`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
   says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.

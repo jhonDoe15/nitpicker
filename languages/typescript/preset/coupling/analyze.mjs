@@ -35,7 +35,7 @@ function checkoutGraph(graph, projectRoot) {
   };
 }
 
-function productionFilter(layout, sourceRoot) {
+export function productionFilter(layout, sourceRoot) {
   return (file) =>
     (layout.isSourceFile(file) || layout.isSourceUnderRoot(file, sourceRoot)) &&
     isReuseProductionPath(pathWithinRoot(file, sourceRoot));

@@ -21,12 +21,27 @@ function fixesFor({ rule, context, project, name, planMessage, lint }) {
   return { fixes, notes };
 }
 
+function onePerFile(fixes) {
+  const touched = new Set();
+  return fixes.filter(({ edits }) => {
+    const paths = edits.map((edit) => edit.path ?? edit.from);
+    if (paths.some((path) => touched.has(path))) {
+      return false;
+    }
+    for (const path of paths) {
+      touched.add(path);
+    }
+    return true;
+  });
+}
+
 export function lintRecipe({
   id,
   ruleId,
   safety = 'review',
   scopeOf,
   optionsOf,
+  exclusive = false,
   typed,
   planMessage,
 }) {
@@ -45,8 +60,9 @@ export function lintRecipe({
         const found = names
           .filter((name) => inScope(name) && !isLifted(context.inputs, ruleId, name))
           .map((name) => fixesFor({ rule, context, project, name, planMessage, lint }));
+        const fixes = found.flatMap((each) => each.fixes);
         return {
-          fixes: found.flatMap(({ fixes }) => fixes),
+          fixes: exclusive ? onePerFile(fixes) : fixes,
           notes: found.flatMap(({ notes }) => notes),
         };
       });

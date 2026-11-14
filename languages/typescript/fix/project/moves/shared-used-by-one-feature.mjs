@@ -1,22 +1,13 @@
 import path from 'node:path';
+import { productionFilter } from '../../../preset/coupling/analyze.mjs';
 import { sharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mjs';
-import { isReuseProductionPath } from '../../../preset/structure/reuse/reuse-paths.mjs';
 import { planFileMove } from '../edits/file-move.mjs';
 import { moduleReferences } from '../model/module-references.mjs';
 import { layoutOf, withProject } from '../model/project-model.mjs';
+import { recordPlan } from '../plan/record-plan.mjs';
 import { projectGraph } from '../model/project-graph.mjs';
 
 const RULE = { tool: 'coupling', rule: 'shared-used-by-one-feature' };
-
-function withinRoot(file, root) {
-  return file.startsWith(`${root}/`) ? file.slice(root.length + 1) : file;
-}
-
-function isProductionIn(layout, root) {
-  return (file) =>
-    (layout.isSourceFile(file) || layout.isSourceUnderRoot(file, root)) &&
-    isReuseProductionPath(withinRoot(file, root));
-}
 
 function productionImporters(layout, project, target) {
   return project.names.filter(
@@ -50,25 +41,19 @@ export const sharedUsedByOneFeatureRecipe = {
     const changed = new Set(context.files.map(({ path: name }) => name));
     return withProject(context, (project) => {
       const graph = projectGraph(project);
-      const fixes = [];
-      const notes = [];
-      for (const sourceRoot of layout.sourceRoots) {
-        const entries = sharedUsedByOneFeature(graph, {
+      const result = { fixes: [], notes: [] };
+      const entries = layout.sourceRoots.flatMap((sourceRoot) =>
+        sharedUsedByOneFeature(graph, {
           sourceRoot,
-          isProduction: isProductionIn(layout, sourceRoot),
-        }).filter(({ source }) => changed.has(source));
-        for (const entry of entries) {
-          const planned = planMove({ context, project, layout, entry });
-          if (planned.edits === undefined) {
-            notes.push(
-              `--fix left ${entry.source}:1 shared-used-by-one-feature: ${planned.declined}`,
-            );
-          } else {
-            fixes.push({ finding: { ...RULE, path: entry.source, line: 1 }, edits: planned.edits });
-          }
-        }
+          isProduction: productionFilter(layout, sourceRoot),
+        }).filter(({ source }) => changed.has(source)),
+      );
+      for (const entry of entries) {
+        const planned = planMove({ context, project, layout, entry });
+        const finding = { ...RULE, path: entry.source, line: 1 };
+        recordPlan(result, { planned, finding, rule: RULE.rule });
       }
-      return { fixes, notes };
+      return result;
     });
   },
 };
