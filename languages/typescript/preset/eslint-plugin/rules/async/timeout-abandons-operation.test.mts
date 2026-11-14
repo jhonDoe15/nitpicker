@@ -1,11 +1,11 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './timeout-abandons-operation.mjs';
 
-const tester = createRuleTester();
-const abandoned = (timeout, operation) => [
+const tester = typescriptRuleTester();
+const abandoned = (timeout: string, operation: string) => [
   { messageId: 'noSignal', data: { timeout, operation, parameter: '' } },
 ];
-const ignored = (timeout, operation, parameter) => [
+const ignored = (timeout: string, operation: string, parameter: string) => [
   { messageId: 'ignoredSignal', data: { timeout, operation, parameter } },
 ];
 

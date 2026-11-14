@@ -1,9 +1,9 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './require-client-timeout.mjs';
 
-const tester = createRuleTester();
-const database = (client) => [{ messageId: 'database', data: { client } }];
-const aws = (client) => [{ messageId: 'aws', data: { client } }];
+const tester = typescriptRuleTester();
+const database = (client: string) => [{ messageId: 'database', data: { client } }];
+const aws = (client: string) => [{ messageId: 'aws', data: { client } }];
 const S3 = 'import { S3Client } from "@aws-sdk/client-s3";';
 const HANDLER = 'import { NodeHttpHandler } from "@smithy/node-http-handler";';
 const PG = 'import { Pool, Client } from "pg";';
