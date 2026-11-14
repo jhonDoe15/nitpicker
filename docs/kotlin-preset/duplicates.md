@@ -19,6 +19,30 @@ clones that only repeat one or two statements (DTO mappers, `when` tables, `if` 
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 
+`near-duplicate` (tool `structure`) runs on Kotlin and Java sources together: two functions,
+accessors, secondary constructors or property lambdas whose syntax trees are proved copies (the
+same apart from renamed locals, up to 4 changed values or types, a shared run of 3 or more
+statements, or the same logic written another way: a loop and the `any`/`all` call that replaces
+it, a call to a non-`open` helper in the same file and that helper's body, or guards and locals a
+solver proves equal) fail, also across modules. A copy large enough for the renamed `duplicate-clone` pass
+and different only in names and literals is left to it; type-specialized families and the
+platform variants of one Kotlin Multiplatform declaration are not reported (see "Reuse rules" in
+`java-preset.md`). Lift a pair with an `exceptions` entry for either file.
+
+`decided-condition` (tool `structure`) reads the same trees: an `if`, `while`, `when` arm, ternary
+or `&&`/`||` operand that the guards before it in the same function decide fails, when a solver
+proves it always true (a redundant check) or always false (dead code). The guards are enclosing
+`if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
+of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
+lambda captures, forgets what was known.
+
+`duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
+bodies have the same canonical tree (locals declared in the arm may have other names) fail, except
+arms picked by an `is` test, where the same call can resolve differently for each type; merge
+the conditions or labels into one arm, or change the arm that was meant to differ. The statements
+every arm of a complete `if` chain or `when` starts or ends with are reported, not failed, when
+moving them before or after it keeps behaviour.
+
 The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
 Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion

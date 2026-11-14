@@ -4,7 +4,7 @@ import { javascriptUnits } from './javascript.mjs';
 
 export function proveSource(source, options) {
   const [left, right] = javascriptUnits(source, options).map((unit) => prepareUnit(unit));
-  return proveUnits(left, right);
+  return proveUnits([left, right]);
 }
 
 export function verdictOf(source, options) {
