@@ -645,6 +645,25 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No query rows loaded only to be changed or deleted the same way (`nitpicker/no-loaded-rows-saved-back`,
+  needs the type checker for TypeORM, Sequelize and MikroORM). It reads the query results of
+  `nitpicker/no-in-memory-query` and reports, at the write, three shapes: a `for...of` or `forEach` whose
+  body only assigns row fields (`=`) to values that do not read the row (literals, other variables,
+  `new Date()`, `Date.now()`), followed by `save(rows)` (TypeORM), `bulkCreate(rows, { updateOnDuplicate })`
+  (Sequelize) or `flush()` on the same entity manager (MikroORM); `remove(rows)`, `softRemove(rows)` or
+  `removeAndFlush(rows)`; and rows mapped to one field (`rows.map((row) => row.id)`, also through a variable
+  read once or `In`, `inArray`) that only feeds a delete or update by those ids (`delete`, `deleteMany`,
+  `destroy`, `softDelete`, `nativeDelete`, `update`, `updateMany`, `nativeUpdate`, or a Drizzle
+  `delete`/`update` with `.where(inArray(...))`). Use `update(criteria, values)` or `delete(criteria)`
+  (TypeORM), `updateMany`/`deleteMany` (Prisma), `Model.update(values, { where })`/`destroy({ where })`
+  (Sequelize), `nativeUpdate`/`nativeDelete` (MikroORM), or `update().set().where()`/`delete().where()`
+  (Drizzle). A loop body that reads the row, calls a function or emits an event, rows that are used
+  another way too (returned, passed on), paged queries, queries with `select`, `columns` or `attributes`,
+  and entities with a hook (`BeforeUpdate`, `AfterRemove` and the like), a version column
+  (`VersionColumn`, `version: true`), a relation with `cascade`, `orphanRemoval` or `orphanedRowAction`, a
+  subscriber or a `Model.addHook` call, or whose class cannot be resolved, are left alone. A delete or update
+  of another table or model keyed by the loaded rows' ids is not this shape. Per-row `save`, `update` and `remove` calls inside the loop are
+  `nitpicker/no-io-in-loop`'s.
 - No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
   counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
   `multiple-collection-joins`): the database returns one row for every pair of their elements. It

@@ -1,3 +1,4 @@
+import { expandsFully } from '../../traversal.mjs';
 import { newlines } from './scanner.mjs';
 
 const COMMENT = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|^#![^\n]*/gu;
@@ -93,15 +94,7 @@ function dataChildren(context, node) {
 }
 
 function isDataValue(context, node) {
-  const pending = [node];
-  for (const current of pending) {
-    const children = dataChildren(context, current);
-    if (children === undefined) {
-      return false;
-    }
-    pending.push(...children);
-  }
-  return true;
+  return expandsFully(node, (current) => dataChildren(context, current));
 }
 
 function isData(context, node) {

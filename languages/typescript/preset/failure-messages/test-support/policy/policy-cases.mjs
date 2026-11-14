@@ -109,6 +109,11 @@ export const policyFailureMessageCases = [
     'one batched query',
   ),
   adapterCase(
+    'rows loaded only to be deleted name deleteMany',
+    "import { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\nexport async function purge() { const rows = await prisma.order.findMany({ where: { status: 'old' } }); await prisma.order.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } }); }",
+    'deleteMany',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

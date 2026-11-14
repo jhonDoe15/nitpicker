@@ -12,4 +12,10 @@ export const QUERY_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/queries/query-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/result-uses.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/row-callbacks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/columns/sole-field.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/assignments.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/entity-hooks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/loaded-rows.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/no-loaded-rows-saved-back.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/row-writes.mjs',
 ];

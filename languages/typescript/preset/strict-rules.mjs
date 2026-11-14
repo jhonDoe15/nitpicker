@@ -26,6 +26,7 @@ export const strictEslintRuleIds = [
   'nitpicker/naming-convention',
   'nitpicker/no-accumulating-spread',
   'nitpicker/no-dual-write',
+  'nitpicker/no-loaded-rows-saved-back',
   'nitpicker/no-lookup-per-element',
   'nitpicker/no-query-per-parent',
   'nitpicker/no-retry-without-idempotency',

@@ -123,6 +123,11 @@ In the Python preset `io-in-loop` reports a database call per element also insid
 groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
+Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
+SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
+statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
+column are left alone, and a loop of per-row deletes stays with `io-in-loop`.
+
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
@@ -261,6 +266,12 @@ Reactive lookups: `nitpicker/no-lookup-per-element` (production source, in `esli
 RxJS `mergeMap`, `concatMap`, `switchMap`, `exhaustMap` or `flatMap` over `from(items)` whose function makes a
 database or remote call per element, directly or through a helper: fetch the rows in one batched query and join them in
 memory. A grouping operator before the lookup (`bufferCount`, `toArray`) and a fixed collection are not reported.
+
+Rows saved back: `nitpicker/no-loaded-rows-saved-back` (production source, in `eslint-lint`, type-aware) reports
+query rows (TypeORM, Prisma, Sequelize, MikroORM, Drizzle) loaded only to assign constants to a field of every row
+and save them back (`save(rows)`, `bulkCreate`, `flush()`), to `remove(rows)`, or to pass their ids to a delete or an
+update; one `update`, `updateMany` or `delete` statement does it without loading anything. Entities with hooks,
+subscribers or a version column, and loops that read the row or call functions, are not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
