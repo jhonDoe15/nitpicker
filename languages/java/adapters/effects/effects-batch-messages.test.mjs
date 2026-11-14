@@ -44,8 +44,14 @@ describe('the messages of the per-item rules for GraphQL, reactive pipelines and
       path: ['UserService.owner()', 'RestClient.get()'],
     };
 
-    expect(read([{ ...lookup, limited: true }])[0].message).toContain(
-      'The concurrency argument bounds how many run at once, but each element still sends its own query.',
+    expect(read([{ ...lookup, limited: true }])[0].message).toEqual(
+      sentence(
+        'Fetch all the elements with one call (`findAllById`, `where id in (:ids)`, a batch endpoint), then join the',
+        'results in memory: `Import.posts()` calls `UserService.owner()`, which calls `RestClient.get()`',
+        'once per element of an in-memory collection inside a reactive pipeline, so N elements send N requests.',
+        'The concurrency argument bounds how many run at once, but each element still sends its own query.',
+        exception('ReactiveLookupPerElement', JAVA_FILE),
+      ),
     );
     expect(read([lookup]).map((finding) => finding.message)).toEqual([
       sentence(
@@ -189,6 +195,42 @@ describe('the messages of the per-item rules for GraphQL, reactive pipelines and
         '`@Retryable` after an optimistic-lock conflict but takes the object to save as a parameter, then calls',
         '`OrderRepository.save()` with `order`, which keeps the old version, so every attempt fails the same way.',
         exception('RetryWithStaleObject', JAVA_FILE),
+      ),
+    ]);
+  });
+
+  it('names the executor for an async method that blocks and the synchronous twin for a wait', () => {
+    const base = { className: 'shop.Import', fileName: 'Import.java', method: 'Import.find' };
+    const messages = read([
+      {
+        ...base,
+        rule: 'AsyncMethodDoesBlockingWork',
+        line: 3,
+        detail: 'a',
+        wrapper: 'CompletableFuture.completedFuture()',
+        path: ['OrderRepository.findById()'],
+      },
+      {
+        ...base,
+        rule: 'WaitOnAsyncTwin',
+        line: 4,
+        detail: 'b',
+        async: 'OrderDao.findByIdAsync()',
+        sync: 'findById()',
+      },
+    ]).map((finding) => finding.message);
+
+    expect(messages).toEqual([
+      sentence(
+        "Submit the work to an executor (`executor.submit`, `supplyAsync(..., executor)`), use the client's real async API,",
+        'or make the method synchronous: `Import.find()` calls `OrderRepository.findById()` on the calling thread and only wraps the',
+        'result with `CompletableFuture.completedFuture()`, so a caller on an event-loop or single-thread executor waits on it.',
+        exception('AsyncMethodDoesBlockingWork', JAVA_FILE),
+      ),
+      sentence(
+        'Call the synchronous `findById()` instead: `Import.find()` waits on `OrderDao.findByIdAsync()`, which takes an',
+        'executor thread, blocks the caller anyway and turns every failure into an `ExecutionException`.',
+        exception('WaitOnAsyncTwin', JAVA_FILE),
       ),
     ]);
   });

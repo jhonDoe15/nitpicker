@@ -30,10 +30,7 @@ const SAMPLES = [
     'CheckThenWriteWithoutLock',
     { method: METHOD, read: '<repository>.existsBy...()', write: '<repository>.save()' },
   ],
-  [
-    'GraphqlFieldPerParent',
-    { method: METHOD, framework: 'spring', kind: 'database', path: PATH },
-  ],
+  ['GraphqlFieldPerParent', { method: METHOD, framework: 'spring', kind: 'database', path: PATH }],
   ['ReactiveLookupPerElement', { method: METHOD, kind: 'database', path: PATH }],
   [
     'RowsChangedInMemory',
@@ -48,6 +45,15 @@ const SAMPLES = [
     'RetryWithStaleObject',
     { method: METHOD, scope: 'retry loop', object: 'order', write: '<repository>.save()' },
   ],
+  [
+    'AsyncMethodDoesBlockingWork',
+    {
+      method: METHOD,
+      wrapper: 'CompletableFuture.completedFuture()',
+      path: ['<repository>.findBy()'],
+    },
+  ],
+  ['WaitOnAsyncTwin', { method: METHOD, async: '<Dao>.findByIdAsync()', sync: 'findById()' }],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

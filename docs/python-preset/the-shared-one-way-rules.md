@@ -334,6 +334,10 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   properties, `from helper import *` and a helper whose module is outside the project are not followed. Two
   calls to the same helper on one line are one finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers:
   detekt `SleepInsteadOfDelay` covers a direct `Thread.sleep` in a suspend function.
+  Sync code that runs the async twin of a method and waits for it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()`
+  when `fetch(x)` exists) has no rule: the project's own sync wrapper over the async implementation
+  (`def fetch(x): return asyncio.run(fetch_async(x))`) is the legitimate form of the same call, and a rule cannot
+  tell the two apart by reading the twin's name and parameters.
 - `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
   come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
   `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,

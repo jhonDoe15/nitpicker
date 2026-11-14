@@ -940,6 +940,11 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   A bounded read that must finish before the function can continue goes in a reviewed
   `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
   `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  The JVM-only effects rules for an async method that does its blocking work and wraps the result
+  (`Futures.immediateFuture(dao.find())`) and for sync code that waits on its async twin
+  (`findByIdAsync(id).get()`) have no TypeScript rule: the first form with a Node call is
+  `Promise.resolve(readFileSync(...))`, which this rule reports through its `*Sync` call, and a
+  Promise has no blocking wait, so the second form does not exist.
   Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
   recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
   whole.

@@ -17,6 +17,7 @@ import java.util.zip.ZipFile;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
 import nitpicker.effects.flow.Program;
+import nitpicker.effects.futures.AsyncBlocking;
 import nitpicker.effects.graphql.GraphqlFields;
 import nitpicker.effects.races.CheckThenWrite;
 import nitpicker.effects.graphql.Schema;
@@ -108,6 +109,7 @@ public final class Effects {
     new SetBasedUpdates(program, scopes, report).run();
     new Projections(program, report).run();
     new StaleRetry(program, summaries, report).run();
+    new AsyncBlocking(program, summaries, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

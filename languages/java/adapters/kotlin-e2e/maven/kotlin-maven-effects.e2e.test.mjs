@@ -23,6 +23,7 @@ const KOTLIN_FILES = [
   'rows/TicketUpdates.kt',
   'projections/MemberViews.kt',
   'stale/OrderSaves.kt',
+  'futures/OrderFutures.kt',
   'billing/LazyLoads.kt',
   'held/HeldScopes.kt',
   'events/Retries.kt',
