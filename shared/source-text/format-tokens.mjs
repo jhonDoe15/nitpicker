@@ -8,6 +8,11 @@ export { sourceLanguage } from './source-languages.mjs';
 const MAX_SOURCE_LENGTH = 1_000_000;
 const OPENERS = new Set(['(', '[', '{']);
 const CLOSERS = new Set([')', ']', '}']);
+const OPENING_BRACE = new Set(['{']);
+const SEMICOLON = new Set([';']);
+const IMPORT = 'import';
+const SWITCH = 'switch';
+const JUMPS = ['return', 'break', 'continue'];
 const PYTHON_KEYWORDS = new Set([
   'and',
   'as',
@@ -23,7 +28,7 @@ const PYTHON_KEYWORDS = new Set([
   'from',
   'global',
   'if',
-  'import',
+  IMPORT,
   'in',
   'is',
   'lambda',
@@ -38,11 +43,11 @@ const PYTHON_KEYWORDS = new Set([
   'yield',
 ]);
 const JAVASCRIPT_STATEMENTS = {
-  restricted: new Set(['return', 'break', 'continue', 'throw', 'yield', 'async']),
+  restricted: new Set([...JUMPS, 'throw', 'yield', 'async']),
   statementWords: new Set([
-    ...['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'try', 'catch'],
+    ...['if', 'else', 'for', 'while', 'do', SWITCH, 'case', 'default', 'try', 'catch'],
     ...['finally', 'function', 'class', 'const', 'let', 'var', 'new', 'typeof', 'void'],
-    ...['delete', 'in', 'instanceof', 'extends', 'implements', 'import', 'export', 'await'],
+    ...['delete', 'in', 'instanceof', 'extends', 'implements', IMPORT, 'export', 'await'],
   ]),
   operandEnds: new Set([')', ']', '}', '++', '--']),
   continuation: new Set([
@@ -57,10 +62,10 @@ const JAVASCRIPT_STATEMENTS = {
   emptyBodies: new Set(['else', 'do']),
 };
 const KOTLIN_STATEMENTS = {
-  restricted: new Set(['return', 'break', 'continue']),
+  restricted: new Set(JUMPS),
   statementWords: new Set([
     ...['if', 'else', 'for', 'while', 'do', 'when', 'try', 'catch', 'finally', 'fun'],
-    ...['class', 'object', 'interface', 'val', 'var', 'import', 'package', 'in', 'is'],
+    ...['class', 'object', 'interface', 'val', 'var', IMPORT, 'package', 'in', 'is'],
     ...['as', 'typealias', 'throw'],
   ]),
   operandEnds: new Set([')', ']', '}', '++', '--', '!!', '?']),
@@ -72,6 +77,25 @@ const KOTLIN_STATEMENTS = {
   headers: new Set(['if', 'for', 'while', 'when', 'catch']),
   emptyBodies: new Set(['else', 'do']),
 };
+const GO_STATEMENTS = {
+  restricted: new Set([...JUMPS, 'fallthrough']),
+  statementWords: new Set([
+    ...['case', 'chan', 'const', 'default', 'defer', 'else', 'for', 'func', 'go', 'goto'],
+    ...['if', IMPORT, 'interface', 'map', 'package', 'range', 'select', 'struct', SWITCH],
+    ...['type', 'var'],
+  ]),
+  operandEnds: new Set([')', ']', '}', '++', '--']),
+  continuation: new Set(),
+  taggedTemplates: false,
+  headers: new Set(),
+  emptyBodies: new Set(),
+};
+const STATEMENT_RULES = {
+  javascript: JAVASCRIPT_STATEMENTS,
+  kotlin: KOTLIN_STATEMENTS,
+  go: GO_STATEMENTS,
+};
+const GO_HEADERS = new Set(['if', 'for', SWITCH]);
 
 function laidOut(tokens, language, text) {
   if (language.name === 'python') {
@@ -80,10 +104,7 @@ function laidOut(tokens, language, text) {
   if (language.name === 'java') {
     return tokens;
   }
-  return statementLayout(
-    tokens,
-    language.name === 'kotlin' ? KOTLIN_STATEMENTS : JAVASCRIPT_STATEMENTS,
-  );
+  return statementLayout(tokens, STATEMENT_RULES[language.name]);
 }
 
 function pythonBracket(previous, opener) {
@@ -150,11 +171,46 @@ function arrowParameterParentheses(tokens, language) {
   );
 }
 
+function closers(code) {
+  const open = [];
+  const pairs = new Map();
+  for (const [index, token] of code.entries()) {
+    if (isOp(token, OPENERS)) {
+      open.push(index);
+    }
+    if (isOp(token, CLOSERS) && open.length > 0) {
+      pairs.set(open.pop(), index);
+    }
+  }
+  return pairs;
+}
+
+function goHeaderParentheses(code) {
+  const pairs = closers(code);
+  return code.flatMap((token, index) => {
+    const previous = code[index - 1];
+    const header = previous?.kind === 'word' && GO_HEADERS.has(previous.text);
+    const closer = pairs.get(index);
+    return header && isOp(token, new Set(['('])) && isOp(code[closer + 1], OPENING_BRACE)
+      ? [token, code[closer]]
+      : [];
+  });
+}
+
+function goFormatterTokens(tokens, language) {
+  if (language.name !== 'go') {
+    return [];
+  }
+  const code = tokens.filter((token) => token.kind !== 'comment');
+  return [...code.filter((token) => isOp(token, SEMICOLON)), ...goHeaderParentheses(code)];
+}
+
 export function formatAgnosticTokens(text, language, { comments = true } = {}) {
   const tokens = laidOut(scanSource(text, language), language, text);
   const dropped = new Set([
     ...droppedCommas(tokens, language),
     ...arrowParameterParentheses(tokens, language),
+    ...goFormatterTokens(tokens, language),
   ]);
   return tokens.filter((token) => !dropped.has(token) && (comments || token.kind !== 'comment'));
 }

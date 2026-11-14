@@ -74,7 +74,12 @@ export const FACT_RULE_LANGUAGES = {
     kotlin: true,
     go: false,
   },
-  'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
+  'public-alternative-bypass': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    python: true,
+    kotlin: true,
+    go: true,
+  },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,

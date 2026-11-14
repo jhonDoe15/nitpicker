@@ -5,11 +5,8 @@ import { javaCommand, runJava } from '../../maven-command.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import {
-  type JdkRequirements,
-  toolchainJdkHome,
-} from '../../configuration/toolchain/toolchain-jdk.mts';
-import type { ToolchainContext } from '../../typed/toolchain-types.mts';
+import { toolchainJdkHome } from '../../configuration/toolchain/toolchain-jdk.mjs';
+import type { JdkRequirements, ToolchainContext } from '../../typed/toolchain-types.mts';
 import { type JavaSpawn, callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf, numberOr, optionalText, textOf } from '../../../../../shared/values/readers.mts';
 import type {

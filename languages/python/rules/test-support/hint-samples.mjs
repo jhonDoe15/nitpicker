@@ -5,10 +5,11 @@ export function route(rule) {
   return exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 }
 
-export function sample({ tool, rule, data }) {
+export function sample({ tool, rule, data, subject }) {
   return {
     tool,
     rule,
+    subject,
     path: 'src/a.py',
     identity: 'x',
     message:

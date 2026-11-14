@@ -128,6 +128,7 @@ function metaOf(rule) {
     ...(meta?.docs?.url === undefined ? {} : { url: meta.docs.url }),
     ...(meta?.messages === undefined ? {} : { messages: Object.values(meta.messages) }),
     ...(meta?.deprecated === true ? { deprecated: true } : {}),
+    ...(meta?.fixable === 'code' || meta?.fixable === 'whitespace' ? { fixable: true } : {}),
   };
 }
 

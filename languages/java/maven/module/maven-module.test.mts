@@ -5,8 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { buildAndTest } from '../quick/maven-test-phase.mts';
-import { readReactor } from '../maven-project.mts';
-import type { ModuleDescription } from '../typed/module-description.mts';
+import { type ModuleDescription, reactorModules } from '../typed/module-description.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
@@ -19,7 +18,7 @@ function singleModule(): ModuleDescription {
   const root = trees.tree({
     'pom.xml': '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
   });
-  const [module] = readReactor(
+  const [module] = reactorModules(
     root,
     `<?xml version="1.0"?>
 <project>
@@ -57,6 +56,7 @@ describe('moduleManifest', () => {
     ).toEqual({
       versions: pinned,
       build: 'maven',
+      effects: true,
       sourceRoots: ['src/main/java'],
       kotlinSourceRoots: [],
       testSourceRoots: ['src/test/java'],

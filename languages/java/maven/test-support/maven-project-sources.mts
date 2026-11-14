@@ -1,8 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readReactor } from '../maven-project.mts';
-import type { ModuleDescription } from '../typed/module-description.mts';
+import { type ModuleDescription, reactorModules } from '../typed/module-description.mts';
 
 export function raw(artifactId: string, parent = ''): string {
   const owner =
@@ -45,7 +44,7 @@ export function reactorKit(): {
 
   function soloModule(inner: string): ModuleDescription {
     const root = reactor({ 'pom.xml': raw('solo') });
-    const [module] = readReactor(
+    const [module] = reactorModules(
       root,
       `<project><groupId>demo</groupId><artifactId>solo</artifactId>${inner}</project>`,
     );

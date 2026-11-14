@@ -1,3 +1,5 @@
+import { copyingMethodFix } from '../../fixes/code/copying-method-fix.mjs';
+import { fixable } from '../../fixes/support/descriptors.mjs';
 import {
   isArrayMutator,
   mutatedOwner,
@@ -29,6 +31,7 @@ function isReportedBySyntax(node, method) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description:
         'Disallow mutating methods of arrays, Set, Map, Date, typed arrays, Buffer and URLSearchParams in domain code',
@@ -55,7 +58,10 @@ export const rule = {
         }
         const owner = mutatedOwner(node, method, services);
         if (owner !== undefined) {
-          context.report({ node, messageId: 'mutatingMethod', data: { owner, method } });
+          const plan = owner === 'Array' ? copyingMethodFix(services, node, method) : undefined;
+          context.report(
+            fixable({ node, messageId: 'mutatingMethod', data: { owner, method } }, plan),
+          );
         }
       },
     };

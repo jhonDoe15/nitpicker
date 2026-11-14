@@ -12,8 +12,9 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { argumentFileToken as untypedArgumentFileToken } from '../../builds/lint/javac-options.mjs';
-import { processorTool } from '../errorprone/maven-errorprone.mts';
-import { textOf } from '../../../../shared/values/readers.mts';
+import { processorTool } from '../errorprone/maven-errorprone.mjs';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { lintPlan, runGuards } from './maven-guards.mts';
 
 const argumentFileToken: (token: string) => string = untypedArgumentFileToken;
@@ -209,7 +210,7 @@ describe('lintPlan processor path', () => {
   it('takes only the configured processors when the pom names some', () => {
     const compiler = { processorPaths: ['org.projectlombok:lombok:1.18.30'] };
     const tools: Record<string, string[]> = {};
-    const name = textOf(processorTool(compiler)?.name);
+    const name = textOf(fieldOf(callUntyped(processorTool, compiler), 'name'));
     tools[name] = ['/m2/lombok-processor.jar'];
 
     expect(plan(compiler, tools)).toEqual(['/m2/lombok-processor.jar']);

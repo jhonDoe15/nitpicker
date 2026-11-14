@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
 import { rule } from './require-http-timeout.mjs';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-http-typed-')));
 writeFileSync(
@@ -39,7 +40,7 @@ function typed(body, errors) {
   return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
 }
 
-tester.run('require-http-timeout with types', rule, {
+tester.run('require-http-timeout with types', withoutFixes(rule), {
   valid: [
     typed(
       'export const get = (options: RequestOptions) => https.get(options, (res) => res.resume());',

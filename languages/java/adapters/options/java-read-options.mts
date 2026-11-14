@@ -4,6 +4,7 @@ export function readOptions(policy: JavaPolicy = {}): Readonly<Record<string, un
   return {
     crapLimit: policy.crapLimit,
     quick: policy.quick,
+    mutationOff: policy['mutationOff'],
     preset: policy.preset ?? 'java',
     conventions: policy.conventions,
     fileLimits: policy.fileLimits,

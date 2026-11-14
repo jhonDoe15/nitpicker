@@ -22,11 +22,12 @@ function toolTimeoutMs(context) {
 export function execute(
   context,
   command,
-  { timeout = toolTimeoutMs(context), env = {}, cwd } = {},
+  { timeout = toolTimeoutMs(context), env = {}, cwd, input } = {},
 ) {
   const [program, ...args] = command;
   return (context.spawn ?? spawnSync)(program, args, {
     cwd: cwd ?? context.projectRoot,
+    ...(input === undefined ? {} : { input }),
     env: { ...context.environment, GOFLAGS: goFlags(context), ...env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

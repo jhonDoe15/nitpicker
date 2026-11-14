@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { argumentFileToken } from './javac-options.mjs';
-import { lintArguments } from './lint-arguments.mts';
+import { lintArguments } from './lint-arguments.mjs';
 import {
   LINT_CACHE,
   LINT_FINGERPRINT,

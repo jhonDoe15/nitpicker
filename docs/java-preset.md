@@ -15,7 +15,7 @@ In a comparison, PIT mutates the lines the change wrote and the classes its chan
 the base runs PIT only for the latter; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
 
-Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), [Error Prone](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), Error Prone ([A to L](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [M to Z](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone-m-z.md)) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
 The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
@@ -56,6 +56,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)
 - [Spring configuration files](java-preset/spring-configuration-files.md)
 - [Review rules](java-preset/review-rules.md)
+- [Effects rules](java-preset/effects-rules.md)
 - [Doc comments](java-preset/doc-comments.md)
 - [Reuse rules](java-preset/reuse-rules.md)
 - [Rule messages](java-preset/rule-messages.md)
