@@ -55,7 +55,7 @@ const ROOT_MODULE = 'root';
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
-  const { modules, manifest } = report ?? readReportModules(reportBase, preset);
+  const { modules, manifest } = report ?? readReportModules(reportBase, preset, projectRoot);
   if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }

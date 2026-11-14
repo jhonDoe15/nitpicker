@@ -371,3 +371,25 @@ describe('an Angular workspace', () => {
     expect(statuses(run(root))).toEqual({ 'projects/shop': 'skipped', 'projects/ui': 'passed' });
   });
 });
+
+describe('a Gradle composite build of services', () => {
+  it('gates each included service from the top and runs only the changed one', () => {
+    const root = repository({
+      'settings.gradle': "includeBuild('services/orders')\nincludeBuild('services/users')\n",
+      ...projectFiles('services/orders', {
+        'settings.gradle': '',
+        'src/main/java/Orders.java': 'class Orders {}\n',
+      }),
+      ...projectFiles('services/users', {
+        'settings.gradle': '',
+        'src/main/java/Users.java': 'class Users {}\n',
+      }),
+    });
+    writeFiles(root, { 'services/users/src/main/java/Users.java': 'class Users { }\n' });
+
+    expect(statuses(run(root))).toEqual({
+      'services/orders': 'skipped',
+      'services/users': 'passed',
+    });
+  });
+});

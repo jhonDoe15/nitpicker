@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { includedSourceBuilds } from '../../builds/gradle-scripts/included-builds.mjs';
 
 const MODULES_FILE = 'modules.json';
 const MANIFEST_FILE = 'manifest.json';
@@ -64,13 +65,26 @@ export function withoutExcludedFiles(findings, modules) {
   return excluded.size === 0 ? findings : findings.filter(({ path: file }) => !excluded.has(file));
 }
 
-export function readReportModules(reportBase, preset) {
+function includedBuildsHint(projectRoot) {
+  const builds = projectRoot === undefined ? [] : includedSourceBuilds(projectRoot);
+  if (builds.length === 0) {
+    return '';
+  }
+  const listed = builds.map((build) => `"${build}"`).join(', ');
+  return (
+    `. The build includes the builds ${builds.join(', ')}, which hold the code: gate each as a project ` +
+    `of its own with "projects": [${listed}] in nitpicker.config.json`
+  );
+}
+
+export function readReportModules(reportBase, preset, projectRoot) {
   const listFile = path.join(reportBase, MODULES_FILE);
   const listed = existsSync(listFile) ? readJson(listFile) : [];
   if (listed.length === 0) {
     const plugin = preset === 'kotlin' ? KOTLIN_PLUGINS : 'java';
     throw new Error(
-      `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
+      `The ${preset} preset found no Gradle project that applies the ${plugin} plugin` +
+        includedBuildsHint(projectRoot),
     );
   }
   const modules = listed

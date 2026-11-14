@@ -2012,7 +2012,10 @@ A run fans out to several projects only when the repository says it holds severa
   `pnpm-workspace.yaml`, or a uv workspace in `pyproject.toml` (`[tool.uv.workspace]`, or
   `workspace = { ... }` under `[tool.uv]`), an Nx workspace (`nx.json` at the top and a
   `project.json` in each project folder) or an Angular CLI workspace (`angular.json` whose
-  `projects` give a folder of their own in `root`). Lerna, Turborepo, Rush and package-based Nx
+  `projects` give a folder of their own in `root`), or a Gradle composite build whose top
+  `settings.gradle(.kts)` has `includeBuild` folders with Java or Kotlin code (each such build is a
+  project; `buildSrc`, `build-logic` and builds with no code are not, and the top build joins only
+  when its settings `include` projects of its own or it has a `src` folder). Lerna, Turborepo, Rush and package-based Nx
   repositories use npm, pnpm or Yarn workspaces underneath, so they are found the same way. An Nx
   or Angular project needs no `package.json` of its own; its dependencies come from the top.
 
@@ -2071,7 +2074,10 @@ Where you start the run matters:
   `setup.py`, `setup.cfg`,
   `Pipfile` or `requirements.txt`), a Gradle or Maven build file or a `nitpicker.config.json`. A
   folder inside a match is left out, and so is a module of a Gradle or Maven build: `apps/**` keeps
-  `apps/android` one project, however many modules it has.
+  `apps/android` one project, however many modules it has. A folder with its own
+  `settings.gradle(.kts)` is a build of its own, never a module (so `services/*` matches the
+  included builds of a composite), and a Maven folder is a module only when an enclosing `pom.xml`
+  lists it in `<modules>` (in any profile).
 - Each project reads its own `nitpicker.config.json`. A folder without one needs no file when its
   preset can be detected; the `preset` of an entry declares it. An entry's `preset` that disagrees
   with the project's own config is an error. Only the config at the top may set `projects`.
