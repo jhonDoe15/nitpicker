@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { zipOf } from '../../builds/test-support/zip-writer.mts';
 import { declaredDependencies, dependencyReport } from './maven-dependencies.mts';
 
-const roots = [];
+const roots: string[] = [];
 
-function dependency(groupId, artifactId, scope) {
+function dependency(groupId: string, artifactId: string, scope?: string): string {
   const scoped = scope === undefined ? '' : `<scope>${scope}</scope>`;
   return [
     `<dependency><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`,
@@ -15,7 +15,7 @@ function dependency(groupId, artifactId, scope) {
   ].join('');
 }
 
-function pomOf(...dependencies) {
+function pomOf(...dependencies: string[]): string {
   return `<project><artifactId>app</artifactId><dependencies>${dependencies.join('')}</dependencies></project>`;
 }
 
@@ -36,7 +36,10 @@ const POM = `<project>
   </dependencies>
 </project>`;
 
-function module(root, { pom = POM, content = LANG_REFERENCE } = {}) {
+function module(
+  root: string,
+  { pom = POM, content = LANG_REFERENCE }: { pom?: string; content?: string } = {},
+) {
   const outputDirectory = path.join(root, 'target/classes');
   mkdirSync(path.join(outputDirectory, 'demo'), { recursive: true });
   writeFileSync(path.join(outputDirectory, 'demo/App.class'), Buffer.from(content, 'latin1'));
@@ -44,17 +47,20 @@ function module(root, { pom = POM, content = LANG_REFERENCE } = {}) {
   return { basedir: root, pomFile: path.join(root, 'pom.xml'), outputDirectory };
 }
 
-function workspace() {
+function workspace(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
   roots.push(root);
   return root;
 }
 
-function entryOf(name, { group, archives, used }) {
+function entryOf(
+  name: string,
+  { group, archives, used }: { group: string; archives: string[]; used: boolean },
+) {
   return { configuration: 'compile', group, name, archives, used };
 }
 
-function jar(root, name, entries) {
+function jar(root: string, name: string, entries: readonly string[]): string {
   const file = path.join(root, name);
   writeFileSync(file, zipOf(Object.fromEntries(entries.map((entry) => [entry, '']))));
   return file;
@@ -177,7 +183,9 @@ describe('dependencyReport', () => {
     const pom = pomOf(dependency('org.acme', 'widgets'), dependency('org.acme', 'other'));
 
     expect(
-      dependencyReport({ module: module(root, { pom, content }), resolved, reactor: [] }).declared,
+      dependencyReport({ module: module(root, { pom, content }), resolved, reactor: [] })[
+        'declared'
+      ],
     ).toEqual([
       entryOf('widgets', { group: 'org.acme', archives: ['widgets-1.0.jar'], used: true }),
       entryOf('other', { group: 'org.acme', archives: ['other-1.0.jar'], used: false }),
@@ -191,7 +199,7 @@ describe('dependencyReport', () => {
     const pom = pomOf(dependency(`\${project.groupId}`, 'core'));
 
     expect(
-      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] })['declared'],
     ).toEqual([entryOf('core', { group: 'demo', archives: ['core-1.0.jar'], used: false })]);
   });
 
@@ -232,7 +240,7 @@ describe('dependencyReport', () => {
     );
 
     expect(
-      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] })['declared'],
     ).toEqual([
       entryOf('commons-lang3', { group: 'org.apache.commons', archives: [], used: false }),
       entryOf('commons-text', {
@@ -258,7 +266,7 @@ describe('dependencyReport', () => {
     const pom = pomOf(dependency('g', 'used'), dependency('g', 'unused'));
 
     expect(
-      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] })['declared'],
     ).toEqual([
       entryOf('used', { group: 'g', archives: ['classes'], used: true }),
       entryOf('unused', { group: 'g', archives: ['classes'], used: false }),
@@ -273,7 +281,7 @@ describe('dependencyReport', () => {
     const pom = pomOf(dependency('g', 'broken'));
 
     expect(
-      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] }).declared,
+      dependencyReport({ module: module(root, { pom }), resolved, reactor: [] })['declared'],
     ).toEqual([entryOf('broken', { group: 'g', archives: ['broken-1.0.jar'], used: true })]);
   });
 });

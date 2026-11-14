@@ -11,20 +11,22 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { argumentFileToken } from '../../builds/lint/javac-options.mjs';
+import { argumentFileToken as untypedArgumentFileToken } from '../../builds/lint/javac-options.mjs';
 import { processorTool } from '../errorprone/maven-errorprone.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { lintPlan, runGuards } from './maven-guards.mts';
 
-const roots = [];
+const argumentFileToken: (token: string) => string = untypedArgumentFileToken;
+const roots: string[] = [];
 const TOOLS = { forbiddenapis: ['/tools/forbiddenapis.jar', '/tools/asm.jar'] };
 
-function workspace() {
+function workspace(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-'));
   roots.push(root);
   return root;
 }
 
-function fakeJava(root, status) {
+function fakeJava(root: string, status: number): void {
   const home = path.join(root, 'jdk');
   mkdirSync(path.join(home, 'bin'), { recursive: true });
   const java = path.join(home, 'bin/java');
@@ -42,7 +44,7 @@ function fakeJava(root, status) {
   vi.stubEnv('JAVA_HOME', home);
 }
 
-function moduleOf(root, files) {
+function moduleOf(root: string, files: readonly string[]) {
   const basedir = path.join(root, 'app');
   const outputDirectory = path.join(basedir, 'target/classes');
   mkdirSync(basedir, { recursive: true });
@@ -66,7 +68,14 @@ function moduleOf(root, files) {
   };
 }
 
-function guards(root, { files, mainCompile, stale = false }) {
+function guards(
+  root: string,
+  {
+    files,
+    mainCompile,
+    stale = false,
+  }: { files: string[]; mainCompile: string[]; stale?: boolean },
+): string {
   const { module, reportDir } = moduleOf(root, files);
   if (stale) {
     writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), 'forbidden: from an earlier run\n');
@@ -78,7 +87,7 @@ function guards(root, { files, mainCompile, stale = false }) {
   return reportDir;
 }
 
-function expectedArguments({ module, libraries }) {
+function expectedArguments({ module, libraries }: { module: string; libraries: string }): string {
   return [
     '-cp',
     TOOLS.forbiddenapis.join(path.delimiter),
@@ -185,10 +194,12 @@ describe.skipIf(process.platform === 'win32')('runGuards forbiddenapis', () => {
 describe('lintPlan processor path', () => {
   const classpaths = { mainCompile: ['/m2/lombok.jar', '/m2/guava.jar'] };
 
-  function plan(compiler, tools = {}) {
+  function plan(compiler: object, tools: Record<string, string[]> = {}): unknown {
     const root = workspace();
     const { module } = moduleOf(root, []);
-    return lintPlan({ module: { ...module, compiler }, classpaths, tools }, root).processorPath;
+    return lintPlan({ module: { ...module, compiler }, reportDir: root, classpaths, tools }, root)[
+      'processorPath'
+    ];
   }
 
   it('takes the compile classpath when the pom names no processors', () => {
@@ -197,8 +208,8 @@ describe('lintPlan processor path', () => {
 
   it('takes only the configured processors when the pom names some', () => {
     const compiler = { processorPaths: ['org.projectlombok:lombok:1.18.30'] };
-    const tools = {};
-    const { name } = processorTool(compiler);
+    const tools: Record<string, string[]> = {};
+    const name = textOf(processorTool(compiler)?.name);
     tools[name] = ['/m2/lombok-processor.jar'];
 
     expect(plan(compiler, tools)).toEqual(['/m2/lombok-processor.jar']);
