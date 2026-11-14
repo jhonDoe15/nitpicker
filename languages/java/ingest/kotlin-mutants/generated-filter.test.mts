@@ -10,6 +10,7 @@ import {
   negate,
   removed,
   returns,
+  type Fields,
 } from './test-support/filter-helpers.mts';
 
 describe('rules that need no source facts', () => {
@@ -112,7 +113,7 @@ describe('suspend-lambda-result', () => {
     lambda({ start: 15, end: 15, valueLines: [15, 15], callee: 'launch' }),
   ];
   const filter = filterFor({ lambdas });
-  const result = (line, overrides) =>
+  const result = (line: number, overrides?: Fields) =>
     filter(mutant({ method: 'invokeSuspend', ...returns, line, ...overrides }), FILE);
 
   it('drops the synthetic return of a lambda, of a builder that returns Unit and of a continuation class', () => {
@@ -193,7 +194,7 @@ describe('generated accessors and members', () => {
     ],
   };
   const filter = filterFor({ classes: [holder] });
-  const inHolder = (method, line, overrides) =>
+  const inHolder = (method: string, line: number, overrides?: Fields) =>
     filter(mutant({ className: 'demo.Holder', method, line, ...returns, ...overrides }), FILE);
 
   it.each([
@@ -215,7 +216,7 @@ describe('generated accessors and members', () => {
     ['the constructor, whose defaults are written code', '<init>', 8],
     ['a written function', 'describe', 40],
     ['a method of another class', 'getItems', 8, { className: 'demo.Other' }],
-  ])('keeps %s', (name, method, line, overrides) => {
+  ])('keeps %s', (name, method, line, overrides?: Fields) => {
     expect(inHolder(method, line, overrides)).toBeUndefined();
   });
 });
@@ -238,7 +239,7 @@ describe('value classes, inline functions and default arguments', () => {
     ],
     branching: [21],
   });
-  const at = (overrides) => filter(mutant({ ...returns, ...overrides }), FILE);
+  const at = (overrides?: Fields) => filter(mutant({ ...returns, ...overrides }), FILE);
 
   it.each([
     [

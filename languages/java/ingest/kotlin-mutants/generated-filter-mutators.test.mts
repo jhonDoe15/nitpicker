@@ -9,14 +9,14 @@ const invokeSuspend = {
 };
 const fetch = { method: 'fetch', methodDescription: suspendDescription };
 
-function removedConditional(kind) {
+function removedConditional(kind: string) {
   return {
     mutatorName: `RemoveConditionalMutator_${kind}`,
     description: 'removed conditional - replaced equality check with true',
   };
 }
 
-function assignment(field) {
+function assignment(field: string) {
   return {
     mutatorName: 'MemberVariableMutator',
     description: `Removed assignment to member variable ${field}`,
