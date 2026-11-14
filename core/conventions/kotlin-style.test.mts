@@ -3,21 +3,25 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  analyzeJavaSnapshot,
+  analyzeJavaSnapshot as untypedAnalyzeJavaSnapshot,
   readRunnerPolicy,
 } from '../../languages/java/adapters/java-runner.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { withHeadPolicyFile } from '../../shared/head-policy.mjs';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
 import { fakeGradleRun } from '../../languages/java/adapters/test-support/in-process-gradle.mjs';
-import { comparisonPolicy } from './resolve.mjs';
+import { comparisonPolicy } from './resolve.mts';
+import { fieldOf, parseJson, textsOf } from '../../shared/values/readers.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-const indented = (width) =>
+const analyzeJavaSnapshot: (projectRoot: string, host: object) => unknown =
+  untypedAnalyzeJavaSnapshot;
+
+const indented = (width: number) =>
   `package demo;\n\npublic final class A {\n${' '.repeat(width)}private int a;\n}\n`;
-const projects = [];
+const projects: string[] = [];
 
 afterEach(() => {
   for (const root of projects.splice(0)) {
@@ -25,7 +29,7 @@ afterEach(() => {
   }
 });
 
-function gradleProperties(width) {
+function gradleProperties(width: number): string[] {
   const { root } = createGitRepository({
     'nitpicker.config.json': '{ "preset": "kotlin" }\n',
     'src/main/java/demo/A.java': indented(width),
@@ -43,21 +47,23 @@ function gradleProperties(width) {
     },
     resolveComparison,
   );
-  const policy = withHeadPolicyFile(
-    headPolicy,
-    (file) =>
-      readRunnerPolicy(['--project-root', root, '--preset', 'kotlin'], { NITPICKER_POLICY: file })
-        .policy,
+  const policy: unknown = withHeadPolicyFile(headPolicy, (file: string) =>
+    fieldOf(
+      readRunnerPolicy(['--project-root', root, '--preset', 'kotlin'], {
+        NITPICKER_POLICY: file,
+      }),
+      'policy',
+    ),
   );
   const project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-style-')));
   projects.push(project);
   analyzeJavaSnapshot(project, { ...fakeGradleRun, policy });
-  return JSON.parse(readFileSync(path.join(project, 'build/gradle-args.json'), 'utf8'));
+  return textsOf(parseJson(readFileSync(path.join(project, 'build/gradle-args.json'), 'utf8')));
 }
 
 describe('the Java style of a kotlin-preset project', () => {
   it('follows 4-space Java files with --aosp and keeps Google for 2-space ones', () => {
-    const style = (width) =>
+    const style = (width: number) =>
       gradleProperties(width).filter((argument) => argument.startsWith('-Pnitpicker.java.style'));
 
     expect(style(4)).toEqual(['-Pnitpicker.java.style=aosp']);

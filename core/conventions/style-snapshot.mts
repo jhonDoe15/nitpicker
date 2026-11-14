@@ -1,7 +1,14 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { commitSource } from './sources.mjs';
+import { commitSource } from './sources.mts';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import type {
+  CommitRef,
+  ConfigRoot,
+  ConventionSource,
+  LazyConfigRoot,
+} from './typed/convention-types.mts';
 import { explainedError } from '../../shared/messages/troubleshooting.mjs';
 
 const MAX_STYLE_FILES = 1000;
@@ -31,7 +38,7 @@ const PROJECT_FILE = new RegExp(
 const EXTEND = /^\s*extend\s*=\s*["']([^"']+)["']/mu;
 const RESERVED_NAME = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\..*)?$/iu;
 
-function isStyleFile(file, project, named) {
+function isStyleFile(file: string, project: string, named: readonly string[]): boolean {
   if (named.includes(file)) {
     return true;
   }
@@ -47,11 +54,15 @@ function isStyleFile(file, project, named) {
   );
 }
 
-function byDepth(left, right) {
+function byDepth(left: string, right: string): number {
   return left.split('/').length - right.split('/').length || left.localeCompare(right);
 }
 
-function selectedFiles(source, project, named) {
+function selectedFiles(
+  source: ConventionSource,
+  project: string,
+  named: readonly string[],
+): string[] {
   const files = source
     .paths()
     .filter((file) => isStyleFile(file, project, named))
@@ -64,14 +75,18 @@ function selectedFiles(source, project, named) {
   return files;
 }
 
-function extendedFiles(file, text) {
+function extendedFiles(file: string, text: string): string[] {
   const target = EXTEND.exec(text)?.[1];
   return target === undefined || !file.endsWith('.toml')
     ? []
     : [path.posix.join(path.posix.dirname(file), target)];
 }
 
-function readExtension(source, read, file) {
+function readExtension(
+  source: ConventionSource,
+  read: Map<string, string>,
+  file: string,
+): string[] {
   const text = read.has(file) ? undefined : source.readMany([file]).get(file);
   if (text === undefined) {
     return [];
@@ -80,7 +95,7 @@ function readExtension(source, read, file) {
   return extendedFiles(file, text);
 }
 
-function withExtended(source, files) {
+function withExtended(source: ConventionSource, files: readonly string[]): Map<string, string> {
   const read = source.readMany(files);
   const queue = [...read].flatMap(([file, text]) => extendedFiles(file, text));
   for (const file of queue) {
@@ -89,7 +104,7 @@ function withExtended(source, files) {
   return read;
 }
 
-function unwritableReason(file) {
+function unwritableReason(file: string): string | undefined {
   const parts = file.split('/');
   if (parts.some((part) => Buffer.byteLength(part) > MAX_NAME_BYTES)) {
     return 'a name is too long';
@@ -100,7 +115,7 @@ function unwritableReason(file) {
   return parts.some((part) => RESERVED_NAME.test(part)) ? 'a name is reserved' : undefined;
 }
 
-function contained(directory, relative) {
+function contained(directory: string, relative: string): string {
   const full = path.resolve(directory, relative);
   if (full !== directory && !full.startsWith(directory + path.sep)) {
     throw new Error(`The style file ${relative} points outside the copy of the merge base`);
@@ -108,13 +123,13 @@ function contained(directory, relative) {
   return full;
 }
 
-function writeOne(directory, file, text) {
+function writeOne(directory: string, file: string, text: string): void {
   const target = contained(directory, file);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, text);
 }
 
-function writeGuarded(directory, file, text) {
+function writeGuarded(directory: string, file: string, text: string): string | undefined {
   const reason = unwritableReason(file);
   if (reason !== undefined) {
     return `${file}: ${reason}`;
@@ -123,20 +138,27 @@ function writeGuarded(directory, file, text) {
     writeOne(directory, file, text);
     return undefined;
   } catch (error) {
-    if (error.code === undefined) {
+    const code = fieldOf(error, 'code');
+    if (code === undefined) {
       throw error;
     }
-    return `${file}: ${error.code}`;
+    return `${file}: ${textOf(code)}`;
   }
 }
 
-function writeSnapshot(directory, texts) {
-  return [...texts]
-    .map(([file, text]) => writeGuarded(directory, file, text))
-    .filter((note) => note !== undefined);
+function writeSnapshot(directory: string, texts: ReadonlyMap<string, string>): string[] {
+  return [...texts].flatMap(([file, text]) => {
+    const note = writeGuarded(directory, file, text);
+    return note === undefined ? [] : [note];
+  });
 }
 
-function materializedRoot({ repositoryRoot, commitSha, projectRoot, named }) {
+function materializedRoot({
+  repositoryRoot,
+  commitSha,
+  projectRoot,
+  named,
+}: CommitRef & { readonly projectRoot: string; readonly named: readonly string[] }): ConfigRoot {
   const project = path.relative(repositoryRoot, projectRoot).replaceAll(path.sep, '/');
   const source = commitSource({ repositoryRoot, commitSha, projectRoot: repositoryRoot });
   const inProject = named.map((file) => (project === '' ? file : `${project}/${file}`));
@@ -157,19 +179,30 @@ function materializedRoot({ repositoryRoot, commitSha, projectRoot, named }) {
   }
 }
 
-export function lazyConfigRoot({ projectRoot, commit, useBase, named = [] }) {
-  const made = [];
-  function create() {
+export function lazyConfigRoot({
+  projectRoot,
+  commit,
+  useBase,
+  named = [],
+}: {
+  readonly projectRoot: string;
+  readonly commit: (() => CommitRef) | undefined;
+  readonly useBase: () => boolean;
+  readonly named?: readonly string[];
+}): LazyConfigRoot {
+  const made: ConfigRoot[] = [];
+  function create(): ConfigRoot {
     return commit !== undefined && useBase()
       ? materializedRoot({ ...commit(), projectRoot, named })
       : { path: projectRoot, snapshot: 'head', dispose: () => undefined, notes: [] };
   }
   return {
     get: () => {
+      const existing = made[0] ?? create();
       if (made.length === 0) {
-        made.push(create());
+        made.push(existing);
       }
-      return made[0];
+      return existing;
     },
     notes: () => {
       const skipped = made.flatMap((root) => root.notes);

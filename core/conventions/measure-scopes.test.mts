@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { followedPolicy } from '../diff/git/test-support/followed-policy.mjs';
+import { followedPolicy } from '../diff/git/test-support/followed-policy.mts';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 
-const test = (helper) => `it('t', () => {\n  run();\n  ${helper}(value);\n});\n`;
-const helper = (name) => `export function ${name}(value) {\n  expect(value).toBeTruthy();\n}\n`;
-const json = (indent) => JSON.stringify({ a: { b: 1 } }, undefined, indent);
-const yaml = (indent) => `key:\n${' '.repeat(indent)}nested:\n${' '.repeat(2 * indent)}leaf: 1\n`;
-const jsx = (quote, closer) =>
+const test = (helper: string) => `it('t', () => {\n  run();\n  ${helper}(value);\n});\n`;
+const helper = (name: string) =>
+  `export function ${name}(value) {\n  expect(value).toBeTruthy();\n}\n`;
+const json = (indent: number) => JSON.stringify({ a: { b: 1 } }, undefined, indent);
+const yaml = (indent: number) =>
+  `key:\n${' '.repeat(indent)}nested:\n${' '.repeat(2 * indent)}leaf: 1\n`;
+const jsx = (quote: string, closer: string) =>
   `export const A = () => (\n  <B\n    one=${quote}1${quote}\n    two=${quote}2${quote}${closer}\n    x\n  </B>\n);\n`;
 
 const FOLLOWED = [
@@ -16,7 +19,7 @@ const FOLLOWED = [
   'typescript.assertionHelpers',
 ];
 
-function followedOptions(files, config) {
+function followedOptions(files: Readonly<Record<string, string>>, config?: NitpickerConfig) {
   const conventions = followedPolicy(files, config).conventions ?? {};
   return Object.fromEntries(
     FOLLOWED.filter((id) => id in conventions).map((id) => [id, conventions[id]]),
@@ -99,7 +102,7 @@ describe('conventions measured per scope', () => {
     expect(
       followedOptions({
         'src/test-support/asserts.ts': ['assertOk', 'verifyCalled', 'checkAll']
-          .map((name) => helper(name))
+          .map((name: string) => helper(name))
           .join(''),
         'src/a.test.ts': test('assertOk'),
         'src/b.spec.ts': test('assertOk'),

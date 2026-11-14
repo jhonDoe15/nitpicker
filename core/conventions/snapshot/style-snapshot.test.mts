@@ -2,16 +2,21 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { lazyConfigRoot } from '../style-snapshot.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { lazyConfigRoot } from '../style-snapshot.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-function snapshotOf(files, options) {
+type SnapshotOptions = { readonly projectDirectory?: string; readonly named?: readonly string[] };
+
+function snapshotOf(files: Readonly<Record<string, string>>, options?: SnapshotOptions) {
   return snapshotOfRepository(createGitRepository(files).root, options);
 }
 
-function snapshotOfRepository(root, { projectDirectory = '', named = [] } = {}) {
+function snapshotOfRepository(
+  root: string,
+  { projectDirectory = '', named = [] }: SnapshotOptions = {},
+) {
   const commitSha = fixtureGit(root, ['rev-parse', 'HEAD']).trim();
   return lazyConfigRoot({
     projectRoot: path.join(root, projectDirectory),
@@ -21,8 +26,8 @@ function snapshotOfRepository(root, { projectDirectory = '', named = [] } = {}) 
   });
 }
 
-function copiedFiles(directory) {
-  return readdirSync(directory, { recursive: true })
+function copiedFiles(directory: string) {
+  return readdirSync(directory, { recursive: true, encoding: 'utf8' })
     .filter((entry) => statSync(path.join(directory, entry)).isFile())
     .map((entry) => entry.split(path.sep).join('/'))
     .sort();
@@ -127,6 +132,7 @@ describe('the copy of the style files of the merge base', () => {
       cwd: root,
       input: 'x\n',
       encoding: 'utf8',
+      timeout: 10_000,
       env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
     }).trim();
     fixtureGit(root, ['update-index', '--add', '--cacheinfo', `100644,${blob},${longName}`]);

@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { resolveComparison } from '../../diff/git/repository/git.mjs';
-import { branchOff } from '../../diff/git/test-support/branch-off.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { comparedConventions } from '../test-support/compare-policy.mjs';
+import { branchOff } from '../../diff/git/test-support/branch-off.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { comparedConventions } from '../test-support/compare-policy.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 const { createGitRepository } = useGitFixtures();
 const HEADER = "Following this project's conventions:\n";
@@ -11,7 +12,17 @@ const LISTED = ['project', 'nitpicker'];
 const KOTLIN = 'package a\n\nclass A {\n  fun f() {\n    run()\n  }\n}\n';
 const PYTHON = 'a = "a"\nb = "b"\nc = "c"\n';
 
-function compared({ base, branch, config, directory, environment }) {
+type Files = Readonly<Record<string, string>>;
+
+type ComparedRequest = {
+  readonly base: Files;
+  readonly branch: Files;
+  readonly config: NitpickerConfig;
+  readonly directory?: string;
+  readonly environment?: () => void;
+};
+
+function compared({ base, branch, config, directory, environment }: ComparedRequest) {
   const { root } = createGitRepository(base);
   branchOff(root, branch);
   environment?.();
@@ -24,7 +35,8 @@ function compared({ base, branch, config, directory, environment }) {
 }
 
 describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
-  const detekt = (width) => `style:\n  MaxLineLength:\n    maxLineLength: ${String(width)}\n`;
+  const detekt = (width: number) =>
+    `style:\n  MaxLineLength:\n    maxLineLength: ${String(width)}\n`;
   const config = {
     preset: 'kotlin',
     tools: { detekt: { precedence: LISTED }, ktlint: { precedence: LISTED } },
@@ -44,7 +56,7 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
   });
 
   it('reads the .editorconfig of ktlint from the merge base', () => {
-    const editorconfig = (width) => `[*.{kt,kts}]\nmax_line_length = ${String(width)}\n`;
+    const editorconfig = (width: number) => `[*.{kt,kts}]\nmax_line_length = ${String(width)}\n`;
     const base = {
       'build.gradle.kts': 'ktlint',
       '.editorconfig': editorconfig(100),
@@ -89,7 +101,7 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
   });
 
   it('prints the ktlint widths of the base and says that they win over the branch .editorconfig', () => {
-    const editorconfig = (width) => `[*.{kt,kts}]\nmax_line_length = ${String(width)}\n`;
+    const editorconfig = (width: number) => `[*.{kt,kts}]\nmax_line_length = ${String(width)}\n`;
     const base = {
       'build.gradle.kts': 'ktlint',
       '.editorconfig': editorconfig(100),
@@ -127,9 +139,13 @@ describe('the detekt, ktlint and ktfmt configs of a kotlin project', () => {
 });
 
 describe('the Kotlin settings that cannot be followed', () => {
-  const detekt = (body) => `style:\n  MaxLineLength:\n${body}`;
+  const detekt = (body: string) => `style:\n  MaxLineLength:\n${body}`;
   const config = { preset: 'kotlin', tools: { detekt: { precedence: LISTED } } };
-  const files = (yml) => ({ 'build.gradle.kts': 'ktlint', 'detekt.yml': yml, 'src/A.kt': KOTLIN });
+  const files = (yml: string) => ({
+    'build.gradle.kts': 'ktlint',
+    'detekt.yml': yml,
+    'src/A.kt': KOTLIN,
+  });
 
   it('says why it ignored a detekt width outside 10 to 999, and measures instead', () => {
     const base = files(detekt('    maxLineLength: 1000\n'));
@@ -184,7 +200,7 @@ describe('the Kotlin settings that cannot be followed', () => {
 });
 
 describe('the ruff config of a python project', () => {
-  const ruff = (width) => `line-length = ${String(width)}\n`;
+  const ruff = (width: number) => `line-length = ${String(width)}\n`;
   const config = { preset: 'python', tools: { ruff: { precedence: LISTED } } };
   const FORMAT =
     "Format with ruff: ruff format --config ruff.toml --target-version py38 --line-length 100 --config 'format.quote-style = \"double\"' --config 'indent-width = 4' .\n";
@@ -243,7 +259,7 @@ describe('the ruff config of a python project', () => {
   });
 
   it('keeps a base indentation that equals the default, so the branch cannot change it', () => {
-    const toml = (width) => `line-length = 100\nindent-width = ${String(width)}\n`;
+    const toml = (width: number) => `line-length = 100\nindent-width = ${String(width)}\n`;
     const base = { 'ruff.toml': toml(4), 'a.py': PYTHON };
 
     expect(compared({ base, branch: { 'ruff.toml': toml(2) }, config }).conventions).toEqual({

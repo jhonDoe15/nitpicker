@@ -2,38 +2,45 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { describeConfigOverrides } from '../configuration/config.mjs';
-import { validateConfig } from '../configuration/validate.mjs';
+import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
+import { describeConfigOverrides } from '../configuration/config.mts';
+import { validateConfig } from '../configuration/validate.mts';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './resolve.mjs';
+import { resolveHeadPolicy as untypedHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './resolve.mts';
 
 const { createGitRepository } = useGitFixtures();
 
 const twoSpaces = 'class A {\n  void a() {\n    run();\n  }\n}\n';
 const fourSpaces = 'class B {\n    void b() {\n        run();\n    }\n}\n';
 
-function writeFiles(root, files) {
+const resolveHeadPolicy: (config: NitpickerConfig, root: string) => unknown = untypedHeadPolicy;
+
+type Files = Readonly<Record<string, string>>;
+
+function writeFiles(root: string, files: Files) {
   for (const [relativePath, contents] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     writeFileSync(path.join(root, relativePath), contents);
   }
 }
 
-function commitBranch(root, files) {
+function commitBranch(root: string, files: Files) {
   fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
   writeFiles(root, files);
   fixtureGit(root, ['add', '-A']);
   fixtureGit(root, ['-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'feature']);
 }
 
+type Output = ReturnType<typeof output>;
+
 function output() {
-  const chunks = [];
-  return { write: (chunk) => chunks.push(chunk), text: () => chunks.join('') };
+  const chunks: string[] = [];
+  return { write: (chunk: string) => chunks.push(chunk), text: () => chunks.join('') };
 }
 
-function runOf(config, currentProjectRoot, stdout = output()) {
+function runOf(config: NitpickerConfig, currentProjectRoot: string, stdout: Output = output()) {
   return {
     config,
     currentProjectRoot,
@@ -42,7 +49,11 @@ function runOf(config, currentProjectRoot, stdout = output()) {
   };
 }
 
-function compare(repositoryRoot, config, { projectRoot = repositoryRoot, stdout } = {}) {
+function compare(
+  repositoryRoot: string,
+  config: NitpickerConfig,
+  { projectRoot = repositoryRoot, stdout }: { projectRoot?: string; stdout?: Output } = {},
+) {
   return comparisonPolicy(
     { ...runOf(config, projectRoot, stdout), repositoryRoot, base: { baseRef: 'main' } },
     resolveComparison,
@@ -61,7 +72,7 @@ describe('conventions in the head policy', () => {
 
     const policy = compare(root, { preset: 'java' }, { stdout });
 
-    expect(policy.conventions).toEqual({ 'java.indentation': '4' });
+    expect(policy['conventions']).toEqual({ 'java.indentation': '4' });
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
         '  Java indentation: 4 spaces (used by 2 of 2 measured files)\n',
@@ -76,8 +87,8 @@ describe('conventions in the head policy', () => {
     const atBase = compare(root, { preset: 'java' });
     const snapshot = snapshotPolicy(runOf({ preset: 'java' }, root));
 
-    expect(atBase.conventions).toEqual({ 'java.indentation': '4' });
-    expect(snapshot.conventions).toEqual({ 'java.indentation': '4' });
+    expect(atBase['conventions']).toEqual({ 'java.indentation': '4' });
+    expect(snapshot['conventions']).toEqual({ 'java.indentation': '4' });
   });
 
   it('keeps the default when the base has files that give no evidence', () => {
@@ -106,7 +117,7 @@ describe('conventions in the head policy', () => {
       { projectRoot: path.join(root, 'service') },
     );
 
-    expect(policy.conventions).toEqual({ 'java.indentation': '4' });
+    expect(policy['conventions']).toEqual({ 'java.indentation': '4' });
   });
 
   it('keeps a pin and carries only choices that differ from the preset default', () => {
@@ -114,7 +125,7 @@ describe('conventions in the head policy', () => {
     const stdout = output();
 
     expect(
-      compare(root, { preset: 'java', conventions: { 'java.indentation': '4' } }).conventions,
+      compare(root, { preset: 'java', conventions: { 'java.indentation': '4' } })['conventions'],
     ).toEqual({ 'java.indentation': '4' });
     expect(compare(root, { preset: 'java' }, { stdout })).not.toHaveProperty('conventions');
     expect(stdout.text()).toBe('');
@@ -125,7 +136,7 @@ describe('conventions in the head policy', () => {
     const { root } = createGitRepository({ 'src/A.java': fourSpaces });
     writeFiles(root, { 'src/B.java': twoSpaces, 'src/C.java': twoSpaces });
 
-    expect(publishHeadPolicy({ preset: 'java' }, root).conventions).toEqual({
+    expect(publishHeadPolicy({ preset: 'java' }, root)['conventions']).toEqual({
       'java.indentation': '4',
     });
   });
@@ -150,8 +161,8 @@ describe('reading the measured files', () => {
   });
 
   it('follows wildcard imports in main code and static wildcards in tests apart', () => {
-    const main = (name) => `package a;\n\nimport b.*;\n\nclass ${name} {}\n`;
-    const test = (name) =>
+    const main = (name: string) => `package a;\n\nimport b.*;\n\nclass ${name} {}\n`;
+    const test = (name: string) =>
       `package a;\n\nimport static org.assertj.core.api.Assertions.*;\nimport b.C;\n\nclass ${name} {}\n`;
     const { root } = createGitRepository({
       'src/main/java/A.java': main('A'),
@@ -162,7 +173,7 @@ describe('reading the measured files', () => {
 
     const policy = compare(root, { preset: 'java' }, { stdout });
 
-    expect(policy.conventions).toEqual({
+    expect(policy['conventions']).toEqual({
       'java.wildcardImports': 'wildcard',
       'java.testStaticImports': 'wildcard',
     });
@@ -185,7 +196,7 @@ describe('reading the measured files', () => {
         'java.assertionHelpers': ['checkHelper'],
       };
 
-      expect(snapshotPolicy(runOf({ preset: 'java', conventions }, root)).conventions).toEqual(
+      expect(snapshotPolicy(runOf({ preset: 'java', conventions }, root))['conventions']).toEqual(
         conventions,
       );
     } finally {
@@ -204,7 +215,7 @@ describe('conventions of the Python and Kotlin presets', () => {
 
     const policy = compare(root, { preset: 'python' }, { stdout });
 
-    expect(policy.conventions).toEqual({ 'python.quotes': 'single', 'python.indentation': '2' });
+    expect(policy['conventions']).toEqual({ 'python.quotes': 'single', 'python.indentation': '2' });
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
         '  Python quotes: single quotes (used by 2 of 2 measured files)\n' +
@@ -220,12 +231,14 @@ describe('conventions of the Python and Kotlin presets', () => {
       'src/B.kt': wildcardKotlin,
     });
 
-    expect(compare(root, { preset: 'kotlin' }).conventions).toEqual({
+    expect(compare(root, { preset: 'kotlin' })['conventions']).toEqual({
       'kotlin.indentation': '2',
       'kotlin.wildcardImports': 'wildcard',
     });
     expect(
-      compare(root, { preset: 'kotlin', conventions: { 'kotlin.indentation': '4' } }).conventions,
+      compare(root, { preset: 'kotlin', conventions: { 'kotlin.indentation': '4' } })[
+        'conventions'
+      ],
     ).toEqual({ 'kotlin.indentation': '4', 'kotlin.wildcardImports': 'wildcard' });
   });
 });
