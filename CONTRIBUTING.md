@@ -174,10 +174,11 @@ pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
 two minutes belongs in several files with their own fixtures, so the shards stay balanced;
 `scripts/test-shards/README.md` has the timings.
 
-Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
-JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
-tests run with a three-minute deadline; Java hooks have five minutes and Kotlin hooks three.
-The timeout lint rule remains active for these suites. These are bounded execution limits,
+Files named `*.e2e.*` or `*.integration.*`, and every file below a folder named `e2e`,
+`integration` or ending in `-e2e` (hook helpers included), get a higher default ceiling than
+unit tests: three minutes per test, five minutes per hook (Java and Kotlin alike). Helper folders
+without such a name are listed in a small `tools.tests.timeouts.projects` entry. The timeout lint
+rule remains active for these suites. These are bounded execution limits,
 separate from slow-test thresholds and measured shard duration; see [timeout tiers](docs/usage.md#test-timeout-tiers).
 
 After moving E2E files or changing their package-script filters, verify real Vitest discovery
