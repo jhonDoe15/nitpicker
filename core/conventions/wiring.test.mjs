@@ -7,7 +7,7 @@ import {
   fakeGradle,
   runTasksWithFakeGradle,
 } from '../command/java/test-support/java-cli-harness.mjs';
-import { cacheKey } from '../diff/cache/findings-cache.mjs';
+import { cacheKey } from '../diff/cache/findings-cache.mts';
 import { baseSetupResolver } from '../command/policy-review/base-setup.mts';
 import { runCli } from '../cli.mts';
 

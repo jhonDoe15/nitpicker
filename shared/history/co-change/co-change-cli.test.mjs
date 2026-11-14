@@ -7,7 +7,7 @@ import { captureOutput } from '../../../core/diff/reporting/test-support/output-
 import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { createHistoryAnalyzers } from '../analyzers.mjs';
 import { CO_CHANGE_ADVICE } from './findings.mjs';
-import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mts';
 import { resolveHeadPolicy } from '../../head-policy.mjs';
 import {
   edit,

@@ -1,5 +1,6 @@
 import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
+import type { RunTasks } from './diff/execution/progress.mts';
 
 export type TextOutput = {
   write(text: string): unknown;
@@ -25,8 +26,6 @@ export type CliOptions = {
   readonly baseRef?: string;
   readonly outputRoot?: string;
 };
-
-type RunTasks = (...task: never[]) => unknown;
 
 export type CliInput = {
   readonly arguments_?: readonly string[] | undefined;
