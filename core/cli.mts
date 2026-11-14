@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
-import { reportingProgress } from './diff/execution/progress.mts';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mts';
+import { withCliDefaults } from './cli-defaults.mts';
+import { selectAnalyzers } from './diff/execution/run-analyzers.mts';
 import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
@@ -127,39 +127,6 @@ function wantsJson(commandLine: readonly string[]): boolean {
   return !Object.hasOwn(SUBCOMMANDS, name) && commandLine.includes('--json');
 }
 
-const HELP_ALIAS = '-h';
-
-function helpFlag(argument: string): string {
-  return argument === HELP_ALIAS ? '--help' : argument;
-}
-
-function isTerminal(stream: object): boolean {
-  return 'isTTY' in stream && stream.isTTY === true;
-}
-
-function withCliDefaults(options: CliInput): Omit<Cli, 'indexFile'> {
-  const stderr = options.stderr ?? process.stderr;
-  const progress = options.progress ?? stderr;
-  return {
-    ...options,
-    analyzers: options.analyzers,
-    currentProjectRoot: options.currentProjectRoot,
-    workingDirectory: options.workingDirectory,
-    arguments_: (options.arguments_ ?? process.argv.slice(2)).map(helpFlag),
-    environment: options.environment ?? process.env,
-    spawnEnvironment: { ...process.env, ...options.environment },
-    interactive:
-      typeof options.interactive === 'boolean'
-        ? options.interactive
-        : [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
-    snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
-    stdout: options.stdout ?? process.stdout,
-    stderr,
-    progress,
-    runTasks: reportingProgress(options.runTasks ?? runScheduler, progress),
-  };
-}
-
 function runCommand(cli: Cli): ExitCode {
   const [name = '', ...rest] = cli.arguments_;
   if (name === 'changelog') {
@@ -197,9 +164,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     currentProjectRoot,
     runProject: runProjectOf(scoped),
   });
-  return (
-    monorepo.exitCode ?? runSingle({ ...scoped, ...monorepo.extraCli }, currentProjectRoot)
-  );
+  return monorepo.exitCode ?? runSingle({ ...scoped, ...monorepo.extraCli }, currentProjectRoot);
 }
 
 function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
