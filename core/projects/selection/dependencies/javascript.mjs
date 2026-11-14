@@ -50,3 +50,24 @@ export function javascriptUnit(directory) {
     }),
   };
 }
+
+function readProjectJson(directory) {
+  const file = path.join(directory, 'project.json');
+  return existsSync(file) ? parsedManifest(file).value : undefined;
+}
+
+export function nxUnit(directory) {
+  const project = readProjectJson(directory);
+  if (!isPlainObject(project)) {
+    return undefined;
+  }
+  const name = typeof project.name === 'string' ? project.name : path.basename(directory);
+  const implicit = Array.isArray(project.implicitDependencies) ? project.implicitDependencies : [];
+  return {
+    names: [`nx:${name}`],
+    needs: implicit
+      .filter((dependency) => typeof dependency === 'string' && !/[!*]/u.test(dependency))
+      .map((dependency) => `nx:${dependency}`),
+    folders: [],
+  };
+}

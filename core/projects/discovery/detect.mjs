@@ -5,7 +5,7 @@ import {
   scriptProjectPreset,
 } from '../../configuration/project-checks/preset-detection.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { javascriptWorkspaces } from './javascript-workspaces.mjs';
+import { angularWorkspace, javascriptWorkspaces, nxWorkspace } from './javascript-workspaces.mjs';
 import { JVM_MARKERS, jvmBuilds } from './jvm-builds.mjs';
 import { PYTHON_MARKERS, PYTHON_PROJECT_MARKERS, pythonWorkspace } from './python-projects.mjs';
 import {
@@ -80,11 +80,22 @@ export function undeclaredProjects({ root, files, projects, exclude = [] }) {
     .toSorted(byPath);
 }
 
+function workspacesOf(root, files) {
+  const nxProjects = directoriesWith(root, files, ['project.json']).filter(
+    (directory) => !isSkippedLocation(directory),
+  );
+  return [
+    javascriptWorkspaces(root, directoriesWith(root, files, ['package.json'])),
+    nxWorkspace(root, nxProjects),
+    angularWorkspace(root),
+    pythonWorkspace(root, directoriesWith(root, files, PYTHON_MARKERS)),
+  ];
+}
+
 export function detectProjects({ root, rootConfig = {}, files = listRepositoryFiles(root) }) {
-  const javascript = javascriptWorkspaces(root, directoriesWith(root, files, ['package.json']));
-  const python = pythonWorkspace(root, directoriesWith(root, files, PYTHON_MARKERS));
-  const declared = javascript.declared || python.declared;
-  const members = unique([...javascript.members, ...python.members]);
+  const workspaces = workspacesOf(root, files);
+  const declared = workspaces.some((workspace) => workspace.declared);
+  const members = unique(workspaces.flatMap((workspace) => workspace.members));
   const multiple = declared && members.some((entry) => entry.path !== '.');
   const entries = multiple
     ? unique([...rootJavascript(root, rootConfig), ...members]).toSorted(byPath)

@@ -68,3 +68,32 @@ export function javascriptWorkspaces(root, packageDirectories) {
     members: [...members].map(([directory, origin]) => ({ path: directory, origin })),
   };
 }
+
+const NX_ORIGIN = 'Nx project.json';
+const ANGULAR_ORIGIN = 'angular.json';
+
+function workspaceFolder(folder) {
+  return typeof folder === 'string' ? folder.replace(/^\.\//u, '').replace(/\/+$/u, '') : '';
+}
+
+export function nxWorkspace(root, projectDirectories) {
+  if (!existsSync(path.join(root, 'nx.json'))) {
+    return { declared: false, members: [] };
+  }
+  const members = projectDirectories.filter((directory) => directory !== '.');
+  return {
+    declared: members.length > 0,
+    members: members.map((directory) => ({ path: directory, origin: NX_ORIGIN })),
+  };
+}
+
+export function angularWorkspace(root) {
+  const projects = readText(path.join(root, 'angular.json'), JSON.parse).value?.projects;
+  const folders = Object.values(projects ?? {})
+    .map((project) => workspaceFolder(project?.root))
+    .filter((folder) => folder !== '' && existsSync(path.join(root, folder)));
+  return {
+    declared: folders.length > 0,
+    members: [...new Set(folders)].map((folder) => ({ path: folder, origin: ANGULAR_ORIGIN })),
+  };
+}

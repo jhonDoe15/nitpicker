@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { isInside } from '../../discovery/repository-files.mjs';
-import { javascriptUnit } from './javascript.mjs';
+import { javascriptUnit, nxUnit } from './javascript.mjs';
 import { jvmUnit } from './jvm.mjs';
 import { pythonUnit } from './python.mjs';
 
@@ -16,7 +16,7 @@ type Lookup = {
   readonly projectPaths: readonly string[];
 };
 
-const READERS: readonly UnitReader[] = [javascriptUnit, pythonUnit, jvmUnit];
+const READERS: readonly UnitReader[] = [javascriptUnit, nxUnit, pythonUnit, jvmUnit];
 
 function unitOf(directory: string): DependencyUnit {
   const units = READERS.map((read) => read(directory)).filter((unit) => unit !== undefined);

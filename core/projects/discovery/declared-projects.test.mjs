@@ -91,7 +91,7 @@ describe('the projects a config lists', () => {
     expect(() => resolve(root, [{ path: 'apps/*' }])).toThrow(
       new Error(
         'nitpicker.config.json: "projects" entry apps/* matches no folder with a package.json, ' +
-          'Python project file, build file or nitpicker.config.json that is not a module of ' +
+          'Nx project.json, Python project file, build file or nitpicker.config.json that is not a module of ' +
           'another Gradle or Maven build',
       ),
     );

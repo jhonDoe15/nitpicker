@@ -300,3 +300,74 @@ describe('a listed folder that declares a workspace', () => {
     expect(Object.keys(statuses(run(root)))).toEqual(['frontend', 'backend']);
   });
 });
+
+function nxRepository(extra = {}) {
+  const nxProject = (name, implicitDependencies = []) =>
+    JSON.stringify({ name, implicitDependencies });
+  return repository({
+    'package.json': JSON.stringify({ name: 'root', private: true }),
+    'nx.json': '{}',
+    ...projectFiles('apps/shop', {
+      'project.json': nxProject('shop', ['ui']),
+      'src/main.ts': 'export {};\n',
+    }),
+    ...projectFiles('apps/admin', {
+      'project.json': nxProject('admin', ['data']),
+      'src/main.ts': 'export {};\n',
+    }),
+    ...projectFiles('libs/ui', { 'project.json': nxProject('ui'), 'src/index.ts': 'export {};\n' }),
+    ...projectFiles('libs/data', {
+      'project.json': nxProject('data'),
+      'src/index.ts': 'export {};\n',
+    }),
+    ...extra,
+  });
+}
+
+describe('an Nx workspace', () => {
+  it('gates each project from the top and runs the dependents of a changed lib', () => {
+    const root = nxRepository();
+    writeFiles(root, { 'libs/ui/src/index.ts': 'export const ui = 1;\n' });
+
+    const result = run(root, ['--details']);
+
+    expect(result.plan.split('\n')).toEqual([
+      'Monorepo: 4 projects detected (Nx project.json). ' +
+        'List them in "projects" of nitpicker.config.json to choose them; ' +
+        '"projects": [] keeps this repository one project.',
+      '  skip apps/admin (typescript): no changed files',
+      '  run  apps/shop (typescript): depends on libs/ui',
+      '  skip libs/data (typescript): no changed files',
+      '  run  libs/ui (typescript): 1 changed file',
+    ]);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('matches project.json folders with a "projects" glob', () => {
+    const root = nxRepository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['apps/*', 'libs/*'] }),
+    });
+
+    expect(Object.keys(statuses(run(root)))).toEqual([
+      'apps/admin',
+      'apps/shop',
+      'libs/data',
+      'libs/ui',
+    ]);
+  });
+});
+
+describe('an Angular workspace', () => {
+  it('gates each project of angular.json from the top', () => {
+    const angular = { projects: { shop: { root: 'projects/shop' }, ui: { root: 'projects/ui' } } };
+    const root = repository({
+      'package.json': JSON.stringify({ name: 'root', private: true }),
+      'angular.json': JSON.stringify(angular),
+      ...projectFiles('projects/shop', { 'src/main.ts': 'export {};\n' }),
+      ...projectFiles('projects/ui', { 'src/index.ts': 'export {};\n' }),
+    });
+    writeFiles(root, { 'projects/ui/src/index.ts': 'export const ui = 1;\n' });
+
+    expect(statuses(run(root))).toEqual({ 'projects/shop': 'skipped', 'projects/ui': 'passed' });
+  });
+});
