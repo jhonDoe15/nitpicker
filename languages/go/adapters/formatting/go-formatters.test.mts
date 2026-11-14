@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { detectFormatters, formatterChoiceFiles, formatterOptions } from './go-formatters.mjs';
 
-const roots = [];
+const roots: string[] = [];
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-format-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {

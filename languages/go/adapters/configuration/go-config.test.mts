@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../core/configuration/validate.mjs';
 
-const go = (extra) => () => validateConfig({ preset: 'go', ...extra });
+const go = (extra: object) => (): unknown => validateConfig({ preset: 'go', ...extra });
 
 describe('the go preset config', () => {
   it('accepts its settings, shared thresholds, tool precedence and <tool>/<rule> exceptions', () => {
@@ -72,7 +72,7 @@ describe('the go preset config', () => {
   });
 
   it('rejects the go key with another preset', () => {
-    expect(() => validateConfig({ preset: 'python', go: {} })).toThrow(
+    expect((): unknown => validateConfig({ preset: 'python', go: {} })).toThrow(
       '"go" is only supported with "preset": "go"',
     );
   });
