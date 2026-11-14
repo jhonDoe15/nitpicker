@@ -1,5 +1,5 @@
 import { rule } from './handler-entity-type.mjs';
-import { typedProject, writeCustomPrismaClient } from '../contracts/test-support/typed-project.mjs';
+import { typedProject, writeCustomPrismaClient } from '../contracts/test-support/typed-project.mts';
 
 const { write, tester, folder } = typedProject('nitpicker-handler-entity-');
 const CUSTOM_PRISMA = writeCustomPrismaClient(write);
@@ -37,12 +37,23 @@ const PRISMA =
 const NEST = "import { Body, Controller, Get, Post } from '@nestjs/common';\n";
 const EXPRESS = "import type { Request, Response } from 'express';\n";
 
-function source(code, { file = 'handler.ts', errors } = {}) {
+type ExpectedError = { messageId: string; data: Record<string, string> };
+type SourceCase = { filename: string; code: string };
+
+function source(code: string, options?: { file?: string; errors?: undefined }): SourceCase;
+function source(
+  code: string,
+  options: { file?: string; errors: ExpectedError[] },
+): SourceCase & { errors: ExpectedError[] };
+function source(
+  code: string,
+  { file = 'handler.ts', errors }: { file?: string; errors?: ExpectedError[] | undefined } = {},
+): SourceCase | (SourceCase & { errors: ExpectedError[] }) {
   const filename = write(`src/main/features/${folder('h')}/${file}`, code);
   return { filename, code, ...(errors === undefined ? {} : { errors }) };
 }
 
-function entity(site, name, orm) {
+function entity(site: string, name: string, orm: string): ExpectedError {
   return { messageId: 'entity', data: { site, entity: name, orm } };
 }
 

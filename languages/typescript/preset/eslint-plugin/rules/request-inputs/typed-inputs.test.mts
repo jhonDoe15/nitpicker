@@ -3,9 +3,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-uncoerced-request-input.mjs';
-import { expectedError } from './test-support/expected-error.mjs';
+import { expectedError } from './test-support/expected-error.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-request-input-')));
 writeFileSync(
@@ -47,7 +47,16 @@ const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDi
 const NEST =
   "import { Controller, Get, Post, Query, Body, UseInterceptors } from '@nestjs/common';\nimport { FileInterceptor } from '@nestjs/platform-express';\n";
 
-function typed(code, errors = []) {
+type ExpectedError = [string, Record<string, string>?];
+
+type TypedCase = { filename: string; code: string };
+
+function typed(code: string): TypedCase;
+function typed(
+  code: string,
+  errors: ExpectedError[],
+): TypedCase & { errors: ReturnType<typeof expectedError>[] };
+function typed(code: string, errors: ExpectedError[] = []) {
   const file = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(file, code);
   return {
@@ -59,7 +68,7 @@ function typed(code, errors = []) {
   };
 }
 
-function controller(imports, body) {
+function controller(imports: string, body: string) {
   return `${NEST}${imports}\n@Controller('items')\nexport class ItemsController {\n${body}\n}`;
 }
 

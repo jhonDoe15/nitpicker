@@ -1,5 +1,5 @@
 import { rule } from './contract-infrastructure-type.mjs';
-import { typedProject, writeCustomPrismaClient } from './test-support/typed-project.mjs';
+import { typedProject, writeCustomPrismaClient } from './test-support/typed-project.mts';
 
 const { write, tester, folder } = typedProject('nitpicker-contract-types-');
 const CUSTOM_PRISMA = writeCustomPrismaClient(write);
@@ -8,7 +8,23 @@ const PRISMA = "import type { Prisma, PrismaClient } from '@prisma/client';\n";
 const KNEX = "import type { Knex } from 'knex';\n";
 const EXPRESS = "import type { NextFunction, Request, Response } from 'express';\n";
 
-function feature(index, { siblings = {}, leaks, indexName = 'index.ts' } = {}) {
+type Leak = [kind: string, member: string, type: string, packageName: string];
+type FeatureOptions = {
+  siblings?: Record<string, string>;
+  leaks?: Leak[];
+  indexName?: string;
+};
+type ValidFeature = { filename: string; code: string };
+type InvalidFeature = ValidFeature & {
+  errors: { messageId: string; data: Record<string, string> }[];
+};
+
+function feature(index: string, options?: FeatureOptions & { leaks?: undefined }): ValidFeature;
+function feature(index: string, options: FeatureOptions & { leaks: Leak[] }): InvalidFeature;
+function feature(
+  index: string,
+  { siblings = {}, leaks, indexName = 'index.ts' }: FeatureOptions = {},
+): ValidFeature | InvalidFeature {
   const name = folder('f');
   for (const [file, content] of Object.entries(siblings)) {
     write(`src/main/features/${name}/${file}`, content);

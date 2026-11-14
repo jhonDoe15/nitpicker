@@ -1,6 +1,6 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-uncoerced-request-input.mjs';
-import { expectedError } from './test-support/expected-error.mjs';
+import { expectedError } from './test-support/expected-error.mts';
 
 const tester = typescriptRuleTester();
 const NEST =
@@ -12,11 +12,13 @@ const ZOD =
   "import { z } from 'zod';\nimport { createZodDto, ZodValidationPipe } from 'nestjs-zod';\n";
 const FILES = "import { FileInterceptor } from '@nestjs/platform-express';\n";
 
-function controller(body) {
+function controller(body: string) {
   return `${NEST}@Controller('items')\nexport class ItemsController {\n${body}\n}`;
 }
 
-function invalid(code, errors) {
+type ExpectedError = [string, Record<string, string>?];
+
+function invalid(code: string, errors: ExpectedError[]) {
   return { code, errors: errors.map(([messageId, data]) => expectedError(messageId, data)) };
 }
 

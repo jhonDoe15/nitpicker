@@ -1,17 +1,17 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-undefined-only-env-check.mjs';
 
 const tester = typescriptRuleTester();
 
 function flagged(
-  code,
+  code: string,
   messageId = 'undefinedOnly',
   filename = 'src/features/api/adapters/config.ts',
 ) {
   return { code, filename, errors: [{ messageId }] };
 }
 
-function allowed(code, filename = 'src/features/api/adapters/config.ts') {
+function allowed(code: string, filename = 'src/features/api/adapters/config.ts') {
   return { code, filename };
 }
 

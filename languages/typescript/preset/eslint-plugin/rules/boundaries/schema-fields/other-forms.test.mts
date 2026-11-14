@@ -1,34 +1,20 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { applyJavascriptDialect } from '../../../../../../javascript/preset/eslint-dialect.mjs';
+import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
+import { applyJavascriptDialect as untypedDialect } from '../../../../../../javascript/preset/eslint-dialect.mjs';
 import { strictPresetConfig } from '../../../../eslint-config/strict.mjs';
 import { defaultResolvedLayout } from '../../../../layout.mjs';
 import { rule } from '../no-unvalidated-schema-field.mjs';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const typescript = new RuleTester({
+const typescript = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const javascript = new RuleTester({
+const javascript = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
 });
 
-const commonJs = new RuleTester({
+const commonJs = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'commonjs' },
 });
 
@@ -152,9 +138,16 @@ commonJs.run('no-unvalidated-schema-field with require', rule, {
   ],
 });
 
+type ConfigEntry = { rules?: Record<string, unknown>; files?: readonly unknown[] };
+
+const applyJavascriptDialect: (
+  config: ConfigEntry[],
+  options: { preset: string },
+) => ConfigEntry[] = untypedDialect;
+
 describe('the presets that run no-unvalidated-schema-field', () => {
   const ruleId = 'nitpicker/no-unvalidated-schema-field';
-  const productionFiles = (entries) =>
+  const productionFiles = (entries: ConfigEntry[]) =>
     entries.filter((entry) => entry.rules?.[ruleId] === 'error').flatMap((entry) => entry.files);
 
   it('runs on TypeScript production code in the default TypeScript preset', () => {

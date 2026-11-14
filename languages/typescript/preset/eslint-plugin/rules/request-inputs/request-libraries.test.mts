@@ -1,13 +1,15 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-uncoerced-request-input.mjs';
-import { expectedError } from './test-support/expected-error.mjs';
+import { expectedError } from './test-support/expected-error.mts';
 
 const tester = typescriptRuleTester();
 const ZOD = "import { z } from 'zod';\n";
 const VALIBOT = "import * as v from 'valibot';\n";
 const HONO = "import { zValidator } from '@hono/zod-validator';\n";
 
-function invalid(code, errors, filename) {
+type ExpectedError = [string, Record<string, string>?];
+
+function invalid(code: string, errors: ExpectedError[], filename?: string) {
   return {
     code,
     ...(filename === undefined ? {} : { filename }),

@@ -1,28 +1,19 @@
-import { RuleTester } from 'eslint';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../../../shared/hygiene/rules.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-dev-dependency-in-production.mjs';
 import { packageNameOf } from './package-manifest.mjs';
 import { isTestSupportFile } from './test-support.mjs';
-
-RuleTester.afterAll = afterAll;
-RuleTester.afterEach = afterEach;
-RuleTester.beforeAll = beforeAll;
-RuleTester.beforeEach = beforeEach;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dev-dependency-'));
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function project(name, manifest, extraFiles = {}) {
+function project(name: string, manifest?: string, extraFiles: Record<string, string> = {}) {
   const directory = path.join(root, name);
   mkdirSync(path.join(directory, 'src/main'), { recursive: true });
   if (manifest !== undefined) {
@@ -35,8 +26,8 @@ function project(name, manifest, extraFiles = {}) {
   return path.join(directory, 'src/main/feature.ts');
 }
 
-const inProject = (filename, file) => path.join(path.dirname(filename), file);
-const projectPath = (file) => path.relative(process.cwd(), file).split(path.sep).join('/');
+const inProject = (filename: string, file: string) => path.join(path.dirname(filename), file);
+const projectPath = (file: string) => path.relative(process.cwd(), file).split(path.sep).join('/');
 
 const app = project(
   'app',
@@ -90,21 +81,19 @@ const nested = project('nested', JSON.stringify({ devDependencies: { zod: '^4.0.
 });
 const nestedFile = inProject(nested, 'esm/feature.ts');
 
-const message = (name, filename = app) => ({
+const message = (name: string, filename = app) => ({
   messageId: 'devDependency',
   data: {
     name,
     hint: exceptionHint('nitpicker/no-dev-dependency-in-production', projectPath(filename)),
   },
 });
-const unreadable = (filename) => ({
+const unreadable = (filename: string) => ({
   messageId: 'unreadableManifest',
   data: { manifest: projectPath(path.join(filename, '../../../package.json')) },
 });
 
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const ruleTester = typescriptRuleTester();
 
 ruleTester.run('no-dev-dependency-in-production', rule, {
   valid: [
