@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectProjects } from './select-projects.mjs';
+import { selectProjects } from './select-projects.mts';
 import { isToolchainFileFor } from './toolchain-files.mjs';
 
 function project(path, preset = 'typescript', sharedFiles = [], prefix = '.') {

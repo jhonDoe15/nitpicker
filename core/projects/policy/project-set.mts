@@ -7,8 +7,42 @@ import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
 import { DECLARATION_FILES } from '../plan/enclosing.mjs';
 import { byText } from '../../../shared/text-order/by-text.mjs';
+import type { MonorepoPlan, RepositoryPolicy } from '../project-types.mts';
+import type { ReportEntry } from '../../../shared/values/findings.mts';
 
-function inside(root, file) {
+export type Loosening = {
+  readonly text: string;
+  readonly key: string;
+  readonly files: readonly string[];
+};
+export type ProjectLoosening = Loosening & { readonly evidence: readonly (readonly string[])[] };
+type SetQuery = {
+  readonly basePlan: MonorepoPlan | undefined;
+  readonly headPlan: MonorepoPlan | undefined;
+  readonly root: string;
+  readonly headFiles: readonly string[];
+  readonly reappeared?: ReadonlySet<string>;
+};
+type PolicyQuery = {
+  readonly loosenings: readonly Loosening[];
+  readonly root: string;
+  readonly acceptedDigest: string | undefined;
+  readonly toolErrors?: readonly ReportEntry[];
+};
+
+const digestOf: (input: {
+  readonly loosenings: readonly string[];
+  readonly files: readonly (readonly string[])[];
+}) => string = policyDigest;
+const findingsOf: (
+  loosenings: readonly string[],
+  digest: string,
+  options: { readonly acceptedDigest: string | undefined; readonly headSha: string | undefined },
+) => readonly ReportEntry[] = policyFindings;
+const blobIdOf: (content: Buffer) => string = gitBlobId;
+const capturedTree: (root: string, headSha: string) => string = captureWorkingTree;
+
+function inside(root: string, file: string): string {
   const full = path.resolve(root, file);
   if (!full.startsWith(root + path.sep)) {
     throw new Error(`${file} is outside ${root}`);
@@ -16,11 +50,12 @@ function inside(root, file) {
   return full;
 }
 
-function declarationFiles(root) {
-  return DECLARATION_FILES.filter((file) => existsSync(inside(root, file)));
+function declarationFiles(root: string): string[] {
+  const files: readonly string[] = DECLARATION_FILES;
+  return files.filter((file) => existsSync(inside(root, file)));
 }
 
-function splitLoosening(basePlan, files) {
+function splitLoosening(basePlan: MonorepoPlan, files: readonly string[]): Loosening[] {
   const listed = basePlan.projects.filter(({ path: folder }) => folder !== '.');
   if (listed.length === 0) {
     return [];
@@ -43,7 +78,7 @@ export function projectSetLoosenings({
   root,
   headFiles,
   reappeared = new Set(),
-}) {
+}: SetQuery): Loosening[] {
   if (basePlan === undefined) {
     return [];
   }
@@ -67,7 +102,7 @@ export function projectSetLoosenings({
     }));
 }
 
-export function projectsToolError(error) {
+export function projectsToolError(error: unknown): ReportEntry {
   const message = error instanceof Error ? error.message : String(error);
   return {
     tool: 'nitpicker-projects',
@@ -76,34 +111,37 @@ export function projectsToolError(error) {
   };
 }
 
-export function asProjectLoosenings(loosenings, root) {
+export function asProjectLoosenings(
+  loosenings: readonly Loosening[],
+  root: string,
+): ProjectLoosening[] {
   return loosenings.map(({ text, key, files }) => ({
     text,
     key,
     files: [],
     evidence: files.map((file) => [
       `repository:${file}`,
-      gitBlobId(readFileSync(inside(root, file))),
+      blobIdOf(readFileSync(inside(root, file))),
     ]),
   }));
 }
 
-function gatedHead(root, acceptedDigest) {
+function gatedHead(root: string, acceptedDigest: string | undefined): string | undefined {
   if (acceptedDigest === undefined) {
     return undefined;
   }
-  return captureWorkingTree(root, runGit(root, ['rev-parse', 'HEAD^{commit}']).trim());
+  return capturedTree(root, runGit(root, ['rev-parse', 'HEAD^{commit}']).trim());
 }
 
-function checkedPolicy({ loosenings, root, acceptedDigest }) {
+function checkedPolicy({ loosenings, root, acceptedDigest }: PolicyQuery): RepositoryPolicy {
   const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted(byText);
-  const digest = policyDigest({
+  const digest = digestOf({
     loosenings: loosenings.map(({ key }) => key),
-    files: files.map((file) => [file, gitBlobId(readFileSync(inside(root, file)))]),
+    files: files.map((file) => [file, blobIdOf(readFileSync(inside(root, file)))]),
   });
   const texts = loosenings.map(({ text }) => text);
   const headSha = gatedHead(root, acceptedDigest);
-  const findings = policyFindings(texts, digest, { acceptedDigest, headSha });
+  const findings = findingsOf(texts, digest, { acceptedDigest, headSha });
   return {
     policyLoosenings: texts,
     policyDigest: digest,
@@ -112,11 +150,16 @@ function checkedPolicy({ loosenings, root, acceptedDigest }) {
   };
 }
 
-export function repositoryPolicy({ loosenings, root, acceptedDigest, toolErrors = [] }) {
+export function repositoryPolicy({
+  loosenings,
+  root,
+  acceptedDigest,
+  toolErrors = [],
+}: PolicyQuery): RepositoryPolicy | undefined {
   if (loosenings.length === 0 && toolErrors.length === 0) {
     return undefined;
   }
-  const checked =
+  const checked: RepositoryPolicy =
     loosenings.length === 0
       ? { policyLoosenings: [], accepted: true, findings: [] }
       : checkedPolicy({ loosenings, root, acceptedDigest });

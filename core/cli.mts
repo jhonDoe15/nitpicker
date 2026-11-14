@@ -40,7 +40,7 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
-import { runMonorepo } from './projects/run/monorepo.mjs';
+import { runMonorepo } from './projects/run/monorepo.mts';
 import { runScoped } from './projects/run/refusal.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';

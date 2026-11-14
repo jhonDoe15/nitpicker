@@ -8,9 +8,26 @@ import { resolveComparison } from '../../diff/git/repository/git.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { PROJECT_FILES } from '../discovery/declared-projects.mjs';
 import { isInside, isSkippedLocation } from '../discovery/repository-files.mjs';
+import { projectsToolError } from '../policy/project-set.mts';
 import { byText } from '../../../shared/text-order/by-text.mjs';
+import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { ReportEntry } from '../../../shared/values/findings.mts';
+import type { Analyzer } from '../../../shared/values/analyzers.mts';
+import type { MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
 
-export function comparisonBase({ repositoryRoot, configuredBase, cli }) {
+const enabled: (analyzers: readonly Analyzer[], config: NitpickerConfig) => readonly Analyzer[] =
+  applyDisable;
+
+type BaseQuery = {
+  readonly repositoryRoot: string;
+  readonly configuredBase: string | undefined;
+  readonly cli: MonorepoCli;
+};
+
+export function comparisonBase({ repositoryRoot, configuredBase, cli }: BaseQuery): {
+  readonly base: ReturnType<typeof resolveBase>;
+  readonly mergeBaseSha: string;
+} {
   const base = resolveBase({
     repositoryRoot,
     explicitBase: cli.options.baseRef,
@@ -21,16 +38,24 @@ export function comparisonBase({ repositoryRoot, configuredBase, cli }) {
   return { base, mergeBaseSha: resolveComparison(repositoryRoot, base.baseRef).mergeBaseSha };
 }
 
-function analyzerNamesOf(project, injected) {
-  const config = readLayeredConfig(project.absolute, { overlay: project.overlay });
+function analyzerNamesOf(
+  project: PlanProject,
+  injected: readonly Analyzer[] | undefined,
+): string[] {
+  const config: NitpickerConfig = readLayeredConfig(project.absolute, {
+    overlay: project.overlay,
+  });
   return [
-    ...applyDisable(presetAnalyzers(config, injected), config).map(({ name }) => name),
+    ...enabled(presetAnalyzers(config, injected), config).map(({ name }) => name),
     ...(config.analyzers ?? []).map(({ name }) => name),
   ];
 }
 
-export function analyzersByProject(plan, cli) {
-  const requested = cli.options.analyzerNames ?? [];
+export function analyzersByProject(
+  plan: MonorepoPlan,
+  cli: MonorepoCli,
+): Map<string, readonly string[]> {
+  const requested = cli.options.analyzerNames;
   if (requested.length === 0) {
     return new Map();
   }
@@ -54,7 +79,7 @@ export function analyzersByProject(plan, cli) {
   );
 }
 
-export function rootConfigFiles(plan) {
+export function rootConfigFiles(plan: MonorepoPlan): string[] {
   const own = path.posix.join(plan.prefix, CONFIG_FILE_NAME);
   const shared = sharedConfigFiles(plan.root, { repositoryRoot: plan.repositoryRoot }).map(
     ({ file }) => path.relative(plan.repositoryRoot, file).split(path.sep).join('/'),
@@ -62,7 +87,7 @@ export function rootConfigFiles(plan) {
   return [own, ...shared];
 }
 
-export function unlistedFolders(plan, changed) {
+export function unlistedFolders(plan: MonorepoPlan, changed: readonly string[]): string[] {
   if (plan.source !== 'declared') {
     return [];
   }
@@ -73,4 +98,8 @@ export function unlistedFolders(plan, changed) {
     .filter((folder) => !isSkippedLocation(folder))
     .filter((folder) => !plan.projects.some(({ repoPath }) => isInside(folder, repoPath)));
   return [...new Set(folders)].toSorted(byText);
+}
+
+export function toolErrorsOf(error: unknown): readonly ReportEntry[] {
+  return error === undefined ? [] : [projectsToolError(error)];
 }

@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { dependencyGraph, dependentsOf, deepestProject } from './graph.mjs';
+import { dependencyGraph, dependentsOf, deepestProject } from './graph.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const git = useGitFixtures();
