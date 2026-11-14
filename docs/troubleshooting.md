@@ -504,6 +504,21 @@ shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node
 `Cannot read properties of null (reading 'edgesOut')` while installing Vitest 4.1, see
 [npm 10 and Vitest 4.1](usage.md#npm-10-and-vitest-41).
 
+### No source files under the source roots
+
+**Symptom.** The run exits 2 with the `source-roots` tool error `No TypeScript or JavaScript files under
+<roots>; nothing was analyzed. Set "layout.sourceRoots" (...)`. It appears on every run, full or comparison.
+`nitpicker init` prints the same sentence instead of "No TypeScript or JavaScript sources under src yet".
+
+**Cause.** The TypeScript or JavaScript preset found no source file under `layout.sourceRoots` (default
+`src`) and no test file under `layout.testRoots`, so the code analyzers had nothing to check. A
+workspace root whose code sits in `packages/*/src` is the usual case. The message lists up to three
+folders that hold TypeScript or JavaScript files (package `src` folders, or top-level folders),
+skipping dependency folders, build output, hidden folders and ignored files.
+
+**Fix.** Set `layout.sourceRoots` in `nitpicker.config.json` to the folders that hold the code, for
+example `{ "preset": "typescript", "layout": { "sourceRoots": ["packages", "excalidraw-app"] } }`.
+
 ### Dependencies are not installed
 
 **Symptom.** `Dependencies are not installed: <dir>/node_modules is missing. Run `npm install` in
@@ -581,6 +596,18 @@ the project.
 
 Switching engines reports the differences between them as new once; see
 [Lint engine](usage.md#lint-engine).
+
+### A project package does not support this ESLint
+
+**Symptom.** `@typescript-eslint/utils 8.46.2 cannot run with ESLint 10 (it supports eslint ^8.57.0 || ^9.0.0). Update it, or the package that depends on it, to a version that supports ESLint 10.`
+It replaces the raw `TypeError` that the package throws while the project's ESLint config loads.
+
+**Cause.** nitpicker loads your ESLint config with its own ESLint, so the config's plugins run on that
+version. A package in the config chain declares a peer range for `eslint` that does not include it, and
+fails to load. Switching to `"engine": "eslint"` loads the same chain and fails the same way.
+
+**Fix.** Update the named package, or the package that depends on it, to a version that supports the
+ESLint major in the message, then reinstall.
 
 ### The TypeScript config cannot be read
 

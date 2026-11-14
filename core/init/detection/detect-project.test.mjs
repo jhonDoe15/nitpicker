@@ -121,11 +121,23 @@ describe('TypeScript and JavaScript detection', () => {
     ]);
   });
 
+  it('proposes the roots instead of saying "yet" when the sources sit outside src', () => {
+    const files = { 'package.json': '{}', 'packages/a/src/index.ts': TYPED_SOURCE };
+
+    expect(detected(files).notes).toEqual([
+      'No TypeScript or JavaScript files under src; nothing was analyzed. Set "layout.sourceRoots" ' +
+        '(this repository has TypeScript files under packages/a/src).',
+    ]);
+  });
+
   it('falls back to src when the existing config is not valid JSON', () => {
     const files = { 'package.json': '{}', 'nitpicker.config.json': '{', 'lib/index.js': SOURCE };
 
     expect(detected(files)).toEqual(
-      node('typescript', 'TypeScript, npm, Vitest', [NO_SOURCES_NOTE]),
+      node('typescript', 'TypeScript, npm, Vitest', [
+        'No TypeScript or JavaScript files under src; nothing was analyzed. Set "layout.sourceRoots" ' +
+          '(this repository has JavaScript files under lib).',
+      ]),
     );
   });
 

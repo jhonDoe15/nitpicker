@@ -54,7 +54,9 @@ repository. It asks nothing, so a coding agent can run it, and it prints what it
 left for you:
 
 1. **Detects the project.** The preset comes from the sources under the source roots (`src`, or
-   `layout.sourceRoots` of an existing `nitpicker.config.json`) and the project files. A folder
+   `layout.sourceRoots` of an existing `nitpicker.config.json`) and the project files. When a
+   Node project has no sources there but has TypeScript or JavaScript files elsewhere, it says so and names
+   the folders to put in `layout.sourceRoots`; every later run reports the same as a tool error (exit 2). A folder
    with TypeScript or JavaScript sources is a script project when it has a `package.json` or no
    other project file: TypeScript (also React, which the TypeScript preset covers) when it has a
    `tsconfig.json` or any `.ts`, `.tsx`, `.mts`, `.cts` or `.jsx` file (or a `.jsx` or `.tsx` file
