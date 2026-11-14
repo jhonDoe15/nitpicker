@@ -2302,6 +2302,8 @@
                             "effects/GraphqlFieldPerParent",
                             "effects/ReactiveLookupPerElement",
                             "effects/RowsChangedInMemory",
+                            "effects/EntityLoadedForOneColumn",
+                            "effects/EntityLoadedForExistence",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

@@ -53,6 +53,9 @@ export const JAVA_EFFECTS = [
   'RowsChangedInMemory 14 TicketUpdates.expire update TicketRepository.findByStatus() Ticket',
   'RowsChangedInMemory 21 TicketUpdates.close update TicketRepository.findByStatus() Ticket',
   'RowsChangedInMemory 27 TicketUpdates.purge delete TicketRepository.findByStatus() Ticket',
+  'EntityLoadedForOneColumn 13 MemberViews.emails MemberRepository.findByTeam() Member.getEmail',
+  'EntityLoadedForExistence 17 MemberViews.taken count MemberRepository.countByEmail()',
+  'EntityLoadedForExistence 21 MemberViews.known loaded MemberRepository.findByEmail()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -108,6 +111,9 @@ export const KOTLIN_EFFECTS = [
   'RowsChangedInMemory 7 TicketUpdates.expire update TicketRepository.findByStatus() Ticket',
   'RowsChangedInMemory 14 TicketUpdates.close update TicketRepository.findByStatus() Ticket',
   'RowsChangedInMemory 18 TicketUpdates.purge delete TicketRepository.findByStatus() Ticket',
+  'EntityLoadedForOneColumn 4 MemberViews.emails MemberRepository.findByTeam() Member.getEmail',
+  'EntityLoadedForExistence 6 MemberViews.taken count MemberRepository.countByEmail()',
+  'EntityLoadedForExistence 8 MemberViews.known loaded MemberRepository.findByEmail()',
 ];
 
 function summaryOf(violation) {
@@ -123,12 +129,19 @@ function summaryOf(violation) {
     relation,
     scope,
     framework,
+    property,
   } = violation;
   if (framework !== undefined) {
     return [rule, line, method, framework, calls.join('>')].join(' ');
   }
   if (scope !== undefined) {
     return [rule, line, method, scope, calls.join('>')].join(' ');
+  }
+  if (property !== undefined) {
+    return [rule, line, method, origin, `${entity}.${property}`].join(' ');
+  }
+  if (entity === undefined && form !== undefined && origin !== undefined) {
+    return [rule, line, method, form, origin].join(' ');
   }
   if (entity !== undefined && relation === undefined) {
     return [rule, line, method, form, origin, entity].join(' ');

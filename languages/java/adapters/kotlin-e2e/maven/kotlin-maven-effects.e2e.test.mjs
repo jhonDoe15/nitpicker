@@ -21,6 +21,7 @@ const KOTLIN_FILES = [
   'graphql/OrderFields.kt',
   'reactive/OrderStreams.kt',
   'rows/TicketUpdates.kt',
+  'projections/MemberViews.kt',
   'billing/LazyLoads.kt',
   'held/HeldScopes.kt',
   'events/Retries.kt',

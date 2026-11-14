@@ -188,9 +188,32 @@ function rowsChanged({ method, form, origin, entity }) {
     ].join(' ');
   }
   return [
-    'Change the rows with one statement (`@Modifying @Query("update ' + entity + ' e set e.status = :to where ...")`)',
+    'Change the rows with one statement (`@Modifying @Query("update ' +
+      entity +
+      ' e set e.status = :to where ...")`)',
     `instead of loading them: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to set the`,
     `same value on each and write them back. ${LIFECYCLE}`,
+  ].join(' ');
+}
+
+function oneColumn({ method, entity, property, origin }) {
+  const column = property.replace(/^(get|is)/u, '');
+  const name = column.charAt(0).toLowerCase() + column.slice(1);
+  return [
+    `Select only the column with a projection (\`@Query("select e.${name} from ${entity} e where ...")\`, an interface or`,
+    `record projection): ${code(`${method}()`)} loads whole ${code(entity)} entities with ${code(origin)}`,
+    `only to read ${code(`${property}()`)} from each, with their eager relations.`,
+  ].join(' ');
+}
+
+function existence({ method, form, origin }) {
+  const how =
+    form === 'count'
+      ? `counts the matching rows with ${code(origin)} only to compare the count with zero`
+      : `loads the whole row with ${code(origin)} only to test whether it is there`;
+  return [
+    'Ask the database with `existsBy...` (or an `exists` query) instead, which stops at the first row:',
+    `${code(`${method}()`)} ${how}.`,
   ].join(' ');
 }
 
@@ -205,6 +228,8 @@ export const EFFECTS_MESSAGES = {
   GraphqlFieldPerParent: graphqlField,
   ReactiveLookupPerElement: reactiveLookup,
   RowsChangedInMemory: rowsChanged,
+  EntityLoadedForOneColumn: oneColumn,
+  EntityLoadedForExistence: existence,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);
