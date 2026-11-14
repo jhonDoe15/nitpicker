@@ -1,9 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { readKotlinClassLimitFindings } from './kotlin-class-limits.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { readKotlinClassLimitFindings as untypedReadKotlinClassLimitFindings } from './kotlin-class-limits.mjs';
+import type { KotlinFinding } from './test-support/kotlin-metrics-views.mts';
+
+type TypeEntry = {
+  file: string;
+  name: string;
+  start: number;
+  kind: string;
+  methods: number;
+  fields: number;
+  extends?: string;
+};
+type ClassMetrics = {
+  functions: never[];
+  files: { file: string; package?: string; classes: never[]; imports?: string[] }[];
+  types?: TypeEntry[];
+};
+
+const exceptionHint: (rule: string, file: string) => string = untypedExceptionHint;
+const readKotlinClassLimitFindings: (
+  metrics: ClassMetrics,
+  options?: {
+    thresholds?: Record<string, number>;
+    exceptions?: { rule: string; paths: string[] }[];
+    modulePath?: string;
+  },
+) => KotlinFinding[] = untypedReadKotlinClassLimitFindings;
 
 const file = 'src/main/kotlin/demo/Shapes.kt';
-const type = (name, values = {}) => ({
+const type = (name: string, values: Partial<TypeEntry> = {}): TypeEntry => ({
   file,
   name,
   start: 3,
@@ -12,7 +38,7 @@ const type = (name, values = {}) => ({
   fields: 1,
   ...values,
 });
-const metrics = (types, imports = []) => ({
+const metrics = (types: TypeEntry[], imports: string[] = []): ClassMetrics => ({
   functions: [],
   files: [
     { file, package: 'demo', classes: [], imports },
@@ -23,7 +49,7 @@ const metrics = (types, imports = []) => ({
 
 describe('readKotlinClassLimitFindings', () => {
   it('reports a class over the method limit with the allowed form, a ratchet and the exception route', () => {
-    const [finding] = readKotlinClassLimitFindings(metrics([type('Orders', { methods: 21 })]));
+    const finding = readKotlinClassLimitFindings(metrics([type('Orders', { methods: 21 })]))[0];
 
     expect(finding).toEqual({
       tool: 'structure',
