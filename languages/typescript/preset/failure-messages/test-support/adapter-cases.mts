@@ -1,9 +1,10 @@
+import type { FailureMessageCase } from './case-types.mts';
 import { strictAdaptersConfig } from '../../eslint-config/strict-adapters.mjs';
 import { strictSyntaxConfig } from '../../eslint-config/strict.mjs';
 
 const filename = 'src/main/features/billing/adapters/http.ts';
 
-function adapterCase(name, banned, allowed) {
+function adapterCase(name: string, banned: string, allowed: string): FailureMessageCase {
   return { name: `adapters: ${name}`, config: strictAdaptersConfig, filename, banned, allowed };
 }
 
@@ -25,7 +26,7 @@ export const adapterFailureMessageCases = [
   ),
 ];
 
-export const adapterSyntaxFailureMessageCases = [
+export const adapterSyntaxFailureMessageCases: FailureMessageCase[] = [
   {
     name: 'adapter for(;;) names for...of',
     config: strictAdaptersConfig,

@@ -1,3 +1,4 @@
+import type { FailureMessageCase } from '../case-types.mts';
 import {
   productionLayoutConfigFor,
   productionPolicyConfigFor,
@@ -11,8 +12,8 @@ const config = [
   ...strictSyntaxConfigFor(defaultResolvedLayout),
 ];
 
-function casesIn(filename) {
-  return function policyCase(name, banned, allowed) {
+function casesIn(filename: string) {
+  return function policyCase(name: string, banned: string, allowed: string): FailureMessageCase {
     return { name: `policy: ${name}`, config, filename, banned, allowed };
   };
 }
@@ -22,7 +23,7 @@ const domainCase = casesIn('src/main/features/billing/domain/invoice.ts');
 const indexCase = casesIn('src/main/features/billing/index.ts');
 const utilsCase = casesIn('src/main/utils/strings.ts');
 
-export const policyFailureMessageCases = [
+export const policyFailureMessageCases: FailureMessageCase[] = [
   adapterCase(
     'magic number names a computed module constant',
     'export function old(seconds: number) { return seconds > 86400; }',

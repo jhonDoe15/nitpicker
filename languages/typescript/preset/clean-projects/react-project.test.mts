@@ -1,15 +1,24 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { createCleanProject, readReport, runNitpicker } from './test-support/clean-project.mjs';
+import {
+  type FindingView,
+  createCleanProject,
+  createGitTemplate,
+  readReport,
+  runNitpicker,
+  viewFindings,
+} from './test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/react-project');
 const FIXTURE_TIMEOUT_MS = 300_000;
 const testRulePattern = /^(?:testing-library\/|nitpicker\/react-test-)/;
 
-function rulesByFile(findings, directory = 'src/') {
-  const rules = {};
+function rulesByFile(
+  findings: readonly FindingView[],
+  directory = 'src/',
+): Record<string, string[]> {
+  const rules: Record<string, string[]> = {};
   for (const { rule, path: file } of findings) {
     if (file.startsWith(directory)) {
       const name = path.basename(file, '.tsx');
@@ -19,22 +28,27 @@ function rulesByFile(findings, directory = 'src/') {
   return rules;
 }
 
-function testRulesByFile(findings, directory = 'test/') {
+function testRulesByFile(findings: readonly FindingView[], directory = 'test/') {
   return rulesByFile(
     findings.filter(({ rule }) => testRulePattern.test(rule)),
     directory,
   );
 }
 
-function messageOf(findings, rule) {
+function messageOf(findings: readonly FindingView[], rule: string): string | undefined {
   return findings.find((finding) => finding.rule === rule)?.message;
 }
 
 describe('the react-project fixture', () => {
-  const temporaryRoots = [];
-  const runs = {};
+  const temporaryRoots: string[] = [];
+  let defaults: ReturnType<typeof lintFindings>;
+  let withoutReact: ReturnType<typeof lintFindings>;
+  let cssInJs: ReturnType<typeof lintFindings>;
 
-  function commitProject(gitTemplateRoot, { manifest, config }) {
+  function commitProject(
+    gitTemplateRoot: string,
+    { manifest, config }: { manifest?: object; config?: object },
+  ): string {
     const files = {
       ...(manifest === undefined ? {} : { 'package.json': JSON.stringify(manifest) }),
       ...(config === undefined ? {} : { 'nitpicker.config.json': JSON.stringify(config) }),
@@ -44,7 +58,7 @@ describe('the react-project fixture', () => {
     return root;
   }
 
-  function lintFindings(root) {
+  function lintFindings(root: string) {
     const exitCode = runNitpicker(root, [
       '--all',
       '--analyzer',
@@ -52,13 +66,13 @@ describe('the react-project fixture', () => {
       '--output',
       path.join(root, 'reports/snapshot'),
     ]).exitCode;
-    return { exitCode, findings: readReport(root, 'reports/snapshot/findings.json') };
+    return { exitCode, findings: viewFindings(readReport(root, 'reports/snapshot/findings.json')) };
   }
 
   beforeAll(() => {
     const gitTemplateRoot = createGitTemplate();
-    runs.defaults = lintFindings(commitProject(gitTemplateRoot, {}));
-    runs.withoutReact = lintFindings(
+    defaults = lintFindings(commitProject(gitTemplateRoot, {}));
+    withoutReact = lintFindings(
       commitProject(gitTemplateRoot, {
         manifest: { private: true },
         config: {
@@ -68,7 +82,7 @@ describe('the react-project fixture', () => {
         },
       }),
     );
-    runs.cssInJs = lintFindings(
+    cssInJs = lintFindings(
       commitProject(gitTemplateRoot, { config: { react: { styling: 'css-in-js' } } }),
     );
   }, FIXTURE_TIMEOUT_MS);
@@ -80,7 +94,7 @@ describe('the react-project fixture', () => {
   });
 
   it('flags each banned form with its rule, passes the allowed file and leaves tests without React alone', () => {
-    const { exitCode, findings } = runs.defaults;
+    const { exitCode, findings } = defaults;
 
     expect(testRulesByFile(findings)).toEqual({
       'container-query.test': ['testing-library/no-node-access'],
@@ -128,7 +142,7 @@ describe('the react-project fixture', () => {
   });
 
   it('applies no React rule to a project that does not depend on react, whatever the exceptions say', () => {
-    const { findings } = runs.withoutReact;
+    const { findings } = withoutReact;
 
     const folder = 'nitpicker/no-unknown-main-folder';
     const naming = 'nitpicker/naming-convention';
@@ -153,7 +167,7 @@ describe('the react-project fixture', () => {
   });
 
   it('names the configured styling approach', () => {
-    const { findings } = runs.cssInJs;
+    const { findings } = cssInJs;
 
     expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toBe(
       [

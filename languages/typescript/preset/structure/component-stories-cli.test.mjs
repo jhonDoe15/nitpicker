@@ -7,7 +7,7 @@ import {
   createCleanProject,
   readReport,
   runNitpicker,
-} from '../clean-projects/test-support/clean-project.mjs';
+} from '../clean-projects/test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, 'fixtures/storybook-project');
 

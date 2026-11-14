@@ -1,3 +1,4 @@
+import type { FailureMessageCase } from './case-types.mts';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { strictProductionRules } from '../../eslint-config/strict.mjs';
@@ -24,11 +25,16 @@ const partialAssertionConfig = [
 const testFile = 'test/integration/repository.test.ts';
 const childProcess = "import { execFileSync, spawnSync } from 'node:child_process';\n";
 
-function testCase({ name, banned, allowed, filename = testFile }) {
+function testCase({
+  name,
+  banned,
+  allowed,
+  filename = testFile,
+}: Omit<FailureMessageCase, 'config'>): FailureMessageCase {
   return { name, config: strictTestsConfig, filename, banned, allowed };
 }
 
-export const testFailureMessageCases = [
+export const testFailureMessageCases: FailureMessageCase[] = [
   testCase({
     name: 'git init per test names a beforeAll template copied with cpSync',
     banned: `${childProcess}it('x', () => { execFileSync('git', ['init', '-q'], { env: { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }); });`,
@@ -112,15 +118,20 @@ export const testFailureMessageCases = [
     banned: "import { z } from 'zod';\nexport const schema = z.object({ email: z.any() });",
     allowed: 'z.email()',
   },
-  ...[
-    ['props', 'export type PanelProps = { tag?: string; tags?: string[] };'],
-    ['parameters', 'export function send(recipient?: string, recipients?: string[]) {}'],
-    ['options', 'export function send(options: { recipient?: string; recipients?: string[] }) {}'],
+  ...(
     [
-      'schema entries',
-      "import { z } from 'zod';\nexport const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",
-    ],
-  ].map(([kind, banned]) => ({
+      ['props', 'export type PanelProps = { tag?: string; tags?: string[] };'],
+      ['parameters', 'export function send(recipient?: string, recipients?: string[]) {}'],
+      [
+        'options',
+        'export function send(options: { recipient?: string; recipients?: string[] }) {}',
+      ],
+      [
+        'schema entries',
+        "import { z } from 'zod';\nexport const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",
+      ],
+    ] as const
+  ).map(([kind, banned]) => ({
     name: `singular and plural ${kind} name the one-element array`,
     config: productionRulesConfig,
     filename: 'src/service.ts',

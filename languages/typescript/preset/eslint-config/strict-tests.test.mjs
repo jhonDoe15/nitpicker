@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';

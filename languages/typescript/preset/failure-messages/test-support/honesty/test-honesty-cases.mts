@@ -1,3 +1,5 @@
+import type { CaseRow, FailureMessageCase } from '../case-types.mts';
+import { listOf } from '../../../../../../shared/values/readers.mts';
 import tseslint from 'typescript-eslint';
 import { resolveLayout } from '../../../layout.mjs';
 import { strictTestConfigFor } from '../../../eslint-config/strict-tests.mjs';
@@ -7,10 +9,17 @@ const layout = resolveLayout();
 const config = [
   { languageOptions: { parser: tseslint.parser } },
   ...strictTestConfigFor(layout),
-  ...testHonestyConfigFor(layout, { setupFiles: ['test/setup.ts'] }),
+  ...listOf(
+    Reflect.apply(testHonestyConfigFor, undefined, [layout, { setupFiles: ['test/setup.ts'] }]),
+  ),
 ];
 
-function honestyCase([name, banned, allowed, filename = 'test/orders.test.ts']) {
+function honestyCase([
+  name,
+  banned,
+  allowed,
+  filename = 'test/orders.test.ts',
+]: CaseRow): FailureMessageCase {
   return { name: `test honesty: ${name}`, config, filename, banned, allowed };
 }
 
@@ -173,6 +182,6 @@ const HONESTY_ROWS = [
     "/* eslint-disable */\nit('x', () => {});",
     '"rule":"nitpicker/no-comments"',
   ],
-];
+] as const;
 
-export const testHonestyFailureMessageCases = HONESTY_ROWS.map(honestyCase);
+export const testHonestyFailureMessageCases: FailureMessageCase[] = HONESTY_ROWS.map(honestyCase);

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mjs';
 import { UNUSED_PARAMETER_ADVICE } from './unused-parameters.mjs';

@@ -1,10 +1,18 @@
+import type { FailureMessageCase } from './case-types.mts';
 import tseslint from 'typescript-eslint';
 import { reactSyntaxConfigFor } from '../../eslint-config/react/react-scope.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
-import { browserCases } from './react/browser-cases.mjs';
-import { componentTestCases } from './react/component-test-cases.mjs';
-import { correctnessCases } from './react/correctness-cases.mjs';
-import { exceptionHintCases } from './react/exception-hint-cases.mjs';
+import { browserCases } from './react/browser-cases.mts';
+import { componentTestCases } from './react/component-test-cases.mts';
+import { correctnessCases } from './react/correctness-cases.mts';
+import { exceptionHintCases } from './react/exception-hint-cases.mts';
+
+type ReactRow = readonly [
+  name: string,
+  banned: string,
+  allowed: string,
+  styling?: keyof typeof reactConfigs,
+];
 
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
@@ -20,7 +28,7 @@ const reactConfigs = {
   ],
 };
 
-function reactCase([name, banned, allowed, styling = 'class-names']) {
+function reactCase([name, banned, allowed, styling = 'class-names']: ReactRow): FailureMessageCase {
   return { name: `react: ${name}`, config: reactConfigs[styling], filename, banned, allowed };
 }
 
@@ -31,7 +39,7 @@ const testingLibraryImport = [
   '',
 ].join('\n');
 
-function reactTestCase([name, banned, allowed]) {
+function reactTestCase([name, banned, allowed]: ReactRow): FailureMessageCase {
   return {
     name: `react test: ${name}`,
     config: reactConfigs['class-names'],
@@ -41,14 +49,14 @@ function reactTestCase([name, banned, allowed]) {
   };
 }
 
-function panel(body) {
+function panel(body: string): string {
   return `export function Panel({ a }) { ${body} return <div />; }`;
 }
 
 const exclusivePair =
   'export function Panel({ a, b }) { if (a && b) { throw new Error("both"); } return <div />; }';
 
-const reactSyntaxCases = [
+const reactSyntaxRows = [
   [
     'class component names function components',
     "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
@@ -144,11 +152,13 @@ const reactSyntaxCases = [
     'export const Box = ({ open }) => <div onClick={open} />;',
     'keyboard listener',
   ],
-].map(reactCase);
+] as const;
+
+const reactSyntaxCases = reactSyntaxRows.map(reactCase);
 
 const reactTestCases = componentTestCases.map(reactTestCase);
 
-export const reactFailureMessageCases = [
+export const reactFailureMessageCases: FailureMessageCase[] = [
   ...reactSyntaxCases,
   ...reactTestCases,
   ...correctnessCases.map(reactCase),

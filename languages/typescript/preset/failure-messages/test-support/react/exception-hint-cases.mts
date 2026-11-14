@@ -6,7 +6,7 @@ export const exceptionHintCases = [
   ['promise chain', "export const load = () => import('./x.js').then((m) => m.x);"],
   ['null', 'export const value = null;'],
   ['null type', 'export type Maybe = string | null;'],
-].map(([name, banned]) => ({
+].map(([name = '', banned = '']) => ({
   name: `${name} says when an exception fits`,
   config: strictSyntaxConfig,
   filename: 'src/main/ui/fixture.tsx',

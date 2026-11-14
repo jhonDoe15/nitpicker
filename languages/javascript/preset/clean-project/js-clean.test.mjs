@@ -9,7 +9,7 @@ import {
   git,
   readReport,
   runNitpicker,
-} from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
+} from '../../../typescript/preset/clean-projects/test-support/clean-project.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,

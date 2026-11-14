@@ -1,19 +1,20 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import {
   createCleanProject,
+  createGitTemplate,
   git,
   readReport,
   runNitpicker,
-} from './test-support/clean-project.mjs';
+  viewFindings,
+} from './test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/test-console-project');
 
 describe('the test-console-project fixture', () => {
-  const temporaryRoots = [];
-  let gitTemplateRoot;
+  const temporaryRoots: string[] = [];
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -49,13 +50,13 @@ describe('the test-console-project fixture', () => {
       '--output',
       path.join(root, 'reports/diff'),
     ]);
-    const newFindings = readReport(root, 'reports/diff/new-findings.json');
+    const newFindings = viewFindings(readReport(root, 'reports/diff/new-findings.json'));
 
     expect(readReport(root, 'reports/diff/tool-errors.json')).toEqual([]);
     expect(newFindings.map(({ tool, rule, path: file }) => [tool, rule, file])).toEqual([
       ['test-console', 'test-console-output', 'test/plain.test.ts'],
     ]);
-    expect(newFindings[0].message).toBe(
+    expect(newFindings[0]?.message).toBe(
       [
         'Tests print new console output: "Warning: state update on an unmounted component" (test "unmounts without leaving work behind").',
         'Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.',

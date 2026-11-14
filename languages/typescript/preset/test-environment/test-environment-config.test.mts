@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule } from '../eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
-import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import type { Environments } from './environment-types.mts';
 import { resolveLayout } from '../layout.mjs';

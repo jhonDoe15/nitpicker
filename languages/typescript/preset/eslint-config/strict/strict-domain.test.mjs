@@ -6,7 +6,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mjs';
 
 function messagesFor(filename, code) {

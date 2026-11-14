@@ -128,8 +128,8 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/javascript/preset/clean-project/js-clean.test.mjs",
-        "languages/typescript/preset/clean-projects/react-project.test.mjs",
-        "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
+        "languages/typescript/preset/clean-projects/react-project.test.mts",
+        "languages/typescript/preset/clean-projects/strict-clean.test.mts"
       ],
       "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },

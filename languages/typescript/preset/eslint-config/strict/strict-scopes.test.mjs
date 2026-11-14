@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../../failure-messages/test-support/harness.mjs';
+import { failureMessagesFor } from '../../failure-messages/test-support/harness.mts';
 import { strictSyntaxConfig } from '../strict.mjs';
 
 const asserted = 'export const value = input as string;';

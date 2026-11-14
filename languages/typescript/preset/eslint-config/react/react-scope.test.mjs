@@ -3,7 +3,7 @@ import accessibility from 'eslint-plugin-jsx-a11y-x';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { resolveLayout } from '../../layout.mjs';
 import { storyGlobs } from '../scope-support.mjs';
 import { installReact, manifestWith, temporaryProjects } from './test-support/react-projects.mjs';
