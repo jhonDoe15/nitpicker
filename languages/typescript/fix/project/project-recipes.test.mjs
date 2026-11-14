@@ -47,6 +47,10 @@ const MODULES = {
     './extract/whole/near-duplicate-extract.mjs',
     'nearDuplicateExtractRecipe',
   ],
+  'typescript-extract-partial-run': [
+    './extract/partial/partial-run-extract.mjs',
+    'partialRunExtractRecipe',
+  ],
   'typescript-no-forwarding-wrapper': [
     './wrappers/forwarding-wrapper.mjs',
     'noForwardingWrapperRecipe',

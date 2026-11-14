@@ -88,6 +88,13 @@ export const PROJECT_RECIPES = [
     safety: 'safe',
   }),
   lazyRecipe({
+    id: 'typescript-extract-partial-run',
+    rule: structureRule('near-duplicate'),
+    module: './extract/partial/partial-run-extract.mjs',
+    exportName: 'partialRunExtractRecipe',
+    safety: 'review',
+  }),
+  lazyRecipe({
     id: 'typescript-no-forwarding-wrapper',
     rule: eslintRule('no-forwarding-wrapper'),
     module: './wrappers/forwarding-wrapper.mjs',

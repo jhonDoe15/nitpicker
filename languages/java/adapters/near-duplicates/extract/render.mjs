@@ -3,7 +3,7 @@ import { codeParts, field, parametersOf } from './syntax.mjs';
 
 const STEP = '    ';
 
-function replacedBody(body, holes) {
+export function replacedText(body, holes) {
   const base = body.startIndex;
   const replacements = holes.flatMap((hole) =>
     hole.occurrences.map(({ a }) => ({
@@ -20,7 +20,7 @@ function replacedBody(body, holes) {
     );
 }
 
-function throwsText(method) {
+export function throwsText(method) {
   const clause = codeParts(method).find((child) => child.type === 'throws');
   return clause === undefined ? '' : ` ${clause.text.replaceAll(/\s+/gu, ' ')}`;
 }
@@ -32,7 +32,7 @@ export function helperText({ method, holes, name, isStatic }) {
   ];
   const type = field(method, 'type').text;
   const head = `private ${isStatic ? 'static ' : ''}${type} ${name}(${parameters.join(', ')})`;
-  return `${head}${throwsText(method)} ${replacedBody(field(method, 'body'), holes)}`;
+  return `${head}${throwsText(method)} ${replacedText(field(method, 'body'), holes)}`;
 }
 
 function argumentsOf(method, side, holes) {

@@ -1,4 +1,7 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 import { bindPair } from '../../../../../shared/fix/recipes/extract/bijection.mjs';
+import { freshName } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { hasModifier } from './class-shape.mjs';
 import {
   codeParts,
   descendants,
@@ -10,7 +13,6 @@ import {
   squashed,
 } from './syntax.mjs';
 
-const NARROW = new Set(['byte', 'short', 'char', 'Byte', 'Short', 'Character']);
 const NARROWING_PARENTS = new Set([
   'assignment_expression',
   'return_statement',
@@ -25,7 +27,9 @@ function isTypeNode(node) {
 }
 
 function declaredTypeOf(parameter) {
-  return squashed(field(parameter, 'type'));
+  const dimensions = field(parameter, 'dimensions');
+  const type = squashed(field(parameter, 'type'));
+  return dimensions === undefined ? type : `${type}${squashed(dimensions)}`;
 }
 
 function methodParameter(node, unit) {
@@ -63,11 +67,24 @@ function inConstantContext(node, unit) {
   return ancestorsWithin(node, unit).some(({ type }) => CONSTANT_CONTEXTS.has(type));
 }
 
-function narrowsConstant(node) {
-  if (javaTypeOf(node) !== 'int') {
-    return false;
-  }
-  const parent = node.parent;
+const BYTE_LIKE = new Set(['byte', 'short', 'Byte', 'Short']);
+const NARROW = new Set([...BYTE_LIKE, 'char', 'Character']);
+const PRIMITIVES = ['byte', 'short', 'char', 'int', 'long', 'float', 'double', 'boolean'];
+const FOLDING_PARENTS = new Set([
+  'binary_expression',
+  'unary_expression',
+  'parenthesized_expression',
+  'ternary_expression',
+]);
+const CONSTANT_TYPES = new Set([...PRIMITIVES, 'String']);
+
+function expressionRoot(node) {
+  return chainOf(node, ({ parent }) => (FOLDING_PARENTS.has(parent.type) ? parent : undefined)).at(
+    -1,
+  );
+}
+
+function narrowsAt(parent) {
   if (parent.type === 'variable_declarator') {
     const declaration = parent.parent;
     return NARROW.has(squashed(field(declaration, 'type') ?? declaration.child(0)));
@@ -75,9 +92,36 @@ function narrowsConstant(node) {
   return NARROWING_PARENTS.has(parent.type);
 }
 
+function declaredNarrow(parent, types) {
+  if (parent.type !== 'variable_declarator') {
+    return false;
+  }
+  const declaration = parent.parent;
+  return types.has(squashed(field(declaration, 'type') ?? declaration.child(0)));
+}
+
+function narrowsConstant(node) {
+  const root = expressionRoot(node);
+  if (javaTypeOf(node) === 'char') {
+    return root === node ? declaredNarrow(node.parent, BYTE_LIKE) : narrowsAt(root.parent);
+  }
+  return javaTypeOf(node) === 'int' && (narrowsAt(node.parent) || narrowsAt(root.parent));
+}
+
+function inFinalLocal(node, unit) {
+  return ancestorsWithin(node, unit).some(
+    (ancestor) =>
+      ancestor.type === 'local_variable_declaration' &&
+      hasModifier(ancestor, 'final') &&
+      CONSTANT_TYPES.has(squashed(field(ancestor, 'type'))),
+  );
+}
+
 function directValue(node, side, context) {
   if (isLiteral(node)) {
-    const fixed = narrowsConstant(node) || inConstantContext(node, context.units[side]);
+    const unit = context.units[side];
+    const fixed =
+      narrowsConstant(node) || inConstantContext(node, unit) || inFinalLocal(node, unit);
     return fixed ? undefined : { kind: 'literal', type: javaTypeOf(node) };
   }
   if (node.type !== 'identifier' || roleOf(node) !== 'reference') {
@@ -176,5 +220,27 @@ export function alignUnits(units, pairs, context) {
       return { declined: problem };
     }
   }
-  return { holes: [...state.holes.values()] };
+  return { holes: [...state.holes.values()], bindings: [...state.forward] };
+}
+
+function flowName(node) {
+  const declarator = node.parent;
+  if (declarator.type === 'variable_declarator') {
+    return field(declarator, 'name').text;
+  }
+  return node.type === 'identifier' ? node.text : undefined;
+}
+
+export function nameHoles(holes, taken) {
+  const names = new Set(taken);
+  const named = [];
+  for (const hole of holes) {
+    const name = freshName(flowName(hole.occurrences[0].a), names);
+    if (name === undefined) {
+      return undefined;
+    }
+    names.add(name);
+    named.push({ ...hole, name });
+  }
+  return named;
 }

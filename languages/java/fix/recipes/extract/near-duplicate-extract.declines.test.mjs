@@ -40,10 +40,18 @@ const writing = (copy, limit) =>
 const narrowing = (copy, value) => before(copy, 'List<String> selected', `byte step = ${value};`);
 const arrayed = (copy, value) =>
   before(copy, 'List<String> selected', `byte[] steps = {${value}};`);
+const constant = (copy, value) =>
+  before(copy, 'List<String> selected', `final int step = ${value};`);
+const summed = (copy, value) => before(copy, 'List<String> selected', `byte step = ${value} + 1;`);
+const charred = (copy, value) => before(copy, 'List<String> selected', `char step = ${value} + 1;`);
+const inheriting = (copy) => before(copy, 'List<String> selected', 'int cap = LIMIT;');
+const overloading = (copy) => before(copy, 'List<String> selected', 'int cap = pick(1);');
 const other = `${classOf(TOP)}\nclass Other {\n${BOTTOM}}\n`;
 const THREE = classOf(TOP, BOTTOM, method('left', { prefix: 'left:' }));
 const PLAIN = 'the copies differ in code that is not a plain value';
 const VARARGS = 'a method has varargs or a receiver parameter, or the parameter counts differ';
+const AMBIGUOUS =
+  'the code may use instance state of the class, which the shared function cannot tell';
 const several = 'a copy belongs to more than one pair of near-duplicates';
 
 const CASES = [
@@ -72,6 +80,29 @@ const CASES = [
   ],
   ['varargs', classOf(varargs(TOP), varargs(BOTTOM)), note(7, VARARGS)],
   ['a narrowing literal', pairOf(narrowing, ['1', '2']), note(7, PLAIN)],
+  [
+    'a comment only the second copy has',
+    classOf(TOP, BOTTOM.replace('String label', '// keep the order\n        String label')),
+    note(7, 'the second copy has comments the shared function would drop'),
+  ],
+  ['a final local', pairOf(constant, ['1', '2']), note(7, PLAIN)],
+  ['a sum that narrows', pairOf(summed, ['1', '2']), note(7, PLAIN)],
+  ['a char sum that narrows', pairOf(charred, ["'a'", "'b'"]), note(7, PLAIN)],
+  [
+    'a field the class may inherit',
+    `${classOf(inheriting(TOP), inheriting(BOTTOM)).replace('class Align {', 'class Align extends Base {')}\nclass Base {\n    protected int LIMIT = 3;\n}\n`,
+    note(7, AMBIGUOUS),
+  ],
+  [
+    'a call with a static and an instance overload',
+    classOf(
+      '    static int pick(int value) {\n        return value;\n    }\n',
+      '    int pick(String value) {\n        return value.length();\n    }\n',
+      overloading(TOP),
+      overloading(BOTTOM),
+    ),
+    note(15, AMBIGUOUS),
+  ],
   ['a narrowing array element', pairOf(arrayed, ['1', '2']), note(7, PLAIN)],
   ['a case label', pairOf(switching, ['1', '2']), note(7, PLAIN)],
   ['a loop condition', pairOf(looping, ['true', 'false']), note(7, PLAIN)],

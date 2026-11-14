@@ -62,6 +62,15 @@ describe('nearDuplicateExtractRecipe', () => {
     expect(remaining(result)).toEqual([]);
   });
 
+  it('keeps the line endings of a file that uses CRLF', () => {
+    const result = fix({ 'src/align.ts': pair().replaceAll('\n', '\r\n') });
+    const text = result.tree['src/align.ts'];
+    expect([text.includes('sharedAlignTop('), text.replaceAll('\r\n', '').includes('\n')]).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   it('writes no types for a JavaScript file', () => {
     const javascript = `${copy('alignTop', { typed: false })}\n${copy('alignBottom', { typed: false, prefix: 'bottom:' })}`;
     expect(fix({ 'src/align.js': javascript }).tree['src/align.js']).toMatchInlineSnapshot(`

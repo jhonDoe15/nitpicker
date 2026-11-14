@@ -12,9 +12,9 @@ function plan(text, path = PATH) {
 const PAIR = [method('top'), method('bottom', { prefix: 'bottom:' })];
 
 describe('javaExtractNearDuplicateRecipe', () => {
-  it('is a safe recipe for the near-duplicate rule of the Java preset', () => {
+  it('is a review recipe for the near-duplicate rule of the Java preset', () => {
     expect([recipe.safety, recipe.scope, recipe.presets, recipe.rules]).toEqual([
-      'safe',
+      'review',
       'file',
       ['java'],
       [{ tool: 'structure', rule: 'near-duplicate' }],
@@ -54,6 +54,11 @@ describe('javaExtractNearDuplicateRecipe', () => {
       }
       "
     `);
+  });
+
+  it('keeps the line endings of a file that uses CRLF', () => {
+    const { fixes, after } = plan(classOf(...PAIR).replaceAll('\n', '\r\n'));
+    expect([fixes.length, after.replaceAll('\r\n', '').includes('\n')]).toEqual([1, false]);
   });
 
   it('extracts an instance method when the copies read instance state', () => {

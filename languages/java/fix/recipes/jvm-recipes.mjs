@@ -29,6 +29,7 @@ import {
 } from './restating-doc-comment.mjs';
 import { upperEllRecipe } from './upper-ell.mjs';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mjs';
+import { javaExtractPartialRunRecipe } from './extract/partial/partial-run-extract.mjs';
 
 export const JVM_RECIPES = defineRecipes([
   upperEllRecipe,
@@ -61,4 +62,5 @@ export const JVM_RECIPES = defineRecipes([
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
   javaExtractNearDuplicateRecipe,
+  javaExtractPartialRunRecipe,
 ]);

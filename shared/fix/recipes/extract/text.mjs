@@ -9,7 +9,7 @@ function indentWidth(line) {
   return LEADING_SPACE.exec(line)[0].length;
 }
 
-export function dedented(text, width) {
+function dedented(text, width) {
   const [first, ...rest] = text.split('\n');
   return [first, ...rest.map((line) => line.slice(Math.min(width, indentWidth(line))))].join('\n');
 }
@@ -22,4 +22,8 @@ export function dedentedToLeast(text) {
 
 export function indentedBy(text, prefix) {
   return text.replaceAll(/^(?=.)/gmu, prefix);
+}
+
+export function withLineEndingOf(source, text) {
+  return source.includes('\r\n') ? text.replaceAll(/\r?\n/gu, '\r\n') : text;
 }

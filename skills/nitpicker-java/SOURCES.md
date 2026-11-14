@@ -78,6 +78,21 @@ bodies become one call. Signatures, `throws` clauses and annotations stay.
   anonymous classes and the SqlDate and SqlTime adapters are in two files, so the recipe changes
   nothing there.
 
+`java-extract-partial-run` is the same for the `partial-run` verdict, for two methods of one class.
+The new method is private, static when the run reads no instance state, and placed after the first
+method. It takes the locals and parameters the run reads, and copies the `throws` clause that the
+two methods share.
+
+- The value the code after the run uses is returned, with the type of its declaration. A run that
+  ends with `return` becomes `return call()`. A `var` declaration, an array declarator or an
+  annotation on that declaration is left alone, because the new method must name the type.
+- The rest of the cases are as for TypeScript, and a run inside a `try` that has a `catch` is left
+  alone too, because the new method would have to declare the checked exceptions of the run.
+- Different `throws` clauses, a method with type parameters, a different static modifier, a
+  different type in an input and different thrown classes decline.
+- Without a compile step the recipe does not check the result. It declines whenever a type, a
+  definite assignment or a checked exception could change.
+
 ## Review list (applied only when the run selects the rule)
 
 281 checks. Their fix is correct for the finding but one of these holds, so a person asks for it:

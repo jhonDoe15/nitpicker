@@ -1,36 +1,10 @@
-import { freshName, helperNameFor } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { withLineEndingOf } from '../../../../../shared/fix/recipes/extract/text.mjs';
+import { helperNameFor } from '../../../../../shared/fix/recipes/extract/names.mjs';
 import { boundNames } from '../tree/names.mjs';
-import {
-  canDeclareStatics,
-  hasModifier,
-  methodProblem,
-  usesInstanceState,
-} from './class-shape.mjs';
-import { alignUnits, writtenNames } from './lockstep.mjs';
+import { HELPER_AMBIGUOUS, helperStyleOf, methodProblem } from './class-shape.mjs';
+import { alignUnits, nameHoles, writtenNames } from './lockstep.mjs';
 import { bodyEdit, helperText, insertion } from './render.mjs';
-import { field, nameCollisions } from './syntax.mjs';
-
-function flowName(node) {
-  const declarator = node.parent;
-  if (declarator.type === 'variable_declarator') {
-    return field(declarator, 'name').text;
-  }
-  return node.type === 'identifier' ? node.text : undefined;
-}
-
-function nameHoles(holes, taken) {
-  const names = new Set(taken);
-  const named = [];
-  for (const hole of holes) {
-    const name = freshName(flowName(hole.occurrences[0].a), names);
-    if (name === undefined) {
-      return undefined;
-    }
-    names.add(name);
-    named.push({ ...hole, name });
-  }
-  return named;
-}
+import { field, lostComments, nameCollisions } from './syntax.mjs';
 
 function alignment(methods) {
   const [a, b] = methods;
@@ -41,34 +15,48 @@ function alignment(methods) {
   });
 }
 
-function planFor({ root, label }, aligned) {
-  const taken = nameCollisions(root);
+function planFor({ root, label, claimed }, aligned) {
+  const taken = new Set([...nameCollisions(root), ...claimed]);
   const name = helperNameFor(label, taken);
   const holes =
     name === undefined ? undefined : nameHoles(aligned.holes, new Set([...taken, name]));
   return holes === undefined ? undefined : { name, holes };
 }
 
-function isStaticHelper(method, holes) {
-  const holeNodes = holes.flatMap(({ occurrences }) => occurrences.map(({ a }) => a));
-  return (
-    hasModifier(method, 'static') ||
-    (canDeclareStatics(method) && !usesInstanceState(method, holeNodes))
-  );
+function holeNodesOf(holes) {
+  return holes.flatMap(({ occurrences }) => occurrences.map(({ a }) => a));
 }
 
-function editsFor({ methods, text }, { name, holes }) {
-  const isStatic = isStaticHelper(methods[0], holes);
+function editsFor({ methods, text }, { name, holes }, isStatic) {
   const helper = helperText({ method: methods[0], holes, name, isStatic });
   return [
     ...methods.map((method, side) => bodyEdit({ method, side, name, holes, text })),
     insertion({ method: methods[0], helper, text }),
-  ];
+  ].map((edit) => ({ ...edit, text: withLineEndingOf(text, edit.text) }));
+}
+
+function methodsProblem(methods) {
+  const bodies = methods.map((method) => field(method, 'body'));
+  if (
+    lostComments(bodies.map((body) => ({ root: body, from: body.startIndex, to: body.endIndex })))
+  ) {
+    return 'the second copy has comments the shared function would drop';
+  }
+  return methodProblem(methods);
+}
+
+function editsOrDecline(request, plan) {
+  const style = helperStyleOf(request.methods[0], holeNodesOf(plan.holes));
+  if (style === undefined) {
+    return { declined: HELPER_AMBIGUOUS };
+  }
+  request.claimed.add(plan.name);
+  return { edits: editsFor(request, plan, style === 'static') };
 }
 
 export function wholeExtraction(request) {
   const { methods, engineHoles } = request;
-  const problem = methodProblem(methods);
+  const problem = methodsProblem(methods);
   if (problem !== undefined) {
     return { declined: problem };
   }
@@ -83,5 +71,5 @@ export function wholeExtraction(request) {
   if (plan === undefined) {
     return { declined: 'the name of the shared function would collide' };
   }
-  return { edits: editsFor(request, plan) };
+  return editsOrDecline(request, plan);
 }

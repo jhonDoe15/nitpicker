@@ -115,3 +115,5 @@ Declined:
 No recipe extracts the shared function of a `near-duplicate` pair in Python. The extraction needs the
 parameter and return types of the new function, and the Python recipes see only text. The finding
 keeps its fix plan.
+
+The same holds for a `partial-run` pair: no recipe extracts the shared statements in Python, and the finding keeps its fix plan.

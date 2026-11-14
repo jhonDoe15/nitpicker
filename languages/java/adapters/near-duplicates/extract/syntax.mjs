@@ -40,6 +40,19 @@ export function descendants(root) {
   return found;
 }
 
+export function lostComments(sides) {
+  const [kept, dropped] = sides.map(({ root, from, to }) =>
+    descendants(root)
+      .filter(
+        ({ type, startIndex, endIndex }) =>
+          COMMENTS.has(type) && startIndex >= from && endIndex <= to,
+      )
+      .map((node) => squashed(node)),
+  );
+  const known = new Set(kept);
+  return dropped.some((text) => !known.has(text));
+}
+
 export function squashed(node) {
   return node.text.replaceAll(/\s+/gu, ' ');
 }

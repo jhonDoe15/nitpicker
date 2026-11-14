@@ -151,6 +151,23 @@ become one call, so each signature stays.
 - The compiler checks the edit before it is written, with the same in-memory comparison as the
   other project recipes.
 
+`typescript-extract-partial-run` is a safe recipe for the `partial-run` verdict of the same rule. It
+takes the line span of the shared run from the finding, and works on a run of whole statements in
+one block of each function, with the two functions in one file.
+
+- The inputs of the new function are the locals and parameters that the run reads and declared
+  before it, typed from their declarations. The differing values are passed as the whole-copy recipe
+  passes them. The value the code after the run uses is returned, and a run that ends with `return`
+  becomes `return call()`.
+- A run is left alone when it returns on only some paths, defines two or more values that the code
+  after it uses, writes a variable declared before it,
+  reads a variable that changes after it from a closure, jumps out of itself, awaits or yields,
+  declares a function, class, type or `var`, destructures the value used after it, or reads `this`,
+  `arguments` or an enclosing scope. The two copies must produce the same kind of value, and throw
+  the same exception classes.
+- The compiler checks the edit before it is written. A narrowed type at the call site that the new
+  function does not see makes the check fail, and the finding stays.
+
 ## Not fixed, on purpose
 
 - `eslint/nitpicker/no-unsafe-deserialization`: the Python preset rewrites `yaml.unsafe_load` and
