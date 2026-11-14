@@ -23,7 +23,7 @@ describe('the Go tool errors', () => {
   });
 
   it('link the entry for a go command that exits with an error', () => {
-    const failing = (program, arguments_) =>
+    const failing = (_program, arguments_) =>
       arguments_[0] === 'version'
         ? { status: 0, stdout: 'go version go1.26.0 linux/amd64\n', stderr: '' }
         : { status: 1, stdout: '', stderr: 'go: errors parsing go.mod' };
