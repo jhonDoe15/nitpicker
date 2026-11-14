@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { PYTHON_CONVENTIONS } from './python-conventions.mjs';
+import { PYTHON_CONVENTIONS } from './typed/convention-views.mts';
 
-const measures = Object.fromEntries(PYTHON_CONVENTIONS.map(({ id, measure }) => [id, measure]));
-const assignments = (quote) =>
+const measures = new Map(PYTHON_CONVENTIONS.map(({ id, measure }) => [id, measure]));
+
+function measured(id: string, text: string): string | undefined {
+  const measure = measures.get(id);
+  if (measure === undefined) {
+    throw new Error(`no convention ${id}`);
+  }
+  return measure(text);
+}
+const assignments = (quote: string) =>
   ['a', 'b', 'c', 'd'].map((name) => `${name} = ${quote}${name}${quote}`).join('\n');
 
 describe('python.quotes', () => {
@@ -26,7 +34,7 @@ describe('python.quotes', () => {
       'double',
     ],
   ])('reads %s', (_name, text, expected) => {
-    expect(measures['python.quotes'](text)).toBe(expected);
+    expect(measured('python.quotes', text)).toBe(expected);
   });
 });
 
@@ -57,13 +65,13 @@ describe('python.indentation', () => {
     ['a tie', 'def f():\n  return 1\ndef g():\n    return 1\n', undefined],
     ['dict keys that end a line', 'x = {\n  "key":\n    1,\n}\n', undefined],
   ])('reads %s', (_name, text, expected) => {
-    expect(measures['python.indentation'](text)).toBe(expected);
+    expect(measured('python.indentation', text)).toBe(expected);
   });
 });
 
 describe('python.lineLength', () => {
-  const call = (width, name) => `${name}(\n    ${'a'.repeat(width)}\n)\n`;
-  const fits = (length) => `x = ${'a'.repeat(length - 4)}\n`;
+  const call = (width: number, name: string) => `${name}(\n    ${'a'.repeat(width)}\n)\n`;
+  const fits = (length: number) => `x = ${'a'.repeat(length - 4)}\n`;
 
   it.each([
     [
@@ -88,13 +96,13 @@ describe('python.lineLength', () => {
     ['a long docstring', `"""\n${'word '.repeat(60)}\n"""\n${fits(110)}\n${fits(112)}\n`, '120'],
     ['tabs', `${fits(110)}\n\t${fits(112)}\n`, undefined],
   ])('reads %s', (_name, text, expected) => {
-    expect(measures['python.lineLength'](text)).toBe(expected);
+    expect(measured('python.lineLength', text)).toBe(expected);
   });
 
   it('names the one width a wrapped group allows', () => {
     const wrapped = `${fits(80)}\nresult = compute(\n    ${'b'.repeat(80)}\n)\n`;
 
-    expect(measures['python.lineLength'](wrapped)).toBe('88');
-    expect(measures['python.lineLength'](`${call(60, 'f')}${fits(70)}`)).toBeUndefined();
+    expect(measured('python.lineLength', wrapped)).toBe('88');
+    expect(measured('python.lineLength', `${call(60, 'f')}${fits(70)}`)).toBeUndefined();
   });
 });

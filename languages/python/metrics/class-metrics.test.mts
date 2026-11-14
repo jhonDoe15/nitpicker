@@ -2,20 +2,25 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { listProductionModules, writeSourceListing } from '../adapters/analysis/python-sources.mjs';
-import { pythonFileLimitFindings } from '../adapters/analysis/python-structure.mjs';
-import { pythonClassLimitFindings } from '../adapters/size/python-size.mjs';
-import { createMetrics, pythonUsable, script } from './python-helpers.mjs';
+import { pythonClassLimitFindings } from '../adapters/size/python-size.mts';
+import { classesReportOf } from '../adapters/size/typed/classes-report-reader.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+import { createMetrics, pythonUsable, script } from './python-helpers.mts';
+import {
+  listProductionModules,
+  pythonFileLimitFindings,
+  writeSourceListing,
+} from './typed/metric-views.mts';
 
 const { directory, cleanup } = createMetrics();
 
 afterEach(cleanup);
 
-function lines(count, line) {
+function lines(count: number, line: (index: number) => string): string {
   return Array.from({ length: count }, (_, index) => line(index)).join('');
 }
 
-function classFindings(files, sourceRoots = ['.']) {
+function classFindings(files: Record<string, string>, sourceRoots = ['.']) {
   const root = directory();
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
@@ -27,12 +32,12 @@ function classFindings(files, sourceRoots = ['.']) {
   const output = [path.join(reportRoot, 's.json'), root, listing, path.join(reportRoot, 'c.json')];
   const result = spawnSync('python3', [script, ...output], { encoding: 'utf8' });
   expect(result.stderr).toBe('');
-  const report = JSON.parse(readFileSync(path.join(reportRoot, 'c.json'), 'utf8'));
+  const report = classesReportOf(readFileSync(path.join(reportRoot, 'c.json'), 'utf8'));
   const modules = listProductionModules(root, sourceRoots);
   return {
     root,
     messages: pythonClassLimitFindings(report, modules, { thresholds: {} }).map(
-      ({ path: file, message }) => `${file}: ${message.split(' (')[0]}`,
+      ({ path: file, message }) => `${file}: ${textOf(message).split(' (')[0] ?? ''}`,
     ),
   };
 }

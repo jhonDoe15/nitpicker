@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createMetrics, pythonUsable } from './python-helpers.mjs';
+import { createMetrics, pythonUsable } from './python-helpers.mts';
 
 const { field, functionsOf, cleanup } = createMetrics();
 
@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () => {
   describe('complexity', () => {
-    const complexityOf = (...body) =>
+    const complexityOf = (...body: string[]) =>
       field(['def f(a, b, c):', ...body.map((line) => `    ${line}`)], 'complexity')[0];
 
     it('is 1 for a function without a decision', () => {

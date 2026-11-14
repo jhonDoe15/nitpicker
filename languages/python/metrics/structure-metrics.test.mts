@@ -2,11 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  readPythonStructureFindings,
-  STRUCTURE_REPORT,
-} from '../adapters/analysis/python-structure.mjs';
-import { createMetrics, pythonUsable, script } from './python-helpers.mjs';
+import { STRUCTURE_REPORT } from '../adapters/analysis/python-structure.mjs';
+import { createMetrics, pythonUsable, script } from './python-helpers.mts';
+import { readPythonStructureFindings } from './typed/metric-views.mts';
 
 const { directory: scratchDirectory, cleanup, field, functionsOf, metricsOf } = createMetrics();
 
@@ -142,8 +140,8 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
             maxControlNesting,
             parameters,
             complexity,
-            rest.lambda === true,
-            rest.statementLine,
+            rest['lambda'] === true,
+            rest['statementLine'],
           ],
         ),
       ).toEqual([
@@ -263,8 +261,8 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
 
     it('does not count the docstring as a line, so documenting a long function does not grow it', () => {
       const body = ['    a = 1', '    return a'];
-      const lines = (...head) =>
-        metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0].lines;
+      const lines = (...head: string[]) =>
+        metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0]?.lines;
 
       expect(lines()).toBe(3);
       expect(lines('    """Doc."""')).toBe(3);
@@ -411,7 +409,7 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
   });
 
   describe('the structure findings of the report', () => {
-    function findingsOf(source) {
+    function findingsOf(source: string[]) {
       const directory = scratchDirectory('nitpicker-structure-findings-');
       writeFileSync(path.join(directory, 'sample.py'), `${source.join('\n')}\n`);
       writeFileSync(path.join(directory, 'listing.txt'), 'sample.py');

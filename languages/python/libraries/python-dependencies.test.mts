@@ -1,28 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   isDevelopmentGroup,
   normalizeRequirementName,
-  readPythonDependencies,
   requirementName,
 } from './python-dependencies.mjs';
+import { readPythonDependencies } from './typed/dependency-views.mts';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-dependencies-'));
-  roots.push(root);
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
+function project(files: Record<string, string | Buffer>): string {
+  const root = temporaryRoot('nitpicker-python-dependencies-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -62,12 +52,22 @@ describe('requirement names', () => {
   });
 });
 
-function names(root) {
+function names(root: string) {
   const { runtime, development } = readPythonDependencies(root);
   return { runtime, development };
 }
 
-function declaration({ runtime, development, complete, manifest }) {
+function declaration({
+  runtime,
+  development,
+  complete,
+  manifest,
+}: {
+  runtime: unknown;
+  development: unknown;
+  complete: unknown;
+  manifest: unknown;
+}) {
   return { runtime, development, complete, manifest };
 }
 

@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../adapters/test-support/scratch.mjs';
-import { pythonStyle } from './python-style.mjs';
+import { createScratch } from '../adapters/test-support/scratch.mts';
+import { pythonStyle } from './typed/convention-views.mts';
 
 const scratch = createScratch();
 
 afterEach(scratch.cleanup);
 
-const summaryOf = (files, precedence) => {
+const summaryOf = (files: Record<string, string>, precedence: string[]) => {
   const projectRoot = scratch.write(scratch.directory(), files);
   const config = { python: { formatter: 'ruff' }, tools: { ruff: { precedence } } };
   return { projectRoot, lines: pythonStyle({ config, projectRoot }).summary({}) };
@@ -26,7 +26,7 @@ describe('the Python formatting summary', () => {
     const projectRoot = scratch.write(scratch.directory(), {
       'pyproject.toml': '[tool.black]\nline-length = 88\n\n[tool.ruff.lint]\nselect = ["D"]\n',
     });
-    const linesWith = (tools) =>
+    const linesWith = (tools: object) =>
       pythonStyle({ config: { python: { formatter: 'black' }, tools }, projectRoot }).summary({});
     const notice =
       'Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }';
@@ -49,7 +49,7 @@ describe('the Python formatting summary', () => {
         '',
       ].join('\n'),
     };
-    const lintLine = (precedence) =>
+    const lintLine = (precedence: string[]) =>
       summaryOf(files, precedence).lines.filter((line) => line.startsWith('ruff check: '));
 
     expect(lintLine(['project', 'nitpicker'])).toEqual([
@@ -63,8 +63,8 @@ describe('the Python formatting summary', () => {
     const { projectRoot, lines } = summaryOf({ 'ruff.toml': 'line-length = \n' }, ['nitpicker']);
 
     expect(lines).toHaveLength(1);
-    expect(lines[0].startsWith('Could not read the Python formatting settings: ')).toBe(true);
-    expect(lines[0].includes(`${path.join(projectRoot, 'ruff.toml')} is not valid TOML`)).toBe(
+    expect(lines[0]?.startsWith('Could not read the Python formatting settings: ')).toBe(true);
+    expect(lines[0]?.includes(`${path.join(projectRoot, 'ruff.toml')} is not valid TOML`)).toBe(
       true,
     );
   });
