@@ -5,15 +5,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mts';
 import { isJavaModule } from './lint-arguments.mts';
 
-const roots = [];
+const roots: string[] = [];
 
-function temporary() {
+function temporary(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-lint-arguments-'));
   roots.push(root);
   return root;
 }
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);

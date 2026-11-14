@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -12,7 +12,7 @@ afterEach(() => {
   }
 });
 
-function stagedTree(files) {
+function stagedTree(files: Readonly<Record<string, string>>): string {
   const staged = mkdtempSync(path.join(tmpdir(), 'nitpicker-lint-output-'));
   roots.push(staged);
   for (const [name, text] of Object.entries(files)) {
@@ -21,6 +21,14 @@ function stagedTree(files) {
   }
   return staged;
 }
+
+type Block = {
+  readonly file: string;
+  readonly line: number;
+  readonly source: string;
+  readonly caret: string;
+  readonly rule?: string;
+};
 
 const ORDER = [
   'package demo;',
@@ -36,7 +44,7 @@ const ORDER = [
 const WILDCARD =
   'package demo;\nimport lombok.*;\nimport com.acme.Data;\n@Value\n@Data\nclass Item {}\n';
 
-function block(staged, { file, line, source, caret, rule = 'unchecked' }) {
+function block(staged: string, { file, line, source, caret, rule = 'unchecked' }: Block): string[] {
   return [
     `${path.join(staged, file)}:${String(line)}: warning: [${rule}] text`,
     source,
