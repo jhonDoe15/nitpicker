@@ -1,3 +1,4 @@
+import { blankBlocks } from '../../../../../review-rules/java-sources.mjs';
 import { typeName } from '../../spring-names.mjs';
 import { lambdaParts, normalized } from '../../view/expressions.mjs';
 import { simpleName } from '../../view/member-types.mjs';
@@ -86,17 +87,6 @@ function referencesColumns(view, entity, text) {
   );
 }
 
-function withoutLambdas(text) {
-  let depth = 0;
-  let kept = '';
-  for (const character of text) {
-    depth -= character === '}' ? 1 : 0;
-    kept += depth === 0 && character !== '}' ? character : ' ';
-    depth += character === '{' ? 1 : 0;
-  }
-  return kept;
-}
-
 function lambdasIn(text) {
   const found = [];
   let depth = 0;
@@ -159,7 +149,7 @@ export function keyReadsColumns(view, entity, argument) {
 
 export function comparatorReadsColumns(view, entity, argument) {
   const text = argument?.text?.trim() ?? '';
-  const outside = withoutLambdas(text).replaceAll(REFERENCE, ' ');
+  const outside = blankBlocks(text).replaceAll(REFERENCE, ' ');
   const calls = [...outside.matchAll(CALL)].map((match) => match[1]);
   const lambdas = lambdasIn(text);
   const words = outside.match(/[A-Za-z_$][\w$]*/gu) ?? [];
