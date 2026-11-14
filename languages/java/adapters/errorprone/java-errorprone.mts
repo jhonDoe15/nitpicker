@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
-import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
+import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mts';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
