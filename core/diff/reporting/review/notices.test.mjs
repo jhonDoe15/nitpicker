@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { appendReviewSummary, noticeSection } from './notices.mjs';
+import { noticeSection, reviewSummaryLines } from './notices.mts';
 
 describe('notice rendering', () => {
   it('renders nothing without notices or policy changes', () => {
-    const lines = ['kept'];
-    appendReviewSummary(lines, undefined, (text) => text);
-    appendReviewSummary(lines, { policyChanges: [], notices: [] }, (text) => text);
+    const lines = [
+      'kept',
+      ...reviewSummaryLines(undefined, (text) => text),
+      ...reviewSummaryLines({ policyChanges: [], notices: [] }, (text) => text),
+    ];
 
     expect(noticeSection()).toEqual([]);
     expect(lines).toEqual(['kept']);
@@ -16,9 +18,7 @@ describe('notice rendering', () => {
   });
 
   it('puts the policy changes before the notices, with emphasized headings', () => {
-    const lines = [];
-    appendReviewSummary(
-      lines,
+    const lines = reviewSummaryLines(
       { policyChanges: ['change'], notices: ['one', 'two'] },
       (text) => `<${text}>`,
     );

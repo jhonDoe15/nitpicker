@@ -25,6 +25,7 @@ import {
   commonSummary,
   noChangesReport,
   sortByToolAndPath,
+  fixPlansFor,
   writeDiffReports,
   parseArguments,
   resolveProjectRoot,
@@ -37,19 +38,19 @@ import {
   clearDiffReports,
   absoluteTextReportPath,
   outputRootFor,
-} from '../reporting/reporters.mjs';
+} from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
-import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mts';
 import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';
-import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
+import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
@@ -116,8 +117,10 @@ function writeAggregate(
   report: AggregateReport,
   { outputRoot, liveProjectRoot }: ReportTarget,
 ): AggregateReport {
-  report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
-  return report;
+  const location = repositoryLocationOf(liveProjectRoot);
+  const planned: AggregateReport = { ...report, fixPlans: fixPlansFor(report, location) };
+  planned.text = writeDiffReports(outputRoot, planned, location);
+  return planned;
 }
 
 function unchangedReport(

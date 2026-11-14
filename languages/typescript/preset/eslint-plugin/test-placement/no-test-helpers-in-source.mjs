@@ -14,7 +14,7 @@ const HELPER_DIRECTORIES = new Set([
 const HELPER_STEM = /^(?:.*[-.])?(?:test-utils|test-helpers|test-support|fixtures)$/u;
 const EXCEPTION_ROUTE = 'An exception fits only when it is real production code.';
 
-function helperName(filename, { colocated }) {
+export function helperName(filename, { colocated }) {
   const parts = filename.replaceAll('\\', '/').split('/');
   const directories = parts.slice(0, -1);
   if (colocated && directories.includes(TEST_SUPPORT_DIRECTORY)) {

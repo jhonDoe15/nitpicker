@@ -41,7 +41,9 @@ function effectivePomOf(projectRoot, { maven, spawn }) {
 function kotlinFacts(projectRoot, config, host) {
   const configured = config.kotlin?.formatter;
   const { text: effectivePom } =
-    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, host) : {};
+    detectJavaBuild(projectRoot, config.java?.buildTool) === 'maven'
+      ? effectivePomOf(projectRoot, host)
+      : {};
   return effectivePom === undefined
     ? { formatter: kotlinFormatterOf(projectRoot, configured) }
     : mavenKotlinFacts(projectRoot, configured, effectivePom);

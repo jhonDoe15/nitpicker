@@ -34,6 +34,18 @@ const FORMATTED = {
   ],
   'edit.py': [lines('def f(a, b):', '    run(a, b)'), lines('def f(a, b):', '    run(a)')],
   'mixed.py': [lines("x = 'a'", "y = 'b'", "z = 'c'"), lines('x = "a"', 'y = "b2"', 'z = "c"')],
+  'fee.go': [
+    lines('package shop', 'func Fee(w int) int { if(w>10){ return 5 }; return 1 }'),
+    lines(
+      'package shop',
+      'func Fee(w int) int {',
+      '\tif w > 10 {',
+      '\t\treturn 5',
+      '\t}',
+      '\treturn 1',
+      '}',
+    ),
+  ],
 };
 
 describe('lines whose only change is formatting', () => {
@@ -66,6 +78,13 @@ describe('lines whose only change is formatting', () => {
 
   it('counts joined and split lines, trailing commas, semicolons and arrow parentheses as unchanged', () => {
     expect(changes.get('list.ts').ranges).toEqual([]);
+  });
+
+  it('counts a line gofmt only split, re-spaced and stripped of header parentheses as unchanged', () => {
+    expect(pick(changes.get('fee.go'), ['ranges', 'inserted'])).toEqual({
+      ranges: [],
+      inserted: [],
+    });
   });
 
   it('keeps a changed quote style meaningful where the formatter never changes it', () => {
@@ -126,6 +145,14 @@ const SEMANTIC = {
     lines('function f() {', '  a();', '  b();', '}'),
   ],
   'Append.kt': [lines('fun f() {', '    a()', '}'), lines('fun f() {', '    a()', '    b()', '}')],
+  'append.go': [lines('func f() {', '\ta()', '}'), lines('func f() {', '\ta()', '\tb()', '}')],
+  'twice.go': [
+    lines('func first() {', '\tclean()', '}', '', 'func second() {', '\tclean()', '}'),
+    lines(
+      ...['func first() {', '\tclean()', '}', '', 'func middle() {', '\tclean()', '}', ''],
+      ...['func second() {', '\tclean()', '}'],
+    ),
+  ],
   'Gate.java': [
     lines('class Gate {', '  void f(boolean flag) {', '    if (flag); value = 2;', '  }', '}'),
     lines('class Gate {', '  void f(boolean flag) {', '    if (flag) value = 2;', '  }', '}'),
@@ -148,8 +175,15 @@ describe('edits a formatter never makes', () => {
     ['Gate.java', 3],
     ['append.ts', 3],
     ['Append.kt', 3],
+    ['append.go', 3],
   ])('counts the edited line of %s as edited', (file, line) => {
     expect(changes.get(file).ranges).toEqual([[line, line]]);
+  });
+
+  it('maps the legacy line of a repeated Go body to its own function, not to an inserted twin', () => {
+    const map = lineMapOf(changes.get('twice.go'));
+
+    expect([map.baseLineOf(6), map.baseLineOf(10)]).toEqual([undefined, 6]);
   });
 
   it('does not let a deleted legacy line pass an identical line in new code elsewhere as unchanged', () => {

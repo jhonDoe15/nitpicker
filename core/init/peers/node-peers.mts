@@ -38,6 +38,7 @@ export type PeerNeeds = {
 };
 
 const COVERAGE_PACKAGE = '@vitest/coverage-v8';
+const VITEST = 'vitest';
 const RUNNER_PEERS: Readonly<Record<string, readonly string[]>> = {
   vitest: ['vitest', COVERAGE_PACKAGE],
   jest: ['jest'],
@@ -129,8 +130,9 @@ export function nodePeerNeeds(
     .map((name) => peerStatus(projectRoot, manifest, { name, loadedFrom: loadedFrom[name] }))
     .filter(({ installed, supported }) => installed === undefined || !supported);
   const added = statuses.filter(needsAdding);
+  const vitestIsOld = added.some(({ name, supported }) => name === VITEST && !supported);
   return {
-    add: added.map(({ name }) => requirementOf(projectRoot, name, nodeVersion)),
+    add: added.map((status) => requirementOf(projectRoot, status, { nodeVersion, vitestIsOld })),
     uninstalled: statuses.filter((status) => !needsAdding(status)).map(({ name }) => name),
     absent: statuses.filter(({ installed }) => installed === undefined).map(({ name }) => name),
     outdated: statuses
@@ -139,14 +141,39 @@ export function nodePeerNeeds(
   };
 }
 
-function requirementOf(projectRoot: string, name: string, nodeVersion: string): string {
+const OPEN_LOWER_BOUND = /^>=\s*(?<version>[^\s<>=]+)$/u;
+
+export function lowestClause(range: string): string | undefined {
+  const [first = ''] = range.split('||');
+  const clause = first.trim();
+  const version = OPEN_LOWER_BOUND.exec(clause)?.groups?.['version'];
+  if (clause === '') {
+    return undefined;
+  }
+  return version === undefined ? clause : `^${version}`;
+}
+
+function lowestRange(name: string): string | undefined {
+  return lowestClause(textOf(supportedRange(name)));
+}
+
+type RequirementContext = { readonly nodeVersion: string; readonly vitestIsOld: boolean };
+
+function requirementOf(
+  projectRoot: string,
+  { name, supported, declared }: PeerStatus,
+  { nodeVersion, vitestIsOld }: RequirementContext,
+): string {
   if (name === NITPICKER) {
     return `${NITPICKER}@${textOf(packageVersion())}`;
   }
   if (name === TYPESCRIPT && !redirects({ ...process.versions, node: nodeVersion })) {
     return JAVASCRIPT_API_TYPESCRIPT;
   }
-  return pinnedToVitest(projectRoot, name);
+  const declaredFine = declared !== undefined && isSupported(name, { declared });
+  const old = !(supported || declaredFine) || (name === COVERAGE_PACKAGE && vitestIsOld);
+  const range = lowestRange(name === COVERAGE_PACKAGE ? VITEST : name);
+  return old && range !== undefined ? `${name}@${range}` : pinnedToVitest(projectRoot, name);
 }
 
 function pinnedToVitest(projectRoot: string, name: string): string {

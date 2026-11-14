@@ -13,6 +13,7 @@ import {
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { validateJavaBuildSetting } from '../../languages/java/builds/build-tool/build-tool-setting.mjs';
 import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mjs';
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
@@ -71,6 +72,7 @@ export const KEYS = [
   'testConsole',
   'protocols',
   'kotlin',
+  'java',
   'spring',
   'conventions',
   'go',
@@ -146,6 +148,7 @@ function validateScalars(config) {
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
   validateGoConfig(config);
+  validateJavaBuildSetting(config);
   validateSpringOptions(config);
   validatePythonConfig(
     config,

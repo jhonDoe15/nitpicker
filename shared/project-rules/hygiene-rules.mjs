@@ -44,7 +44,8 @@ export const HYGIENE_RULES = [
   {
     id: HYGIENE_RULE_IDS.committedBinary,
     check: 'repository-hygiene',
-    limit: 'a committed archive or compiled binary (`gradle-wrapper.jar` is allowed)',
+    limit:
+      'a committed archive or compiled binary (`gradle-wrapper.jar` and a tarball that a package.json dependency spec names are allowed)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

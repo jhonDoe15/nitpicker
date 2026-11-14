@@ -1,0 +1,8 @@
+{
+  "package.json": "{\n    \"name\": \"sample\",\n    \"type\": \"module\",\n    \"dependencies\": {\n        \"left-pad\": \"1.3.0\"\n    }\n}\n",
+  "tsconfig.json": "{\"compilerOptions\":{\"strict\":true,\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"target\":\"es2022\"},\"include\":[\"src\"]}\n",
+  "src/main.ts": "import { used } from './lib.js';\nconsole.log(used());\n",
+  "src/lib.ts": "export function used(): number {\n  return 1;\n}\nexport function spare(): number {\n  return 2;\n}\nexport type Spare = { a: number };\n",
+  "src/orphan.ts": "export const orphan = 1;\n",
+  "src/untouched.ts": "export const untouched = 1;\n"
+}

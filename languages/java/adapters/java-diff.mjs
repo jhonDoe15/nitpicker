@@ -182,7 +182,7 @@ export function collectJavaReport(root, options = {}) {
     findings: collected,
     imports,
     testsFailures,
-  } = detectJavaBuild(projectRoot) === 'maven'
+  } = detectJavaBuild(projectRoot, options.policy?.buildTool) === 'maven'
     ? mavenFindings(projectRoot, plan.options)
     : withGradleReports(projectRoot, plan.options);
   const findings = plan.findings(collected);

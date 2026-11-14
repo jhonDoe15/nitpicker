@@ -36,7 +36,19 @@ def shown(value, length=SHOWN_LENGTH):
 
 def finding(path, rule, subject, node):
     end = getattr(node, "end_lineno", None) or node.lineno
-    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno, "end": end}
+    return {
+        "rule": rule,
+        "path": path,
+        "subject": subject,
+        "line": node.lineno,
+        "end": end,
+        "at": (
+            node.lineno,
+            node.col_offset,
+            end,
+            getattr(node, "end_col_offset", None),
+        ),
+    }
 
 
 def overlap_sites(found, overlaps):

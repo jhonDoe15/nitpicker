@@ -1,10 +1,11 @@
 import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule as requireHttpTimeout } from './require-http-timeout.mjs';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
 
 const tester = createRuleTester();
 const missing = (call) => [{ messageId: 'noTimeout', data: { call } }];
 
-tester.run('require-http-timeout', requireHttpTimeout, {
+tester.run('require-http-timeout', withoutFixes(requireHttpTimeout), {
   valid: [
     'let n = 1; n = 2; export default n;',
     'export const get = (url) => fetch(url, { signal: AbortSignal.timeout(10_000) });',
@@ -118,7 +119,7 @@ tester.run('require-http-timeout', requireHttpTimeout, {
   ],
 });
 
-tester.run('require-http-timeout with fetch turned off', requireHttpTimeout, {
+tester.run('require-http-timeout with fetch turned off', withoutFixes(requireHttpTimeout), {
   valid: [{ code: 'export const get = (url) => fetch(url);', options: [{ fetch: false }] }],
   invalid: [
     {

@@ -1,4 +1,6 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { suggestible } from '../../fixes/support/descriptors.mjs';
+import { nullishDefaultFix } from '../../fixes/code/nullish-default-fix.mjs';
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 
@@ -129,6 +131,7 @@ function isParameter(sourceCode, identifier) {
 export const rule = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: {
       description: 'Disallow replacing a falsy parameter with a default through || or a ternary',
       requiresTypeChecking: true,
@@ -137,6 +140,8 @@ export const rule = {
     messages: {
       falsyDefault:
         "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+      useNullishCoalescing:
+        'Default only `undefined` and `null` with `??`. Zero, the empty string and `false` then count as given.',
     },
   },
   create(context) {
@@ -158,11 +163,13 @@ export const rule = {
         const classes = falsyClasses(services.getTypeAtLocation(identifier));
         const equal = classes.size === 1 && classes.has(finalClass);
         if (classes.size > 0 && !equal && !isCondition(report)) {
-          context.report({
+          const descriptor = {
             node: identifier,
             messageId: 'falsyDefault',
             data: { name: identifier.name },
-          });
+          };
+          const plan = nullishDefaultFix(sourceCode, identifier);
+          context.report(suggestible(descriptor, { messageId: 'useNullishCoalescing', plan }));
         }
       }
     }

@@ -2,6 +2,7 @@ import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule as noTestRetry } from './no-test-retry.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -29,7 +30,7 @@ const invalid = (code, count = 1) => ({
   errors: Array.from({ length: count }, () => ({ messageId: 'retry' })),
 });
 
-ruleTester.run('no-test-retry', noTestRetry, {
+ruleTester.run('no-test-retry', withoutFixes(noTestRetry), {
   valid: [
     "it('runs', () => {});",
     "it('runs', { timeout: 5000 }, () => {});",

@@ -124,3 +124,34 @@ describe('functionUnits', () => {
     expect(unitsOf('const mode = flag ? 1 : 2;\nif (mode) { console.log(mode); }\n')).toEqual([]);
   });
 });
+
+describe('functionUnits over curried functions', () => {
+  it('counts a function whose whole body is another function once, under the outer name', () => {
+    expect(
+      unitsOf(
+        [
+          'export const wrap = (a: number) => (b: number) => {',
+          '  return a + b;',
+          '};',
+          'const triple = (a) => (b) => (c) => a + b + c;',
+          'foo((a) => (b) => b);',
+        ].join('\n'),
+      ),
+    ).toEqual(['function 1 wrap', 'function 4 triple', 'function 5 <anonymous>']);
+  });
+
+  it('gives both functions a unit when the outer one has a body of its own', () => {
+    expect(
+      unitsOf(
+        ['const wrap = (a) => {', '  const x = a;', '  return (b) => x + b;', '};'].join('\n'),
+      ),
+    ).toEqual(['function 1 wrap', 'function 3 wrap.<anonymous>']);
+  });
+
+  it('keeps a named inner function expression as its own unit', () => {
+    expect(unitsOf('const wrap = (a) => function named(b) { return a + b; };')).toEqual([
+      'function 1 wrap',
+      'function 1 wrap.named',
+    ]);
+  });
+});
