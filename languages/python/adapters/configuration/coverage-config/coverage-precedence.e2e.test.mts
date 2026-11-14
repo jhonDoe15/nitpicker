@@ -1,11 +1,14 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
-import { createToolContext } from '../../python-tools.mjs';
+import { createToolContext } from '../../test-support/typed/tool-context.mts';
+import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { COVERAGE_REPORT, test as runTests } from '../../test-runs/test-step.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const INSTALL_TIMEOUT_MS = 180_000;
 const CORE = [
@@ -29,7 +32,7 @@ const SKIPPING = [
   'exclude_also = ["pragma: no cover"]',
   '',
 ].join('\n');
-const roots = [];
+const roots: string[] = [];
 
 function temporaryRoot() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-coverage-precedence-')));
@@ -37,14 +40,7 @@ function temporaryRoot() {
   return root;
 }
 
-function write(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-}
-
-function install(environment) {
+function install(environment: string): void {
   for (const args of [
     ['venv', '-q', environment],
     ['pip', 'install', '-q', '--python', environment, 'coverage', 'pytest'],
@@ -57,7 +53,7 @@ function install(environment) {
 }
 
 describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end', () => {
-  let environment;
+  let environment: string;
 
   beforeAll(() => {
     environment = path.join(temporaryRoot(), 'venv');
@@ -69,7 +65,13 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
     }
   });
 
-  function measured(precedence, { pyproject = PYPROJECT, policyFiles } = {}) {
+  function measured(
+    precedence: readonly string[] | undefined,
+    {
+      pyproject = PYPROJECT,
+      policyFiles,
+    }: { pyproject?: string; policyFiles?: Readonly<Record<string, string>> } = {},
+  ) {
     const projectRoot = temporaryRoot();
     const reportRoot = temporaryRoot();
     const files = {
@@ -77,9 +79,9 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
       'src/shop/core.py': CORE,
       'tests/test_core.py': TEST,
     };
-    write(projectRoot, { ...files, 'pyproject.toml': pyproject });
+    writeFiles(projectRoot, { ...files, 'pyproject.toml': pyproject });
     const policyRoot = policyFiles === undefined ? projectRoot : temporaryRoot();
-    write(policyRoot, policyFiles ?? {});
+    writeFiles(policyRoot, policyFiles ?? {});
     const context = createToolContext({
       projectRoot,
       liveRoot: projectRoot,
@@ -89,12 +91,20 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
       toolPrecedence: precedence === undefined ? undefined : { coverage: precedence },
     });
     runTests(context, {});
-    const report = JSON.parse(readFileSync(path.join(reportRoot, COVERAGE_REPORT), 'utf8'));
-    const [core] = Object.entries(report.files).filter(([file]) => file.endsWith('core.py'));
-    return { missing: core[1].missing_lines, branches: report.meta.branch_coverage };
+    const report = parseJson(readFileSync(path.join(reportRoot, COVERAGE_REPORT), 'utf8'));
+    const [core] = Object.entries(fieldsOf(fieldOf(report, 'files'))).filter(([file]) =>
+      file.endsWith('core.py'),
+    );
+    return {
+      missing: fieldOf(core?.[1], 'missing_lines'),
+      branches: fieldOf(fieldOf(report, 'meta'), 'branch_coverage'),
+    };
   }
 
-  function uncovered(precedence, options) {
+  function uncovered(
+    precedence: readonly string[] | undefined,
+    options?: Parameters<typeof measured>[1],
+  ) {
     return measured(precedence, options).missing;
   }
 

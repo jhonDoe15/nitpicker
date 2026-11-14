@@ -1,7 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_NORECURSEDIRS,
   DEFAULT_PYTHON_FILES,
@@ -9,22 +6,14 @@ import {
   readPythonFiles,
   shellWords,
 } from './pytest-config.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pytest-config-'));
-  roots.push(root);
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-pytest-config-');
+  writeFiles(root, files);
   return root;
 }
 

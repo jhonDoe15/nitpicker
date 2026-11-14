@@ -1,31 +1,47 @@
-import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
-import { findingPaths } from '../../../../shared/exceptions/matching.mjs';
 import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import {
+  applyFindingExceptions,
+  findingPaths,
+  globMatcher,
+} from '../typed/runner/exception-views.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
-function covers(rule, finding) {
+export type Routable = Pick<Finding, 'tool' | 'rule' | 'path'>;
+
+export type ExceptionEntry = {
+  readonly rule: string;
+  readonly paths: readonly string[];
+  readonly function?: string;
+  readonly name?: string;
+  readonly [field: string]: unknown;
+};
+
+function covers(rule: string, finding: Routable): boolean {
   return (
     rule === finding.rule ||
     (finding.tool === 'ruff' && RUFF_SELECTOR.test(rule) && finding.rule.startsWith(rule))
   );
 }
 
-function narrowed({ function: functionName, name }) {
+function narrowed({ function: functionName, name }: ExceptionEntry): boolean {
   return functionName !== undefined || name !== undefined;
 }
 
-export function pythonRouteRule(finding) {
+export function pythonRouteRule(finding: Finding): unknown {
   return FUNCTION_EXCEPTION_RULES.includes(finding.rule) ? sharedRouteRule(finding) : undefined;
 }
 
-export function applyPythonExceptions(findings, exceptions = []) {
+export function applyPythonExceptions<T extends Routable>(
+  findings: readonly T[],
+  exceptions: readonly ExceptionEntry[] = [],
+): T[] {
   const lifted = exceptions
     .filter((entry) => !narrowed(entry))
     .map(({ rule, paths }) => ({
       rule,
-      matchers: paths.map((glob) => globMatcher(glob)),
+      matchers: paths.map((glob: string) => globMatcher(glob)),
     }));
   return applyFindingExceptions(
     findings.filter(

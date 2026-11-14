@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { validatePythonConfig } from './python-config.mjs';
 
 const TYPESCRIPT_ONLY = ['layout', 'exceptions'];
-function validate(config) {
+function validate(config: Readonly<Record<string, unknown>>): void {
   validatePythonConfig(config, TYPESCRIPT_ONLY);
 }
 
@@ -92,7 +92,7 @@ describe('python config validation', () => {
     }).toThrow(`"${key}" is not supported with "preset": "python"`);
   });
 
-  it.each([
+  it.each<[unknown, string]>([
     [[], '"python" must be an object'],
     [
       { interpreter: 'python3' },
@@ -149,7 +149,7 @@ describe('python config validation', () => {
       { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
-    ...['restating-docstring', 'long-docstring'].map((rule) => [
+    ...['restating-docstring', 'long-docstring'].map((rule): [unknown, string] => [
       { exceptions: [{ rule, paths: ['a'], reason: 'r' }] },
       `names no rule nitpicker reports: "${rule}"; ${rule} is now the shared "doc-comment-content" rule: move the entry to the top-level "exceptions" as "doc-comment-content"`,
     ]),
@@ -188,7 +188,7 @@ describe('python config validation', () => {
     [{ sourceRoots: 'src' }, '"python.sourceRoots" must be an array of non-empty strings'],
     [{ sourceRoots: [] }, '"python.sourceRoots" must not be empty'],
     [{ sourceRoots: ['../src'] }, '"python.sourceRoots" must be a path inside the project'],
-  ])('rejects the settings %j', (settings, message) => {
+  ])('rejects the settings %j', (settings: unknown, message: string) => {
     expect(() => {
       validate({ preset: 'python', python: settings });
     }).toThrow(message);
