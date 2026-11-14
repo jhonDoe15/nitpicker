@@ -2172,7 +2172,15 @@ Nitpicker compares the files changed against the merge base (plus untracked file
   `package.json`, `nx.json` or `angular.json` for JavaScript (and a `tsconfig` anywhere outside the
   projects), `pyproject.toml`
   or `uv.lock` for Python, a settings or build file for Java and Kotlin. Such a file in a folder
-  that is not a project, such as `tools/package.json`, runs nothing.
+  that is not a project, such as `tools/package.json`, runs nothing. A lockfile
+  (`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` or `uv.lock`) runs
+  only the projects whose resolved dependencies changed: nitpicker compares the resolved versions
+  of the base and the head lockfile and follows each project's dependencies (its `package.json`,
+  or its uv package) through the lockfile, and the plan line names the change
+  (`pnpm-lock.yaml: lodash 4.17.20 -> 4.17.21`). `gradle/libs.versions.toml` runs only the Gradle
+  projects whose build files use a changed alias (`libs.guava`). A lockfile that cannot be read, a
+  lockfile added or removed, a change of no resolved version, or a project without a manifest runs
+  every project of the toolchain, as any other toolchain file does.
 
 `--project` (repeatable; a folder, package name or quoted glob, see [Command line](#command-line)) runs exactly the named projects, changed or not. `--all` runs every
 project against the whole checkout. `--analyzer <name>` runs the projects that have that analyzer
