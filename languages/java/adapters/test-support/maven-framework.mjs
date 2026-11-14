@@ -16,7 +16,7 @@ import {
 } from '../../maven/maven-tests.mjs';
 import { runPit } from '../../maven/pit/maven-pit.mts';
 import { copyTestResults } from '../../maven/results/maven-test-results.mts';
-import { ingestArchunit } from '../../ingest/archunit.mjs';
+import { ingestArchunit } from '../../ingest/archunit.mts';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../ingest/pit.mts';
 import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
