@@ -25,6 +25,9 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/support/io/summaries.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/io/typed-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/memo.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/writes/no-dual-write.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/no-retry-without-idempotency.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/writes/relays.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/retry-scopes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/writes/write-sites.mjs',
 ];

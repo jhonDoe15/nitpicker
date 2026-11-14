@@ -29,6 +29,7 @@ import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.m
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mjs';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mjs';
+import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mjs';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mjs';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-un
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
-import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -131,6 +131,7 @@ export const partRules = {
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
+  'no-dual-write': ruleNoDualWrite,
   'no-eager-relation': ruleNoEagerRelation,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
-  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
 };

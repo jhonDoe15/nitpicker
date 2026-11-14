@@ -89,6 +89,16 @@ export const policyFailureMessageCases = [
     'ON CONFLICT',
   ),
   adapterCase(
+    'dual write names the outbox',
+    "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+    'outbox table',
+  ),
+  adapterCase(
+    'dual write names the relay',
+    "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+    'relay',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

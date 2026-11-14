@@ -27,6 +27,8 @@ The gate can't check these; reviewers keep catching them.
 - A retried write needs a key that is the same on every attempt: derive it from the request (the
   order id), never from a fresh `randomUUID()` per attempt. The gate checks that a key is passed,
   not where it comes from.
+- Publishing an event next to a database write goes through the outbox, also when the gate cannot
+  see the broker (an in-house client, a webhook used as an event).
 
 ## Tests for a fix
 

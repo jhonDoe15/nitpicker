@@ -1,4 +1,5 @@
 import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mjs';
+import { isRelayMark } from '../writes/relays.mjs';
 import { passesChunk } from './chunked-loops.mjs';
 import { isPushedForConcurrency } from './concurrent-batches.mjs';
 import { enclosingLoop, isPagingCall, isRetryAttempt } from './loop-shapes.mjs';
@@ -76,7 +77,8 @@ export const rule = {
       const exempt =
         effect === undefined ||
         effect.kind === 'message' ||
-        passesChunk(node, found, context);
+        passesChunk(node, found, context) ||
+        isRelayMark(node, context);
       if (exempt) {
         return;
       }
