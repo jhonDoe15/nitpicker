@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { readCpdFindings } from '../cpd-duplicates.mjs';
+import { readCpdFindings } from '../cpd-duplicates.mts';
 
 const roots = [];
 afterEach(() => {

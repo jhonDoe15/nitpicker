@@ -10,7 +10,7 @@ import {
   isDataTable,
   readCpdFindings,
   tokenShape,
-} from './cpd-duplicates.mjs';
+} from './cpd-duplicates.mts';
 
 const roots = [];
 afterEach(() => {

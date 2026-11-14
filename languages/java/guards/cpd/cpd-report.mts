@@ -2,29 +2,52 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { rootsScope } from '../../builds/module-path.mjs';
 import { reportRootPattern } from '../../builds/tools/tool-commands.mjs';
-import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { listOf, textsOf } from '../../../../shared/values/readers.mts';
 
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_NOT_RUN = 'cpd-not-run';
 const CPD_SKIPPED = 'cpd-skipped.txt';
 const CPD_SKIPPED_RULE = 'cpd-skipped-paths';
-const CPD_ROOT = reportRootPattern('cpd');
+const rootPatternOf: (tool: string) => RegExp | undefined = reportRootPattern;
+const CPD_ROOT = rootPatternOf('cpd');
 const JVM_NOTE = /^(?:NOTE: )?Picked up \w+/u;
 const MAX_ERROR_LINES = 10;
 const DUPLICATES_TOOL = 'duplicates';
 export const CPD_IDENTITY_PREFIX = 'cpd:';
 
-function cpdFailure(reportRoot) {
+export type CpdFinding = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly identity: string;
+  readonly message: string;
+  readonly classification: string;
+  readonly toolNotRun?: true;
+  readonly notRunScope?: readonly string[];
+  readonly notRunIdentityPrefix?: string;
+};
+
+export type CpdRead =
+  | { readonly kind: 'failed'; readonly reason: string }
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'report'; readonly xml: string };
+
+function cpdFailure(reportRoot: string): CpdRead {
   const [status, ...stderr] = readFileSync(path.join(reportRoot, CPD_FAILURE), 'utf8').split(
     /\r?\n/u,
   );
   const errors = stderr.filter((line) => line.trim() !== '' && !JVM_NOTE.test(line));
   const detail = errors.slice(0, MAX_ERROR_LINES).join('\n') || 'no error output';
-  return { kind: 'failed', reason: `PMD CPD ${failedRun(status)} and wrote no report: ${detail}` };
+  return {
+    kind: 'failed',
+    reason: `PMD CPD ${failedRun(status ?? '')} and wrote no report: ${detail}`,
+  };
 }
 
-function failedRun(status) {
+function failedRun(status: string): string {
   if (/^\d+$/u.test(status)) {
     return `exited with code ${status}`;
   }
@@ -34,13 +57,16 @@ function failedRun(status) {
   return /^SIG[A-Z0-9]+$/u.test(status) ? `was stopped by ${status}` : `could not run (${status})`;
 }
 
-function lexErrors(xml) {
+function lexErrors(xml: string): string[] {
   return childrenNamed(parseXml(xml), 'error').map(
-    (error) => `${error.attrs.filename}: ${error.attrs.msg}`,
+    (error) => `${error.attrs['filename']}: ${error.attrs['msg']}`,
   );
 }
 
-export function skippedPaths(reportRoot, { projectRoot, xml }) {
+export function skippedPaths(
+  reportRoot: string,
+  { projectRoot, xml }: { readonly projectRoot: string; readonly xml: string },
+): CpdFinding[] {
   const file = path.join(reportRoot, CPD_SKIPPED);
   const unread = existsSync(file) ? readFileSync(file, 'utf8').split(/\r?\n/u) : [];
   const lines = [
@@ -67,7 +93,7 @@ export function skippedPaths(reportRoot, { projectRoot, xml }) {
   ];
 }
 
-export function readCpdReport(reportRoot) {
+export function readCpdReport(reportRoot: string): CpdRead {
   if (existsSync(path.join(reportRoot, CPD_FAILURE))) {
     return cpdFailure(reportRoot);
   }
@@ -76,7 +102,7 @@ export function readCpdReport(reportRoot) {
     return { kind: 'missing' };
   }
   const xml = readFileSync(report, 'utf8');
-  return CPD_ROOT.test(xml)
+  return CPD_ROOT?.test(xml) === true
     ? { kind: 'report', xml }
     : {
         kind: 'failed',
@@ -84,8 +110,8 @@ export function readCpdReport(reportRoot) {
       };
 }
 
-export function cpdNotRun(reason, roots, module) {
-  const scope = rootsScope(roots, module);
+export function cpdNotRun(reason: string, roots: readonly string[], module: unknown): CpdFinding {
+  const scope = textsOf(listOf(callUntyped(rootsScope, roots, module)));
   const place =
     scope.length === 0
       ? 'its source roots, which lie outside the project,'

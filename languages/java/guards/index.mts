@@ -1,4 +1,4 @@
-import { readCpdFindings } from './cpd-duplicates.mjs';
+import { readCpdFindings } from './cpd-duplicates.mts';
 import { readDependencyFindings } from './dependencies.mjs';
 import { readForbiddenApiFindings } from './forbidden-apis.mjs';
 import { readLintFindings } from './javac-lint.mjs';
