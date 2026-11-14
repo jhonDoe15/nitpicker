@@ -3,6 +3,7 @@ import { predicateTable, withPredicates } from './helpers/predicates.mjs';
 import { getterTable, gettersOfFile } from './models/getters.mjs';
 import { modelledTree } from './models/annotate.mjs';
 import { declaredTypes } from './models/types.mjs';
+import { typedTree } from './widths/typed-tree.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
 
@@ -24,7 +25,11 @@ function modelled(unit, shared) {
     python: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
   };
-  return modelledTree(withPredicates(unit.tree, { table: shared.helpers, unit }), scope);
+  const modelledOnes = modelledTree(
+    withPredicates(unit.tree, { table: shared.helpers, unit }),
+    scope,
+  );
+  return scope.python ? modelledOnes : typedTree(modelledOnes, scope);
 }
 
 function unitFindings(unit, analyzerName, shared) {
@@ -33,6 +38,7 @@ function unitFindings(unit, analyzerName, shared) {
   return decidedConditions(tree, {
     looseBooleans: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
+    unbounded: unit.file.endsWith('.py'),
   }).map(({ node, verdict, part, reason }) => {
     const condition = node.text ?? `the condition on line ${String(node.start)}`;
     const base = `${unit.file}#${unit.name}:${verdict}:${condition}`;

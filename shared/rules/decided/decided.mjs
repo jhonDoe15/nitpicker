@@ -13,6 +13,7 @@ import { lambdaStatements } from './flow/nested.mjs';
 import { isChain, sitesIn } from './flow/sites.mjs';
 import { declaredTypes, stableNames } from './flow/stability.mjs';
 import { helperNote } from '../../logic/models/helper-note.mjs';
+import { probeSlips } from './slips/probe.mjs';
 
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const MAX_CHECKS = 200;
@@ -63,27 +64,37 @@ function provingFacts(known, query, verdict) {
   return verdict === 'false' ? undefined : known;
 }
 
-function check(scan, node, { facts, part = 'condition' }) {
+function collectSlips(scan, root, facts) {
+  if (scan.slipsOnly) {
+    scan.slips.push(...probeSlips(scan, root, relevantFacts(facts, namesOf(root))));
+  }
+}
+
+function decide(scan, node, facts) {
   const query = node.viaHelper ? undefined : conditionTerm(node, scan.scope);
   if (query === undefined || scan.checked.has(node) || scan.checked.size >= MAX_CHECKS) {
-    return false;
+    return undefined;
   }
   const known = relevantFacts(facts, namesOf(node));
   if (known.length === 0 && !hasModels([query])) {
-    return false;
+    return undefined;
   }
   scan.checked.add(node);
   const verdict = solveFacts(
     known.map(({ term }) => term),
     query,
   );
-  if (!VERDICTS.has(verdict)) {
+  const basis = VERDICTS.has(verdict) ? provingFacts(known, query, verdict) : undefined;
+  return basis === undefined ? undefined : { verdict, basis, query };
+}
+
+function check(scan, node, { facts, part = 'condition' }) {
+  collectSlips(scan, node, facts);
+  const decision = scan.slipsOnly ? undefined : decide(scan, node, facts);
+  if (decision === undefined) {
     return false;
   }
-  const basis = provingFacts(known, query, verdict);
-  if (basis === undefined) {
-    return false;
-  }
+  const { verdict, basis, query } = decision;
   scan.found.push({ node, verdict, part, reason: reasonFor(basis, query, verdict) });
   return true;
 }
@@ -111,7 +122,7 @@ function checkChain(scan, node, facts) {
   }
 }
 
-function integerNames(tree) {
+export function integerNames(tree) {
   const declared = nodesOf(tree).filter(
     (node) => DECLARING.has(node.kind) && node.children[1]?.kind === 'name',
   );
@@ -135,27 +146,57 @@ function unitChecks(tree, flow) {
   return checks;
 }
 
+function parametersOf(tree) {
+  return new Set(
+    nodesOf(tree)
+      .filter((node) => node.kind === 'parameter' && node.children[1]?.kind === 'name')
+      .map((node) => node.children[1].value),
+  );
+}
+
+function scopeOf(source, { looseBooleans = false, unbounded = false, kotlin = false }) {
+  const types = declaredTypes(source);
+  return {
+    integers: integerNames(source),
+    looseBooleans,
+    unbounded,
+    kotlin,
+    types,
+    enums: enumConstants(source, types),
+  };
+}
+
+function flowOf(tree, scope) {
+  const stable = stableNames(tree);
+  const mutable = new Set([...mutableNames(tree)].filter((name) => !stable.has(name)));
+  return { scope, mutable, effects: new WeakMap(), stable, seen: new WeakSet() };
+}
+
 /**
  * The conditions of one unit tree that the guards before them decide: `{ node, verdict, reason }`
  * with verdict 'true' (a redundant check) or 'false' (dead code), proved by the solver. A name
  * counts as an integer only when every declaration of it in the unit has an integer type.
  * `looseBooleans` (Python, where `True == 1`) leaves `==` against a boolean undecided.
  */
-export function decidedConditions(source, { looseBooleans = false, kotlin = false } = {}) {
-  const types = declaredTypes(source);
-  const scope = {
-    integers: integerNames(source),
-    looseBooleans,
-    kotlin,
-    types,
-    enums: enumConstants(source, types),
-  };
+export function decidedConditions(source, options = {}) {
+  const scope = scopeOf(source, options);
   const tree = withValueEquality(source, scope);
-  const stable = stableNames(tree);
-  const mutable = new Set([...mutableNames(tree)].filter((name) => !stable.has(name)));
-  const flow = { scope, mutable, effects: new WeakMap(), stable, seen: new WeakSet() };
-  const scan = { scope, flow, found: [], checked: new Set() };
+  const flow = flowOf(tree, scope);
+  const scan = {
+    scope,
+    flow,
+    unitName: options.unitName ?? '',
+    found: [],
+    slips: [],
+    probed: new Set(),
+    checked: new Set(),
+    slipsOnly: options.slipsOnly === true,
+    parameters: parametersOf(tree),
+  };
   for (const found of unitChecks(tree, flow)) {
+    if (found.expression !== undefined) {
+      collectSlips(scan, found.expression, found.facts);
+    }
     const sites =
       found.condition === undefined
         ? sitesIn(found.expression, flow)
@@ -165,5 +206,6 @@ export function decidedConditions(source, { looseBooleans = false, kotlin = fals
       checkChain(scan, site.node, known);
     }
   }
-  return scan.found.toSorted((left, right) => left.node.start - right.node.start);
+  const reported = scan.slipsOnly ? scan.slips : scan.found;
+  return reported.toSorted((left, right) => left.node.start - right.node.start);
 }

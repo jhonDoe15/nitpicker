@@ -78,7 +78,7 @@ members is not reported.
   `continue`, an `assert` (which only removes a redundant check), the arms of a `match` over literal patterns, the left side of `and` and `or`, the bounds of a `for i in range(...)` loop, the
   branches of a conditional expression, and facts about names a lambda or nested function captures
   when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
-  is a module name, forgets what was known, and arithmetic is an opaque value. `len(x)` is a whole
+  is a module name, forgets what was known, and sums, differences and products of integers (`int` annotations and integer literals) are exact because Python integers never overflow, while other arithmetic is an opaque value. `len(x)` is a whole
   number that is never negative and `abs(x)` is not below 0. A call of a module function that only
   returns a side-effect-free condition is read as that condition (at most 2 levels, no recursion),
   and the message names the helper; methods stay opaque.

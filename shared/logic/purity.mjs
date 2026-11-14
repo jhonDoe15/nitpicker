@@ -72,7 +72,7 @@ const STRING_READS = new Set([
 ]);
 
 const LEAVES = new Set(['literal', 'name', 'this']);
-const ALL_CHILDREN = new Set(['logical', 'conditional', 'index']);
+const ALL_CHILDREN = new Set(['logical', 'conditional', 'index', 'abs', 'cast']);
 
 export function isSideEffectFree(root) {
   return foldTerm(root, (node, children) => {

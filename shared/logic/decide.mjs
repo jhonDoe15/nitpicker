@@ -1,12 +1,13 @@
+import { vectorOf, vectorEquality, vectorRelation } from './bitvectors/encode.mjs';
+import { vectorBounds, vectorNumber } from './bitvectors/values.mjs';
+import { counterexampleOf } from './encoding/explain.mjs';
+import { isArithmeticOperator, isExactNumber, isIntegral } from './encoding/numbers.mjs';
 import { boundFacts, boundedModelOf } from './models/models.mjs';
 import { isSideEffectFree } from './purity.mjs';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot, key } from './terms.mjs';
 
 const DEFAULT_RESOURCE_LIMIT = 2_000_000;
 
-const INTEGER = /^-?\d+$/u;
-const DECIMAL = /^-?\d+(?:\.\d+)?$/u;
-const ARITHMETIC = new Set(['+', '-', '*']);
 const STRICT_EQUALITY = new Set(['===', '!==']);
 
 const solverContext = loadOnce(async () => {
@@ -23,33 +24,6 @@ function loadOnce(load) {
     }
     return loaded[0];
   };
-}
-
-function isIntegerLiteral(node) {
-  return (
-    node.kind === 'literal' && INTEGER.test(node.value) && Number.isSafeInteger(Number(node.value))
-  );
-}
-
-function isExactNumber(node) {
-  return DECIMAL.test(node.value) && (!INTEGER.test(node.value) || isIntegerLiteral(node));
-}
-
-function isArithmeticOperator(node) {
-  return (
-    (node.kind === 'unary' && node.value === '-') ||
-    (node.kind === 'binary' && ARITHMETIC.has(node.value))
-  );
-}
-
-function isIntegral(node, children) {
-  if (isIntegerLiteral(node) || node.integer === true || boundedModelOf(node)?.integer === true) {
-    return true;
-  }
-  if (node.kind === 'conditional') {
-    return children[1].integral && children[2].integral;
-  }
-  return isArithmeticOperator(node) && children.every((child) => child.integral);
 }
 
 function memo(map, name, create) {
@@ -71,11 +45,23 @@ function atom(encoding, sort, node) {
   const identity = isStable(encoding, node)
     ? key(node)
     : `occurrence ${String(encoding.atoms.size)}`;
-  return memo(encoding.atoms, `${sort}:${identity}`, (index) =>
-    sort === 'value'
-      ? encoding.numbers.const(`a${String(index)}`)
-      : z3.Bool.const(`a${String(index)}`),
-  );
+  return memo(encoding.atoms, `${sort}:${identity}`, (index) => {
+    const name = `a${String(index)}`;
+    if (sort !== 'value') {
+      return z3.Bool.const(name);
+    }
+    return node.bits === undefined
+      ? encoding.numbers.const(name)
+      : z3.BitVec.const(name, node.bits);
+  });
+}
+
+function vectorAtom(encoding, node) {
+  const constant = atom(encoding, 'value', node);
+  if (!node.signed) {
+    encoding.unsigned.add(constant);
+  }
+  return constant;
 }
 
 function literalValue(encoding, node) {
@@ -131,10 +117,13 @@ function numeric(encoding, [left, right], relation) {
 }
 
 function comparison(encoding, node, children) {
+  const [left, right] = children;
+  if (left.vector !== undefined && right.vector !== undefined) {
+    return vectorRelation(node.value, [left.vector, right.vector]);
+  }
   if (!children.every(isNumber)) {
     return atom(encoding, 'truth', node);
   }
-  const [left, right] = children;
   const compare = { '<': 'lt', '<=': 'le', '>': 'gt', '>=': 'ge' }[node.value];
   return numeric(encoding, children, left.value[compare](right.value));
 }
@@ -159,7 +148,11 @@ function relation(encoding, node, children) {
   if (node.kind !== 'binary' || !STRICT_EQUALITY.has(node.value)) {
     return undefined;
   }
-  const equal = numeric(encoding, children, children[0].value.eq(children[1].value));
+  const [left, right] = children;
+  const bothVectors = left.vector !== undefined && right.vector !== undefined;
+  const equal = bothVectors
+    ? vectorEquality(left.vector, right.vector)
+    : numeric(encoding, children, left.value.eq(right.value));
   return node.value === '===' ? equal : encoding.z3.Not(equal);
 }
 
@@ -177,12 +170,16 @@ function encodeTruth(encoding, { node, children }) {
 function encode(encoding, root) {
   return foldTerm(root, (node, children) => {
     const encoded = { node, children, integral: isIntegral(node, children) };
-    const value = encodeValue(encoding, encoded);
-    const notANumber = encodeNotANumber(encoding, encoded);
-    assumeModel(encoding, { node, value, notANumber });
+    const vector = vectorOf(encoding, node, { children, atom: () => vectorAtom(encoding, node) });
+    const value =
+      vector === undefined ? encodeValue(encoding, encoded) : vectorNumber(encoding, vector);
+    const notANumber =
+      vector === undefined ? encodeNotANumber(encoding, encoded) : encoding.z3.Bool.val(false);
+    assumeModel(encoding, { node, vector, value, notANumber });
     return {
       node,
       integral: encoded.integral,
+      vector,
       value,
       notANumber,
       truth: encodeTruth(encoding, encoded),
@@ -190,11 +187,12 @@ function encode(encoding, root) {
   }).truth;
 }
 
-function assumeModel(encoding, { node, value, notANumber }) {
+function assumeModel(encoding, { node, vector, value, notANumber }) {
   const model = boundedModelOf(node);
   if (model !== undefined) {
     const { z3, numbers } = encoding;
-    encoding.facts.push(...boundFacts(z3, { model, value, notANumber, numbers }));
+    const bounds = vector === undefined ? { value, numbers } : vectorBounds(z3, vector);
+    encoding.facts.push(...boundFacts(z3, { model, notANumber, ...bounds }));
   }
 }
 
@@ -214,7 +212,11 @@ function satisfiable(z3, assertions, resourceLimit) {
   return solverOf(z3, assertions, resourceLimit).check();
 }
 
-async function encoded(conditions, query, { sameCalls = false, integers = false }) {
+async function encoded(
+  conditions,
+  query,
+  { sameCalls = false, integers = false, nonZeroDivisors = false },
+) {
   const z3 = await solverContext();
   const numbers = integers ? z3.Int : z3.Real;
   const encoding = {
@@ -224,11 +226,16 @@ async function encoded(conditions, query, { sameCalls = false, integers = false 
     numbers,
     atoms: new Map(),
     literals: new Map(),
+    unsigned: new Set(),
+    divisors: [],
     facts: [],
   };
   const path = conditions.map((condition) => encode(encoding, condition));
   const asked = encode(encoding, query);
-  const facts = [...distinctLiterals(encoding), ...encoding.facts, ...path];
+  const divisors = nonZeroDivisors
+    ? encoding.divisors.map((divisor) => divisor.neq(z3.BitVec.val(0, divisor.size())))
+    : [];
+  const facts = [...distinctLiterals(encoding), ...encoding.facts, ...divisors, ...path];
   return { z3, encoding, facts, asked };
 }
 
@@ -246,18 +253,6 @@ export async function decide(conditions, query, options = {}) {
   return canHold === 'unsat' ? 'false' : 'open';
 }
 
-const SHOWN_ATOMS = /^(?:value|truth):\(?(?:name|member|index|call|this)\b/u;
-const NEGATIVE = /\(- (?<magnitude>[\d./]+)\)/gu;
-
-function shownAtoms(encoding, model) {
-  return [...encoding.atoms]
-    .filter(([name]) => SHOWN_ATOMS.test(name))
-    .map(([name, constant]) => [name.slice(name.indexOf(':') + 1), String(model.eval(constant))])
-    .filter(([, value]) => !/^[ac]\d+$/u.test(value))
-    .map(([name, value]) => `${name} = ${value.replaceAll(NEGATIVE, '-$<magnitude>')}`)
-    .toSorted();
-}
-
 export async function counterexample(conditions, query, options = {}) {
   const { resourceLimit = DEFAULT_RESOURCE_LIMIT } = options;
   const { z3, encoding, facts, asked } = await encoded(conditions, query, options);
@@ -265,5 +260,5 @@ export async function counterexample(conditions, query, options = {}) {
   if ((await solver.check()) !== 'sat') {
     return undefined;
   }
-  return shownAtoms(encoding, solver.model()).join(', ');
+  return counterexampleOf(encoding, solver.model());
 }
