@@ -1,25 +1,28 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   copyFixture,
   kotlinE2eEnabled,
   kotlinPolicy,
   removeTree,
-} from './test-support/kotlin-maven-project.mjs';
+} from './__tests__/kotlin-maven-project.mts';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 
-const maven = process.env.NITPICKER_MAVEN;
+const maven = process.env['NITPICKER_MAVEN'];
 const CALC = 'src/main/kotlin/demo/Calc.kt';
 const ARCHUNIT = `archunit servicesOnly ${CALC} demo.Calc`;
 const FRAMEWORK_TOOLS = ['jacoco', 'archunit', 'pit', 'test-runtime'];
-const temporary = [];
+const temporary: string[] = [];
 
-const mutant = (rule, method, mutator, description) =>
-  `pit ${rule} ${CALC} Calc|${method}|${mutator}|${description}#1`;
-const halfMutants = (rule) => [
+function mutant(rule: string, method: string, mutator: string, description: string): string {
+  return `pit ${rule} ${CALC} Calc|${method}|${mutator}|${description}#1`;
+}
+const halfMutants = (rule: string) => [
   mutant(rule, 'half(I)I', 'MathMutator', 'Replaced integer division with multiplication'),
   mutant(rule, 'half(I)I', 'PrimitiveReturnsMutator', 'replaced int return with 0 for Calc::half'),
 ];
-const plusOneMutants = (rule) => [
+const plusOneMutants = (rule: string) => [
   mutant(rule, 'plusOne(I)I', 'MathMutator', 'Replaced integer addition with subtraction'),
   mutant(
     rule,
@@ -38,7 +41,7 @@ const HALF_AND_PLUS_ONE_UNTESTED = [
   'pit mutation-summary . status:NoCoverage 4',
 ];
 
-function findingsOf(fixture) {
+function findingsOf(fixture: string): Finding[] {
   const project = copyFixture(fixture);
   temporary.push(project.root);
   return collectJavaFindings(project.root, {
@@ -47,16 +50,19 @@ function findingsOf(fixture) {
   }).filter(({ tool }) => FRAMEWORK_TOOLS.includes(tool));
 }
 
-function summary(findings) {
+function summary(findings: readonly Finding[]): string[] {
   return findings
     .filter(({ tool }) => tool !== 'test-runtime')
     .map(({ tool, rule, path: file, identity, metric }) =>
-      [tool, rule, file, identity, metric?.value].filter((part) => part !== undefined).join(' '),
+      [tool, rule, file, identity, fieldOf(metric, 'value')]
+        .filter((part) => part !== undefined)
+        .map(textOf)
+        .join(' '),
     )
     .sort();
 }
 
-function slowTests(findings) {
+function slowTests(findings: readonly Finding[]) {
   return findings
     .filter(({ rule }) => rule === 'slow-test')
     .map(({ path: file, identity, location }) => ({ file, identity, location }))

@@ -2,15 +2,17 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
 import {
-  effectsSummary,
   KOTLIN_EFFECTS,
   KOTLIN_EFFECTS_FIXTURE,
 } from '../../effects/test-support/effects-projects.mjs';
-import { kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
+import { kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { parseJson } from '../../../../../shared/values/readers.mts';
+import { effectsSummary } from '../effects/test-support/kotlin-effects-views.mts';
 
-const maven = process.env.NITPICKER_MAVEN;
+const maven = process.env['NITPICKER_MAVEN'];
 const POM = path.resolve(import.meta.dirname, '../../../maven/fixtures/effects-kotlin/pom.xml');
 const KOTLIN_SOURCES = 'src/main/kotlin';
 const JAVA_ONLY = 'JavaImports.saveEach';
@@ -24,8 +26,8 @@ const KOTLIN_FILES = [
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {
-  let root;
-  let findings;
+  let root: string;
+  let findings: Finding[];
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-maven-effects-'));
@@ -38,13 +40,13 @@ describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project
   }, 180_000);
 
   afterAll(() => {
-    if (root !== undefined) {
+    if (typeof root === 'string') {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('reports what Gradle reports for the same Kotlin sources', () => {
-    const report = JSON.parse(
+    const report = parseJson(
       readFileSync(path.join(root, 'target', 'nitpicker', 'effects.json'), 'utf8'),
     );
 

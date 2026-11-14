@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
-} from '../test-support/review/kotlin-review-data.mjs';
-import { reviewFindings } from '../test-support/review/kotlin-review-findings.mjs';
+} from '../test-support/review/kotlin-review-data.mts';
+import { reviewFindings } from '../test-support/review/kotlin-review-findings.mts';
 import {
   commitBranch,
   commitFromBranch,
@@ -15,9 +15,10 @@ import {
   kotlinPolicy,
   mavenDiffRunner,
   removeProject,
-} from './test-support/kotlin-maven-project.mjs';
+} from './__tests__/kotlin-maven-project.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 
-const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
+const mavenDiffOf = mavenDiffRunner(process.env['NITPICKER_MAVEN']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 const RUNTIME_SERIALIZATION = `    <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -44,7 +45,7 @@ const LIFTED_RULES = [
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to end', () => {
-  let project;
+  let project: KotlinProject;
 
   beforeAll(() => {
     project = initializeMavenProject();
@@ -77,7 +78,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to e
     });
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => !LIFTED_RULES.includes(entry.split(' ')[0])),
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => !LIFTED_RULES.includes(entry.split(' ')[0] ?? '')),
     );
   });
 
