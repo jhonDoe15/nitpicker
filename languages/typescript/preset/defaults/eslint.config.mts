@@ -1,3 +1,4 @@
+import path from 'node:path';
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import vitest from '@vitest/eslint-plugin';
@@ -41,6 +42,7 @@ import {
   testEnvironmentsFromVariables,
   testHonestyConfigFor,
   typeImportFixStyle,
+  untypedJavascriptConfig,
   usesRouteHandlerFramework,
   type Entry,
   type ParserOptions,
@@ -113,6 +115,11 @@ const presetConfig = defineConfig(
       ],
     },
   },
+  ...untypedJavascriptConfig({
+    tsconfigFile: path.join(analyzedProjectRoot(), layout.typescriptProject ?? 'tsconfig.json'),
+    projectRoot: analyzedProjectRoot(),
+    layout,
+  }),
   ...logicConfigFor(selectedFiles, parserOptions),
   {
     files: productionFiles,

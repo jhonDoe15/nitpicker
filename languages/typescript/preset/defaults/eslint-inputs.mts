@@ -10,6 +10,7 @@ import {
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions as untypedApplyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { logicConfigFor as untypedLogicConfigFor } from '../eslint-config/logic/logic-rules.mts';
+import { untypedJavascriptConfig as javascriptWithoutTypesConfig } from '../eslint-config/policy/untyped-javascript.mjs';
 import {
   applyJavascriptDialect as untypedApplyJavascriptDialect,
   scriptRuleEntries as untypedScriptRuleEntries,
@@ -73,6 +74,7 @@ export type PresetLayout = Layout & {
   readonly testGlobs: readonly string[];
   readonly unitTestGlobs: readonly string[];
   readonly endToEndGlobs: readonly string[];
+  readonly typescriptProject?: string | undefined;
 };
 
 export type ParserOptions = {
@@ -181,6 +183,14 @@ export function productionLayoutConfigFor(
 
 export function logicConfigFor(files: readonly string[], parserOptions: ParserOptions): Entry[] {
   return entriesOf(untypedLogicConfigFor([...files], parserOptions));
+}
+
+export function untypedJavascriptConfig(options: {
+  readonly tsconfigFile: string;
+  readonly projectRoot: string;
+  readonly layout: PresetLayout;
+}): Entry[] {
+  return entriesOf(Reflect.apply(javascriptWithoutTypesConfig, undefined, [options]));
 }
 
 export async function reactScopeConfigFor(layout: PresetLayout, react: object): Promise<Entry[]> {

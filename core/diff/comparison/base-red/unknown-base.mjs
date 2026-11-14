@@ -4,6 +4,7 @@ import {
   TESTS_FAILED_RULES,
   TESTS_FAILED_SCOPE_SEPARATOR,
   TESTS_UNMEASURED_RULES,
+  TOOL_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
 
 const TEST_RESULT_RULES = [
@@ -70,7 +71,7 @@ export function changedByDiff(finding, touchedCode) {
 }
 
 function isToolError(finding) {
-  return finding.classification === 'tool-error';
+  return finding.classification === 'tool-error' && finding.rule !== TOOL_SKIPPED_RULE;
 }
 
 export function testFailuresOf(report) {
@@ -100,14 +101,16 @@ function isCleanHead(headRun, name) {
     !report.findings.some(
       (finding) => isToolError(finding) && !isScopedHeadTestFailure(finding, name),
     ) &&
-    !headRun.toolErrors.some(({ tool }) => tool === name)
+    !headRun.toolErrors.some(({ tool, rule }) => tool === name && rule !== TOOL_SKIPPED_RULE)
   );
 }
 
 export function redBaseAnalyzers({ names, baseRun, headRun }) {
   const red = new Map();
   for (const name of names) {
-    const failures = baseRun.toolErrors.some(({ tool }) => tool === name)
+    const failures = baseRun.toolErrors.some(
+      ({ tool, rule }) => tool === name && rule !== TOOL_SKIPPED_RULE,
+    )
       ? []
       : testFailuresOf(baseRun.reports.get(name));
     if (failures.length > 0 && isCleanHead(headRun, name)) {
