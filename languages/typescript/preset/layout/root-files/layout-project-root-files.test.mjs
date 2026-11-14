@@ -100,7 +100,9 @@ describe('the type check root files', () => {
     const withFiles = nitpickerConfig(root, { projectRootFiles: true });
     const without = nitpickerConfig(root, undefined, '.nitpicker-plain.json');
 
-    expect([...contextOnlyFiles(withFiles, root, resolveLayout())]).toEqual(['benchmarks/read.ts']);
+    expect([...contextOnlyFiles(withFiles, root, { layout: resolveLayout(), ts })]).toEqual([
+      'benchmarks/read.ts',
+    ]);
     expect(JSON.parse(readFileSync(without, 'utf8')).files).toBeUndefined();
   });
 
@@ -117,7 +119,7 @@ describe('the type check root files', () => {
     );
     const config = nitpickerConfig(root, { projectRootFiles: true });
 
-    expect([...contextOnlyFiles(config, root, resolveLayout())].sort()).toEqual([
+    expect([...contextOnlyFiles(config, root, { layout: resolveLayout(), ts })].sort()).toEqual([
       'benchmarks/read.ts',
       'support/only-context.ts',
     ]);
