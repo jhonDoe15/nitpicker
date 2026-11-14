@@ -1,20 +1,7 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
 import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const ruleTester = typescriptRuleTester();
 
 ruleTester.run(
   'no-fixed-sleep-synchronization: waits on wall-clock time',

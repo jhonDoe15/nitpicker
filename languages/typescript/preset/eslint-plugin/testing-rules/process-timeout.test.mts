@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 import { rule } from '../rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 

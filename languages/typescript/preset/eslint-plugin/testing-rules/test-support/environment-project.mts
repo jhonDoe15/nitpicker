@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 
-export function lines(...parts) {
+export function lines(...parts: string[]): string {
   return parts.join('\n');
 }
 export const logic = "it('adds', () => { expect(1 + 1).toBe(2); });";
-export function docblock(name, tool = 'vitest') {
+export function docblock(name: string, tool = 'vitest'): string {
   return `/** @${tool}-environment ${name} */`;
 }
 
@@ -31,11 +31,15 @@ const PROJECT_FILES = {
   'src/support/cycle-b.ts': "import './cycle-a';\nexport const b = 2;\n",
 };
 
-export function createProject(files = PROJECT_FILES) {
+export function createProject(files: Record<string, string> = PROJECT_FILES): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dom-environment-'));
   for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
+    const file = path.resolve(root, name);
+    if (!file.startsWith(root + path.sep)) {
+      throw new Error(`${name} is outside ${root}`);
+    }
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, text);
   }
   afterAll(() => {
     rmSync(root, { recursive: true, force: true });
