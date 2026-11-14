@@ -21,11 +21,15 @@ export function memberProjectOf(plan, workingDirectory) {
   if (current === plan.root || !isInsideFolder(plan.root, current)) {
     return undefined;
   }
-  return plan.projects
-    .filter((project) => project.path !== '.' && isInsideFolder(project.absolute, current))
-    .reduce(
-      (deepest, project) =>
-        deepest === undefined || project.path.length > deepest.path.length ? project : deepest,
-      undefined,
-    );
+  const around = plan.projects.filter(
+    (project) =>
+      (project.folder ?? project.path) !== '.' && isInsideFolder(project.absolute, current),
+  );
+  const deepest = around.reduce(
+    (found, project) =>
+      found === undefined || project.absolute.length > found.absolute.length ? project : found,
+    undefined,
+  );
+  const sharing = around.filter((project) => project.absolute === deepest?.absolute);
+  return sharing.length === 1 ? deepest : undefined;
 }

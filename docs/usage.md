@@ -2060,8 +2060,10 @@ Where you start the run matters:
 }
 ```
 
-- An entry is a folder relative to the config, or `{ "path", "preset", "expand" }`. `.` names the
-  root itself.
+- An entry is a folder relative to the config, or `{ "path", "preset", "expand", "settings" }`. `.`
+  names the root itself. `settings` holds config settings for that project, layered over its own
+  config (it cannot set `preset`, `projects` or `extends`); they are part of the top config, so
+  they are policy of the project like the rest of it.
 - An entry whose folder declares a workspace of its own (`workspaces` in its `package.json`,
   `pnpm-workspace.yaml` or a uv workspace) stands for the members of that workspace, the same way a
   workspace at the top does: `frontend` with `frontend/pnpm-workspace.yaml` gates
@@ -2096,6 +2098,32 @@ Where you start the run matters:
   every project, and loosening it is a `policy-loosened` finding that names it.
 - A project may sit inside another one (`.` and `web`, or `web` and `web/sub`). The outer project's
   run leaves the inner folders out, so each file is gated once.
+- One folder may be listed twice with two presets, for a Java build with a TypeScript app inside
+  it (JHipster's `src/main/webapp`, Vaadin or Hilla's `src/main/frontend`):
+
+  ```json
+  {
+    "projects": [
+      { "path": ".", "preset": "java" },
+      {
+        "path": ".",
+        "preset": "typescript",
+        "settings": { "layout": { "sourceRoots": ["src/main/webapp"] } }
+      }
+    ]
+  }
+  ```
+
+  Each entry is a project of its own, named `<folder>@<preset>` (`.@java`, `.@typescript`) in the
+  plan, the summary, `--project` and its report folder (`_root@typescript`), with its own digest
+  and run lock. A changed file goes to the entry whose preset checks its language (`.java` and
+  `.kt` to the JVM entry, script files to the TypeScript entry), a toolchain file to the entry of
+  its toolchain (`package.json` to TypeScript, `pom.xml` to Java), and any other file to the first
+  entry. The folder's own `nitpicker.config.json` applies to the entry of the preset it declares
+  (or to both when it declares none); the other entry takes its settings from `settings`. A
+  TypeScript or JavaScript entry without `layout` in its `settings` checks `src/main/webapp`,
+  `src/main/frontend` and `frontend`, whichever exist.
+
 - A Git submodule is never a project of the repository around it: a `projects` entry or glob that
   names one, or a workspace glob that covers one, is an error, and a changed submodule gets a
   notice (`services/svc is a Git submodule, which this run does not check`) instead of the

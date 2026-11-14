@@ -54,6 +54,11 @@ const QUIET_NAME =
   /(?:\.d\.[cm]?ts|\.config\.[cm]?[jt]sx?|\.gradle\.kts|\.(?:generated|gen|pb)\.[^.]+|_pb2?\.py)$/u;
 const TOOL_SCRIPTS = new Set(['setup.py', 'noxfile.py', 'conf.py']);
 
+export function presetChecksFile(preset: string | undefined, file: string): boolean {
+  const checked = CHECKED[preset ?? 'typescript'] ?? [];
+  return LANGUAGES.some(({ name, file: pattern }) => checked.includes(name) && pattern.test(file));
+}
+
 function isQuiet(file: string): boolean {
   const parts = file.split('/');
   const name = parts.at(-1) ?? '';

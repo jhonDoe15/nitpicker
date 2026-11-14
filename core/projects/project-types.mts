@@ -5,6 +5,8 @@ import type { ReportEntry } from '../../shared/values/findings.mts';
 
 type ProjectOverlay = {
   readonly preset?: string;
+  readonly companion?: boolean;
+  readonly settings?: object;
   readonly declared?: boolean;
   readonly exclude?: readonly string[];
   readonly inherits?: string;
@@ -12,6 +14,7 @@ type ProjectOverlay = {
 
 export type PlanProject = {
   readonly path: string;
+  readonly folder?: string;
   readonly absolute: string;
   readonly repoPath: string;
   readonly origin?: unknown;
@@ -78,6 +81,7 @@ export type ProjectCli = {
   readonly singleProject: true;
   readonly sharedBase: ConfiguredCli['sharedBase'];
   readonly baseConfigOverlay: ProjectOverlay | undefined;
+  readonly projectKey?: string | undefined;
   readonly repositoryLoosenings?: readonly unknown[];
   readonly repositoryToolErrors?: readonly ReportEntry[];
 };

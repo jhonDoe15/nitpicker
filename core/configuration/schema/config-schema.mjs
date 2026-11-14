@@ -129,6 +129,11 @@ const TOP_LEVEL = {
                 'false keeps a folder that declares a workspace one project instead of gating each member.',
               type: 'boolean',
             },
+            settings: {
+              description:
+                "Settings of this entry's project, layered over its own config; a folder listed twice, with two presets, takes each entry's settings for that preset.",
+              type: 'object',
+            },
           },
         },
       ],

@@ -231,3 +231,32 @@ describe('the shared files of a project', () => {
     });
   });
 });
+
+describe('the settings of a "projects" entry', () => {
+  it('layer over the project config, and a folder of two presets keeps its config for its own preset', () => {
+    const root = repository({
+      'shop/nitpicker.config.json': '{"preset":"java","exclude":["gen/**"]}',
+    });
+    const settings = { layout: { sourceRoots: ['src/main/webapp'] } };
+
+    expect(
+      load(root, 'shop', {
+        overlay: { preset: 'typescript', declared: true, companion: true, settings },
+      }),
+    ).toEqual({ preset: 'typescript', layout: { sourceRoots: ['src/main/webapp'] } });
+    expect(
+      load(root, 'shop', { overlay: { preset: 'java', declared: true, companion: true } }),
+    ).toEqual({
+      preset: 'java',
+      exclude: ['gen/**'],
+    });
+  });
+
+  it('cannot set the preset, projects or extends', () => {
+    const root = repository({ 'shop/a': '' });
+
+    expect(() =>
+      load(root, 'shop', { overlay: { preset: 'java', settings: { preset: 'kotlin' } } }),
+    ).toThrow('"settings" of the "projects" entry cannot set "preset"');
+  });
+});

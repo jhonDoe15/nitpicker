@@ -43,6 +43,10 @@ export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison 
   return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
 }
 
+function foldersOf(plan: MonorepoPlan): ReadonlyMap<string, string> {
+  return new Map(plan.projects.map((project) => [project.path, project.folder ?? project.path]));
+}
+
 function choose(plan: MonorepoPlan, cli: SelectionCli, comparison: Comparison): Selected {
   const requested = requestedProjects({
     projects: plan.projects,
@@ -55,7 +59,7 @@ function choose(plan: MonorepoPlan, cli: SelectionCli, comparison: Comparison): 
   return selectProjects({
     projects: plan.projects,
     changed: byChanges ? comparison.changed : [],
-    graph: byChanges ? dependencyGraph(plan.root, projectPaths) : new Map(),
+    graph: byChanges ? dependencyGraph(plan.root, projectPaths, foldersOf(plan)) : new Map(),
     prefix: plan.prefix,
     requested,
     all: cli.options.all,

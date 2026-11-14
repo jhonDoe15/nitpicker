@@ -1,6 +1,7 @@
 import { isInside } from '../discovery/repository-files.mjs';
 import { dependentsOf, deepestProject } from './dependencies/graph.mts';
 import { isToolchainFileFor } from './toolchain-files.mjs';
+import { presetChecksFile } from '../../command/policy-review/unchecked-languages.mts';
 import type { DependencyGraph } from './dependencies/graph.mts';
 import type { PlanProject, ProjectSelection } from '../project-types.mts';
 
@@ -27,12 +28,23 @@ export type Selected = {
   readonly outside: readonly string[];
 };
 
+function sharingOwner(sharing: Projects, file: string): PlanProject | undefined {
+  return (
+    sharing.find(({ preset }) => presetChecksFile(preset, file)) ??
+    sharing.find(({ preset, repoPath }) => isToolchainFileFor(preset, file, repoPath)) ??
+    sharing[0]
+  );
+}
+
 function ownerOf(projects: Projects, file: string): PlanProject | undefined {
   const owner = deepestProject(
     projects.map(({ repoPath }) => repoPath).filter((repoPath) => isInside(file, repoPath)),
     file,
   );
-  return projects.find(({ repoPath }) => repoPath === owner);
+  return sharingOwner(
+    projects.filter(({ repoPath }) => repoPath === owner),
+    file,
+  );
 }
 
 function rootClaims(projects: Projects, file: string, rootConfigFiles: readonly string[]): Claim[] {

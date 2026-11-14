@@ -67,3 +67,37 @@ describe('"projects"', () => {
     expect(() => validateProjects(value, PRESETS)).toThrow(message);
   });
 });
+
+describe('a folder listed twice', () => {
+  it("is accepted with two presets and keeps each entry's settings", () => {
+    const settings = { layout: { sourceRoots: ['src/main/webapp'] } };
+
+    expect(
+      validateProjects(
+        [
+          { path: '.', preset: 'java' },
+          { path: '.', preset: 'typescript', settings },
+        ],
+        PRESETS,
+      ),
+    ).toEqual([
+      { path: '.', preset: 'java' },
+      { path: '.', preset: 'typescript', settings },
+    ]);
+  });
+
+  it('is refused with one preset twice or a missing preset, and settings must be an object', () => {
+    const twice = [
+      { path: '.', preset: 'java' },
+      { path: '.', preset: 'java' },
+    ];
+
+    expect(() => validateProjects(twice, PRESETS)).toThrow('"projects" lists . twice');
+    expect(() => validateProjects(['.', { path: '.', preset: 'java' }], PRESETS)).toThrow(
+      'give each entry its own "preset"',
+    );
+    expect(() => validateProjects([{ path: '.', settings: [] }], PRESETS)).toThrow(
+      '"projects[0].settings" must be an object of config settings',
+    );
+  });
+});

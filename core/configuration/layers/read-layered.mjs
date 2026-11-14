@@ -88,8 +88,35 @@ function withInheritedPreset(merged, preset) {
   return merged.preset === undefined && preset !== undefined ? { ...merged, preset } : merged;
 }
 
+const ENTRY_SETTINGS_LABEL = '"settings" of the "projects" entry';
+const ENTRY_ONLY_KEYS = ['projects', 'extends', 'preset'];
+
+function companionLayers(own, overlay) {
+  if (overlay?.companion !== true) {
+    return own;
+  }
+  const { preset } = mergeLayers(own.map(({ settings }) => settings));
+  return preset === undefined || preset === overlay.preset ? own : [];
+}
+
+function entryLayers(overlay) {
+  if (overlay?.settings === undefined) {
+    return [];
+  }
+  const misplaced = ENTRY_ONLY_KEYS.filter((key) => Object.hasOwn(overlay.settings, key));
+  if (misplaced.length > 0) {
+    throw configError(
+      `${ENTRY_SETTINGS_LABEL} cannot set ${misplaced.map((key) => `"${key}"`).join(', ')}`,
+    );
+  }
+  return checkedLayers([{ label: ENTRY_SETTINGS_LABEL, config: overlay.settings }]);
+}
+
 export function readLayeredConfig(projectRoot, { overlay, repositoryRoot } = {}) {
-  const own = checkedLayers(ownLayers(projectRoot, repositoryRoot));
+  const own = [
+    ...companionLayers(checkedLayers(ownLayers(projectRoot, repositoryRoot)), overlay),
+    ...entryLayers(overlay),
+  ];
   const ownMerged = withOverlay(mergeLayers(own.map(({ settings }) => settings)), overlay);
   const inherited = inheritedLayers(projectRoot, {
     inherits: overlay?.inherits,

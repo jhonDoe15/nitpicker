@@ -13,6 +13,7 @@ export type ConfiguredCli = Cli & {
   readonly scope?: unknown;
   readonly currentFolder?: string | undefined;
   readonly configOverlay?: { readonly inherits?: unknown } | undefined;
+  readonly projectKey?: string | undefined;
   readonly baseConfigOverlay?: unknown;
   readonly repositoryLoosenings?: readonly unknown[];
   readonly sharedBase?: ReturnType<typeof resolveBase>;

@@ -43,7 +43,7 @@ function monorepoPlan({ root, files, found, repositoryRoot, submodules }) {
   const rootConfig = readLayeredConfig(root, { repositoryRoot });
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
   rejectReportFolderClash(found.entries);
-  const allPaths = found.entries.map((entry) => entry.path);
+  const allPaths = [...new Set(found.entries.map((entry) => entry.folder ?? entry.path))];
   const context = { root, repositoryRoot, prefix, rootConfig, allPaths };
   const projects = found.entries.map((entry) => describeProject(entry, context));
   return {

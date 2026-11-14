@@ -393,3 +393,56 @@ describe('a Gradle composite build of services', () => {
     });
   });
 });
+
+describe('one folder gated by two presets', () => {
+  function jhipster() {
+    return repository({
+      'nitpicker.config.json': JSON.stringify({
+        projects: [
+          { path: '.', preset: 'java' },
+          { path: '.', preset: 'typescript' },
+        ],
+      }),
+      ...projectFiles('.', {
+        'pom.xml': '<project/>\n',
+        'package.json': '{"name":"shop","version":"1.0.0"}\n',
+        'src/main/java/Shop.java': 'class Shop {}\n',
+        'src/main/webapp/app/main.ts': 'export {};\n',
+      }),
+    });
+  }
+
+  it('runs each preset for the files of its language, with its own reports', () => {
+    const root = jhipster();
+    writeFiles(root, {
+      'src/main/java/Shop.java': 'class Shop { }\n',
+      'src/main/webapp/app/main.ts': 'export const changed = 1;\n',
+    });
+
+    const result = run(root);
+
+    expect(result.headings).toEqual(['== .@java (java) ==', '== .@typescript (typescript) ==']);
+    expect(statuses(result)).toEqual({ '.@java': 'passed', '.@typescript': 'passed' });
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(path.join(result.reports, '_root@java', 'summary.json'))).toBe(true);
+    expect(existsSync(path.join(result.reports, '_root@typescript', 'summary.json'))).toBe(true);
+  });
+
+  it('runs only the preset of the changed language', () => {
+    const root = jhipster();
+    writeFiles(root, { 'src/main/webapp/app/main.ts': 'export const changed = 1;\n' });
+
+    expect(statuses(run(root))).toEqual({ '.@java': 'skipped', '.@typescript': 'passed' });
+  });
+
+  it('refuses one folder twice without two presets', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['.', { path: '.', preset: 'java' }] }),
+      ...projectFiles('.', { 'pom.xml': '<project/>\n' }),
+    });
+
+    expect(run(root).err).toContain(
+      '"projects" lists . twice. To gate one folder with two presets, give each entry its own "preset"',
+    );
+  });
+});
