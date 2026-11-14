@@ -3,7 +3,7 @@ import {
   productionLayoutConfigFor,
   productionPolicyConfigFor,
 } from '../../../eslint-config/policy/production-policy.mjs';
-import { strictSyntaxConfigFor } from '../../../eslint-config/strict.mjs';
+import { strictSyntaxConfigFor } from '../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../layout.mjs';
 
 const config = [

@@ -167,7 +167,9 @@ export function strictPresetConfig(
   parserOptions: ParserOptions,
   options: StrictOptions,
 ): Entry[] {
-  return entriesOf(untypedStrictPresetConfig(layout, parserOptions, options));
+  return entriesOf(
+    Reflect.apply(untypedStrictPresetConfig, undefined, [layout, parserOptions, options]),
+  );
 }
 
 export function productionLayoutConfigFor(
@@ -178,26 +180,34 @@ export function productionLayoutConfigFor(
 }
 
 export function logicConfigFor(files: readonly string[], parserOptions: ParserOptions): Entry[] {
-  return entriesOf(untypedLogicConfigFor(files, parserOptions));
+  return entriesOf(untypedLogicConfigFor([...files], parserOptions));
 }
 
 export async function reactScopeConfigFor(layout: PresetLayout, react: object): Promise<Entry[]> {
-  return entriesOf(await untypedReactScopeConfigFor(layout, react));
+  const entries: unknown = await Reflect.apply(untypedReactScopeConfigFor, undefined, [
+    layout,
+    react,
+  ]);
+  return entriesOf(entries);
 }
 
 export async function i18nScopeConfigFor(layout: PresetLayout, i18n: object): Promise<Entry[]> {
-  return entriesOf(await untypedI18nScopeConfigFor(layout, i18n));
+  const entries: unknown = await Reflect.apply(untypedI18nScopeConfigFor, undefined, [
+    layout,
+    i18n,
+  ]);
+  return entriesOf(entries);
 }
 
 export function serverScopeConfigFor(
   layout: PresetLayout,
   options: { readonly browser: boolean },
 ): Entry[] {
-  return entriesOf(untypedServerScopeConfigFor(layout, options));
+  return entriesOf(Reflect.apply(untypedServerScopeConfigFor, undefined, [layout, options]));
 }
 
 export function nestScopeConfigFor(files: readonly string[]): Entry[] {
-  return entriesOf(untypedNestScopeConfigFor(files));
+  return entriesOf(untypedNestScopeConfigFor([...files]));
 }
 
 export function testHonestyConfigFor(

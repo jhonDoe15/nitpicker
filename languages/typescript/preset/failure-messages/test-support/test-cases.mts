@@ -1,7 +1,7 @@
 import type { FailureMessageCase } from './case-types.mts';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { strictProductionRules } from '../../eslint-config/strict.mjs';
+import { strictProductionRules } from '../../eslint-config/strict.mts';
 import { strictTestsConfig } from '../../eslint-config/strict-tests.mjs';
 
 const productionRulesConfig = [

@@ -2,7 +2,7 @@ import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { applyJavascriptDialect } from '../../../../../../javascript/preset/eslint-dialect.mjs';
-import { strictPresetConfig } from '../../../../eslint-config/strict.mjs';
+import { strictPresetConfig } from '../../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../../layout.mjs';
 import { rule } from '../no-unvalidated-schema-field.mjs';
 

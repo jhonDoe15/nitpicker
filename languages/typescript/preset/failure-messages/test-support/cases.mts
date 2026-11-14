@@ -1,14 +1,14 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import path from 'node:path';
-import loggingConfig from '../../eslint-config/policies/logging.config.mjs';
-import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mjs';
+import loggingConfig from '../../eslint-config/policies/logging.config.mts';
+import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mts';
 import type { FailureMessageCase } from './case-types.mts';
 import { domainFailureMessageCases } from './domain-cases.mts';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mts';
-import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
-import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
+import { productionPolicyConfig } from '../../eslint-config/policies/base.mts';
+import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mts';
 import { reactFailureMessageCases } from './react-cases.mts';
 import { testFailureMessageCases } from './test-cases.mts';
 import { signatureFailureMessageCases } from './signatures/signature-cases.mts';
