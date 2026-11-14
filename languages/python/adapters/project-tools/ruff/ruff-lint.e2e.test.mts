@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
-import { realLintFindings } from '../test-support/real-lint.mjs';
+import { realLintFindings } from '../test-support/real-lint.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const APP = [
   'def handle(*args):',
@@ -81,7 +82,10 @@ const TYPED_IMPORT = [
 ].join('\n');
 const UNUSED_VARIADIC = ['ARG001 src/shop/app.py', 'ARG002 src/shop/app.py'];
 
-function findings(precedence, options = {}) {
+function findings(
+  precedence: readonly string[] | undefined,
+  options: Readonly<Record<string, unknown>> = {},
+) {
   return realLintFindings({
     files: FILES,
     toolPrecedence: precedence === undefined ? undefined : { ruff: precedence },
@@ -182,8 +186,8 @@ describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end
 
   it('checks against the followed line length in every ordering', () => {
     const wide = { 'src/shop/pick.py': TERNARY, 'ruff.toml': 'line-length = 120\n' };
-    const measured = (lineLength) => ({ 'python.lineLength': lineLength });
-    const lineFindings = (precedence, conventions) =>
+    const measured = (lineLength: string) => ({ 'python.lineLength': lineLength });
+    const lineFindings = (precedence: readonly string[] | undefined, conventions: unknown) =>
       realLintFindings({
         files: wide,
         toolPrecedence: precedence === undefined ? undefined : { ruff: precedence },

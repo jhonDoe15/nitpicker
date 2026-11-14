@@ -1,7 +1,6 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   pinAddopts,
   pinnedEnvironmentAddopts,
@@ -9,15 +8,12 @@ import {
   readPytestAddopts,
   shellWords,
 } from './pytest-pins.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pytest-pins-'));
-  roots.push(root);
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-pytest-pins-');
   for (const [file, text] of Object.entries(files)) writeFileSync(path.join(root, file), text);
   return root;
 }

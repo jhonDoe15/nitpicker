@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { failedTests, failingModules, parseJunit } from './junit-results.mjs';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { failedTests, failingModules, parseJunit as untypedParse } from './junit-results.mjs';
+
+function parseJunit(xml: string): Readonly<Record<string, unknown>>[] {
+  return listOf(untypedParse(xml)).map(fieldsOf);
+}
 
 const REPORT = `<?xml version="1.0" encoding="utf-8"?>
 <testsuites><testsuite name="pytest">
@@ -9,6 +14,10 @@ const REPORT = `<?xml version="1.0" encoding="utf-8"?>
 <testcase classname="" name="tests.test_c" time="0.1"><error message="collection failure"/></testcase>
 </testsuite></testsuites>`;
 
+const LONG: unknown = expect.closeTo(1234.5, 10);
+const SHORT: unknown = expect.closeTo(0.2, 10);
+const BRIEF: unknown = expect.closeTo(0.1, 10);
+
 describe('pytest JUnit results', () => {
   it('reads the line of the failing assertion and the message of a failed case', () => {
     const [failed] = parseJunit(
@@ -17,7 +26,7 @@ describe('pytest JUnit results', () => {
         `E       assert 3 == 4&#10;&#10;src/cart.py:2: in total&#10;tests/test_cart.py:6: AssertionError</failure></testcase></testsuite>`,
     );
 
-    expect(failed.failure).toEqual({ line: 6, message: 'assert 3 == 4' });
+    expect(fieldOf(failed, 'failure')).toEqual({ line: 6, message: 'assert 3 == 4' });
   });
 
   it('reads each case with its file, 1-based line, class, function and outcome', () => {
@@ -31,7 +40,7 @@ describe('pytest JUnit results', () => {
       name: 'test_ok[1-2]',
       functionName: 'test_ok',
       id: 'tests/test_a.py::TestA::test_ok[1-2]',
-      seconds: expect.closeTo(1234.5, 10),
+      seconds: LONG,
       outcome: 'passed',
     });
     expect(bad).toEqual({
@@ -42,11 +51,11 @@ describe('pytest JUnit results', () => {
       name: 'test_bad',
       functionName: 'test_bad',
       id: 'tests/test_a.py::test_bad',
-      seconds: expect.closeTo(0.2, 10),
+      seconds: SHORT,
       outcome: 'failed',
       failure: { message: 'boom' },
     });
-    expect(skipped.outcome).toBe('skipped');
+    expect(fieldOf(skipped, 'outcome')).toBe('skipped');
     expect(collection).toEqual({
       file: 'tests/test_c.py',
       qualifiedClass: '',
@@ -55,7 +64,7 @@ describe('pytest JUnit results', () => {
       name: undefined,
       functionName: undefined,
       id: 'tests/test_c.py',
-      seconds: expect.closeTo(0.1, 10),
+      seconds: BRIEF,
       outcome: 'failed',
       failure: { message: 'collection failure' },
     });
@@ -63,7 +72,7 @@ describe('pytest JUnit results', () => {
   it('names the failed tests and the modules they are in, once each', () => {
     const cases = parseJunit(REPORT);
 
-    expect(failedTests(cases).map(({ id }) => id)).toEqual([
+    expect(listOf(failedTests(cases)).map((item) => textOf(fieldOf(item, 'id')))).toEqual([
       'tests/test_a.py::test_bad',
       'tests/test_c.py',
     ]);
@@ -74,7 +83,10 @@ describe('pytest JUnit results', () => {
       '<testsuite><testcase classname="t" name="test_x[1]" file="t.py" time="1"><properties><property name="nitpicker_marks" value="integration parametrize"/></properties></testcase><testcase classname="t" name="test_y" file="t.py" time="1"/></testsuite>',
     );
 
-    expect([marked.marks, plain.marks]).toEqual([['integration', 'parametrize'], undefined]);
+    expect([fieldOf(marked, 'marks'), fieldOf(plain, 'marks')]).toEqual([
+      ['integration', 'parametrize'],
+      undefined,
+    ]);
   });
   it('reads a single testsuite root', () => {
     expect(

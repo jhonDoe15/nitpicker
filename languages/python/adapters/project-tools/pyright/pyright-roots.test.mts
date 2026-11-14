@@ -1,9 +1,10 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../../test-support/fake-project.mjs';
+import { createFakeProjects } from '../../test-support/fake-project.mts';
 import { pythonConfigFiles } from '../config-files.mjs';
-import { pyrightConfig } from './pyright-config.mjs';
+import { fieldsOf } from '../../../../../shared/values/readers.mts';
+import { PYRIGHT_TOOL, pyrightConfig } from './pyright-config.mjs';
 
 const fakes = createFakeProjects();
 afterEach(fakes.cleanup);
@@ -20,7 +21,7 @@ const PROJECT_CONFIG = JSON.stringify({
   executionEnvironments: [{ root: 'src', extraPaths: ['lib'] }],
 });
 
-function snapshotConfig(files) {
+function snapshotConfig(files: Readonly<Record<string, string>>) {
   const head = fakes.project(files);
   const base = fakes.project({});
   const { context, reportRoot } = fakes.contextFor(
@@ -28,7 +29,7 @@ function snapshotConfig(files) {
     {},
     { toolPrecedence: LISTED, policyRoot: head },
   );
-  return { head, base, reportRoot, config: pyrightConfig(context, 'pyright') };
+  return { head, base, reportRoot, config: fieldsOf(pyrightConfig(context, PYRIGHT_TOOL)) };
 }
 
 describe('pyright paths of a project config under the opt-in', () => {
@@ -69,8 +70,8 @@ describe('pyright paths of a project config under the opt-in', () => {
       'config/base.json': '{ "extraPaths": ["libs"], "stubPath": "../stubs" }',
     });
 
-    expect(config.extraPaths).toEqual([path.join(base, 'config/libs'), path.join(base, 'src')]);
-    expect(config.stubPath).toBe(path.join(base, 'stubs'));
+    expect(config['extraPaths']).toEqual([path.join(base, 'config/libs'), path.join(base, 'src')]);
+    expect(config['stubPath']).toBe(path.join(base, 'stubs'));
   });
 
   it('keeps an extended file outside the project where it is', () => {
@@ -79,7 +80,7 @@ describe('pyright paths of a project config under the opt-in', () => {
       'pyrightconfig.json': JSON.stringify({ extends: path.join(outside, 'shared.json') }),
     });
 
-    expect(config.extraPaths).toEqual([path.join(outside, 'libs'), path.join(base, 'src')]);
+    expect(config['extraPaths']).toEqual([path.join(outside, 'libs'), path.join(base, 'src')]);
   });
 });
 
@@ -119,10 +120,10 @@ describe('finding and parsing the project pyright config under the opt-in', () =
       { toolPrecedence: LISTED, policyRoot: head },
     );
 
-    const config = pyrightConfig(context, 'pyright');
+    const config = fieldsOf(pyrightConfig(context, PYRIGHT_TOOL));
 
-    expect(config.pythonVersion).toBe('3.9');
-    expect(config.extraPaths).toEqual([path.join(base, 'shared'), snapshot]);
+    expect(config['pythonVersion']).toBe('3.9');
+    expect(config['extraPaths']).toEqual([path.join(base, 'shared'), snapshot]);
   });
 
   it('stops at the project root when there is no repository above it', () => {
@@ -131,7 +132,9 @@ describe('finding and parsing the project pyright config under the opt-in', () =
     mkdirSync(head, { recursive: true });
     const { context } = fakes.contextFor(head, {}, { toolPrecedence: LISTED, policyRoot: head });
 
-    expect(() => pyrightConfig(context, 'pyright')).toThrow(/is missing/u);
+    expect(() => {
+      pyrightConfig(context, PYRIGHT_TOOL);
+    }).toThrow(/is missing/u);
   });
 });
 

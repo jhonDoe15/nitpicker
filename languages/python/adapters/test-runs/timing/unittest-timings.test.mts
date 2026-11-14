@@ -1,15 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { pythonUsable } from '../../../metrics/python-helpers.mjs';
+import { describe, expect, it } from 'vitest';
+import { pythonUsable } from '../../../metrics/python-helpers.mts';
 import { UNITTEST_SCRIPT } from '../../execution/python-test-runner.mjs';
-import { readJunit, RERUN_REPORT } from '../junit-results.mjs';
-import { readSlowTestFindings } from '../slow-tests.mjs';
+import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mjs';
+import { readJunit } from '../../typed/tests/test-views.mts';
+import { readSlowTestFindings } from '../../typed/report/report-views.mts';
 import { retimeSlowTests } from './slow-retime.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
+
 const CASES = `import unittest
 
 class Outcomes(unittest.TestCase):
@@ -36,23 +38,16 @@ class Outcomes(unittest.TestCase):
             raise ValueError('subtest')
 `;
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 function setup(source = CASES) {
-  const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-unittest-timing-'));
-  roots.push(projectRoot);
+  const projectRoot = temporaryRoot('nitpicker-unittest-timing-');
   const reportRoot = path.join(projectRoot, 'reports');
   mkdirSync(reportRoot);
   mkdirSync(path.join(projectRoot, 'tests'));
   writeFileSync(path.join(projectRoot, 'tests/test_outcomes.py'), source);
   const result = spawnSync(
     'python3',
-    [UNITTEST_SCRIPT, path.join(reportRoot, 'pytest-junit.xml'), 'discover', '-s', 'tests'],
-    { cwd: projectRoot, encoding: 'utf8' },
+    [UNITTEST_SCRIPT, path.join(reportRoot, JUNIT_REPORT), 'discover', '-s', 'tests'],
+    { cwd: projectRoot, encoding: 'utf8', timeout: 120_000 },
   );
   return { projectRoot, reportRoot, result };
 }
@@ -85,21 +80,27 @@ describe.skipIf(!pythonUsable())('unittest timing outcomes and runtime selection
       'import unittest\n\nclass Outcomes(unittest.TestCase):\n    def test_pass(self):\n        pass\n',
     );
     const original = readJunit(options.reportRoot)[0];
-    expect(original.runtimeId).toBe('test_outcomes.Outcomes.test_pass');
+    expect(original?.runtimeId).toBe('test_outcomes.Outcomes.test_pass');
     retimeSlowTests(
       {
         ...options,
         snapshot: 'head',
         project: { testRunner: 'unittest' },
         testSeconds: { unitTestSeconds: -1 },
-        launcher: { launch: (_tool, args) => ({ command: 'python3', args, env: {} }) },
+        launcher: {
+          launch: (_tool: string, args: readonly string[]) => ({
+            command: 'python3',
+            args,
+            env: {},
+          }),
+        },
         env: {},
       },
       { testsRan: true },
     );
     const rerun = readJunit(options.reportRoot, RERUN_REPORT);
     expect(rerun.map(({ id, runtimeId }) => [id, runtimeId])).toEqual([
-      [original.id, original.runtimeId],
+      [original?.id, original?.runtimeId],
     ]);
   });
 });

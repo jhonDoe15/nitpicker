@@ -1,14 +1,16 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createConsoleProjects } from './test-support/console-project.mjs';
+import { createConsoleProjects } from './test-support/console-project.mts';
+import type { ConsoleEntry } from '../typed/tests/test-views.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const { consoleReport, cleanup } = createConsoleProjects();
 
 afterEach(cleanup);
 
-function byFile(root, report) {
+function byFile(root: string, report: { readonly entries: readonly ConsoleEntry[] }) {
   return report.entries.map(({ file, test, messages }) => [
     path.relative(root, file),
     test,
@@ -128,7 +130,7 @@ def conn_fn():
         'def test_session(conn):\n    assert conn == "conn"\n\n\ndef test_function(conn_fn):\n    assert conn_fn == "conn"\n',
     });
 
-    expect(outcome.testFailures).toEqual([]);
+    expect(outcome['testFailures']).toEqual([]);
     expect(byFile(root, report)).toEqual([
       ['tests/conftest.py', '', ['DeprecationWarning: legacy connect is deprecated']],
       ['tests/test_c.py', 'test_function', ['DeprecationWarning: legacy connect is deprecated']],
