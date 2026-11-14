@@ -21,6 +21,7 @@ export type DiffOptions = Omit<
   readonly headProjectRoot?: string | undefined;
   readonly requestedBaseRef?: unknown;
   readonly partialRun?: unknown;
+  readonly fixRecipes?: unknown;
   readonly includeWorkingTree?: true | undefined;
   readonly captureHead?: unknown;
   readonly staged?: unknown;

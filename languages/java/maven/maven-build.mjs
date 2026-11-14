@@ -23,7 +23,7 @@ import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const REPORT_CLOCK_SKEW_MS = 2000;
-const PROJECT_CHECKS_OFF = [
+export const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
   '-Dcpd.skip=true',
@@ -33,7 +33,16 @@ const PROJECT_CHECKS_OFF = [
   '-Ddetekt.skip=true',
 ];
 
-function dependencyFile(work, module) {
+export function dependencyListArguments(work) {
+  return [
+    `${MAVEN_PLUGINS.dependency}:list`,
+    `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
+    '-DoutputAbsoluteArtifactFilename=true',
+    '-DappendOutput=false',
+  ];
+}
+
+export function dependencyFile(work, module) {
   const [groupId, artifactId] = module.coordinates.split(':');
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
@@ -58,10 +67,7 @@ export function buildAndTest({
       '--quiet',
       ...selection,
       ...buildGoals({ quick, pinned, modules }),
-      `${MAVEN_PLUGINS.dependency}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
-      '-DoutputAbsoluteArtifactFilename=true',
-      '-DappendOutput=false',
+      ...dependencyListArguments(work),
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',

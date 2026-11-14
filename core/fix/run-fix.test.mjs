@@ -5,7 +5,7 @@ import { fakePythonTools } from '../../languages/python/fix/test-support/fake-py
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
-import { fixWorkingTree, spawnInvocation } from './run-fix.mjs';
+import { fixWorkingTree, spawnInvocation } from './run-fix.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -31,11 +31,12 @@ function repository() {
 }
 
 const TYPESCRIPT_REPLIES = {
+  'knip-fix': '',
   'eslint-fix': '[]',
   'prettier-fix': JSON.stringify({ results: [{ path: 'src/a.ts', ignored: true }] }),
 };
 
-function operationsFor(config) {
+function operationsFor(config, selectedRules = []) {
   const created = repository();
   const python = fakePythonTools();
   const jvm = fakeJvmTools();
@@ -45,6 +46,7 @@ function operationsFor(config) {
     repositoryRoot: created.root,
     projectRoot: created.root,
     baseRef: 'base',
+    selectedRules,
     headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
     config,
     executeFixCommand: (invocation) => {
@@ -73,26 +75,44 @@ describe('fixWorkingTree', () => {
     (config) => {
       const { operations, result } = operationsFor(config);
 
-      expect(operations).toEqual(['eslint-fix', 'prettier-fix']);
+      expect(operations).toEqual(['knip-fix', 'eslint-fix', 'prettier-fix']);
       expect(result).toEqual({ fixedFiles: [], toolErrors: [], notes: [] });
     },
   );
+  it('names a --rule that no fixer has, with the closest rule that one has', () => {
+    const { result } = operationsFor({ preset: 'typescript' }, ['dead-code/exportz']);
+
+    expect(result.notes).toEqual([
+      '--fix --rule dead-code/exportz: nitpicker has no fixer named dead-code/exportz in the typescript preset. Did you mean `dead-code/exports`?',
+    ]);
+  });
+  it('says when a --rule with a fixer found nothing to fix', () => {
+    const { result } = operationsFor({ preset: 'typescript' }, ['dead-code/exports']);
+
+    expect(result.notes).toEqual(['--fix --rule dead-code/exports: found nothing to fix']);
+  });
   it('runs only the Python fixers for the python preset', () => {
     const { operations, result } = operationsFor({ preset: 'python' });
 
-    expect(operations).toEqual(['python-probe', 'ruff-fix', 'ruff-format-fix']);
+    expect(operations).toEqual(['python-probe', 'python-fix-edits', 'ruff-fix', 'ruff-format-fix']);
     expect(result.fixedFiles).toEqual(['src/a.py']);
   });
   it('runs only the Java fixers for the java preset', () => {
     const { operations, result } = operationsFor({ preset: 'java' });
 
-    expect(operations).toEqual(['fix-tools', 'java-probe', 'java-format-fix']);
+    expect(operations).toEqual(['error-prone-patch', 'fix-tools', 'java-probe', 'java-format-fix']);
     expect(result.fixedFiles).toEqual(['src/main/java/A.java']);
   });
   it('runs the Java and Kotlin fixers for the kotlin preset', () => {
     const { operations, result } = operationsFor({ preset: 'kotlin' });
 
-    expect(operations).toEqual(['fix-tools', 'java-probe', 'java-format-fix', 'ktlint-fix']);
+    expect(operations).toEqual([
+      'error-prone-patch',
+      'fix-tools',
+      'java-probe',
+      'java-format-fix',
+      'ktlint-fix',
+    ]);
     expect(result.fixedFiles).toEqual(['src/main/java/A.java', 'src/main/kotlin/A.kt']);
   });
   it('runs only the Go formatter for the go preset', () => {

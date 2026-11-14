@@ -2,6 +2,7 @@ export type FixLoopSlots = {
   readonly preset: string;
   readonly hasFix: boolean;
   readonly hasQuick: boolean;
+  readonly recipes: boolean;
   readonly fixers: string;
   readonly tests: string;
   readonly formatStep?: string;
@@ -23,7 +24,9 @@ const NODE_SUPPRESS =
   'entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests.';
 
 const NODE_RUN_DETAIL =
-  'It applies ESLint and Prettier fixes with its own configs (do not format with plain `prettier`; ' +
+  'It applies ESLint fixes, single ESLint suggestions of reviewed rules, safe TypeScript code ' +
+  "fixes, knip's removal of unused dependencies, and Prettier fixes with its own configs (do not " +
+  'format with plain `prettier`; ' +
   "its quotes, semicolons, indentation and width follow most of the project's files), then checks " +
   'your change against the merge base.';
 
@@ -51,6 +54,7 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'typescript',
     hasFix: true,
     hasQuick: true,
+    recipes: true,
     fixers: 'ESLint and Prettier',
     tests:
       "Run your tests with the project's runner (its `test` script). Failing tests stop coverage, " +
@@ -65,6 +69,7 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'javascript',
     hasFix: true,
     hasQuick: true,
+    recipes: true,
     fixers: 'ESLint and Prettier',
     tests:
       "Run your tests with the project's runner (its `test` script). Failing tests stop coverage, " +
@@ -79,6 +84,7 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'python',
     hasFix: true,
     hasQuick: true,
+    recipes: true,
     fixers: '`ruff check --fix` and ruff format or black',
     tests:
       "Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2). " +
@@ -100,6 +106,7 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'java',
     hasFix: true,
     hasQuick: true,
+    recipes: true,
     fixers: 'google-java-format or palantir-java-format',
     tests:
       `${JVM_TESTS} Failing tests make the gate exit 1, and so does a change that does not compile: ` +
@@ -108,7 +115,8 @@ export const SLOTS: readonly FixLoopSlots[] = [
     runDetail:
       'It first rewrites the changed Java files with the formatter the run names under "Following ' +
       'this project\'s conventions" (google-java-format 1.35.0, `--aosp` for the aosp style, or ' +
-      'palantir-java-format) and lists them under "Fixed files:". When the run says no Java ' +
+      'palantir-java-format) and lists them under "Fixed files:", after its fix recipes, which list ' +
+      'each finding they fixed under "Fixed findings:". When the run says no Java ' +
       'formatter runs, it leaves the files alone; keep the layout by hand. Then it runs the build on ' +
       `the merge base and on head, ${JVM_BUILD_TOOLS}.`,
     exit2Cause: 'the build, or a base that does not compile',
@@ -124,11 +132,13 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'kotlin',
     hasFix: true,
     hasQuick: true,
+    recipes: true,
     fixers: 'ktlint or ktfmt',
     tests: `${JVM_TESTS} Failing tests stop coverage, CRAP and mutation from running.`,
     runDetail:
       'It first rewrites the changed Kotlin and Java files with the formatter named at the start of ' +
-      'the run (ktlint or ktfmt, google-java-format for Java) and lists them under "Fixed files:". ' +
+      'the run (ktlint or ktfmt, google-java-format for Java) and lists them under "Fixed files:", ' +
+      'after its fix recipes, which list each finding they fixed under "Fixed findings:". ' +
       'When a "Fix notes:" line says no formatter was found, keep the layout by hand. Then it runs ' +
       `the project's build (Gradle, or Maven with \`kotlin-maven-plugin\`) on the merge base and on ` +
       `head, ${JVM_BUILD_TOOLS}.`,
@@ -148,6 +158,7 @@ export const SLOTS: readonly FixLoopSlots[] = [
     preset: 'go',
     hasFix: true,
     hasQuick: false,
+    recipes: false,
     fixers: 'gofmt, gofumpt or goimports',
     tests:
       "Run the project's tests: `go test ./...` (with the build tags the project's " +

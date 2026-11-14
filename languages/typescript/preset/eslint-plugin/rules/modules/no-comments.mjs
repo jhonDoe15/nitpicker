@@ -1,17 +1,25 @@
-import { docCommentContentReports } from './doc-comment-content.mjs';
+import { docCommentContentReports, publicApiNode } from './doc-comment-content.mjs';
 import {
   castTags,
   isJsdocBlock,
   parseJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
+import { commentRemoval } from '../../fixes/comments/comment-removal.mjs';
+import { fixable } from '../../fixes/support/descriptors.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
-const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
-const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
+const REMOVABLE = new Set([
+  'comment',
+  'internalDocComment',
+  'restatingDocComment',
+  'typescriptSuppression',
+  'eslintSuppression',
+  'coverageSuppression',
+]);
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
 const TOOL_DIRECTIVES = [
   'eslint\\b',
@@ -48,33 +56,6 @@ function jsdocReports(comment, sourceCode) {
   ];
 }
 
-function declarationStartingAt(sourceCode, token) {
-  const innermost = sourceCode.getNodeByRangeIndex(token.range[0]);
-  if (!innermost) return undefined;
-  return [...sourceCode.getAncestors(innermost), innermost].find(
-    (node) => node.type !== 'Program' && node.range[0] === token.range[0],
-  );
-}
-
-function isExportedTypeMember(node) {
-  if (!typeMembers.has(node.type)) return false;
-  const typeLiteral = node.parent;
-  const alias = typeLiteral?.parent;
-  return (
-    typeLiteral?.type === 'TSTypeLiteral' &&
-    alias?.type === 'TSTypeAliasDeclaration' &&
-    exportDeclarations.has(alias.parent?.type)
-  );
-}
-
-function publicApiNode(sourceCode, comment) {
-  const token = sourceCode.getTokenAfter(comment);
-  if (!token) return undefined;
-  const node = declarationStartingAt(sourceCode, token);
-  if (!node) return undefined;
-  return exportDeclarations.has(node.type) || isExportedTypeMember(node) ? node : undefined;
-}
-
 function plainCommentReports(comment, sourceCode) {
   if (toolDirective.test(comment.value)) return [];
   if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
@@ -100,6 +81,7 @@ function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description:
         'Allow only non-suppression tool directives as comments, plus doc comments on exported API',
@@ -146,7 +128,10 @@ export const rule = {
         for (const comment of context.sourceCode.getAllComments()) {
           if (comment.type === 'Shebang') continue;
           for (const report of commentReports(comment, settings)) {
-            context.report({ loc: comment.loc, ...report });
+            const plan = REMOVABLE.has(report.messageId)
+              ? commentRemoval(context.sourceCode, comment)
+              : undefined;
+            context.report(fixable({ loc: comment.loc, ...report }, plan));
           }
         }
       },

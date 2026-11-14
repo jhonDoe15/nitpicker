@@ -180,3 +180,7 @@ export function nearDuplicateUnits(sourceFile, file, { moduleOf = (specifier) =>
     ...unit,
   }));
 }
+
+export function nearDuplicateUnitNodes(sourceFile) {
+  return sourceFile.isDeclarationFile ? [] : unitRoots(sourceFile).map(({ node }) => node);
+}

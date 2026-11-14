@@ -1,4 +1,4 @@
-import { writeDiffReports } from '../reporting/reporters.mts';
+import { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
 import { runStamp } from '../reporting/run-stamp/run-stamp.mjs';
 import path from 'node:path';
@@ -35,11 +35,10 @@ const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Compa
   resolveComparison;
 const sameTree: (repositoryRoot: string, left: string, right: string) => boolean = hasSameTree;
 const captureTree: CaptureHead = captureWorkingTree;
-const writeReports: (
-  outputRoot: string,
-  report: DiffReport,
-  location: { readonly projectPath: string; readonly repositoryRoot: string },
-) => unknown = writeDiffReports;
+type ReportPlace = { readonly projectPath: string; readonly repositoryRoot: string };
+const writeReports: (outputRoot: string, report: DiffReport, location: ReportPlace) => unknown =
+  writeDiffReports;
+const plansFor: (report: DiffReport, location: ReportPlace) => unknown[] = fixPlansFor;
 const withPolicyFile: <T>(policy: unknown, operation: (file: unknown) => T) => T =
   withHeadPolicyFile;
 const stampOf: (request: {
@@ -56,10 +55,12 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
   Object.assign(report.summary, stamp, partialRunOf(settings.partialRun));
-  report.text = writeReports(settings.outputRoot, report, {
+  const location = {
     projectPath: settings.projectRelativePath,
     repositoryRoot: settings.repositoryRoot,
-  });
+  };
+  report.fixPlans = plansFor(report, location);
+  report.text = writeReports(settings.outputRoot, report, location);
   return report;
 }
 
@@ -181,6 +182,8 @@ function runAndCombine(context: RunContext): DiffReport {
     skipPlan: context.skipPlan,
   });
   return combineAnalyzerReports({
+    headRoot: context.roots.headSnapshotRoot,
+    fixRecipes: [...listOf(settings.fixRecipes)],
     analyzers,
     policyAnalyzers: settings.analyzers,
     skippedAnalyzers: context.skipPlan.skipped,

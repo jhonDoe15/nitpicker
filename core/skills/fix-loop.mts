@@ -3,6 +3,7 @@ import { snippetParts } from './fix-loop-snippet.mts';
 import {
   EXCEPTION_ENTRY,
   EXPLAIN,
+  FIX_PREVIEW,
   HELD_NOTE,
   NARROWED_SENTENCE,
   NO_PIPE,
@@ -35,11 +36,12 @@ function exitCodes(slots: FixLoopSlots): string {
 function steps(slots: FixLoopSlots): string[] {
   const command = slots.hasFix ? 'npx nitpicker --fix' : 'npx nitpicker';
   const note = slots.exceptionNote === undefined ? '' : ` ${slots.exceptionNote}`;
+  const preview = slots.recipes ? ` ${FIX_PREVIEW}` : '';
   const simple = [
     slots.tests,
     ...(slots.formatStep === undefined ? [] : [slots.formatStep]),
     `When the change is complete, run \`${command}\` ${NO_PIPE}. ${slots.runDetail} ` +
-      'It takes minutes and prints a progress line for each slow analyzer.',
+      `It takes minutes and prints a progress line for each slow analyzer.${preview}`,
   ];
   const wrapped = simple.map((item, index) => wrap(item, '   ', numbered(index + 1)));
   const after = simple.length + 1;

@@ -4,6 +4,7 @@ import { plainText } from '../../../../shared/reference/facts.mjs';
 import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mjs';
 import { repositoryFindingPath } from '../../git/paths.mjs';
 import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
+import { sarifFixes } from './sarif-fixes.mjs';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
 export type SarifEntry = { readonly finding: ReportEntry; readonly baselineState?: string };
@@ -42,17 +43,23 @@ function regionOf(location: unknown): object {
   };
 }
 
+function sarifArtifactLocation(findingPath: unknown, projectPath: string | undefined): object {
+  return projectPath === undefined
+    ? { uri: encodePath(findingPathIn('.', findingPath)) }
+    : {
+        uri: encodePath(findingPathIn(projectPath, findingPath)),
+        uriBaseId: SOURCE_ROOT_ID,
+      };
+}
+
+const fixesOf: (finding: ReportEntry, artifactLocation: (name: string) => object) => object =
+  sarifFixes;
+
 export function toSarifResult(
   { finding, baselineState }: SarifEntry,
   projectPath: string | undefined,
 ): object {
-  const artifactLocation =
-    projectPath === undefined
-      ? { uri: encodePath(findingPathIn('.', finding.path)) }
-      : {
-          uri: encodePath(findingPathIn(projectPath, finding.path)),
-          uriBaseId: SOURCE_ROOT_ID,
-        };
+  const artifactLocation = sarifArtifactLocation(finding.path, projectPath);
   const physicalLocation = { artifactLocation, ...regionOf(finding['location']) };
   return {
     ruleId: ruleIdOf(finding),
@@ -63,6 +70,7 @@ export function toSarifResult(
     partialFingerprints: {
       [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(keyOf(finding)).digest('hex'),
     },
+    ...fixesOf(finding, (name) => sarifArtifactLocation(name, projectPath)),
   };
 }
 

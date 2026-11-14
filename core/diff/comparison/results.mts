@@ -4,6 +4,7 @@ import {
   policyDigest,
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
+import { attachFixes } from './fixes/attach-fixes.mjs';
 import {
   type AnalyzerOutcome,
   type AnalyzerRun,
@@ -47,6 +48,8 @@ export type ReportContext = {
 
 export type CombineRequest = ReportContext & {
   readonly baseRun: unknown;
+  readonly headRoot?: string;
+  readonly fixRecipes?: unknown[] | undefined;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly baseToHeadPackages?: Moves | undefined;
@@ -63,6 +66,7 @@ export type DiffReport = {
   readonly toolErrors: ReportEntry[];
   readonly notes: ReportEntry[];
   text?: unknown;
+  fixPlans?: unknown[];
 };
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
@@ -71,6 +75,11 @@ type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly toolErrors: ReportEntry[];
 };
 
+const withFixes: (
+  findings: Finding[],
+  root: string | undefined,
+  recipes: unknown[] | undefined,
+) => Finding[] = attachFixes;
 const accepted: (
   loosenings: readonly unknown[],
   digest: unknown,
@@ -108,7 +117,11 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
   const notes = scopedNotes(compared.notes, context.scope);
-  return buildReport({ ...context, outcomes, notes, toolErrors });
+  const report = buildReport({ ...context, outcomes, notes, toolErrors });
+  return {
+    ...report,
+    newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
+  };
 }
 
 export function noChangesReport(
