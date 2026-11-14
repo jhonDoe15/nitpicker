@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { reactorBlocksWithoutTimeout, unboundedWaits } from './unbounded-waits.mjs';
+import { type Check, type Located, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import {
+  reactorBlocksWithoutTimeout as untypedReactorBlocksWithoutTimeout,
+  unboundedWaits as untypedUnboundedWaits,
+} from './unbounded-waits.mjs';
 
-function lines(rule, source) {
+const reactorBlocksWithoutTimeout: Check<Located> = untypedReactorBlocksWithoutTimeout;
+const unboundedWaits: Check<Located> = untypedUnboundedWaits;
+
+function lines(rule: Check<Located>, source: string) {
   const scanned = scanKotlinSource(source);
   return rule(scanned).map(({ offset }) => lineOf(scanned, offset));
 }

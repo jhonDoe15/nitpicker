@@ -1,21 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { pendingFuturesNotFailedOnClose } from './pending-futures.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { pendingFuturesNotFailedOnClose as untypedPendingFuturesNotFailedOnClose } from './pending-futures.mjs';
 
-function lines(source) {
+const pendingFuturesNotFailedOnClose: Check<Ruled> = untypedPendingFuturesNotFailedOnClose;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return pendingFuturesNotFailedOnClose(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
 const PENDING =
   '    private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()';
-const inClass = (closeBody, extra = '') =>
+const inClass = (closeBody: string, extra = '') =>
   [
     'class Replies : AutoCloseable {',
     PENDING,
     extra,
     '    override fun close() {',
-    ...closeBody.split('\n').map((line) => `        ${line}`),
+    ...closeBody.split('\n').map((line: string) => `        ${line}`),
     '    }',
     '}',
     '',

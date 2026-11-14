@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { unboundedCollectionProperty } from './add-only-properties.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { unboundedCollectionProperty as untypedUnboundedCollectionProperty } from './add-only-properties.mjs';
 
-function lines(source) {
+const unboundedCollectionProperty: Check<Ruled> = untypedUnboundedCollectionProperty;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return unboundedCollectionProperty(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
-const bean = (members) => `@Service\nclass Sessions {\n${members}}\n`;
+const bean = (members: string) => `@Service\nclass Sessions {\n${members}}\n`;
 const MAP = '    private val sessions = ConcurrentHashMap<String, Session>()\n';
 
 describe('unboundedCollectionProperty', () => {

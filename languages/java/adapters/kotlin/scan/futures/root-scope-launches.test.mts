@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { unhandledRootCoroutines } from './root-scope-launches.mjs';
+import { type Located, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { unhandledRootCoroutines as untypedUnhandledRootCoroutines } from './root-scope-launches.mjs';
 
-function lines(source, context) {
+const unhandledRootCoroutines: (scanned: unknown, context?: { runners: string[] }) => Located[] =
+  untypedUnhandledRootCoroutines;
+
+function lines(source: string, context?: { runners: string[] }) {
   const scanned = scanKotlinSource(source);
   return unhandledRootCoroutines(scanned, context).map(({ offset }) => lineOf(scanned, offset));
 }

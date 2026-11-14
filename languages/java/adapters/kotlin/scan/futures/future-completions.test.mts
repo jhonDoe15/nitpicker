@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { futuresWithoutException } from './future-completions.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { futuresWithoutException as untypedFuturesWithoutException } from './future-completions.mjs';
 
-function lines(source) {
+const futuresWithoutException: Check<Ruled> = untypedFuturesWithoutException;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return futuresWithoutException(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
