@@ -1,5 +1,34 @@
+const SENTENCE_BREAK = /(?<=\.)\s+(?=[A-Z])/u;
+
+function sentencesOf(step) {
+  return step.split(SENTENCE_BREAK);
+}
+
+function withoutRepeats(steps) {
+  const seen = new Set();
+  return steps
+    .map((step) =>
+      sentencesOf(step)
+        .filter((sentence) => {
+          const fresh = !seen.has(sentence);
+          seen.add(sentence);
+          return fresh;
+        })
+        .join(' '),
+    )
+    .filter((step) => step !== '');
+}
+
 export function stepsOf(...items) {
-  return items.flat().filter((item) => typeof item === 'string' && item !== '');
+  const steps = withoutRepeats(
+    items.flat().filter((item) => typeof item === 'string' && item !== ''),
+  );
+  return steps.filter(
+    (step, index) =>
+      !steps.some(
+        (other, at) => at !== index && other.length > step.length && other.includes(step),
+      ),
+  );
 }
 
 export function lineRanges(blocks) {

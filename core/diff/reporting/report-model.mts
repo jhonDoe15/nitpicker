@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ReportEntry } from '../../../shared/values/findings.mts';
+import { type MetadataMap, metadataValue } from '../execution/report/analyzer-metadata.mts';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 
 type SortableEntry = {
@@ -21,11 +22,12 @@ export function analyzerName(analyzer: unknown, index: number): string {
 export function policyHash(
   analyzers: readonly unknown[],
   configOverrides: readonly unknown[] = [],
+  metadata?: MetadataMap,
 ): string {
   const policy = analyzers.map((analyzer, index) => ({
     name: analyzerName(analyzer, index),
-    version: analyzerMetadata(analyzer, 'version'),
-    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
+    version: analyzerMetadata(analyzer, 'version', metadata),
+    configurationHash: analyzerMetadata(analyzer, 'configurationHash', metadata),
     exclusions: listOf(fieldOf(analyzer, 'exclusions')),
   }));
   const hashed = configOverrides.length === 0 ? policy : { policy, configOverrides };
@@ -58,8 +60,12 @@ export function sortByToolAndPath<T extends SortableEntry>(entries: readonly T[]
   );
 }
 
-export function analyzerMetadata(analyzer: unknown, property: string): string {
-  const value = fieldOf(analyzer, property);
+export function analyzerMetadata(
+  analyzer: unknown,
+  property: 'version' | 'configurationHash',
+  metadata?: MetadataMap,
+): string {
+  const value = metadataValue(analyzer, property, metadata?.get(analyzer));
   return typeof value === 'string' ? value : 'unknown';
 }
 

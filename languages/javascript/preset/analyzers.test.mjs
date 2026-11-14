@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
 import { resolveLayout } from '../../typescript/preset/layout.mjs';
-import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mjs';
+import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mts';
 
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
 const typescriptLayout = resolveLayout();
@@ -172,7 +172,7 @@ function bridgeUsage(text, layout) {
   const test = 'test/app.test.js';
   return analyzeTestRuntime(
     { modules: [{ source: test, dependencies: [] }] },
-    { layout, productionRoot: 'src/main', sourceTexts: new Map([[test, text]]) },
+    { layout, productionRoots: ['src/main'], sourceTexts: new Map([[test, text]]) },
   ).tests[0];
 }
 
@@ -223,7 +223,7 @@ describe('test runtime of a JavaScript project', () => {
   it('counts a JavaScript test that imports production code', () => {
     const report = analyzeTestRuntime(graphOf([['test/app.test.js', 'src/main/app.js']]), {
       layout: javascriptLayout,
-      productionRoot: 'src/main',
+      productionRoots: ['src/main'],
     });
     expect(report.tests.map((entry) => entry.category)).toEqual(['direct-production-runtime']);
     expect(report.findings).toEqual([]);

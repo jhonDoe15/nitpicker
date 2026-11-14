@@ -2,11 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 
 const presetRoot = path.join(import.meta.dirname, '../../../preset');
-const moduleUrl = (relativePath) => JSON.stringify(path.join(presetRoot, relativePath));
+const moduleUrl = (relativePath) =>
+  JSON.stringify(checkoutModulePath(path.join(presetRoot, relativePath)));
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import vitest from ${JSON.stringify(import.meta.resolve('@vitest/eslint-plugin'))};
 import { resolveLayout } from ${moduleUrl('layout.mjs')};
