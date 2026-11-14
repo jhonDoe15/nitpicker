@@ -1396,6 +1396,11 @@
                 "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
                 "enum": ["used", "unused"]
               },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility column or helper.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
               "prettier.jsxQuotes": {
                 "description": "JSX attribute quotes: \"double\" (double (\"\")), \"single\" (single ('')).",
                 "enum": ["double", "single"]
@@ -1641,6 +1646,11 @@
               "typescript.transactions": {
                 "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
                 "enum": ["used", "unused"]
+              },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility column or helper.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               }
             },
             "additionalProperties": false
@@ -2317,6 +2327,7 @@
                             "effects/AsyncMethodDoesBlockingWork",
                             "effects/WaitOnAsyncTwin",
                             "effects/JobLoopWithoutItemIsolation",
+                            "effects/SoftDeleteFilterMissing",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

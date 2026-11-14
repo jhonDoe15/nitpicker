@@ -1,9 +1,11 @@
+import { DELETED_MESSAGES } from './messages/deleted.mjs';
 import { JOB_MESSAGES } from './messages/jobs.mjs';
 import { RACE_MESSAGES } from './messages/races.mjs';
 import { callPath, code } from './messages/text.mjs';
 
 export { callPath };
 
+const REMOTE = 'remote';
 const BOUNDED = {
   java: [
     'a bounded executor (`Executors.newFixedThreadPool(n)`, a bounded `ThreadPoolExecutor`)',
@@ -41,7 +43,7 @@ function loopIo({ method, kind, form, path, store }, language) {
       'and running them concurrently still sends one query per item.',
     ].join(' ');
   }
-  if (kind === 'remote') {
+  if (kind === REMOTE) {
     return [
       "Use the service's batch endpoint for all items, or, when it has none, bound the concurrency with",
       `${BOUNDED[language]}: ${where} once per loop item, one request each. ${LOOPS_FINE}`,
@@ -150,7 +152,7 @@ const BATCH_FIELDS = {
 };
 
 function graphqlField({ method, framework, kind, path }) {
-  const target = kind === 'remote' ? 'requests' : 'queries';
+  const target = kind === REMOTE ? 'requests' : 'queries';
   return [
     `Batch this field with ${BATCH_FIELDS[framework]}, or read the value from the parent object:`,
     `${code(`${method}()`)} ${callPath(path)} once per parent object, so a list of N parents`,
@@ -159,7 +161,7 @@ function graphqlField({ method, framework, kind, path }) {
 }
 
 function reactiveLookup({ method, kind, path, limited }) {
-  const target = kind === 'remote' ? 'requests' : 'queries';
+  const target = kind === REMOTE ? 'requests' : 'queries';
   const bound = limited
     ? 'The concurrency argument bounds how many run at once, but each element still sends its own query.'
     : '';
@@ -202,7 +204,7 @@ function oneColumn({ method, entity, property, origin }) {
   return [
     `Select only the column with a projection (\`@Query("select e.${name} from ${entity} e where ...")\`,`,
     `an interface or record projection): ${code(`${method}()`)} loads whole ${code(entity)} entities with`,
-    `${code(origin)}`,
+    code(origin),
     `only to read ${code(`${property}()`)} from each, with their eager relations.`,
   ].join(' ');
 }
@@ -267,6 +269,7 @@ export const EFFECTS_MESSAGES = {
   AsyncMethodDoesBlockingWork: asyncBlocking,
   WaitOnAsyncTwin: asyncTwin,
   ...JOB_MESSAGES,
+  ...DELETED_MESSAGES,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

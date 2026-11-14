@@ -55,6 +55,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Jobs: in a `@Scheduled` method, a batch `@KafkaListener`, a `@SqsListener` or a Quartz `execute`, catch the failure of
   each item inside the loop and record it (or enqueue one job per item), so one failing item does not skip the rest
   (`effects/JobLoopWithoutItemIsolation`).
+- Soft delete: a read of an entity with a `deletedAt`, `deleted` or `archived` flag repeats the condition the project's
+  other reads use, or the entity carries `@SQLRestriction` (or `@Where`, `@FilterDef`)
+  (`effects/SoftDeleteFilterMissing`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

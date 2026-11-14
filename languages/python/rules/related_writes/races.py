@@ -102,7 +102,11 @@ def exits(statements):
 def written_in(statements, model):
     nodes = [n for statement in statements for n in walk_statements([statement])]
     calls = [n for n in nodes if isinstance(n, ast.Call)]
-    saves = [c for c in calls if chain_names(c.func)[-1:] and chain_names(c.func)[-1] in SAVES]
+    saves = [
+        c
+        for c in calls
+        if chain_names(c.func)[-1:] and chain_names(c.func)[-1] in SAVES
+    ]
     for call in calls:
         names = chain_names(call.func)
         if DJANGO_MANAGER in names[:-1] and names[-1] in DJANGO_CREATES:
@@ -140,7 +144,9 @@ def deciders(function, context):
             for model, locked, read in decided_reads(node.test, assigned, node.lineno):
                 yield model, locked, read, region
         elif isinstance(node, TRIES):
-            for model, locked, read in reads_in(ast.Module(body=node.body, type_ignores=[])):
+            for model, locked, read in reads_in(
+                ast.Module(body=node.body, type_ignores=[])
+            ):
                 for handler in node.handlers:
                     if does_not_exist(handler):
                         yield model, locked, read, handler.body
@@ -154,7 +160,9 @@ def race_findings(function, qualified, scope, blocks, context):
         write = written_in(region, model)
         if locked or write is None or id(write) in seen:
             continue
-        if enclosing(blocks, write) or handles_conflict(write, context.parents, function):
+        if enclosing(blocks, write) or handles_conflict(
+            write, context.parents, function
+        ):
             continue
         seen.add(id(write))
         subject = f"{qualified}|{call_text(read)}|{call_text(write)}"

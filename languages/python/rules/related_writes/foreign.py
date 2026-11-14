@@ -26,7 +26,11 @@ def bound_names(function):
 
 
 def literal(node):
-    return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+    return (
+        node.value
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        else None
+    )
 
 
 def block_alias(expression):

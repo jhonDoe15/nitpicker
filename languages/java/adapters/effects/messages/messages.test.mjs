@@ -41,3 +41,25 @@ describe('the messages of the job loop rule', () => {
     );
   });
 });
+
+describe('the messages of the soft-delete filter rule', () => {
+  it('names the entity, the column, the project majority and both ways out', () => {
+    const message = EFFECTS_MESSAGES.SoftDeleteFilterMissing({
+      entity: 'Product',
+      column: 'deletedAt',
+      read: 'ProductRepository.findByOwner()',
+      filtered: 13,
+      total: 16,
+    });
+
+    expect(message).toBe(
+      [
+        'Filter out deleted rows with the predicate the other reads of `Product` apply:',
+        '`ProductRepository.findByOwner()` reads `Product` without a condition on `deletedAt`, which 13 of the 16',
+        'reads of it check, so a deleted row shows up here. Add the condition to the query (or `@SQLRestriction` on',
+        'the entity, so every read applies it); a trash, restore or purge read that wants the deleted rows goes in',
+        '`exceptions`.',
+      ].join(' '),
+    );
+  });
+});

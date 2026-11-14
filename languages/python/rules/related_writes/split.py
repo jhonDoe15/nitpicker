@@ -66,7 +66,9 @@ def session_variables(function):
             factory = chain_names(call.func)[-1:] if call is not None else []
             if factory and factory[0] in SESSION_FACTORIES and item.optional_vars:
                 names.update(
-                    n.id for n in ast.walk(item.optional_vars) if isinstance(n, ast.Name)
+                    n.id
+                    for n in ast.walk(item.optional_vars)
+                    if isinstance(n, ast.Name)
                 )
     return names
 
@@ -117,8 +119,7 @@ def unit_of(call, blocks, commits):
     epoch = sum(
         1
         for commit in commits
-        if position(commit) < position(call)
-        and not any(enclosing(blocks, commit))
+        if position(commit) < position(call) and not any(enclosing(blocks, commit))
     )
     return ("epoch", epoch)
 
@@ -126,7 +127,9 @@ def unit_of(call, blocks, commits):
 def first_pair(writes, is_split, parents):
     for index, later in enumerate(writes):
         for earlier in writes[:index]:
-            if is_split(earlier, later) and not in_exclusive_arms(earlier, later, parents):
+            if is_split(earlier, later) and not in_exclusive_arms(
+                earlier, later, parents
+            ):
                 return earlier, later
     return None
 
@@ -136,7 +139,8 @@ def session_pair(function, scope, blocks, parents):
     writes = [
         call
         for call in direct_writes(function, scope)
-        if is_session_write(call, sessions) and not is_incidental(call, parents, function)
+        if is_session_write(call, sessions)
+        and not is_incidental(call, parents, function)
     ]
     plain = [
         block

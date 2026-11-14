@@ -646,6 +646,50 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   loops are not checked. The message names the allowed forms: a `try`/`catch` or `.catch(...)` per item that
   records the failure, one queued job per item, or `allSettled` with the failures reported; a job that must fail
   as a whole so the run is retried takes the exception.
+- Reads that skip the project's soft-delete or visibility filter (`nitpicker/no-unfiltered-soft-delete-read`): the
+  followed convention `typescript.softDeleteFilters` lists, per table, the column (`deletedAt`, `deleted_at`,
+  `isDeleted`, `deleted`, `archived`, `visibility`, `isVisible`, `hidden` and their variants) or the helper
+  (a function named for deleted, visible, active, archived, trashed or live rows, such as
+  `withDefaultVisibility`, called in the query or passed to `$call`) that at least 80% of the reads of that table
+  apply, with at least five reads measured from non-test source at the merge base. A read is a Kysely
+  `selectFrom`/join, a Knex `knex('table')` chain, a Drizzle `select().from(table)`/join, a Prisma `findMany` and its
+  siblings, a TypeORM repository `find*`/`count`/`exists`, a Sequelize model read, a MikroORM `find` or a TypeORM
+  query builder run with `getMany`, `getOne` and the like, and it applies the filter when the call mentions the column
+  (a `where` key, `table.column` text or member, `whereNull`), including a deliberate `IS NOT NULL` or `Not(IsNull())`
+  and the acknowledgements `withDeleted`, `onlyDeleted`, `includeDeleted`, `withTrashed` and `unscoped`. With a majority,
+  a changed read or join of that table without any of them is reported with the column and the helper the project
+  uses; a table below the threshold, or a project with no majority, is never reported. Relation loads (`include`,
+  `select`, `relations`), ordering and a query built in one expression and run elsewhere are not judged, and
+  a trash, restore, purge or admin query takes the exception.
+- Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
+  the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
+  `hidden` or `isVisible` in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,
+  `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`, `forEach` or `flatMap`, which covers lookups and index
+  computations) is judged against the whole checked program, not the changed file: it follows the flag when at least five
+  iterations over that item type exist in non-test source and at least 80% of them skip flagged items. An iteration skips
+  them when its body mentions the flag, when an earlier `filter`/`find` step in its receiver chain does, when the receiver is a
+  call of a helper named for live items (`getNonDeletedElements`, `activeItems`), or when the item type is narrowed, the flag
+  declared as `false` (`true` for `isVisible`, `null` or `undefined` for `deletedAt`), as in `NonDeleted<T>`. A changed
+  iteration that does not is reported with the flag, the share, the guard form, the most used helper that returns narrowed
+  items and the narrowed type alias. A flag below the threshold is never followed, an iteration with a function reference
+  instead of an inline callback is not judged, and undo, trash, restore and sync code takes the exception. Without a type
+  program (no `tsconfig`) the rule is silent, so JavaScript projects without type information are not covered.
+- Route handlers without the project's auth requirement (`nitpicker/no-route-without-auth`, syntactic): the followed
+  convention `typescript.routeAuth` records how routes declare auth, measured from non-test source at the merge base.
+  A NestJS handler is a method with `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Options` or `@Head` (from
+  `@nestjs/common`) in a `@Controller` class; its auth declarations are the decorators at method and class level whose
+  name has an auth word (`Auth`, `Authenticated`, `Authorize`, `UseGuards`, `Roles`, `Permission`, `Jwt`, `Scopes`,
+  ...), as a shape of the name plus the option keys of an object argument (`@Authenticated({ permission })`), and a
+  public marker is a name with `Public` or `Anonymous` (or a skip-auth name) or an auth option set to `false`
+  (`permission: false`). When at least ten handlers exist and one shape covers at least half of them and, with the
+  public ones, at least 90%, a handler with neither the shape nor a public marker is reported, naming the shape.
+  Without such a majority, where some handlers declare a guard, there is no global guard (`APP_GUARD` or
+  `useGlobalGuards`) and there are at least five handlers, a handler with no auth decorator at method or class level and
+  no public marker is reported. Express, Fastify, Koa router, Hono and Restify route calls (`app.get('/path', ...)`,
+  with a path first, in a file that imports the framework) follow the same 90% rule on the auth middleware name (a
+  name with an auth word) among the route's own middleware, `preHandler`/`onRequest` options, and a
+  `use(...)`/`addHook(...)` on the same receiver before it. The service form (a request id reaching a repository call
+  without the project's access check) needs data flow and is not covered.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

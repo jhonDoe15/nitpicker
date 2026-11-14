@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 46,
+      classes: 51,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -262,6 +262,14 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Jobs.onMessages @SqsListener',
       'Jobs.execute Quartz Job',
     ]);
+  });
+
+  it('reports a read that skips the soft-delete filter most reads of the entity apply, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'SoftDeleteFilterMissing')
+        .map((violation) => `${violation.method} ${violation.entity}.${violation.column}`),
+    ).toEqual(['Trash.leaked Parcel.deletedAt']);
   });
 
   it('reports lazy access per element only', () => {

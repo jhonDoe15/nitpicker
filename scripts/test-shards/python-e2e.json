@@ -53,6 +53,7 @@
   "languages/python/rules/e2e/concurrency/lock-discipline.e2e.test.mjs": 2,
   "languages/python/rules/e2e/concurrent-lookups/spawned-lookups.e2e.test.mjs": 2,
   "languages/python/rules/e2e/configuration/env-none-only-check.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/deletion/soft-delete-filter.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effect-forms/accumulator-skips.e2e.test.mjs": 1,
   "languages/python/rules/e2e/effect-forms/kind-forms.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effect-forms/loop-skips.e2e.test.mjs": 2,

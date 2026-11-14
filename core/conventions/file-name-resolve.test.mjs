@@ -94,6 +94,7 @@ describe('conventions per preset', () => {
       'typescript.assertionHelpers',
       'typescript.detachedWorkRunners',
       'typescript.transactions',
+      'typescript.softDeleteFilters',
       'typescript.typeImports',
     ]);
     expect(nonPrettierIds('javascript')).toEqual([
@@ -101,6 +102,7 @@ describe('conventions per preset', () => {
       'typescript.assertionHelpers',
       'typescript.detachedWorkRunners',
       'typescript.transactions',
+      'typescript.softDeleteFilters',
     ]);
   });
 

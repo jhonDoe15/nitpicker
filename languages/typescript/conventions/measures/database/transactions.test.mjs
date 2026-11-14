@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectConventions } from '../../../../shared/conventions/detect.mjs';
+import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
 import { TRANSACTIONS_CONVENTION, projectOpensTransactions } from './transactions.mjs';
 
 function detect(files) {
