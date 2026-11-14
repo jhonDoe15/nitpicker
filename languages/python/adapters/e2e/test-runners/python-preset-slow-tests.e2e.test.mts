@@ -1,11 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  commitBranch,
-  fixtureRepository,
-  gate,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const CONFIG = JSON.stringify({
   preset: 'python',
@@ -33,8 +29,11 @@ class TestSlow(unittest.TestCase):
     def test_quick(self):
         self.assertEqual(2, 1 + 1)
 `;
+import type { GateResult } from '../test-support/python-e2e-types.mts';
 
-const findingsOf = (result, rule) =>
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const findingsOf = (result: GateResult, rule: string) =>
   result
     .json('new-findings.json')
     .filter((finding) => finding.rule === rule)
@@ -46,10 +45,11 @@ const findingsOf = (result, rule) =>
       message,
     ]);
 
-const slowTests = (result) => findingsOf(result, 'slow-test').map((row) => row.slice(0, 4));
+const slowTests = (result: GateResult) =>
+  findingsOf(result, 'slow-test').map((row) => row.slice(0, 4));
 
 describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(['coverage', 'pytest', 'mypy']);
     commitBranch(project, 'slow-pytest', {
@@ -93,7 +93,7 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
     expect(slowTests(result)).toEqual([
       ['test-runtime', 'tests/test_slow.py', 'test:tests/test_slow.py::::test_slow', 'enforceable'],
     ]);
-    const [message] = findingsOf(result, 'slow-test').map((row) => row[4]);
+    const [message = ''] = findingsOf(result, 'slow-test').map((row) => row[4] ?? '');
     const [took, seconds] = message.slice(0, message.indexOf(' s;')).split(/ (?=\d)/u);
     expect(took).toBe('test_slow took');
     expect(Number(seconds)).toBeGreaterThanOrEqual(1.5);

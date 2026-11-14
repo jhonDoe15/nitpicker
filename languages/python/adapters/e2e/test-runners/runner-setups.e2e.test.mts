@@ -4,12 +4,15 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   summarize,
   write,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult, Files } from '../test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const IGNORED = '.venv/\n__pycache__/\nmutants/\n';
 const SURVIVOR = 'mutmut mutant-survived sign.py';
@@ -22,7 +25,7 @@ const UNCOVERED_FINDINGS = [
 const WEAK_FINDINGS = [SURVIVOR, SURVIVOR];
 const SIGN = 'def sign(x: int) -> int:\n    if x > 0:\n        return 1\n    return -1\n';
 
-function enforceable(result) {
+function enforceable(result: GateResult) {
   return summarize(
     result
       .json('new-findings.json')
@@ -30,7 +33,7 @@ function enforceable(result) {
   );
 }
 
-function project(files, packages) {
+function project(files: Files, packages: readonly string[]) {
   const root = repository();
   write(root, { '.gitignore': IGNORED, 'calc/__init__.py': '', ...files });
   initializeRepository(root, 'base');
@@ -38,7 +41,7 @@ function project(files, packages) {
   return root;
 }
 
-function signTests(...cases) {
+function signTests(...cases: readonly (readonly [string, number, number])[]) {
   const tests = cases.map(
     ([name, value, expected]) =>
       `def test_${name}():\n    assert sign(${String(value)}) == ${String(expected)}\n`,
@@ -52,12 +55,12 @@ const LIBRARY_ONLY_TESTED = {
   reason: 'The fixture library has no production caller',
 };
 
-function configWith(settings) {
+function configWith(settings: Readonly<Record<string, unknown>>) {
   return `${JSON.stringify({ preset: 'python', exceptions: [LIBRARY_ONLY_TESTED], ...settings })}\n`;
 }
 
 describe.skipIf(!pythonE2eEnabled)('Python preset on a nose2 project', () => {
-  let nose2;
+  let nose2: string;
   afterAll(removeRepositories);
   beforeAll(() => {
     nose2 = project(
@@ -68,7 +71,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a nose2 project', () => {
       },
       ['coverage', 'nose2', 'pytest', 'mutmut'],
     );
-    const branch = (name, ...cases) => {
+    const branch = (name: string, ...cases: readonly (readonly [string, number, number])[]) => {
       commitBranch(nose2, name, {
         'calc/sign.py': SIGN,
         'tests/test_sign.py': signTests(...cases),
@@ -103,7 +106,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a nose2 project', () => {
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset mutating a unittest project whose tests pytest does not collect by default',
   () => {
-    let plain;
+    let plain: string;
     afterAll(removeRepositories);
     beforeAll(() => {
       plain = project({ 'nitpicker.config.json': '{ "preset": "python" }\n' }, [
@@ -129,7 +132,7 @@ describe.skipIf(!pythonE2eEnabled)(
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset on a project that measures its subprocesses with coverage.py',
   () => {
-    let processes;
+    let processes: string;
     afterAll(removeRepositories);
     beforeAll(() => {
       processes = project(

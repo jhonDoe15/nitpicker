@@ -1,17 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
+import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mts';
 import {
   commitBranch,
   gate,
   git,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from './test-support/python-e2e-support.mjs';
+  useRepositories,
+} from './test-support/python-e2e-support.mts';
+import type { GateResult } from './test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const INTERNAL = 'feature-internal-import';
 const SHARED = 'shared-imports-feature';
@@ -33,15 +36,16 @@ const EXCEPTED_CONFIG = `${JSON.stringify({
 describe.skipIf(!pythonE2eEnabled)(
   'Python duplicates, coupling and import contracts end to end',
   () => {
-    let project;
-    const enforceable = (result) =>
+    let project: string;
+    const enforceable = (result: GateResult) =>
       result
         .json('new-findings.json')
         .filter(({ classification }) => classification === 'enforceable')
         .sort((left, right) =>
           `${left.tool}${left.identity}`.localeCompare(`${right.tool}${right.identity}`),
         );
-    const newRules = (result) => enforceable(result).map(({ tool, rule }) => `${tool} ${rule}`);
+    const newRules = (result: GateResult) =>
+      enforceable(result).map(({ tool, rule }) => `${tool} ${rule}`);
     beforeAll(() => {
       project = repository();
       write(project, LAYERED_FILES);
@@ -156,7 +160,7 @@ describe.skipIf(!pythonE2eEnabled)(
         [SHARED, 'src/shop/shared/money.py', `${features}/billing|${SHARED}`],
         [CYCLE, `${features}/billing/invoice.py`, `${features}/shipping|${CYCLE}`],
       ]);
-      expect(found[0].message).toMatch(
+      expect(found[0]?.message).toMatch(
         /^Import feature billing only through .* to "exceptions" in nitpicker\.config\.json\.$/u,
       );
     });

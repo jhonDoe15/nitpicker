@@ -2,16 +2,19 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
-import { NO_MUTATION } from '../test-support/python-preset-data.mjs';
+import { NO_MUTATION } from '../test-support/python-preset-data.mts';
 import {
   commitBranch,
   fixture,
-  fixtureRepository,
   gate,
-  pythonE2eEnabled,
-  removeRepositories,
   summarize,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult } from '../test-support/python-e2e-types.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const PYPROJECT = readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8');
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value * 2\n';
@@ -24,7 +27,7 @@ const MUTATION_DISABLED = {
 const CONFIGURED = `${PYPROJECT}\n[tool.basedpyright]\nreportMissingImports = true\n`;
 const WEAKENED = `${PYPROJECT}\n[tool.basedpyright]\ntypeCheckingMode = "off"\nignore = ["src/demo/typed.py"]\nexclude = ["src/demo/typed.py"]\nexecutionEnvironments = [{ root = "src", reportReturnType = "none" }]\n`;
 
-const enforceable = (result) =>
+const enforceable = (result: GateResult) =>
   summarize(
     result
       .json('new-findings.json')
@@ -32,7 +35,7 @@ const enforceable = (result) =>
   );
 
 describe.skipIf(!pythonE2eEnabled)('Python preset with basedpyright end to end', () => {
-  let project;
+  let project: string;
 
   beforeAll(() => {
     project = fixtureRepository(['coverage', 'pytest']);

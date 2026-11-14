@@ -11,7 +11,7 @@ import {
   signsTest,
   twice,
   twiceTest,
-} from './test-support/python-preset-data.mjs';
+} from './test-support/python-preset-data.mts';
 import {
   COLORS_DEFAULT,
   COLORS_EXHAUSTIVE,
@@ -22,22 +22,25 @@ import {
   LOOKALIKES_TEST,
   PORTS,
   PORTS_TEST,
-} from './test-support/python-coverage-idioms-data.mjs';
+} from './test-support/python-coverage-idioms-data.mts';
 import {
   commitBranch,
   fixture,
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from './test-support/python-e2e-support.mjs';
+  useRepositories,
+} from './test-support/python-e2e-support.mts';
+import type { GateResult } from './test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', () => {
-  let project;
-  const branchFindings = (result) =>
+  let project: string;
+  const branchFindings = (result: GateResult) =>
     result
       .json('new-findings.json')
       .filter(({ rule }) => rule === 'changed-branch-coverage')

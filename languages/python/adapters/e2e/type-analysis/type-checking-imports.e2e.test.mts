@@ -1,16 +1,19 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
-import { LAYERED_FILES } from '../test-support/python-preset-data.mjs';
+import { LAYERED_FILES } from '../test-support/python-preset-data.mts';
 import {
   commitBranch,
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult } from '../test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const IMPORT_LINTER_OFF =
   '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n';
@@ -24,9 +27,9 @@ const TYPE_CHECKING_FILES = {
 };
 
 describe.skipIf(!pythonE2eEnabled)('Python imports under if TYPE_CHECKING end to end', () => {
-  let project;
+  let project: string;
 
-  const newRules = (result) =>
+  const newRules = (result: GateResult) =>
     result
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable')

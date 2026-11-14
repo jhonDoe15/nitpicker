@@ -2,7 +2,6 @@ import { cpSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import {
   commitBranch,
   commitBranchFrom,
@@ -10,8 +9,11 @@ import {
   gate,
   git,
   installPackages,
-  pythonE2eEnabled,
-} from '../test-support/python-e2e-support.mjs';
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult, Files } from '../test-support/python-e2e-types.mts';
+import { linkSentence } from '../test-support/python-gate-support.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const TEST_PATH = 'tests/test_greeter.py';
 const FAILING_TEST =
@@ -20,7 +22,7 @@ const PASSING_TEST = FAILING_TEST.replace('Hi, Ada!', 'Hello, Ada!');
 const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const LEGACY_EDIT = 'import os\n\n\ndef value():\n    return 1 + 0\n';
 
-const enforceable = (result) =>
+const enforceable = (result: GateResult) =>
   result
     .json('new-findings.json')
     .filter(({ classification }) => classification === 'enforceable')
@@ -28,7 +30,7 @@ const enforceable = (result) =>
     .sort();
 
 describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', () => {
-  let project;
+  let project: string;
 
   beforeAll(() => {
     project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-red-base-')));
@@ -39,7 +41,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
     installPackages(project, ['-e', '.', 'coverage', 'mutmut', 'pytest', 'mypy']);
     commitBranch(project, 'red-base', { [TEST_PATH]: FAILING_TEST });
     const root = project;
-    function from(name, files, parent) {
+    function from(name: string, files: Files, parent: string) {
       commitBranchFrom({ root, name, files, from: parent });
     }
     from('repaired', { [TEST_PATH]: PASSING_TEST }, 'red-base');

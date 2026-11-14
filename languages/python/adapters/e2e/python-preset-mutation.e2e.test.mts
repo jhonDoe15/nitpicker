@@ -8,25 +8,28 @@ import {
   PRICING_FULL_TEST,
   PRICING_TEST,
   PRICING_WITH_UNUSED,
-} from './test-support/python-preset-data.mjs';
+} from './test-support/python-preset-data.mts';
 import {
   COLORS_EXHAUSTIVE,
   COLORS_TEST,
   INLINE_NEVER,
   INLINE_NEVER_TEST,
-} from './test-support/python-coverage-idioms-data.mjs';
+} from './test-support/python-coverage-idioms-data.mts';
 import {
   commitBranch,
   fixture,
-  fixtureRepository,
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from './test-support/python-e2e-support.mjs';
+  useRepositories,
+} from './test-support/python-e2e-support.mts';
+import type { GateResult } from './test-support/python-e2e-types.mts';
+import { stringMatching } from './test-support/python-gate-support.mts';
+
+const { fixtureRepository, removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const MUTMUT_LISTED_CONFIG =
   '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n';
@@ -43,13 +46,13 @@ const OWN_KEY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n
 const PRODUCTION_FILES = ['__init__', 'greeter', 'legacy', 'pricing', 'wide'].map(
   (name) => `src/demo/${name}.py`,
 );
-const mutantFindings = (result) =>
+const mutantFindings = (result: GateResult) =>
   result
     .json('new-findings.json')
     .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
 
 describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
     commitBranch(project, 'weaker-source', { 'src/demo/legacy.py': LEGACY_WEAKER });
@@ -117,7 +120,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       exceptionList: 'exceptions',
       classification: 'enforceable',
       symbol: 'discount',
-      anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
+      anchor: { key: stringMatching(/^mutant:/u), requireUnchangedLine: true },
       location: { line: 2 },
     });
   });
@@ -173,7 +176,8 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
 
     expect(
       mutantFindings(result).some(
-        ({ path: file, location }) => file === 'src/demo/inline.py' && location?.line === 7,
+        ({ path: file, location }: { path: string; location?: { line: number } }) =>
+          file === 'src/demo/inline.py' && location?.line === 7,
       ),
       result.text,
     ).toBe(true);
@@ -193,7 +197,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset on a project whose mutmut configuration nitpicker writes, with xdist and an excluded Python 2 file',
   () => {
-    let callers;
+    let callers: string;
     afterAll(removeRepositories);
     beforeAll(() => {
       callers = repository();

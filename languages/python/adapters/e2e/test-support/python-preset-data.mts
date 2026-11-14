@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fixture } from './python-e2e-support.mjs';
+import { fixture } from './python-e2e-support.mts';
 
 export const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 
@@ -127,16 +127,16 @@ export const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return
 export const BRANCH_CLAMP =
   'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 
-export function twice(result) {
-  return `def twice(x, flag):\n    if x:\n        x = flag\n    if x:\n        return 2\n    return ${result}\n`;
+export function twice(result: number): string {
+  return `def twice(x, flag):\n    if x:\n        x = flag\n    if x:\n        return 2\n    return ${String(result)}\n`;
 }
 
-export function twiceTest(...calls) {
+export function twiceTest(...calls: readonly string[]): string {
   const asserts = calls.map((call) => `    assert twice.twice(${call}) in (0, 1, 2)\n`);
   return `from demo import twice\n\n\ndef test_twice():\n${asserts.join('')}`;
 }
 
-export function signsTest(...assertions) {
+export function signsTest(...assertions: readonly (readonly [string, string])[]): string {
   const tests = assertions.map(([name, body]) => `def test_${name}():\n    assert ${body}\n`);
   return `from demo import signs\n\n\n${tests.join('\n\n')}`;
 }
@@ -156,13 +156,13 @@ export const PRAGMAS = [
   '',
 ].join('\n');
 
-export const SIGN_POSITIVE = ['sign_positive', 'signs.sign(5) == 1'];
+export const SIGN_POSITIVE = ['sign_positive', 'signs.sign(5) == 1'] as const;
 
-export const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
+export const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'] as const;
 
-export const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
+export const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'] as const;
 
-export const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'];
+export const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'] as const;
 
 export const RUNTIME_TEST = [
   'import logging',

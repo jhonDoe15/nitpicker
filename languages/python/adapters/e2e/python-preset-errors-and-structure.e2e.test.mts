@@ -2,16 +2,19 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mjs';
+import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mts';
 import {
   commitBranch,
   fixture,
-  fixtureRepository,
   gate,
-  pythonE2eEnabled,
-  removeRepositories,
-} from './test-support/python-e2e-support.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+  useRepositories,
+} from './test-support/python-e2e-support.mts';
+import type { GateResult } from './test-support/python-e2e-types.mts';
+import { anyString, linkSentence, stringMatching } from './test-support/python-gate-support.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const MUTATION_DISABLED = {
   environment: {
@@ -23,7 +26,7 @@ const MUTATION_DISABLED = {
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
   () => {
-    let project;
+    let project: string;
     beforeAll(() => {
       project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
       commitBranch(project, 'failing-tests', {
@@ -142,7 +145,7 @@ describe.skipIf(!pythonE2eEnabled)(
             'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
         });
       });
-      const enforceable = (result) =>
+      const enforceable = (result: GateResult) =>
         result
           .json('new-findings.json')
           .filter(
@@ -172,7 +175,7 @@ describe.skipIf(!pythonE2eEnabled)(
             rule: 'function-parameters-limit',
             path: 'src/demo/wide.py',
             symbol: 'wide',
-            identity: expect.any(String),
+            identity: anyString(),
             message:
               'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
             allowedForm: 'Group related parameters into one object instead of adding another.',
@@ -184,11 +187,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
-            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
+            anchor: { key: stringMatching(/^function:\w+:text:/u) },
             location: { line: 1 },
             ratchet: {
               key: 'function:wide:occurrence:1:parameters',
-              declarationKey: expect.stringMatching(/:declaration:/u),
+              declarationKey: stringMatching(/:declaration:/u),
               value: 5,
               worseMessage:
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -210,7 +213,7 @@ describe.skipIf(!pythonE2eEnabled)(
             rule: 'crap-score-limit',
             path: 'src/demo/pipeline.py',
             symbol: 'pipeline.score',
-            identity: expect.any(String),
+            identity: anyString(),
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
             allowedForm: 'Reduce its branches: split a branchy part into its own function.',
@@ -222,11 +225,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
-            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
+            anchor: { key: stringMatching(/^function:\w+:text:/u) },
             location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
-              declarationKey: expect.stringMatching(/:declaration:/u),
+              declarationKey: stringMatching(/:declaration:/u),
               value: 10,
               worseMessage:
                 'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -247,7 +250,7 @@ describe.skipIf(!pythonE2eEnabled)(
             rule: 'crap-score-limit',
             path: 'src/demo/branchy.py',
             symbol: 'pick',
-            identity: expect.any(String),
+            identity: anyString(),
             message:
               'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
             allowedForm:
@@ -260,11 +263,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
-            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
+            anchor: { key: stringMatching(/^function:\w+:text:/u) },
             location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
-              declarationKey: expect.stringMatching(/:declaration:/u),
+              declarationKey: stringMatching(/:declaration:/u),
               value: 20,
               worseMessage:
                 'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',

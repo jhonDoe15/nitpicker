@@ -1,21 +1,23 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { messageOf } from '../../analysis/test-runtime/test-support/runtime-data.mjs';
+import { messageOf } from '../../analysis/test-runtime/test-support/runtime-data.mts';
 import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
 import {
   NOISY_TEST,
   RUNTIME_TEST,
   TYPE_ONLY_TEST,
   UNLINKED_TEST,
-} from '../test-support/python-preset-data.mjs';
+} from '../test-support/python-preset-data.mts';
 import {
   commitBranch,
-  fixtureRepository,
   gate,
   policyChangesOf,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
-import { GATE_PACKAGES, enforceable } from '../test-support/python-gate-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import { GATE_PACKAGES, enforceable } from '../test-support/python-gate-support.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const TEST_RUN_CONFIG = {
   preset: 'python',
@@ -43,7 +45,7 @@ const LIFTED_LOOSENINGS = [
 ];
 
 describe.skipIf(!pythonE2eEnabled)('Python preset test-run gates end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(GATE_PACKAGES);
     commitBranch(project, 'unlinked-tests', {

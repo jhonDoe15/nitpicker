@@ -8,9 +8,10 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
-  writeFileSync,
 } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 import { runCli } from '../../../../../core/cli.mts';
 import { readConfigFile } from '../../../../../core/configuration/config.mjs';
 import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
@@ -18,12 +19,21 @@ import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
 import { fileURLToPath } from 'node:url';
+import type {
+  BranchSpec,
+  Files,
+  Finding,
+  GateOptions,
+  GateResult,
+  PolicyChanges,
+  Summary,
+} from './python-e2e-types.mts';
+
+const withoutHelp: (report: unknown) => Summary | Finding[] = withoutHelpUris;
 
 const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
 const PROVISIONING_TIMEOUT_MS = 120_000;
 const UV_PROVISIONING_COMMANDS = new Set(['lock', 'sync', 'pip']);
-
-export const pythonE2eEnabled = process.env.NITPICKER_PYTHON_E2E === '1';
 
 export const fixture = path.resolve(
   fileURLToPath(new URL('../../', import.meta.url)),
@@ -40,9 +50,9 @@ const gitEnvironment = {
   GIT_CONFIG_NOSYSTEM: '1',
 };
 
-export function command(cwd, program, args) {
+export function command(cwd: string, program: string, args: readonly string[]): void {
   const timeout =
-    program === 'uv' && UV_PROVISIONING_COMMANDS.has(args[0])
+    program === 'uv' && UV_PROVISIONING_COMMANDS.has(args[0] ?? '')
       ? PROVISIONING_TIMEOUT_MS
       : LOCAL_COMMAND_TIMEOUT_MS;
   const result = spawnSync(program, args, {
@@ -56,29 +66,30 @@ export function command(cwd, program, args) {
   }
 }
 
-export function git(root, ...args) {
+export function git(root: string, ...args: readonly string[]): void {
   command(root, 'git', args);
 }
 
-export function write(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
+export function write(root: string, files: Files): void {
+  writeFiles(root, files);
 }
 
-export function commitBranchFrom({ root, name, files, from }) {
+export function commitBranchFrom({ root, name, files, from }: BranchSpec): void {
   git(root, 'checkout', '-q', '-b', name, from);
   write(root, files);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function commitBranch(root, name, files) {
+export function commitBranch(root: string, name: string, files: Files): void {
   commitBranchFrom({ root, name, files, from: 'main' });
 }
 
-export function gate(root, branch, { extra = [], environment = {}, base = 'main' } = {}) {
+export function gate(
+  root: string,
+  branch: string,
+  { extra = [], environment = {}, base = 'main' }: GateOptions = {},
+): GateResult {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
@@ -87,23 +98,25 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
     environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
-      write: (value) => {
+      write: (value: string) => {
         output.text += value;
       },
     },
     stderr: {
-      write: (value) => {
+      write: (value: string) => {
         output.text += value;
       },
     },
     progress: { write: () => undefined },
   });
-  function json(name) {
+  function json(name: 'summary.json'): Summary;
+  function json(name: string): Finding[];
+  function json(name: string): Summary | Finding[] {
     const file = path.resolve(reports, name);
     if (!file.startsWith(reports + path.sep)) {
       throw new Error(`${name} is outside the reports directory`);
     }
-    return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
+    return withoutHelp(JSON.parse(readFileSync(file, 'utf8')));
   }
   if (existsSync(path.join(reports, 'new-findings.json'))) {
     schemaChecked({ newFindings: json('new-findings.json') });
@@ -111,7 +124,7 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
   return { exitCode, json, text: output.text, reports };
 }
 
-export function policyChangesOf(root, branch) {
+export function policyChangesOf(root: string, branch: string): PolicyChanges {
   git(root, 'checkout', '-q', branch);
   const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-base-'));
   git(root, 'worktree', 'add', '-q', '--detach', base, 'main');
@@ -123,48 +136,61 @@ export function policyChangesOf(root, branch) {
       baseProjectRoot: base,
       headProjectRoot: root,
       moves: {},
+      replacedOptions: undefined,
     });
-    return policyChangeFields({}, headConfig, scope);
+    const changes: PolicyChanges = policyChangeFields({}, headConfig, scope);
+    return changes;
   } finally {
     git(root, 'worktree', 'remove', '--force', base);
   }
 }
 
-export function summarize(findings) {
+export function summarize(findings: readonly Finding[]): string[] {
   return findings
     .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
     .sort();
 }
 
-const roots = [];
-
-export function repository() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-')));
-  roots.push(root);
-  return root;
-}
-
-export function removeRepositories() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-
-export function initializeRepository(root, message) {
+export function initializeRepository(root: string, message: string): void {
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', message);
 }
 
-export function installPackages(root, packages) {
+export function installPackages(root: string, packages: readonly string[]): void {
   command(root, 'uv', ['venv', '-q', '.venv']);
   command(root, 'uv', ['pip', 'install', '-q', '--python', '.venv', ...packages]);
 }
 
-export function fixtureRepository(packages) {
-  const root = repository();
-  cpSync(fixture, root, { recursive: true });
-  initializeRepository(root, 'base with one legacy violation');
-  installPackages(root, ['-e', '.', ...packages]);
-  return root;
+type Repositories = {
+  readonly repository: () => string;
+  readonly removeRepositories: () => void;
+  readonly fixtureRepository: (packages: readonly string[]) => string;
+};
+
+export function useRepositories(): Repositories {
+  const repositoriesRoot = path.join(
+    realpathSync(tmpdir()),
+    `nitpicker-python-e2e-${randomUUID()}`,
+  );
+
+  function repository(): string {
+    const root = path.join(repositoriesRoot, randomUUID());
+    mkdirSync(root, { recursive: true });
+    return root;
+  }
+
+  function removeRepositories(): void {
+    rmSync(repositoriesRoot, { recursive: true, force: true });
+  }
+
+  function fixtureRepository(packages: readonly string[]): string {
+    const root = repository();
+    cpSync(fixture, root, { recursive: true });
+    initializeRepository(root, 'base with one legacy violation');
+    installPackages(root, ['-e', '.', ...packages]);
+    return root;
+  }
+
+  return { repository, removeRepositories, fixtureRepository };
 }

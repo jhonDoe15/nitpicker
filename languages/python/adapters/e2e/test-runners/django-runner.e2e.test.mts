@@ -4,12 +4,15 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   summarize,
   write,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult } from '../test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const MANAGE = [
   'import os',
@@ -48,7 +51,7 @@ const GRADE_TESTS = [
   '        self.assertEqual(grade(9), "fail")',
   '',
 ].join('\n');
-const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0];
+const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0] ?? '';
 const PLACEHOLDER_TESTS =
   'from django.test import SimpleTestCase\n\n\nclass GradeTests(SimpleTestCase):\n    pass\n';
 const UNTYPED_DJANGO = ['import-untyped', 'misc'].map((rule) => ({
@@ -64,7 +67,7 @@ const GRADES_ONLY_TESTED = [
   },
 ];
 
-function enforceable(result) {
+function enforceable(result: GateResult) {
   return summarize(
     result
       .json('new-findings.json')
@@ -72,21 +75,21 @@ function enforceable(result) {
   );
 }
 
-function killedMutants(result) {
+function killedMutants(result: GateResult) {
   return result
     .json('new-findings.json')
     .filter(({ rule }) => rule === 'mutation-summary')
     .map(({ path: file, identity, metric }) => `${file} ${identity}=${String(metric.value)}`);
 }
 
-function mutmutNotes(result) {
+function mutmutNotes(result: GateResult) {
   return result
     .json('new-findings.json')
     .filter(({ tool }) => tool === 'mutmut')
     .map(({ rule, identity }) => `${rule} ${identity}`);
 }
 
-function djangoProject(packages) {
+function djangoProject(packages: readonly string[]) {
   const root = repository();
   write(root, {
     'nitpicker.config.json': JSON.stringify({
@@ -112,7 +115,7 @@ function djangoProject(packages) {
   return root;
 }
 
-function nestedDjangoProject(packages) {
+function nestedDjangoProject(packages: readonly string[]) {
   const root = repository();
   write(root, {
     'nitpicker.config.json': JSON.stringify({
@@ -143,9 +146,9 @@ function nestedDjangoProject(packages) {
 }
 
 describe.skipIf(!pythonE2eEnabled)('Python preset on a Django project run with manage.py', () => {
-  let project;
-  let withoutPlugin;
-  let nested;
+  let project: string;
+  let withoutPlugin: string;
+  let nested: string;
   afterAll(removeRepositories);
   beforeAll(() => {
     project = djangoProject(['django', 'coverage', 'pytest', 'pytest-django', 'mutmut']);

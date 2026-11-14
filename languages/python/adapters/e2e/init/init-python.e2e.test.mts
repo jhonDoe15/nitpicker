@@ -1,12 +1,24 @@
 import { rmSync } from 'node:fs';
+import type { ExitCode } from '../../../../../core/cli-context.mts';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   copyFixtureRepository,
-  runInitThenAll,
+  runInitThenAll as untypedRunInitThenAll,
 } from '../../../../../core/init/test-support/init-then-all.mjs';
-import { fixture, installPackages, pythonE2eEnabled } from '../test-support/python-e2e-support.mjs';
+import { fixture, installPackages } from '../test-support/python-e2e-support.mts';
 
-const roots = [];
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+
+type CliRun = { readonly exitCode: ExitCode; readonly text: string };
+const runInitThenAll: (root: string) => {
+  readonly init: CliRun;
+  readonly all: CliRun;
+  readonly config: string;
+  readonly summary: { readonly overallStatus: string };
+  readonly toolErrors: readonly unknown[];
+} = untypedRunInitThenAll;
+
+const roots: string[] = [];
 
 describe.skipIf(!pythonE2eEnabled)('nitpicker init then --all on a Python project', () => {
   afterAll(() => {
