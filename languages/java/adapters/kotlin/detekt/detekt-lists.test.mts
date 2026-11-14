@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
 import {
   forbiddenMethodsOf,
   listEntriesOf,
@@ -10,7 +11,7 @@ import {
   writeDetektLists,
 } from './detekt-lists.mjs';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -22,7 +23,7 @@ const NITPICKER = forbiddenMethodsOf(
   readFileSync(path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'), 'utf8'),
 );
 
-function written(config) {
+function written(config: string) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-detekt-lists-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'config'));
@@ -168,12 +169,14 @@ describe('writeDetektLists', () => {
       "style:\n  ForbiddenMethodCall:\n    active: false\n    severity: info\n    methods: ['a.b']\n",
     );
 
-    expect(readFileSync(target, 'utf8').split('\n').slice(0, 3)).toEqual([
+    const text = readFileSync(assigned(target, 'target'), 'utf8');
+
+    expect(text.split('\n').slice(0, 3)).toEqual([
       'style:',
       '  ForbiddenMethodCall:',
       '    methods:',
     ]);
-    expect(readFileSync(target, 'utf8')).not.toMatch(/active|severity|excludes/);
+    expect(text).not.toMatch(/active|severity|excludes/);
   });
 
   it('writes nothing when the project lists no call of its own', () => {
@@ -216,7 +219,7 @@ style:
       `style:\n  ForbiddenMethodCall:\n    methods:\n      - value: 'a.b'\n        reason: "Use: 'x'\\n# not a comment"\n`,
     );
 
-    expect(methods.at(-1)).toEqual({ value: 'a.b', reason: "Use: 'x'\n# not a comment" });
+    expect(methods?.at(-1)).toEqual({ value: 'a.b', reason: "Use: 'x'\n# not a comment" });
   });
 
   it('merges the project entries of every list detekt replaces instead of merging', () => {
@@ -230,7 +233,7 @@ style:
   UseDataClass:
     excludeAnnotatedClasses: ['Projection', 7]
 `);
-    const text = readFileSync(target, 'utf8');
+    const text = readFileSync(assigned(target, 'target'), 'utf8');
     const [, imports, comments, annotated] = MERGED_LISTS;
 
     expect(forbiddenMethodsOf(text)).toEqual([]);

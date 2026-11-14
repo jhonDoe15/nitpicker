@@ -1,30 +1,46 @@
 import { describe, expect, it } from 'vitest';
 import {
-  declaredKtfmtStyle,
-  detectFormatter,
-  kotlinFilesOf,
-  ktfmtStyle,
-  mavenBuildFacts,
+  declaredKtfmtStyle as untypedDeclaredKtfmtStyle,
+  detectFormatter as untypedDetectFormatter,
+  kotlinFilesOf as untypedKotlinFilesOf,
+  ktfmtStyle as untypedKtfmtStyle,
+  mavenBuildFacts as untypedMavenBuildFacts,
 } from './kotlin-build-text.mjs';
-import { mavenFormatters } from './kotlin-maven-text.mjs';
+import { mavenFormatters as untypedMavenFormatters } from './kotlin-maven-text.mjs';
 
-const SPOTLESS = ['com.diffplug.spotless', 'spotless-maven-plugin'];
-const GANTSIGN = ['com.github.gantsign.maven', 'ktlint-maven-plugin'];
-const EXEC = ['org.codehaus.mojo', 'exec-maven-plugin'];
+const mavenFormatters: (pom: string | undefined) => unknown[] = untypedMavenFormatters;
+const ktfmtStyle: (input: { declared: string; conventions: Record<string, string> }) => string =
+  untypedKtfmtStyle;
 
-function pom(plugins, extra = '') {
+function detectFormatter(files: unknown): unknown {
+  return Reflect.apply(untypedDetectFormatter, undefined, [files]);
+}
+
+function declaredKtfmtStyle(files: unknown): unknown {
+  return Reflect.apply(untypedDeclaredKtfmtStyle, undefined, [files]);
+}
+
+function mavenBuildFacts(files: unknown, configured?: string): unknown {
+  return Reflect.apply(untypedMavenBuildFacts, undefined, [files, configured]);
+}
+
+const SPOTLESS = ['com.diffplug.spotless', 'spotless-maven-plugin'] as const;
+const GANTSIGN = ['com.github.gantsign.maven', 'ktlint-maven-plugin'] as const;
+const EXEC = ['org.codehaus.mojo', 'exec-maven-plugin'] as const;
+
+function pom(plugins: string, extra = '') {
   return `<project><artifactId>demo</artifactId>${extra}<build><plugins>${plugins}</plugins></build></project>`;
 }
 
-function plugin([groupId, artifactId], configuration = '') {
+function plugin([groupId, artifactId]: readonly [string, string], configuration = '') {
   return `<plugin><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration></plugin>`;
 }
 
-function spotlessKotlin(steps, java = '') {
+function spotlessKotlin(steps: string, java = '') {
   return plugin(SPOTLESS, `${java}<kotlin>${steps}</kotlin>`);
 }
 
-const facts = (text) => kotlinFilesOf('/nowhere', text);
+const facts = (text: string): unknown => untypedKotlinFilesOf('/nowhere', text);
 
 describe('the formatter a Maven build declares', () => {
   it('is named only by the coordinates of a known plugin', () => {

@@ -1,17 +1,20 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { gitCheckout, nestedCheckout } from '../test-support/git-checkout-views.mts';
+import { kotlinProjects } from '../test-support/kotlin-project.mts';
 import {
-  nestedCheckout,
-  useGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
-import { kotlinProjects } from '../test-support/kotlin-project.mjs';
-import {
-  isolatedWorkspace,
-  mirroredWorkspace,
-  projectEditorconfigs,
+  isolatedWorkspace as untypedIsolatedWorkspace,
+  mirroredWorkspace as untypedMirroredWorkspace,
+  projectEditorconfigs as untypedProjectEditorconfigs,
 } from './editorconfig-mirror.mjs';
 
-const { gitCheckout } = useGitCheckouts();
+type Editorconfig = { path: string; text: string };
+type Workspace = { offset: string; editorconfigs: Editorconfig[] };
+
+const projectEditorconfigs: (policyRoot: string) => Workspace & { files: string[] } =
+  untypedProjectEditorconfigs;
+const isolatedWorkspace: () => Workspace = untypedIsolatedWorkspace;
+const mirroredWorkspace: (found: Workspace) => Workspace = untypedMirroredWorkspace;
 
 const { project, remove } = kotlinProjects();
 
@@ -62,7 +65,7 @@ describe('the .editorconfig files of a listed project', () => {
       'services/api/.editorconfig',
       'services/api/src/.editorconfig',
     ]);
-    expect(found.editorconfigs[0].text).toBe('[services/api/**.kt]\nindent_size = 2\n');
+    expect(found.editorconfigs[0]?.text).toBe('[services/api/**.kt]\nindent_size = 2\n');
   });
 
   it('does not look above the repository root', () => {

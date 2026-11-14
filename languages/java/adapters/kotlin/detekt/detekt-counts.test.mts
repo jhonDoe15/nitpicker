@@ -1,20 +1,64 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
-  kotlinFindings,
+  kotlinFindings as untypedKotlinFindings,
   projectWithKotlinReports,
   removeTemporaryProjects,
   rootReports,
 } from '../../reporting/test-support/kotlin-report-project.mjs';
 import { isJavaTouchedRule } from '../../touched-rules.mjs';
 
+type DetektInput = {
+  results: readonly unknown[];
+  detektCounts?: readonly unknown[];
+  functions?: readonly unknown[];
+  source?: string;
+};
+type Touched = { changedLines: Map<string, unknown>; isStrictRule: (rule: string) => boolean };
+type Comparison = {
+  newFindings: Finding[];
+  unchangedFindings: Finding[];
+  resolvedFindings: Finding[];
+};
+
+const kotlinFindings: (root: string, tool: string) => Finding[] = untypedKotlinFindings;
+const compareWith: (input: {
+  baseFindings: Finding[];
+  headFindings: Finding[];
+  touchedCode: Touched;
+  unknownOnBase: undefined;
+}) => Record<string, Finding[]> = untypedCompareFindings;
+
+function compareFindings(input: {
+  baseFindings: Finding[];
+  headFindings: Finding[];
+  touchedCode: Touched;
+}): Comparison {
+  const compared = compareWith({ ...input, unknownOnBase: undefined });
+  return {
+    newFindings: compared['newFindings'] ?? [],
+    unchangedFindings: compared['unchangedFindings'] ?? [],
+    resolvedFindings: compared['resolvedFindings'] ?? [],
+  };
+}
+
+function countOf(finding: Finding | undefined): unknown {
+  return fieldOf(fieldOf(finding, 'ratchet'), 'value');
+}
+
+function firstOf(findings: Finding[]): Finding | undefined {
+  return findings[0];
+}
+
 afterEach(removeTemporaryProjects);
 
 const FILE = 'src/main/kotlin/demo/Bad.kt';
 
-function result(rule, text, line, column = 9) {
+function result(rule: string, text: string, line: number, column = 9) {
   return {
     ruleId: `detekt.${rule}`,
     level: 'warning',
@@ -30,7 +74,7 @@ function result(rule, text, line, column = 9) {
   };
 }
 
-function detektOf({ results, detektCounts = [], functions = [], source }) {
+function detektOf({ results, detektCounts = [], functions = [], source }: DetektInput) {
   const root = projectWithKotlinReports();
   if (source !== undefined) {
     writeFileSync(path.join(root, FILE), source);
@@ -51,7 +95,7 @@ const untouched = {
   isStrictRule: () => true,
 };
 
-function compare(base, head) {
+function compare(base: DetektInput, head: DetektInput) {
   return compareFindings({
     baseFindings: detektOf(base),
     headFindings: detektOf(head),
@@ -59,7 +103,7 @@ function compare(base, head) {
   });
 }
 
-const returns = (count) => ({
+const returns = (count: number): DetektInput => ({
   results: [
     result(
       'style.ReturnCount',
@@ -71,18 +115,18 @@ const returns = (count) => ({
 
 const THROWS_TEXT =
   'Too many throw statements in the function pick. The maximum number of allowed throw statements is 2.';
-const throwsAt = (count, line = 6, column = 9) => ({
+const throwsAt = (count: number, line = 6, column = 9): DetektInput => ({
   results: [result('style.ThrowsCount', THROWS_TEXT, line, column)],
   detektCounts: [{ file: FILE, rule: 'ThrowsCount', line, column, value: count }],
 });
 
 describe('detekt count findings on a legacy function', () => {
   it('fails a function whose return count grew and says from what', () => {
-    const [head] = detektOf(returns(4));
-    const [grew] = compare(returns(3), returns(4)).newFindings;
+    const head = firstOf(detektOf(returns(4)));
+    const grew = firstOf(compare(returns(3), returns(4)).newFindings);
 
-    expect(grew.message).toBe(
-      `Return statements grew from 3 to 4. Put the new code in a new function. ${head.message}`,
+    expect(grew?.message).toBe(
+      `Return statements grew from 3 to 4. Put the new code in a new function. ${String(head?.message)}`,
     );
   });
 
@@ -109,25 +153,29 @@ describe('detekt count findings on a legacy function', () => {
   });
 
   it('finds the measured count on the reported line when the column differs', () => {
-    const [finding] = detektOf({
-      results: [result('style.ThrowsCount', THROWS_TEXT, 6, 5)],
-      detektCounts: [{ file: FILE, rule: 'ThrowsCount', line: 6, column: 9, value: 3 }],
-    });
+    const finding = firstOf(
+      detektOf({
+        results: [result('style.ThrowsCount', THROWS_TEXT, 6, 5)],
+        detektCounts: [{ file: FILE, rule: 'ThrowsCount', line: 6, column: 9, value: 3 }],
+      }),
+    );
 
-    expect(finding.ratchet.value).toBe(3);
+    expect(countOf(finding)).toBe(3);
   });
 
   it('leaves the finding without a ratchet when no measured count matches it', () => {
-    const [finding] = detektOf({
-      results: [result('style.ThrowsCount', THROWS_TEXT, 6)],
-      detektCounts: [{ file: FILE, rule: 'ThrowsCount', line: 7, column: 9, value: 3 }],
-    });
+    const finding = firstOf(
+      detektOf({
+        results: [result('style.ThrowsCount', THROWS_TEXT, 6)],
+        detektCounts: [{ file: FILE, rule: 'ThrowsCount', line: 7, column: 9, value: 3 }],
+      }),
+    );
 
-    expect(finding.ratchet).toBeUndefined();
+    expect(finding?.['ratchet']).toBeUndefined();
   });
 
   it('holds a parameter list whose parameter was renamed and fails one that grew', () => {
-    const parameters = (print, count) => ({
+    const parameters = (print: string, count: number): DetektInput => ({
       results: [
         result(
           'complexity.LongParameterList',
@@ -153,9 +201,11 @@ describe('detekt count findings on a legacy function', () => {
   it('keeps an untouched loop when a loop before it in the function loses its extra jumps', () => {
     const LOOP =
       'The loop contains more than one break or continue statement. The code should be refactored to avoid multiple exit points.';
-    const loops = (counts) => ({
-      results: counts.map(([line]) => result('style.LoopWithTooManyJumpStatements', LOOP, line)),
-      detektCounts: counts.map(([line, value]) => ({
+    const loops = (counts: number[][]): DetektInput => ({
+      results: counts.map(([line = 0]) =>
+        result('style.LoopWithTooManyJumpStatements', LOOP, line),
+      ),
+      detektCounts: counts.map(([line = 0, value = 0]) => ({
         file: FILE,
         rule: 'LoopWithTooManyJumpStatements',
         line,
@@ -177,7 +227,7 @@ describe('detekt count findings on a legacy function', () => {
   });
 
   it('holds a file with too many functions although detekt prints its absolute path', () => {
-    const functions = (root, count) => ({
+    const functions = (root: string, count: number): DetektInput => ({
       results: [
         result(
           'complexity.TooManyFunctions',
@@ -231,10 +281,10 @@ describe('detekt count findings on a legacy function', () => {
       4,
     ],
   ])('reads the count of %s from its message', (rule, text, value) => {
-    const [finding] = detektOf({ results: [result(rule, text, 6)] });
+    const finding = firstOf(detektOf({ results: [result(rule, text, 6)] }));
 
-    expect(finding.ratchet.value).toBe(value);
-    expect(finding.identity.endsWith(`|value:${String(value)}`)).toBe(true);
+    expect(countOf(finding)).toBe(value);
+    expect(finding?.identity.endsWith(`|value:${String(value)}`)).toBe(true);
   });
 
   it.each([
@@ -250,19 +300,21 @@ describe('detekt count findings on a legacy function', () => {
       'LoopWithTooManyJumpStatements',
     ],
   ])('takes the count of %s from the Kotlin parser step', (rule, text, name) => {
-    const [finding] = detektOf({
-      results: [result(rule, text, 6)],
-      detektCounts: [{ file: FILE, rule: name, line: 6, column: 9, value: 5 }],
-    });
+    const finding = firstOf(
+      detektOf({
+        results: [result(rule, text, 6)],
+        detektCounts: [{ file: FILE, rule: name, line: 6, column: 9, value: 5 }],
+      }),
+    );
 
-    expect(finding.ratchet.value).toBe(5);
+    expect(countOf(finding)).toBe(5);
   });
 });
 
 describe('detekt count findings on a renamed legacy function', () => {
   const RETURNS = ['        if (flag) return 1', '        if (!flag) return 2', '        return 3'];
 
-  function pick(name, returns = RETURNS) {
+  function pick(name: string, returns: string[] = RETURNS): DetektInput {
     const source = ['package demo', '', 'class Bad {', `    fun ${name}(flag: Boolean): Int {`];
     return {
       source: `${[...source, ...returns, '    }', '}'].join('\n')}\n`,
@@ -289,7 +341,7 @@ describe('detekt count findings on a renamed legacy function', () => {
     };
   }
 
-  function compareRenamed(base, head, inserted = []) {
+  function compareRenamed(base: DetektInput, head: DetektInput, inserted: number[][] = []) {
     return compareFindings({
       baseFindings: detektOf(base),
       headFindings: detektOf(head),
