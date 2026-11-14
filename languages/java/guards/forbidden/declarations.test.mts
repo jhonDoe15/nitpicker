@@ -9,7 +9,7 @@ const guardProjects = createGuardProjects();
 const LEGACY_DATE =
   'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
 
-function declarations(className, members) {
+function declarations(className: string, members: readonly string[]): string {
   return members
     .flatMap((member) => [
       LEGACY_DATE,
@@ -18,7 +18,7 @@ function declarations(className, members) {
     .join('\n');
 }
 
-function auditFindings(source, report) {
+function auditFindings(source: readonly string[], report: string) {
   const root = guardProjects.project({
     'src/main/java/demo/Audit.java': source.join('\n'),
     'reports/forbidden-apis.txt': report,
@@ -56,7 +56,7 @@ describe('forbiddenapis declarations of a banned type', () => {
       ]),
     );
 
-    expect(head.map((finding) => finding.location.line)).toEqual([3, 5]);
+    expect(head.map((finding) => finding.location?.line)).toEqual([3, 5]);
     expect(newLines(base, head)).toEqual([['src/main/java/demo/Audit.java', 5]]);
   });
 
@@ -80,7 +80,7 @@ describe('forbiddenapis declarations of a banned type', () => {
       ].join('\n'),
     );
 
-    expect(findings.map((finding) => finding.location.line)).toEqual([6, 3]);
+    expect(findings.map((finding) => finding.location?.line)).toEqual([6, 3]);
   });
 
   it('places a method behind an annotation with an array value on its own line', () => {
@@ -98,7 +98,7 @@ describe('forbiddenapis declarations of a banned type', () => {
       declarations('Audit', ['lastSeen()']),
     );
 
-    expect(findings.map((finding) => finding.location.line)).toEqual([5]);
+    expect(findings.map((finding) => finding.location?.line)).toEqual([5]);
   });
 
   it('keeps two declarations it cannot place, though both go on the class line', () => {
@@ -107,7 +107,7 @@ describe('forbiddenapis declarations of a banned type', () => {
       declarations('Audit', ['first(java.util.Date)', 'second(java.util.Date)']),
     );
 
-    expect(findings.map((finding) => finding.location.line)).toEqual([3, 3]);
+    expect(findings.map((finding) => finding.location?.line)).toEqual([3, 3]);
   });
 });
 
@@ -117,9 +117,9 @@ describe('forbiddenapis signatures', () => {
     'utf8',
   );
 
-  function groups() {
-    const messages = new Map();
-    let message;
+  function groups(): Map<string, string | undefined> {
+    const messages = new Map<string, string | undefined>();
+    let message: string | undefined;
     for (const line of SIGNATURES.split('\n').filter((text) => /^[@\w]/.test(text))) {
       message = /^@defaultMessage (.+)$/.exec(line)?.[1] ?? message;
       if (!line.startsWith('@')) {
@@ -131,7 +131,7 @@ describe('forbiddenapis signatures', () => {
 
   it('states each rule message once and keeps it for the signatures after @ignoreUnresolvable', () => {
     const tags = [...SIGNATURES.matchAll(/^@defaultMessage ([a-z-]+):/gm)].map((match) => match[1]);
-    const unresolvable = SIGNATURES.split('@ignoreUnresolvable')[1]
+    const unresolvable = (SIGNATURES.split('@ignoreUnresolvable')[1] ?? '')
       .split('\n')
       .filter((line) => /^\w/.test(line));
     const messages = groups();

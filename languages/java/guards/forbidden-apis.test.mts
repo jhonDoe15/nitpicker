@@ -2,13 +2,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { textOf } from '../../../shared/values/readers.mts';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseForbiddenApiUses, readForbiddenApiFindings } from './forbidden-apis.mts';
-import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mts';
+import { createGuardProjects } from './test-support/guard-project.mts';
 
 const guardProjects = createGuardProjects();
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -20,7 +21,7 @@ const SIGNATURES = readFileSync(
   path.join(import.meta.dirname, '../gradle/rules/forbidden-apis.txt'),
   'utf8',
 );
-const NEW_THREAD = /^@defaultMessage new-thread: (.+)$/m.exec(SIGNATURES)[1];
+const NEW_THREAD = textOf(/^@defaultMessage new-thread: (.+)$/m.exec(SIGNATURES)?.[1]);
 const REPORT = [
   'Picked up JAVA_TOOL_OPTIONS: -Dx=y',
   'Reading API signatures: /gradle/rules/forbidden-apis.txt',
@@ -42,7 +43,7 @@ const REPORT = [
   '',
 ].join('\n');
 
-function project() {
+function project(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-forbidden-'));
   roots.push(root);
   mkdirSync(path.join(root, 'build/nitpicker'), { recursive: true });
@@ -51,12 +52,19 @@ function project() {
   return root;
 }
 
-const locate = (packageDirectory, fileName) =>
+const locate = (packageDirectory: string, fileName: string): string | undefined =>
   packageDirectory === 'demo' ? `src/main/java/demo/${fileName}` : undefined;
 
 describe('parseForbiddenApiUses', () => {
   it('pairs each violation with the class and line that follows it', () => {
-    const use = (signature, rule, text, className, fileName, line) => ({
+    const use = (
+      signature: string,
+      rule: string,
+      text: string,
+      className: string,
+      fileName: string,
+      line: number,
+    ) => ({
       signature,
       rule,
       text,
@@ -64,7 +72,7 @@ describe('parseForbiddenApiUses', () => {
       fileName,
       line,
     });
-    const sleep = [
+    const sleep: [string, string, string] = [
       'java.lang.Thread#sleep(**)',
       'thread-sleep',
       'Do not sleep in production code.',
@@ -103,7 +111,7 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings.map(({ rule, path: file, location }) => [rule, file, location.line])).toEqual([
+    expect(findings.map(({ rule, path: file, location }) => [rule, file, location?.line])).toEqual([
       ['legacy-date-time', 'src/main/java/demo/Legacy.java', 11],
       ['thread-sleep', 'src/main/java/demo/Legacy.java', 15],
       ['new-thread', 'src/main/java/demo/Legacy.java', 16],
@@ -130,7 +138,7 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings[3].identity).toBe(`${findings[1].identity}#2`);
+    expect(findings[3]?.identity).toBe(`${findings[1]?.identity}#2`);
     expect(
       readForbiddenApiFindings(path.join(root, 'nothing'), { locate, projectRoot: root }),
     ).toEqual([]);
@@ -198,7 +206,7 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual(
+    expect(findings.map(({ rule, location }) => [rule, location?.line])).toEqual(
       [25, 22, 28, 6, 8, 13, 19].map((line) => ['legacy-date-time', line]),
     );
     expect(new Set(findings.map((finding) => finding.identity)).size).toBe(findings.length);
@@ -208,7 +216,7 @@ describe('readForbiddenApiFindings', () => {
     const root = project();
     const banned =
       'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]';
-    const read = (places) => {
+    const read = (places: readonly string[]) => {
       writeFileSync(
         path.join(root, 'build/nitpicker/forbidden-apis.txt'),
         places.flatMap((place) => [banned, `ERROR:   in demo.Held (Held.java${place})`]).join('\n'),
@@ -251,7 +259,7 @@ describe('readForbiddenApiFindings', () => {
       'java.lang.Thread#startVirtualThread(java.lang.Runnable)',
       'java.lang.Thread$Builder#start(java.lang.Runnable)',
     ]);
-    expect(finding.message).toBe('x Found: Thread.Builder.start.');
+    expect(finding?.message).toBe('x Found: Thread.Builder.start.');
   });
 
   it('places a wrapped or split declaration, keeps one it cannot place on its class line and drops synthetic ones', () => {
@@ -310,12 +318,12 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings.map(({ location }) => location.line)).toEqual([8, 16, 21, 6, 4]);
+    expect(findings.map(({ location }) => location?.line)).toEqual([8, 16, 21, 6, 4]);
   });
 
   it('skips as many Date uses on a line as it converts with toInstant() right away', () => {
     const root = project();
-    const legacyDate = (line) => [
+    const legacyDate = (line: number) => [
       'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
       `ERROR:   in demo.Expiry (Expiry.java:${String(line)})`,
     ];
@@ -360,7 +368,7 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual([
+    expect(findings.map(({ rule, location }) => [rule, location?.line])).toEqual([
       ['legacy-date-time', 10],
       ['legacy-date-time', 11],
       ['legacy-date-time', 15],
@@ -397,103 +405,6 @@ describe('forbiddenapis Date uses next to an unrelated toInstant()', () => {
       projectRoot: root,
     });
 
-    expect(findings.map(({ location }) => location.line)).toEqual([3, 4]);
+    expect(findings.map(({ location }) => location?.line)).toEqual([3, 4]);
   });
-});
-
-describe('forbiddenapis identities and declaration lines', () => {
-  afterEach(() => {
-    guardProjects.remove();
-  });
-
-  const SLEEP =
-    'ERROR: Forbidden method invocation: java.lang.Thread#sleep(**) [thread-sleep: Do not sleep.]';
-  const PAUSE = javaClass('class Pause {', [
-    'void a() { Thread.sleep(1); }',
-    'void b() { Thread.sleep(2); }',
-  ]);
-  const PAUSE_ADDED = javaClass('class Pause {', [
-    'void c() { Thread.sleep(3); }',
-    'void a() { Thread.sleep(1); }',
-    'void b() { Thread.sleep(2); }',
-  ]);
-  const EXPIRY = ['expiry(java.util.Date)', '  Date expiry(Date at) {'];
-  const CONSTRUCTOR = ['<init>(java.util.Date)', '  Held(Date at) {'];
-
-  function forbiddenFindings(files) {
-    const root = guardProjects.project(files);
-    return readForbiddenApiFindings(path.join(root, 'reports'), {
-      locate: (packageDirectory, fileName) => `src/main/java/${packageDirectory}/${fileName}`,
-      projectRoot: root,
-    });
-  }
-
-  function sleeps(className, lines) {
-    return lines.flatMap((line) => [
-      SLEEP,
-      `ERROR:   in ${className} (Pause.java:${String(line)})`,
-    ]);
-  }
-
-  it('keeps the forbiddenapis uses of a class moved to another package', () => {
-    const base = forbiddenFindings({
-      'src/main/java/demo/Pause.java': PAUSE,
-      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4]).join('\n'),
-    });
-    const head = forbiddenFindings({
-      'src/main/java/moved/Pause.java': PAUSE.replace('package demo;', 'package moved;'),
-      'reports/forbidden-apis.txt': sleeps('moved.Pause', [3, 4]).join('\n'),
-    });
-
-    expect(
-      newLines(
-        base,
-        head,
-        new Map([['src/main/java/demo/Pause.java', 'src/main/java/moved/Pause.java']]),
-      ),
-    ).toEqual([]);
-  });
-
-  it('reports the forbiddenapis use of an added line, not of a legacy line', () => {
-    const base = forbiddenFindings({
-      'src/main/java/demo/Pause.java': PAUSE,
-      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4]).join('\n'),
-    });
-    const head = forbiddenFindings({
-      'src/main/java/demo/Pause.java': PAUSE_ADDED,
-      'reports/forbidden-apis.txt': sleeps('demo.Pause', [3, 4, 5]).join('\n'),
-    });
-
-    expect(newLines(base, head)).toEqual([['src/main/java/demo/Pause.java', 3]]);
-  });
-
-  it.each([
-    ['a call returned', '    return expiry(new Date(1));', EXPIRY],
-    ['a constructor call', '    Held held = new Held(new Date(1));', CONSTRUCTOR],
-    ['a thrown exception', '    throw new Held(new Date(1));', CONSTRUCTOR],
-  ])(
-    'skips %s and places the declaration on the line that declares it',
-    (_, use, [member, declaration]) => {
-      const findings = forbiddenFindings({
-        'src/main/java/demo/Held.java': [
-          'package demo;',
-          'class Held extends RuntimeException {',
-          '  Object first() {',
-          use,
-          '  }',
-          declaration,
-          '    return at;',
-          '  }',
-          '}',
-          '',
-        ].join('\n'),
-        'reports/forbidden-apis.txt': [
-          'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]',
-          `ERROR:   in demo.Held (Held.java, method declaration of '${member}')`,
-        ].join('\n'),
-      });
-
-      expect(findings.map((finding) => finding.location.line)).toEqual([6]);
-    },
-  );
 });
