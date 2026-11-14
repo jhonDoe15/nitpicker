@@ -98,15 +98,33 @@ removed from the files that lose them.
   or a parameter with a declared type, or a call of a few JDK getters (`Date.getTime`,
   `String.length`, `trim`). The constructor must be returned, assigned or declared into a local that is
   not `var`: as a receiver or an argument its type would change the overload a call picks. The interface
-  is private in the enclosing class, and the finding stays when its name is taken.
+  is private in the enclosing class for copies in one class, and package-private in the shared class for
+  copies in two files. The finding stays when its name is taken.
 - A catch clause whose exception type differs (`MalformedURLException` against `URISyntaxException`) keeps
   its place in the helper, which takes the class (`Class<E> failure`) and catches `Exception`: an
   exception that is not a `failure` is rethrown as it was, the others reach the original handler as `E`.
   The recipe does this only when the `try` block holds nothing that can throw another checked exception
   (no call, `new` or `throw` besides the differing constructors), the clause is the last one of the
   `try`, and the handler uses the exception only for `Throwable` methods or as an argument of a `new`:
-  the argument then has the type `E` instead of the exception, so a constructor that overloads on
-  that type would pick another overload. When javac rejects the result, `--fix` rolls it back.
+  the argument then has the type `E` instead of the exception, so the class of that `new` must have
+  exactly one constructor with that many parameters (read from the class in the same file or in the
+  project sources, or one of a few JDK exception classes). Otherwise another overload could be
+  picked, and the finding stays. A catch type that is a well-known unchecked exception is not tied to
+  the creator: the creator gets its own exception parameter, and an exception the clause does not
+  handle is rethrown as it was. When javac rejects the result, `--fix` rolls it back.
+- A constructor that is returned or stored as a declared type (`CharSequence` for `StringBuilder` and
+  `StringBuffer`) bounds the type parameter by that type. A parameterized or array type there is left
+  alone.
+- A differing type with a common supertype that the recipe knows (`java.sql.Date`, `Time` and
+  `Timestamp` extend `java.util.Date`) becomes a parameter of the supertype, when the value is only
+  compared with `null` or passed to `format` of a `DateFormat`. The overload that `format` picks is the
+  same for both types.
+- A copy that matches the other only after the rule rewrote its code (an early `return` against an
+  `else`) is extracted when the recipe can line up the copies as written.
+- In two files, a capitalized name of the shared code must mean the same type in both files: the
+  same single import, a class of the package, or the same imports on demand. The name of the new class
+  must be free in every source folder of the package (`.java`, `.kt` and `.groovy`), and sources under
+  `build`, `generated` and `target` folders are not touched.
 - A comment that only the second copy has moves above the call in the second copy.
 - A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
   that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to

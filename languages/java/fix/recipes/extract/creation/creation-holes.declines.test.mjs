@@ -15,7 +15,7 @@ function reasons(text) {
 const TRY_ONLY =
   'a catch clause of a differing exception type needs a try that is only a constructor call';
 const EXCEPTION_USE =
-  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object';
+  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object whose class has one constructor of that size';
 const RESULT =
   'a constructor of a differing type is used where its type matters: only a return, an assignment or a declared local may take it';
 const ARGUMENTS =
@@ -70,5 +70,37 @@ describe('javaExtractNearDuplicateRecipe declines constructors that differ', () 
   it('leaves the source alone when the interface name is taken', () => {
     const source = pair().replace('class Make {', 'class Make {\n    interface StringCreator {}\n');
     expect(reasons(source)).toEqual({ fixes: 0, notes: [NAMES] });
+  });
+
+  it('declines a catch body that passes the exception to an overloaded constructor', () => {
+    const wrap = `    static final class Wrap extends IOException {
+        Wrap(Exception e) {}
+        Wrap(MalformedURLException e) {}
+        Wrap(URISyntaxException e) {}
+    }
+`;
+    const text = urlAndUri({
+      url: { handler: 'throw new Wrap(e);' },
+      uri: { handler: 'throw new Wrap(e);' },
+    }).replace('final class Adapters {\n', `final class Adapters {\n${wrap}`);
+    expect(reasons(text)).toEqual({ fixes: 0, notes: [EXCEPTION_USE] });
+  });
+
+  it('declines a raw constructor that is returned as a parameterized type', () => {
+    const typed = (name, type) =>
+      creator(name, type, undefined, 'picked').replace(
+        `Object ${name}`,
+        `java.util.Set<String> ${name}`,
+      );
+    const text = creatorClass(
+      typed('top', 'java.util.HashSet'),
+      typed('bottom', 'java.util.TreeSet'),
+    );
+    expect(reasons(text)).toEqual({
+      fixes: 0,
+      notes: [
+        'a constructor of a differing type is returned or stored as a type the shared code cannot name',
+      ],
+    });
   });
 });

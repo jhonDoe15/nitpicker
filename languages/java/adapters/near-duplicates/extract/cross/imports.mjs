@@ -1,6 +1,7 @@
 import { descendants } from '../syntax.mjs';
 
-const IMPORT = /^import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/u;
+export const IMPORT_NODE = 'import_declaration';
+export const IMPORT = /^import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/u;
 
 function importedName(text) {
   const [, isStatic, name, wildcard] = IMPORT.exec(text) ?? [];
@@ -10,13 +11,14 @@ function importedName(text) {
   return {
     isStatic: isStatic !== undefined,
     wildcard: wildcard !== undefined,
+    name,
     last: name.split('.').at(-1),
   };
 }
 
 export function importsFor(root, words) {
   return root.children
-    .filter(({ type }) => type === 'import_declaration')
+    .filter(({ type }) => type === IMPORT_NODE)
     .filter(({ text }) => {
       const found = importedName(text);
       return found !== undefined && (found.wildcard || words.has(found.last));
@@ -77,7 +79,11 @@ function isInside(node, ranges) {
   return ranges.some(({ start, end }) => node.startIndex >= start && node.endIndex <= end);
 }
 
-const NOISE = /"(?:[^"\\\n]|\\.)*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/gu;
+export const NOISE = /"(?:[^"\\\n]|\\.)*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/gu;
+
+export function codeOf(text) {
+  return codeAndTags(text)[0];
+}
 
 function codeAndTags(text) {
   const comments = text.match(NOISE) ?? [];
@@ -89,34 +95,71 @@ function mentions(name, texts) {
   return texts.some((text) => word.test(text));
 }
 
-export function droppedImports(root, text, edits) {
+export function unusedImports(root, edits) {
   const nodes = descendants(root);
   const imports = nodes
-    .filter(({ type }) => type === 'import_declaration')
+    .filter(({ type }) => type === IMPORT_NODE)
     .map((node) => ({ node, found: importedName(node.text) }))
-    .filter(({ found }) => found !== undefined && !found.wildcard);
+    .filter(({ found }) => found !== undefined && !found.wildcard && !found.isStatic);
+  const spans = imports.map(({ node: at }) => ({ start: at.startIndex, end: at.endIndex }));
   const code = nodes.filter(
-    (node) =>
-      NAMES.has(node.type) &&
-      !isQualified(node) &&
-      !isInside(
-        node,
-        imports.map(({ node: at }) => ({ start: at.startIndex, end: at.endIndex })),
-      ),
+    (node) => NAMES.has(node.type) && !isQualified(node) && !isInside(node, spans),
   );
   const tags = nodes
     .filter(({ type }) => type === 'block_comment' || type === 'line_comment')
     .flatMap((node) => node.text.match(TAGS) ?? []);
   const added = edits.flatMap((edit) => codeAndTags(edit.text));
-  return imports
-    .filter(({ found: { last } }) => {
-      const uses = code.filter((node) => node.text === last);
-      const kept = uses.some((node) => !isInside(node, edits));
-      return uses.length > 0 && !kept && !mentions(last, [...added, ...tags]);
-    })
-    .map(({ node }) => ({
-      start: node.startIndex,
-      end: text[node.endIndex] === '\n' ? node.endIndex + 1 : node.endIndex,
-      text: '',
-    }));
+  return imports.filter(({ found: { last } }) => {
+    const uses = code.filter((node) => node.text === last);
+    const kept = uses.some((node) => !isInside(node, edits));
+    return uses.length > 0 && !kept && !mentions(last, [...added, ...tags]);
+  });
+}
+
+const WORD = /(?<![\p{L}\p{N}_$.])[A-Z][\p{L}\p{N}_$]*/gu;
+
+function typeMeaning(word, root, siblings) {
+  const imports = root.children
+    .filter(({ type }) => type === IMPORT_NODE)
+    .map(({ text }) => importedName(text))
+    .filter((found) => found !== undefined && !found.isStatic);
+  const single = imports.find((found) => !found.wildcard && found.last === word);
+  if (single !== undefined) {
+    return `import ${single.name}`;
+  }
+  const own = root.children.some(
+    (node) => node.type.endsWith('_declaration') && node.childForFieldName('name')?.text === word,
+  );
+  if (own || siblings.has(word)) {
+    return 'the package';
+  }
+  const wild = imports.filter((found) => found.wildcard).map((found) => found.name);
+  return `on demand ${wild.toSorted().join(',')}`;
+}
+
+function staticMeaning(words, root) {
+  return root.children
+    .filter(({ type }) => type === IMPORT_NODE)
+    .map(({ text }) => ({ text, found: importedName(text) }))
+    .filter(({ found }) => found?.isStatic && (found.wildcard || words.has(found.last)))
+    .map(({ text }) => text)
+    .toSorted()
+    .join('\n');
+}
+
+export function meaningProblem({ sources, texts, siblings }) {
+  const code = texts.flatMap((text) => codeAndTags(text)[0].match(WORD) ?? []);
+  const lower = new Set(
+    texts.flatMap((text) => codeAndTags(text)[0].match(/(?<![\w$.])[a-z_$][\w$]*/gu) ?? []),
+  );
+  const roots = sources.map(({ rootNode }) => rootNode);
+  const word = [...new Set(code)].find(
+    (name) => new Set(roots.map((root) => typeMeaning(name, root, siblings))).size > 1,
+  );
+  if (word !== undefined) {
+    return `the name ${word} means a different type in each file`;
+  }
+  return new Set(roots.map((root) => staticMeaning(lower, root))).size > 1
+    ? 'the files import different static members the shared code may use'
+    : undefined;
 }

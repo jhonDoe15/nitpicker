@@ -8,9 +8,10 @@ import {
   isAnonymous,
   methodProblem,
 } from './class-shape.mjs';
+import { boundedHoles, isBounded } from './holes/bounds.mjs';
 import { nameTypeHoles } from './holes/type-holes.mjs';
 import { typeUseProblem } from './holes/type-use.mjs';
-import { droppedImports } from './cross/imports.mjs';
+import { importEditing } from './cross/names/qualified.mjs';
 import { declaredOnly, withUsage } from './creation/occurrences.mjs';
 import { shapeOf } from './creation/factories.mjs';
 import { alignUnits, nameHoles, writtenNames } from './lockstep.mjs';
@@ -130,7 +131,7 @@ function editsFor(request, plan, isStatic) {
     ),
     insertion({ method: memberOf(methods[0]), helper, text }),
   ].map((edit) => ({ ...edit, text: withLineEndingOf(text, edit.text) }));
-  return [...edits, ...droppedImports(methods[0].tree.rootNode, text, edits)];
+  return importEditing(methods[0].tree.rootNode, text, edits);
 }
 
 function methodsProblem(methods) {
@@ -146,7 +147,7 @@ function editsOrDecline(request, plan) {
     return { declined: ANONYMOUS_INSTANCE };
   }
   request.claimed.add(plan.name);
-  return { edits: editsFor(request, plan, style === 'static') };
+  return editsFor(request, plan, style === 'static');
 }
 
 function holesProblem(aligned, engineHoles) {
@@ -173,14 +174,19 @@ export function analysedPair(request) {
   if (plan.typeHoles.some(({ usage }) => usage === 'mixed')) {
     return { declined: 'a differing type is used as an exception type and elsewhere' };
   }
-  const typed = typeUseProblem(methods[0], declaredOnly(plan.typeHoles));
-  return typed === undefined ? { plan } : { declined: typed };
+  const typeHoles = boundedHoles(methods[0], plan.typeHoles);
+  const typed = typeUseProblem(
+    methods[0],
+    declaredOnly(typeHoles.filter((hole) => !isBounded(hole))),
+  );
+  return typed === undefined ? { plan: { ...plan, typeHoles } } : { declined: typed };
 }
 
 export function shapedPlan(request, plan, visibility) {
   const { methods, text } = request;
   const base = indentOf(text, memberOf(methods[0]).startIndex);
   const shape = shapeOf({
+    readType: request.readType,
     methods,
     typeHoles: plan.typeHoles,
     taken: plan.taken,

@@ -4,15 +4,32 @@ import { outcomeOf } from '../../../../../../shared/fix/recipes/extract/outcomes
 import { indentUnit } from '../java-extract.mjs';
 import { nameCollisions, suppressions } from '../syntax.mjs';
 import { crossExtraction } from './cross-extract.mjs';
-import { droppedImports, headerOf, importsFor, packageOf } from './imports.mjs';
-import { classNameFor, classText, diskProblem } from './shared-class.mjs';
+import { codeOf, headerOf, importsFor, meaningProblem, packageOf } from './imports.mjs';
+import { importEditing } from './names/qualified.mjs';
+import {
+  classNameFor,
+  classText,
+  diskProblem,
+  folderTypes,
+  packageFolders,
+} from './shared-class.mjs';
 
 const WORD = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
 const NO_NAME = 'the class names of the copies share no word to name a shared class after';
+const INTERFACES = 'the copies need two different interfaces of the same name';
+const SUPPRESSIONS = 'the copies carry different @SuppressWarnings annotations';
 const PACKAGES = 'the copies are in different packages';
 
 function ownerName(method) {
   return method.parent.parent.childForFieldName('name').text;
+}
+
+function differ(nodes) {
+  return new Set(nodes.map((node) => suppressions(node).join('\n'))).size > 1;
+}
+
+function suppressionProblem({ pairs }) {
+  return differ(pairs[0].map((method) => method.parent.parent)) || pairs.some(differ);
 }
 
 function groupProblem(group, root) {
@@ -20,14 +37,18 @@ function groupProblem(group, root) {
   if (packageOf(first.rootNode) !== packageOf(second.rootNode)) {
     return PACKAGES;
   }
+  if (suppressionProblem(group)) {
+    return SUPPRESSIONS;
+  }
   const name = classNameFor(group.methods.map(ownerName));
   if (name === undefined) {
     return NO_NAME;
   }
   const folder = path.posix.dirname(first.file) === '.' ? '' : path.posix.dirname(first.file);
+  const folders = packageFolders(folder, packageOf(first.rootNode));
   const used = [first, second].some(({ rootNode }) => nameCollisions(rootNode).has(name));
-  const disk = used ? `the name ${name} is used in a copy` : diskProblem({ root, folder, name });
-  return disk === undefined ? { name, folder } : disk;
+  const disk = used ? `the name ${name} is used in a copy` : diskProblem({ root, folders, name });
+  return disk === undefined ? { name, folder, folders } : disk;
 }
 
 function mergedInterfaces(extractions) {
@@ -47,7 +68,7 @@ function assembled(group, found, extractions) {
     packageLine: packageOf(sources[0].rootNode),
     imports: importsFor(
       sources[0].rootNode,
-      new Set(members.flatMap((member) => member.match(WORD) ?? [])),
+      new Set(members.flatMap((member) => codeOf(member).match(WORD) ?? [])),
     ),
     name: found.name,
     members,
@@ -58,21 +79,38 @@ function assembled(group, found, extractions) {
   return { type: 'write', path: file, text: withLineEndingOf(sources[0].text, text) };
 }
 
-function importEdits({ sources }, bodies) {
-  return sources.flatMap(({ file, rootNode, text }) =>
-    droppedImports(
-      rootNode,
-      text,
-      bodies.filter(({ path: edited }) => edited === file),
-    ).map((edit) => ({ type: 'replace', path: file, ...edit })),
-  );
+function plainEdit(edit) {
+  return Object.fromEntries(Object.entries(edit).filter(([key]) => key !== 'owner'));
 }
 
-function groupOutcomes(group, root) {
-  const found = groupProblem(group, root);
-  if (typeof found === 'string') {
-    return group.candidates.map((candidate) => outcomeOf(candidate, { declined: found }));
-  }
+function sourceEdits({ sources }, bodies) {
+  const results = sources.map(({ file, rootNode, text }) => {
+    const own = bodies.filter(({ path: edited }) => edited === file);
+    const done = importEditing(rootNode, text, own);
+    function withFile(edit) {
+      return { type: 'replace', path: file, ...edit };
+    }
+    return {
+      declined: done.declined,
+      bodies: (done.edits ?? []).slice(0, own.length).map((edit, index) => ({
+        ...withFile(edit),
+        owner: own[index].owner,
+      })),
+      extras: (done.edits ?? []).slice(own.length).map(withFile),
+    };
+  });
+  return {
+    declined: results.find((result) => result.declined !== undefined)?.declined,
+    bodies: results.flatMap((result) => result.bodies),
+    extras: results.flatMap((result) => result.extras),
+  };
+}
+
+function declinedAll(group, declined) {
+  return group.candidates.map((candidate) => outcomeOf(candidate, { declined }));
+}
+
+function extractedAll(group, found, readType) {
   const claimed = new Set([found.name]);
   const results = group.candidates.map((candidate, index) =>
     crossExtraction({
@@ -81,27 +119,68 @@ function groupOutcomes(group, root) {
       label: candidate.first.name,
       engineHoles: candidate.finding.parameters.length,
       claimed,
+      readType,
       names: { className: found.name },
     }),
   );
   const done = results.filter(({ edits }) => edits !== undefined);
   const conflict = done.length > 0 && mergedInterfaces(done) === undefined;
-  const kept = conflict ? [] : done;
-  const notes = results.flatMap((result, index) =>
-    kept.includes(result)
-      ? []
-      : [outcomeOf(group.candidates[index], { declined: result.declined ?? NO_NAME })],
-  );
-  if (kept.length === 0) {
-    return notes;
-  }
-  const first = group.candidates[results.indexOf(kept[0])];
-  const bodies = kept.flatMap((result) => result.edits);
-  const edits = [...bodies, ...importEdits(group, bodies), assembled(group, found, kept)];
-  return [outcomeOf(first, { edits }), ...notes];
+  return { results, kept: conflict ? [] : done, conflict };
 }
 
-export function crossOutcomes(pending, root) {
+function declinedNotes(group, { results, kept, conflict }) {
+  return results.flatMap((result, index) =>
+    kept.includes(result)
+      ? []
+      : [
+          outcomeOf(group.candidates[index], {
+            declined: result.declined ?? (conflict ? INTERFACES : NO_NAME),
+          }),
+        ],
+  );
+}
+
+function fixesOf(group, found, { results, kept }) {
+  const tagged = kept.flatMap((result, owner) => result.edits.map((edit) => ({ ...edit, owner })));
+  const rewritten = sourceEdits(group, tagged);
+  if (rewritten.declined !== undefined) {
+    return { declined: rewritten.declined };
+  }
+  const extras = [...rewritten.extras, assembled(group, found, kept)];
+  const outcomes = kept.map((result, owner) => {
+    const own = rewritten.bodies.filter((edit) => edit.owner === owner).map(plainEdit);
+    return outcomeOf(group.candidates[results.indexOf(result)], {
+      edits: owner === 0 ? [...own, ...extras] : own,
+    });
+  });
+  return { outcomes };
+}
+
+function groupOutcomes(group, { root, readType }) {
+  const found = groupProblem(group, root);
+  if (typeof found === 'string') {
+    return declinedAll(group, found);
+  }
+  const extracted = extractedAll(group, found, readType);
+  const notes = declinedNotes(group, extracted);
+  if (extracted.kept.length === 0) {
+    return notes;
+  }
+  const meaning = meaningProblem({
+    sources: group.sources,
+    texts: extracted.kept.flatMap(({ member, interfaces }) => [
+      member,
+      ...interfaces.map(({ text }) => text),
+    ]),
+    siblings: folderTypes(root, found.folders),
+  });
+  const done = meaning === undefined ? fixesOf(group, found, extracted) : { declined: meaning };
+  return done.declined === undefined
+    ? [...done.outcomes, ...notes]
+    : declinedAll(group, done.declined);
+}
+
+export function crossOutcomes(pending, context) {
   const groups = new Map();
   for (const { candidate, methods, sources } of pending) {
     const key = `${candidate.first.file}\u0000${candidate.second.file}`;
@@ -110,5 +189,5 @@ export function crossOutcomes(pending, root) {
     group.pairs.push(methods);
     groups.set(key, group);
   }
-  return [...groups.values()].flatMap((group) => groupOutcomes(group, root));
+  return [...groups.values()].flatMap((group) => groupOutcomes(group, context));
 }

@@ -52,7 +52,7 @@ export function declaredTypes(method) {
   return types;
 }
 
-function qualified(type, imports) {
+export function qualified(type, imports) {
   if (type.includes('.')) {
     return type;
   }

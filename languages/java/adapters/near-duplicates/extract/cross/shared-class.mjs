@@ -1,8 +1,8 @@
 import { existsSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { readInside, resolveInside } from '../../../../../../shared/conventions/read-inside.mjs';
 
 const WORDS = /[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])/gu;
-const JAVA_FILE = /\.java$/u;
 
 function wordsOf(name) {
   return name.match(WORDS) ?? [];
@@ -26,25 +26,58 @@ export function classNameFor([first, second]) {
   return tail.length > 0 && !base.endsWith('s') ? `${base}s` : `${base}Support`;
 }
 
-function folderTexts(root, folder) {
-  const directory = resolveInside(root, folder);
-  if (directory === undefined || !existsSync(directory)) {
-    return [];
+const SOURCE_FILE = /\.(?:java|kt|groovy)$/u;
+const SOURCE_SET = /^((?:.*\/)?src\/(?:main|test)\/)(?:java|kotlin|groovy)\/$/u;
+const PACKAGE = /^\s*package\s+([\w.]+)\s*;/mu;
+
+function sourceRootOf(folder, tail) {
+  if (folder === '') {
+    return '';
   }
-  return readdirSync(directory)
-    .filter((name) => JAVA_FILE.test(name))
-    .flatMap((name) => readInside(directory, name, 'utf8') ?? []);
+  if (tail === '') {
+    return `${folder}/`;
+  }
+  return folder.endsWith(tail) ? folder.slice(0, -tail.length) : '';
 }
 
-export function diskProblem({ root, folder, name }) {
-  const file = resolveInside(root, `${folder}/${name}.java`);
-  if (file === undefined || existsSync(file)) {
-    return `${folder === '' ? '' : `${folder}/`}${name}.java already exists`;
+export function packageFolders(folder, packageLine) {
+  const tail = (PACKAGE.exec(packageLine)?.[1] ?? '').replaceAll('.', '/');
+  const set = SOURCE_SET.exec(sourceRootOf(folder, tail));
+  return set === null
+    ? [folder]
+    : ['java', 'kotlin', 'groovy'].map((lang) => `${set[1]}${lang}/${tail}`);
+}
+
+function directoryOf(root, folder) {
+  const directory = folder === '' ? path.resolve(root) : resolveInside(root, folder);
+  return directory !== undefined && existsSync(directory) ? directory : undefined;
+}
+
+function packageFiles(root, folders) {
+  return folders.flatMap((folder) => {
+    const directory = directoryOf(root, folder);
+    return directory === undefined
+      ? []
+      : readdirSync(directory)
+          .filter((name) => SOURCE_FILE.test(name))
+          .map((name) => ({ name: name.replace(SOURCE_FILE, ''), directory, file: name }));
+  });
+}
+
+export function folderTypes(root, folders) {
+  return new Set(packageFiles(root, folders).map(({ name }) => name));
+}
+
+export function diskProblem({ root, folders, name }) {
+  const files = packageFiles(root, folders);
+  if (files.some((entry) => entry.name === name)) {
+    return `a file named ${name} already exists in the package`;
   }
   const word = new RegExp(`\\b${name}\\b`, 'u');
-  return folderTexts(root, folder).some((text) => word.test(text))
-    ? `the name ${name} is used in the package`
-    : undefined;
+  const used = files.some(({ directory, file }) =>
+    word.test(readInside(directory, file, 'utf8') ?? ''),
+  );
+  return used ? `the name ${name} is used in the package` : undefined;
 }
 
 export function classText({ header, packageLine, imports, name, members, unit, annotations }) {

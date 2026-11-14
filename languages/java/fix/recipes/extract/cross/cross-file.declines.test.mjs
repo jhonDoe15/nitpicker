@@ -11,6 +11,7 @@ function both(overrides) {
   return filesOf(overrides, overrides);
 }
 
+const MISMATCH = 'the differing values do not match the ones the rule found';
 const FINAL = 'a field the copies read is not final';
 const LOCK = 'a copy uses this or super other than as the lock of a synchronized block';
 
@@ -28,6 +29,11 @@ describe('javaExtractNearDuplicateRecipe declines copies in two files', () => {
       filesOf({ name: 'Alpha' }, { name: 'Beta' }),
       'the class names of the copies share no word to name a shared class after',
     ],
+    [
+      'a second Date from another package',
+      filesOf({ extra: '    java.time.Date other;\n' }, {}),
+      'the file uses Date from a package that clashes with the removed import',
+    ],
     ['two packages', filesOf({ package: 'other' }, {}), 'the copies are in different packages'],
   ])('leaves the source alone for %s', (_name, files, reason) => {
     expect(reasons(files)).toEqual([0, [reason]]);
@@ -37,6 +43,7 @@ describe('javaExtractNearDuplicateRecipe declines copies in two files', () => {
     [
       'a static method of the class',
       { call: 'reset(zone);', extra: '    private static void reset(TimeZone zone) {}\n' },
+      MISMATCH,
     ],
     [
       'a static field of the class',
@@ -44,6 +51,7 @@ describe('javaExtractNearDuplicateRecipe declines copies in two files', () => {
         call: 'format.setTimeZone(ZONE);',
         extra: '    private static final TimeZone ZONE = TimeZone.getDefault();\n',
       },
+      MISMATCH,
     ],
     [
       'a nested type',
@@ -51,10 +59,10 @@ describe('javaExtractNearDuplicateRecipe declines copies in two files', () => {
         call: 'format.setTimeZone(zone); Holder held = null;',
         extra: '    private static final class Holder {}\n',
       },
+      'a copy uses a type nested in its class, which the shared class cannot name',
     ],
-  ])('leaves the source alone for %s', (_name, overrides) => {
-    const [count, notes] = reasons(both(overrides));
-    expect([count, notes.length]).toEqual([0, 1]);
+  ])('leaves the source alone for %s', (_name, overrides, reason) => {
+    expect(reasons(both(overrides))).toEqual([0, [reason]]);
   });
 
   it('leaves copies in two folders alone', () => {

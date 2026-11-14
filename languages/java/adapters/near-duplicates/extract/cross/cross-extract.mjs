@@ -37,9 +37,10 @@ function problemOf(methods, plan, locks) {
   const own = methods.map((method, side) =>
     stateProblem(method, [...holeNodes(plan, side), ...locks[side]]),
   );
-  const nested = methods.map((method) => nestedTypes(method.tree.rootNode));
-  const words = nameCollisions(methods[0]);
-  const clash = [...nested[0]].some((type) => words.has(type));
+  const clash = methods.some((method) => {
+    const words = nameCollisions(method);
+    return [...nestedTypes(method.tree.rootNode)].some((type) => words.has(type));
+  });
   return (
     methods.map(lockProblem).find(Boolean) ?? own.find(Boolean) ?? (clash ? NESTED : undefined)
   );

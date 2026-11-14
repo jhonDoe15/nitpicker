@@ -2,10 +2,16 @@ import { readJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees
 
 const JAVA_FILE = /\.java$/u;
 const NOT_MAIN_SOURCE_SET = /(?:^|\/)src\/(?!main\/)[^/]+\//u;
+const GENERATED = /(?:^|\/)(?:build|generated|target)\//u;
 const RULE = 'near-duplicate';
 
 function eligible({ path: name }, isExcepted) {
-  return JAVA_FILE.test(name) && !NOT_MAIN_SOURCE_SET.test(name) && !isExcepted(RULE, name);
+  return (
+    JAVA_FILE.test(name) &&
+    !NOT_MAIN_SOURCE_SET.test(name) &&
+    !GENERATED.test(name) &&
+    !isExcepted(RULE, name)
+  );
 }
 
 export function extractionRecipe({ id, mode }) {

@@ -1,5 +1,7 @@
 import { indentOf } from '../../../../../../shared/fix/recipes/extract/text.mjs';
 import { descendants, field, roleOf } from '../syntax.mjs';
+import { importsOf, qualified } from './arg-types.mjs';
+import { isSingleConstructor } from './constructors.mjs';
 
 const FORBIDDEN = new Set([
   'method_invocation',
@@ -19,10 +21,31 @@ const THROWABLE = new Set([
   'printStackTrace',
   'getSuppressed',
 ]);
+const UNCHECKED = new Set([
+  'java.lang.RuntimeException',
+  'java.lang.IllegalArgumentException',
+  'java.lang.IllegalStateException',
+  'java.lang.NullPointerException',
+  'java.lang.ClassCastException',
+  'java.lang.IndexOutOfBoundsException',
+  'java.lang.ArrayIndexOutOfBoundsException',
+  'java.lang.StringIndexOutOfBoundsException',
+  'java.lang.NumberFormatException',
+  'java.lang.UnsupportedOperationException',
+  'java.lang.ArithmeticException',
+  'java.lang.SecurityException',
+  'java.util.NoSuchElementException',
+  'java.util.ConcurrentModificationException',
+  'java.util.InputMismatchException',
+  'java.io.UncheckedIOException',
+  'java.time.DateTimeException',
+  'java.time.format.DateTimeParseException',
+  'java.util.regex.PatternSyntaxException',
+]);
 const UNSUPPORTED =
   'a catch clause of a differing exception type needs a try that is only a constructor call';
 const EXCEPTION_USE =
-  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object';
+  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object whose class has one constructor of that size';
 
 export function siteOf(node) {
   const clause = node.parent.parent.parent;
@@ -41,13 +64,17 @@ function isLastCatch({ clause, tryNode }) {
   return tryNode.children.filter(({ type }) => type === 'catch_clause').at(-1).id === clause.id;
 }
 
-function isAllowedUse(node) {
+function isAllowedUse(node, readType) {
   const { parent } = node;
   const receiver = parent.type === 'method_invocation' && field(parent, 'object')?.id === node.id;
   if (receiver) {
     return THROWABLE.has(field(parent, 'name').text);
   }
-  return parent.type === 'argument_list' && parent.parent.type === 'object_creation_expression';
+  return (
+    parent.type === 'argument_list' &&
+    parent.parent.type === 'object_creation_expression' &&
+    isSingleConstructor(parent.parent, readType)
+  );
 }
 
 function bodyProblem({ body }, creationIds) {
@@ -59,19 +86,19 @@ function bodyProblem({ body }, creationIds) {
   return unsafe ? UNSUPPORTED : undefined;
 }
 
-function handlerProblem({ handler, name }) {
+function handlerProblem({ handler, name }, readType) {
   const uses = descendants(handler).filter(
     (node) => node.type === 'identifier' && node.text === name && roleOf(node) === 'reference',
   );
-  return uses.every(isAllowedUse) ? undefined : EXCEPTION_USE;
+  return uses.every((node) => isAllowedUse(node, readType)) ? undefined : EXCEPTION_USE;
 }
 
-export function catchProblem(sites, creationIds) {
+export function catchProblem(sites, creationIds, readType) {
   if (sites.tryNode?.type !== 'try_statement') {
     return UNSUPPORTED;
   }
   return isLastCatch(sites)
-    ? (bodyProblem(sites, creationIds) ?? handlerProblem(sites))
+    ? (bodyProblem(sites, creationIds) ?? handlerProblem(sites, readType))
     : UNSUPPORTED;
 }
 
@@ -86,7 +113,19 @@ export function catchText(site, { names, unit, text }, render) {
   const declared = `${modifiers === '' ? '' : `${modifiers} `}${names.type} ${name}`;
   return `catch (Exception ${names.caught}) {
 ${indent}if (!${names.failure}.isInstance(${names.caught})) {
-${indent}${unit}throw (RuntimeException) ${names.caught};
+${indent}${unit}throw ${names.precise ? '' : '(RuntimeException) '}${names.caught};
 ${indent}}
 ${indent}${declared} = ${names.failure}.cast(${names.caught});${render(handler).slice(1, -1)}}`;
+}
+
+function isUncheckedType(node) {
+  const text = node.text.replaceAll(/\s+/gu, '');
+  const known = text.includes('.')
+    ? text
+    : (qualified(text, importsOf(node.tree.rootNode)) ?? `java.lang.${text}`);
+  return UNCHECKED.has(known);
+}
+
+export function isUnchecked(hole) {
+  return hole.occurrences.every(({ a, b }) => isUncheckedType(a) && isUncheckedType(b));
 }

@@ -1,5 +1,6 @@
 import { indentOf } from '../../../../../shared/fix/recipes/extract/text.mjs';
 import { rewritten } from './creation/rewrite.mjs';
+import { isBounded } from './holes/bounds.mjs';
 import { supplierOf } from './holes/deferred.mjs';
 import { codeParts, field, parametersOf, suppressions } from './syntax.mjs';
 
@@ -104,7 +105,12 @@ export function helperText(request) {
     ...extrasOf(request, replaced).map(({ declaration }) => declaration),
   ];
   const params = [
-    ...typeHoles.filter(({ usage }) => usage !== 'exception').map((hole) => hole.name),
+    ...typeHoles
+      .filter((hole) => hole.usage !== 'exception' && !isBounded(hole))
+      .map((hole) => {
+        const bound = shape.bounds?.get(hole.name);
+        return bound === undefined ? hole.name : `${hole.name} extends ${bound}`;
+      }),
     ...shape.typeParams,
   ];
   const generic = params.length === 0 ? '' : `<${params.join(', ')}> `;
