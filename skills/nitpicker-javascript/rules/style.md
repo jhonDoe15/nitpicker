@@ -89,6 +89,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Never run a query or a request once per item of a loop: fetch or write the items in one query
+  (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
+  `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
+  chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
+  (`nitpicker/no-io-in-loop`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

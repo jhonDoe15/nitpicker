@@ -25,6 +25,7 @@ export const strictEslintRuleIds = [
   'nitpicker/hermetic-git-in-tests',
   'nitpicker/naming-convention',
   'nitpicker/no-accumulating-spread',
+  'nitpicker/no-io-in-loop',
   'nitpicker/no-costly-collection-form',
   'nitpicker/no-collected-stream-rows',
   'nitpicker/no-wasted-collection-step',

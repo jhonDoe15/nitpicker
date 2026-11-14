@@ -49,6 +49,26 @@ export const policyFailureMessageCases = [
     'fixed-size chunks',
   ),
   adapterCase(
+    'query in a loop names the batched call',
+    'export async function load(ids: string[]) { for (const id of ids) { await repository.findById(id); } }',
+    'findByIds',
+  ),
+  adapterCase(
+    'request in a loop names bounded concurrency',
+    'export async function load(ids: string[]) { for (const id of ids) { await httpClient.get(id); } }',
+    'p-limit',
+  ),
+  adapterCase(
+    'query in Promise.all names one query',
+    'export async function load(ids: string[]) { await Promise.all(ids.map((id) => repository.findById(id))); }',
+    'in one query',
+  ),
+  adapterCase(
+    'Redis command in a loop names mget and a pipeline',
+    'export async function load(ids: string[]) { for (const id of ids) { await redisClient.get(id); } }',
+    'pipeline()',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

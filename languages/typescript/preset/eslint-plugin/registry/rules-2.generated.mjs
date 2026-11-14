@@ -1,3 +1,4 @@
+import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mjs';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mjs';
@@ -43,6 +44,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mjs';
 
 export const partRules = {
+  'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
