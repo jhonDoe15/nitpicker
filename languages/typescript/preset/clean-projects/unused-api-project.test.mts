@@ -1,14 +1,13 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { textOf } from '../../../../shared/values/readers.mts';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  createCleanProject,
-  createGitTemplate,
   type FindingView,
   git,
   readReport,
   runNitpicker,
+  useCleanProjects,
   viewFindings,
 } from './test-support/clean-project.mts';
 
@@ -29,28 +28,10 @@ function replaceIn(root: string, file: string, [before, after]: [string, string]
 }
 
 describe('unused props, options and exports in a project', () => {
-  const temporaryRoots: string[] = [];
-  let gitTemplateRoot: string;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { createProject } = useCleanProjects(process.env);
 
   function commitProject(fixture: string): string {
-    const root = createCleanProject({
-      fixtureRoot: path.join(fixturesRoot, fixture),
-      gitTemplateRoot,
-      name: fixture,
-      environment: process.env,
-    });
-    temporaryRoots.push(root);
-    return root;
+    return createProject({ fixtureRoot: path.join(fixturesRoot, fixture), name: fixture });
   }
 
   it('reports each prop, option and export nothing in production uses and leaves the rest alone', () => {

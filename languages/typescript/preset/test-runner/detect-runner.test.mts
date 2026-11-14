@@ -1,25 +1,14 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { detectTestRunner, testRunnerFor } from './detect-runner.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith } = useTemporaryProjects('nitpicker-runner-');
 
 function project(manifest: object, files: string[] = []): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-runner-'));
-  roots.push(root);
-  writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
-  for (const file of files) {
-    writeFileSync(path.join(root, file), '');
-  }
-  return root;
+  return projectWith({
+    'package.json': JSON.stringify(manifest),
+    ...Object.fromEntries(files.map((file) => [file, ''])),
+  });
 }
 
 describe('the test runner a project uses', () => {

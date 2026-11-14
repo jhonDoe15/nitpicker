@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mjs';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
@@ -11,6 +10,7 @@ import {
   eslintConfigFiles as untypedEslintConfigFiles,
   eslintProjectFacts as untypedEslintProjectFacts,
 } from './project-config.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type EslintSettings = {
   engine?: string;
@@ -37,26 +37,14 @@ const eslintProjectFacts: (projectRoot: string) => {
   projectConfigDigest?: string;
 } = untypedEslintProjectFacts;
 
-const roots: string[] = [];
-
-function project(files: Files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-config-')));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const { projectWith: project } = useTemporaryProjects('nitpicker-eslint-config-', {
+  resolveSymlinks: true,
+});
 
 function linked(root: string, link: string, target: string) {
   mkdirSync(path.dirname(path.join(root, link)), { recursive: true });
   symlinkSync(target, path.join(root, link));
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
 
 const CONFIG = [
   "import js from '@eslint/js';",

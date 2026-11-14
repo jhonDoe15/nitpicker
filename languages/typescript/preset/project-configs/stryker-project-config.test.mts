@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mts';
 import { withoutProjectIgnoredMutants } from '../../adapters/quality-areas/typed/mutation.mts';
 import { strykerIgnoredNotices as untypedStrykerIgnoredNotices } from './ignored-notices.mjs';
@@ -12,6 +11,7 @@ import {
   validateConfig,
   withHeadCheckoutFacts,
 } from './test-support/policy-views.mts';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const readStrykerProjectConfig: (projectRoot: string) => unknown = untypedReadStrykerProjectConfig;
 const strykerIgnoredNotices: (options: {
@@ -19,23 +19,7 @@ const strykerIgnoredNotices: (options: {
   projectRoot: string;
 }) => unknown = untypedStrykerIgnoredNotices;
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files: Record<string, string>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-stryker-config-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const { projectWith } = useTemporaryProjects('nitpicker-stryker-config-');
 
 const ORDERINGS = [['nitpicker'], ['project'], ['project', 'nitpicker'], ['nitpicker', 'project']];
 const EACH_ORDERING = ORDERINGS.map((precedence) => [precedence]);

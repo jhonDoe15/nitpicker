@@ -1,16 +1,16 @@
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
-  createGitTemplate,
   git,
   readReport,
   runNitpicker,
+  useCleanProjects,
   viewFindings,
 } from './test-support/clean-project.mts';
 
@@ -73,28 +73,10 @@ const LEGACY_FILES = {
 };
 
 describe('the strict-clean fixture project', () => {
-  const temporaryRoots: string[] = [];
-  let gitTemplateRoot: string;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { createProject: createFixtureProject, gitTemplate } = useCleanProjects(process.env);
 
   function createProject(): string {
-    const root = createCleanProject({
-      fixtureRoot,
-      gitTemplateRoot,
-      name: 'strict-clean',
-      environment: process.env,
-    });
-    temporaryRoots.push(root);
-    return root;
+    return createFixtureProject({ fixtureRoot, name: 'strict-clean' });
   }
 
   function runSnapshot(root: string, extraArguments: string[] = []) {
@@ -202,7 +184,7 @@ describe('the strict-clean fixture project', () => {
     beforeAll(() => {
       sharedRoot = createCleanProject({
         fixtureRoot,
-        gitTemplateRoot,
+        gitTemplateRoot: gitTemplate(),
         name: 'strict-clean',
         environment: process.env,
         files: LEGACY_FILES,

@@ -1,21 +1,20 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   type PolicyInput,
   headPolicyEnvironment,
   withHeadPolicyFile,
 } from '../test-support/policy-views.mts';
 import { typescriptFileLimitFindings } from './file-limits.mts';
+import { useTemporaryProjects, writeProjectFiles } from '../../test-support/temporary-projects.mts';
 
+const { emptyProject } = useTemporaryProjects('nitpicker-ts-folder-depth-');
 let projectRoot: string;
 
 function write(files: readonly string[]): void {
-  for (const file of files) {
-    mkdirSync(path.join(projectRoot, path.dirname(file)), { recursive: true });
-    writeFileSync(path.join(projectRoot, file), 'export const a = 1;\n');
-  }
+  writeProjectFiles(
+    projectRoot,
+    Object.fromEntries(files.map((file) => [file, 'export const a = 1;\n'])),
+  );
 }
 
 function depthFindings(policy: PolicyInput = {}) {
@@ -33,11 +32,7 @@ function depthFindings(policy: PolicyInput = {}) {
 
 describe('TypeScript folder depth', () => {
   beforeEach(() => {
-    projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-ts-folder-depth-'));
-  });
-
-  afterEach(() => {
-    rmSync(projectRoot, { recursive: true, force: true });
+    projectRoot = emptyProject();
   });
 
   it('allows one folder below features/<feature>/<layer>/ and fails a deeper one', () => {

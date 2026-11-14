@@ -1,47 +1,30 @@
 import { ESLint, type Linter } from 'eslint';
 import formatjs from 'eslint-plugin-formatjs';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import tseslint from 'typescript-eslint';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { POLICY_FILES } from '../../checks/policy-files.mjs';
 import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
 import { isStrictRule, strictEslintRuleIds } from '../../strict-rules.mts';
-import { fieldOf, fieldsOf, listOf, objectOf } from '../../../../../shared/values/readers.mts';
-import { type ResolvedLayout, linterConfigs } from '../typed/config-types.mts';
+import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
+import type { ResolvedLayout } from '../typed/config-types.mts';
 import { resolveHeadPolicy } from '../typed/policy-views.mts';
 import { i18nOffRules, i18nRuleIds, i18nRuleNames, i18nRules } from './i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from './i18n-scope.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
-
-const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
+import { usePresetConfig } from '../../test-support/preset-config-import.mts';
+import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
 
 const resolveLayout: (layout?: { readonly sourceRoots?: string[] }) => ResolvedLayout =
   untypedResolveLayout;
 
 const layout = resolveLayout();
-const presetConfigUrl = pathToFileURL(
-  checkoutModulePath(path.join(import.meta.dirname, '../../defaults/eslint.config.mjs')),
-);
-const temporaryRoots: string[] = [];
-let importCount = 0;
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { linterConfigFor } = usePresetConfig('i18n');
+const { emptyProject, projectWith: projectWithFiles } =
+  useTemporaryProjects('nitpicker-i18n-scope-');
 
 function projectWith(manifest: string | undefined) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-i18n-scope-'));
-  temporaryRoots.push(root);
-  if (manifest !== undefined) {
-    writeFileSync(path.join(root, 'package.json'), manifest);
-  }
-  return root;
+  return manifest === undefined ? emptyProject() : projectWithFiles({ 'package.json': manifest });
 }
 
 function manifestWith(fields: object) {
@@ -249,18 +232,7 @@ describe('the i18n scope config', () => {
 });
 
 async function presetConfigFor({ manifest, policy }: { manifest: object; policy?: object }) {
-  const root = projectWith(JSON.stringify(manifest));
-  vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', root);
-  if (policy !== undefined) {
-    const policyFile = path.join(root, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify(policy));
-    vi.stubEnv('NITPICKER_POLICY', policyFile);
-  }
-  importCount += 1;
-  const module: unknown = await import(`${presetConfigUrl.href}?i18n=${String(importCount)}`);
-  return linterConfigs(
-    listOf(fieldOf(module, 'default')).flatMap((entry) => objectOf(entry) ?? []),
-  );
+  return linterConfigFor({ root: projectWith(JSON.stringify(manifest)), policy });
 }
 
 function ruleIdsOf(config: readonly Linter.Config[]) {

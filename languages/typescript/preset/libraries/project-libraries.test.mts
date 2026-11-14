@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
@@ -16,6 +15,7 @@ import {
   loggerShapes as untypedLoggerShapes,
   validationBehavior as untypedValidationBehavior,
 } from './project-libraries.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Libraries = {
   validation: string[];
@@ -50,22 +50,17 @@ const validationBehavior: (libraries: { validation: string[] } | undefined) => {
 
 const { gitCheckout } = useGitCheckouts();
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith: filesIn } = useTemporaryProjects('nitpicker-libraries-');
 
 function projectWith(manifests: Record<string, unknown>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-libraries-'));
-  roots.push(root);
-  for (const [directory, manifest] of Object.entries(manifests)) {
-    mkdirSync(path.join(root, directory), { recursive: true });
-    writeFileSync(path.join(root, directory, 'package.json'), JSON.stringify(manifest));
-  }
-  return root;
+  return filesIn(
+    Object.fromEntries(
+      Object.entries(manifests).map(([directory, manifest]) => [
+        path.join(directory, 'package.json'),
+        JSON.stringify(manifest),
+      ]),
+    ),
+  );
 }
 
 describe('library detection', () => {

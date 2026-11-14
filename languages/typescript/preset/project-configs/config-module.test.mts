@@ -1,30 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { readConfigObject as untypedReadConfigObject } from './config-module.mjs';
 import { readStrykerProjectConfig, strykerProjectFile } from './stryker-project-config.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const readConfigObject: (projectRoot: string, name: string, timeoutMs?: number) => unknown =
   untypedReadConfigObject;
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files: Record<string, string>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-module-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const { projectWith } = useTemporaryProjects('nitpicker-config-module-');
 
 describe('loading a project config module', () => {
   it('ignores what the config prints while it loads', () => {

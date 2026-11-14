@@ -1,39 +1,21 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  createCleanProject,
-  createGitTemplate,
   git,
   readReport,
   runNitpicker,
+  useCleanProjects,
   viewFindings,
 } from './test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/test-console-project');
 
 describe('the test-console-project fixture', () => {
-  const temporaryRoots: string[] = [];
-  let gitTemplateRoot: string;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { createProject } = useCleanProjects(process.env);
 
   function commitLeakingTimer() {
-    const root = createCleanProject({
-      fixtureRoot,
-      gitTemplateRoot,
-      name: 'test-console',
-      environment: process.env,
-    });
-    temporaryRoots.push(root);
+    const root = createProject({ fixtureRoot, name: 'test-console' });
     const widget = path.join(root, 'src/main/widget.ts');
     writeFileSync(widget, readFileSync(widget, 'utf8').replace('      clearTimeout(timer);\n', ''));
     git(root, process.env, 'add', '-A');
