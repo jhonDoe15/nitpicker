@@ -6,6 +6,7 @@ import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
+import { isClosedByUsing } from './reactive/closed-supplier.mjs';
 import { sourceReader } from './lombok/source-text.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
@@ -114,7 +115,8 @@ function withoutExemptCode(diagnostics, readSource) {
       (diagnostic) =>
         !isClassExempt(diagnostic, CHECKS.classExemptions) &&
         !isIntegrationTestName(diagnostic) &&
-        !isLombokGenerated(diagnostic, textOf(diagnostic.file)),
+        !isLombokGenerated(diagnostic, textOf(diagnostic.file)) &&
+        !isClosedByUsing(diagnostic, textOf(diagnostic.file)),
     ),
   );
 }
