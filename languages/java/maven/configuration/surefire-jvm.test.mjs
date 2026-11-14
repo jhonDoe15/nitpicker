@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { childAt, parseXml } from '../../../../shared/ingest/common.mjs';
-import { argLineTokens, testJvmArguments } from './surefire-jvm.mjs';
+import { argLineTokens, testJvmArguments } from './surefire-jvm.mts';
 
 function argumentsOf({ properties = '', plugin = '', execution }) {
   const project = parseXml(
