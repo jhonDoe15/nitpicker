@@ -161,6 +161,21 @@ function graphqlField({ method, framework, kind, path }) {
   ].join(' ');
 }
 
+function reactiveLookup({ method, kind, path, limited }) {
+  const target = kind === 'remote' ? 'requests' : 'queries';
+  const bound = limited
+    ? 'The concurrency argument bounds how many run at once, but each element still sends its own query.'
+    : '';
+  return [
+    'Fetch all the elements with one call (`findAllById`, `where id in (:ids)`, a batch endpoint), then join the',
+    `results in memory: ${code(`${method}()`)} ${callPath(path)} once per element of an in-memory collection`,
+    `inside a reactive pipeline, so N elements send N ${target}.`,
+    bound,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -170,6 +185,7 @@ export const EFFECTS_MESSAGES = {
   RetryWithoutIdempotency: retryWrite,
   DualWriteWithoutOutbox: dualWrite,
   GraphqlFieldPerParent: graphqlField,
+  ReactiveLookupPerElement: reactiveLookup,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

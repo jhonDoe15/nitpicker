@@ -19,6 +19,7 @@ const KOTLIN_FILES = [
   'reports/LoopImports.kt',
   'reports/Accumulators.kt',
   'graphql/OrderFields.kt',
+  'reactive/OrderStreams.kt',
   'billing/LazyLoads.kt',
   'held/HeldScopes.kt',
   'events/Retries.kt',

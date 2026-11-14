@@ -585,6 +585,15 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   DataLoader (`loaders.owner.load(parent.ownerId)`, `loadMany`), a read from a request-scoped cache, data already on
   the parent. Prisma `findUnique` and `findUniqueOrThrow` (also the fluent `findUnique(...).relation()` form) are
   batched by Prisma within a tick, so they are not reported. Calls in a loop or iteration callback inside the resolver stay with `nitpicker/no-io-in-loop`.
+- `nitpicker/no-lookup-per-element`: an RxJS `mergeMap`, `flatMap`, `concatMap`, `switchMap` or `exhaustMap` over
+  `from(items)` (or `of(...items)`, also behind `map`, `filter`, `tap`) whose function reaches a database or remote
+  call that reads the element is reported, with or without a concurrency limit: N elements make N queries or
+  requests. The function may be an inline function, a function in the same file passed by name, or call helpers
+  (a project service too when the type checker runs). Fetch the rows in one batched query before the pipeline
+  (`findByIds`, `WHERE id IN (...)`, a batch endpoint) and join them to the elements in memory. A
+  `bufferCount`, `toArray`, `take` or other grouping operator before the lookup, a fixed literal collection, a
+  function that does not read the element, and a `mergeMap` without a limit over a remote client that
+  `nitpicker/unbounded-reactive-fan-out` already reports are left alone.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

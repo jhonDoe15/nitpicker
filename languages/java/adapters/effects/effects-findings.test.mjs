@@ -310,6 +310,31 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the batched lookup of a reactive pipeline', () => {
+    const lookup = {
+      rule: 'ReactiveLookupPerElement',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      line: 3,
+      method: 'Import.posts',
+      detail: 'a',
+      kind: 'remote',
+      path: ['UserService.owner()', 'RestClient.get()'],
+    };
+
+    expect(read([{ ...lookup, limited: true }])[0].message).toContain(
+      'The concurrency argument bounds how many run at once, but each element still sends its own query.',
+    );
+    expect(read([lookup]).map((finding) => finding.message)).toEqual([
+      sentence(
+        'Fetch all the elements with one call (`findAllById`, `where id in (:ids)`, a batch endpoint), then join the',
+        'results in memory: `Import.posts()` calls `UserService.owner()`, which calls `RestClient.get()`',
+        'once per element of an in-memory collection inside a reactive pipeline, so N elements send N requests.',
+        exception('ReactiveLookupPerElement', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('names the batch form of a GraphQL field that queries once per parent', () => {
     const field = {
       rule: 'GraphqlFieldPerParent',
@@ -473,6 +498,18 @@ describe('withoutCoveredLines', () => {
     expect(withoutCoveredLines(findings).filter(({ tool }) => tool === 'effects')).toEqual([
       at('effects', 'IoCallInLoop', 7),
       at('effects', 'AccumulatorCopyInLoop', 3),
+    ]);
+  });
+
+  it('drops a reactive lookup finding when the PMD fan-out rule reports a line of its operator', () => {
+    const findings = [
+      at('pmd', 'UnboundedReactiveFanOut', 4),
+      at('effects', 'ReactiveLookupPerElement', 4),
+      at('effects', 'ReactiveLookupPerElement', 9, 8),
+    ];
+
+    expect(withoutCoveredLines(findings).filter(({ tool }) => tool === 'effects')).toEqual([
+      at('effects', 'ReactiveLookupPerElement', 9, undefined),
     ]);
   });
 

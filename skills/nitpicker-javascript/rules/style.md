@@ -106,6 +106,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-retry-without-idempotency`).
 - Don't write to the database and publish a message in one function: write an outbox row in the same
   transaction and let a relay publish it (`nitpicker/no-dual-write`).
+- Don't look a row up per element in an RxJS pipeline (`from(ids).pipe(mergeMap((id) => load(id)))`): fetch all
+  the rows in one batched query and join them in memory (`nitpicker/no-lookup-per-element`).
 - Resolve a GraphQL field of a listed type through a DataLoader (`loaders.owner.load(parent.ownerId)`), never with
   a repository or service call per parent (`nitpicker/no-query-per-parent`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested

@@ -51,6 +51,7 @@
   "languages/python/rules/e2e/concurrency/atomic-updates.e2e.test.mjs": 3,
   "languages/python/rules/e2e/concurrency/fan-out.e2e.test.mjs": 3,
   "languages/python/rules/e2e/concurrency/lock-discipline.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/concurrent-lookups/spawned-lookups.e2e.test.mjs": 2,
   "languages/python/rules/e2e/configuration/env-none-only-check.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effect-forms/accumulator-skips.e2e.test.mjs": 1,
   "languages/python/rules/e2e/effect-forms/kind-forms.e2e.test.mjs": 2,

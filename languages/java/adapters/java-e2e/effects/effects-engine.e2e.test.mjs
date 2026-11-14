@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 21,
+      classes: 23,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -177,6 +177,17 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Graphql.federated',
       'Graphql.nested',
       'Graphql.withContext',
+    ]);
+  });
+
+  it('reports lookups per element of an in-memory collection in a reactive pipeline', () => {
+    expect(methodsOf(run.report, 'ReactiveLookupPerElement')).toEqual([
+      'Reactive.byReference',
+      'Reactive.byLambda',
+      'Reactive.byHelper',
+      'Reactive.fromArray',
+      'Reactive.remote',
+      'Reactive.limitedDatabase',
     ]);
   });
 

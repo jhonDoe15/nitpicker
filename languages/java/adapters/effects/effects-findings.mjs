@@ -8,6 +8,8 @@ import { EFFECTS_MESSAGES } from './effects-messages.mjs';
 const EFFECTS_REPORT = 'effects.json';
 const EFFECTS_TOOL = 'effects';
 const LOOP_RULE = 'IoCallInLoop';
+const REACTIVE_RULE = 'ReactiveLookupPerElement';
+const REACTIVE_FAN_OUT_RULES = new Set(['UnboundedReactiveFanOut']);
 const LOOP_RULES = new Set([
   LOOP_RULE,
   'SpringDataNoSaveInLoop',
@@ -199,11 +201,15 @@ export function withoutCoveredLines(findings, covered = []) {
   const effects = findings.filter(
     (finding) => finding.tool === EFFECTS_TOOL && finding.rule === LOOP_RULE,
   );
+  const reactiveLines = linesOf(findings, REACTIVE_FAN_OUT_RULES);
   const exempt = spansBy(covered.filter(({ verdict }) => verdict === 'exempt'));
   const kept = spansBy([...covered.filter(({ verdict }) => verdict === 'owned'), ...effects]);
   return findings
     .filter((finding) => {
       if (finding.tool === EFFECTS_TOOL) {
+        if (finding.rule === REACTIVE_RULE) {
+          return !coveredByOtherTool(finding, reactiveLines);
+        }
         return finding.rule !== LOOP_RULE || !coveredByOtherTool(finding, loopLines);
       }
       const line = finding.location?.line;

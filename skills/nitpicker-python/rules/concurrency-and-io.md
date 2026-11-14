@@ -3,7 +3,7 @@
 Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
-- Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather` over one database query per item is still one query per item (`io-in-loop`).
+- Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather`, a task group's `start_soon`, `asyncio.to_thread` or `run_in_executor` over one database query per item is still one query per item (`io-in-loop`).
 - Accumulators: `append`, `extend` or `update` one list or dict in the loop, or build it with a comprehension or `itertools.chain.from_iterable`; never rebuild it from a copy of itself (`acc = acc + [x]`, `[*acc, x]`, `{**acc, k: v}`) on every pass (`accumulator-copy`).
 - Relationships: load what a loop reads in the query that fetches the rows (`select_related` or `prefetch_related` in Django, `selectinload` or `joinedload` in SQLAlchemy); never read a lazy relationship on each row (`lazy-relation-in-loop`).
 - GraphQL resolvers: a Strawberry field or Graphene `resolve_*` method of a type returned as a list runs once per parent, so batch its lookup with a `DataLoader` (`info.context.customer_loader.load(self.customer_id)`) instead of querying in it (`resolver-query-per-parent`).

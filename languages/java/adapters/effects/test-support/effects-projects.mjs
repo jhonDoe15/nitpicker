@@ -33,6 +33,9 @@ export const JAVA_EFFECTS = [
   'LazyRelationInLoop 35 LazyLoads.linesFromQuery TypedQuery.getResultList() Invoice.lines',
   'LazyRelationInLoop 44 LazyLoads.namesNextToFetchedLines InvoiceRepository.findWithLines() Invoice.customer',
   'LazyRelationInLoop 27 LazyLoads.lineCounts InvoiceRepository.findFrom() Invoice.lines',
+  'ReactiveLookupPerElement 16 OrderStreams.byReference ReactiveCrudRepository.findById()',
+  'ReactiveLookupPerElement 20 OrderStreams.byLambda ReactiveOrders.findById()',
+  'ReactiveLookupPerElement 24 OrderStreams.byHelper OrderStreams.lookup()>ReactiveOrders.findById()',
   `RemoteCallInTransaction 26 HeldScopes.confirm @Transactional ${JAVA_REMOTE}`,
   `RemoteCallInTransaction 32 HeldScopes.inTemplate TransactionTemplate.executeWithoutResult() ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 37 HeldScopes.refresh synchronized ${JAVA_REMOTE}`,
@@ -86,6 +89,8 @@ export const KOTLIN_EFFECTS = [
   'LazyRelationInLoop 4 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
   'LazyRelationInLoop 9 LazyLoads.lineCount InvoiceRepository.findFrom() Invoice.lines',
   'LazyRelationInLoop 14 LazyLoads.lazySequence InvoiceRepository.findAll() Invoice.lines',
+  'ReactiveLookupPerElement 12 OrderStreams.byLambda ReactiveOrders.findById()',
+  'ReactiveLookupPerElement 14 OrderStreams.fromIterable OrderStreams.lookup()>ReactiveOrders.findById()',
   `RemoteCallInTransaction 25 HeldScopes.confirm @Transactional ${KOTLIN_REMOTE}`,
   `RemoteCallInTransaction 30 HeldScopes.inTemplate TransactionTemplate.execute() ${KOTLIN_REMOTE}`,
   `RemoteCallUnderLock 33 HeldScopes.underLock Lock.lock() ${KOTLIN_REMOTE}`,
@@ -121,6 +126,9 @@ function summaryOf(violation) {
   }
   if (origin !== undefined) {
     return [rule, line, method, origin, `${entity}.${relation}`].join(' ');
+  }
+  if (form === undefined && calls !== undefined) {
+    return [rule, line, method, calls.join('>')].join(' ');
   }
   return [rule, line, method, form, calls === undefined ? variable : calls.join('>')].join(' ');
 }
