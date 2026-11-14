@@ -1,6 +1,5 @@
-import { format as formatOutput } from 'node:util';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { printLine, writeReport } from '../../../../shared/report-output/report-output.mts';
 import { analyzeProductionFiles } from './analyze.mts';
 import { readLayout } from './typed/rule-views.mts';
 import type { Metric, Ranked } from './typed/analysis-types.mts';
@@ -17,14 +16,7 @@ const report = {
   ...analyzeProductionFiles(path.join(projectRoot, sourceRoot), sourceRoot, { layout }),
 };
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-
-process.stdout.write(
-  formatOutput(
-    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
-  ) + '\n',
-);
+await writeReport({ projectRoot, outputPath, report });
 const rankings: Readonly<Record<string, readonly Ranked[]>> = report.rankings;
 const METRIC_NAMES = new Map<string, Metric>([
   ['functionLines', 'lines'],
@@ -35,15 +27,11 @@ const METRIC_NAMES = new Map<string, Metric>([
   ['classMembers', 'members'],
 ]);
 for (const [name, entries] of Object.entries(rankings)) {
-  process.stdout.write(formatOutput(`\n${name}:`) + '\n');
+  printLine(`\n${name}:`);
   const metricName = METRIC_NAMES.get(name);
   for (const entry of entries.slice(0, 10)) {
     const displayName = entry.function ?? entry.class;
     const metric = metricName === undefined ? undefined : entry[metricName];
-    process.stdout.write(
-      formatOutput(
-        `${String(metric)}\t${entry.source}:${String(entry.start)}\t${String(displayName)}`,
-      ) + '\n',
-    );
+    printLine(`${String(metric)}\t${entry.source}:${String(entry.start)}\t${String(displayName)}`);
   }
 }

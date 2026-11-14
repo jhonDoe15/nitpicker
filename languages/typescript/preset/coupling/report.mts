@@ -1,7 +1,7 @@
-import { format as formatOutput } from 'node:util';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyzeCoupling, cruise, existingRoots, readLayout } from './typed/typed-rules.mts';
+import { printLine, writeReport } from '../../../../shared/report-output/report-output.mts';
+import { cruise, existingRoots } from '../dependency-graph/typed/graph-views.mts';
+import { analyzeCoupling, readLayout } from './typed/typed-rules.mts';
 
 const layout = readLayout();
 const { sourceRoot } = layout;
@@ -17,29 +17,15 @@ const report = {
   }),
 };
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-
-process.stdout.write(
-  formatOutput(
-    JSON.stringify(
-      {
-        output: path.relative(projectRoot, outputPath),
-        ...report.summary,
-        stabilityDirectionSignals: report.stabilityDirection.length,
-      },
-      null,
-      2,
-    ),
-  ) + '\n',
-);
-process.stdout.write(
-  formatOutput('\nHighest-coupled modules (fan-in / fan-out / instability):') + '\n',
-);
+await writeReport({
+  projectRoot,
+  outputPath,
+  report,
+  summaryExtras: { stabilityDirectionSignals: report.stabilityDirection.length },
+});
+printLine('\nHighest-coupled modules (fan-in / fan-out / instability):');
 for (const entry of report.hubs) {
-  process.stdout.write(
-    formatOutput(
-      `${String(entry.fanIn)}\t${String(entry.fanOut)}\t${String(entry.instability ?? 'N/A')}\t${entry.source}`,
-    ) + '\n',
+  printLine(
+    `${String(entry.fanIn)}\t${String(entry.fanOut)}\t${String(entry.instability ?? 'N/A')}\t${entry.source}`,
   );
 }

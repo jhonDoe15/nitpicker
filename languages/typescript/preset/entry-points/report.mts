@@ -1,7 +1,7 @@
-import { format as formatOutput } from 'node:util';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyzeEntryPoints, cruise, existingRoots, readLayout } from './typed/typed-analysis.mts';
+import { printLine, writeReport } from '../../../../shared/report-output/report-output.mts';
+import { cruise, existingRoots } from '../dependency-graph/typed/graph-views.mts';
+import { analyzeEntryPoints, readLayout } from './typed/typed-analysis.mts';
 
 const layout = readLayout();
 const { sourceRoot } = layout;
@@ -16,28 +16,17 @@ const report = {
   ...analyzeEntryPoints(cruise(existingRoots(projectRoot, [sourceRoot])), sourceRoot, { layout }),
 };
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-
-process.stdout.write(
-  formatOutput(
-    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
-  ) + '\n',
-);
+await writeReport({ projectRoot, outputPath, report });
 for (const finding of report.publicAlternativeBypasses) {
-  process.stdout.write(
-    formatOutput(
-      `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${String(finding.publicEntryPoint)})`,
-    ) + '\n',
+  printLine(
+    `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${String(finding.publicEntryPoint)})`,
   );
 }
 for (const finding of report.unexportedTargetImports) {
-  process.stdout.write(formatOutput(`NOT EXPORTED\t${finding.source} -> ${finding.target}`) + '\n');
+  printLine(`NOT EXPORTED\t${finding.source} -> ${finding.target}`);
 }
 for (const finding of report.missingEntryPointImports) {
-  process.stdout.write(
-    formatOutput(`NO ENTRY POINT\t${finding.source} -> ${finding.target}`) + '\n',
-  );
+  printLine(`NO ENTRY POINT\t${finding.source} -> ${finding.target}`);
 }
 
 if (report.publicAlternativeBypasses.length > 0) {

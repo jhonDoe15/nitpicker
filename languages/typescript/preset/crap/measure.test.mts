@@ -1,16 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { measureCrap } from './measure.mts';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
-const temporaryRoots: string[] = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith: project } = useTemporaryProjects('nitpicker-crap-measure-');
 
 const SOURCE = ['export function twice(value) {', '  return value * 2;', '}'].join('\n');
 
@@ -29,16 +23,6 @@ const coverageEntry = (file: string, hits = 1) => ({
   fnMap: { 0: { name: 'twice', decl: span(1, 16, 1, 21), loc: span(1, 0, 3, 1), line: 1 } },
   f: { 0: hits },
 });
-
-function project(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-crap-measure-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
 
 function measure(root: string, files: readonly string[] = ['src/a.ts']) {
   const analysis = measureCrap(

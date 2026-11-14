@@ -17,14 +17,12 @@ import type {
 import {
   unwrap,
   invokedReadName,
-  accessPath,
   resolveCallback,
   callbackBindings,
   functionLike,
   calleeName,
-  optionProperties,
-  constructedTarget,
 } from './bindings.mts';
+import { accessPath, constructedTarget, optionProperties } from './bound-values.mts';
 import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -48,7 +46,7 @@ function createReporter(
 ): Report {
   const emitted = new Set();
   return (rule, node, callee) => {
-    const key = `${rule}:${node.getStart(tree)}`;
+    const key = `${rule}:${String(node.getStart(tree))}`;
     if (emitted.has(key)) return;
     emitted.add(key);
     const location = tree.getLineAndCharacterOfPosition(node.getStart(tree));

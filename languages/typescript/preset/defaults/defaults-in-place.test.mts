@@ -1,12 +1,4 @@
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -24,6 +16,7 @@ import {
   staticChecks,
   qualityAreaChecks,
 } from '../quality-checks.mjs';
+import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
@@ -350,7 +343,7 @@ function createProject(files: Readonly<Record<string, string>> = oldLayoutFiles(
       recursive: true,
     });
   }
-  writeFiles(projectRoot, files);
+  writeProjectFiles(projectRoot, files);
   symlinkSync(
     path.join(packageRoot, 'node_modules'),
     path.join(projectRoot, 'node_modules'),
@@ -389,12 +382,4 @@ function oldLayoutFiles(): Record<string, string> {
 
 function temporaryPolicyLinks(projectRoot: string) {
   return readdirSync(projectRoot).filter((entry) => entry.startsWith('.nitpicker-'));
-}
-
-function writeFiles(root: string, files: Readonly<Record<string, string>>) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    const filePath = path.join(root, relativePath);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, contents);
-  }
 }

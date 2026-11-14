@@ -1,15 +1,12 @@
-import { format as formatOutput } from 'node:util';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { printLine, writeReport } from '../../../../shared/report-output/report-output.mts';
 import { cruise as untypedCruise } from '../dependency-graph/cruise.mjs';
+import { existingRoots } from '../dependency-graph/typed/graph-views.mts';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
-import { existingRoots as untypedExistingRoots } from '../layout.mjs';
 import { readLayout as untypedReadLayout } from '../head-policy.mjs';
 import type { AnalysisLayout, Graph } from './analysis-types.mts';
 
 const cruise: (paths: readonly string[]) => Graph = untypedCruise;
-const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
-  untypedExistingRoots;
 const readLayout: () => AnalysisLayout = untypedReadLayout;
 
 const layout = readLayout();
@@ -28,18 +25,11 @@ const report = {
     }))()),
 };
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-
-process.stdout.write(
-  formatOutput(
-    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
-  ) + '\n',
-);
+await writeReport({ projectRoot, outputPath, report });
 if (report.findings.length > 0) {
-  process.stdout.write(formatOutput('\nTests without a verified production runtime:') + '\n');
+  printLine('\nTests without a verified production runtime:');
   for (const finding of report.findings) {
-    process.stdout.write(formatOutput(`${finding.category}\t${finding.test}`) + '\n');
+    printLine(`${finding.category}\t${finding.test}`);
   }
   process.exitCode = 1;
 }
