@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyRecipes } from './test-support/apply-recipes.mjs';
+import { applyRecipes } from './test-support/apply-recipes.mts';
 
 const FROZEN = ['python-rules/frozen-dataclass'];
 const SHELL = ['python-rules/shell-command'];

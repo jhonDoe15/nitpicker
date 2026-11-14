@@ -1,22 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { pythonRestatingDocstringRecipe as recipe } from './restating-docstring.mjs';
+import { pythonRestatingDocstringRecipe as recipe } from './typed/recipe-views.mts';
+import type { TextEdit } from './typed/recipe-views.mts';
 
-function apply(text, comments, inputs = {}) {
+function apply(text: string, comments: object[], inputs: object = {}) {
   const { fixes } = recipe.plan({
     files: [{ path: 'shop/a.py', text }],
     inputs: { pythonDocstrings: { 'shop/a.py': comments }, ...inputs },
   });
-  const edits = fixes.flatMap((fix) => fix.edits).sort((left, right) => right.start - left.start);
+  const edits = fixes
+    .flatMap((fix) => fix.edits)
+    .sort((left: TextEdit, right: TextEdit) => right.start - left.start);
   return {
     fixes,
     text: edits.reduce(
-      (result, edit) => result.slice(0, edit.start) + edit.text + result.slice(edit.end),
+      (result: string, edit: TextEdit) =>
+        result.slice(0, edit.start) + edit.text + result.slice(edit.end),
       text,
     ),
   };
 }
 
-function comment(name, line, extra = {}) {
+function comment(name: string, line: number, extra: object = {}) {
   return {
     name,
     line,

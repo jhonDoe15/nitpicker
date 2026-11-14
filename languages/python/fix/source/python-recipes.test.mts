@@ -1,13 +1,22 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { applyRecipes } from './test-support/apply-recipes.mjs';
+import { applyRecipes } from './test-support/apply-recipes.mts';
 
-const CASES = JSON.parse(
+const parseCases: (text: string) => Record<string, Record<string, string>> = JSON.parse;
+const CASES = parseCases(
   readFileSync(path.join(import.meta.dirname, 'fixtures/cases.json'), 'utf8'),
 );
 
-const REWRITES = [
+function caseOf(name: string): Record<string, string> {
+  const found = CASES[name];
+  if (found === undefined) {
+    throw new Error(`no case ${name}`);
+  }
+  return found;
+}
+
+const REWRITES: [string, string | undefined, string, string][] = [
   [
     'python-exc-info',
     undefined,
@@ -60,7 +69,7 @@ const REWRITES = [
 
 describe('Python source recipes', () => {
   it.each(REWRITES)('%s rewrites the fixture', (recipe, rule, name, expected) => {
-    const { read } = applyRecipes(CASES[recipe], {
+    const { read } = applyRecipes(caseOf(recipe), {
       selectedRules: rule === undefined ? [] : [rule],
     });
 
@@ -68,7 +77,7 @@ describe('Python source recipes', () => {
   });
 
   it('lists the fixed finding of the safe recipe', () => {
-    const { outcome } = applyRecipes(CASES['python-exc-info']);
+    const { outcome } = applyRecipes(caseOf('python-exc-info'));
 
     expect(outcome.fixedFindings).toEqual([
       'app/load.py:10 python-rules/catch-log-without-exception (python-exc-info)',
@@ -76,13 +85,13 @@ describe('Python source recipes', () => {
   });
 
   it('leaves review recipes alone until their rule is selected', () => {
-    const { read } = applyRecipes(CASES['python-safe-load']);
+    const { read } = applyRecipes(caseOf('python-safe-load'));
 
-    expect(read('app/config.py')).toBe(CASES['python-safe-load']['app/config.py']);
+    expect(read('app/config.py')).toBe(caseOf('python-safe-load')['app/config.py']);
   });
 
   it('renames an uncollected test file to the collected pattern', () => {
-    const { exists, read, outcome } = applyRecipes(CASES['python-collected-test-name'], {
+    const { exists, read, outcome } = applyRecipes(caseOf('python-collected-test-name'), {
       selectedRules: ['python-rules/uncollected-tests'],
     });
 

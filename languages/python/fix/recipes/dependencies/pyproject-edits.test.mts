@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { addDependency, addRaw, declaredEntries } from './pyproject-layout.mjs';
-import { removeFromArray, removeKeyLines } from './toml-edits.mjs';
-import { arrayElements, scanToml } from './toml-scan.mjs';
+import {
+  addDependency,
+  addRaw,
+  arrayElements,
+  declaredEntries,
+  removeFromArray,
+  removeKeyLines,
+  scanToml,
+} from '../typed/recipe-views.mts';
+import type { TextEdit } from '../typed/recipe-views.mts';
 
-function applied(text, edit) {
+function applied(text: string, edit: TextEdit | undefined): string {
+  if (edit === undefined) {
+    throw new Error('no edit');
+  }
   return text.slice(0, edit.start) + edit.text + text.slice(edit.end);
 }
 
@@ -42,17 +52,17 @@ describe('scanToml', () => {
       ['x.y', ['k']],
       ['z', ['m']],
     ]);
-    expect(arrayElements(text, sections[1].keys[0]).elements.map(({ value }) => value)).toEqual([
+    expect(arrayElements(text, sections[1]?.keys[0])?.elements.map(({ value }) => value)).toEqual([
       'a[b]>=1',
       'c',
     ]);
-    expect(arrayElements(text, sections[2].keys[0]).elements).toHaveLength(1);
+    expect(arrayElements(text, sections[2]?.keys[0])?.elements).toHaveLength(1);
   });
 
   it('declines an array that holds anything but strings', () => {
     const [, section] = scanToml('[g]\nd = [{ include-group = "x" }]\n');
 
-    expect(arrayElements('[g]\nd = [{ include-group = "x" }]\n', section.keys[0])).toBeUndefined();
+    expect(arrayElements('[g]\nd = [{ include-group = "x" }]\n', section?.keys[0])).toBeUndefined();
   });
 });
 
@@ -95,7 +105,7 @@ describe('addDependency', () => {
     expect(applied(`[project]\n${text}`, edit)).toBe(
       '[project]\ndependencies = [\n    "a",  # first\n    "b",  # last\n    "c>=1"\n]\n',
     );
-    expect(section.keys).toHaveLength(1);
+    expect(section?.keys).toHaveLength(1);
   });
 
   it('appends inside a one-line array and fills an empty one', () => {
@@ -155,13 +165,13 @@ describe('removals and moves', () => {
     const [, middle] = declaredEntries(inline);
     const [last] = declaredEntries(inline).slice(-1);
 
-    expect(applied(PEP621, removeFromArray(PEP621, first.key, first.index))).toBe(
+    expect(applied(PEP621, removeFromArray(PEP621, first?.key, first?.index))).toBe(
       PEP621.replace('    "requests>=2",  # http\n', ''),
     );
-    expect(applied(inline, removeFromArray(inline, middle.key, middle.index))).toBe(
+    expect(applied(inline, removeFromArray(inline, middle?.key, middle?.index))).toBe(
       '[project]\ndependencies = ["a", "c"]\n',
     );
-    expect(applied(inline, removeFromArray(inline, last.key, last.index))).toBe(
+    expect(applied(inline, removeFromArray(inline, last?.key, last?.index))).toBe(
       '[project]\ndependencies = ["a", "b"]\n',
     );
   });
@@ -169,7 +179,7 @@ describe('removals and moves', () => {
   it('removes a Poetry entry line', () => {
     const [requests] = declaredEntries(POETRY);
 
-    expect(applied(POETRY, removeKeyLines(requests.key))).toBe(
+    expect(applied(POETRY, removeKeyLines(requests?.key))).toBe(
       POETRY.replace('requests = "^2.31"\n', ''),
     );
   });

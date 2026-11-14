@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
+import { fakePythonTools } from '../test-support/fake-python-fix.mts';
 import {
+  fixOptions,
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
-import { fakePythonTools } from '../test-support/fake-python-fix.mjs';
+  writeFiles,
+} from '../test-support/git-fixtures.mts';
 
 const { createGitRepository } = useGitFixtures();
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.10"\n';
@@ -32,19 +33,23 @@ const FINDING = {
   classification: 'enforceable',
 };
 
-function fixTopic(analyzeFixes) {
+type Report = { findings: (typeof FINDING)[] };
+type Analyze = (request: unknown, root: string) => Report;
+
+function fixTopic(analyzeFixes: Analyze) {
   const repository = createGitRepository({ 'pyproject.toml': PYPROJECT }, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, { 'app/load.py': LOADER });
-  const result = fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    executeFixCommand: fakePythonTools({ sourceFixes: true }).executeFixCommand,
-    headPolicy: { exclude: [], conventions: {} },
-    config: { preset: 'python' },
-    analyzeFixes: (request) => analyzeFixes(request, repository.root),
-  });
+  const result = fixWorkingTree(
+    fixOptions({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      executeFixCommand: fakePythonTools({ sourceFixes: true }).executeFixCommand,
+      headPolicy: { exclude: [], conventions: {} },
+      config: { preset: 'python' },
+      analyzeFixes: (request: unknown) => analyzeFixes(request, repository.root),
+    }),
+  );
   return { result, text: readFileSync(path.join(repository.root, 'app/load.py'), 'utf8') };
 }
 
@@ -52,7 +57,7 @@ function stillReported() {
   return { findings: [FINDING] };
 }
 
-function reportsWhenMissing(_request, root) {
+function reportsWhenMissing(_request: unknown, root: string): Report {
   const text = readFileSync(path.join(root, 'app/load.py'), 'utf8');
   return { findings: text.includes('exc_info=True') ? [] : [FINDING] };
 }

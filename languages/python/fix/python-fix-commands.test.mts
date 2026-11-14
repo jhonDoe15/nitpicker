@@ -1,22 +1,27 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../adapters/test-support/scratch.mjs';
+import { createScratch } from '../adapters/test-support/scratch.mts';
+import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
 import {
-  BLACK_DEFAULT_EXCLUDES,
   blackForceExclude,
   formatStdinCommand,
   lintFixCommands,
-} from './python-fix-commands.mjs';
-import { withPythonFixContext } from './python-fix-session.mjs';
+  withPythonFixContext,
+} from './typed/fix-views.mts';
+import type { FixToolContext, ProbeInvocation } from './typed/fix-views.mts';
 
 const scratch = createScratch();
 
 afterEach(scratch.cleanup);
 
-const probeFailure = ({ operation }) =>
+const probeFailure = ({ operation }: ProbeInvocation) =>
   operation === 'python-probe' ? { status: 1, stdout: '', stderr: '' } : undefined;
 
-function inContext(files, { config = {}, headPolicy = {} } = {}, use) {
+function inContext<Result>(
+  files: Record<string, string>,
+  { config = {}, headPolicy = {} }: { config?: object; headPolicy?: object } = {},
+  use: (context: FixToolContext, projectRoot: string) => Result,
+): Result {
   const projectRoot = scratch.write(scratch.directory(), files);
   return withPythonFixContext(
     {
@@ -25,7 +30,7 @@ function inContext(files, { config = {}, headPolicy = {} } = {}, use) {
       headPolicy: { exclude: [], ...headPolicy },
       executeFixCommand: probeFailure,
     },
-    (context) => use(context, projectRoot),
+    (context: FixToolContext) => use(context, projectRoot),
   );
 }
 
@@ -158,7 +163,7 @@ describe('blackForceExclude', () => {
     const forced = blackForceExclude(context, ['--line-length', '88']);
 
     expect(forced).toEqual(['--force-exclude', `(?:${BLACK_DEFAULT_EXCLUDES})`]);
-    expect(new RegExp(forced[1]).test('/venv/lib/x.py')).toBe(true);
+    expect(new RegExp(forced[1] ?? '').test('/venv/lib/x.py')).toBe(true);
   });
   it('forces the excludes the options carry instead of the default ones, plus the extended ones', () => {
     const options = ['--exclude', 'a/', '--extend-exclude', '^/b/', '--force-exclude', 'c'];

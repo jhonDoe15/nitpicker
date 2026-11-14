@@ -2,15 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { installedVersions } from './dependency-inputs.mjs';
+import { useGitFixtures } from '../../test-support/git-fixtures.mts';
+import { installedVersions } from '../typed/recipe-views.mts';
 
 const { temporaryRoot } = useGitFixtures();
 const hasPackaging =
   spawnSync('python3', ['-c', 'import packaging.specifiers'], { timeout: 10_000 }).status === 0;
-const MANIFEST = (range) => `[project]\nname = "demo"\nrequires-python = "${range}"\n`;
+const MANIFEST = (range: string) => `[project]\nname = "demo"\nrequires-python = "${range}"\n`;
 
-function distribution(site, name, requires) {
+function distribution(site: string, name: string, requires: string | undefined): void {
   const folder = path.join(site, `${name}-1.0.dist-info`);
   mkdirSync(folder, { recursive: true });
   const lines = ['Metadata-Version: 2.1', `Name: ${name}`, 'Version: 1.0'];
@@ -20,7 +20,7 @@ function distribution(site, name, requires) {
   writeFileSync(path.join(folder, 'METADATA'), `${lines.join('\n')}\n`);
 }
 
-function projectWith(manifest, distributions) {
+function projectWith(manifest: string | undefined, distributions: [string, string | undefined][]) {
   const root = temporaryRoot('nitpicker-distributions-');
   const site = path.join(root, 'site');
   for (const [name, requires] of distributions) {
@@ -39,7 +39,7 @@ function projectWith(manifest, distributions) {
     projectRoot: root,
     reportRoot: root,
     launcher: {
-      launch: (_tool, args) => ({
+      launch: (_tool: string, args: string[]) => ({
         command: 'python3',
         args: ['-I', '-c', bootstrap, ...args.slice(1)],
         env: {},
@@ -48,13 +48,13 @@ function projectWith(manifest, distributions) {
   };
 }
 
-function versions(context, names) {
+function versions(context: object, names: string[]) {
   const findings = names.map((name) => ({ identity: `unlisted:${name}` }));
   return installedVersions(context, findings);
 }
 
 describe.skipIf(!hasPackaging)('installed distribution versions', () => {
-  const DISTRIBUTIONS = [
+  const DISTRIBUTIONS: [string, string | undefined][] = [
     ['newer', '>=3.12'],
     ['older', '>=3.8'],
     ['plain', undefined],

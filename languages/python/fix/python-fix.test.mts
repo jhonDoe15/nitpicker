@@ -1,12 +1,19 @@
 import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
-import { fakePythonTools } from './test-support/fake-python-fix.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { fakePythonTools } from './test-support/fake-python-fix.mts';
+import {
+  fixOptions,
+  fixtureGit,
+  linkSentence,
+  useGitFixtures,
+  writeFiles,
+} from './test-support/git-fixtures.mts';
+import type { FakePythonTools } from './test-support/fake-python-fix.mts';
+import type { GitRepository } from './test-support/git-fixtures.mts';
 
 const { createGitRepository } = useGitFixtures();
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
@@ -22,6 +29,10 @@ const LINT_OPTIONS = [
   '88',
   '--no-cache',
 ];
+const LINT_INPUTS: [string, string][] = [
+  ['a.py', 'a  =  2\n'],
+  ['pkg/b.py', 'b = 1\n'],
+];
 const FORMAT_STYLE = [
   '--config',
   'format.quote-style = "double"',
@@ -31,7 +42,7 @@ const FORMAT_STYLE = [
   '--stdin-filename=a.py',
   '-',
 ];
-const ISOLATED_FORMAT = (lineLength) => [
+const ISOLATED_FORMAT = (lineLength: string) => [
   'format',
   '--no-cache',
   '--isolated',
@@ -42,7 +53,7 @@ const ISOLATED_FORMAT = (lineLength) => [
   ...FORMAT_STYLE,
 ];
 
-function topic(base, changes) {
+function topic(base: Record<string, string>, changes: Record<string, string>) {
   const repository = createGitRepository(
     { 'pyproject.toml': PYPROJECT, ...base },
     { baseRef: 'base' },
@@ -52,18 +63,25 @@ function topic(base, changes) {
   return repository;
 }
 
-function fix(repository, tools, { headPolicy = {}, config = {} } = {}) {
-  return fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    executeFixCommand: tools.executeFixCommand,
-    headPolicy: { exclude: [], conventions: {}, ...headPolicy },
-    config: { preset: 'python', ...config },
-  });
+type FixSettings = { headPolicy?: object; config?: object };
+
+function fix(
+  repository: GitRepository,
+  tools: FakePythonTools,
+  { headPolicy = {}, config = {} }: FixSettings = {},
+) {
+  return fixWorkingTree(
+    fixOptions({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      executeFixCommand: tools.executeFixCommand,
+      headPolicy: { exclude: [], conventions: {}, ...headPolicy },
+      config: { preset: 'python', ...config },
+    }),
+  );
 }
 
-function read(repository, name) {
+function read(repository: GitRepository, name: string) {
   return readFileSync(path.join(repository.root, name), 'utf8');
 }
 
@@ -112,10 +130,7 @@ describe('--fix for Python', () => {
         input,
       })),
     ).toEqual(
-      [
-        ['a.py', 'a  =  2\n'],
-        ['pkg/b.py', 'b = 1\n'],
-      ].map(([file, input]) => ({
+      LINT_INPUTS.map(([file, input]) => ({
         command: 'ruff',
         args: [
           ...LINT_OPTIONS,
@@ -165,10 +180,10 @@ describe('--fix for Python', () => {
     expect(result.notes).toEqual(['black rewrote a.py']);
     const [format] = tools.callsOf('black-fix');
     expect({
-      command: format.command,
-      input: format.input,
-      acceptedStatuses: format.acceptedStatuses,
-      args: format.args.with(2, 'black-config'),
+      command: format?.command,
+      input: format?.input,
+      acceptedStatuses: format?.acceptedStatuses,
+      args: format?.args.with(2, 'black-config'),
     }).toEqual({
       command: 'black',
       input: 'a  =  2\n',
@@ -318,8 +333,8 @@ describe('--fix for Python', () => {
     fix(repository, isolated);
     fix(repository, layered, { headPolicy: { tools: { ruff: { precedence: ['project'] } } } });
 
-    expect(isolated.callsOf('ruff-format-fix')[0].args).toEqual(ISOLATED_FORMAT('88'));
-    expect(layered.callsOf('ruff-format-fix')[0].args).toEqual([
+    expect(isolated.callsOf('ruff-format-fix')[0]?.args).toEqual(ISOLATED_FORMAT('88'));
+    expect(layered.callsOf('ruff-format-fix')[0]?.args).toEqual([
       'format',
       '--no-cache',
       '--config',
@@ -335,7 +350,7 @@ describe('--fix for Python', () => {
 
     fix(repository, tools, { headPolicy: { conventions: { 'python.lineLength': '100' } } });
 
-    expect(tools.callsOf('ruff-format-fix')[0].args).toEqual(ISOLATED_FORMAT('100'));
+    expect(tools.callsOf('ruff-format-fix')[0]?.args).toEqual(ISOLATED_FORMAT('100'));
   });
   it('fixes and formats notebooks with ruff, as the gate checks them', () => {
     const repository = topic({}, { 'nb.ipynb': '{  "cells": []}\n' });
@@ -345,8 +360,8 @@ describe('--fix for Python', () => {
 
     expect(result.notes).toEqual(['ruff format rewrote nb.ipynb']);
     expect([
-      tools.callsOf('ruff-fix')[0].args.at(-2),
-      tools.callsOf('ruff-format-fix')[0].args.at(-2),
+      tools.callsOf('ruff-fix')[0]?.args.at(-2),
+      tools.callsOf('ruff-format-fix')[0]?.args.at(-2),
     ]).toEqual(['--stdin-filename=nb.ipynb', '--stdin-filename=nb.ipynb']);
   });
   it('hands notebooks to Black too, which formats them only when its jupyter extra is installed', () => {
@@ -431,7 +446,7 @@ describe('--fix for Python', () => {
     fix(repository, tools);
 
     const [lint] = tools.callsOf('ruff-fix');
-    expect([lint.command, lint.args.slice(0, 7)]).toEqual([
+    expect([lint?.command, lint?.args.slice(0, 7)]).toEqual([
       'uv',
       ['run', '--project', repository.root, '--no-sync', '--', 'ruff', 'check'],
     ]);
@@ -447,8 +462,8 @@ describe('--fix for Python', () => {
     const [lint] = tools.callsOf('ruff-fix');
     expect({
       notes: result.notes,
-      poetry: [poetry.command, poetry.args, poetry.timeout],
-      lint: [lint.command, lint.environment.VIRTUAL_ENV],
+      poetry: [poetry?.command, poetry?.args, poetry?.timeout],
+      lint: [lint?.command, lint?.environment?.['VIRTUAL_ENV']],
     }).toEqual({
       notes: ['ruff format rewrote a.py'],
       poetry: ['poetry', ['-C', repository.root, 'env', 'info', '--path'], 60_000],
@@ -462,7 +477,7 @@ describe('--fix for Python', () => {
     const result = fix(repository, tools);
 
     expect({
-      errors: result.toolErrors.map(({ tool }) => tool),
+      errors: result.toolErrors.map((error) => fieldOf(error, 'tool')),
       operations: tools.operations(),
     }).toEqual({
       errors: ['python-fix'],

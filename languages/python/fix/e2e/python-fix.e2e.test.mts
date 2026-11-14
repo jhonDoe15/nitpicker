@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mjs';
-import { installPackages } from '../../adapters/e2e/test-support/python-e2e-support.mjs';
+import { fixReport, useFixProject } from '../test-support/git-fixtures.mts';
+import type { FixProjectResult } from '../test-support/git-fixtures.mts';
+import { installPackages } from '../../adapters/e2e/test-support/python-e2e-support.mts';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { fix } = useFixProject();
 
 const PROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
@@ -10,7 +11,7 @@ const BLACK = `${PROJECT}[tool.black]\nline-length = 88\n`;
 const MISFORMATTED = 'value  =  1\n';
 const FORMATTED = 'value = 1\n';
 const UNUSED_IMPORT = 'import os\nvalue = 1\n';
-const SUPPRESSED = (value) => `import json  # noqa: F401\n\nx = ${value}\n`;
+const SUPPRESSED = (value: number) => `import json  # noqa: F401\n\nx = ${String(value)}\n`;
 const EDITED_LEGACY = 'value  =  2\n';
 
 const GATE_CONFIG = '{ "preset": "python", "disable": ["mutation"] }\n';
@@ -30,7 +31,7 @@ const NOTEBOOK = `${JSON.stringify({
   nbformat_minor: 5,
 })}\n`;
 
-function repository(pyproject, black = 'black') {
+function repository(pyproject: string, black = 'black') {
   return {
     committed: {
       '.gitignore': 'node_modules/\n.venv/\n',
@@ -48,21 +49,21 @@ function repository(pyproject, black = 'black') {
       'notebook.ipynb': NOTEBOOK,
       'windows.py': 'value  =  1\r\n',
     },
-    prepare: (root) => {
+    prepare: (root: string) => {
       installPackages(root, [...GATE_PACKAGES, black]);
     },
-    realAnalyzers: true,
+    realAnalyzers: true as const,
   };
 }
 
-function formatFindings(result) {
+function formatFindings(result: FixProjectResult) {
   return result
     .newFindings()
     .filter(({ rule }) => rule === 'format')
     .map(({ tool, path: file }) => `${tool} ${file}`);
 }
 
-function outcomeOf(result) {
+function outcomeOf(result: FixProjectResult) {
   return {
     exitCode: result.exitCode,
     report: fixReport(result.stdout),
@@ -81,7 +82,7 @@ function outcomeOf(result) {
 const NOTEBOOK_SKIPPED =
   '  black left notebook.ipynb as is: Black formats notebooks only with its jupyter extra (black[jupyter]) installed\n';
 
-function expectedOutcome(label, notebook) {
+function expectedOutcome(label: string, notebook: boolean) {
   const rewritten = [
     'added.py',
     'changed.py',

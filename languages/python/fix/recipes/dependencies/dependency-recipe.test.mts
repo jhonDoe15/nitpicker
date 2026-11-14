@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { pythonDependenciesRecipe as recipe } from './dependency-recipe.mjs';
+import { pythonDependenciesRecipe as recipe } from '../typed/recipe-views.mts';
+import type { Planned, TextEdit } from '../typed/recipe-views.mts';
 
 const PYPROJECT = `[project]
 name = "demo"
@@ -14,23 +15,26 @@ dev = [
 ]
 `;
 
-function finding(rule, identity, extra = {}) {
+function finding(rule: string, identity: string, extra: object = {}) {
   return { tool: 'dependencies', rule, path: 'pyproject.toml', identity, ...extra };
 }
 
-function plan(findings, { text = PYPROJECT, versions = {} } = {}) {
+function plan(
+  findings: object[],
+  { text = PYPROJECT, versions = {} }: { text?: string | undefined; versions?: object } = {},
+): Planned {
   return recipe.plan({
-    read: (name) => (name === 'pyproject.toml' ? text : undefined),
+    read: (name: string) => (name === 'pyproject.toml' ? text : undefined),
     inputs: { pythonDependencies: { findings, versions } },
   });
 }
 
-function result(text, planned) {
+function result(text: string, planned: Planned): string {
   const edits = planned.fixes
     .flatMap(({ edits: list }) => list)
     .sort((left, right) => right.start - left.start);
   return edits.reduce(
-    (out, edit) => out.slice(0, edit.start) + edit.text + out.slice(edit.end),
+    (out: string, edit: TextEdit) => out.slice(0, edit.start) + edit.text + out.slice(edit.end),
     text,
   );
 }
@@ -63,7 +67,7 @@ describe('pythonDependenciesRecipe', () => {
     );
 
     expect(planned.fixes).toHaveLength(1);
-    expect(planned.fixes[0].finding).toEqual({
+    expect(planned.fixes[0]?.finding).toEqual({
       tool: 'dependencies',
       rule: 'unlisted-dependency',
       path: 'src/b.py',
@@ -111,7 +115,7 @@ describe('pythonDependenciesRecipe', () => {
     ]);
 
     expect(result(PYPROJECT, planned)).toBe(PYPROJECT.replace('    "yaml-tools",\n', ''));
-    expect(planned.fixes[0].finding.line).toBe(5);
+    expect(planned.fixes[0]?.finding.line).toBe(5);
     expect(planned.notes).toEqual([
       '--fix could not fix unused-dependency for missing: pyproject.toml does not declare it as a project dependency',
     ]);
