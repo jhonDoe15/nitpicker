@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 30,
+      classes: 34,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -199,6 +199,25 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Updates.deleteAllRows',
       'Updates.deleteEach',
       'Updates.collectionTableUpdate',
+    ]);
+  });
+
+  it('reports entities loaded for one column or for existence, and leaves computed, transient and reused loads', () => {
+    expect(methodsOf(run.report, 'EntityLoadedForOneColumn')).toEqual([
+      'Projected.emails',
+      'Projected.lambdaEmails',
+      'Projected.looped',
+    ]);
+    expect(
+      methodsOf(run.report, 'EntityLoadedForExistence').filter((method) =>
+        method.startsWith('Projected.'),
+      ),
+    ).toEqual([
+      'Projected.taken',
+      'Projected.exists',
+      'Projected.named',
+      'Projected.atLeastOne',
+      'Projected.none',
     ]);
   });
 

@@ -161,6 +161,7 @@ public final class MethodFlow {
       return 2;
     }
     return switch (opcode) {
+      case Opcodes.SWAP -> 2;
       case Opcodes.GETFIELD, Opcodes.CHECKCAST, Opcodes.ARRAYLENGTH, Opcodes.INSTANCEOF, Opcodes.INEG,
           Opcodes.LNEG, Opcodes.I2L, Opcodes.L2I, Opcodes.IFEQ, Opcodes.IFNE, Opcodes.IFLT, Opcodes.IFGE,
           Opcodes.IFGT, Opcodes.IFLE, Opcodes.IFNULL, Opcodes.IFNONNULL, Opcodes.ARETURN, Opcodes.IRETURN,

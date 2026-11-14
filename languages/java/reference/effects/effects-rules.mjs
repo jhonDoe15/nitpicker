@@ -35,6 +35,11 @@ const SAMPLES = [
     'RowsChangedInMemory',
     { method: METHOD, form: 'update', origin: '<repository>.findBy()', entity: '<Entity>' },
   ],
+  [
+    'EntityLoadedForOneColumn',
+    { method: METHOD, entity: '<Entity>', property: 'getEmail', origin: '<repository>.findBy()' },
+  ],
+  ['EntityLoadedForExistence', { method: METHOD, form: 'count', origin: '<repository>.countBy()' }],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

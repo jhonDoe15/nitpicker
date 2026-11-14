@@ -19,4 +19,6 @@ public interface CrudRepository<T, ID> extends Repository<T, ID> {
   void deleteAll(Iterable<? extends T> entities);
 
   long count();
+
+  boolean existsById(ID id);
 }

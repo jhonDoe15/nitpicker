@@ -52,10 +52,20 @@ public final class Rows {
     MethodNode method = declaration == null ? null : program.method(declaration);
     String found = method == null ? null : first(ELEMENT, method.signature);
     if (found == null) {
+      found = concrete(Type.getReturnType(call.desc));
+    }
+    if (found == null) {
       found = repositoryEntity(program.index.node(call.owner), 0);
     }
     ClassNode node = program.index.node(found);
     return node != null && persistent(node) ? node : null;
+  }
+
+  private String concrete(Type result) {
+    String type = result.getSort() == Type.OBJECT ? result.getInternalName() : "java/lang/Object";
+    boolean wrapper = type.equals("java/lang/Object") || type.equals("java/util/Optional")
+        || program.index.isSubtypeOfAny(type, COLLECTIONS) || program.index.isSubtypeOfAny(type, ASYNC);
+    return wrapper ? null : type;
   }
 
   public boolean persistent(ClassNode node) {
