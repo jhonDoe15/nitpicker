@@ -91,7 +91,7 @@ public final class Pipelines {
 
   public void drain(Set<String> ids) {
     for (String id : new ArrayList<>(ids)) {
-      ids.remove(id);
+      ids.remove(id); // violation: ParameterMutation
     }
   }
 }
