@@ -43,8 +43,9 @@ describe('the Gradle init script node runner', () => {
       `throw new GradleException("\${failure}: could not run \${nodeCommand}: \${error.message}")`,
       '}',
       "def log = process.inputStream.getText('UTF-8')",
-      'if (process.waitFor() != 0) {',
-      `throw new GradleException("\${failure}: \${log.trim()}")`,
+      'def exit = process.waitFor()',
+      'if (exit != 0) {',
+      `throw new GradleException("\${failure}: \${processFailure(nodeCommand, exit, log)}")`,
       '}',
       '}',
     ]);

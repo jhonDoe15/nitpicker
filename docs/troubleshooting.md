@@ -655,6 +655,11 @@ Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the 
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
 
+A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
+killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)
+...Warning` lines) are left out of the message, so they are not mistaken for the cause. Run fewer jobs
+at once with `NITPICKER_MAX_PARALLEL` or give the job more memory.
+
 **Fix.** The message ends with the tool's own output: run the same tool in the project
 (`npx prettier --check .`, `npx eslint .`, `npx tsc --noEmit`, the project's test command with
 coverage) and fix what it reports. When only nitpicker fails, rerun the analyzer alone with
@@ -777,6 +782,11 @@ build does not support, a plugin that needs a network the runner does not have, 
 the merge base, so check it out to reproduce. A runner without network access needs the Gradle
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
+
+A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
+output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
+give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
+SIGKILL`, with the same remedy.
 
 ### The Maven build fails
 
