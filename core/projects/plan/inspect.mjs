@@ -7,7 +7,7 @@ import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { validateProjects } from '../../configuration/layers/settings.mjs';
 import { resolveDeclaredProjects } from '../discovery/declared-projects.mjs';
 import { detectProjects, undeclaredProjects } from '../discovery/detect.mjs';
-import { listRepositoryFiles } from '../discovery/repository-files.mjs';
+import { listRepositoryFiles, listSubmodules } from '../discovery/repository-files.mjs';
 import { describeProject, rejectReportFolderClash } from './project-entry.mjs';
 
 function declaredEntries(root) {
@@ -24,22 +24,22 @@ function detectionConfig(root, repositoryRoot) {
   }
 }
 
-function entriesOf({ root, files, repositoryRoot }) {
+function entriesOf({ root, files, repositoryRoot, submodules }) {
   const declared = declaredEntries(root);
   if (declared !== undefined) {
     return declared.length === 0
       ? { optedOut: true }
       : {
           source: 'declared',
-          entries: resolveDeclaredProjects({ root, entries: declared, files }),
+          entries: resolveDeclaredProjects({ root, entries: declared, files, submodules }),
         };
   }
   const rootConfig = detectionConfig(root, repositoryRoot).config;
-  const detected = detectProjects({ root, rootConfig, files });
+  const detected = detectProjects({ root, rootConfig, files, submodules });
   return detected.multiple ? { source: 'detected', entries: detected.entries } : {};
 }
 
-function monorepoPlan({ root, files, found, repositoryRoot = repositoryRootOf(root) }) {
+function monorepoPlan({ root, files, found, repositoryRoot, submodules }) {
   const rootConfig = readLayeredConfig(root, { repositoryRoot });
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
   rejectReportFolderClash(found.entries);
@@ -53,6 +53,7 @@ function monorepoPlan({ root, files, found, repositoryRoot = repositoryRootOf(ro
     rootConfig,
     source: found.source,
     projects,
+    submodules,
     undeclared:
       found.source === 'detected'
         ? undeclaredProjects({ root, files, projects, exclude: rootConfig.exclude })
@@ -60,8 +61,23 @@ function monorepoPlan({ root, files, found, repositoryRoot = repositoryRootOf(ro
   };
 }
 
-export function inspectRepository({ root, files = listRepositoryFiles(root), repositoryRoot }) {
-  const found = entriesOf({ root, files, repositoryRoot });
+function submodulesUnder(root, repositoryRoot) {
+  const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/');
+  return listSubmodules(repositoryRoot).flatMap((submodule) => {
+    if (prefix === '') {
+      return [submodule];
+    }
+    return submodule.startsWith(`${prefix}/`) ? [submodule.slice(prefix.length + 1)] : [];
+  });
+}
+
+export function inspectRepository({
+  root,
+  files = listRepositoryFiles(root),
+  repositoryRoot = repositoryRootOf(root),
+}) {
+  const submodules = submodulesUnder(root, repositoryRoot);
+  const found = entriesOf({ root, files, repositoryRoot, submodules });
   if (found.entries === undefined) {
     if (found.optedOut === true) {
       return { files, undeclared: [] };
@@ -69,7 +85,7 @@ export function inspectRepository({ root, files = listRepositoryFiles(root), rep
     const { exclude } = detectionConfig(root, repositoryRoot).config;
     return { files, undeclared: undeclaredProjects({ root, files, projects: [], exclude }) };
   }
-  return { files, plan: monorepoPlan({ root, files, found, repositoryRoot }) };
+  return { files, plan: monorepoPlan({ root, files, found, repositoryRoot, submodules }) };
 }
 
 export function planMonorepo({ root }) {

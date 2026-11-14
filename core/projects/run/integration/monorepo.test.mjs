@@ -1,9 +1,24 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
+import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();
+const git = useGitFixtures();
+const COMMIT = ['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q'];
+
+function withSubmodule(root, folder) {
+  const { root: library } = git.createGitRepository({ 'package.json': '{"name":"svc"}' });
+  fixtureGit(root, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', library, folder]);
+  fixtureGit(root, [...COMMIT, '-m', 'add submodule']);
+  fixtureGit(root, ['branch', '-f', 'comparison-base', 'HEAD']);
+  writeFiles(library, { 'index.js': 'export {};\n' });
+  fixtureGit(library, ['add', '-A']);
+  fixtureGit(library, [...COMMIT, '-m', 'change']);
+  fixtureGit(`${root}/${folder}`, ['-c', 'protocol.file.allow=always', 'pull', '-q']);
+  return root;
+}
 
 function monorepo(extra = {}) {
   return repository({
@@ -108,6 +123,44 @@ describe('a run at the top of a monorepo', () => {
     expect(result.json('api/summary.json').notices).toEqual([notice]);
     expect(readFileSync(`${result.reports}/api/report.txt`, 'utf8')).toContain(notice);
     expect(run(root, [], { workingDirectory: `${root}/api` }).out).toContain(notice);
+  });
+
+  it('names a changed Git submodule instead of a plain outside file', () => {
+    const root = withSubmodule(monorepo(), 'services/svc');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.out).not.toContain('Changed files outside every project');
+    expect(result.json('summary.json').notices).toEqual([
+      'services/svc is a Git submodule, which this run does not check: ' +
+        'run nitpicker inside it to gate its own changes.',
+    ]);
+  });
+
+  it('refuses a projects entry or a workspace glob that names a Git submodule', () => {
+    const listed = withSubmodule(
+      monorepo({ 'nitpicker.config.json': JSON.stringify({ projects: ['web', 'services/*'] }) }),
+      'services/svc',
+    );
+    const workspace = withSubmodule(
+      repository({
+        'package.json': JSON.stringify({ name: 'top', workspaces: ['packages/*'] }),
+        ...projectFiles('packages/a', { 'package.json': '{"name":"a"}', 'src/a.ts': '' }),
+      }),
+      'packages/svc',
+    );
+
+    expect([run(listed).exitCode, run(listed).err]).toEqual([
+      2,
+      expect.stringContaining(
+        '"projects" entry services/* names services/svc, a Git submodule. Nitpicker does not gate a ' +
+          'submodule from the repository around it: leave it out of "projects" and run nitpicker inside services/svc',
+      ),
+    ]);
+    expect(run(workspace).err).toContain(
+      'The package.json workspaces cover packages/svc, a Git submodule',
+    );
   });
 
   it('exits 2 when a project fails to run, after running the others', () => {

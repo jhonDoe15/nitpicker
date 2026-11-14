@@ -22,10 +22,11 @@ import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
   rejectPathScope,
   rejectWholeRunOptions,
+  submoduleHint,
   undeclaredHint,
   unlistedHint,
 } from './messages.mjs';
-import { comparisonOf, selectionOf } from './selection-plan.mts';
+import { comparisonOf, selectionOf, submodulePaths } from './selection-plan.mts';
 import { enclosingPlan, requestsProjects, singleMode } from './single-mode.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
@@ -128,6 +129,7 @@ function noticesOf(plan: MonorepoPlan, changed: readonly string[], cli: Monorepo
       plan.projects.map(({ path: folder }) => folder),
     ),
     ...unlistedHint(unlistedFolders(plan, changed)),
+    ...submoduleHint(submodulePaths(plan).filter((folder) => changed.includes(folder))),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
