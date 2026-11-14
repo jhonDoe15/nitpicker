@@ -1,4 +1,5 @@
-import { exactText } from '../../../reporting/test-support/output-expectations.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { exactText } from '../../../reporting/test-support/output-expectations.mts';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -7,17 +8,19 @@ import {
   useQualityDiffRepositories,
   fakeAnalyzer,
   IN_PROCESS_TASKS,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runCli } from '../../../../cli.mts';
-import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { readJson } from '../../../git/test-support/fixture-files.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { readJson } from '../../../git/test-support/fixture-files.mts';
 
 const { createRepository } = useQualityDiffRepositories();
+
+const anyNumber: unknown = expect.any(Number);
 
 describe('quality diff command-line gate', () => {
   it('exits zero when the branch introduces no new enforceable findings', () => {
@@ -248,7 +251,9 @@ Quality gate summary
 ✓ No new enforceable violations
 Full diagnostics: ${repository.outputRoot}/report.txt
 `);
-    expect(readJson(repository.root, 'reports/quality/diff/summary.json').tools).toEqual([
+    expect(
+      fieldOf(readJson(repository.root, 'reports/quality/diff/summary.json'), 'tools'),
+    ).toEqual([
       {
         name: 'fake-quality-analyzer',
         version: '1.0.0',
@@ -259,9 +264,9 @@ Full diagnostics: ${repository.outputRoot}/report.txt
         resolved: 0,
         unchanged: 0,
         changedMetrics: 0,
-        baseElapsedMs: expect.any(Number),
-        headElapsedMs: expect.any(Number),
-        elapsedMs: expect.any(Number),
+        baseElapsedMs: anyNumber,
+        headElapsedMs: anyNumber,
+        elapsedMs: anyNumber,
       },
     ]);
   });

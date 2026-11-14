@@ -2,15 +2,16 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../../../cli.mts';
-import { useCliFixtures, fakeAnalyzer } from '../../../../command/test-support/cli-harness.mjs';
+import { useCliFixtures, fakeAnalyzer } from '../../../../command/test-support/cli-harness.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit, fixtureGit } from '../../../git/test-support/git-repository.mjs';
-import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit, fixtureGit } from '../../../git/test-support/git-repository.mts';
+import type { CapturedOutput } from '../../../reporting/test-support/output-types.mts';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -39,11 +40,11 @@ function githubEnvironment() {
   };
 }
 
-function annotationsOf(output) {
+function annotationsOf(output: CapturedOutput) {
   return output.stdoutText.split('\n').filter((line) => line.startsWith('::'));
 }
 
-function summaryLines(summaryPath) {
+function summaryLines(summaryPath: string) {
   return readFileSync(summaryPath, 'utf8').split('\n');
 }
 
@@ -92,7 +93,7 @@ describe('GitHub Actions output of the command line', () => {
     const repository = repositoryWithNewFinding();
     const output = captureOutput();
 
-    runCli({
+    void runCli({
       arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
       environment: {},
       currentProjectRoot: repository.root,
@@ -109,7 +110,7 @@ describe('GitHub Actions output of the command line', () => {
     const { summaryPath, environment } = githubEnvironment();
     const output = captureOutput();
 
-    runCli({
+    void runCli({
       arguments_: [
         '--base',
         repository.baseRef,

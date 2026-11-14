@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { missingPathHint, parseArguments } from '../../../../command/arguments.mts';
 import { runBaseCommand } from '../../../../command/base.mts';
 import { runCacheCommand } from '../../../../command/cache.mts';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mts';
 import { parseArguments as parseAggregateArguments } from '../../../sharding/arguments.mts';
+
+function withOutput(arguments_: readonly string[]) {
+  const output = captureOutput();
+  return { arguments_, environment: {}, stdout: output.stdout, stderr: output.stderr };
+}
 
 const HELP = 'Run nitpicker --help for the options.';
 const CACHE_USAGE =
@@ -48,20 +54,20 @@ describe('argument typos', () => {
   });
 
   it('suggests the cache subcommand and its options', () => {
-    expect(() => runCacheCommand({ arguments_: ['publsh'] })).toThrow(
+    expect(() => runCacheCommand(withOutput(['publsh']))).toThrow(
       `Unknown cache command: publsh. Did you mean publish? ${CACHE_USAGE}`,
     );
-    expect(() => runCacheCommand({ arguments_: ['clear'] })).toThrow(
+    expect(() => runCacheCommand(withOutput(['clear']))).toThrow(
       `Unknown cache command: clear. ${CACHE_USAGE}`,
     );
-    expect(() => runCacheCommand({ arguments_: ['publish', '--analyser'] })).toThrow(
+    expect(() => runCacheCommand(withOutput(['publish', '--analyser']))).toThrow(
       `Unknown argument: --analyser. Did you mean --analyzer? ${CACHE_USAGE}`,
     );
-    expect(() => runCacheCommand({ arguments_: [] })).toThrow(CACHE_USAGE);
+    expect(() => runCacheCommand(withOutput([]))).toThrow(CACHE_USAGE);
   });
 
   it('suggests --base for the base subcommand', () => {
-    expect(() => runBaseCommand({ arguments_: ['--bas', 'main'] })).toThrow(
+    expect(() => runBaseCommand(withOutput(['--bas', 'main']))).toThrow(
       'Unknown argument: --bas. Did you mean --base? Usage: nitpicker base [--base <ref>]',
     );
   });

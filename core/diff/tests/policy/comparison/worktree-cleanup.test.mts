@@ -9,31 +9,39 @@ import {
   fakeAnalyzer,
   IN_PROCESS_TASKS,
   worktreePaths,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runCli } from '../../../../cli.mts';
-import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+import type { DiffReport } from '../../../comparison/results.mts';
+import { type DiffOptions, runQualityDiff } from '../../../comparison/run-diff.mts';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
+import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const TIMEOUT_MESSAGE =
   'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +
   '"analyzerTimeoutMinutes": { "fake-quality-analyzer": <minutes> } in nitpicker.config.json. ' +
-  linkSentence('analyzerTimeout');
+  textOf(linkSentence('analyzerTimeout'));
 
 vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import('node:fs')>();
   return { ...actual, rmSync: vi.fn(actual.rmSync) };
 });
 
 const { createRepository } = useQualityDiffRepositories();
-const { rmSync: actualRmSync } = await vi.importActual('node:fs');
-const leftovers = [];
+const looseDiff: {
+  run(
+    options: Omit<DiffOptions, 'analyzers'> & { readonly analyzers: readonly unknown[] },
+  ): DiffReport;
+} = { run: runQualityDiff };
+const { rmSync: actualRmSync } = await vi.importActual<typeof import('node:fs')>('node:fs');
+const leftovers: string[] = [];
 
 afterEach(() => {
   vi.mocked(rmSync).mockImplementation(actualRmSync);
@@ -44,11 +52,12 @@ afterEach(() => {
 
 function keepWritingIntoWorktrees() {
   vi.mocked(rmSync).mockImplementation((target, options) => {
-    if (path.basename(target).startsWith('nitpicker-diff-')) {
-      leftovers.push(target);
-      throw new Error(`ENOTEMPTY: directory not empty, rmdir '${target}'`);
+    const targetPath = String(target);
+    if (path.basename(targetPath).startsWith('nitpicker-diff-')) {
+      leftovers.push(targetPath);
+      throw new Error(`ENOTEMPTY: directory not empty, rmdir '${targetPath}'`);
     }
-    return actualRmSync(target, options);
+    actualRmSync(targetPath, options);
   });
 }
 
@@ -141,8 +150,8 @@ describe('quality diff temporary worktrees and reports', () => {
 
     expect(exitCode).toBe(2);
     expect(
-      readJson(repository.root, 'reports/quality/diff/tool-errors.json').map(
-        ({ message }) => message,
+      listOf(readJson(repository.root, 'reports/quality/diff/tool-errors.json')).map((entry) =>
+        fieldOf(entry, 'message'),
       ),
     ).toEqual([TIMEOUT_MESSAGE, TIMEOUT_MESSAGE]);
     expect(output.stdoutText.split('\n', 1)).toEqual([`Base: ${repository.baseRef} (argument)`]);
@@ -183,7 +192,7 @@ describe('quality diff temporary worktrees and reports', () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
+    expect(REPORT_FILE_NAMES.includes('summary.json')).toBe(true);
     expect(
       REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
     ).toEqual(REPORT_FILE_NAMES.map(() => false));
@@ -195,17 +204,17 @@ describe('quality diff temporary worktrees and reports', () => {
     });
     commitFiles(repository.root, { 'head.txt': 'head\n' }, 'head');
 
-    const report = runQualityDiff({
+    const report = looseDiff.run({
       ...IN_PROCESS_TASKS,
       repositoryRoot: repository.root,
       projectRelativePath: '.',
       headProjectRoot: repository.root,
       requestedBaseRef: repository.baseRef,
       outputRoot: repository.outputRoot,
-      analyzers: [null],
+      analyzers: [parseJson('null')],
     });
 
-    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('tool-error');
     expect(report.toolErrors).toEqual([
       {
         tool: 'unknown-analyzer-0',
@@ -229,9 +238,9 @@ describe('quality diff temporary worktrees and reports', () => {
 
     const report = runQualityDiff(comparisonOptions(repository));
 
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
-    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
+    expect(REPORT_FILE_NAMES.includes('summary.json')).toBe(true);
     expect(
       REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
     ).toEqual(REPORT_FILE_NAMES.map(() => true));

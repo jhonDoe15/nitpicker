@@ -1,19 +1,20 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import {
   commitFiles,
   useQualityDiffRepositories,
   workingTreeOptions,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { fixtureGit } from '../../../git/test-support/git-repository.mjs';
-import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { fixtureGit } from '../../../git/test-support/git-repository.mts';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mts';
 
 const { createRepository } = useQualityDiffRepositories();
 
@@ -57,7 +58,7 @@ describe('quality diff against the working tree', () => {
 
     const report = runQualityDiff(workingTreeOptions(repository));
 
-    expect(report.summary.renamedPaths).toBe(1);
+    expect(fieldAt(report.summary, 'renamedPaths')).toBe(1);
     expect(report.unchangedFindings.map((entry) => entry.path)).toEqual(['src/main/new-name.ts']);
     expect(report.newFindings).toEqual([]);
   });
@@ -67,7 +68,9 @@ describe('quality diff against the working tree', () => {
 
     const report = runQualityDiff(workingTreeOptions(repository));
 
-    expect(report.summary.headSha).toBe(fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim());
+    expect(fieldAt(report.summary, 'headSha')).toBe(
+      fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim(),
+    );
   });
   it('leaves the index, branches, and files untouched', () => {
     const repository = createRepository({

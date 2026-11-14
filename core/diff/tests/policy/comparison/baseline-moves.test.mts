@@ -3,21 +3,27 @@ import {
   comparisonOptions,
   fakeAnalyzer,
   useQualityDiffRepositories,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { policy } from '../../../execution/test-support/analyzer-findings.mjs';
+import { policy } from '../../../execution/test-support/analyzer-findings.mts';
 import { readMovesFile } from '../../../../../shared/rules/facts/baseline.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
-import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mts';
 
 const { createRepository } = useQualityDiffRepositories();
 
-function recordingAnalyzer(seen) {
+const movesOf: (movesFile: unknown) => Map<string, string> = readMovesFile;
+
+function recordingAnalyzer(seen: unknown[]) {
   const analyzer = fakeAnalyzer();
   return {
     ...analyzer,
-    createInvocation(context) {
-      seen.push([context.snapshot, [...readMovesFile(context.baselineMovesFile)]]);
+    createInvocation(context: unknown) {
+      seen.push([
+        fieldOf(context, 'snapshot'),
+        [...movesOf(fieldOf(context, 'baselineMovesFile'))],
+      ]);
       return analyzer.createInvocation(context);
     },
   };
@@ -31,11 +37,11 @@ describe('quality diff moves handed to the head analyzers', () => {
     });
     renameFile(repository.root, 'src/main/old-name.ts', 'src/main/new-name.ts');
     commit(repository.root, 'rename source');
-    const seen = [];
+    const seen: unknown[] = [];
 
     runQualityDiff({ ...comparisonOptions(repository), analyzers: [recordingAnalyzer(seen)] });
 
-    expect(seen.toSorted()).toEqual([
+    expect(seen.toSorted((a, b) => String(a).localeCompare(String(b)))).toEqual([
       ['base', []],
       ['head', [['src/main/old-name.ts', 'src/main/new-name.ts']]],
     ]);
@@ -48,11 +54,11 @@ describe('quality diff moves handed to the head analyzers', () => {
     });
     writeFiles(repository.root, { 'src/main/source.ts': 'export const source = false;\n' });
     commit(repository.root, 'edit source');
-    const seen = [];
+    const seen: unknown[] = [];
 
     runQualityDiff({ ...comparisonOptions(repository), analyzers: [recordingAnalyzer(seen)] });
 
-    expect(seen.toSorted()).toEqual([
+    expect(seen.toSorted((a, b) => String(a).localeCompare(String(b)))).toEqual([
       ['base', []],
       ['head', []],
     ]);

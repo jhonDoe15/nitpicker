@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { parseFinding } from '../../../comparison/finding-schema.mjs';
 
-function crapFunction({ score, hash, name = 'priceOf', path = 'src/price.ts' }) {
+type CrapFunction = {
+  readonly score: number;
+  readonly hash: string;
+  readonly name?: string;
+  readonly path?: string;
+};
+
+function crapFunction({ score, hash, name = 'priceOf', path = 'src/price.ts' }: CrapFunction) {
   return {
     path,
     name,
@@ -13,8 +21,12 @@ function crapFunction({ score, hash, name = 'priceOf', path = 'src/price.ts' }) 
   };
 }
 
-function crapComparison(base, head, renames) {
-  const parse = (functions) =>
+function crapComparison(
+  base: readonly object[],
+  head: readonly object[],
+  renames?: Map<string, string>,
+) {
+  const parse = (functions: readonly object[]) =>
     crapFindings(functions, { tool: 'crap', limit: 9 }).map((finding) => parseFinding(finding));
   return compareFindings({
     baseFindings: parse(base),
@@ -69,7 +81,7 @@ describe('CRAP limit on edited legacy functions', () => {
       [crapFunction({ score: 10, hash: 'after' })],
     );
 
-    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([
+    expect(result.unchangedFindings.map(({ ratchet }) => fieldOf(ratchet, 'heldMessage'))).toEqual([
       'priceOf: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
     ]);
   });
@@ -125,14 +137,17 @@ describe('CRAP limit on edited legacy functions', () => {
     expect(result.newFindings).toEqual([]);
   });
   it('fails every edit when the adapter gives no ratchet key', () => {
-    const withoutKey = (hash) => ({ ...crapFunction({ score: 15, hash }), ratchetKey: undefined });
+    const withoutKey = (hash: string) => ({
+      ...crapFunction({ score: 15, hash }),
+      ratchetKey: undefined,
+    });
 
     const result = crapComparison([withoutKey('before')], [withoutKey('after')]);
 
     expect(result.newFindings).toHaveLength(1);
   });
   it('never ratchets a function with unknown coverage', () => {
-    const unknown = (hash) => crapFunction({ score: Number.NaN, hash });
+    const unknown = (hash: string) => crapFunction({ score: Number.NaN, hash });
 
     const result = crapComparison([unknown('before')], [unknown('after')]);
 
