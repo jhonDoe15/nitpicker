@@ -43,12 +43,6 @@ const COVERED_FINDINGS = {
   ],
   'kotlin-source/ReactorBlockWithoutTimeout': ['kotlin-source/BlockingCallInCoroutine'],
   'kotlin-source/UnboundedWait': ['kotlin-source/BlockingCallInCoroutine'],
-  'kotlin-source/IoCallInLoop': [
-    'pmd/SpringDataNoSaveInLoop',
-    'pmd/SpringDataBatchOfOne',
-    'pmd/SpringDataRowWriteInLoop',
-    'pmd/SpringDataSaveInLoopHelper',
-  ],
   'kotlin-source/CatchOnlyLogsOrReturnsDefault': [
     'pmd/SwallowedInterrupt',
     'pmd/SwallowedCancellation',
