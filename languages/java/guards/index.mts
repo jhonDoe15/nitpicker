@@ -18,7 +18,14 @@ export function readGuardFindings(reports: GuardReports): unknown[] {
   const { reportRoot, projectRoot, manifest, module, locate } = reports;
   const sourceRoots = textsOf(fieldOf(manifest, 'sourceRoots'));
   const findings: readonly unknown[] = [
-    ...listOf(callUntyped(readLintFindings, reportRoot, { projectRoot, sourceRoots, module })),
+    ...listOf(
+      callUntyped(readLintFindings, reportRoot, {
+        projectRoot,
+        sourceRoots,
+        testRoots: textsOf(fieldOf(manifest, 'testSourceRoots')),
+        module,
+      }),
+    ),
     ...listOf(callUntyped(readForbiddenApiFindings, reportRoot, { locate, projectRoot })),
     ...listOf(
       callUntyped(readCpdFindings, reportRoot, {

@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
+import { detektJava, skipWithoutJdk } from '../../errorprone/maven-jdk.mjs';
+import { DETEKT_SKIPPED } from '../../../adapters/reporting/skips/skipped-tools.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
@@ -145,17 +147,24 @@ export function runDetekt({
   });
   const jdk = jdkHome(module.kotlin, options.toolchains);
   writeKotlinNotes(reportDir, jdk.note === undefined ? [] : [jdk.note]);
-  callUntyped(runJava, {
-    tool: 'detekt',
-    classpath: tools['detekt'],
-    mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
-    args: detektArguments({ module, report, options, classpath, home: jdk.home }),
-    cwd: module.basedir,
-    spawn: options.spawn,
-    timeoutMs: options.timeoutMs,
-    accept: (result: unknown) => {
-      const status = numberOr(fieldOf(result, 'status'), -1);
-      return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
+  callUntyped(
+    skipWithoutJdk,
+    { reportDir, file: DETEKT_SKIPPED, placeholders: { 'detekt.sarif': EMPTY_SARIF } },
+    () => {
+      callUntyped(runJava, {
+        java: callUntyped(detektJava, { spawn: options.spawn }),
+        tool: 'detekt',
+        classpath: tools['detekt'],
+        mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
+        args: detektArguments({ module, report, options, classpath, home: jdk.home }),
+        cwd: module.basedir,
+        spawn: options.spawn,
+        timeoutMs: options.timeoutMs,
+        accept: (result: unknown) => {
+          const status = numberOr(fieldOf(result, 'status'), -1);
+          return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
+        },
+      });
     },
-  });
+  );
 }

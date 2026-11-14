@@ -5,6 +5,7 @@ import {
   readJavaSource,
   sourceFilesUnder,
   withoutGenerics,
+  withoutNested,
 } from '../../review-rules/java-sources.mjs';
 
 const INHERITING_RULES = new Set([
@@ -13,7 +14,7 @@ const INHERITING_RULES = new Set([
 ]);
 const MAX_ANCESTORS = 16;
 const HEADER = /(?<!\.)\b(?:class|interface)\s+(\w+)/gu;
-const TRANSACTIONAL = /@(?:[\w.]*\.)?Transactional\b/u;
+export const TRANSACTIONAL = /@(?:[\w.]*\.)?Transactional\b/u;
 const PERMITS = /\bpermits\b[\s\S]*/u;
 const SEPARATORS = /[\s,]+/u;
 const KEYWORDS = new Set(['', 'extends', 'implements']);
@@ -32,12 +33,12 @@ function closingBrace(text, open) {
   return text.length;
 }
 
-function prefixOf(text, index) {
+export function prefixOf(text, index) {
   let depth = 0;
   let start = index;
   for (const character of text.slice(0, index).split('').reverse()) {
     depth += PARENTHESES[character] ?? 0;
-    if (depth === 0 && BOUNDARIES.has(character)) {
+    if (depth < 0 || (depth === 0 && BOUNDARIES.has(character))) {
       break;
     }
     start -= 1;
@@ -45,8 +46,16 @@ function prefixOf(text, index) {
   return text.slice(start, index);
 }
 
+function withoutArguments(text) {
+  return withoutNested(text, '(', ')');
+}
+
 function supertypes(tail) {
-  return withoutGenerics(tail)
+  const plain = withoutGenerics(tail);
+  const clause = /\b(?:extends|implements)\b/u.test(plain)
+    ? plain
+    : withoutArguments(plain).split(':').slice(1).join(' ');
+  return clause
     .replace(PERMITS, '')
     .split(SEPARATORS)
     .filter((word) => !KEYWORDS.has(word))

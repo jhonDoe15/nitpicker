@@ -37,6 +37,12 @@ import {
   ifTested,
 } from './test-coverage/coverage-findings.mts';
 import { withJavaCountRatchets } from './counts/java-counts.mts';
+import {
+  CHECKSTYLE_SKIPPED,
+  STRUCTURE_SKIPPED,
+  skippedFiles,
+  skippedToolFindings,
+} from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
@@ -81,18 +87,34 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
     : [];
 }
 
+function skippedSet(reportRoot: unknown): ReadonlySet<unknown> {
+  const files: unknown = callUntyped(skippedFiles, reportRoot);
+  return files instanceof Set ? files : new Set();
+}
+
 function readModuleFindings(context: ModuleContext, crapLimit: unknown): Findings {
   const { reportRoot, projectRoot, kotlin } = context;
   const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
+  const skipped = skippedSet(reportRoot);
+  const structureSkipped = skipped.has(STRUCTURE_SKIPPED);
   const findings = [
+    ...findingsFrom(skippedToolFindings, {
+      reportRoot,
+      javaStyle: context['javaStyle'],
+      moduleDir: fieldOf(context['module'], 'moduleDir'),
+    }),
     ...findingsFrom(sarifFindings, context),
     ...findingsFrom(readErrorProneFindings, context),
     ...findingsFrom(formatFindings, context),
-    ...findingsFrom(checkstyleFindings, context),
-    ...coverageFindings(context, crapLimit),
-    ...findingsFrom(readJavaStructureFindings, reportRoot, projectRoot, context['reactorRoot']),
+    ...(skipped.has(CHECKSTYLE_SKIPPED) ? [] : findingsFrom(checkstyleFindings, context)),
+    ...coverageFindings(context, crapLimit, structureSkipped),
+    ...(structureSkipped
+      ? []
+      : findingsFrom(readJavaStructureFindings, reportRoot, projectRoot, context['reactorRoot'])),
     ...findingsFrom(readDocCommentFindings, { projectRoot, manifest: context[MANIFEST], kotlin }),
-    ...findingsFrom(readClassLimitFindings, reportRoot, context['classLimits']),
+    ...(structureSkipped
+      ? []
+      : findingsFrom(readClassLimitFindings, reportRoot, context['classLimits'])),
     ...ifTested(context['jacoco'], (report) => branchFindings(context, report)),
     ...(kotlin ? findingsFrom(readKotlinFindings, context, crapLimit) : []),
     ...findingsFrom(readGuardFindings, {
