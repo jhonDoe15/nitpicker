@@ -21,8 +21,9 @@ Notes on the glue in `java-reports.mjs`:
   (`src/main/java/demo/Bad.java`). `manifest.json` lists the project's source roots, and a relative
   report path is attached to the root where the file exists.
 - **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
-  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
-  ingester's `fp:` identity path is used and the line is never involved. The alternative, the
+  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs; for a
+  find-sec-bugs pattern also the enclosing class and method name, without its parameter list), so
+  the SARIF ingester's `fp:` identity path is used and the line is never involved. The alternative, the
   ingester's default hash of rule, path and symbol, would treat two different unused fields in one
   file as indistinguishable repeats; matching by what the finding is about is more precise.
 - **Several projects.** Each Gradle project's reports are read on their own and their findings

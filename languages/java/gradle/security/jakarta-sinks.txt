@@ -1,0 +1,5 @@
+jakarta/persistence/EntityManager.createQuery(Ljava/lang/String;)Ljakarta/persistence/Query;:0
+jakarta/persistence/EntityManager.createQuery(Ljava/lang/String;Ljava/lang/Class;)Ljakarta/persistence/TypedQuery;:1
+jakarta/persistence/EntityManager.createNativeQuery(Ljava/lang/String;)Ljakarta/persistence/Query;:0
+jakarta/persistence/EntityManager.createNativeQuery(Ljava/lang/String;Ljava/lang/Class;)Ljakarta/persistence/Query;:1
+jakarta/persistence/EntityManager.createNativeQuery(Ljava/lang/String;Ljava/lang/String;)Ljakarta/persistence/Query;:1

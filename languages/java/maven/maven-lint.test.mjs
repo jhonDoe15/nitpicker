@@ -15,11 +15,10 @@ import {
   useGitCheckouts,
 } from '../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { runFormat } from './format/maven-format.mjs';
 import { javaFiles, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
-import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
 const { gitCheckout } = useGitCheckouts();
@@ -229,6 +228,9 @@ describe('maven tools', () => {
     ]);
     expect(tools['launcher-1.11.4']).toEqual([
       dependency('org.junit.platform', 'junit-platform-launcher', '1.11.4'),
+    ]);
+    expect(tools.spotbugsPlugins).toEqual([
+      dependency('com.h3xstream.findsecbugs', 'findsecbugs-plugin', pinned.findSecBugs),
     ]);
     expect(tools.jacoco).toEqual([
       dependency('org.jacoco', 'org.jacoco.cli', pinned.jacoco, '<classifier>nodeps</classifier>'),
@@ -441,7 +443,12 @@ describe.skipIf(process.platform === 'win32')('runSpotbugs', () => {
     const reportDir = path.join(basedir, 'report');
     mkdirSync(reportDir);
     const module = { basedir, sourceRoots: [], outputDirectory: classes };
-    runSpotbugs({ module, reportDir, tools: { spotbugs: ['spotbugs.jar'] }, configs });
+    runSpotbugs({
+      module,
+      reportDir,
+      tools: { spotbugs: ['spotbugs.jar'], spotbugsPlugins: ['plugin.jar'] },
+      configs,
+    });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
     return args.slice(args.indexOf('edu.umd.cs.findbugs.FindBugs2') + 1, args.indexOf('-sarif'));
   }

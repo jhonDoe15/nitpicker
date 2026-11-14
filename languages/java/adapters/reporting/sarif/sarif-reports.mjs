@@ -6,6 +6,12 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import {
+  securitySubject,
+  stableName,
+  withoutDuplicateSites,
+  withSecurityMessages,
+} from '../../security/security-advice.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
@@ -84,7 +90,6 @@ export function sarifFindings(context) {
       { projectRoot },
     ),
   );
-  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
     ...withFanOutDetails(
@@ -112,13 +117,25 @@ export function sarifFindings(context) {
       ),
       { projectRoot },
     ),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings,
+    ...spotbugsFindings(context, projectRoot),
   ];
+}
+
+function spotbugsFindings(context, projectRoot) {
+  const spotbugs = preparedReport('spotbugs.sarif', context, (result) =>
+    securitySubject(result, spotbugsSubject(result)),
+  );
+  const pmdLog = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
+  return ingestSarif(
+    withSecurityMessages(
+      withoutDuplicateSites(dropEntityAssociations(spotbugs, projectRoot), pmdLog),
+    ),
+    { tool: 'spotbugs' },
+  ).findings;
 }
 
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  const subject = Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  return typeof subject === 'string' ? stableName(subject) : subject;
 }

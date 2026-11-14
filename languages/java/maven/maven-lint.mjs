@@ -19,6 +19,7 @@ import path from 'node:path';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { toolJava } from './errorprone/maven-jdk.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
+import { spotbugsLaunch } from './security/spotbugs-launch.mjs';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
@@ -141,21 +142,13 @@ export function runSpotbugs({
     tool: 'SpotBugs',
     classpath: tools.spotbugs,
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
-    args: [
-      ...(configs?.spotbugs?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS)),
-      '-sarif',
-      '-output',
+    ...spotbugsLaunch({
+      module,
       report,
-      '-sourcepath',
-      module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      ...(auxClasspath.length === 0
-        ? []
-        : [
-            '-auxclasspath',
-            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
-          ]),
-      module.outputDirectory,
-    ],
+      tools,
+      settings: configs?.spotbugs?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS),
+      auxClasspath,
+    }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,

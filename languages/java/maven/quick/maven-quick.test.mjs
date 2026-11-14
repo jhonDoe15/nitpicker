@@ -160,6 +160,7 @@ describe('the Maven build in a quick run', () => {
       'pmd',
       'forbiddenapis',
       'spotbugs',
+      'spotbugsPlugins',
       'checkstyle',
       'errorprone',
     ]);
@@ -167,6 +168,7 @@ describe('the Maven build in a quick run', () => {
       'pmd',
       'forbiddenapis',
       'spotbugs',
+      'spotbugsPlugins',
       'checkstyle',
       'errorprone',
       'jacoco',

@@ -46,13 +46,10 @@ return (
       [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
         or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
       [not(ArgumentList/*[pmd-java:typeIs('org.springframework.web.client.RestTemplate')])]
-  | //MethodCall[@MethodName = 'newHttpClient']
-      [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
   | //MethodCall[@MethodName = ('builder', 'newBuilder')][not(ArgumentList/*)]
       [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
-        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
-        or pmd-java:typeIs('java.net.http.HttpClient'))]]
-      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector', 'connectTimeout')])]
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector')])]
   | //ConstructorCall[pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
       or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')][not(ArgumentList/*)]
       [not($chain(.)[@MethodName = ('connectTimeout', 'readTimeout', 'setConnectTimeout', 'setReadTimeout',

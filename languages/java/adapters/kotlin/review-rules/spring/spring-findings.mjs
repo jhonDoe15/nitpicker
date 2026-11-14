@@ -14,6 +14,7 @@ import { UNGUARDED_WRITE_RULES } from './transactions/unguarded-writes.mjs';
 import { springMessage } from './spring-messages.mjs';
 import { springViews } from './view/spring-view.mjs';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
+import { OUTBOUND_RULES } from './web/outbound.mjs';
 import { SECURITY_RULES } from './web/security.mjs';
 import { WEB_RULES } from './web/web.mjs';
 import { WIRING_RULES } from './wiring/wiring.mjs';
@@ -36,6 +37,7 @@ const RULES = [
   ...WEB_RULES,
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,
+  ...OUTBOUND_RULES,
   ...ENTITY_RULES,
   ...FOREIGN_KEY_RULES,
   ...COLUMN_RULES,

@@ -1927,7 +1927,7 @@ time out is still a tool error (exit 2).
 ## Java preset
 
 Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
-SpotBugs, Error Prone (with NullAway), google-java-format and JaCoCo run on the merge base and on head (through
+SpotBugs (with the find-sec-bugs security detectors), Error Prone (with NullAway), google-java-format and JaCoCo run on the merge base and on head (through
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the

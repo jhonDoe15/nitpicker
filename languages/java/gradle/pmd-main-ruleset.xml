@@ -549,7 +549,7 @@ return
     </properties>
   </rule>
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
+        message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) and HttpClient.newBuilder().connectTimeout(...) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -635,6 +635,11 @@ return (
   //MethodCall[@MethodName = 'newBuilder'][count(ArgumentList/*) <= 1]
     [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpRequest')]]
     [$untimedBuilder(., 'timeout')]
+  | //MethodCall[@MethodName = 'newHttpClient'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+  | //MethodCall[@MethodName = 'newBuilder'][not(ArgumentList/*)]
+    [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+    [$untimedBuilder(., 'connectTimeout')]
   | //MethodCall[@MethodName = 'openConnection'][*[1][pmd-java:typeIs('java.net.URL')]]
     [parent::CastExpression[pmd-java:typeIs('java.net.HttpURLConnection')] or $httpUrl(*[1])]
     [not($executable(.)//MethodCall[@MethodName = 'setReadTimeout'])]
@@ -1495,6 +1500,43 @@ return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
       </property>
     </properties>
   </rule>
+  <rule name="TlsVerificationOff" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep certificate and hostname verification on in every environment, also behind a flag or an environment variable. For a private or self-signed CA, trust that CA: a KeyStore holding it, given to a TrustManagerFactory (or a Spring SSL bundle). Trusting every certificate or host lets anyone on the network read and change the traffic.">
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $trustAll := function($node) {
+      $node[pmd-java:typeIs('io.netty.handler.ssl.util.InsecureTrustManagerFactory')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.AllowAllHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustSelfSignedStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustSelfSignedStrategy')]
+    },
+    $acceptsAll := function($lambda) {
+      $lambda/*[last()][self::BooleanLiteral[@True = true()]
+        or self::Block[count(*) = 1]/ReturnStatement/BooleanLiteral[@True = true()]]
+    }
+return (
+  //FieldAccess[@Name = 'INSTANCE'][TypeExpression[$trustAll(.)]]
+  | //ConstructorCall[$trustAll(.)]
+  | //FieldAccess[@Name = 'ALLOW_ALL_HOSTNAME_VERIFIER']
+  | //LambdaExpression[$acceptsAll(.)]
+      [pmd-java:typeIs('javax.net.ssl.HostnameVerifier')
+       or pmd-java:typeIs('org.apache.http.ssl.TrustStrategy')
+       or pmd-java:typeIs('org.apache.hc.core5.ssl.TrustStrategy')
+       or parent::ArgumentList/parent::MethodCall[@MethodName = ('setHostnameVerifier', 'setDefaultHostnameVerifier',
+            'hostnameVerifier', 'setSSLHostnameVerifier', 'loadTrustMaterial')]]
+  | //MethodCall[@MethodName = 'setProperty'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.System')]]
+      [ArgumentList/*[1][@ConstValue = 'jdk.internal.httpclient.disableHostnameVerification']]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="TriStateBoolean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.">
     <priority>3</priority>
@@ -2203,6 +2245,29 @@ return (
    return not(ancestor::*[self::Block or self::ResourceList]
                 [parent::TryStatement/CatchClause/CatchParameter/descendant::ClassType[@SimpleName = $caught]]
                 [$scope << .])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="WeakHmac" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Sign with HMAC-SHA256: Mac.getInstance(&quot;HmacSHA256&quot;) (or Hashing.hmacSha256, HmacAlgorithms.HMAC_SHA_256). HMAC-SHA1 stays allowed where a protocol fixes it; HMAC-MD5 is not.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression][pmd-java:typeIs('javax.crypto.Mac')]]
+  [ArgumentList/*[1][let $name := self::VariableAccess/@Name
+     return (string(@ConstValue), //VariableDeclarator[VariableId/@Name = $name]/StringLiteral/@ConstValue)
+       [matches(., '^hmac(md2|md4|md5)$', 'i')]]]
+| //MethodCall[@MethodName = 'hmacMd5'][*[1][self::TypeExpression][pmd-java:typeIs('com.google.common.hash.Hashing')]]
+| //MethodCall[starts-with(@MethodName, 'hmacMd5') or @MethodName = 'getHmacMd5']
+    [*[1][self::TypeExpression][pmd-java:typeIs('org.apache.commons.codec.digest.HmacUtils')]]
+| //*[self::FieldAccess or self::VariableAccess][@Name = 'HMAC_MD5']
+    [pmd-java:typeIs('org.apache.commons.codec.digest.HmacAlgorithms')]
+| //ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.macs.HMac')]
+    [ArgumentList/ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.digests.MD5Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD4Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD2Digest')]]
 ]]></value>
       </property>
     </properties>

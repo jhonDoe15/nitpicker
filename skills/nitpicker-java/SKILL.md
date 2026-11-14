@@ -76,6 +76,11 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 - [Structure and dependencies](rules/structure.md): method, file and folder limits, CRAP, duplicates, test-only code, aggregates, package dependencies.
 - [Tests](rules/tests.md): branch coverage, mutation testing, fast tests, waits, retries, shared state, servers and containers, console output.
 
+## Security
+
+SpotBugs also runs find-sec-bugs on main sources, and nitpicker's Spring rules cover outgoing URLs and CSRF.
+Each finding names the safe form; the exception route is `spotbugs/<PATTERN>` or `pmd/<rule>`.
+
 ## Repository files
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names

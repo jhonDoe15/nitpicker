@@ -53,6 +53,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Guards](java-preset/guards.md)
 - [Generated sources](java-preset/generated-sources.md)
 - [Spring rules](java-preset/spring-rules.md)
+- [Security checks (find-sec-bugs)](java-preset/security-checks.md)
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)
 - [Spring configuration files](java-preset/spring-configuration-files.md)
 - [Review rules](java-preset/review-rules.md)
