@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "retry-without-idempotency",
+    "mention": "ON CONFLICT DO NOTHING",
+    "subject": "session.execute()|insert|@retry"
+  }
+]

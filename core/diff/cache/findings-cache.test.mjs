@@ -7,7 +7,7 @@ import {
   createFindingsCache,
   resolveCacheDirectory,
   runBaseWithCache,
-} from './findings-cache.mjs';
+} from './findings-cache.mts';
 
 const temporaryRoots = [];
 

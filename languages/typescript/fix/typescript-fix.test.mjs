@@ -11,7 +11,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -39,18 +39,36 @@ function eslintReply(repository, outputs, fatal = []) {
   };
 }
 
-function fix(repository, eslint) {
+function fix(repository, eslint, extra = {}) {
   const operations = [];
   const result = fixWorkingTree({
     repositoryRoot: repository.root,
     projectRoot: repository.root,
     baseRef: 'base',
+    ...extra,
     executeFixCommand: (invocation) => {
+      if (invocation.operation === 'knip-fix') {
+        return { status: 0, stdout: '', stderr: '' };
+      }
       operations.push(invocation.operation);
       return invocation.operation === 'eslint-fix' ? eslint(invocation) : undefined;
     },
   });
   return { ...result, operations };
+}
+
+function suggestionReply(repository, name, messages, output) {
+  return {
+    status: 1,
+    stdout: JSON.stringify([
+      {
+        filePath: path.join(repository.root, name),
+        ...(output === undefined ? {} : { output }),
+        messages,
+      },
+    ]),
+    stderr: '',
+  };
 }
 
 function read(repository, name) {
@@ -234,5 +252,105 @@ describe('fixTypeScript', () => {
     expect(read(repository, 'src/a.json')).toBe('{"b":2}\n');
     expect(operations).toEqual(['prettier-fix']);
     expect(result.notes).toEqual(['--fix left src/a.json as is: the file changed while --fix ran']);
+  });
+
+  describe('ESLint suggestions', () => {
+    const source = 'export const a = o.hasOwnProperty(k);\nexport const b = Number.NaN === c;\n';
+    const replacement = 'Object.prototype.hasOwnProperty.call(o, k)';
+    const messages = [
+      {
+        ruleId: 'no-prototype-builtins',
+        line: 1,
+        suggestions: [{ fix: { range: [17, 36], text: replacement } }],
+      },
+      {
+        ruleId: 'use-isnan',
+        line: 2,
+        suggestions: [{ fix: { range: [69, 74], text: 'x' } }],
+      },
+    ];
+
+    it('applies a safe single suggestion on top of the ESLint output and lists the finding', () => {
+      const repository = topic({}, { 'src/a.ts': source });
+      const result = fix(repository, () => suggestionReply(repository, 'src/a.ts', messages));
+
+      expect(read(repository, 'src/a.ts')).toBe(
+        `export const a = ${replacement};\nexport const b = Number.NaN === c;\n`,
+      );
+      expect(result.fixedFindings).toEqual([
+        'src/a.ts:1 eslint-lint/no-prototype-builtins (eslint-suggestion)',
+      ]);
+    });
+
+    it('applies a review suggestion only when its rule is selected', () => {
+      const repository = topic({}, { 'src/a.ts': 'export const b = Number.NaN === c;\n' });
+      const later = [
+        { ...messages[1], line: 1, suggestions: [{ fix: { range: [17, 34], text: 'x' } }] },
+      ];
+      const result = fix(repository, () => suggestionReply(repository, 'src/a.ts', later), {
+        selectedRules: ['eslint-lint/use-isnan'],
+      });
+
+      expect(read(repository, 'src/a.ts')).toBe('export const b = x;\n');
+      expect(result.fixedFindings).toEqual([
+        'src/a.ts:1 eslint-lint/use-isnan (eslint-suggestion)',
+      ]);
+    });
+  });
+
+  it('applies the suggestion of a selected rule from an unfixed report and nothing else', () => {
+    const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
+    const arguments_ = [];
+    const result = fixWorkingTree({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      baseRef: 'base',
+      selectedRules: ['eslint-lint/nitpicker/no-falsy-default'],
+      executeFixCommand: (invocation) => {
+        if (invocation.operation !== 'eslint-fix') {
+          return undefined;
+        }
+        arguments_.push(invocation.args);
+        return {
+          status: 1,
+          stderr: '',
+          stdout: JSON.stringify([
+            {
+              filePath: path.join(repository.root, 'src/a.ts'),
+              messages: [
+                { ruleId: 'nitpicker/no-comments', fix: { range: [0, 6], text: '' } },
+                {
+                  ruleId: 'nitpicker/no-falsy-default',
+                  suggestions: [{ fix: { range: [35, 37], text: '??' } }],
+                },
+              ],
+            },
+          ]),
+        };
+      },
+    });
+
+    expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n ?? 10;\n');
+    expect(arguments_).toHaveLength(1);
+    expect(arguments_[0]).not.toContain('--fix-dry-run');
+    expect(result.notes.some((note) => note.includes('eslint --fix rewrote src/a.ts'))).toBe(true);
+  });
+  it('never applies a suggestion when no rule is selected', () => {
+    const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
+    const arguments_ = [];
+    fixWorkingTree({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      baseRef: 'base',
+      executeFixCommand: (invocation) => {
+        if (invocation.operation === 'eslint-fix') {
+          arguments_.push(invocation.args);
+        }
+        return invocation.operation === 'eslint-fix' ? eslintReply(repository, {}) : undefined;
+      },
+    });
+
+    expect(arguments_[0].includes('--fix-dry-run')).toBe(true);
+    expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n || 10;\n');
   });
 });

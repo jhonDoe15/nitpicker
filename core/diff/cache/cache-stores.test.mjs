@@ -8,8 +8,8 @@ import {
   createHttpStore,
   createLayeredStore,
   resolveCacheStore,
-} from './cache-stores.mjs';
-import { cacheKey, createFindingsCache } from './findings-cache.mjs';
+} from './cache-stores.mts';
+import { cacheKey, createFindingsCache } from './findings-cache.mts';
 import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -156,7 +156,7 @@ describe('layered store', () => {
     local.put('both', 'local');
     remoteStore.put('both', 'remote');
 
-    const readOnly = createLayeredStore({ local, remote: remoteStore });
+    const readOnly = createLayeredStore({ local, remote: remoteStore, writeRemote: false });
     expect(readOnly.get('both')).toBe('local');
     expect(readOnly.get('only-remote')).toBe('r');
     expect(local.get('only-remote')).toBeUndefined();
@@ -181,7 +181,11 @@ describe('findings cache over a remote store', () => {
 
     const directory = temporaryDirectory();
     const consumer = createFindingsCache({
-      store: createLayeredStore({ local: createDirectoryStore(directory), remote: remoteStore }),
+      store: createLayeredStore({
+        local: createDirectoryStore(directory),
+        remote: remoteStore,
+        writeRemote: false,
+      }),
       ...cacheOptions,
     });
     expect(consumer.read(analyzer)).toEqual({ findings: [finding] });
@@ -196,7 +200,11 @@ describe('findings cache over a remote store', () => {
     const key = cacheKey({ ...cacheOptions, analyzer });
     const directory = temporaryDirectory();
     const cache = createFindingsCache({
-      store: createLayeredStore({ local: createDirectoryStore(directory), remote: remoteStore }),
+      store: createLayeredStore({
+        local: createDirectoryStore(directory),
+        remote: remoteStore,
+        writeRemote: false,
+      }),
       ...cacheOptions,
     });
 

@@ -91,7 +91,7 @@ export function analyzeJavaSnapshot(
       return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
     }
     const preset = policy?.preset ?? 'java';
-    const rule = failureRule(error, projectRoot);
+    const rule = failureRule(error, projectRoot, policy?.buildTool);
     return {
       findings: [
         {
@@ -127,14 +127,16 @@ function isInternalError(error) {
   return INTERNAL_ERRORS.some((type) => error instanceof type);
 }
 
-function failureRule(error, projectRoot) {
+function failureRule(error, projectRoot, buildTool) {
   if (error?.failures?.length > 0) {
     return TESTS_FAILED_RULE;
   }
   if (isInternalError(error)) {
     return INTERNAL_ERROR_RULE;
   }
-  return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+  return detectJavaBuild(projectRoot, buildTool) === 'maven'
+    ? MAVEN_FAILURE_RULE
+    : GRADLE_FAILURE_RULE;
 }
 
 function failureMessage(error, rule, preset) {

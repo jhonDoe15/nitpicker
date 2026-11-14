@@ -37,6 +37,7 @@ import { withBranchSourceHashes } from './source-hashes.mts';
 import {
   type ReportedAssertion,
   firstLine,
+  missingEnvironmentHints,
   missingSetupHints,
   timeoutText,
   unhandledErrors,
@@ -47,6 +48,10 @@ import {
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 const COULD_NOT_RUN = 'could not run';
+
+function notLoaded(failures: readonly Failure[]): Failure[] {
+  return failures.filter(({ name }) => name === COULD_NOT_RUN);
+}
 
 function hasEntries<T>(list: readonly T[]): list is readonly [T, ...T[]] {
   return list.length > 0;
@@ -225,7 +230,11 @@ export function formatTestFailures(
   { runnerName, precedingCommands, snapshot }: FailureContext = {},
 ): string {
   if (snapshot === 'base') {
-    return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
+    const failures = testFailures(report, projectRoot);
+    return [
+      testsFailOnBase(failures.map(failureEntry)),
+      ...missingEnvironmentHints(notLoaded(failures)),
+    ].join('\n');
   }
   return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
     '\n',
@@ -252,6 +261,7 @@ function failureText(
       failures.map(({ assertion, ...failure }) => ({ ...failure, message: assertion })),
     ),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
+    ...missingEnvironmentHints(notLoaded(failures)),
   ].join('\n');
 }
 
