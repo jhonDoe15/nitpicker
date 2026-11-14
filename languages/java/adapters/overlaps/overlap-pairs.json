@@ -768,5 +768,15 @@
     "primary": ["pmd/UnusedLocalVariable"],
     "secondary": ["pmd/UnusedAssignment"],
     "scope": "variable"
+  },
+  {
+    "primary": ["checkstyle/FileTabCharacter"],
+    "secondary": ["checkstyle/Indentation"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/InlineSuppression"],
+    "secondary": ["pmd/UnnecessaryWarningSuppression"],
+    "scope": "line"
   }
 ]

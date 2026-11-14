@@ -14,6 +14,7 @@ import { MYPY_TOOL } from './mypy-layers.mjs';
 import { PYRIGHT_TOOL } from './pyright/pyright-config.mjs';
 import { pyrightConfigLabel, readProjectPyright } from './pyright/pyright-project-config.mjs';
 import { attempt } from './project-tool-layers.mjs';
+import { retriesNotices } from '../test-runs/retries/pytest-retries.mjs';
 
 const ENVIRONMENT_NOTE = ' except its environment keys';
 const MUTMUT_NOTE = ' except also_copy and its process options';
@@ -91,6 +92,7 @@ export function ignoredProjectToolNotices({ config, projectRoot }) {
     ...mypyNotices(projectRoot, config),
     ...mutmutNotices(projectRoot, config),
     ...coverageNotices(projectRoot, config),
+    ...retriesNotices({ config, projectRoot }),
   ]);
   return value;
 }

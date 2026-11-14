@@ -6,32 +6,51 @@ const runnerPath = checkoutModulePath(
   path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs'),
 );
 
-export function createEslintAnalyzer(options) {
-  const {
+function invocationOf(settings, roots) {
+  const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = settings;
+  const { projectRoot, policyRoot, toolRoot, liveProjectRoot } = roots;
+  const args = [
+    runnerPath,
+    '--analyzer-name',
     name,
-    version,
-    configurationHash,
+    '--project-root',
+    projectRoot,
+    '--policy-root',
+    policyRoot,
+    '--tool-root',
+    toolRoot,
+    '--config',
+    configRelativePath,
+    ...optionalArguments({ ...settings, liveProjectRoot }),
+    ...environmentArguments(environment),
+    ...patterns.flatMap((pattern) => ['--pattern', pattern]),
+    ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
+  ];
+  return { command: process.execPath, args, cwd: toolRoot };
+}
+
+export function createEslintAnalyzer(settings) {
+  const {
+    patterns,
     exclusions,
-    timeoutMs,
     shardWeight = 1,
     policyFromPackage = false,
     colocatedWith,
-  } = options;
+  } = settings;
   return {
-    name,
-    version,
-    configurationHash,
+    name: settings.name,
+    version: settings.version,
+    configurationHash: settings.configurationHash,
     exclusions,
-    timeoutMs,
+    lintedGlobs: { include: patterns, exclude: exclusions },
+    timeoutMs: settings.timeoutMs,
     shardWeight,
     ...(colocatedWith === undefined ? {} : { colocatedWith }),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
-    createInvocation: (roots) => ({
-      command: process.execPath,
-      args: runnerArguments(options, roots),
-      cwd: roots.toolRoot,
-    }),
+    createInvocation(roots) {
+      return invocationOf(settings, roots);
+    },
   };
 }
 
@@ -54,26 +73,4 @@ function environmentArguments(environment) {
     '--environment',
     `${environmentName}=${value}`,
   ]);
-}
-
-function runnerArguments(options, { projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
-  const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = options;
-  const { eslintTimeoutMs, eslintCliPath } = options;
-  return [
-    runnerPath,
-    '--analyzer-name',
-    name,
-    '--project-root',
-    projectRoot,
-    '--policy-root',
-    policyRoot,
-    '--tool-root',
-    toolRoot,
-    '--config',
-    configRelativePath,
-    ...optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }),
-    ...environmentArguments(environment),
-    ...patterns.flatMap((pattern) => ['--pattern', pattern]),
-    ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
-  ];
 }

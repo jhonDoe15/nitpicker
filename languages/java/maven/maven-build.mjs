@@ -2,11 +2,16 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from './maven-command.mjs';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
 import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
-import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
+import {
+  checkstyleIndentation,
+  javaFormatterFlags,
+  javaFormatterSettings,
+} from '../adapters/style/java-style.mjs';
 import {
   archunitTool,
   effectsTool,
@@ -64,6 +69,7 @@ export function buildAndTest({
   timeoutMs,
   quick,
   selection = [],
+  reruns = TEST_RERUNS_OFF,
 }) {
   runMaven({
     projectRoot,
@@ -78,7 +84,7 @@ export function buildAndTest({
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
-      ...TEST_RERUNS_OFF,
+      ...reruns,
       ...PROJECT_CHECKS_OFF,
       ...springAotSkip(modules),
     ],
@@ -127,9 +133,9 @@ function readModules({ projectRoot, mavenRoot, maven, work, spawn, timeoutMs, ch
   return { modules, built, scope, effectivePom };
 }
 
-function buildOrSkipTests(run, { work, modules, policy }) {
+function buildOrSkipTests(run, { work, modules, policy, reruns }) {
   try {
-    buildAndTest({ ...run, work, modules });
+    buildAndTest({ ...run, work, modules, reruns });
     return [];
   } catch (error) {
     if (!isTestsTimeout(error, policy)) {
@@ -144,6 +150,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, effectsOptions, ...shared 
   const style = {
     javaStyle: policy.javaStyle,
     indentation: checkstyleIndentation(policy.conventions),
+    formatterFlags: javaFormatterFlags(policy.conventions),
   };
   const springRoles = writeSpringRoles(policy.springRoles, work);
   const springRules = writeSpringRuleset(shared.projectRoot, work);
@@ -154,6 +161,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, effectsOptions, ...shared 
         module,
         classpaths,
         style,
+        retriesPass: usesConfigRetries(policy.toolPrecedence),
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,
@@ -170,7 +178,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, effectsOptions, ...shared 
 function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-    ...formatTool(policy.javaStyle, pinned),
+    ...formatTool(policy.javaStyle, pinned, javaFormatterSettings(policy.conventions).version),
     ...kotlin.extraTools,
     ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
     ...effectsTool(pinned),
@@ -185,7 +193,7 @@ function requireMavenPreset(policy) {
   }
 }
 
-function prepare(run, { policy, environment, work }) {
+function prepare(run, { policy, environment, work, reruns }) {
   const { pinned, quick } = run;
   const { modules, built, scope, effectivePom } = readModules({
     ...run,
@@ -197,7 +205,7 @@ function prepare(run, { policy, environment, work }) {
   const mavenRoot = { projectRoot: run.mavenRoot };
   const timedOut = buildOrSkipTests(
     { ...run, ...mavenRoot, selection: scope.selection },
-    { work, modules: built, policy },
+    { work, modules: built, policy, reruns },
   );
   const analyzed = modules.map((module) => ({
     module,
@@ -236,6 +244,7 @@ export function runMavenPreset(
       policy,
       environment,
       work,
+      reruns: testRerunArguments(configs?.tests?.arguments),
     });
     const testsFailures = analyzeAll({
       ...run,
