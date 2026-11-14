@@ -4,30 +4,30 @@ import { textOf } from '../../../shared/values/readers.mts';
 
 const problemOf: (testCase: XmlElement) => { problem: XmlElement } | undefined = testCaseProblem;
 
-interface ArchunitOptions {
+type ArchunitOptions = {
   readonly tool?: string;
   readonly resolvePath?: (className: string, fileName: string | undefined) => string | undefined;
-}
+};
 
-interface Context {
+type Context = {
   readonly tool: string;
   readonly resolvePath: (className: string, fileName: string | undefined) => string | undefined;
   readonly unique: (identity: string) => string;
-}
+};
 
-interface Report extends Context {
+type Report = Context & {
   readonly rule: string;
   readonly testClass: string;
   readonly testPath: string | undefined;
-}
+};
 
-interface Violation {
+type Violation = {
   count: number;
   sample: string;
   fileName: string | undefined;
-}
+};
 
-interface ArchunitFinding {
+type ArchunitFinding = {
   readonly tool: string;
   readonly rule: string;
   readonly path: string;
@@ -35,7 +35,7 @@ interface ArchunitFinding {
   readonly message: string;
   readonly classification: 'enforceable';
   readonly symbol?: string;
-}
+};
 
 const VIOLATION = /^([A-Z][A-Za-z ]*?) <((?:[^<>]|<\w+>)+)>/;
 const SOURCE_REFERENCE = /\s+in \(([^():]+\.(?:java|kt|groovy)):\d+\)\s*$/;
