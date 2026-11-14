@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  diffOf,
-  fromTool,
-  kotlinE2eEnabled,
-  summarize,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { useKotlinLintProject, LEGACY_FINDINGS } from '../__tests__/kotlin-lint-project.mjs';
+import { diffOf, fromTool, kotlinE2eEnabled, summarize } from '../__tests__/kotlin-e2e-project.mts';
+import { useKotlinLintProject, LEGACY_FINDINGS } from '../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset lint baseline end to end', () => {
   const fixture = useKotlinLintProject();

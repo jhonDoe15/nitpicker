@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   commitBranch,
   commitFromBranch,
@@ -7,13 +9,17 @@ import {
   kotlinE2eEnabled,
   kotlinSources,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
+
+type Branch = readonly [number, string];
 
 const COUNTED = ['detekt.style.ReturnCount', 'detekt.style.ThrowsCount'];
 
-const branch = (code) => `    if (code == ${code[0]}) {\n        ${code[1]}\n    }\n`;
+const branch = (code: Branch) =>
+  `    if (code == ${String(code[0])}) {\n        ${code[1]}\n    }\n`;
 
-function picker(branches) {
+function picker(branches: readonly Branch[]) {
   return [
     'package demo\n',
     'class Problem(message: String) : RuntimeException(message)\n',
@@ -23,7 +29,7 @@ function picker(branches) {
   ].join('\n');
 }
 
-const LEGACY = [
+const LEGACY: Branch[] = [
   [0, 'throw Problem("zero")'],
   [1, 'throw Problem("one")'],
   [2, 'throw Problem("two")'],
@@ -31,15 +37,17 @@ const LEGACY = [
   [10, 'return 2'],
 ];
 
-function counted(findings) {
+function counted(findings: Finding[]) {
   return findings
     .filter(({ rule }) => COUNTED.includes(rule))
-    .map(({ rule, message }) => `${rule.split('.').at(-1)}: ${message.split('. ')[0]}`)
+    .map(
+      ({ rule, message }) => `${String(rule.split('.').at(-1))}: ${String(message.split('. ')[0])}`,
+    )
     .sort();
 }
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt counts on a legacy function', () => {
-  let project;
+  let project: KotlinProject | undefined;
   beforeAll(() => {
     project = initializeProject();
     commitBranch(project, 'count-legacy', { [`${kotlinSources}/Picker.kt`]: picker(LEGACY) });
@@ -59,18 +67,18 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt counts on a legacy func
       from: 'count-legacy',
       files: {
         [`${kotlinSources}/Picker.kt`]: picker(
-          LEGACY.map(([code, body]) => [code, body.replace('"one"', '"first"')]),
+          LEGACY.map(([code, body]): Branch => [code, body.replace('"one"', '"first"')]),
         ),
       },
     });
   });
 
   afterAll(() => {
-    removeProject(project);
+    removeProject(assigned(project, 'project'));
   });
 
   it('fails a legacy function that gained a return and a throw over the limits', () => {
-    const result = diffOf(project, 'count-grown', { base: 'count-legacy' });
+    const result = diffOf(assigned(project, 'project'), 'count-grown', { base: 'count-legacy' });
 
     expect(counted(result.newEnforceable)).toEqual([
       'ReturnCount: Return statements grew from 3 to 4',
@@ -79,7 +87,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt counts on a legacy func
   });
 
   it('keeps a legacy function whose counts did not change', () => {
-    const result = diffOf(project, 'count-edited', { base: 'count-legacy' });
+    const result = diffOf(assigned(project, 'project'), 'count-edited', { base: 'count-legacy' });
 
     expect(counted(result.newEnforceable)).toEqual([]);
     expect(counted(result.unchangedFindings).map((line) => line.split(':')[0])).toEqual([
