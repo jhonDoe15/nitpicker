@@ -108,6 +108,9 @@ export function describeProject(entry, context) {
     origin: entry.origin,
     overlay,
     preset: loaded.config?.preset ?? overlay?.preset ?? 'typescript',
+    ...(entry.workspace === undefined
+      ? {}
+      : { toolchainRoot: path.posix.normalize(path.posix.join(prefix, entry.workspace)) }),
     sharedFiles: loaded.configError === undefined ? sharedFilesOf(absolute, repositoryRoot) : [],
     ...(loaded.configError === undefined ? {} : { configError: loaded.configError }),
   };

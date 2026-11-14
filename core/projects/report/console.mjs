@@ -1,4 +1,5 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { DECLARED_ORIGIN } from '../discovery/declared-projects.mjs';
 
 const MAX_LISTED_FILES = 5;
 const MARKS = { passed: '✓', failed: '✖', error: '!', skipped: '-' };
@@ -11,10 +12,21 @@ function originsOf(plan) {
   return [...new Set(plan.projects.map(({ origin }) => origin))].join(', ');
 }
 
+function expandedOf(plan) {
+  const counts = new Map();
+  for (const { origin } of plan.projects) {
+    if (origin !== DECLARED_ORIGIN) {
+      counts.set(origin, (counts.get(origin) ?? 0) + 1);
+    }
+  }
+  const parts = [...counts].map(([origin, total]) => `${String(total)} from ${origin}`);
+  return parts.length === 0 ? '' : ` (${parts.join(', ')})`;
+}
+
 function introduction(plan) {
   const total = count(plan.projects.length, 'project');
   if (plan.source === 'declared') {
-    return `Monorepo: ${total} listed in "projects" of ${CONFIG_FILE_NAME}.`;
+    return `Monorepo: ${total} listed in "projects" of ${CONFIG_FILE_NAME}${expandedOf(plan)}.`;
   }
   return (
     `Monorepo: ${total} detected (${originsOf(plan)}). ` +

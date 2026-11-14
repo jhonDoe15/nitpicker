@@ -111,7 +111,7 @@ const TOP_LEVEL = {
   },
   projects: {
     description:
-      'At the top of a monorepo: the project folders (globs allowed), each with an optional preset. An empty array keeps the repository one project.',
+      'At the top of a monorepo: the project folders (globs allowed), each with an optional preset. A folder that declares a workspace stands for its members unless "expand" is false. An empty array keeps the repository one project.',
     type: 'array',
     uniqueItems: true,
     items: {
@@ -121,7 +121,15 @@ const TOP_LEVEL = {
           type: 'object',
           additionalProperties: false,
           required: ['path'],
-          properties: { path: projectPath, preset: { enum: SUPPORTED_PRESETS } },
+          properties: {
+            path: projectPath,
+            preset: { enum: SUPPORTED_PRESETS },
+            expand: {
+              description:
+                'false keeps a folder that declares a workspace one project instead of gating each member.',
+              type: 'boolean',
+            },
+          },
         },
       ],
     },

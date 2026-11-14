@@ -6,6 +6,7 @@ import type { PlanProject, ProjectSelection } from '../project-types.mts';
 
 type Projects = readonly PlanProject[];
 type Claim = { readonly project: string; readonly own?: true; readonly reason?: string };
+type ToolchainContext = { readonly owner: PlanProject | undefined; readonly prefix: string };
 type Touch = { readonly owned: number; readonly reasons: readonly string[] };
 type ClaimContext = {
   readonly projects: Projects;
@@ -40,17 +41,26 @@ function rootClaims(projects: Projects, file: string, rootConfigFiles: readonly 
     : [];
 }
 
+function usesToolchainFile(project: PlanProject, file: string, context: ToolchainContext): boolean {
+  const { owner, prefix } = context;
+  if (project.toolchainRoot === undefined) {
+    return owner === undefined && isToolchainFileFor(project.preset, file, prefix);
+  }
+  return (
+    project.path !== owner?.path &&
+    (owner === undefined || owner.repoPath === project.toolchainRoot) &&
+    isToolchainFileFor(project.preset, file, project.toolchainRoot)
+  );
+}
+
 function claimsOn({ projects, prefix, rootConfigFiles }: ClaimContext, file: string): Claim[] {
   const owner = ownerOf(projects, file);
   const shared = projects
     .filter(({ sharedFiles }) => sharedFiles.includes(file))
     .map(({ path: project }) => ({ project, reason: `shared config ${file} changed` }));
-  const toolchain =
-    owner === undefined
-      ? projects
-          .filter(({ preset }) => isToolchainFileFor(preset, file, prefix))
-          .map(({ path: project }) => ({ project, reason: `${file} changed` }))
-      : [];
+  const toolchain = projects
+    .filter((project) => usesToolchainFile(project, file, { owner, prefix }))
+    .map(({ path: project }) => ({ project, reason: `${file} changed` }));
   const own: Claim[] = owner === undefined ? [] : [{ project: owner.path, own: true }];
   return [...own, ...rootClaims(projects, file, rootConfigFiles), ...shared, ...toolchain];
 }
