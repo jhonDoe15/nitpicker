@@ -49,8 +49,9 @@ describe('noticeDescriber', () => {
       'src/main/java/A.java': 'class A {}\n',
     });
     const files = ['src/main/java/A.java', 'extra/code/B.java', 'tools/Slop.java', 'tools/Slop.kt'];
+    const javaFiles = files.filter((file) => file.endsWith('.java'));
 
-    expect(noticeDescriber({ preset: 'java' }, { exclude: [] }, root)?.(files)).toEqual([
+    expect(noticeDescriber({ preset: 'java' }, { exclude: [] }, root)?.(javaFiles)).toEqual([
       "1 changed Java file is outside the build's source sets, so the build does not compile or check it: tools/Slop.java. " +
         'Move it under src/main or src/test of a module, or declare its folder as a source directory in the build file; to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
     ]);
@@ -77,8 +78,8 @@ describe('noticeDescriber', () => {
     ]);
   });
 
-  it('describes nothing for the javascript preset', () => {
-    expect(noticeDescriber({ preset: 'javascript' }, {})).toBeUndefined();
+  it('describes nothing for script files of the javascript preset', () => {
+    expect(noticeDescriber({ preset: 'javascript' }, {})?.(['src/a.js', 'src/b.ts'])).toEqual([]);
   });
 
   describe('co-change', () => {
@@ -133,14 +134,16 @@ describe('noticeDescriber', () => {
       const root = amplifiedRoot();
       const policy = { history: { coChange: true } };
 
-      expect(noticeDescriber({ preset: 'javascript' }, policy, root)).toBeUndefined();
+      const changedPaths = ['src/billing/invoice.ts'];
+
+      expect(noticeDescriber({ preset: 'javascript' }, policy, root)?.(changedPaths)).toEqual([]);
       expect(
         noticeDescriber(
           { preset: 'javascript', history: { coChange: true }, disable: ['change-history'] },
           policy,
           root,
-        ),
-      ).toBeUndefined();
+        )?.(changedPaths),
+      ).toEqual([]);
     });
 
     it('names unavailable history once for a snapshot run', () => {

@@ -15,6 +15,7 @@ import {
   unmatchedLayoutRootNotices,
 } from '../../../shared/notices/layout-roots-notice.mjs';
 
+import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
 import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
 
@@ -73,6 +74,19 @@ function languageDescriber(
     : undefined;
 }
 
+function uncheckedDescriber(
+  config: NitpickerConfig,
+  headPolicy: unknown,
+  projectRoot: string,
+): Describer {
+  const request = {
+    preset: config.preset,
+    projectRoot,
+    exclude: textsOf(fieldOf(headPolicy, 'exclude')),
+  };
+  return (changedFiles) => uncheckedLanguageNotices(changedFiles, request);
+}
+
 function layoutDescriber(layout: unknown, projectRoot: string): Describer | undefined {
   return layoutRootKeys.some((key) => fieldOf(layout, key) !== undefined)
     ? () => layoutNotices(layout, projectFilePaths(projectRoot))
@@ -108,6 +122,7 @@ export function noticeDescriber(
 ): Describer | undefined {
   const describers = [
     languageDescriber(config, headPolicy, projectRoot),
+    uncheckedDescriber(config, headPolicy, projectRoot),
     coChangeDescriber(config, headPolicy, projectRoot),
     layoutDescriber(fieldOf(headPolicy, 'layout'), projectRoot),
   ].filter((describer) => describer !== undefined);

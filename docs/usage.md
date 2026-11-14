@@ -550,9 +550,9 @@ A comparison run writes these files to `reports/quality/diff/`:
   [GitLab CI](ci.md#gitlab-ci)).
 
 `summary.json` records `projectPath`, the folder of the project the run checked, from the top of
-the repository (`.` for the top itself). The project is the nearest folder with a `package.json` or
+the repository (`.` for the top itself). The project is the nearest folder with a package.json or
 `nitpicker.config.json`, so a run started inside a nested package (an `e2e/` package, a fixture
-with its own `package.json`) checks that package. When it is not the top, `report.txt` names it
+with its own package.json) checks that package. When it is not the top, `report.txt` names it
 in its header (`Project: e2e`), and when it is not the folder the run started in, the console
 prints `Project: <path from the current folder>` first, in comparison, `--all` and `--fix` runs.
 
@@ -561,12 +561,21 @@ prints `Project: <path from the current folder>` first, in comparison, `--all` a
 `report.sarif` and `codequality.json`.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
-against the base and any `notices`. A notice is information that never fails the run. Today there is
-one kind: changed code files that lie outside the roots the preset checks. For TypeScript those are
-`layout.sourceRoots` and `layout.testRoots` (move the files under a root or add their folder to
-`layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
-sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
-To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+against the base and any `notices`. A notice is information that never fails the run, and
+`report.txt` lists the same notices. Changed code files that lie outside the roots the preset checks
+get one. For TypeScript those are `layout.sourceRoots` and `layout.testRoots` (move the files under a
+root or add their folder to `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and
+Kotlin, the build's source sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory
+the build file declares). Changed source files in a language the preset does not check get one too,
+for example a TypeScript `frontend/` folder in a Gradle build or a `.java` file in a Python project:
+the TypeScript and JavaScript presets check `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` and
+`.cjs`, `python` checks `.py`, `java` checks `.java`, `kotlin` checks `.java`, `.kt` and `.kts`, and
+`go` checks `.go`. When the files sit in a folder with its own project file (package.json, a
+Python project file, a Gradle or Maven build, `go.mod`), the notice names the `projects` entry that
+gates that folder with its own preset. Hidden, dependency, build output, generated and fixture
+folders, declaration files, tool configs (`*.config.js`, `*.gradle.kts`) and generated files stay
+silent. To leave files unchecked, list them in `exclude`. Choose another directory with
+`--output <dir>`.
 
 The console summary shortens mutation findings: the mutants that no test runs print as one entry
 per function (with their count and lines), and a function prints at most three surviving mutants,
