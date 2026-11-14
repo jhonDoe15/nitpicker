@@ -38,10 +38,8 @@ export function nodesOwnedBy(root: TypeScript.Node): TypeScript.Node[] {
   const pending = [root];
   for (const node of pending) {
     owned.push(node);
-    for (const child of childrenOf(node)) {
-      if (!isNestedBoundary(child)) {
-        pending.push(child);
-      }
+    for (const child of childrenOf(node).filter((candidate) => !isNestedBoundary(candidate))) {
+      pending.push(child);
     }
   }
   return owned;

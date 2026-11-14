@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts, chainOf } from '../../syntax/typed.mts';
+import { ts, nonEmptyChainOf as chainOf } from '../../syntax/typed.mts';
 import type { Scope } from '../../design-types.mts';
 import { isAccess, isValueWrapper, isWrite } from '../../syntax/nodes.mts';
 import { symbolOf } from '../scope.mts';
@@ -26,11 +26,9 @@ const MUTATING_METHODS = new Set([
 ]);
 
 function outermostWrapper(node: TypeScript.Node): TypeScript.Node {
-  return (
-    chainOf(node, (current) =>
-      isValueWrapper(current.parent, current) ? current.parent : undefined,
-    ).at(-1) ?? node
-  );
+  return chainOf(node, (current) =>
+    isValueWrapper(current.parent, current) ? current.parent : undefined,
+  ).at(-1);
 }
 
 function methodMutation(outer: TypeScript.Node): string | undefined {
@@ -47,7 +45,7 @@ function assignmentMutation(outer: TypeScript.Node): string | undefined {
   const accessed = chainOf(outer, (current) =>
     isAccess(current.parent) && current.parent.expression === current ? current.parent : undefined,
   );
-  return accessed.length > 1 && isWrite(accessed.at(-1) ?? outer) ? 'assign' : undefined;
+  return accessed.length > 1 && isWrite(accessed.at(-1)) ? 'assign' : undefined;
 }
 
 function mutationOfValue(node: TypeScript.Node): string | undefined {

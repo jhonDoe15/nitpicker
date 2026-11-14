@@ -6,6 +6,8 @@ import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
 import { readLayout as untypedReadLayout } from '../head-policy.mjs';
 import type { AnalysisLayout, Graph } from './analysis-types.mts';
 
+const output = process.stdout;
+
 const cruise: (paths: readonly string[]) => Graph = untypedCruise;
 const readLayout: () => AnalysisLayout = untypedReadLayout;
 
@@ -25,11 +27,11 @@ const report = {
     }))()),
 };
 
-await writeReport({ projectRoot, outputPath, report });
+await writeReport({ projectRoot, outputPath, report, output });
 if (report.findings.length > 0) {
-  printLine('\nTests without a verified production runtime:');
+  printLine(output, '\nTests without a verified production runtime:');
   for (const finding of report.findings) {
-    printLine(`${finding.category}\t${finding.test}`);
+    printLine(output, `${finding.category}\t${finding.test}`);
   }
   process.exitCode = 1;
 }

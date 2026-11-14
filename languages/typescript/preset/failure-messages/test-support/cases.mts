@@ -3,7 +3,7 @@ import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import path from 'node:path';
 import loggingConfig from '../../eslint-config/policies/logging.config.mts';
 import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mts';
-import type { FailureMessageCase } from './case-types.mts';
+import type { FailureMessageCase } from './typed/case-types.mts';
 import { domainFailureMessageCases } from './domain-cases.mts';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mts';
@@ -12,6 +12,7 @@ import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i
 import { reactFailureMessageCases } from './react-cases.mts';
 import { testFailureMessageCases } from './test-cases.mts';
 import { signatureFailureMessageCases } from './signatures/signature-cases.mts';
+import { testHonestyFailureMessageCases } from './honesty/test-honesty-cases.mts';
 
 const strictCompositionRootConfig = productionPolicyConfig({
   'nitpicker/no-branch-in-composition-root': 'error',
@@ -42,7 +43,7 @@ const typedStrictConfig = strictConfig({
   tsconfigRootDir: process.cwd(),
 });
 
-export const failureMessageCases: FailureMessageCase[] = [
+const failureMessageCases: FailureMessageCase[] = [
   {
     name: 'console call names the application logger',
     config: loggingConfig,
@@ -279,6 +280,13 @@ export const failureMessageCases: FailureMessageCase[] = [
     banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
     allowed: 'smaller named functions',
   },
-  ...reactFailureMessageCases,
   ...i18nFailureMessageCases,
 ];
+
+export async function allFailureMessageCases(): Promise<FailureMessageCase[]> {
+  return [
+    ...failureMessageCases,
+    ...(await reactFailureMessageCases()),
+    ...testHonestyFailureMessageCases,
+  ];
+}

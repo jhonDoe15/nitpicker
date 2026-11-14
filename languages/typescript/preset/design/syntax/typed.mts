@@ -8,8 +8,15 @@ import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.m
 
 const api = typescriptApi();
 
+type NonEmptyChain<T> = { at(index: number): T } & T[];
+
 export const chainOf: <T>(start: T | undefined, next: (current: T) => T | undefined) => T[] =
   untypedChainOf;
+
+export const nonEmptyChainOf: <T extends object>(
+  start: T,
+  next: (current: T) => T | undefined,
+) => NonEmptyChain<T> = untypedChainOf;
 
 export const depthFirst: <T>(root: T, children: (node: T) => readonly T[]) => Iterable<T> =
   untypedDepthFirst;

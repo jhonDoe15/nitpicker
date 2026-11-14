@@ -30,21 +30,28 @@ function isTest(source: string): boolean {
   return TEST_FILE.test(source);
 }
 
+function dynamicImportSpecifier(node: TypeScript.Node): string | undefined {
+  const ts = typescriptApi();
+  if (!(
+    ts.isCallExpression(node) &&
+    node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+    node.arguments.length === 1
+  )) {
+    return undefined;
+  }
+  const [argument] = node.arguments;
+  return argument !== undefined && ts.isStringLiteral(argument) ? argument.text : undefined;
+}
+
 function sourceEvidence(source: string, sourceText: string): { dynamicImports: Set<string> } {
   const ts = typescriptApi();
   const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true);
   const dynamicImports = new Set<string>();
 
   for (const node of depthFirst<TypeScript.Node>(sourceFile, syntaxChildren)) {
-    if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments.length === 1
-    ) {
-      const [argument] = node.arguments;
-      if (argument !== undefined && ts.isStringLiteral(argument)) {
-        dynamicImports.add(argument.text);
-      }
+    const specifier = dynamicImportSpecifier(node);
+    if (specifier !== undefined) {
+      dynamicImports.add(specifier);
     }
   }
   return { dynamicImports };

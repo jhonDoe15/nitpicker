@@ -1,5 +1,11 @@
 import type TypeScript from 'typescript';
-import { ts, chainOf, depthFirst, syntaxChildren } from './typed.mts';
+import {
+  ts,
+  chainOf as optionalChainOf,
+  depthFirst,
+  nonEmptyChainOf as chainOf,
+  syntaxChildren,
+} from './typed.mts';
 
 type Node = TypeScript.Node;
 type Closure =
@@ -46,9 +52,7 @@ export function isWrapper(
 }
 
 export function unwrap(node: Node): Node {
-  return (
-    chainOf(node, (current) => (isWrapper(current) ? current.expression : undefined)).at(-1) ?? node
-  );
+  return chainOf(node, (current) => (isWrapper(current) ? current.expression : undefined)).at(-1);
 }
 
 export function isValueWrapper(parent: Node, child: Node): boolean {
@@ -56,12 +60,9 @@ export function isValueWrapper(parent: Node, child: Node): boolean {
 }
 
 export function unwrapValue(node: Node): Node {
-  const start = unwrap(node);
-  return (
-    chainOf(start, (current) =>
-      ts.isAwaitExpression(current) ? unwrap(current.expression) : undefined,
-    ).at(-1) ?? start
-  );
+  return chainOf(unwrap(node), (current) =>
+    ts.isAwaitExpression(current) ? unwrap(current.expression) : undefined,
+  ).at(-1);
 }
 
 export function lineOf(node: Node): number {
@@ -139,14 +140,14 @@ export function isPlainAssignment(node: Node): boolean {
 }
 
 export function enclosingClosure(node: Node): Closure | undefined {
-  const found = chainOf(node.parent, (current) =>
+  const found = optionalChainOf(node.parent, (current) =>
     isClosure(current) ? undefined : current.parent,
   ).at(-1);
   return found !== undefined && isClosure(found) ? found : undefined;
 }
 
 export function thisOwner(node: Node): Closure | undefined {
-  const found = chainOf(enclosingClosure(node), (current) =>
+  const found = optionalChainOf(enclosingClosure(node), (current) =>
     ts.isArrowFunction(current) ? enclosingClosure(current) : undefined,
   ).at(-1);
   return found !== undefined && ts.isArrowFunction(found) ? undefined : found;

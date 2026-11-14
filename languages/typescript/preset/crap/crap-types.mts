@@ -1,11 +1,11 @@
+import type { Position } from '../../adapters/oxlint/plan/oxlint-shapes.mts';
+
 export type Span = {
   readonly startLine: number;
   readonly startColumn: number;
   readonly endLine: number;
   readonly endColumn: number;
 };
-
-export type Position = { readonly line: number; readonly column: number };
 
 export type StatementUnit = { readonly span: Span; readonly hits: number };
 

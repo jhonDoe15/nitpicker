@@ -1,4 +1,4 @@
-import type { FailureMessageCase } from './case-types.mts';
+import type { FailureMessageCase } from './typed/case-types.mts';
 import tseslint from 'typescript-eslint';
 import { reactSyntaxConfigFor } from '../../eslint-config/react/react-scope.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
@@ -7,32 +7,37 @@ import { componentTestCases } from './react/component-test-cases.mts';
 import { correctnessCases } from './react/correctness-cases.mts';
 import { exceptionHintCases } from './react/exception-hint-cases.mts';
 
-type ReactRow = readonly [
-  name: string,
-  banned: string,
-  allowed: string,
-  styling?: keyof typeof reactConfigs,
-];
+type ReactRow = readonly [name: string, banned: string, allowed: string, styling?: Styling];
+
+type Styling = 'class-names' | 'css-in-js' | 'inline-style';
+
+type ReactConfigs = Readonly<Record<Styling, unknown>>;
 
 const CSS_IN_JS = 'css-in-js';
 const INLINE_STYLE_BOX = "export const Box = () => <div style={{ color: 'red' }} />;";
 const DATA_FETCH_IN_EFFECT = `useEffect(() => { fetch(\`/items/\${a}\`); }, [a]);`;
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
-const reactConfigs = {
-  'class-names': [parserConfig, ...(await reactSyntaxConfigFor(defaultResolvedLayout))],
-  [CSS_IN_JS]: [
-    parserConfig,
-    ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: CSS_IN_JS })),
-  ],
-  'inline-style': [
-    parserConfig,
-    ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: 'inline-style' })),
-  ],
-};
 
-function reactCase([name, banned, allowed, styling = 'class-names']: ReactRow): FailureMessageCase {
-  return { name: `react: ${name}`, config: reactConfigs[styling], filename, banned, allowed };
+async function reactConfigsFor(): Promise<ReactConfigs> {
+  return {
+    'class-names': [parserConfig, ...(await reactSyntaxConfigFor(defaultResolvedLayout))],
+    [CSS_IN_JS]: [
+      parserConfig,
+      ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: CSS_IN_JS })),
+    ],
+    'inline-style': [
+      parserConfig,
+      ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: 'inline-style' })),
+    ],
+  };
+}
+
+function reactCase(
+  configs: ReactConfigs,
+  [name, banned, allowed, styling = 'class-names']: ReactRow,
+): FailureMessageCase {
+  return { name: `react: ${name}`, config: configs[styling], filename, banned, allowed };
 }
 
 const testFilename = 'test/ui/panel.test.tsx';
@@ -42,10 +47,13 @@ const testingLibraryImport = [
   '',
 ].join('\n');
 
-function reactTestCase([name, banned, allowed]: ReactRow): FailureMessageCase {
+function reactTestCase(
+  configs: ReactConfigs,
+  [name, banned, allowed]: ReactRow,
+): FailureMessageCase {
   return {
     name: `react test: ${name}`,
-    config: reactConfigs['class-names'],
+    config: configs['class-names'],
     filename: testFilename,
     banned: `${testingLibraryImport}${banned}`,
     allowed,
@@ -145,14 +153,13 @@ const reactSyntaxRows = [
   ],
 ] as const;
 
-const reactSyntaxCases = reactSyntaxRows.map(reactCase);
-
-const reactTestCases = componentTestCases.map(reactTestCase);
-
-export const reactFailureMessageCases: FailureMessageCase[] = [
-  ...reactSyntaxCases,
-  ...reactTestCases,
-  ...correctnessCases.map(reactCase),
-  ...browserCases.map(reactCase),
-  ...exceptionHintCases,
-];
+export async function reactFailureMessageCases(): Promise<FailureMessageCase[]> {
+  const configs = await reactConfigsFor();
+  return [
+    ...[...reactSyntaxRows, ...correctnessCases, ...browserCases].map((row) =>
+      reactCase(configs, row),
+    ),
+    ...componentTestCases.map((row) => reactTestCase(configs, row)),
+    ...exceptionHintCases,
+  ];
+}

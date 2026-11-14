@@ -1,4 +1,4 @@
-import type { FailureMessageCase } from './case-types.mts';
+import type { FailureMessageCase } from './typed/case-types.mts';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { strictProductionRules } from '../../eslint-config/strict.mts';

@@ -54,7 +54,7 @@ import {
   testEnvironmentConfigFor as untypedTestEnvironmentConfigFor,
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mts';
-import type { Environments } from '../test-environment/environment-types.mts';
+import type { Environments } from '../test-environment/typed/environment-types.mts';
 
 export type Entry = Linter.Config;
 

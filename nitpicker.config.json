@@ -48,8 +48,6 @@
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mts",
       "languages/typescript/preset/coding-standards/check.mts",
       "languages/typescript/preset/project-tools/config-loader.mts",
-      "languages/typescript/preset/project-tools/dependency-cruiser-loader.mts",
-      "languages/typescript/preset/project-tools/typed/tool-modules.mts",
       "languages/java/adapters/gradle-wrapper/gradle-supervisor.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]

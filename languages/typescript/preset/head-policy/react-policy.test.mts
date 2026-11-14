@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy as untypedResolveHeadPolicy } from './head-policy.mjs';
-import { useTemporaryProjects } from './test-support/temporary-projects.mts';
+import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../head-policy.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Section = Readonly<Record<string, unknown>>;
 

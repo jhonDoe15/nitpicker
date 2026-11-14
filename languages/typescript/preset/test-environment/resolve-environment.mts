@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../../adapters/typed/head-policy.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import type { EnvironmentOptions, Environments } from './environment-types.mts';
+import type { EnvironmentOptions, Environments } from './typed/environment-types.mts';
 import { projectConfigFile } from './config-files.mjs';
 import { DEFAULT_ENVIRONMENT } from './environments.mjs';
 import { readConfigInChild as untypedReadConfigInChild } from './read-environment.mjs';

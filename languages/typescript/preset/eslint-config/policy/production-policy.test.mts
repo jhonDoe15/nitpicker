@@ -33,12 +33,12 @@ const adapter = 'src/main/features/a/adapters/x.ts';
 const domain = 'src/main/features/a/domain/x.ts';
 
 function rowsGive(
-  title: string,
+  action: string,
   file: string,
   expected: readonly string[],
   cases: readonly (readonly [string, string])[],
 ) {
-  it.each(cases)(title, (_name, code) => {
+  it.each(cases)(`${action} %s`, (_name, code) => {
     expect(ruleIds(file, code)).toEqual(expected);
   });
 }
@@ -116,7 +116,7 @@ describe('production policy scope', () => {
 
 describe('identifier casing', () => {
   rowsGive(
-    'rejects %s',
+    'rejects',
     adapter,
     ['nitpicker/naming-convention'],
     [
@@ -129,7 +129,7 @@ describe('identifier casing', () => {
   );
 
   rowsGive(
-    'allows %s',
+    'allows',
     adapter,
     [],
     [
@@ -155,7 +155,7 @@ describe('identifier casing', () => {
   );
 
   rowsGive(
-    'allows PascalCase for %s',
+    'allows PascalCase for',
     adapter,
     [],
     [
@@ -199,7 +199,7 @@ describe('identifier casing', () => {
   );
 
   rowsGive(
-    'still rejects a PascalCase constant built by %s',
+    'still rejects a PascalCase constant built by',
     adapter,
     ['nitpicker/naming-convention'],
     [
@@ -264,7 +264,7 @@ describe('identifier casing', () => {
 
 describe('magic numbers and other basics', () => {
   rowsGive(
-    'rejects %s',
+    'rejects',
     adapter,
     ['nitpicker/no-magic-numbers'],
     [
@@ -300,7 +300,7 @@ describe('magic numbers and other basics', () => {
   );
 
   rowsGive(
-    'allows %s',
+    'allows',
     adapter,
     [],
     [
@@ -410,7 +410,7 @@ describe('magic numbers and other basics', () => {
   });
 
   rowsGive(
-    'keeps domain/ from reading the clock through %s',
+    'keeps domain/ from reading the clock through',
     domain,
     ['no-restricted-syntax'],
     [
@@ -430,7 +430,7 @@ describe('magic numbers and other basics', () => {
   );
 
   rowsGive(
-    'lets domain/ use %s',
+    'lets domain/ use',
     domain,
     [],
     [

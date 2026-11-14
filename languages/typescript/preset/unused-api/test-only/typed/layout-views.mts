@@ -6,8 +6,6 @@ export type ProductionLayout = {
   readonly sourceTestDirectoryGlobs: readonly string[];
 };
 
-export type KnipConfig = Readonly<Record<string, unknown>>;
-
 export const globMatcher: (glob: string) => { test: (file: string) => boolean } =
   untypedGlobMatcher;
 
