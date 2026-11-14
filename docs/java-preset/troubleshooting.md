@@ -9,7 +9,9 @@ finding. The ones this preset meets:
 - [Gradle, Maven or Java is not found](../troubleshooting.md#gradle-maven-or-java-is-not-found):
   `NITPICKER_GRADLE`, `NITPICKER_MAVEN` and `JAVA_HOME`.
 - [Gradle or Maven times out](../troubleshooting.md#gradle-or-maven-times-out):
-  `NITPICKER_GRADLE_TIMEOUT_MINUTES`.
+  `NITPICKER_GRADLE_TIMEOUT_MINUTES` and `NITPICKER_MAVEN_TIMEOUT_MINUTES`.
+- [PIT fails or times out](../troubleshooting.md#pit-fails-or-times-out): a `pit-failure` tool error
+  replaces that module's mutation findings, and the other findings are still reported.
 - [Error Prone cannot find a JDK](../troubleshooting.md#error-prone-cannot-find-a-jdk).
 - [A project tool config is missing or broken](../troubleshooting.md#a-project-tool-config-is-missing-or-broken):
   a Checkstyle or PMD config named by `precedence`.

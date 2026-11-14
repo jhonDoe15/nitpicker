@@ -5,6 +5,8 @@ import {
   DESIGN_RULES,
 } from './design/design-rules.mjs';
 
+const NEAR_DUPLICATE_UNITS = 'nearDuplicateUnits';
+
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,
   javascript: true,
@@ -16,15 +18,22 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
 
 export const OWN_TOOL = 'own-tool';
 
+export const FEATURE_RULE_IDS = {
+  featureInternalImport: 'feature-internal-import',
+  sharedImportsFeature: 'shared-imports-feature',
+  featureCycle: 'feature-cycle',
+  foreignFeaturePersistence: 'foreign-feature-persistence',
+};
+
 const JVM = { java: true, kotlin: true };
 
 const FEATURE_BOUNDARY_LANGUAGES = {
   typescript: OWN_TOOL,
   javascript: OWN_TOOL,
-  java: false,
+  java: true,
   python: true,
-  kotlin: false,
-  go: false,
+  kotlin: true,
+  go: true,
 };
 
 const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
@@ -44,10 +53,28 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
   },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
+  'near-duplicate': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
+  'decided-condition': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    typescript: OWN_TOOL,
+    javascript: OWN_TOOL,
+    ...JVM,
+    python: true,
+  },
+  'duplicate-branch': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'foreign-feature-persistence': {
+    typescript: true,
+    javascript: true,
+    java: true,
+    python: true,
+    kotlin: true,
+    go: false,
+  },
+  'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
@@ -69,17 +96,22 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
     go: true,
   },
-  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
+  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES[rule] }])),
 };
 
 export const FACT_RULE_LISTS = {
   'duplicate-definition': ['modules', 'packages', 'definitions', 'imports'],
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
+  'near-duplicate': [NEAR_DUPLICATE_UNITS],
+  'decided-condition': [NEAR_DUPLICATE_UNITS],
+  'duplicate-branch': [NEAR_DUPLICATE_UNITS],
   'shared-used-by-one-feature': ['modules', 'imports'],
   'feature-internal-import': ['modules', 'imports'],
   'shared-imports-feature': ['modules', 'imports'],
   'feature-cycle': ['modules', 'imports'],
+  'public-alternative-bypass': ['modules', 'imports'],
+  'foreign-feature-persistence': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],
@@ -91,6 +123,7 @@ export const FACT_RULE_SETTINGS = {
   'feature-internal-import': FEATURE_LAYOUT_SETTINGS,
   'shared-imports-feature': FEATURE_LAYOUT_SETTINGS,
   'feature-cycle': FEATURE_LAYOUT_SETTINGS,
+  'foreign-feature-persistence': FEATURE_LAYOUT_SETTINGS,
   'test-console-output': ['testConsole'],
   ...DESIGN_RULE_SETTINGS,
 };

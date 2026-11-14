@@ -1,6 +1,6 @@
 import { parse } from 'acorn';
 import { describe, expect, it } from 'vitest';
-import { unmappedNodeFilter } from './mapped-nodes.mjs';
+import { unmappedNodeFilter } from './mapped-nodes.mts';
 
 const ORIGINAL = [
   'export const later = async (flag?: boolean) => (flag ? 1 : 0);',

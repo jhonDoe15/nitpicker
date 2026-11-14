@@ -42,7 +42,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
   loop and `forEach` selectors of `strict-control-flow.mjs`, whose loop message also names
   `it.each`; promise chains in tests are `nitpicker/no-promise-chain`.
-  `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
+  `evals/detectors/gate-agreement.test.mts` checks that the evaluation harness's code-shortcuts
   detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
@@ -78,7 +78,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
-  `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`),
+  `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`),
   the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
   ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
   (required for `changed-branch-coverage`) that limits the entry to one function. The message of
@@ -89,16 +90,17 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `near-duplicate`, `duplicate-branch`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
-  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
-  as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
+  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` and
+  `foreign-feature-persistence` treat as shared and as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
   When feature roots nest, a file belongs to the innermost one. A folder a configured `sharedRoots`
   glob matches is shared even inside a feature folder; while `sharedRoots` is not set, a folder the
   default shared root matches inside a feature folder is part of that feature, so
-  `shared-used-by-one-feature` does not report its modules. A configured glob that matches no
+  `shared-used-by-one-feature` does not report its modules and `foreign-feature-persistence` counts
+  them as that feature's own. A configured glob that matches no
   folder is named in a notice.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so

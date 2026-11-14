@@ -25,6 +25,18 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Do not skip tests (`DisabledTest`): no `@Disabled`, `@Ignore`, TestNG `@Test(enabled = false)`, `assumeTrue(false)`
+  or `assumeFalse(true)`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or an
+  assumption on a real condition (`assumeTrue(isLinux())`).
+- Assert unconditionally (`AssertionInControlFlow`): no assertion or `verify` inside an `if`, `switch`, `?:`,
+  loop or `forEach`/`map`/`filter` callback of a test or of a helper it calls, since an empty collection runs none
+  (`for (int i = 0; i < 3; i++)`, `IntStream.range(0, 3)` and `do`-`while` always run and are fine). Assert the whole
+  collection at once (`assertEquals(List.of(...), actual)`, AssertJ `containsExactly`), put a table of cases
+  in `@ParameterizedTest`, or use `assertAll(() -> ..., () -> ...)`.
+- Run the callback a helper returns (`DroppedCallbackInTest`): `ctx.run(assertMax(123))`, not
+  `ctx.run(c -> assertMax(123))` or a bare `assertMax(123);` when `assertMax` returns a `Runnable`,
+  `Consumer`, `Executable` or `ContextConsumer`. Set an AssertJ message before the assertion
+  (`assertThat(x).as("...").isTrue()`), not after it (`MessageAfterAssertion`).
 - Assert the value, not that something is there (`WeakAssertionInTest`): no `assertNotNull(x)`, AssertJ
   `isNotNull()` or Hamcrest `notNullValue()` as the whole check, no `isNotEmpty()`, `assertFalse(c.isEmpty())`
   or `assertTrue(c.size() > 0)`, and no `verify(m).f(any())` whose arguments are all `any()`. Assert the

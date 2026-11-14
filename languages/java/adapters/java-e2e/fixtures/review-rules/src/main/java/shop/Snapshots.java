@@ -41,20 +41,20 @@ public final class Snapshots {
 
   static int joined(ExecutorService executor) throws Exception {
     try (StringReader in = new StringReader("a")) {
-      return executor.submit(() -> in.read()).get();
+      return executor.submit(() -> in.read()).get(); // violation: UnboundedWait
     }
   }
 
   static int chained() {
     try (StringReader in = new StringReader("a")) {
-      return CompletableFuture.supplyAsync(() -> in.hashCode()).join();
+      return CompletableFuture.supplyAsync(() -> in.hashCode()).join(); // violation: UnboundedWait
     }
   }
 
   static void waited(ExecutorService executor) throws Exception {
     try (StringReader in = new StringReader("a")) {
       Future<Integer> pending = executor.submit(() -> in.read());
-      pending.get();
+      pending.get(); // violation: UnboundedWait
     }
   }
 
@@ -103,7 +103,7 @@ public final class Snapshots {
 
   static void scheduledAndWaited(ScheduledExecutorService executor) throws Exception {
     try (StringReader in = new StringReader("a")) {
-      executor.schedule(() -> in.hashCode(), 1, TimeUnit.SECONDS).get();
+      executor.schedule(() -> in.hashCode(), 1, TimeUnit.SECONDS).get(); // violation: UnboundedWait
     }
   }
 
@@ -115,7 +115,7 @@ public final class Snapshots {
 
   static int stagedAndJoined(CompletableFuture<Integer> base) {
     try (StringReader in = new StringReader("a")) {
-      return base.thenApplyAsync(value -> value + in.hashCode()).join();
+      return base.thenApplyAsync(value -> value + in.hashCode()).join(); // violation: UnboundedWait
     }
   }
 
@@ -127,7 +127,7 @@ public final class Snapshots {
 
   static int referenceAndWaited(ExecutorService executor) throws Exception {
     try (StringReader in = new StringReader("a")) {
-      return executor.submit(in::hashCode).get();
+      return executor.submit(in::hashCode).get(); // violation: UnboundedWait
     }
   }
 
@@ -152,7 +152,7 @@ public final class Snapshots {
               return in.hashCode();
             }
           };
-      executor.submit(task).get();
+      executor.submit(task).get(); // violation: UnboundedWait
     }
   }
 
@@ -164,7 +164,7 @@ public final class Snapshots {
 
   static void constructedAndWaited(ExecutorService executor) throws Exception {
     try (StringReader in = new StringReader("a")) {
-      executor.submit(new Task(in)).get();
+      executor.submit(new Task(in)).get(); // violation: UnboundedWait
     }
   }
 }

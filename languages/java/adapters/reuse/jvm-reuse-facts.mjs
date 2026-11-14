@@ -2,14 +2,27 @@ import { existsSync, readFileSync } from 'node:fs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs';
+import { readJvmUnits } from '../near-duplicates/jvm-trees.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
+import {
+  aliasEntryFields,
+  kotlinEntryPointFindings,
+  typeAliasReexports,
+} from './kotlin-type-aliases.mjs';
 
 const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
 const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+  'decided-condition',
+  'duplicate-branch',
+];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
@@ -43,11 +56,15 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
     bindings: fileBindings(index, entry),
     scope: referenceScope(index, entry),
   }));
+  const aliases = bound.flatMap((entry) => typeAliasReexports(index, entry));
   return {
-    modules: bound.map(({ file, parsed }) => ({
-      file,
+    modules: bound.map((entry) => ({
+      file: entry.file,
       role: 'production',
-      ...(parsed.definitions.some(({ entry }) => entry === true) ? { entry: true } : {}),
+      ...(entry.parsed.definitions.some(({ entry: isEntry }) => isEntry === true)
+        ? { entry: true }
+        : {}),
+      ...aliasEntryFields(entry, aliases),
     })),
     packages: projects.map((project) => ({
       root: project.qualifier ?? '',
@@ -58,8 +75,24 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
         neutralDefinition(entry.file, definition, entry),
       ),
     ),
-    imports: bound.flatMap((entry) => importFacts(index, entry)),
+    imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
+    nearDuplicateUnits: unitFacts(projectRoot, files),
   };
+}
+
+function unitFacts(projectRoot, files) {
+  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+  return readJvmUnits(projectRoot, sources).map(
+    ({ file, name, start, end, tokens, final, tree }) => ({
+      file,
+      name,
+      start,
+      end,
+      tokens,
+      final,
+      tree,
+    }),
+  );
 }
 
 function baselineReader(projectRoot, { baselineRoot, baselineMovesFile }) {
@@ -116,6 +149,7 @@ export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {
       rules: SHARED_USAGE_RULES,
       policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
     }),
+    ...(kotlin ? kotlinEntryPointFindings(facts, exceptions) : []),
   ];
   return { findings, imports: facts.imports };
 }

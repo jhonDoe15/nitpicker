@@ -10,11 +10,13 @@ const EMPTY = {
   functions: [],
   types: [],
   tests: [],
+  branches: [],
   errors: [],
   definitions: [],
   usages: [],
   docComments: [],
   skipped: [],
+  design: { types: [], callables: [] },
 };
 
 function runInspect(context, root, report) {

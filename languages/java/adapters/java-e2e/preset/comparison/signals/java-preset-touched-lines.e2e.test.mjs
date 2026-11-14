@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe } from 'vitest';
 import { runJavaDiff } from '../../../../java-diff.mjs';
 import { commitBranch, runGitIn } from '../../../../test-support/gradle-e2e.mjs';
-import { TOUCHED_BASE, TOUCHED_HEAD, touchedLineCases } from './touched-lines-cases.mjs';
+import { TOUCHED_BASE, TOUCHED_HEAD, touchedLineCases } from './touched-lines-cases.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

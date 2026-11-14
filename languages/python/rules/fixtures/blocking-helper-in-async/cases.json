@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "blocking-helper-in-async",
+    "mention": "asyncio.to_thread"
+  }
+]

@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readSnippet } from './init/files/agents-md.mjs';
+import { readSnippet } from './init/files/agents-md.mts';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 import {
   MINIMUM_NODE,
@@ -445,11 +445,11 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
         expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
       });
-      it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
+      it('lists and explains rules from the reference data the package ships, linking the release tag', async () => {
         expect(rules.status, rules.output).toBe(0);
-        expect(rules.output).toBe(checkoutOutput(links, ['rules', '--preset', 'java']));
+        expect(rules.output).toBe(await checkoutOutput(links, ['rules', '--preset', 'java']));
         expect(explanation.status, explanation.output).toBe(0);
-        expect(explanation.output).toBe(checkoutOutput(links, ['explain', ...explained]));
+        expect(explanation.output).toBe(await checkoutOutput(links, ['explain', ...explained]));
         expect(
           JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
             (finding) => finding.helpUri,

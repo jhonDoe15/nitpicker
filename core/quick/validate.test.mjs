@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../command/arguments.mjs';
-import { usageText } from '../help/usage-text.mjs';
+import { parseArguments } from '../command/arguments.mts';
+import { usageText } from '../help/usage-text.mts';
 
 const DEFAULTS = {
   all: false,

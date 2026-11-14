@@ -85,14 +85,18 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `@TestInstance(PER_CLASS)` class, or to a `var` or mutable collection in a Kotest spec body (one spec instance
   runs all its tests). Create the state in the test, assign or `clear()` it in `@BeforeEach` or `beforeTest { }`,
   or give the spec `isolationMode = IsolationMode.InstancePerTest` (or `InstancePerLeaf`).
-- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
-  a `when`, any loop that can run zero times (also over results, and in a helper the test calls), a safe
+- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`
+  or a `when` (also one that only calls a helper that asserts), any loop that can run zero times (also over results, and in a helper the test calls), a safe
   call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that swallows the failure, a `runCatching`, or after
   an early `return`. An `if`/`else` or `when` whose every branch asserts or fails is fine, and so are
   Kotest `checkAll` and `forAll`, `repeat(3)`, a literal range such as `for (i in 1..3)`, and
   `do { } while`. Split the cases into separate tests or a parameterized test (`@ParameterizedTest` with
   `@MethodSource` or `@CsvSource`, Kotest `withData`), assert a whole collection at once, and narrow with
   `assertNotNull`, `assertIs` or `?: fail(...)` instead of an `if`.
+- Run the callback a helper returns (`pmd/DroppedCallbackInTest`): `ctx.run(assertMax(123))` or
+  `assertMax(123)(ctx)`, not a bare `assertMax(123)` statement or `ctx.run { assertMax(123) }` when `assertMax`
+  returns a function type or a `Runnable`, `Consumer`, `Executable` or `fun interface`. Set an AssertJ message
+  before the assertion (`assertThat(x).as("...").isTrue()`), not after it (`pmd/MessageAfterAssertion`).
 - Assert the value, not that something is there (`pmd/WeakAssertionInTest`): no `assertNotNull(x)`,
   `x.shouldNotBeNull()` or AssertJ `isNotNull()` as the whole check (a not-null check is fine when the
   test then uses `x`, since Kotlin smart-casts it), no `isNotEmpty()`, `size > 0` or `shouldNotBeEmpty()`, and

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readSlowTestFindings } from './slow-tests.mjs';
+import { readSlowTestFindings } from './slow-tests.mts';
 
 const FIX =
   'Remove fixed sleeps and real timers (use fake timers) and mock network, database and disk access';

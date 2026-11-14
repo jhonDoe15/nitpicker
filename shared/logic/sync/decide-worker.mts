@@ -1,10 +1,11 @@
 import { MessagePort, parentPort, workerData } from 'node:worker_threads';
-import { decide } from '../decide.mjs';
+import { counterexample, decide } from '../decide.mjs';
 
 type DecideArguments = Parameters<typeof decide>;
 
 type DecisionRequest = {
   readonly id: number;
+  readonly explain: boolean;
   readonly conditions: DecideArguments[0];
   readonly query: DecideArguments[1];
   readonly options: DecideArguments[2];
@@ -16,11 +17,14 @@ type DecisionChannels = {
 };
 
 async function answer(
-  { id, conditions, query, options }: DecisionRequest,
+  { id, explain, conditions, query, options }: DecisionRequest,
   { signal, replies }: DecisionChannels,
 ): Promise<void> {
   try {
-    replies.postMessage({ id, result: await decide(conditions, query, options) });
+    const result = explain
+      ? ((await counterexample(conditions, query, options)) ?? 'none')
+      : await decide(conditions, query, options);
+    replies.postMessage({ id, result });
   } catch (error) {
     replies.postMessage({ id, result: 'open', failure: String(error) });
   } finally {

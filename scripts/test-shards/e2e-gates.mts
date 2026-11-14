@@ -1,7 +1,7 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
-import type { Environment } from './duration-profile.mts';
+import type { Environment } from '../../shared/processes/environment.mts';
 
 export type GateCandidate = { readonly file: string; readonly flags: readonly string[] };
 export type ListedCase = { readonly file: string; readonly name: string };

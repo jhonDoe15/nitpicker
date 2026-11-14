@@ -180,6 +180,21 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
   source root is another feature. A module that is shared on purpose before a second feature uses it
   needs an exception for this rule in `nitpicker.config.json`.
+- `foreign-feature-persistence` (the `structure` check): a production module of one feature that
+  imports another feature's persistence, directly or through a name its `index.ts` re-exports
+  (re-exports are followed by name, so `import { bill } from '../billing'` passes while
+  `import { invoices } from '../billing'` fails when `invoices` comes from its repository). A
+  module is an entity when it imports `Entity` from TypeORM or MikroORM, `Table` from
+  sequelize-typescript, `Model` from Sequelize, `Schema` or `model` from Mongoose, or a Drizzle
+  table builder (`pgTable`, `mysqlTable`, `sqliteTable`); it is data access when it imports a
+  database client or ORM at run time (`pg`, `mysql2`, `mongodb`, `ioredis`, `knex`, `kysely`,
+  `@prisma/client`, `drizzle-orm`, TypeORM's `DataSource` or `Repository`, `@nestjs/typeorm`,
+  DynamoDB and Firestore clients, ...). Mapping-only imports (`Column` without `Entity`), a
+  TypeORM `@ViewEntity` read model and `import type` do not count. The finding is on the importing
+  module, identity `foreign-persistence:<persistent module>`; the exception may name the importer
+  or the persistent module. The feature folders are `layout.featureRoots` (default
+  `<sourceRoot>/main/features`).
+- `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
 - `stability-direction` (the `coupling` check) measures each feature folder as one unit: `index.ts`
   is its face, edges between the face and the feature's own folders do not count, an edge between
   two folders of one feature (`domain` to `adapters`) compares those folders, and an edge between
