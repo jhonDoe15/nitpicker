@@ -144,6 +144,46 @@ describe('extractModel', () => {
     expect(render(first(nodes(model, 'return')).value)).toBe('arg0.target');
   });
 
+  it.each([
+    ['local', 'value, key', 'const { [key]: item } = value; return item;'],
+    ['parameter', '{ [key]: item }, key', 'return item;'],
+    ['catch', 'value, key', 'try { throw value; } catch ({ [key]: item }) { return item; }'],
+    ['literal key', 'value', 'const { ["id"]: item } = value; return item;'],
+    ['key call', 'value, key', 'const { [key()]: item } = value; return item;'],
+  ])('marks a computed %s binding as unsupported', (_name, parameters, body) => {
+    const text = `export function read(${parameters}) { ${body} }`;
+    const model = extractModel({ file: 'computed.ts', text, entry: 'read' });
+    const fn = functionNamed(model, 'read');
+
+    expect([
+      fn.params.some((param) => param.supported === false) ||
+        nodes(model, 'unsupported').some((node) => node.syntax === 'binding-pattern'),
+      nodes(model, 'get').filter((node) => node.field === undefined),
+    ]).toEqual([true, []]);
+  });
+
+  it('keeps static identifier, string and numeric binding keys supported', () => {
+    const text = code`
+      export function read({ id, "label": name, 0: first }) {
+        const { undefined: value } = first;
+        try { throw name; } catch ({ message: detail }) { return { id, name, value, detail }; }
+      }
+    `;
+    const model = extractModel({ file: 'static.ts', text, entry: 'read' });
+
+    expect([
+      functionNamed(model, 'read').params,
+      nodes(model, 'get').map((node) => node.field),
+      nodes(model, 'try').map((node) => node.catchFields?.map(([, field]) => field)),
+      nodes(model, 'unsupported'),
+    ]).toEqual([
+      [{ index: 0, name: 'arg0', fields: ['id', 'name', 'first'], supported: true }],
+      ['0', 'undefined', 'label', 'id', 'label'],
+      [['message']],
+      [],
+    ]);
+  });
+
   it('records loops, finally blocks and computed calls as unsupported instead of dropping them', () => {
     expect(nodes(modelOf('loop'), 'unsupported').map((item) => item.syntax)).toEqual(['loop']);
     expect(nodes(modelOf('finally-cleanup'), 'unsupported').map((item) => item.syntax)).toEqual([

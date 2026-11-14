@@ -9,6 +9,8 @@ import {
   SIGN_NEGATIVE,
   SIGN_POSITIVE,
   signsTest,
+  twice,
+  twiceTest,
 } from './test-support/python-preset-data.mjs';
 import {
   COLORS_DEFAULT,
@@ -47,6 +49,8 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
       'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
       'src/demo/signs.py': SIGNS,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE),
+      'src/demo/twice.py': twice(1),
+      'tests/test_twice.py': twiceTest('True, False', 'True, True'),
     });
     initializeRepository(project, 'base with an untested branch in sign');
     installPackages(project, ['-e', '.', 'coverage', 'pytest']);
@@ -74,6 +78,10 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
     commitBranch(project, 'ports', {
       'src/demo/ports.py': PORTS,
       'tests/test_ports.py': PORTS_TEST,
+    });
+    commitBranch(project, 'twice', {
+      'src/demo/twice.py': twice(0),
+      'tests/test_twice.py': twiceTest('False, True', 'True, False'),
     });
     commitBranch(project, 'lookalikes', {
       'src/demo/lookalikes.py': LOOKALIKES,
@@ -117,6 +125,12 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
 
     expect(result.exitCode, result.text).toBe(1);
     expect(branchFindings(result)).toEqual(['src/demo/signs.py:8']);
+  });
+  it('fails a repeated branch that loses a test on an unchanged line, not the legacy one', () => {
+    const result = gate(project, 'twice');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(branchFindings(result)).toEqual(['src/demo/twice.py:4']);
   });
   it('honors no pragma, but leaves the main guard alone', () => {
     const result = gate(project, 'pragmas');

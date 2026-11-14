@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { runCli as nitpickerCli } from '../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
@@ -52,7 +53,7 @@ function run(repository, extra, tools) {
     arguments_: [...extra, '--base', repository.baseRef, '--output', outputRoot],
     currentProjectRoot: repository.root,
     environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
-    analyzers: [fakeAnalyzer()],
+    analyzers: [{ ...fakeAnalyzer(), reportedTools: ['checkstyle'] }],
     executeFixCommand: tools?.executeFixCommand,
     stdout: output.stdout,
     stderr: output.stderr,
@@ -79,6 +80,8 @@ describe('nitpicker --fix for a Python project', () => {
     expect(readFileSync(path.join(repository.root, 'unchanged.py'), 'utf8')).toBe('u  =  1\n');
     expect(tools.operations()).toEqual([
       'python-probe',
+      'python-probe',
+      'ruff-fix',
       'ruff-fix',
       'ruff-format-fix',
       'ruff-format-fix',
@@ -111,12 +114,34 @@ describe('nitpicker --fix for a Python project', () => {
     expect(plain.output.stdoutText).toBe(unchangedTranscript({ fixed: '', repository }));
     expect(tools.calls).toEqual([]);
   });
-  it('refuses --fix together with --all', () => {
+  it('refuses --fix --all without a rule', () => {
     const repository = pythonRepository();
 
     const { exitCode, output } = run(repository, ['--fix', '--all'], fakePythonTools());
 
     expect(exitCode).toBe(2);
-    expect(output.stderrText).toBe('nitpicker failed: --fix cannot be combined with --all\n');
+    expect(output.stderrText).toBe(
+      'nitpicker failed: --fix --all rewrites the whole project, so it needs the rule to fix: use nitpicker --fix --all --rule <tool/rule>\n',
+    );
+  });
+});
+
+describe('nitpicker --fix with a recipe', () => {
+  it('lists the findings a recipe fixed with the recipe that fixed them', () => {
+    const repository = createRepository({
+      'nitpicker.config.json': '{ "preset": "java" }\n',
+      'build.gradle': "plugins { id 'java' }\n",
+      'quality-policy.json': policy(),
+    });
+    writeFiles(repository.root, { 'src/main/java/A.java': 'class A { long a = 1l; }\n' });
+
+    const { output } = run(repository, ['--fix'], fakeJvmTools());
+
+    expect(output.stdoutText.slice(0, output.stdoutText.indexOf('Base: '))).toBe(
+      'Fixed files:\nsrc/main/java/A.java\nFixed findings:\n  src/main/java/A.java:1 checkstyle/UpperEll (java-upper-ell)\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/java/A.java'), 'utf8')).toBe(
+      'class A { long a = 1L; }\n',
+    );
   });
 });

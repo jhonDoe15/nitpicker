@@ -31,6 +31,46 @@ describe('peer plan for Node projects', () => {
     },
   );
 
+  it('prints the supported range and says "too old" for an installed Vitest below it', () => {
+    const root = project(
+      withPeers(
+        {
+          nitpicker: '1',
+          typescript: '6.0.3',
+          '@types/node': '25',
+          vitest: '4.0.5',
+          '@vitest/coverage-v8': '4.0.5',
+        },
+        {},
+      ),
+    );
+
+    expect(planPeers(root, nodeProject('pnpm add --save-dev'))).toEqual({
+      ...NOTHING,
+      missing: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
+      absent: [],
+      outdated: [
+        'vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)',
+        '@vitest/coverage-v8 too old (have 4.0.5, need ^4.1.11 || ^5.0.0)',
+      ],
+      command: "pnpm add --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+    });
+  });
+
+  it('keeps a missing peer bare next to an outdated one, and matches the coverage package to Vitest', () => {
+    const root = project(
+      withPeers({ nitpicker: '1', typescript: '6.0.3', '@types/node': '25', vitest: '4.0.5' }),
+    );
+
+    expect(planPeers(root, nodeProject('npm install --save-dev'))).toEqual({
+      ...NOTHING,
+      missing: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
+      absent: ['@vitest/coverage-v8@^4.1.11'],
+      outdated: ['vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)'],
+      command: "npm install --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+    });
+  });
+
   it('plans for the Jest packages of a Jest project', () => {
     const root = project({ 'package.json': '{}' });
 

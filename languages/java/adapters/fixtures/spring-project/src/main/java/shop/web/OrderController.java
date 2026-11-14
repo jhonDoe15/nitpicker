@@ -1,6 +1,7 @@
 package shop.web;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,9 @@ public class OrderController {
   @PostMapping("/batch")
   public void batch(@RequestBody List<NewOrder> orders) {} // violation: SpringValidRequestBody
 
+  @PostMapping("/note")
+  public void note(@RequestBody Note note) {}
+
   @Transactional // violation: SpringNoTransactionalController
   @PostMapping("/bulk")
   @ResponseBody // violation: SpringRestController
@@ -55,7 +59,9 @@ public class OrderController {
     return new OrderView("3");
   }
 
-  public record NewOrder(String sku) {}
+  public record NewOrder(@NotBlank String sku) {}
+
+  public record Note(String text) {}
 
   public record OrderView(String id) {}
 }

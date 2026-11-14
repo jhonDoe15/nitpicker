@@ -20,7 +20,7 @@ const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
 ];
 
-const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
+export const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
 const SUPPORT_OFF_RULES = [
   ...SECURITY_RULES,
@@ -49,7 +49,7 @@ const routeHandlerNames = {
   format: ['UPPER_CASE'],
 };
 
-function namingConvention({ react, routeHandlers }) {
+export function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',

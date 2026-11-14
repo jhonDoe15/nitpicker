@@ -1,0 +1,14 @@
+export const LEFT_OUT_CHECKS = Object.freeze(
+  `
+ArgumentSelectionDefectChecker ASTHelpersSuggestions BugPatternNaming ClassInitializationDeadlock
+ComparisonContractViolated DeeplyNested DistinctVarargsChecker DoNotClaimAnnotations
+ErroneousBitwiseExpression FieldCanBeStatic ForEachIterable FromTemporalAccessor
+FuturesGetCheckedIllegalExceptionType InjectOnBugCheckers MemoizeConstantVisitorStateLookups
+MisformattedTestData MissingDefault MissingSummary MockNotUsedInProduction MoreThanOneQualifier
+ObjectToString PreferTestParameter RobolectricShadowDirectlyOn StringSplitter
+SuppressWarningsWithoutExplanation SymbolToString TreeToString TypeToString UndefinedEquals
+UnnecessaryMethodInvocationMatcher UnnecessarySetDefault WakelockReleasedDangerously
+`
+    .split(/\s+/u)
+    .filter(Boolean),
+);
