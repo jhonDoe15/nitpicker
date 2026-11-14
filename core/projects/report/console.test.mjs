@@ -59,10 +59,23 @@ describe('renderPlan', () => {
   });
 
   it('says a listed monorepo was listed, and counts one project in the singular', () => {
-    const plan = { source: 'declared', projects: [{ origin: 'x' }] };
+    const plan = { source: 'declared', projects: [{ origin: 'nitpicker.config.json "projects"' }] };
 
     expect(renderPlan({ plan, rows: [], outside: [] })).toBe(
       'Monorepo: 1 project listed in "projects" of nitpicker.config.json.\n',
+    );
+  });
+
+  it('says how many listed projects a nested workspace stands for', () => {
+    const origins = [
+      'nitpicker.config.json "projects"',
+      'web/pnpm-workspace.yaml',
+      'web/pnpm-workspace.yaml',
+    ];
+    const plan = { source: 'declared', projects: origins.map((origin) => ({ origin })) };
+
+    expect(renderPlan({ plan, rows: [], outside: [] })).toBe(
+      'Monorepo: 3 projects listed in "projects" of nitpicker.config.json (2 from web/pnpm-workspace.yaml).\n',
     );
   });
 

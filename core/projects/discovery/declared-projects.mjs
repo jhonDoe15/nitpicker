@@ -3,8 +3,14 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { JVM_MARKERS } from './jvm-builds.mjs';
 import { PYTHON_MARKERS } from './python-projects.mjs';
 import { directoriesWith, isInside, outermost, statInside } from './repository-files.mjs';
+import { detectProjects } from './detect.mjs';
 
-const DECLARED_ORIGIN = `${CONFIG_FILE_NAME} "projects"`;
+export const DECLARED_ORIGIN = `${CONFIG_FILE_NAME} "projects"`;
+const DECLARING_FILES = new Map([
+  ['pnpm-workspace.yaml', 'pnpm-workspace.yaml'],
+  ['package.json workspaces', 'package.json'],
+  ['uv workspace', 'pyproject.toml'],
+]);
 const OWN_MARKERS = ['package.json', ...PYTHON_MARKERS, CONFIG_FILE_NAME];
 export const PROJECT_FILES = [...JVM_MARKERS, ...OWN_MARKERS];
 
@@ -55,14 +61,41 @@ function expand(entry, { root, files }) {
   return matches.map((directory) => ({ ...entry, path: directory }));
 }
 
+function filesUnder(files, folder) {
+  return files
+    .filter((file) => file.startsWith(`${folder}/`))
+    .map((file) => file.slice(folder.length + 1));
+}
+
+function workspaceMembersOf(entry, { root, files }) {
+  const listed = { ...entry, origin: DECLARED_ORIGIN };
+  if (entry.path === '.' || entry.expand === false) {
+    return [listed];
+  }
+  const nested = detectProjects({
+    root: `${root}/${entry.path}`,
+    files: filesUnder(files, entry.path),
+  });
+  if (!nested.multiple) {
+    return [listed];
+  }
+  const declaring = nested.entries.map(({ origin }) => DECLARING_FILES.get(origin)).find(Boolean);
+  return nested.entries.map((member) => ({
+    ...(entry.preset === undefined ? {} : { preset: entry.preset }),
+    path: member.path === '.' ? entry.path : `${entry.path}/${member.path}`,
+    origin: `${entry.path}/${declaring}`,
+    workspace: entry.path,
+  }));
+}
+
 export function resolveDeclaredProjects({ root, entries, files }) {
   const seen = new Set();
   return entries
     .flatMap((entry) => expand(entry, { root, files }))
+    .flatMap((entry) => workspaceMembersOf(entry, { root, files }))
     .filter((entry) => {
       const fresh = !seen.has(entry.path);
       seen.add(entry.path);
       return fresh;
-    })
-    .map((entry) => ({ ...entry, origin: DECLARED_ORIGIN }));
+    });
 }

@@ -5,7 +5,7 @@ import {
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
 
-const PROJECT_ENTRY_KEYS = ['path', 'preset'];
+const PROJECT_ENTRY_KEYS = ['path', 'preset', 'expand'];
 
 export function validateExtends(value) {
   if (!isNonEmptyString(value)) {
@@ -34,7 +34,9 @@ function entryOf(entry, label, presets) {
     return { path: normalizeProjectPath(entry) };
   }
   if (!isPlainObject(entry)) {
-    throw configError(`"${label}" must be a path or an object with "path" and "preset"`);
+    throw configError(
+      `"${label}" must be a path or an object with "path" and optional "preset" and "expand"`,
+    );
   }
   for (const key of Object.keys(entry)) {
     if (!PROJECT_ENTRY_KEYS.includes(key)) {
@@ -47,9 +49,13 @@ function entryOf(entry, label, presets) {
   if (entry.preset !== undefined && !presets.includes(entry.preset)) {
     throw configError(`"${label}.preset" must be one of: ${presets.join(', ')}`);
   }
+  if (entry.expand !== undefined && typeof entry.expand !== 'boolean') {
+    throw configError(`"${label}.expand" must be true or false`);
+  }
   return {
     path: normalizeProjectPath(entry.path),
     ...(entry.preset === undefined ? {} : { preset: entry.preset }),
+    ...(entry.expand === undefined ? {} : { expand: entry.expand }),
   };
 }
 

@@ -225,3 +225,78 @@ describe('commands that work on one project', () => {
     ]);
   });
 });
+
+function nestedWorkspace(declaration, extra = {}) {
+  return repository({
+    'nitpicker.config.json': JSON.stringify({ projects: ['frontend', 'backend'] }),
+    ...declaration,
+    ...projectFiles('frontend/packages/a', {
+      'package.json': manifest('a'),
+      'src/index.ts': 'export {};\n',
+    }),
+    ...projectFiles('frontend/packages/b', {
+      'package.json': manifest('b', { a: 'workspace:*' }),
+      'src/index.ts': 'export {};\n',
+    }),
+    ...projectFiles('frontend/packages/c', {
+      'package.json': manifest('c'),
+      'src/index.ts': 'export {};\n',
+    }),
+    ...projectFiles('backend', { 'pyproject.toml': '[project]\nname = "api"\n', 'src/b.py': '' }),
+    ...extra,
+  });
+}
+
+const PNPM = {
+  'frontend/package.json': JSON.stringify({ name: 'frontend', private: true }),
+  'frontend/pnpm-workspace.yaml': 'packages:\n  - packages/*\n',
+};
+const NPM = {
+  'frontend/package.json': JSON.stringify({ name: 'frontend', workspaces: ['packages/*'] }),
+};
+
+describe('a listed folder that declares a workspace', () => {
+  it.each([
+    ['pnpm', PNPM, 'frontend/pnpm-workspace.yaml'],
+    ['npm', NPM, 'frontend/package.json'],
+  ])(
+    'stands for the %s workspace members and runs the dependents of a change',
+    (_, files, from) => {
+      const root = nestedWorkspace(files);
+      writeFiles(root, { 'frontend/packages/a/src/index.ts': 'export const a = 1;\n' });
+
+      const result = run(root, ['--details']);
+
+      expect(result.plan.split('\n')).toEqual([
+        `Monorepo: 4 projects listed in "projects" of nitpicker.config.json (3 from ${from}).`,
+        '  run  frontend/packages/a (typescript): 1 changed file',
+        '  run  frontend/packages/b (typescript): depends on frontend/packages/a',
+        '  skip frontend/packages/c (typescript): no changed files',
+        '  skip backend (python): no changed files',
+      ]);
+      expect(result.exitCode).toBe(0);
+    },
+  );
+
+  it('runs every member when the workspace lockfile changes', () => {
+    const root = nestedWorkspace(PNPM, { 'frontend/pnpm-lock.yaml': "lockfileVersion: '9.0'\n" });
+    writeFiles(root, { 'frontend/pnpm-lock.yaml': "lockfileVersion: '9.0'\n\n" });
+
+    expect(statuses(run(root))).toEqual({
+      'frontend/packages/a': 'passed',
+      'frontend/packages/b': 'passed',
+      'frontend/packages/c': 'passed',
+      backend: 'skipped',
+    });
+  });
+
+  it('stays one project with "expand": false', () => {
+    const root = nestedWorkspace(PNPM, {
+      'nitpicker.config.json': JSON.stringify({
+        projects: [{ path: 'frontend', expand: false }, 'backend'],
+      }),
+    });
+
+    expect(Object.keys(statuses(run(root)))).toEqual(['frontend', 'backend']);
+  });
+});

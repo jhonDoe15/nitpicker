@@ -2054,7 +2054,15 @@ Where you start the run matters:
 }
 ```
 
-- An entry is a folder relative to the config, or `{ "path", "preset" }`. `.` names the root itself.
+- An entry is a folder relative to the config, or `{ "path", "preset", "expand" }`. `.` names the
+  root itself.
+- An entry whose folder declares a workspace of its own (`workspaces` in its `package.json`,
+  `pnpm-workspace.yaml` or a uv workspace) stands for the members of that workspace, the same way a
+  workspace at the top does: `frontend` with `frontend/pnpm-workspace.yaml` gates
+  `frontend/packages/a` and `frontend/packages/b`, and the folder itself joins only when it has
+  sources of its own. The plan line counts them (`3 from frontend/pnpm-workspace.yaml`), a change to
+  the workspace's lockfile or `package.json` runs every member, and an entry's `preset` applies to
+  each member. `"expand": false` keeps the folder one project.
 - An entry with a `*`, `?` or `{` anywhere is a glob. It stands for every folder it matches that
   holds a `package.json`, a Python project file (`pyproject.toml`, `setup.py`, `setup.cfg`,
   `Pipfile` or `requirements.txt`), a Gradle or Maven build file or a `nitpicker.config.json`. A

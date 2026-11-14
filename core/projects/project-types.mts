@@ -18,6 +18,7 @@ export type PlanProject = {
   readonly overlay: ProjectOverlay | undefined;
   readonly preset: string;
   readonly sharedFiles: readonly string[];
+  readonly toolchainRoot?: string;
   readonly configError?: string;
 };
 
