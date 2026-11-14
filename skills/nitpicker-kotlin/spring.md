@@ -95,6 +95,10 @@ Web:
 - Security: end with `authorize(anyRequest, authenticated)`; `csrf { disable() }` only in a
   stateless chain; no `"*"` origin with credentials; no `@CrossOrigin`, configure CORS once;
   `PasswordEncoderFactories.createDelegatingPasswordEncoder()`; no user passwords in source.
+- Text from a search or filter field is trimmed before it reaches a repository finder (`findBy...StartingWith`,
+  `Containing`, `Like`, `IgnoreCase`, `Equals`) or a query parameter: `lastName.strip()` in the handler, or one
+  `StringTrimmerEditor` registered in an `@InitBinder` of a `@ControllerAdvice` for every controller, since a
+  padded `" Davis"` finds nothing (`spring/untrimmed-request-text`).
 
 `application*.properties` and `application*.yml` (`spring/<rule>`; test profiles, including the ones
 your tests activate with `@ActiveProfiles`, and local or dev ones where noted, are exempt):

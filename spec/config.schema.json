@@ -2133,6 +2133,7 @@
                             "spring/missing-enable",
                             "spring/datasource-without-timeout",
                             "spring/unbound-property",
+                            "spring/untrimmed-request-text",
                             "spring/ddl-auto",
                             "spring/risky-startup-flags",
                             "spring/actuator-exposure",

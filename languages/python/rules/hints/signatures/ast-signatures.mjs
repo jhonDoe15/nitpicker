@@ -60,6 +60,14 @@ export const SIGNATURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['untrimmed-request-text'],
+    describe: (subject) =>
+      `\`${subject}\` is request text that reaches a lookup without \`strip()\`, so a padded value finds nothing`,
+    allowed:
+      'Strip it before the lookup: `name = name.strip()`, or declare the request model with `model_config = ConfigDict(str_strip_whitespace=True)` (on a shared base model) or `StringConstraints(strip_whitespace=True)` on the field.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['parameter-mutation'],
     describe: mutationDescription,
     allowed:

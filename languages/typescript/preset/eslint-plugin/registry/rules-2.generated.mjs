@@ -10,6 +10,7 @@ import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordere
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mjs';
+import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mjs';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mjs';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
@@ -63,6 +64,7 @@ export const partRules = {
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
+  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
