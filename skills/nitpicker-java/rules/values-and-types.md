@@ -92,3 +92,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
+  `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
+  negative index or bound. Compare without adding (`width >= length - start`), widen first
+  (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.

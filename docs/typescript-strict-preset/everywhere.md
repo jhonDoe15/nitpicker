@@ -1460,3 +1460,8 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
+- The "no limit" integer overflow that the Java, Kotlin and Go presets report (`Integer.MAX_VALUE` plus an offset
+  becoming a negative index) has no counterpart in the TypeScript and JavaScript presets: numbers are doubles, so a
+  sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
+  sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
+  reported.
