@@ -37,7 +37,8 @@ export const withEntryExports: (config: KnipConfig) => KnipConfig = untypedWithE
 export const needsProductionRun: (packagesInfo: PackagesInfo, projectRoot: string) => boolean =
   untypedNeedsProductionRun;
 
-export const loadPackages: (projectRoot: string, layout: Layout) => PackagesInfo = untypedLoadPackages;
+export const loadPackages: (projectRoot: string, layout: Layout) => PackagesInfo =
+  untypedLoadPackages;
 
 export const testOnlyExportFindings: (run: {
   readonly normal: KnipReport;

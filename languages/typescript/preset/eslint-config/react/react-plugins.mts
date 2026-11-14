@@ -1,5 +1,4 @@
 import type { Rule } from 'eslint';
-import type { CallExpression, ImportDeclaration, MemberExpression, Node, Program } from 'estree';
 import accessibility from 'eslint-plugin-jsx-a11y-x';
 import hooks from 'eslint-plugin-react-hooks';
 import reactDom from 'eslint-plugin-react-dom';
@@ -19,6 +18,12 @@ import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { ruleNamed, withHint, withoutFixes } from '../typed/rule-views.mts';
 import { createdByCallOnly } from './rules/static-components.mts';
 import { outsideKeyAttributes } from './rules/purity-outside-keys.mts';
+
+type Node = MemberExpression['object'];
+type Program = Parameters<NonNullable<Rule.RuleListener['Program']>>[0];
+type CallExpression = Parameters<NonNullable<Rule.RuleListener['CallExpression']>>[0];
+type ImportDeclaration = Extract<Program['body'][number], { type: 'ImportDeclaration' }>;
+type MemberExpression = Extract<CallExpression['callee'], { type: 'MemberExpression' }>;
 
 type RuleTable = Readonly<Record<string, Rule.RuleModule>>;
 type Hints = Readonly<Record<string, string>>;

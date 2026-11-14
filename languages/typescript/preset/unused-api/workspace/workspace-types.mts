@@ -4,7 +4,7 @@ export type PackageEntry = {
   readonly manifest: unknown;
 };
 
-export type PublishableEntry = PackageEntry & { readonly published: boolean };
+type PublishableEntry = PackageEntry & { readonly published: boolean };
 
 export type PackagesInfo = {
   readonly packages: readonly PublishableEntry[];

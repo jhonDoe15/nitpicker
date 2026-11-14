@@ -126,7 +126,9 @@ describe('the enforcedBy column of every catalogued rule', () => {
         name: `${language} ${ruleId}`,
         enforced: RULES.find(({ id }) => id === ruleId).enforcedBy[language],
         emitted: emitters[language].get(ruleId).length > 0,
-        evidenceHeld: evidence.test(readFileSync(checkoutModulePath(path.join(repositoryRoot, file)), 'utf8')),
+        evidenceHeld: evidence.test(
+          readFileSync(checkoutModulePath(path.join(repositoryRoot, file)), 'utf8'),
+        ),
       })),
     );
     expect(documented.map(({ name, enforced }) => [name, enforced])).toEqual(

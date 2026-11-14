@@ -2,7 +2,7 @@ import type { Linter } from 'eslint';
 import {
   failureMessagesFor as untypedFailureMessagesFor,
   lintFixture as untypedLintFixture,
-} from '../../failure-messages/test-support/harness.mjs';
+} from '../../failure-messages/test-support/harness.mts';
 
 type Fixture = {
   readonly config: readonly object[];

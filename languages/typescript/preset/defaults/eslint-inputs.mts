@@ -1,15 +1,15 @@
 import type { ESLint, Linter } from 'eslint';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import { nitpickerRules as untypedNitpickerRules } from '../eslint-plugin/index.mjs';
-import { errorWrappingPolicy as untypedErrorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
-import { strictPresetConfig as untypedStrictPresetConfig } from '../eslint-config/strict.mjs';
+import { errorWrappingPolicy as untypedErrorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mts';
+import { strictPresetConfig as untypedStrictPresetConfig } from '../eslint-config/strict.mts';
 import {
   UNUSED_PARAMETERS as untypedUnusedParameters,
   usesRouteHandlerFramework as untypedUsesRouteHandlerFramework,
   productionLayoutConfigFor as untypedProductionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions as untypedApplyRuleExceptions } from '../eslint-config/exceptions.mjs';
-import { logicConfigFor as untypedLogicConfigFor } from '../eslint-config/logic/logic-rules.mjs';
+import { logicConfigFor as untypedLogicConfigFor } from '../eslint-config/logic/logic-rules.mts';
 import {
   applyJavascriptDialect as untypedApplyJavascriptDialect,
   scriptRuleEntries as untypedScriptRuleEntries,
@@ -22,24 +22,24 @@ import {
   analyzedProjectRoot as untypedAnalyzedProjectRoot,
   isReactProject as untypedIsReactProject,
   reactScopeConfigFor as untypedReactScopeConfigFor,
-} from '../eslint-config/react/react-scope.mjs';
-import { testHonestyConfigFor as untypedTestHonestyConfigFor } from '../eslint-config/test-honesty/index.mjs';
-import { setupFilesIn as untypedSetupFilesIn } from '../eslint-config/test-honesty/setup-files.mjs';
-import { stubRestoresIn as untypedStubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mjs';
+} from '../eslint-config/react/react-scope.mts';
+import { testHonestyConfigFor as untypedTestHonestyConfigFor } from '../eslint-config/test-honesty/index.mts';
+import { setupFilesIn as untypedSetupFilesIn } from '../eslint-config/test-honesty/setup-files.mts';
+import { stubRestoresIn as untypedStubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mts';
 import { readDependencyNames as untypedReadDependencyNames } from '../eslint-config/scope-support.mjs';
 import { securityFactsFor as untypedSecurityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds as untypedI18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import {
   i18nScopeConfigFor as untypedI18nScopeConfigFor,
   isI18nProject as untypedIsI18nProject,
-} from '../eslint-config/i18n/i18n-scope.mjs';
+} from '../eslint-config/i18n/i18n-scope.mts';
 import {
   isServerProject as untypedIsServerProject,
   serverScopeConfigFor as untypedServerScopeConfigFor,
-} from '../eslint-config/server/server-scope.mjs';
-import { serverRuleIds as untypedServerRuleIds } from '../eslint-config/server/server-rules.mjs';
+} from '../eslint-config/server/server-scope.mts';
+import { serverRuleIds as untypedServerRuleIds } from '../eslint-config/server/server-rules.mts';
 import { isNestProject as untypedIsNestProject } from '../eslint-config/nest/nest-project.mjs';
-import { nestScopeConfigFor as untypedNestScopeConfigFor } from '../eslint-config/nest/nest-scope.mjs';
+import { nestScopeConfigFor as untypedNestScopeConfigFor } from '../eslint-config/nest/nest-scope.mts';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,

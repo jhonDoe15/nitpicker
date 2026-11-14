@@ -1,6 +1,6 @@
 export type KnipCategory = 'exports' | 'types' | 'files';
 
-export type KnipEntry = { readonly name: string; readonly line?: number | undefined };
+type KnipEntry = { readonly name: string; readonly line?: number | undefined };
 
 export type KnipItem = {
   readonly file: string;
