@@ -40,10 +40,8 @@ type JacocoRun = {
 };
 
 const patternMatcher: (pattern: string) => { test(file: string): boolean } = globMatcher;
-const failedCases: (
-  report: string,
-  options: { readonly retriesPass: boolean },
-) => TestFailure[] = failedCaseEntries;
+const failedCases: (report: string, options: { readonly retriesPass: boolean }) => TestFailure[] =
+  failedCaseEntries;
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;

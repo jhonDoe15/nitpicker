@@ -358,7 +358,9 @@ describe('runJavacLint', () => {
     expect(
       warningHeaders(
         readFileSync(path.join(head, 'target/nitpicker', report), 'utf8').split('\n'),
-      ).map((header) => (/^(.+\.java):\d+: warning: \[(\w+)\]/u.exec(header) ?? []).slice(1).join(' ')),
+      ).map((header) =>
+        (/^(.+\.java):\d+: warning: \[(\w+)\]/u.exec(header) ?? []).slice(1).join(' '),
+      ),
     ).toEqual(names.map((rule) => `${file.replace('Holder', `${rule}Holder`)} ${rule}`).sort());
   });
 
