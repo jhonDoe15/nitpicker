@@ -35,7 +35,9 @@ function selectedConfigs(file) {
 }
 
 function configFiles(projectRoot, tsconfigFile, layout) {
-  if (layout.typescriptProject !== undefined) return selectedConfigs(tsconfigFile);
+  if (layout.typescriptProject !== undefined) {
+    return selectedConfigs(tsconfigFile);
+  }
   const files = projectFilesUnder(projectRoot, {
     skipDirectory: (_absolute, entry) => SKIPPED_DIRECTORIES.has(entry.name),
   }).map((file) => path.relative(projectRoot, file).split(path.sep).join('/'));
@@ -64,7 +66,9 @@ function configCoverage(file, typescript) {
 
 function checkedFiles({ projectRoot, tsconfigFile, layout }) {
   const files = layout.projectCodeFiles(projectRoot).filter((file) => JAVASCRIPT_FILE.test(file));
-  if (files.length === 0) return [];
+  if (files.length === 0) {
+    return [];
+  }
   const typescript = createRequire(import.meta.url)(selectTypeScriptApi().file);
   const configs = configFiles(projectRoot, tsconfigFile, layout)
     .map((file) => configCoverage(file, typescript))
@@ -82,12 +86,16 @@ export function untypedJavascriptConfig({
   layout,
   projectRoot = path.dirname(tsconfigFile),
 }) {
-  if (layout.javascript) return [];
+  if (layout.javascript) {
+    return [];
+  }
   const ignores =
     typeof layout.projectCodeFiles === 'function'
       ? checkedFiles({ projectRoot, tsconfigFile, layout })
       : undefined;
-  if (ignores === undefined && checksJavascript(tsconfigFile)) return [];
+  if (ignores === undefined && checksJavascript(tsconfigFile)) {
+    return [];
+  }
   return [
     {
       files: JAVASCRIPT_FILES,

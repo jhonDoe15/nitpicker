@@ -5,6 +5,7 @@ import {
   readJavaSource,
   sourceFilesUnder,
   withoutGenerics,
+  withoutNested,
 } from '../../review-rules/java-sources.mjs';
 
 const INHERITING_RULES = new Set([
@@ -46,16 +47,7 @@ export function prefixOf(text, index) {
 }
 
 function withoutArguments(text) {
-  let depth = 0;
-  return text
-    .split('')
-    .filter((character) => {
-      depth += character === '(' ? 1 : 0;
-      const kept = depth === 0;
-      depth -= character === ')' ? 1 : 0;
-      return kept && character !== ')';
-    })
-    .join('');
+  return withoutNested(text, '(', ')');
 }
 
 function supertypes(tail) {

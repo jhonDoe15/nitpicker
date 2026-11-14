@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parsedTsconfig } from '../../../preset/modules/tsconfig-files.mjs';
+import { hasProjectFile } from '../../../preset/test-runner/detect-runner.mjs';
 import { compareText } from '../../../../../shared/paths/path-order.mjs';
 import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 
@@ -126,17 +127,9 @@ function overlapsRoot(folder, roots) {
   });
 }
 
-function existsInside(base, name) {
-  const full = path.resolve(base, name);
-  if (!full.startsWith(`${base}${path.sep}`)) {
-    return false;
-  }
-  return existsSync(full);
-}
-
 function holdsRoot(projectRoot, folder, roots) {
   const base = path.join(projectRoot, folder);
-  return roots.some((root) => existsInside(base, root));
+  return roots.some((root) => hasProjectFile(base, root));
 }
 
 export function nestedPackageFolders(projectRoot, roots, configured = []) {

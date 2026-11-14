@@ -27,7 +27,9 @@ const ITERATION_METHODS = new Set([
 ]);
 
 function importedDefinition(sourceCode, definition, modules) {
-  if (definition.type === 'ImportBinding') return modules.has(definition.parent.source.value);
+  if (definition.type === 'ImportBinding') {
+    return modules.has(definition.parent.source.value);
+  }
   const init = definition.type === 'Variable' ? definition.node.init : undefined;
   return (
     init?.type === 'CallExpression' &&
@@ -39,10 +41,14 @@ function importedDefinition(sourceCode, definition, modules) {
 }
 
 function stableImportReference(reference) {
-  if (reference.isWrite()) return reference.init;
+  if (reference.isWrite()) {
+    return reference.init;
+  }
   const node = reference.identifier;
   const member = node.parent;
-  if (member.type !== 'MemberExpression' || member.object !== node) return false;
+  if (member.type !== 'MemberExpression' || member.object !== node) {
+    return false;
+  }
   const owner = member.parent;
   return (
     !(owner.type === 'AssignmentExpression' && owner.left === member) &&
@@ -54,7 +60,9 @@ function stableImportReference(reference) {
 function isModuleCall(scope, call, modules) {
   const callee = call.callee;
   const identifier = callee.type === 'Identifier' ? callee : callee.object;
-  if (identifier?.type !== 'Identifier') return false;
+  if (identifier?.type !== 'Identifier') {
+    return false;
+  }
   const variable = variableNamed(scope.sourceCode, identifier);
   return (
     variable?.defs.length === 1 &&
@@ -77,9 +85,15 @@ export function isPathBuilder(scope, call) {
 
 export function usesOrdinaryEncoding(call) {
   const option = call.arguments[1];
-  if (option === undefined) return true;
-  if (option.type === 'Literal') return UTF8_ENCODINGS.has(option.value);
-  if (option.type !== 'ObjectExpression') return false;
+  if (option === undefined) {
+    return true;
+  }
+  if (option.type === 'Literal') {
+    return UTF8_ENCODINGS.has(option.value);
+  }
+  if (option.type !== 'ObjectExpression') {
+    return false;
+  }
   return option.properties.every(
     (property) =>
       property.type === 'Property' &&
@@ -93,16 +107,24 @@ export function usesOrdinaryEncoding(call) {
 
 function safeMemberReference(member) {
   const owner = member.parent;
-  if (owner.type === 'AssignmentExpression' && owner.left === member) return false;
-  if (owner.type === 'UpdateExpression' || owner.type === 'UnaryExpression') return false;
-  if (owner.type !== 'CallExpression' || owner.callee !== member) return true;
+  if (owner.type === 'AssignmentExpression' && owner.left === member) {
+    return false;
+  }
+  if (owner.type === 'UpdateExpression' || owner.type === 'UnaryExpression') {
+    return false;
+  }
+  if (owner.type !== 'CallExpression' || owner.callee !== member) {
+    return true;
+  }
   const method = member.computed ? member.property.value : member.property.name;
   return ITERATION_METHODS.has(method);
 }
 
 export function hasUnsafeObjectReferences(variable) {
   return variable.references.some((reference) => {
-    if (reference.init) return false;
+    if (reference.init) {
+      return false;
+    }
     const node = reference.identifier;
     const parent = node.parent;
     if (parent.type === 'MemberExpression' && parent.object === node) {
@@ -113,10 +135,16 @@ export function hasUnsafeObjectReferences(variable) {
 }
 
 export function safeIterationCallback(sourceCode, callback) {
-  if (!['ArrowFunctionExpression', 'FunctionExpression'].includes(callback.type)) return false;
-  if (callback.params.length > 2) return false;
+  if (!['ArrowFunctionExpression', 'FunctionExpression'].includes(callback.type)) {
+    return false;
+  }
+  if (callback.params.length > 2) {
+    return false;
+  }
   return callback.params.every((identifier) => {
-    if (identifier.type !== 'Identifier') return false;
+    if (identifier.type !== 'Identifier') {
+      return false;
+    }
     const variable = variableNamed(sourceCode, identifier);
     return variable !== undefined && !hasUnsafeObjectReferences(variable);
   });

@@ -39,6 +39,7 @@ import {
   firstLine,
   missingEnvironmentHints,
   missingSetupHints,
+  mockPinHeadline,
   timeoutText,
   unhandledErrors,
   unhandledErrorText,
@@ -272,17 +273,6 @@ function failureText(
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
     ...missingEnvironmentHints(notLoaded(failures)),
   ].join('\n');
-}
-
-function mockPinHeadline(count: number, runnerName: string | undefined): string {
-  const verb = count === 1 ? 'test fails' : 'tests fail';
-  const setting = runnerName === RUNNER_NAMES.jest ? '`--restoreMocks`' : '`restoreMocks: true`';
-  return [
-    `${String(count)} ${verb} only because nitpicker pins ${setting} for the coverage run;`,
-    'the same tests pass without it, so coverage, CRAP and mutation were skipped.',
-    'Create the spy in `beforeEach` or inside the test instead of once in `beforeAll`',
-    'or a `describe` body, and rerun:',
-  ].join(' ');
 }
 
 function assertionName(assertion: AssertionResult): string {
