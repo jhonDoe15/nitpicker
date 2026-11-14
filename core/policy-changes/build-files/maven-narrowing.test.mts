@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between } from './test-support/policy-fixtures.mjs';
+import { between } from './test-support/policy-fixtures.mts';
 
 const CLASS = 'package a;\nclass A {}\n';
 const SOURCES = {
@@ -10,15 +10,16 @@ const SOURCES = {
 };
 const pom = (inner = '', build = '') =>
   `<project><modelVersion>4.0.0</modelVersion><groupId>g</groupId><artifactId>a</artifactId><version>1</version>${inner}<build>${build}</build></project>`;
-const files = (text) => ({ 'pom.xml': text, ...SOURCES });
-const plugin = (artifact, configuration) =>
+const files = (text: string) => ({ 'pom.xml': text, ...SOURCES });
+const plugin = (artifact: string, configuration: string) =>
   `<plugins><plugin><artifactId>${artifact}</artifactId><configuration>${configuration}</configuration></plugin></plugins>`;
-const surefire = (configuration) => plugin('maven-surefire-plugin', configuration);
-const failsafe = (configuration) => plugin('maven-failsafe-plugin', configuration);
-const profile = (activation, body) =>
+const surefire = (configuration: string) => plugin('maven-surefire-plugin', configuration);
+const failsafe = (configuration: string) => plugin('maven-failsafe-plugin', configuration);
+const profile = (activation: string, body: string) =>
   `<profiles><profile><id>p</id>${activation}${body}</profile></profiles>`;
 const ACTIVE = '<activation><activeByDefault>true</activeByDefault></activation>';
-const loosenedBy = (head) => between({ base: files(pom()), head: files(head) }).policyLoosenings;
+const loosenedBy = (head: string) =>
+  between({ base: files(pom()), head: files(head) }).policyLoosenings;
 
 describe('Maven settings that nitpicker does not run', () => {
   it.each([
@@ -55,7 +56,8 @@ describe('Maven settings that nitpicker does not run', () => {
 describe('Maven settings that leave checked code out', () => {
   it('counts a failsafe exclude, or a skipITs or skipTests property, against integration tests', () => {
     const bound = failsafe('');
-    const skipping = (name) => pom(`<properties><${name}>true</${name}></properties>`, bound);
+    const skipping = (name: string) =>
+      pom(`<properties><${name}>true</${name}></properties>`, bound);
 
     expect(
       loosenedBy(pom('', failsafe('<excludes><exclude>**/*IT.java</exclude></excludes>'))),
@@ -114,11 +116,11 @@ describe('Maven settings that leave checked code out', () => {
   });
 
   it('counts an exclude in parent pluginManagement against the module roots under it', () => {
-    const parent = (management) =>
+    const parent = (management: string) =>
       `<project><modelVersion>4.0.0</modelVersion><groupId>g</groupId><artifactId>p</artifactId><version>1</version><packaging>pom</packaging><modules><module>core</module></modules><build><pluginManagement>${management}</pluginManagement></build></project>`;
     const child =
       '<project><modelVersion>4.0.0</modelVersion><parent><groupId>g</groupId><artifactId>p</artifactId><version>1</version></parent><artifactId>core</artifactId></project>';
-    const tree = (management) => ({
+    const tree = (management: string) => ({
       'pom.xml': parent(management),
       'core/pom.xml': child,
       'core/src/main/java/a/A.java': CLASS,

@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mts';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 
 describe('what an edit of the Stryker config changes', () => {
   const NONE = { policyLoosenings: [], policyChanges: [] };
   const OPTED_IN = { tools: { stryker: PROJECT } };
-  const strykerAt = (file, config) => ({
+  const strykerAt = (file: string, config: unknown) => ({
     [file]: JSON.stringify(config),
     'src/a.ts': 'export const a = 1;\n',
   });
-  const at = (config) => strykerAt('stryker.config.json', config);
-  const excluding = (...names) => ({ mutator: { excludedMutations: names } });
+  const at = (config: unknown) => strykerAt('stryker.config.json', config);
+  const excluding = (...names: string[]) => ({ mutator: { excludedMutations: names } });
 
   it.each([undefined, 'javascript'])(
     'lists a loosened exclusion list with the %s preset',
@@ -27,14 +27,17 @@ describe('what an edit of the Stryker config changes', () => {
         'stryker stryker.config.json mutator.excludedMutations: [] -> ["StringLiteral"]',
       ]);
       expect(
-        between({ base: at(excluding()), head: at(excluding('StringLiteral')), config: { preset } })
-          .policyLoosenings,
+        between({
+          base: at(excluding()),
+          head: at(excluding('StringLiteral')),
+          config: { preset },
+        }).policyLoosenings,
       ).toEqual([]);
     },
   );
 
   it('follows the values a config imports, not its text', () => {
-    const module = (list) => ({
+    const module = (list: string[]) => ({
       'stryker.config.mjs':
         "import excluded from './excluded.mjs';\nexport default { mutator: { excludedMutations: excluded } };\n",
       'excluded.mjs': `export default ${JSON.stringify(list)};\n`,

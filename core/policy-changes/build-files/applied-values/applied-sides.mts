@@ -1,22 +1,23 @@
-import { readRealInside } from '../../../../shared/conventions/read-inside.mjs';
-import { JSCPD_PROJECT_FILE } from '../../../../shared/conventions/tool-precedence.mjs';
-import { appliedJscpdConfig } from '../../../tooling/jscpd/config.mjs';
-import { appliedStrykerConfig } from '../../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
-import { appliedTypescriptOptions } from '../../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
 import {
-  TESTS_TOOL,
+  appliedJscpdConfig,
   appliedRunnerRetry,
-} from '../../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
-import { resolveLayoutFor } from '../../../../languages/typescript/preset/layout.mjs';
+  appliedStrykerConfig,
+  appliedTypescriptOptions,
+  JSCPD_PROJECT_FILE,
+  readRealInside,
+  TESTS_TOOL,
+} from '../../types/tool-views.mts';
+import { resolveLayoutFor } from '../../types/typed-views.mts';
+import type { AppliedSide, AppliedValues, ProjectSide } from '../../types/policy-types.mts';
 
-function jscpdSide(side, optedIn) {
+function jscpdSide(side: ProjectSide, optedIn: boolean): AppliedSide {
   const content = optedIn ? readRealInside(side.root, JSCPD_PROJECT_FILE) : undefined;
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
 }
 
-function strykerSide(side, optedIn) {
+function strykerSide(side: ProjectSide, optedIn: boolean): AppliedSide {
   try {
     const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
     return { kind: 'applied', config: values, files: file === undefined ? [] : [file] };
@@ -25,7 +26,7 @@ function strykerSide(side, optedIn) {
   }
 }
 
-function typescriptSide(side, optedIn) {
+function typescriptSide(side: ProjectSide, optedIn: boolean): AppliedSide {
   try {
     return optedIn
       ? { kind: 'applied', ...appliedTypescriptOptions(side.root, resolveLayoutFor(side.config)) }
@@ -35,7 +36,7 @@ function typescriptSide(side, optedIn) {
   }
 }
 
-function testsSide(side, optedIn) {
+function testsSide(side: ProjectSide, optedIn: boolean): AppliedSide {
   if (!optedIn) {
     return { kind: 'rejected' };
   }
@@ -47,28 +48,34 @@ function testsSide(side, optedIn) {
   }
 }
 
-const APPLIED_SIDES = new Map([
+const APPLIED_SIDES = new Map<string, (side: ProjectSide, optedIn: boolean) => AppliedSide>([
   ['jscpd', jscpdSide],
   ['stryker', strykerSide],
   ['typescript', typescriptSide],
   [TESTS_TOOL, testsSide],
 ]);
 
-export function appliedConfigs(tool, { base, head, baseOptedIn }) {
+export function appliedConfigs(
+  tool: string,
+  { base, head, baseOptedIn }: { base: ProjectSide; head: ProjectSide; baseOptedIn: boolean },
+): { applied?: AppliedValues } {
   const read = APPLIED_SIDES.get(tool);
   if (read === undefined) {
     return {};
   }
   const sides = [read(base, baseOptedIn), read(head, true)];
-  if (!sides.every(({ kind }) => kind === 'applied')) {
+  const [before, after] = sides;
+  if (before?.kind !== 'applied' || after?.kind !== 'applied') {
     return {};
   }
   return {
     applied: {
-      base: sides[0].config,
-      head: sides[1].config,
-      file: sides[1].file,
-      files: [...new Set(sides.flatMap(({ files = [] }) => files))],
+      base: before.config,
+      head: after.config,
+      file: after.file,
+      files: [
+        ...new Set(sides.flatMap((side) => (side.kind === 'applied' ? (side.files ?? []) : []))),
+      ],
     },
   };
 }

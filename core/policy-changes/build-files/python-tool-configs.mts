@@ -1,62 +1,75 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { readInside } from '../../../shared/conventions/read-inside.mjs';
-import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
-import { parseIni } from '../../../languages/python/adapters/configuration/ini-parser.mjs';
 import {
   blackConfigFiles,
-  ruffConfigFiles,
-} from '../../../languages/python/adapters/formatting/project-format-config.mjs';
-import { readProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
-import { readCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mjs';
-import { readMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mjs';
-import { readMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mjs';
-import {
-  attempt,
+  parseIni,
+  parseJsonc,
   parseToml,
-} from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+  readCoverageSettings,
+  readMutmutConfig,
+  readMypyConfig,
+  readProjectPyright,
+  ruffConfigFiles,
+} from '../types/python-views.mts';
+import type { RuntimeConfig } from '../types/python-views.mts';
+import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
+import { attempt, readInside } from '../types/tool-views.mts';
 
-export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage'];
+type ConfigRead =
+  | { readonly kind: 'read'; readonly part: unknown }
+  | { readonly kind: 'unreadable'; readonly error: unknown };
+type SharedSection = {
+  readonly matches: (name: string) => boolean;
+  readonly required: (names: readonly string[]) => boolean;
+};
+
+const BLACK = 'black';
+const PYRIGHT = 'pyright';
+const MUTMUT = 'mutmut';
+export const PYTHON_TOOLS = ['ruff', BLACK, PYRIGHT, 'mypy', MUTMUT, 'coverage'];
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
 const TOX_INI = 'tox.ini';
 const COVERAGERC = '.coveragerc';
 const MYPY_FILES = ['mypy.ini', '.mypy.ini'];
-const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
+const PYRIGHT_CHECKERS = [PYRIGHT, 'basedpyright'];
 const MYPY_SECTION = /^mypy(?:-|$)/u;
-const TOML_TABLES = {
+const TOML_TABLES: Readonly<Record<string, readonly string[]>> = {
   ruff: ['ruff'],
-  black: ['black'],
-  pyright: ['pyright', 'basedpyright'],
+  black: [BLACK],
+  pyright: [PYRIGHT, 'basedpyright'],
   mypy: ['mypy'],
-  mutmut: ['mutmut'],
+  mutmut: [MUTMUT],
   coverage: ['coverage'],
 };
-const SHARED_INI_SECTIONS = {
+const SHARED_INI_SECTIONS: Readonly<Record<string, SharedSection>> = {
   mypy: { matches: (name) => MYPY_SECTION.test(name), required: (names) => names.includes('mypy') },
-  mutmut: { matches: (name) => name === 'mutmut', required: (names) => names.includes('mutmut') },
+  mutmut: { matches: (name) => name === MUTMUT, required: (names) => names.includes(MUTMUT) },
   coverage: {
     matches: (name) => name.startsWith('coverage:'),
     required: (names) => names.length > 0,
   },
 };
-const RUNTIME_READERS = {
+const RUNTIME_READERS: Readonly<Record<string, (root: string) => RuntimeConfig | undefined>> = {
   mypy: readMypyConfig,
   mutmut: readMutmutConfig,
   coverage: readCoverageSettings,
 };
 
-function sortedKeys(_key, value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
+function sortedKeys(_key: string, value: unknown): unknown {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? Object.fromEntries(
         Object.keys(value)
           .toSorted()
-          .map((key) => [key, value[key]]),
+          .map((key) => [key, fieldOf(value, key)]),
       )
     : value;
 }
 
-function iniSections(text, matches) {
+function iniSections(
+  text: string,
+  matches: (name: string) => boolean,
+): Record<string, Record<string, string>> {
   return Object.fromEntries(
     [...parseIni(text)]
       .filter(([name]) => matches(name))
@@ -64,21 +77,24 @@ function iniSections(text, matches) {
   );
 }
 
-function pyprojectPart(tool, text) {
-  const tables = parseToml(text).tool ?? {};
-  const kept = TOML_TABLES[tool].filter((name) => tables[name] !== undefined);
+function pyprojectPart(tool: string, text: string): Record<string, unknown> | undefined {
+  const tables = fieldsOf(fieldOf(parseToml(text), 'tool'));
+  const kept = (TOML_TABLES[tool] ?? []).filter((name) => tables[name] !== undefined);
   return kept.length === 0
     ? undefined
     : Object.fromEntries(kept.map((name) => [name, tables[name]]));
 }
 
-function sharedIniPart(tool, text) {
+function sharedIniPart(
+  tool: string,
+  text: string,
+): Record<string, Record<string, string>> | undefined {
   const shared = SHARED_INI_SECTIONS[tool];
   const sections = shared === undefined ? {} : iniSections(text, shared.matches);
   return shared?.required(Object.keys(sections)) === true ? sections : undefined;
 }
 
-function relevantPart(tool, file, text) {
+function relevantPart(tool: string, file: string, text: string): unknown {
   const name = path.posix.basename(file);
   if (name === PYPROJECT) {
     return pyprojectPart(tool, text);
@@ -95,7 +111,7 @@ function relevantPart(tool, file, text) {
   return name.endsWith('.json') ? parseJsonc(text) : parseToml(text);
 }
 
-function readPart(tool, file, text) {
+function readPart(tool: string, file: string, text: string): ConfigRead {
   try {
     return { kind: 'read', part: relevantPart(tool, file, text) };
   } catch (error) {
@@ -103,7 +119,7 @@ function readPart(tool, file, text) {
   }
 }
 
-function pythonConfigText(tool, file, text) {
+function pythonConfigText(tool: string, file: string, text: string): string | undefined {
   const read = readPart(tool, file, text);
   if (read.kind === 'unreadable') {
     return text;
@@ -111,7 +127,7 @@ function pythonConfigText(tool, file, text) {
   return read.part === undefined ? undefined : JSON.stringify(read.part, sortedKeys);
 }
 
-function checkoutOf(root) {
+function checkoutOf(root: string): string {
   const start = path.resolve(root);
   const parts = start.split(path.sep);
   const found = parts
@@ -120,24 +136,25 @@ function checkoutOf(root) {
   return found ?? start;
 }
 
-function labelsOf(checkout, files) {
+function labelsOf(checkout: string, files: readonly string[]): string[] {
   return files.map((file) => path.relative(checkout, file).split(path.sep).join('/'));
 }
 
-function readFile(tool, root) {
-  const { value, error } = attempt(() => RUNTIME_READERS[tool](root));
-  const file = value?.file ?? error?.file;
+function readFile(tool: string, root: string): string[] {
+  const { value, error } = attempt(() => RUNTIME_READERS[tool]?.(root));
+  const errorFile = fieldOf(error, 'file');
+  const file = value?.file ?? (typeof errorFile === 'string' ? errorFile : undefined);
   return file === undefined ? [] : [path.join(root, file)];
 }
 
-function candidatesOf(tool, root) {
+function candidatesOf(tool: string, root: string): readonly string[] {
   if (tool === 'ruff') {
     return ruffConfigFiles(root);
   }
-  if (tool === 'black') {
+  if (tool === BLACK) {
     return blackConfigFiles(root);
   }
-  if (tool === 'pyright') {
+  if (tool === PYRIGHT) {
     const files = PYRIGHT_CHECKERS.flatMap(
       (checker) => readProjectPyright(root, checker, { upward: true })?.files ?? [],
     );
@@ -146,11 +163,14 @@ function candidatesOf(tool, root) {
   return readFile(tool, root);
 }
 
-export function pythonConfigEntries(tool, root) {
+export function pythonConfigEntries(
+  tool: string,
+  root: string,
+): { file: string; text: string; content: string }[] {
   const checkout = checkoutOf(root);
   return labelsOf(checkout, candidatesOf(tool, root)).flatMap((file) => {
     const content = readInside(checkout, file, 'utf8');
     const text = content === undefined ? undefined : pythonConfigText(tool, file, content);
-    return text === undefined ? [] : [{ file, text, content }];
+    return content === undefined || text === undefined ? [] : [{ file, text, content }];
   });
 }

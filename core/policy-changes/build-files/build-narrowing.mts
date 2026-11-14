@@ -1,11 +1,19 @@
-import { listed } from '../paths/hidden-code.mjs';
-import { isUnder } from '../policy-scope.mjs';
+import { listed } from '../paths/hidden-code.mts';
+import { isUnder } from '../policy-scope.mts';
+import type {
+  BuildSource,
+  ChangePart,
+  ExcludesSource,
+  IncludesSource,
+  PolicyScope,
+  RootsSource,
+} from '../types/policy-types.mts';
 
 const LISTED_FILES = 3;
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 const NOTHING_LEFT_OUT = 'leaves out no checked file it did not leave out before';
 
-function within(entry, file) {
+function within(entry: RootsSource, file: string): boolean {
   if (entry.roots === undefined) {
     return true;
   }
@@ -13,11 +21,15 @@ function within(entry, file) {
   return entry.roots.some((root) => contains(file, root));
 }
 
-function lostText(label, lost, limit) {
+function lostText(label: string, lost: readonly string[], limit: number): string {
   return `${label} no longer includes checked code: ${listed(lost, limit)}`;
 }
 
-function rootsChange(base, head, { scope, headEntries }) {
+function rootsChange(
+  base: RootsSource,
+  head: RootsSource | undefined,
+  { scope, headEntries }: { scope: PolicyScope; headEntries: readonly BuildSource[] },
+): ChangePart {
   const headRoots = headEntries.filter((entry) => entry.type === 'roots');
   const applies = head?.applies ?? base.applies ?? (() => true);
   const lost = scope.keptCode.filter(
@@ -29,7 +41,17 @@ function rootsChange(base, head, { scope, headEntries }) {
   return lostChange({ label: base.label, file: (head ?? base).file, lost, kind: base.kind });
 }
 
-function lostChange({ label, file, lost, kind = 'build-roots' }) {
+function lostChange({
+  label,
+  file,
+  lost,
+  kind = 'build-roots',
+}: {
+  label: string;
+  file: string;
+  lost: readonly string[];
+  kind?: string | undefined;
+}): ChangePart {
   if (lost.length === 0) {
     return { loosened: [], changed: [] };
   }
@@ -46,15 +68,19 @@ function lostChange({ label, file, lost, kind = 'build-roots' }) {
   };
 }
 
-function admitted(entry, file) {
+function admitted(entry: IncludesSource | undefined, file: string): boolean {
   return entry === undefined || entry.patterns.some((pattern) => entry.admits(file, pattern));
 }
 
-function includesChange(base, head, scope) {
+function includesChange(
+  base: IncludesSource | undefined,
+  head: IncludesSource | undefined,
+  scope: PolicyScope,
+): ChangePart {
   const before = base?.patterns ?? [];
   const added = (head?.patterns ?? []).filter((pattern) => !before.includes(pattern));
   const removed = before.filter((pattern) => !(head?.patterns ?? []).includes(pattern));
-  const removedText = removed.map((pattern) => `${base.label} removed: ${pattern}`);
+  const removedText = removed.map((pattern) => `${base?.label ?? ''} removed: ${pattern}`);
   if (head === undefined) {
     return { loosened: [], changed: removedText };
   }
@@ -81,12 +107,17 @@ function includesChange(base, head, scope) {
   };
 }
 
-function excludesChange(base, head, scope) {
+function excludesChange(
+  base: ExcludesSource | undefined,
+  head: ExcludesSource,
+  scope: PolicyScope,
+): ChangePart {
   const before = base?.patterns ?? [];
   const added = head.patterns.filter((pattern) => !before.includes(pattern));
   const outcomes = added.map((pattern) => {
     const covered = scope.keptCode.filter(
-      (file) => head.covers(file, pattern) && !before.some((known) => base.covers(file, known)),
+      (file) =>
+        head.covers(file, pattern) && !before.some((known) => base?.covers(file, known) === true),
     );
     return { pattern, covered };
   });
@@ -109,21 +140,38 @@ function excludesChange(base, head, scope) {
   };
 }
 
-function entryChange({ base, head, headEntries, scope }) {
+function entryChange({
+  base,
+  head,
+  headEntries,
+  scope,
+}: {
+  base: BuildSource | undefined;
+  head: BuildSource | undefined;
+  headEntries: readonly BuildSource[];
+  scope: PolicyScope;
+}): ChangePart {
   if (base?.type === 'roots') {
-    return rootsChange(base, head, { scope, headEntries });
+    return rootsChange(base, head?.type === 'roots' ? head : undefined, { scope, headEntries });
   }
   if (head?.type === 'excludes') {
-    return excludesChange(base, head, scope);
+    return excludesChange(base?.type === 'excludes' ? base : undefined, head, scope);
   }
   if (head?.type === 'includes' || base?.type === 'includes') {
-    return includesChange(base, head, scope);
+    return includesChange(
+      base?.type === 'includes' ? base : undefined,
+      head?.type === 'includes' ? head : undefined,
+      scope,
+    );
   }
   const removed = base?.type === 'excludes' ? base.patterns : [];
-  return { loosened: [], changed: removed.map((pattern) => `${base.label} removed: ${pattern}`) };
+  return {
+    loosened: [],
+    changed: removed.map((pattern) => `${base?.label ?? ''} removed: ${pattern}`),
+  };
 }
 
-export function buildNarrowingChanges(scope) {
+export function buildNarrowingChanges(scope: PolicyScope): ChangePart[] {
   const { base = [], head = [] } = scope.buildSources ?? {};
   const baseByKey = new Map(base.map((entry) => [entry.key, entry]));
   const headByKey = new Map(head.map((entry) => [entry.key, entry]));

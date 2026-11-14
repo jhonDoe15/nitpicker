@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from '../test-support/policy-fixtures.mjs';
+import type { PolicyConfig } from '../../types/policy-types.mts';
+import { between, changesOf } from '../test-support/policy-fixtures.mts';
+
+type Files = Record<string, string>;
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 
 describe('python tool configs the project opted into', () => {
-  const python = (...tools) => ({
+  const python = (...tools: string[]) => ({
     preset: 'python',
     tools: Object.fromEntries(tools.map((tool) => [tool, PROJECT])),
   });
   const SOURCE = { 'src/shop/__init__.py': '' };
-  const loosenings = (base, head, config) =>
+  const loosenings = (base: Files, head: Files, config: PolicyConfig) =>
     between({ base: { ...SOURCE, ...base }, head: { ...SOURCE, ...head }, config })
       .policyLoosenings;
   const PYPROJECT = [
@@ -36,7 +39,9 @@ describe('python tool configs the project opted into', () => {
 
   it('counts an edit of each opted-in table of pyproject.toml, and only that table', () => {
     const base = { 'pyproject.toml': PYPROJECT };
-    const edited = (from, to) => ({ 'pyproject.toml': PYPROJECT.replace(from, to) });
+    const edited = (from: string, to: string) => ({
+      'pyproject.toml': PYPROJECT.replace(from, to),
+    });
 
     expect(loosenings(base, edited('name = "shop"', 'name = "store"'), ALL)).toEqual([]);
     expect(loosenings(base, edited('["E", "F"]', '["F"]'), ALL)).toEqual([
@@ -105,13 +110,13 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('labels a config above a subfolder project by its repository path', () => {
-    const at = (lineLength) => ({
-      'ruff.toml': `line-length = ${lineLength}\n`,
+    const at = (lineLength: number) => ({
+      'ruff.toml': `line-length = ${String(lineLength)}\n`,
       'packages/api/src/shop/__init__.py': '',
       'packages/api/pyproject.toml':
         '[tool.poetry]\nname = "api"\n\n[tool.black]\nline-length = 90\n',
     });
-    const change = (head) =>
+    const change = (head: Files) =>
       between({ base: at(100), head, config: python('ruff', 'black'), folder: 'packages/api' });
 
     expect(change(at(100)).policyLoosenings).toEqual([]);
@@ -129,7 +134,7 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('follows the ruff config ruff reads, with its extend chain', () => {
-    const at = (shared, pyproject = '[tool.ruff]\nline-length = 90\n') => ({
+    const at = (shared: string, pyproject = '[tool.ruff]\nline-length = 90\n') => ({
       'pyproject.toml': pyproject,
       'ruff.toml': 'extend = "config/shared.toml"\n[lint]\nselect = ["F"]\n',
       'config/shared.toml': shared,
@@ -158,7 +163,10 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('reads pyrightconfig.json as JSON with comments and follows its extends', () => {
-    const at = (own, shared) => ({ 'pyrightconfig.json': own, 'config/base.json': shared });
+    const at = (own: string, shared: string) => ({
+      'pyrightconfig.json': own,
+      'config/base.json': shared,
+    });
     const own = '{\n  // shared\n  "extends": "config/base.json",\n  "strict": ["src"],\n}\n';
     const base = at(own, '{"reportMissingImports": "error"}');
     const recommented = at(
@@ -173,8 +181,8 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('reads only the mypy sections of setup.cfg, and only the file mypy reads', () => {
-    const cfg = (flake8, legacy) => ({
-      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[mypy]\nstrict = True\n\n[mypy-shop.legacy]\nignore_errors = ${legacy}\n`,
+    const cfg = (flake8: number, legacy: string) => ({
+      'setup.cfg': `[flake8]\nmax-line-length = ${String(flake8)}\n\n[mypy]\nstrict = True\n\n[mypy-shop.legacy]\nignore_errors = ${legacy}\n`,
     });
     const config = python('mypy');
 
@@ -192,7 +200,7 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('reads the [mutmut] section of setup.cfg when pyproject.toml has no [tool.mutmut]', () => {
-    const at = (mutmut) => ({
+    const at = (mutmut: string) => ({
       'pyproject.toml': '[tool.poetry]\nname = "shop"\n',
       'setup.cfg': `[metadata]\nname = shop\n\n[mutmut]\npaths_to_mutate = ${mutmut}\n`,
     });
@@ -203,8 +211,8 @@ describe('python tool configs the project opted into', () => {
   });
 
   it('reads the coverage sections of the file coverage reads', () => {
-    const cfg = (flake8, excluded) => ({
-      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[coverage:report]\nexclude_also =\n    ${excluded}\n`,
+    const cfg = (flake8: number, excluded: string) => ({
+      'setup.cfg': `[flake8]\nmax-line-length = ${String(flake8)}\n\n[coverage:report]\nexclude_also =\n    ${excluded}\n`,
       'pyproject.toml': '[tool.coverage.report]\nexclude_also = ["unused"]\n',
     });
     const config = python('coverage');
@@ -240,8 +248,14 @@ describe('import-linter contracts the gate runs', () => {
     ...SOURCE,
     '.importlinter': `[importlinter]\nroot_package = shop\n${session}\n[importlinter:contract:layers]\nname = Layers\ntype = layers\nlayers =\n    ${layers}\n${extra}`,
   });
-  const changes = (base, head, { config = PYTHON, baseConfig = config } = {}) =>
-    changesOf(between({ base, head, config, baseConfig }));
+  const changes = (
+    base: Files,
+    head: Files,
+    {
+      config = PYTHON,
+      baseConfig = config,
+    }: { config?: PolicyConfig; baseConfig?: PolicyConfig } = {},
+  ) => changesOf(between({ base, head, config, baseConfig }));
   const FORBIDDEN =
     '\n[importlinter:contract:pure]\nname = Pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.db\n';
 
@@ -273,7 +287,7 @@ describe('import-linter contracts the gate runs', () => {
   });
 
   it('fails an added ignored import, a narrowed module list and a relaxed alert', () => {
-    const tweak = (from, to) => contracts({ extra: FORBIDDEN.replace(from, to) });
+    const tweak = (from: string, to: string) => contracts({ extra: FORBIDDEN.replace(from, to) });
     const base = contracts({ extra: FORBIDDEN });
 
     expect(
@@ -308,11 +322,11 @@ describe('import-linter contracts the gate runs', () => {
   });
 
   it('fails a deleted file, a dropped table and a renamed section', () => {
-    const pyproject = (table) => ({
+    const pyproject = (table: string) => ({
       ...SOURCE,
       'pyproject.toml': `[tool.poetry]\nname = "shop"\n\n[${table}]\nroot_package = "shop"\n`,
     });
-    const setupCfg = (section) => ({
+    const setupCfg = (section: string) => ({
       ...SOURCE,
       'setup.cfg': `[metadata]\nname = shop\n\n[${section}]\nroot_package = shop\n`,
     });

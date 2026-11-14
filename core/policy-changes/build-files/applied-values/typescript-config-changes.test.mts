@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from '../test-support/policy-fixtures.mjs';
+import { between, changesOf } from '../test-support/policy-fixtures.mts';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 const NONE = { policyLoosenings: [], policyChanges: [] };
-const options = (compilerOptions) => `${JSON.stringify({ compilerOptions })}\n`;
+const options = (compilerOptions: Record<string, unknown>) =>
+  `${JSON.stringify({ compilerOptions })}\n`;
 const STRICT = options({ strict: true, noUncheckedIndexedAccess: true });
 const RELAXED = options({ strict: true, noUncheckedIndexedAccess: false });
 const STRICT_OPTION = '{ "noUncheckedIndexedAccess": true }';
 const RELAXED_OPTION = '{ "noUncheckedIndexedAccess": false }';
 const PRESETS = [undefined, 'javascript'];
 
-const at = (base, extra = {}) => ({
+const at = (base: string, extra: Record<string, string> = {}) => ({
   'tsconfig.json': '{ "extends": "./config/tsconfig.base.json", "include": ["src"] }\n',
   'config/tsconfig.base.json': base,
   'src/a.ts': 'export const a = 1;\n',
@@ -106,7 +107,7 @@ describe('the TypeScript compiler options the project opted into', () => {
 
   it('follows the config a solution tsconfig picks, and the solution itself', () => {
     const config = { tools: { typescript: PROJECT } };
-    const project = (picked) => ({
+    const project = (picked: string) => ({
       'tsconfig.json': JSON.stringify({ files: [], references: [{ path: picked }] }),
       'tsconfig.app.json': `{ "include": ["src"], "compilerOptions": ${RELAXED_OPTION} }`,
       'tsconfig.web.json': `{ "include": ["src"], "compilerOptions": ${STRICT_OPTION} }`,
@@ -126,7 +127,7 @@ describe('the TypeScript compiler options the project opted into', () => {
   });
 
   it('follows a file the config extends above the project root', () => {
-    const monorepo = (base) => ({
+    const monorepo = (base: string) => ({
       'tsconfig.base.json': base,
       'packages/app/tsconfig.json': '{ "extends": "../../tsconfig.base.json", "include": ["src"] }',
       'packages/app/src/a.ts': 'export const a = 1;\n',
@@ -148,7 +149,7 @@ describe('the TypeScript compiler options the project opted into', () => {
     'follows a package the config extends by name (%s)',
     (specifier) => {
       const config = { tools: { typescript: PROJECT } };
-      const withPackage = (compilerOptions) => ({
+      const withPackage = (compilerOptions: string) => ({
         'tsconfig.json': JSON.stringify({ extends: specifier, include: ['src'] }),
         'node_modules/@org/cfg/package.json': '{ "name": "@org/cfg", "main": "index.js" }',
         'node_modules/@org/cfg/tsconfig.json': compilerOptions,
