@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester, type TypedRuleTester } from '../../../test-support/rule-tester.mts';
 
 const LIBRARIES = {
   'node_modules/@prisma/client/index.d.ts': "export * from '.prisma/client';\n",
@@ -102,18 +102,25 @@ const TSCONFIG = {
   include: ['src'],
 };
 
-export function typedProject(prefix) {
+type TypedProject = {
+  root: string;
+  write: (relative: string, content: string) => string;
+  tester: TypedRuleTester;
+  folder: (prefix: string) => string;
+};
+
+export function typedProject(prefix: string): TypedProject {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   });
-  const folders = new Map();
-  function folder(prefix) {
+  const folders = new Map<string, number>();
+  function folder(prefix: string) {
     const next = (folders.get(prefix) ?? 0) + 1;
     folders.set(prefix, next);
     return `${prefix}${String(next)}`;
   }
-  function write(relative, content) {
+  function write(relative: string, content: string) {
     const file = path.resolve(root, relative);
     if (!file.startsWith(`${root}${path.sep}`)) {
       throw new Error(`${relative} is outside ${root}`);
@@ -148,7 +155,9 @@ const CUSTOM_PRISMA = {
   ].join('\n'),
 };
 
-export function writeCustomPrismaClient(write) {
+export function writeCustomPrismaClient(
+  write: (relative: string, content: string) => string,
+): string {
   for (const [relative, content] of Object.entries(CUSTOM_PRISMA)) {
     write(relative, content);
   }

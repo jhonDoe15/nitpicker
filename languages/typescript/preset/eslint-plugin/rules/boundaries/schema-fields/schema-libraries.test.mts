@@ -1,37 +1,25 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import { VALIDATION_LIBRARIES } from '../../../../libraries/validation-libraries.mjs';
 import { rule } from '../no-unvalidated-schema-field.mjs';
 import { SCHEMA_FORMS } from './schema-forms.mjs';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const tester = new RuleTester({
+const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const fieldError = (id, factory) => ({
+const forms: Record<keyof typeof SCHEMA_FORMS, { allowed: string; example: string }> = SCHEMA_FORMS;
+
+const fieldError = (id: keyof typeof SCHEMA_FORMS, factory: string) => ({
   messageId: 'unvalidatedField',
-  data: { factory, example: SCHEMA_FORMS[id].example },
+  data: { factory, example: forms[id].example },
 });
 const loose = { messageId: 'looseObject' };
 
 describe('the library catalog', () => {
   it('has schema forms for every validation library except the decorator and type ones', () => {
-    const ids = VALIDATION_LIBRARIES.map(({ id }) => id);
+    const ids = VALIDATION_LIBRARIES.map(({ id }: { id: string }) => id);
     expect(ids.filter((id) => !(id in SCHEMA_FORMS))).toEqual(['class-validator', 'typia']);
   });
 });
