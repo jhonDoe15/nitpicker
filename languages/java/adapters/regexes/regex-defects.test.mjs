@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { javaStringLiteral, withRegexDefects } from './regex-defects.mjs';
+import { adviceProblems } from '../../../../shared/messages/advice/finding-advice.mjs';
+import { routeFields } from '../../../../shared/messages/exception-sentence.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-regex-'));
 afterAll(() => {
@@ -97,6 +99,35 @@ describe('Java regex pattern defects', () => {
     ['a split limit', '  String[] s(String s) { return s.split("[ab]", 2); }'],
   ])('leaves %s alone', (_name, line) => {
     expect(candidates(line)).toEqual([]);
+  });
+
+  it('keeps the exception sentence and fields of a routed PMD finding', () => {
+    writeFileSync(
+      path.join(root, 'Charset.java'),
+      'class Charset {\n  Pattern P = Pattern.compile("(?i)\\\\bcharset=\\\\s*(?:[\\"\'])?x");\n}\n',
+    );
+    const route =
+      'If this is intended, add {"rule":"pmd/RegexPartDefect","paths":["Charset.java"],"reason":"..."} ' +
+      'to "exceptions" in nitpicker.config.json.';
+    const message = `PMD message. ${route}`;
+    const finding = {
+      tool: 'pmd',
+      rule: 'RegexPartDefect',
+      path: 'Charset.java',
+      identity: 'x',
+      message,
+      location: { line: 2, column: 29 },
+      ...routeFields(message),
+    };
+
+    const [defect] = withRegexDefects([finding], root);
+
+    expect([defect.message, adviceProblems(defect)]).toEqual([
+      'Unexpected unnecessary non-capturing group. This group can be removed without changing the behaviour ' +
+        `of the regex. Write the simpler form: it matches the same text. ${route}`,
+      [],
+    ]);
+    expect(routeFields(defect.message)).toEqual(routeFields(message));
   });
 
   it('keeps findings of other rules', () => {

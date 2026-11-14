@@ -40,7 +40,7 @@ public class Notifications {
     task.run();
   }
 
-  public void passedOn(String order, boolean urgent) {
+  public void passedOn(String order, boolean urgent) { // violation: ForwardingMethodAlias
     send(order, urgent);
   }
 
@@ -68,7 +68,7 @@ public class Notifications {
     return notifications;
   }
 
-  public void boxed(Boolean urgent) {
+  public void boxed(Boolean urgent) { // violation: TriStateBoolean
     if (urgent) {
       sent.add("urgent");
     }

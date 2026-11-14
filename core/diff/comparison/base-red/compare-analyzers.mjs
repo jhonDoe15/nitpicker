@@ -2,13 +2,14 @@ import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
 import {
   COMPILE_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
+  TESTS_UNMEASURED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
 import {
   baseFailuresOf,
   baseNoteOf,
+  headTestFailuresOf,
   mutationFailuresOf,
   redBaseAnalyzers,
   unknownMutantsFor,
@@ -53,8 +54,8 @@ function removalNotes(failureNotes) {
 }
 
 function withoutConsequenceNotes(notes) {
-  return notes.some(({ rule }) => rule === TESTS_FAILED_RULE)
-    ? notes.filter(({ rule }) => rule === TESTS_FAILED_RULE)
+  return notes.some(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
+    ? notes.filter(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
     : notes;
 }
 
@@ -128,11 +129,26 @@ function unknownOnBaseOf({ name, baseRun, touchedCode, unknownFailures }) {
   );
 }
 
+function withoutUnmeasured(findings, unmeasured) {
+  return unmeasured === undefined ? findings : findings.filter((finding) => !unmeasured(finding));
+}
+
 function withoutUnmeasuredMutants(baseFindings, { name, headRun }) {
-  const unmeasured = unknownMutantsFor(mutationFailuresOf(headRun.reports.get(name)));
-  return unmeasured === undefined
-    ? baseFindings
-    : baseFindings.filter((finding) => !unmeasured(finding));
+  const headReport = headRun.reports.get(name);
+  return withoutUnmeasured(
+    baseFindings,
+    eitherOf(
+      unknownMutantsFor(mutationFailuresOf(headReport)),
+      unknownOnBaseFor(headTestFailuresOf(headReport, name)),
+    ),
+  );
+}
+
+function withoutHeadUnmeasured(headFindings, { name, headRun }) {
+  return withoutUnmeasured(
+    headFindings,
+    unknownOnBaseFor(headTestFailuresOf(headRun.reports.get(name), name)),
+  );
 }
 
 function compareOrReportError(context) {
@@ -140,7 +156,7 @@ function compareOrReportError(context) {
   try {
     const result = compareFindings({
       baseFindings: withoutUnmeasuredMutants(baseFindings, context),
-      headFindings,
+      headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       baseToHeadPackages: context.baseToHeadPackages,

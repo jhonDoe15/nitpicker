@@ -19,6 +19,7 @@ import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
 import { mavenScope } from './reactor/maven-scope.mjs';
 import { reactorRootFor } from './reactor/reactor-root.mjs';
+import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const REPORT_CLOCK_SKEW_MS = 2000;
@@ -113,6 +114,19 @@ function readModules({ projectRoot, mavenRoot, maven, work, spawn, timeoutMs, ch
   return { modules, built, scope, effectivePom };
 }
 
+function buildOrSkipTests(run, { work, modules, policy }) {
+  try {
+    buildAndTest({ ...run, work, modules });
+    return [];
+  } catch (error) {
+    if (!isTestsTimeout(error, policy)) {
+      throw error;
+    }
+    buildAndTest({ ...run, quick: true, work, modules });
+    return [timedOutTests(error.timedOut)];
+  }
+}
+
 function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
   const style = {
     javaStyle: policy.javaStyle,
@@ -127,7 +141,6 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         module,
         classpaths,
         style,
-        tolerateFailures: policy.snapshot === 'base',
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,
@@ -167,7 +180,10 @@ function prepare(run, { policy, environment, work }) {
   const kotlin = kotlinSetup({ ...run, policy, modules: built, effectivePom, work, environment });
   const since = Date.now() - REPORT_CLOCK_SKEW_MS;
   const mavenRoot = { projectRoot: run.mavenRoot };
-  buildAndTest({ ...run, ...mavenRoot, work, modules: built, selection: scope.selection });
+  const timedOut = buildOrSkipTests(
+    { ...run, ...mavenRoot, selection: scope.selection },
+    { work, modules: built, policy },
+  );
   const analyzed = modules.map((module) => ({
     module,
     classpaths: readClasspaths(work, module),
@@ -178,7 +194,7 @@ function prepare(run, { policy, environment, work }) {
     launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
     extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
   });
-  return { modules, built, scope, kotlin, since, analyzed, tools };
+  return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
 }
 
 export function runMavenPreset(
@@ -200,7 +216,7 @@ export function runMavenPreset(
     quick: policy.quick === true,
   };
   try {
-    const { modules, built, scope, kotlin, ...prepared } = prepare(run, {
+    const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {
       policy,
       environment,
       work,
@@ -208,6 +224,7 @@ export function runMavenPreset(
     const testsFailures = analyzeAll({
       ...run,
       ...prepared,
+      testsSkipped: timedOut.length > 0,
       pitDeadline,
       configs,
       policy,
@@ -217,7 +234,7 @@ export function runMavenPreset(
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),
-      testsFailures,
+      testsFailures: [...testsFailures, ...timedOut],
       formatAdvice: kotlin.options?.advice,
       notAffected: scope.notAffected,
     };

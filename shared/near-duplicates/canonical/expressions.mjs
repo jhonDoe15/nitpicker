@@ -2,6 +2,7 @@ import { depthFirst } from '../../traversal.mjs';
 import { compareText, keyOf } from '../tree/keys.mjs';
 import { make, nodesOf, rebuild, withChildren } from '../tree/nodes.mjs';
 import { isPure } from './effects.mjs';
+import { asReference, collapsedNegation, libraryMatch, sameReference } from './library.mjs';
 
 const EQUALITY = new Set(['==', '!=', '===', '!==']);
 const BITWISE = new Set(['&', '|', '^']);
@@ -71,6 +72,11 @@ export function negationOf(node) {
 export function rewriteExpression(node, mode) {
   if (node.kind === 'binary') {
     return binary(node, mode);
+  }
+  const library =
+    libraryMatch(node) ?? asReference(node) ?? sameReference(node) ?? collapsedNegation(node);
+  if (library !== undefined) {
+    return library;
   }
   const negated = node.kind === 'conditional' ? negationOf(node.children[0]) : undefined;
   if (negated === undefined) {

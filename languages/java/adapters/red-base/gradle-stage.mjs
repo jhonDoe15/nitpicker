@@ -7,6 +7,7 @@ import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.
 import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mjs';
+import { MINUTE_MS } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 function failedStage(result, projectRoot, { policy, command, budget }) {
   if (result.error !== undefined) {
@@ -40,6 +41,10 @@ export function assertGradleSucceeded(
   }
   const stage = failedStage(result, projectRoot, { policy, command, budget });
   const error = withGradleLog(stage, result, log);
+  if (result.error?.code === 'ETIMEDOUT') {
+    const minutes = budget.commandTimeoutMs / MINUTE_MS;
+    throw Object.defineProperty(error, 'timedOut', { value: { build: 'Gradle', minutes } });
+  }
   throw result.error === undefined
     ? withCompileErrors(error, `${result.stdout ?? ''}\n${result.stderr ?? ''}`, projectRoot)
     : error;

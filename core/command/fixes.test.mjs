@@ -201,6 +201,7 @@ Full diagnostics: ${outputRoot}/report.txt
   it('uses a renamed file base path for Prettier fix eligibility', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
+      'src/main/code.ts': 'export const code = true;\n',
       'src/main/legacy.json':
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n',
     });

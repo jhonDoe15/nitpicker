@@ -7,6 +7,7 @@ import {
   TEST_ENVIRONMENTS_VARIABLE,
 } from '../../preset/test-environment/resolve-environment.mjs';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';
 import type { TestEnvironments } from '../eslint/typed/engine.mts';
 import { type LintEngineOptions, projectLayerValue, troubleshootingError } from './typed/tools.mts';
@@ -112,7 +113,7 @@ async function runEslintCli(
       timeoutMs: options.timeoutMs,
     },
   );
-  assertEslintCompleted(result, options.timeoutMs);
+  assertEslintCompleted(result, options);
   try {
     return parseJson(result.stdout);
   } catch (error) {
@@ -124,7 +125,10 @@ async function runEslintCli(
   }
 }
 
-function assertEslintCompleted(result: CollectedRun, timeoutMs: number): void {
+function assertEslintCompleted(
+  result: CollectedRun,
+  { timeoutMs, projectRoot }: Pick<LintEngineOptions, 'timeoutMs' | 'projectRoot'>,
+): void {
   if (result.error !== undefined) {
     if (result.error.code === 'ETIMEDOUT') {
       throw troubleshootingError(
@@ -137,6 +141,10 @@ function assertEslintCompleted(result: CollectedRun, timeoutMs: number): void {
   }
   if (result.status !== 0 && result.status !== 1) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    const incompatible = incompatiblePackageMessage(detail, { cwd: projectRoot });
+    if (incompatible !== undefined) {
+      throw new Error(incompatible);
+    }
     throw new Error(`ESLint exited with ${String(result.status)}: ${detail}`);
   }
 }

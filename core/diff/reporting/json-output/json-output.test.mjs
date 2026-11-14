@@ -289,7 +289,7 @@ describe('nitpicker --json', () => {
   });
 
   it('marks a change with nothing to check', () => {
-    const repository = createRepository({ 'quality-policy.json': policy() });
+    const repository = createRepository({ 'quality-policy.json': policy(), 'src/a.ts': '' });
 
     const { exitCode, result, outputRoot } = runJson(repository, ['--base', repository.baseRef], {
       analyzers: [fakeAnalyzer()],

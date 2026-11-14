@@ -75,7 +75,15 @@ function pitDeadlineProperties(budget) {
 
 export function gradleStages(
   baseArguments,
-  { projectRoot, initScript, policy, directory, testsFailedModules = [], budget },
+  {
+    projectRoot,
+    initScript,
+    policy,
+    directory,
+    testsFailedModules = [],
+    testsSkipped = false,
+    budget,
+  },
 ) {
   const common = [
     ...baseArguments,
@@ -91,6 +99,7 @@ export function gradleStages(
       ...(testsFailedModules.length > 0
         ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
         : []),
+      ...(testsSkipped ? ['-Pnitpicker.testsSkipped=true'] : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
       ...mutationScopeProperties(policy, directory),

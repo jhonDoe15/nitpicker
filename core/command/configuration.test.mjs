@@ -371,6 +371,7 @@ Per-tool counts:
         'quality-policy.json': policy(),
         'custom-analyzer.mjs': customAnalyzerScript,
         'src/main/old.txt': 'legacy\n',
+        'src/main/code.ts': 'export const code = true;\n',
       });
       writeFiles(repository.root, {
         'nitpicker.config.json': JSON.stringify({ analyzers: [customAnalyzerEntry('files')] }),
