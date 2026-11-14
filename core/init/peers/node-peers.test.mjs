@@ -3,6 +3,7 @@ import { packageVersion } from '../../help/package-version.mts';
 import { useProjects } from '../test-support/projects.mjs';
 import {
   assertTypeScriptNode,
+  lowestClause,
   missingNodePeers,
   nodePeerNeeds,
   requiredNodePeers,
@@ -109,7 +110,11 @@ describe('missing Node peers', () => {
       { 'package.json': '{"devDependencies":{"typescript":"~5.6.2"}}' },
     ],
   ])('asks for TypeScript again over %s, older than nitpicker reads', (_name, files) => {
-    expect(addedPeers(project(files), 'node')).toEqual([NITPICKER, 'typescript', '@types/node']);
+    expect(addedPeers(project(files), 'node')).toEqual([
+      NITPICKER,
+      'typescript@^5.7',
+      '@types/node',
+    ]);
   });
 
   it.each([
@@ -170,7 +175,7 @@ describe('Node peer needs', () => {
     });
   });
 
-  it('asks again for an installed peer older than nitpicker supports, without pinning to it', () => {
+  it('asks again for an installed peer older than nitpicker supports, naming the supported range', () => {
     const root = project({
       'package.json': '{"devDependencies":{"vitest":"^3.2.0","@vitest/coverage-v8":"^3.2.0"}}',
       ...installed('typescript', '6.0.3'),
@@ -179,7 +184,7 @@ describe('Node peer needs', () => {
     });
 
     expect(nodePeerNeeds(root, NAMES)).toEqual({
-      add: ['vitest', '@vitest/coverage-v8'],
+      add: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
       uninstalled: [],
       absent: [],
       outdated: [
@@ -191,9 +196,9 @@ describe('Node peer needs', () => {
 
   it.each([
     ['a declared range that admits a supported version', '^4', []],
-    ['a declared range below the supported one', '~4.0.5', ['vitest']],
+    ['a declared range below the supported one', '~4.0.5', ['vitest@^4.1.11']],
     ['a workspace protocol range', 'workspace:^1.2.3', []],
-    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest']],
+    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest@^4.1.11']],
   ])('judges %s by its major and minor version', (_name, range, add) => {
     const root = project({
       'package.json': JSON.stringify({ devDependencies: { vitest: range } }),
@@ -251,5 +256,18 @@ describe('TypeScript 7 on an older Node.js', () => {
       'typescript@^6',
       '@types/node',
     ]);
+  });
+});
+
+describe('the lowest clause of a supported range', () => {
+  it.each([
+    ['^4.1.11 || ^5.0.0', '^4.1.11'],
+    ['>=5.7', '^5.7'],
+    ['>= 20', '^20'],
+    ['>=1.2 <3', '>=1.2 <3'],
+    ['>=1.2 <3 || ^4', '>=1.2 <3'],
+    ['', undefined],
+  ])('takes %j as %j', (range, clause) => {
+    expect(lowestClause(range)).toBe(clause);
   });
 });

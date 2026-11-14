@@ -2,6 +2,14 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
+- **Turning it off.** `"disable": ["mutation"]` in `nitpicker.config.json` (the same key and word as
+  the Python and TypeScript presets) runs the Java or Kotlin analyzer without PIT on the base and the
+  head: the analyzer declares `switchableParts: ['mutation']`, so the name is accepted without
+  removing the analyzer, the runner gets `--mutation off`, Gradle gets `-Pnitpicker.mutation=off`
+  (`nitpickerJava` no longer depends on `nitpickerPit`), Maven skips `runPit` and does not resolve the
+  PIT jars, and no mutation findings or `pit-failure` errors are read. Stderr says `mutation is turned
+off by "disable", so java does not run it on the base or the head`. It is a policy loosening like any
+  other `disable` entry.
 - **Profile.** As decided in [`mutation-testing.md`](../mutation-testing.md) (X10): one default
   profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
   path of the compiled main classes, the first package that holds classes: a project rooted in

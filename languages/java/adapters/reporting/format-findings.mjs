@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { projectRelative } from '../../../../shared/ingest/sarif.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../style/java-style.mjs';
 
 export function formatFindings({ reportRoot, roots, javaStyle }) {
@@ -17,8 +18,8 @@ export function formatFindings({ reportRoot, roots, javaStyle }) {
 }
 
 export function javaFormatMessage(javaStyle) {
-  const { label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
-  return `File is not formatted with ${label}. Run nitpicker --fix, or format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`;
+  const { label } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
+  return `File is not formatted with ${label}. ${formatAdvice()} ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;

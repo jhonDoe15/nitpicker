@@ -26,6 +26,7 @@ type Invocation = { readonly command: string; readonly args: string[]; readonly 
 type JavaAnalyzer = {
   readonly name: string;
   readonly publishesModuleImports: boolean;
+  readonly switchableParts: readonly string[];
   readonly version: string;
   readonly resolveVersion: () => string;
   readonly configurationHash: string;
@@ -50,6 +51,7 @@ const ENTRY_FILES = [
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const DESIGN_DIRECTORY = 'languages/java/gradle/design';
+const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -68,6 +70,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/dependency-tasks.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/tool-jdk.gradle',
+  'languages/java/gradle/tasks/analysis/effects-task.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/builds/tools/tool-commands.json',
   'languages/java/builds/tools/tool-commands.mjs',
@@ -110,6 +113,10 @@ function configurationContents(): Map<string, string> {
     recursive: true,
     encoding: 'utf8',
   });
+  const effects = readdirSync(path.join(packageRoot, EFFECTS_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
   return closureOf(
     [
       ...ENTRY_FILES,
@@ -117,6 +124,7 @@ function configurationContents(): Map<string, string> {
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
       ...javaSources(DESIGN_DIRECTORY, design),
+      ...javaSources(EFFECTS_DIRECTORY, effects),
     ],
     packageRoot,
   );
@@ -167,6 +175,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   return {
     name: kotlin ? 'kotlin' : 'java',
     publishesModuleImports: true,
+    switchableParts: ['mutation'],
     version: readPinnedVersions(),
     resolveVersion: () => {
       runtimeVersion ??= javaRuntimeVersion();

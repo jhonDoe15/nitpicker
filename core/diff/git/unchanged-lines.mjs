@@ -1,4 +1,8 @@
-import { sourceLanguage, sourceLines } from '../../../shared/source-text/format-tokens.mjs';
+import {
+  formatAgnosticText,
+  sourceLanguage,
+  sourceLines,
+} from '../../../shared/source-text/format-tokens.mjs';
 import { movedLines } from '../../../shared/source-text/scope-moves.mjs';
 import { alignSequences } from '../../../shared/source-text/token-alignment.mjs';
 import { chainOf } from '../../../shared/traversal.mjs';
@@ -154,6 +158,24 @@ function headLine({ hunks, baseToHead }, line) {
   return enclosingHunk(hunks, line, 'base')?.head.start ?? line + shiftBefore(hunks, line, 'base');
 }
 
+function lineTexts(file) {
+  const sources = file?.sources;
+  if (typeof sources?.base !== 'string' || typeof sources.head !== 'string') {
+    return undefined;
+  }
+  const sides = { base: sources.base.split(/\r?\n/u), head: sources.head.split(/\r?\n/u) };
+  const normalized = new Map();
+  return ({ side, line, column }) => {
+    const from = Number.isInteger(column) && column > 0 ? column - 1 : 0;
+    const key = JSON.stringify([side, line, from]);
+    if (!normalized.has(key)) {
+      const text = sides[side][line - 1]?.slice(from);
+      normalized.set(key, text === undefined ? undefined : formatAgnosticText(text, file.path));
+    }
+    return normalized.get(key);
+  };
+}
+
 export function lineMapOf(file) {
   const carried = file?.carried ?? [];
   const map = {
@@ -161,12 +183,21 @@ export function lineMapOf(file) {
     headToBase: new Map(carried),
     baseToHead: new Map(carried.toReversed().map(([head, base]) => [base, head])),
   };
+  let texts;
   return {
     baseLineOf(line) {
       return baseLine(map, line);
     },
     headLineOf(line) {
       return headLine(map, line);
+    },
+    isOutsideHunks(line, side = 'head') {
+      return enclosingHunk(map.hunks, line, side) === undefined;
+    },
+    hasSameText(head, base) {
+      texts ??= lineTexts(file) ?? (() => undefined);
+      const headText = texts({ side: 'head', ...head });
+      return headText !== undefined && headText === texts({ side: 'base', ...base });
     },
   };
 }

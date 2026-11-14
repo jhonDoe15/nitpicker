@@ -4,8 +4,10 @@ import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
+import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
+import { isClosedByUsing } from './reactive/closed-supplier.mjs';
 import { sourceReader } from './lombok/source-text.mjs';
 import { errorProneChecks } from './checks/checks-docs.mts';
 import type { ErrorProneChecks } from './checks/checks-shape.mts';
@@ -54,9 +56,9 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
     },
   );
   return [
-    ...listOf(fieldOf(ingested, 'findings')).map((finding) =>
-      withExceptionRoute(fieldsOf(finding), testRoots, checks),
-    ),
+    ...listOf(fieldOf(ingested, 'findings'))
+      .filter((finding) => isFormatterOwned(finding, context['javaStyle']) !== true)
+      .map((finding) => withExceptionRoute(fieldsOf(finding), testRoots, checks)),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];
@@ -152,7 +154,8 @@ function withoutExemptCode(
         !(
           isClassExempt(diagnostic, checks.classExemptions) ||
           isIntegrationTestName(diagnostic) ||
-          isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file'))))
+          isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file')))) ||
+          isClosedByUsing(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file'))))
         ),
     ),
   );

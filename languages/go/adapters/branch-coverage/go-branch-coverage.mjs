@@ -1,5 +1,6 @@
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { hashIdentity } from '../../../../shared/ingest/common.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 import { blockAt, blockStartingIn } from './coverage-profile.mjs';
 
 const TOOL = 'coverage';
@@ -36,15 +37,15 @@ export function branchOutcomes(branch, blocks, counted) {
   return [...known.map(({ label, count }) => ({ label, count })), ...implicit];
 }
 
-function sourceLine(lines, line) {
-  return (lines[line - 1] ?? '').trim().replaceAll(/\s+/gu, ' ');
+function sourceLine(lines, { file, at }) {
+  return formatAgnosticText(lines[at.line - 1] ?? '', file);
 }
 
 export function goBranchFindings({ branches, profile, sourceLines }) {
   const measured = branches.flatMap((branch) => {
     const blocks = profile.files.get(branch.file);
     const outcomes = blocks === undefined ? [] : branchOutcomes(branch, blocks, profile.counted);
-    const source = sourceLine(sourceLines(branch.file), branch.at.line);
+    const source = sourceLine(sourceLines(branch.file), branch);
     if (outcomes.length === 0 || source === '') {
       return [];
     }

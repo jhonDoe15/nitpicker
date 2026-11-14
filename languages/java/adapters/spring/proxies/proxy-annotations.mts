@@ -9,14 +9,33 @@ import {
   PROXIED as PROXIED_GROUP,
 } from '../../kotlin/review-rules/spring/spring-types.mjs';
 import {
-  type Resolve,
-  type TypeDeclaration,
-  closingOf,
-  javaResolver,
-  topLevel,
-  typeDeclarations,
-} from './java-declarations.mts';
+  closingOf as untypedClosingOf,
+  javaResolver as untypedJavaResolver,
+  topLevel as untypedTopLevel,
+  typeDeclarations as untypedTypeDeclarations,
+} from './java-declarations.mjs';
 import { textOf, textsOf } from '../../../../../shared/values/readers.mts';
+
+type TypeDeclaration = {
+  readonly name: string;
+  readonly annotation: boolean;
+  readonly index: number;
+  readonly open: number;
+  readonly close: number;
+  readonly annotations: string[];
+  readonly qualified: string;
+};
+type Resolve = (name: string) => string[];
+
+const closingOf: (text: string, open: number) => number = untypedClosingOf;
+const topLevel: (text: string) => string = untypedTopLevel;
+const typeDeclarations: (text: string, packageName: string) => TypeDeclaration[] =
+  untypedTypeDeclarations;
+const javaResolver: (
+  text: string,
+  packageName: string,
+  types: readonly TypeDeclaration[],
+) => Resolve = untypedJavaResolver;
 
 export type ProxyAnnotations = {
   readonly proxied: readonly string[];

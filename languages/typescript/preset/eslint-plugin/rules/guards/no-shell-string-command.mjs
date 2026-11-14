@@ -1,3 +1,5 @@
+import { suggestible } from '../../fixes/support/descriptors.mjs';
+import { dropShellFix, execFileFix } from '../../fixes/processes/shell-command-fix.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import {
@@ -90,6 +92,7 @@ function isFixedCommand(sourceCode, command) {
 export const rule = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: { description: 'Disallow running a shell command built from a string' },
     schema: [],
     messages: {
@@ -97,6 +100,8 @@ export const rule = {
         'A shell command built from a variable or template is a command injection risk. Run the program with `execFile(program, [args])` or `spawn(program, [args])`, one argument per array entry. If the command is fixed and trusted, write it as a plain string literal.',
       shellProgram:
         '`{{program}} {{flag}}` runs a command built from a variable or template through a shell, a command injection risk like `exec`. Run the program itself with `execFile(program, [args])`, one argument per array entry. If the command is fixed and trusted, write it as a plain string literal.',
+      useExecFile: 'Run the program with its arguments as an array, without a shell.',
+      dropShell: 'Remove the `shell` option so each argument reaches the program as it is.',
     },
   },
   create(context) {
@@ -116,7 +121,15 @@ export const rule = {
         const shellOption =
           argumentCall && node.arguments.slice(1).some((options) => enablesShell(context, options));
         if (shellString || shellOption) {
-          context.report({ node, messageId: 'shellString' });
+          const suggestion = shellString
+            ? { id: 'useExecFile', plan: execFileFix(context.sourceCode, node, name) }
+            : { id: 'dropShell', plan: dropShellFix(context.sourceCode, node) };
+          context.report(
+            suggestible(
+              { node, messageId: 'shellString' },
+              { messageId: suggestion.id, plan: suggestion.plan },
+            ),
+          );
           return;
         }
         const shell = argumentCall ? shellCommand(context, node) : undefined;
