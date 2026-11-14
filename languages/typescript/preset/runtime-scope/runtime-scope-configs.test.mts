@@ -4,7 +4,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mjs';
+
+const sourcePath: (file: string) => string = checkoutModulePath;
 
 const resolveLayoutFor: (policy: {
   layout: { sourceRoots: string[] };
@@ -36,7 +39,7 @@ async function loadDefault(name: string): Promise<Record<string, string[]>> {
   vi.stubEnv('NITPICKER_POLICY', policyFile);
   try {
     imports.count += 1;
-    const url = pathToFileURL(path.join(import.meta.dirname, '../defaults', name));
+    const url = pathToFileURL(sourcePath(path.join(import.meta.dirname, '../defaults', name)));
     url.search = `policy=${String(imports.count)}`;
     return (await importDefault(url.href)).default;
   } finally {

@@ -7,11 +7,14 @@ import {
   resolveLayout,
 } from './layout-views.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+const sourcePath: (file: string) => string = checkoutModulePath;
+
 export const defaults = path.join(fileURLToPath(new URL('../../', import.meta.url)), 'defaults');
 
 export const customPolicy: Policy = {
@@ -47,7 +50,7 @@ export async function loadConfig<Module extends object, Result>(
   const restore = setPolicyEnvironment(policy);
   try {
     const url = pathToFileURL(
-      path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath),
+      sourcePath(path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath)),
     );
     url.search = `policy=${randomUUID()}`;
     const loaded: unknown = await import(url.href);

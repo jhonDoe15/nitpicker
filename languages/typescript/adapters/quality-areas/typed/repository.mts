@@ -4,7 +4,7 @@ import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from './area-types.mts';
 import type { KnipConfig } from './policy.mts';
 import { hash as untypedHash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { typescriptStructureProjectFindings as untypedStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
+import { typescriptStructureProjectFindings as untypedStructureProjectFindings } from '../../../preset/structure/project-findings.mts';
 import {
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
