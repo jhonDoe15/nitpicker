@@ -1,30 +1,16 @@
 import vitest from '@vitest/eslint-plugin';
 import { Linter } from 'eslint';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import tseslint from 'typescript-eslint';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import presetConfig from './defaults/eslint.config.mts';
+import { usePresetConfig } from './test-support/preset-config-import.mts';
+import { useTemporaryProjects } from './test-support/temporary-projects.mts';
 
 type Plugins = NonNullable<Linter.Config['plugins']>;
 
-const sourcePath: (file: string) => string = checkoutModulePath;
-const presetConfigUrl = pathToFileURL(
-  sourcePath(path.join(import.meta.dirname, 'defaults/eslint.config.mjs')),
-);
-const temporaryRoots: string[] = [];
-let importCount = 0;
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { importConfig } = usePresetConfig('conventions');
+const { emptyProject } = useTemporaryProjects('nitpicker-convention-rules-');
 
 function ruleSetting(entry: Linter.Config | undefined, ruleId: string): Linter.RuleEntry {
   const setting = entry?.rules?.[ruleId];
@@ -139,18 +125,7 @@ describe('@typescript-eslint/ban-ts-comment', () => {
 });
 
 async function ruleSettings(policy?: object) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-convention-rules-'));
-  temporaryRoots.push(root);
-  if (policy !== undefined) {
-    const policyFile = path.join(root, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify(policy));
-    vi.stubEnv('NITPICKER_POLICY', policyFile);
-  }
-  importCount += 1;
-  const loaded: unknown = await import(
-    `${presetConfigUrl.href}?conventions=${String(importCount)}`
-  );
-  const config = fieldOf(loaded, 'default');
+  const config = await importConfig({ root: emptyProject(), policy });
   const settingOf = (ruleId: string): unknown =>
     listOf(config)
       .map((entry) => fieldOf(fieldOf(entry, 'rules'), ruleId))

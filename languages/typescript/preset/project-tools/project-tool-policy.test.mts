@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -12,6 +11,7 @@ import {
   withProjectToolConfigs as untypedWithProjectToolConfigs,
 } from './project-tool-policy.mjs';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Settings = {
   precedence?: string[];
@@ -43,21 +43,11 @@ const projectToolLayer: (tool: string, settings: Settings | undefined) => unknow
 
 const ANY_TEXT: unknown = expect.any(String);
 
-const roots: string[] = [];
+const { projectWith: project } = useTemporaryProjects('nitpicker-project-tools-');
+
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
-
-function project(files: Record<string, string>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-tools-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
 
 const OPTED_IN = { knip: { precedence: ['project', 'nitpicker'] } };
 const ONLY_DATA = 'only JSON values and regular expressions can be used';

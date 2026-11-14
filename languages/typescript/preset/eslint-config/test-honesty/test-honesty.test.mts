@@ -1,8 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
 import { strictTestConfigFor } from '../strict-tests.mjs';
 import { type ResolvedLayout, linterConfigs } from '../typed/config-types.mts';
@@ -11,6 +8,7 @@ import { applyRuleExceptions } from '../typed/policy-views.mts';
 import { testHonestyConfigFor } from './index.mts';
 import { setupFilesIn } from './setup-files.mts';
 import { stubRestoresIn } from './stub-restores.mts';
+import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
 
 const resolveLayout: (layout?: {
   readonly testRoots?: string[];
@@ -23,13 +21,7 @@ const config = linterConfigs([
   ...strictTestConfigFor(layout),
   ...testHonestyConfigFor(layout, { setupFiles: ['test/setup.ts'] }),
 ]);
-const temporaryRoots: string[] = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith } = useTemporaryProjects('nitpicker-setup-files-');
 
 function messages(code: string, filename = 'test/a.test.ts', used: readonly object[] = config) {
   return failureMessagesFor({ config: used, filename, code });
@@ -177,16 +169,6 @@ describe('test honesty rules', () => {
     ]);
   });
 });
-
-function projectWith(files: Readonly<Record<string, string>>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-setup-files-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
 
 describe('setup files named by the project vitest config', () => {
   it('reads setupFiles and globalSetup, as arrays or single strings', () => {

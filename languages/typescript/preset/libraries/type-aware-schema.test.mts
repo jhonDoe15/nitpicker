@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
 
@@ -12,36 +12,18 @@ const linterClass: new (options: { cwd: string }) => {
   verify(code: string, config: unknown, options: { filename: string }): Linter.LintMessage[];
 } = Linter;
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith } = useTemporaryProjects('nitpicker-typed-schema-');
 
 function project() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-typed-schema-'));
-  roots.push(root);
-  mkdirSync(path.join(root, 'node_modules/joi'), { recursive: true });
-  mkdirSync(path.join(root, 'src'));
-  writeFileSync(
-    path.join(root, 'node_modules/joi/package.json'),
-    '{"name":"joi","types":"index.d.ts"}',
-  );
-  writeFileSync(
-    path.join(root, 'node_modules/joi/index.d.ts'),
-    'export interface Schema { validate(value: unknown): unknown }\n',
-  );
-  writeFileSync(
-    path.join(root, 'tsconfig.json'),
-    '{"compilerOptions":{"strict":true,"module":"esnext","moduleResolution":"bundler","target":"es2022"},"include":["src"]}',
-  );
-  writeFileSync(
-    path.join(root, 'src/shared.ts'),
-    "import type { Schema } from 'joi';\nexport const thing: Schema = {} as Schema;\nexport const other = { validate(value: unknown) { return value; } };\n",
-  );
-  return root;
+  return projectWith({
+    'node_modules/joi/package.json': '{"name":"joi","types":"index.d.ts"}',
+    'node_modules/joi/index.d.ts':
+      'export interface Schema { validate(value: unknown): unknown }\n',
+    'tsconfig.json':
+      '{"compilerOptions":{"strict":true,"module":"esnext","moduleResolution":"bundler","target":"es2022"},"include":["src"]}',
+    'src/shared.ts':
+      "import type { Schema } from 'joi';\nexport const thing: Schema = {} as Schema;\nexport const other = { validate(value: unknown) { return value; } };\n",
+  });
 }
 
 function lint(root: string, code: string) {

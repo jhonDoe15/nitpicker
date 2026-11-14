@@ -1,23 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { projectTestRunner } from './project-runner.mts';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith } = useTemporaryProjects('nitpicker-project-runner-');
 
 function project(scripts: Record<string, string>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-runner-'));
-  roots.push(root);
-  writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts }));
-  return root;
+  return projectWith({ 'package.json': JSON.stringify({ scripts }) });
 }
 
 describe('the test runner nitpicker runs for a snapshot', () => {

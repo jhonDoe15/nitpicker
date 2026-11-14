@@ -1,42 +1,22 @@
-import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate as untypedCreateGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { describe, expect, it } from 'vitest';
 import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
-  createCleanProject,
   readReport,
   runNitpicker,
+  useCleanProjects,
 } from '../clean-projects/test-support/clean-project.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 
-const createGitTemplate: () => string = untypedCreateGitTemplate;
 const docsUrl: (page: string, anchor: string) => string | undefined = untypedDocsUrl;
 
 const fixtureRoot = path.join(import.meta.dirname, 'fixtures/storybook-project');
 
 describe('component-story-missing through the CLI', () => {
-  const temporaryRoots: string[] = [];
-  let gitTemplateRoot: string;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { createProject } = useCleanProjects(process.env);
 
   it('reports the component without a story in a Storybook project where most components have one', () => {
-    const root = createCleanProject({
-      fixtureRoot,
-      gitTemplateRoot,
-      name: 'storybook-project',
-      environment: process.env,
-    });
-    temporaryRoots.push(root);
+    const root = createProject({ fixtureRoot, name: 'storybook-project' });
     const { exitCode } = runNitpicker(root, [
       '--all',
       '--analyzer',

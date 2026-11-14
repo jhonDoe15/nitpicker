@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { afterEach, beforeAll } from 'vitest';
 import { containedPath as untypedContainedPath } from '../../../../../core/fix/common/contained-path.mjs';
 import { runCli } from '../../../../../core/cli.mts';
 import type { ExitCode } from '../../../../../core/cli-context.mts';
@@ -65,6 +74,37 @@ export function createCleanProject({
   git(root, environment, 'add', '-A');
   git(root, environment, 'commit', '-q', '-m', 'fixture');
   return root;
+}
+
+export function useCleanProjects(environment: NodeJS.ProcessEnv): {
+  readonly gitTemplate: () => string;
+  readonly createProject: (options: {
+    readonly fixtureRoot: string;
+    readonly name: string;
+    readonly files?: Readonly<Record<string, string>>;
+  }) => string;
+} {
+  const temporaryRoots: string[] = [];
+  let gitTemplateRoot: string;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
+  afterEach(() => {
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  return {
+    gitTemplate: () => gitTemplateRoot,
+    createProject(options) {
+      const root = createCleanProject({ ...options, gitTemplateRoot, environment });
+      temporaryRoots.push(root);
+      return root;
+    },
+  };
 }
 
 export function runNitpicker(

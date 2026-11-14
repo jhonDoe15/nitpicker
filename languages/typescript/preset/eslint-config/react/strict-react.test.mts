@@ -1,30 +1,17 @@
 import { ESLint, type Linter } from 'eslint';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { reactRuleIds, reactTestRuleIds, restrictedBrowserGlobals } from './react-rules.mjs';
 import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mts';
-import { linterConfigs } from '../typed/config-types.mts';
 import { failureMessagesFor } from '../typed/lint-fixture.mts';
-import {
-  fieldOf,
-  fieldsOf,
-  listOf,
-  objectOf,
-  textOf,
-} from '../../../../../shared/values/readers.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+import { usePresetConfig } from '../../test-support/preset-config-import.mts';
+import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
 
-const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
-
-const presetConfigUrl = pathToFileURL(
-  checkoutModulePath(
-    path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),
-  ),
-);
+const { linterConfigFor } = usePresetConfig('project');
+const { projectWith } = useTemporaryProjects('nitpicker-react-preset-');
 const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
 const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>
   selector.startsWith('ClassDeclaration'),
@@ -33,15 +20,6 @@ const defaultsDirectory = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../defaults',
 );
-const temporaryRoots: string[] = [];
-let importCount = 0;
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 function classMessages(config: readonly object[], file: string, superclass: string) {
   return failureMessagesFor({
@@ -144,20 +122,8 @@ async function presetConfigFor({
   manifest: object;
   policy?: object;
 }): Promise<Linter.Config[]> {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-preset-'));
-  temporaryRoots.push(root);
-  writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
-  vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', root);
-  if (policy !== undefined) {
-    const policyFile = path.join(root, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify(policy));
-    vi.stubEnv('NITPICKER_POLICY', policyFile);
-  }
-  importCount += 1;
-  const module: unknown = await import(`${presetConfigUrl.href}?project=${String(importCount)}`);
-  return linterConfigs(
-    listOf(fieldOf(module, 'default')).flatMap((entry) => objectOf(entry) ?? []),
-  );
+  const root = projectWith({ 'package.json': JSON.stringify(manifest) });
+  return linterConfigFor({ root, policy });
 }
 
 async function ruleSettingOf(eslint: ESLint, file: string, rule: string): Promise<unknown> {

@@ -1,15 +1,6 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
@@ -24,6 +15,7 @@ import {
   withHeadCheckoutFacts,
 } from '../test-support/policy-views.mts';
 import type { Policy } from '../test-support/policy-views.mts';
+import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
 import { typescriptIgnoredNotices as untypedTypescriptIgnoredNotices } from '../ignored-notices.mjs';
 import { typescriptVersion as untypedTypescriptVersion } from '../../modules/tsconfig-files.mjs';
 import {
@@ -48,23 +40,7 @@ const readTypescriptProjectConfig: (
   layout: ProjectLayout,
 ) => { compilerOptions: Record<string, unknown> } = untypedReadTypescriptProjectConfig;
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files: Record<string, string>) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-ts-options-')));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const { projectWith } = useTemporaryProjects('nitpicker-ts-options-', { resolveSymlinks: true });
 
 const options = (compilerOptions: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
   JSON.stringify({ compilerOptions, ...extra });
