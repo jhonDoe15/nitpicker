@@ -310,7 +310,11 @@ describe('nitpicker --json', () => {
   });
 
   it('names the analyzers no changed file can affect and marks a run that skipped them all', () => {
-    const repository = createRepository({ 'quality-policy.json': policy(), 'README.md': 'a\n' });
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'README.md': 'a\n',
+      'src/a.ts': '',
+    });
     writeFiles(repository.root, { 'README.md': 'b\n' });
     const execution = { ...fakeAnalyzer(), inputs: { scope: 'execution' } };
 

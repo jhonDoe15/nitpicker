@@ -2,18 +2,14 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../git/repository/command.mjs';
+import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
 
 const MAX_HASHED_BYTES = 1024 * 1024;
 const DEFAULT_OUTPUT_PARENT = 'reports/quality';
 
-function insideRepository(repositoryRoot, directory) {
-  const relative = path.relative(repositoryRoot, directory);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
 function outputExclusions(repositoryRoot, projectRoot, outputRoot) {
   return [path.resolve(projectRoot, outputRoot), path.resolve(projectRoot, DEFAULT_OUTPUT_PARENT)]
-    .filter((directory) => insideRepository(repositoryRoot, directory))
+    .filter((directory) => isStrictlyInside(repositoryRoot, directory))
     .map((directory) => path.relative(repositoryRoot, directory).split(path.sep).join('/'));
 }
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { byCodeUnits } from '../../../../../core/scope/mutation-scope.mjs';
 import { GitCommandError, runGit } from '../../../../../core/diff/git/repository/command.mjs';
 import { comparisonRoots, readChangedFiles } from '../comparison-changes.mjs';
-import { parentChain } from '../jvm-paths.mjs';
+import { ancestorDirectories } from '../../../../../shared/filesystem.mjs';
 
 const BUILD_FILE = /^(?:pom\.xml|(?:build|settings)\.gradle(?:\.kts)?)$/u;
 const BUILD_FILES = ['pom.xml', 'build.gradle', 'build.gradle.kts'];
@@ -18,11 +18,11 @@ function hasBuildFile(directory) {
 }
 
 function nearestExisting(directory) {
-  return parentChain(directory).find((candidate) => existsSync(candidate)) ?? directory;
+  return ancestorDirectories(directory).find((candidate) => existsSync(candidate)) ?? directory;
 }
 
 function ancestorsBelow(root, start) {
-  const chain = parentChain(start);
+  const chain = ancestorDirectories(start);
   const end = chain.findIndex((current) => current === root || !current.startsWith(root));
   return end === -1 ? chain : chain.slice(0, end);
 }
@@ -113,7 +113,7 @@ function listsModules(directory) {
 }
 
 export function isMultiModule(projectRoot) {
-  for (const directory of parentChain(projectRoot)) {
+  for (const directory of ancestorDirectories(projectRoot)) {
     if (listsModules(directory)) {
       return true;
     }
