@@ -11,8 +11,8 @@ import {
 } from '../../../preset/tool-configs.mjs';
 import { layeredJscpdConfig as untypedLayeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
-import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
-import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
+import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mts';
+import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mts';
 import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
 import { projectImports as untypedProjectImports } from '../../../preset/dependency-graph/cruise.mjs';
 import { moduleImportsSection as untypedModuleImportsSection } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';

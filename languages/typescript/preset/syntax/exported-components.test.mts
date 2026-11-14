@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { exportedComponents } from './exported-components.mjs';
 
-function names(code, fileName = 'src/widget.tsx') {
-  return exportedComponents(code, fileName).map(({ name }) => name);
+function names(code: string, fileName = 'src/widget.tsx'): string[] {
+  return exportedComponents(code, fileName).map(({ name }: { name: string }) => name);
 }
 
 describe('exported components', () => {

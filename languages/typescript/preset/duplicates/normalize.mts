@@ -1,13 +1,15 @@
-import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
-import { jscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
-import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import type { Finding } from '../../adapters/static-checks/shared.mts';
+import { readLayout } from '../../adapters/typed/head-policy.mts';
 import {
+  evaluateDuplicates,
+  jscpdClones,
   renamedClones,
   renamedFindings,
+  sourceRoot,
+  type JscpdClone,
+  withoutImportOnlyClones,
   withoutRenamedCopies,
-} from '../../../../shared/renamed-clones/findings.mjs';
-import { readLayout } from '../head-policy.mjs';
-import { sourceRoot } from '../layout.mjs';
+} from './typed.mts';
 
 const IDENTIFIER = String.raw`[\p{L}_$][\p{L}\p{N}_$]*`;
 const FUNCTION_DECLARATION = String.raw`\bfunction\s*(?:\*\s*)?${IDENTIFIER}\s*[<(]`;
@@ -18,11 +20,15 @@ const TEST_ADVICE =
   'Extract a helper, or fold the cases into one table-driven test. ' +
   'Keep one copy and call it from both places.';
 
-function definesNamedFunction(fragment) {
+function definesNamedFunction(fragment: string): boolean {
   return NAMED_FUNCTION.test(fragment);
 }
 
-function isRepeatedTestData(clone, isTestFile, text) {
+function isRepeatedTestData(
+  clone: JscpdClone,
+  isTestFile: (file: string) => boolean,
+  text: string | undefined,
+): boolean {
   return (
     text !== undefined &&
     isTestFile(clone.first.file) &&
@@ -32,15 +38,20 @@ function isRepeatedTestData(clone, isTestFile, text) {
 }
 
 export function normalizeDuplicates(
-  report,
-  analyzerName,
+  report: unknown,
+  analyzerName: string,
   {
     configuredPaths = [sourceRoot],
     isTestFile = readLayout().isTestFile,
     renamedReport,
     projectRoot = process.cwd(),
+  }: {
+    readonly configuredPaths?: string[];
+    readonly isTestFile?: (file: string) => boolean;
+    readonly renamedReport?: unknown;
+    readonly projectRoot?: string;
   } = {},
-) {
+): Finding[] {
   const plain = withoutImportOnlyClones(
     jscpdClones(report, configuredPaths).filter(
       (clone) => !isRepeatedTestData(clone, isTestFile, clone.fragment),
