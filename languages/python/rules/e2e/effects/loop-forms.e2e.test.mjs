@@ -83,6 +83,27 @@ describe.skipIf(!enabled)('io-in-loop over chunks, retries and mapped callables'
   it('stays quiet for a retry loop and flags a loop that continues after a failure', () => {
     const [actual, expected] = outcomes([
       [
+        'tenacity attempts',
+        code(
+          'from tenacity import AsyncRetrying, Retrying, stop_after_attempt',
+          '',
+          'import requests',
+          '',
+          '',
+          'def f(url):',
+          '    for attempt in Retrying(stop=stop_after_attempt(3)):',
+          '        with attempt:',
+          '            return requests.get(url, timeout=3)',
+          '',
+          '',
+          'async def g(client, url):',
+          '    async for attempt in AsyncRetrying(stop=stop_after_attempt(3)):',
+          '        with attempt:',
+          '            return await client.get(url)',
+        ),
+        [],
+      ],
+      [
         'a handler that raises only on the last attempt',
         code(
           'import time',

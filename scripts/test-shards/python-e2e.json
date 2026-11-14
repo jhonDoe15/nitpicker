@@ -136,6 +136,8 @@
   "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mjs": 3,
   "languages/python/rules/e2e/time/time-units.e2e.test.mjs": 2,
   "languages/python/rules/e2e/waits/waits.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/writes/retry-forms.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/writes/retry-without-idempotency.e2e.test.mjs": 1,
   "languages/python/rules/nitpicker-rules.e2e.test.mjs": 34,
   "languages/python/rules/rule-cases.e2e.test.mjs": 115,
   "languages/python/rules/swallowing.e2e.test.mjs": 37

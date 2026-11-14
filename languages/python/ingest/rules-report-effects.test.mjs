@@ -46,6 +46,11 @@ describe('effect rules report', () => {
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
     ],
+    [
+      'retry-without-idempotency',
+      'stripe.PaymentIntent.create()|payment|@retry',
+      '`stripe.PaymentIntent.create()` creates a payment object without an idempotency key inside `@retry`: when the server accepts the write and the response times out, the retry runs it a second time',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

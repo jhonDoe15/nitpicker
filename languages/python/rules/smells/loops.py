@@ -5,6 +5,7 @@ from effect_kinds.concurrency import is_concurrent, map_is_concurrent
 from effect_kinds.tables import DATABASE, REMOTE
 from kinds.index import io_scope
 from kinds.names import chain_names
+from retries.scopes import attempt_loops
 from smells.chunks import is_chunked
 
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
@@ -214,6 +215,7 @@ def skipped_loop(call, loop, scope, context, verdicts):
     return (
         verdicts[id(loop)]
         or is_retry_attempt(call, loop, context.parents)
+        or bool(attempt_loops(loop, context.aliases))
         or runs_each_item(call, loop)
         or (
             enclosing_loop(loop, context.parents) is None

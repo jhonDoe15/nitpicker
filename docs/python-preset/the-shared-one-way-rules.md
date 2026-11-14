@@ -61,6 +61,7 @@ are listed at the end.
 | Accumulator copies                              | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                                                       | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                                                                                                                                                                                                                                                     |
 | Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                                                  | `lazy-relation-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
+| Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Shareable objects                               | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets                              | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows                                   | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -838,7 +839,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `apply_async` and `send_task`) is not reported: one publish per item is the protocol. Not reported
   either: a paging loop (the condition reads a variable the body assigns); a retry (a `try` in the loop
   that leaves on success, in its body or its `else`, while its handlers do not raise at their top
-  level); a loop over chunks (`itertools.batched`,
+  level, and tenacity `Retrying` and `AsyncRetrying` attempts); a loop over chunks (`itertools.batched`,
   `more_itertools.chunked`, `ichunked`, `batched`, a loop variable named or built as a chunk, a
   `range(0, len(items), n)` with a slice of `items`) whose call takes the whole chunk, unless the chunk loop sits inside another loop or the chunks have
   one item. A callback handed to a registration (a signal's `connect`, `threading.Timer`,
@@ -898,6 +899,27 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   the block then sets (a token refresh `if self._token is None: ... self._token = ...`, a cached
   download `if not os.path.exists(path): ... open(path, "wb")`) makes the other callers wait for one
   request instead of each sending their own, so it is not reported.
+- `retry-without-idempotency` reports a write that a retry can run twice. Retry scopes: a function
+  decorated with tenacity `@retry`, `retrying.retry`, `backoff.on_exception` or `on_predicate`, or
+  `stamina.retry`, or a Celery task with `autoretry_for=` or `retry_backoff=` on its decorator or a
+  `bind=True` task that calls `self.retry(...)` (the task body is the retried scope); a
+  `for attempt in Retrying(...)` loop (tenacity, `AsyncRetrying`, `stamina.retry_context`)
+  and a function given to `Retrying(...)(fn)`; and a hand-written retry loop (a `try` in a loop that
+  leaves on success while its `except` goes on). The writes recognized, direct or through project
+  helpers (the path is in the message), are the documented API set and nothing else: a Stripe
+  `stripe.<Resource>.create(...)` without `idempotency_key=` (also `client.payment_intents.create` of
+  `StripeClient`, by the whole resource name: `client.v1.setup_intents.create`, `payment_links`); a library
+  callable given to a retrying object is checked with the arguments of that call
+  (`Retrying(...)(stripe.Charge.create, amount=1)`); a message publish (Kafka `send` and `produce`, pika
+  `basic_publish`, aio-pika, Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`, SQS
+  `send_message`, SNS `publish`) unless the call, or a value it passes by name, carries a
+  `MessageDeduplicationId`, a `message_id` (an AMQP property, a Kafka header) or a Celery `task_id`; and
+  SQL text starting with `INSERT` (read like `sql-string-formatting` reads it: through `text(...)`, a
+  variable, a concatenation or a project wrapper of a query call) sent through a database call
+  (`execute`, `executemany`, `exec_driver_sql`) or a SQLAlchemy `insert(...)` construct, unless it
+  has `ON CONFLICT`, `ON DUPLICATE KEY`, `INSERT IGNORE`, `INSERT OR IGNORE`, `REPLACE INTO` or `MERGE` (or
+  `on_conflict_do_*` on the construct). An HTTP `POST` alone, an ORM `save()` and any write whose
+  contract is unknown are not reported.
 - `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
   at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
   comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
