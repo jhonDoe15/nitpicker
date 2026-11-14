@@ -5,11 +5,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { archunitMatcher } from '../maven-tests.mts';
 import { copyTestResults, requireTestngRun } from './maven-test-results.mts';
 
-const roots = [];
+const roots: string[] = [];
 const since = Date.now() - 2000;
 const LONG_AGO = new Date(2020, 0, 1);
 
-function tree(files) {
+function tree(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-results-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -19,16 +19,16 @@ function tree(files) {
   return root;
 }
 
-function stale(directory, name) {
+function stale(directory: string, name: string): void {
   utimesSync(path.join(directory, name), LONG_AGO, LONG_AGO);
 }
 
-function copied(reportDir, task) {
+function copied(reportDir: string, task: string): string[] {
   const directory = path.join(reportDir, 'test-results', task);
   return readdirSync(directory).sort();
 }
 
-function copy(module, reportDir) {
+function copy(module: unknown, reportDir: string): void {
   copyTestResults({ module, reportDir, since, isArchunit: archunitMatcher() });
 }
 
@@ -127,7 +127,7 @@ describe('copyTestResults', () => {
 describe('requireTestngRun', () => {
   const PLATFORM_TESTNG = ['/m2/testng-7.10.2.jar', '/m2/junit-platform-engine-1.11.4.jar'];
 
-  function moduleWith(reports) {
+  function moduleWith(reports: readonly string[]) {
     const basedir = tree({
       'target/test-classes/shop/OrderTest.class': '',
       'target/test-classes/shop/LayerArchTest.class': '',
@@ -146,7 +146,7 @@ describe('requireTestngRun', () => {
     };
   }
 
-  const check = (module, testRuntime) => () => {
+  const check = (module: unknown, testRuntime: readonly unknown[]) => () => {
     requireTestngRun({ module, since, isArchunit: archunitMatcher(), testRuntime });
     return 'passed';
   };
