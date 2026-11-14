@@ -35,6 +35,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Lazy relationships: read the relationship of each element of a query result only after the query fetched it
   (`@EntityGraph`, `JOIN FETCH`, `@BatchSize`, or a projection), never `invoices.map { it.customer.name }` over
   `findAll()` (`effects/LazyRelationInLoop`).
+- Remote calls: make an HTTP or RPC call before a `@Transactional` function or `transactionTemplate.execute { }`
+  starts or after it commits, and never inside `withLock { }`, `synchronized` or a `Mutex`: copy what you need out
+  first (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

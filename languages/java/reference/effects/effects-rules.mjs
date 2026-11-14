@@ -6,6 +6,7 @@ import { JVM_ANALYZERS, JVM_BUILDS } from '../catalog-rules.mjs';
 
 const GUIDE = 'docs/java-preset.md';
 const METHOD = '<method>';
+const HOLDER = '<holder>';
 const PATH = ['<helper>', '<call>'];
 const SAMPLES = [
   ['IoCallInLoop', { method: METHOD, kind: 'database', form: 'loop', path: PATH }],
@@ -14,6 +15,11 @@ const SAMPLES = [
     'LazyRelationInLoop',
     { method: METHOD, entity: '<Entity>', relation: '<relation>', origin: '<query>' },
   ],
+  [
+    'RemoteCallInTransaction',
+    { method: METHOD, scope: '@Transactional', holder: HOLDER, path: PATH },
+  ],
+  ['RemoteCallUnderLock', { method: METHOD, scope: 'synchronized', holder: HOLDER, path: PATH }],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';
