@@ -1,7 +1,10 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach } from 'vitest';
+import { afterAll, afterEach } from 'vitest';
+import { containedPath as untypedContainedPath } from '../../../../core/fix/common/contained-path.mjs';
+
+const containedPath: (root: string, name: string) => string = untypedContainedPath;
 
 type TemporaryProjects = {
   emptyProject: () => string;
@@ -10,17 +13,20 @@ type TemporaryProjects = {
 
 export function writeProjectFiles(root: string, files: Record<string, string>): void {
   for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
+    const target = containedPath(root, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, text);
   }
 }
 
-type Options = { resolveSymlinks?: true };
+type Options = { resolveSymlinks?: true; keepForFile?: true };
 
 export function useTemporaryProjects(prefix: string, options: Options = {}): TemporaryProjects {
   const roots: string[] = [];
 
-  afterEach(() => {
+  const cleanUp = options.keepForFile ? afterAll : afterEach;
+
+  cleanUp(() => {
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }

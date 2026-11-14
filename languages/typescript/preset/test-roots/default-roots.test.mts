@@ -1,10 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createVitest } from 'vitest/node';
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Policy = { readonly exclude?: string[]; readonly layout?: { readonly testRoots: string[] } };
 
@@ -18,29 +17,15 @@ const importConfig: (
   url: string,
 ) => Promise<{ default: { forbidden: { to: { path: string } }[] } }> = (url) => import(url);
 
-const temporaryRoots: string[] = [];
+const { projectWith: writeProject } = useTemporaryProjects('nitpicker-roots-', {
+  keepForFile: true,
+});
 const projectFiles = {
   '__tests__/jest.test.ts': "describe('jest', () => { it('runs', () => { jest.fn(); }); });",
   'e2e/api.test.ts': "it('serves', () => {});",
   'src/add.test.ts': "it('adds', () => {});",
   'test/add.test.ts': "it('adds', () => {});",
 };
-
-afterAll(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function writeProject(files: Record<string, string>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-roots-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
 
 async function selectedTests(policy: Policy): Promise<string[]> {
   const root = writeProject(projectFiles);

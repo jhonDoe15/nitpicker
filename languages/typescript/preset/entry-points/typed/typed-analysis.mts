@@ -1,6 +1,5 @@
-import { cruise as untypedCruise } from '../../dependency-graph/cruise.mjs';
 import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../analyze.mjs';
-import { existingRoots as untypedExistingRoots, type resolveLayout } from '../../layout.mjs';
+import type { resolveLayout } from '../../layout.mjs';
 import { readLayout as untypedReadLayout } from '../../head-policy.mjs';
 
 export type EntryPointLayout = Omit<ReturnType<typeof resolveLayout>, 'sourceRoot'> & {
@@ -28,11 +27,6 @@ type EntryPointReport = {
   readonly unexportedTargetImports: readonly EntryPointImport[];
   readonly missingEntryPointImports: readonly EntryPointImport[];
 };
-
-export const cruise: (paths: readonly string[]) => unknown = untypedCruise;
-
-export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
-  untypedExistingRoots;
 
 export const readLayout: () => EntryPointLayout = untypedReadLayout;
 

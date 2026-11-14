@@ -133,3 +133,10 @@ export function byId<T extends { readonly id: string }>(items: readonly T[], id:
   }
   return found;
 }
+
+export function idsOf(
+  files: Record<string, string>,
+  policy?: Parameters<typeof factsOfFiles>[1],
+): string[] {
+  return factsOfFiles(files, policy).callables.map(({ id }) => id);
+}

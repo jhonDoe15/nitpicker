@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
 } from '../head-policy.mjs';
+import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 
 type Names = {
   readonly fn: string;
@@ -263,14 +264,6 @@ const FILES = {
   'test/helpers/second.test.ts': `import { it } from 'vitest';\n\n${grading(RENAMED, ['80', '40', '70', '9'])}\nit('works', () => {});\n`,
 };
 
-function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    const filePath = path.join(root, relativePath);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, contents);
-  }
-}
-
 function enforceable(run: ReturnType<typeof analyze>): Finding[] {
   return (run.reports.get('duplicates')?.findings ?? []).filter(
     (finding) => finding.classification === 'enforceable',
@@ -284,7 +277,7 @@ function analyze(
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'base');
-  writeFiles(projectRoot, files);
+  writeProjectFiles(projectRoot, files);
   const policy = resolveHeadPolicy(config);
   const analyzers = applyLayout(configuredAnalyzers(), policy).filter(
     ({ name }) => name === 'duplicates',

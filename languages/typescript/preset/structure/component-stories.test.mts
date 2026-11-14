@@ -1,30 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import { resolveLayout } from '../layout.mjs';
 import { componentStoryFindings } from './component-stories.mts';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
-const temporaryRoots: string[] = [];
 const storybookManifest = JSON.stringify({ devDependencies: { storybook: '^8.0.0' } });
 const plainManifest = JSON.stringify({ devDependencies: { vitest: '^3.0.0' } });
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-component-stories-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+const { projectWith: project } = useTemporaryProjects('nitpicker-component-stories-');
 
 function component(name: string): string {
   return `export const ${name} = () => <div />;\n`;

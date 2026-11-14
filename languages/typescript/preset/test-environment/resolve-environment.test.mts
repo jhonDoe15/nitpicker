@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   LINT_CONFIG,
   TEST_ENVIRONMENT_RULE,
@@ -9,24 +8,18 @@ import {
   testEnvironmentNotices,
   testEnvironmentsFor,
 } from './resolve-environment.mts';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const repositoryVite = path.join(import.meta.dirname, '../../../../node_modules/vite');
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots) rmSync(root, { recursive: true, force: true });
+const { projectWith: filesIn } = useTemporaryProjects('nitpicker-resolve-environment-', {
+  keepForFile: true,
 });
 
 function projectWith(
   files: Record<string, string>,
   { vite = 'real' }: { vite?: string } = {},
 ): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-resolve-environment-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  const root = filesIn(files);
   if (vite === 'real') {
     mkdirSync(path.join(root, 'node_modules'), { recursive: true });
     symlinkSync(repositoryVite, path.join(root, 'node_modules/vite'), 'dir');

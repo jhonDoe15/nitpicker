@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byId, factsOfFiles } from '../../test-support/project.mts';
-
-function idsOf(files: Record<string, string>, policy?: Parameters<typeof factsOfFiles>[1]) {
-  return factsOfFiles(files, policy).callables.map(({ id }) => id);
-}
+import { byId, factsOfFiles, idsOf } from '../../test-support/project.mts';
 
 describe('the sites of interface and abstract members', () => {
   const files = {

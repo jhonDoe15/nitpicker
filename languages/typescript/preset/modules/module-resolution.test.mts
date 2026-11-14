@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 import {
   packageNameOf,
   reachableModules as untypedReachableModules,
@@ -39,21 +39,13 @@ type Walk = {
 const resolveModuleSpecifier: Walk['resolve'] = untypedResolveModuleSpecifier;
 const reachableModules: Walk['walk'] = untypedReachableModules;
 
-const roots: string[] = [];
+const { projectWith: project } = useTemporaryProjects('nitpicker-module-resolution-', {
+  keepForFile: true,
+});
 const PINNED = { types: [], lib: ['ES2022'] };
 
 function compilerOptions(options: Readonly<Record<string, unknown>>) {
   return { ...PINNED, ...options };
-}
-
-function project(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-module-resolution-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
 }
 
 function resolved(
@@ -65,10 +57,6 @@ function resolved(
   const result = resolveModuleSpecifier(specifier, path.join(root, from), options);
   return result.path === undefined ? result : { ...result, path: path.relative(root, result.path) };
 }
-
-afterAll(() => {
-  for (const root of roots) rmSync(root, { recursive: true, force: true });
-});
 
 const SOURCES = {
   'src/app/main.ts': 'export {};\n',
