@@ -55,12 +55,12 @@ function caseEntry(suite, testCase, { problem, flaky }) {
   };
 }
 
-export function failedCaseEntries(file) {
+export function failedCaseEntries(file, { retriesPass = false } = {}) {
   const root = parseXml(readFileSync(file, 'utf8'));
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
   return suites.flatMap((suite) =>
     childrenNamed(suite, 'testcase').flatMap((testCase) => {
-      const found = testCaseProblem(testCase);
+      const found = testCaseProblem(testCase, { flakyPasses: retriesPass });
       return found === undefined ? [] : [caseEntry(suite, testCase, found)];
     }),
   );

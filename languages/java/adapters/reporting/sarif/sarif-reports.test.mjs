@@ -56,7 +56,70 @@ const PMD = (root, ruleId = 'FixedSleepInTest') =>
     ],
   });
 
+const SPOTBUGS = (...uris) =>
+  JSON.stringify({
+    version: '2.1.0',
+    runs: [
+      {
+        tool: { driver: { name: 'SpotBugs', rules: [] } },
+        results: uris.map((uri) => ({
+          ruleId: 'UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD',
+          message: { text: 'Unused public or protected field.' },
+          locations: [
+            { physicalLocation: { artifactLocation: { uri }, region: { startLine: 3 } } },
+          ],
+        })),
+      },
+    ],
+  });
+
 describe('sarifFindings', () => {
+  it('keeps a finding on a module source and drops one on a Gradle generated class, by the first location', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    const { projectRoot, reportRoot } = context;
+    const write = (file) => {
+      mkdirSync(path.dirname(path.join(projectRoot, file)), { recursive: true });
+      writeFileSync(path.join(projectRoot, file), 'class X {}\n');
+    };
+    write('core/src/main/java/shop/Money.java');
+    write('web/src/main/java/shop/Form.java');
+    write('web/build/generated/sources/annotationProcessor/java/main/shop/Form_.java');
+    writeFileSync(
+      path.join(reportRoot, 'spotbugs.sarif'),
+      SPOTBUGS('shop/Form.java', 'shop/Form_.java', 'shop/Money.java'),
+    );
+
+    expect(
+      sarifFindings({
+        ...context,
+        sourceRoots: ['core/src/main/java', 'web/src/main/java'],
+        allSourceRoots: ['core/src/main/java', 'web/src/main/java'],
+      }).map(({ path: file }) => file),
+    ).toEqual(['web/src/main/java/shop/Form.java', 'core/src/main/java/shop/Money.java']);
+  });
+
+  it('drops a SpotBugs finding on a generated class but keeps one on a project source', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    const { projectRoot, reportRoot } = context;
+    mkdirSync(path.join(projectRoot, 'src/main/java/shop'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'src/main/java/shop/Cart.java'), 'class Cart {}\n');
+    mkdirSync(path.join(projectRoot, 'target/generated-sources/annotations/shop'), {
+      recursive: true,
+    });
+    writeFileSync(
+      path.join(projectRoot, 'target/generated-sources/annotations/shop/Cart_.java'),
+      'class Cart_ {}\n',
+    );
+    writeFileSync(
+      path.join(reportRoot, 'spotbugs.sarif'),
+      SPOTBUGS('shop/Cart.java', 'shop/Cart_.java', 'shop/Missing_.java'),
+    );
+
+    expect(sarifFindings(context).map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD', 'src/main/java/shop/Cart.java'],
+    ]);
+  });
+
   it('reads a zero-byte SpotBugs report, as from a module with only tests, as no findings', () => {
     const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
     writeFileSync(path.join(context.reportRoot, 'pmd.sarif'), PMD(context.projectRoot));
