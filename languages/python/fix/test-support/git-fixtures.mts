@@ -19,6 +19,7 @@ type FixProjectInput = {
   changed: Files;
   prepare?: (root: string) => void;
   realAnalyzers?: true;
+  cliArguments?: readonly string[];
 };
 type ReportedFinding = { tool: string; rule: string; path: string };
 export type FixProjectResult = {

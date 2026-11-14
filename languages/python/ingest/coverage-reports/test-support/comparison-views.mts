@@ -5,7 +5,7 @@ import {
 } from '../../../../../core/diff/comparison/fingerprint.mjs';
 import { parseAnalyzerReport as untypedParseReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { parseChangedLines as untypedChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
-import { isStrictRule as untypedStrictRule } from '../../../../typescript/preset/strict-rules.mjs';
+import { isStrictRule as untypedStrictRule } from '../../../../typescript/preset/strict-rules.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import type { IngestedFinding } from '../../typed/ingest-types.mts';
 

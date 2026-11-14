@@ -15,7 +15,7 @@ import {
 } from '../../../languages/python/adapters/notices/outside-roots-notice.mts';
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
-import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
+import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
 import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
 import {
   LAYOUT_ROOT_KEYS,

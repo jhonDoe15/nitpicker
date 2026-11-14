@@ -156,7 +156,7 @@ describe('the React test file detection', () => {
   });
 
   it('treats the helper import as the Testing Library module for the wrapped rule', async () => {
-    const { testingLibraryPlugin } = await import('../../../eslint-config/react/react-plugins.mjs');
+    const { testingLibraryPlugin } = await import('../../../eslint-config/react/react-plugins.mts');
     const root = projectWith({ 'src/test/render.tsx': renderHelper });
     const code =
       "import { renderPage } from '@/test/render';\nrenderPage(null).getByTestId('a');\n";

@@ -71,3 +71,12 @@ export function undeclaredPosition(ctx: Ctx): void {
 export function untouched(ctx: Ctx): number {
   return ctx.locale.length;
 }
+
+export interface CtxMaker {
+  new (): Ctx;
+  label: string;
+}
+
+export function constructsBare(maker: CtxMaker): Ctx {
+  return new maker;
+}

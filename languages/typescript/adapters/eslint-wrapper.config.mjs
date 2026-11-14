@@ -1,15 +1,18 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import { layeredPolicy } from './lint-engine/project-layer.mjs';
 
 const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');
 const projectRoot = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_ROOT');
 const projectConfigPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_CONFIG');
-const policyModule = await import(pathToFileURL(policyConfigPath).href);
+const policyModule = await import(pathToFileURL(checkoutModulePath(policyConfigPath)).href);
 
 const extraPolicyPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG');
 const extraPolicyModule =
-  extraPolicyPath === undefined ? undefined : await import(pathToFileURL(extraPolicyPath).href);
+  extraPolicyPath === undefined
+    ? undefined
+    : await import(pathToFileURL(checkoutModulePath(extraPolicyPath)).href);
 
 if (!(Array.isArray(policyModule.default) && Array.isArray(extraPolicyModule?.default ?? []))) {
   throw new TypeError(`ESLint policy ${policyConfigPath} must export a flat configuration array`);
