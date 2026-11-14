@@ -33,6 +33,9 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
   says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
+- In a monorepo, `npx nitpicker` at the top runs every project your change touches.
+  `--project <path>` (repeatable) checks only the named projects; running it inside a project folder
+  checks that project alone.
 
 ### Exit codes
 

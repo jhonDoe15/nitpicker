@@ -1290,6 +1290,46 @@
         "minConfidence": ["coChange"],
         "maxCommitFiles": ["coChange"]
       }
+    },
+    "extends": {
+      "description": "Path of the .json config this one builds on, relative to this file and inside the repository. Settings set here replace the shared ones.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\.json$",
+      "not": { "pattern": "^(/|[A-Za-z]:)" }
+    },
+    "projects": {
+      "description": "At the top of a monorepo: the project folders (globs allowed), each with an optional preset. An empty array keeps the repository one project.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "allOf": [
+                  { "not": { "pattern": "^/|^[A-Za-z]:" } },
+                  { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+                ]
+              },
+              "preset": { "enum": ["typescript", "javascript", "java", "kotlin", "python", "go"] }
+            }
+          }
+        ]
+      }
     }
   },
   "allOf": [

@@ -26,6 +26,7 @@ export const FLAGS: readonly Row[] = [
   ['--fix', 'Apply ESLint and Prettier fixes to the changed files, then compare.'],
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
   ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
+  ['--project <path>', 'In a monorepo, run only this project (repeatable).'],
   ['--details', 'Print every new and held finding with its full message.'],
   ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
@@ -73,8 +74,8 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
-  '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '          [--rule <substring>]... [--project <path>]... [--details] [--json] [--quick]',
+  '          [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,

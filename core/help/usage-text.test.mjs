@@ -25,8 +25,8 @@ const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--s
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
-  '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '                 [--rule <substring>]... [--project <path>]... [--details] [--json] [--quick]',
+  '                 [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '                 [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
@@ -52,6 +52,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --fix                            Apply ESLint and Prettier fixes to the changed files, then compare.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches (repeatable).',
+  '  --project <path>                 In a monorepo, run only this project (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --quick                          Run only the fast checks and skip the tests and what builds on them.',

@@ -100,6 +100,31 @@ const TOP_LEVEL = {
     description: 'Pins a style that nitpicker otherwise measures from the project.',
     type: 'object',
   },
+  extends: {
+    description:
+      'Path of the .json config this one builds on, relative to this file and inside the repository. Settings set here replace the shared ones.',
+    type: 'string',
+    minLength: 1,
+    pattern: '\\.json$',
+    not: { pattern: '^(/|[A-Za-z]:)' },
+  },
+  projects: {
+    description:
+      'At the top of a monorepo: the project folders (globs allowed), each with an optional preset. An empty array keeps the repository one project.',
+    type: 'array',
+    uniqueItems: true,
+    items: {
+      anyOf: [
+        projectPath,
+        {
+          type: 'object',
+          additionalProperties: false,
+          required: ['path'],
+          properties: { path: projectPath, preset: { enum: SUPPORTED_PRESETS } },
+        },
+      ],
+    },
+  },
 };
 
 function unavailableKeys(preset) {

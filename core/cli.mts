@@ -39,6 +39,8 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { runMonorepo } from './projects/run/monorepo.mjs';
+import { runScoped } from './projects/run/refusal.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
@@ -74,7 +76,10 @@ const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
 const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
-  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
+  cache: (cli, rest) =>
+    runScoped(cli, 'cache', (scope: object) =>
+      runCacheCommand({ ...cli, ...scope, arguments_: rest }),
+    ),
   init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
   base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
   explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
@@ -95,14 +100,16 @@ export function runCli(options: CliInput = {}): ExitCode {
     });
   }
   if (name === 'aggregate') {
-    return runAggregateCli({
-      arguments_: cli.arguments_.slice(1),
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
+    return runScoped(cli, 'aggregate', (scope: object) =>
+      runAggregateCli({
+        arguments_: cli.arguments_.slice(1),
+        ...scope,
+        analyzers: cli.analyzers,
+        stdout: cli.stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
+      }),
+    );
   }
   try {
     return runCommand(cli);
@@ -174,11 +181,30 @@ function runCommand(cli: Cli): ExitCode {
   );
 }
 
+function runProjectOf(
+  cli: ConfiguredCli,
+): (options: CliOptions, extraCli: { readonly currentProjectRoot: string }) => ExitCode {
+  return (options, extraCli) =>
+    runSingle({ ...cli, ...extraCli, options }, realpathSync(extraCli.currentProjectRoot));
+}
+
 function runConfigured(cli: ConfiguredCli): ExitCode {
-  const { options } = cli;
   const target = resolveRunTarget({ ...cli, missingPathHint });
   const currentProjectRoot = textOf(target.currentProjectRoot);
-  const config: NitpickerConfig = loadConfig(currentProjectRoot);
+  const scoped: ConfiguredCli = { ...cli, scope: target.scope };
+  const monorepo: { readonly exitCode?: ExitCode; readonly extraCli?: object } = runMonorepo({
+    cli: scoped,
+    currentProjectRoot,
+    runProject: runProjectOf(scoped),
+  });
+  return (
+    monorepo.exitCode ?? runSingle({ ...scoped, ...monorepo.extraCli }, currentProjectRoot)
+  );
+}
+
+function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
+  const { options } = cli;
+  const config: NitpickerConfig = loadConfig(currentProjectRoot, { overlay: cli.configOverlay });
   writePresetHint(cli.stderr, config, currentProjectRoot);
   const headPolicy: unknown = resolveProjectHeadPolicy(config, currentProjectRoot, {
     maven: cli.environment['NITPICKER_MAVEN'],
@@ -198,7 +224,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     analyzers: selected,
     configuredRunner: config.tools?.tests?.runner,
   });
-  const run = { currentProjectRoot, config, headPolicy, scope: target.scope, setup };
+  const run = { currentProjectRoot, config, headPolicy, scope: cli.scope, setup };
   const exitCode: unknown = withRunLock(
     { projectRoot: currentProjectRoot, stderr: cli.stderr },
     () => (options.all ? runSnapshot(cli, run) : runComparison(cli, run)),
@@ -246,13 +272,15 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
-  const base = resolveBase({
-    repositoryRoot,
-    explicitBase: options.baseRef,
-    configuredBase: config.base,
-    environment: cli.environment,
-    staged: options.staged,
-  });
+  const base =
+    cli.sharedBase ??
+    resolveBase({
+      repositoryRoot,
+      explicitBase: options.baseRef,
+      configuredBase: config.base,
+      environment: cli.environment,
+      staged: options.staged,
+    });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const selection = selectComparisonAnalyzers(cli);
   const analyzers: unknown = selection.analyzers;
@@ -278,7 +306,11 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: [...listOf(fieldOf(fixResult, 'toolErrors')), ...cli.setupErrors],
+    additionalToolErrors: [
+      ...listOf(fieldOf(fixResult, 'toolErrors')),
+      ...cli.setupErrors,
+      ...(cli.repositoryToolErrors ?? []),
+    ],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),

@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chainOf } from '../../../shared/traversal.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
@@ -26,14 +27,44 @@ const NO_CACHE_WARNING =
   'no writable findings cache, so the base side runs on every comparison; ' +
   'set NITPICKER_CACHE_DIR to a writable folder to reuse it.';
 
+const CACHE_FOLDER = 'node_modules/.cache/nitpicker';
+
+function dependenciesIn(directory) {
+  const full = path.resolve(directory, 'node_modules');
+  return full.startsWith(directory + path.sep) && existsSync(full);
+}
+
+function isRepositoryTop(directory) {
+  return existsSync(path.resolve(directory, '.git'));
+}
+
+function ancestorsToRepository(start) {
+  const ancestors = chainOf(start, (directory) => {
+    const parent = path.dirname(directory);
+    return isRepositoryTop(directory) || parent === directory ? undefined : parent;
+  });
+  return isRepositoryTop(ancestors.at(-1)) ? ancestors : [start];
+}
+
+function workspaceCacheDirectory(projectRoot) {
+  const holder = ancestorsToRepository(projectRoot).slice(1).find(dependenciesIn);
+  if (holder === undefined) {
+    return undefined;
+  }
+  const member = path.relative(holder, projectRoot).split(path.sep).join('/');
+  return path.join(holder, CACHE_FOLDER, 'members', encodeURIComponent(member));
+}
+
 export function resolveCacheDirectory({ projectRoot, environment = process.env }) {
   const configured = environment.NITPICKER_CACHE_DIR;
   if (typeof configured === 'string' && configured.length > 0) {
     return path.resolve(projectRoot, configured);
   }
-  return existsSync(path.join(projectRoot, 'node_modules'))
-    ? path.join(projectRoot, 'node_modules/.cache/nitpicker')
-    : gitCacheDirectory(projectRoot);
+  const root = path.resolve(projectRoot);
+  if (dependenciesIn(root)) {
+    return path.join(root, CACHE_FOLDER);
+  }
+  return workspaceCacheDirectory(root) ?? gitCacheDirectory(root);
 }
 
 function gitCacheDirectory(projectRoot) {

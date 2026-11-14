@@ -1,4 +1,5 @@
 {
+  "core/projects/run/integration/monorepo.e2e.test.mjs": 300,
   "languages/python/adapters/configuration/coverage-config/coverage-precedence.e2e.test.mjs": 12,
   "languages/python/adapters/configuration/python-ruff-config.e2e.test.mjs": 1,
   "languages/python/adapters/e2e/comparison/python-preset-touched-lines.e2e.test.mjs": 15,

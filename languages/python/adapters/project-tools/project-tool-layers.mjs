@@ -8,9 +8,7 @@ import {
   troubleshootingError,
 } from '../../../../shared/messages/troubleshooting.mjs';
 
-export function parseToml(text) {
-  return createRequire(import.meta.url)('smol-toml').parse(text);
-}
+export { parseToml } from '../../../../core/configuration/project-checks/uv-workspace.mjs';
 
 export function stringifyToml(value) {
   return createRequire(import.meta.url)('smol-toml').stringify(value);

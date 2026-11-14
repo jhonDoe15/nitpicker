@@ -10,6 +10,7 @@ import {
 import { chainOf } from '../../../shared/traversal.mjs';
 import { detectedPreset } from './preset-detection.mjs';
 import { markerFilesIn } from './project-markers.mjs';
+import { uvWorkspaceOf } from './uv-workspace.mjs';
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
@@ -21,7 +22,9 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     return directory === repositoryRoot || directory === parent ? undefined : parent;
   });
   const projectRoot = directories.find(
-    (directory) => markerFilesIn(directory, PROJECT_MARKERS).length > 0,
+    (directory) =>
+      markerFilesIn(directory, PROJECT_MARKERS).length > 0 ||
+      uvWorkspaceOf(directory) !== undefined,
   );
   if (projectRoot !== undefined) {
     return projectRoot;

@@ -1,40 +1,21 @@
-import path from 'node:path';
-import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../shared/config.mjs';
-import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
+import { configError } from '../../shared/config.mjs';
 import { listNames } from '../../shared/messages/messages.mjs';
-import { existsSync, readFileSync } from 'node:fs';
-import { validateConfig, KEYS } from './validate.mjs';
+import { KEYS } from './validate.mjs';
+import { readLayeredConfig } from './layers/read-layered.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
 import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
 
-export function loadConfig(projectRoot) {
-  const config = readConfigFile(projectRoot);
+export function loadConfig(projectRoot, options) {
+  const config = readConfigFile(projectRoot, options);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
   rejectMissingBuildFiles(config, projectRoot);
   return config;
 }
 
-export function readConfigFile(projectRoot) {
-  const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
-  if (!existsSync(configPath)) {
-    return {};
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    throw new Error(
-      `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error },
-    );
-  }
-  return withoutSchemaKey(validateConfig(withCanonicalRules(parsed)));
-}
-
-function withoutSchemaKey(config) {
-  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
+export function readConfigFile(projectRoot, options) {
+  return readLayeredConfig(projectRoot, options);
 }
 
 const RUN_SETTINGS = new Set(['analyzerTimeoutMinutes']);

@@ -61,6 +61,7 @@ export type AggregateOptions = {
 export type AggregateCli = {
   readonly arguments_?: readonly string[];
   readonly currentProjectRoot?: string | undefined;
+  readonly configOverlay?: unknown;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly stdout?: TextOutput;
   readonly stderr?: TextOutput;
@@ -89,6 +90,7 @@ export type UnchangedPolicy = {
 
 export type ConfiguredTarget = {
   readonly currentProjectRoot: string;
+  readonly configOverlay: unknown;
   readonly outputRoot: string;
   readonly analyzers: readonly Analyzer[] | undefined;
   readonly warn: Warn;

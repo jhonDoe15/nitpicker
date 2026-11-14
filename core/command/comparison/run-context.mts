@@ -1,3 +1,4 @@
+import type { resolveBase } from '../../diff/git/repository/base-ref.mts';
 import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
 import { resolveCacheStore } from '../../diff/cache/cache-stores.mjs';
@@ -9,6 +10,12 @@ import type { NitpickerConfig } from '../../configuration/config-types.mts';
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
   readonly jsonOutput?: TextOutput;
+  readonly scope?: unknown;
+  readonly configOverlay?: { readonly inherits?: unknown } | undefined;
+  readonly baseConfigOverlay?: unknown;
+  readonly repositoryLoosenings?: readonly unknown[];
+  readonly sharedBase?: ReturnType<typeof resolveBase>;
+  readonly repositoryToolErrors?: readonly object[];
 };
 
 export type ComparisonCli = Omit<ConfiguredCli, 'analyzers' | 'currentProjectRoot'> &

@@ -54,6 +54,15 @@ describe('policy findings', () => {
     expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6')).toBe(false);
   });
 
+  it('accepts any digest of a comma-separated list, as a monorepo run prints several', () => {
+    const accepted = (acceptedDigest) =>
+      isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', { acceptedDigest });
+
+    expect(accepted('aaaaaaaaaaaa,d1e2f3a4b5c6')).toBe(true);
+    expect(accepted('aaaaaaaaaaaa,bbbbbbbbbbbb')).toBe(false);
+    expect(accepted('aaaaaaaaaaaa d1e2f3a4b5c6')).toBe(false);
+  });
+
   it('accepts a commit only when it is the gated head, and never as a digest', () => {
     const head = 'a'.repeat(40);
     const other = 'b'.repeat(40);
@@ -76,5 +85,15 @@ describe('policy findings', () => {
     expect(accepting(`commit:${head}`, other).map(({ message }) => message)).toEqual(
       accepting('ffffffffffff', other).map(({ message }) => `${message}${note}`),
     );
+  });
+
+  it('accepts a digest listed among several, one per project of a monorepo', () => {
+    expect(
+      policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'aaaaaaaaaaaa,d1e2f3a4b5c6' }),
+    ).toEqual([]);
+    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', 'aaaaaaaaaaaa,bbbbbbbbbbbb')).toBe(
+      false,
+    );
+    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', 'd1e2f3a4b5c6extra')).toBe(false);
   });
 });

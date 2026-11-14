@@ -19,6 +19,7 @@ import {
   checksJavascript,
   projectTsconfigs,
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
+import { configLayersOf } from '../configuration/layers/shared-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 import { readToolConfigs } from './build-files/tool-config-files.mjs';
 import { importedAmong } from './imported-files.mjs';
@@ -129,6 +130,7 @@ export function createPolicyScope({
   headConfig,
   moves,
   presetRequired = false,
+  configLayers = { shared: [], changed: [] },
   tsconfigs,
   buildSources,
   toolConfigs = [],
@@ -153,6 +155,8 @@ export function createPolicyScope({
     basePathOf,
     existsInBase: (file) => baseFileSet.has(file),
     presetRequired,
+    sharedConfigs: configLayers.shared,
+    changedConfigLayers: configLayers.changed,
     tsconfigs,
     buildSources,
     toolConfigs,
@@ -248,6 +252,7 @@ export function readPolicyScope({
   headProjectRoot,
   liveProjectRoot = headProjectRoot,
   moves,
+  inherits,
   replacedOptions,
 }) {
   const files = listedFiles(headProjectRoot);
@@ -265,6 +270,7 @@ export function readPolicyScope({
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
+    configLayers: configLayersOf(baseProjectRoot, headProjectRoot, { blobId: gitBlobId, inherits }),
     tsconfigs: isTypescriptPreset(headConfig)
       ? {
           base: tsconfigsOf(baseProjectRoot, baseFiles, baseConfig),

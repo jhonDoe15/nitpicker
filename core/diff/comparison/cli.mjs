@@ -1,6 +1,12 @@
 import { didYouMean } from '../../../shared/messages/closest-match.mjs';
 
-const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
+const VALUE_OPTIONS = new Set([
+  '--analyzer',
+  '--rule',
+  '--project',
+  '--shard-count',
+  '--shard-index',
+]);
 const DEFER_EXIT = '--defer-exit';
 
 export const DRILL_DOWN_OPTIONS = [...VALUE_OPTIONS, DEFER_EXIT];
@@ -48,6 +54,7 @@ export function parseDrillDownOptions(arguments_) {
   return {
     analyzerNames,
     ruleFilters: valuesOf(entries, '--rule'),
+    projectPaths: valuesOf(entries, '--project'),
     shardCount,
     shardIndex,
     deferExit: entries.some(([argument]) => argument === DEFER_EXIT),

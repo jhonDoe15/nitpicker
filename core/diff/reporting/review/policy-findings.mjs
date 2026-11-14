@@ -20,7 +20,9 @@ function acceptedCommit(acceptance) {
 
 function acceptsThisRun(acceptance, digest, headSha) {
   const commit = acceptedCommit(acceptance);
-  return commit === undefined ? acceptance === digest : headSha !== undefined && commit === headSha;
+  return commit === undefined
+    ? acceptance.split(',').includes(digest)
+    : headSha !== undefined && commit === headSha;
 }
 
 export function isPolicyChangeAccepted(loosenings, digest, { acceptedDigest, headSha } = {}) {

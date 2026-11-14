@@ -24,6 +24,9 @@ type ResolverOptions = {
   readonly headConfig: NitpickerConfig;
   readonly headPolicy?: unknown;
   readonly injectedAnalyzers?: readonly Analyzer[] | undefined;
+  readonly overlay?: unknown;
+  readonly inherits?: unknown;
+  readonly repositoryLoosenings?: readonly unknown[];
   readonly profile?: object;
   readonly warn?: Warn;
 };
@@ -36,7 +39,10 @@ type BaseSnapshot = {
   readonly analyzers: readonly Analyzer[];
 };
 
-type MeasuredBase = Omit<Required<ResolverOptions>, 'warn' | 'injectedAnalyzers'> & {
+type MeasuredBase = Omit<
+  Required<ResolverOptions>,
+  'warn' | 'injectedAnalyzers' | 'overlay' | 'inherits' | 'repositoryLoosenings'
+> & {
   readonly baseConfig: NitpickerConfig;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
   readonly analyzers: readonly Analyzer[];
@@ -44,6 +50,9 @@ type MeasuredBase = Omit<Required<ResolverOptions>, 'warn' | 'injectedAnalyzers'
 
 type BaseSetupCli = {
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
+  readonly baseConfigOverlay?: unknown;
+  readonly configOverlay?: { readonly inherits?: unknown } | undefined;
+  readonly repositoryLoosenings?: readonly unknown[] | undefined;
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
@@ -51,12 +60,16 @@ type BaseSetupCli = {
 const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => Analyzer =
   withConfiguredTimeout;
 
-function readBaseConfig(baseProjectRoot: string, warn: Warn): NitpickerConfig | undefined {
-  if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
+function readBaseConfig(
+  baseProjectRoot: string,
+  warn: Warn,
+  overlay: unknown,
+): NitpickerConfig | undefined {
+  if (overlay === undefined && !existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
     return undefined;
   }
   try {
-    return readConfigFile(baseProjectRoot);
+    return readConfigFile(baseProjectRoot, { overlay });
   } catch (error) {
     const reason = textOf(
       withoutTroubleshooting(error instanceof Error ? error.message : String(error)),
@@ -77,6 +90,9 @@ export function baseSetupResolver(
     headConfig,
     headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
+    overlay: cli.baseConfigOverlay,
+    inherits: cli.configOverlay?.inherits,
+    repositoryLoosenings: cli.repositoryLoosenings ?? [],
     profile: cli.options,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
@@ -86,11 +102,14 @@ export function createBaseSetupResolver({
   headConfig,
   headPolicy = {},
   injectedAnalyzers,
+  overlay,
+  inherits,
+  repositoryLoosenings = [],
   profile = {},
   warn = () => undefined,
 }: ResolverOptions): (snapshot: BaseSnapshot) => object {
   return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
-    const baseConfig = readBaseConfig(baseProjectRoot, warn);
+    const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
     const compared = baseConfig ?? {};
     const scope: unknown = readPolicyScope({
       baseConfig: compared,
@@ -100,6 +119,7 @@ export function createBaseSetupResolver({
       liveProjectRoot,
       moves,
       replacedOptions: undefined,
+      inherits,
     });
     const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);
     return {
@@ -113,7 +133,7 @@ export function createBaseSetupResolver({
             profile,
             analyzers,
           })),
-      ...policyChangeFields(compared, headConfig, scope),
+      ...policyChangeFields(compared, headConfig, { ...objectOf(scope), repositoryLoosenings }),
     };
   };
 }

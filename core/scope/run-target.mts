@@ -32,7 +32,9 @@ export function resolveRunTarget({
   if (paths.length === 0) {
     return {
       currentProjectRoot:
-        currentProjectRoot === undefined ? projectRootOf() : realpathSync(currentProjectRoot),
+        currentProjectRoot === undefined
+          ? projectRootOf(workingDirectory)
+          : realpathSync(currentProjectRoot),
     };
   }
   const base = realpathSync(workingDirectory ?? process.cwd());

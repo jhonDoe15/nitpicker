@@ -38,6 +38,7 @@ type CacheCli = {
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
+  readonly configOverlay?: unknown;
 };
 
 type ShardOptions = {
@@ -152,7 +153,7 @@ export function runCacheCommand(cli: CacheCli): number {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot),
   );
-  const config: NitpickerConfig = loadConfig(projectRoot);
+  const config: NitpickerConfig = loadConfig(projectRoot, { overlay: cli.configOverlay });
   const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
     maven: cli.environment?.['NITPICKER_MAVEN'],
   });
