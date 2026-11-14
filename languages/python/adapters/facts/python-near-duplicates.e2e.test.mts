@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createFactsProjects } from './test-support/facts-projects.mjs';
+import { createFactsProjects } from './test-support/facts-projects.mts';
 
-const { factsOf, cleanup } = createFactsProjects();
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+
+const { nearDuplicates, cleanup } = createFactsProjects();
 
 afterEach(cleanup);
 
-const ALIGN = (edge, key) =>
+const ALIGN = (edge: string, key: string) =>
   [
     `def align_${edge}(elements, state, translate):`,
     '    selected = [e for e in state.selection if not e.locked]',
@@ -34,12 +35,6 @@ const TOTALS = [
   '',
 ].join('\n');
 
-function nearDuplicates(files) {
-  return factsOf(files)
-    .findings()
-    .filter(({ rule }) => rule === 'near-duplicate');
-}
-
 describe.skipIf(!pythonE2eEnabled)('near-duplicate over Python functions', () => {
   it('reports a function copied into another module with changed literals', () => {
     const top = 'src/shop/top.py';
@@ -53,7 +48,7 @@ describe.skipIf(!pythonE2eEnabled)('near-duplicate over Python functions', () =>
     expect(found.map(({ path, identity }) => [path, identity])).toEqual([
       [top, `near-duplicate:${bottom}#align_bottom|${top}#align_top`],
     ]);
-    expect(found[0].message).toBe(
+    expect(found[0]?.message).toBe(
       [
         `align_top is a copy of align_bottom (${bottom}:4) apart from 2 values`,
         "('labels.alignTop' / 'labels.alignBottom' and 'top' / 'bottom'). Extract one function that",

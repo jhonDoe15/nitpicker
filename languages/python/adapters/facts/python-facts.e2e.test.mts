@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createFactsProjects } from './test-support/facts-projects.mjs';
+import { createFactsProjects } from './test-support/facts-projects.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const { factsOf, cleanup } = createFactsProjects();
 
@@ -44,7 +45,13 @@ const DOCUMENTED = [
   '',
 ].join('\n');
 
-function statement(from, to, names, line, extra = {}) {
+function statement(
+  from: string,
+  to: string,
+  names: unknown,
+  line: number,
+  extra: Readonly<Record<string, unknown>> = {},
+) {
   return { from, to, names, reexport: false, role: 'production', line, ...extra };
 }
 
@@ -81,7 +88,7 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
       ['tests/unit/test_pricing.py', 'test', false, undefined],
     ]);
     expect(report.packages).toEqual([{ root: '', published: true }]);
-    expect(report.definitions.find(({ name }) => name === 'main').entry).toBe(true);
+    expect(report.definitions.find(({ name }) => name === 'main')?.entry).toBe(true);
   });
 
   it('resolves each import statement to the project files it names', () => {
@@ -151,11 +158,11 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
       ['total', 'function', 10, 3, true, false, false],
       ['Cart', 'class', 15, 2, true, false, false],
     ]);
-    expect(total.tokens.join(' ')).toBe(
+    expect(total?.tokens.join(' ')).toBe(
       'def total ( amount : int , * , rate : int = RATE ) -> D : return D ( amount ) * rate',
     );
-    expect(total.text).toBe(`function|${total.tokens.join(' ')}`);
-    expect(total.entry).toBe(false);
+    expect(total?.text).toBe(`function|${String(total?.tokens.join(' '))}`);
+    expect(total?.entry).toBe(false);
   });
 
   it('gives two copies the same key only when their free names resolve alike', () => {
@@ -197,7 +204,7 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
       ['C', 'type', 'type|C : TypeAlias = int'],
       ['d', 'function', 'function:async|@ money . cached async def d ( ) : return money . Coin'],
     ]);
-    expect(report.modules[0].qualifiedUses).toEqual(['money.Coin', 'money.cached']);
+    expect(report.modules[0]?.qualifiedUses).toEqual(['money.Coin', 'money.cached']);
   });
 
   it('records the description lines of every docstring, and whether its sections say more', () => {

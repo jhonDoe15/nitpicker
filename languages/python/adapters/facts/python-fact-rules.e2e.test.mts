@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createFactsProjects } from './test-support/facts-projects.mjs';
+import { textOf } from '../../../../shared/values/readers.mts';
+import { createFactsProjects } from './test-support/facts-projects.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const DOC_RULE = 'doc-comment-content';
 const MODULE = 'src/shop/mod.py';
@@ -9,16 +11,19 @@ const { factsOf, cleanup } = createFactsProjects();
 
 afterEach(cleanup);
 
-function findingsOf(rule, files, options) {
+type Files = Readonly<Record<string, string>>;
+type Options = { base?: Files; moves?: unknown };
+
+function findingsOf(rule: string, files: Files, options?: Options) {
   return factsOf(files, options)
     .findings()
     .filter((finding) => finding.rule === rule);
 }
 
-function docFindings(code) {
+function docFindings(code: string) {
   return findingsOf(DOC_RULE, { [MODULE]: code }).map(({ identity, location }) => [
     identity,
-    location.line,
+    location?.line,
   ]);
 }
 
@@ -88,9 +93,10 @@ describe.skipIf(!pythonE2eEnabled)('doc-comment-content over docstrings', () => 
     ]);
   });
 
-  const docstring = (lines) => `def render():\n    """${lines.join('\n    ')}\n    """\n`;
-  const longMessage = (lines) =>
-    `This doc comment's description is ${String(lines)} lines (limit 5). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${exceptionHint(DOC_RULE, MODULE)}`;
+  const docstring = (lines: readonly string[]) =>
+    `def render():\n    """${lines.join('\n    ')}\n    """\n`;
+  const longMessage = (lines: number) =>
+    `This doc comment's description is ${String(lines)} lines (limit 5). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${textOf(exceptionHint(DOC_RULE, MODULE))}`;
 
   it('reports more than 5 description lines with the count', () => {
     const [finding, ...others] = findingsOf(DOC_RULE, {
@@ -98,13 +104,13 @@ describe.skipIf(!pythonE2eEnabled)('doc-comment-content over docstrings', () => 
     });
 
     expect(others).toEqual([]);
-    expect([finding.identity, finding.path, finding.symbol, finding.location.line]).toEqual([
+    expect([finding?.identity, finding?.path, finding?.symbol, finding?.location?.line]).toEqual([
       'doc-comment:render:long',
       MODULE,
       'render',
       2,
     ]);
-    expect(finding.message).toBe(longMessage(6));
+    expect(finding?.message).toBe(longMessage(6));
   });
 
   it.each([
@@ -194,7 +200,7 @@ const EDITED_TOTAL = TOTAL.replace(
 );
 
 describe.skipIf(!pythonE2eEnabled)('sibling-copy-edit over the base facts', () => {
-  const siblingEdits = (files, options) =>
+  const siblingEdits = (files: Files, options?: Options) =>
     findingsOf('sibling-copy-edit', files, options).map(({ path, identity }) => [path, identity]);
 
   it('reports an edit to one of two copies that leaves the other as it was', () => {
@@ -220,7 +226,7 @@ describe.skipIf(!pythonE2eEnabled)('sibling-copy-edit over the base facts', () =
   });
 });
 
-function rows(findings) {
+function rows(findings: readonly { rule: string; path: string; identity: string }[]) {
   return findings.map(({ rule, path, identity }) => [rule, path, identity]);
 }
 
@@ -228,7 +234,7 @@ const LOADS = 'def loads(text):\n    return text\n';
 const OTHER_LOADS = 'def loads(text):\n    return text.strip()\n';
 
 describe.skipIf(!pythonE2eEnabled)('exported-name-collision over imports', () => {
-  const collisions = (importer) =>
+  const collisions = (importer: string) =>
     rows(
       findingsOf('exported-name-collision', {
         'src/app/__init__.py': '',
@@ -298,11 +304,11 @@ describe.skipIf(!pythonE2eEnabled)('exported-name-collision over imports', () =>
 });
 
 describe.skipIf(!pythonE2eEnabled)('duplicate-definition over overloads', () => {
-  const overloaded = (body) =>
+  const overloaded = (body: string) =>
     `from typing import overload\n\n\n@overload\ndef get(key: str) -> str: ...\n@overload\ndef get(key: str, default: int) -> str | int: ...\ndef get(key, default=None):\n    ${body}\n`;
 
   it('compares the implementations, with the overload stubs folded in as TypeScript does', () => {
-    const store = (first, second) =>
+    const store = (first: string, second: string) =>
       findingsOf('duplicate-definition', {
         'src/app/__init__.py': '',
         'src/app/redis.py': overloaded(first),
@@ -332,7 +338,7 @@ const DJANGO_APP = {
 };
 const TEST_ONLY_GET_VERSION = [['test-only-export', 'src/shop/models.py', 'exports:get_version']];
 
-function testOnly(files) {
+function testOnly(files: Files) {
   return rows(findingsOf('test-only-export', files));
 }
 
@@ -418,7 +424,8 @@ describe.skipIf(!pythonE2eEnabled)('copy scope', () => {
     .split('\n')
     .map((line) => (line === '' ? line : `    ${line}`))
     .join('\n')}`;
-  const siblingRows = (head, base) => rows(findingsOf('sibling-copy-edit', head, { base }));
+  const siblingRows = (head: Files, base: Files) =>
+    rows(findingsOf('sibling-copy-edit', head, { base }));
   const base = {
     'src/blog/__init__.py': '',
     'src/blog/a.py': TOTAL,
@@ -474,7 +481,7 @@ describe.skipIf(!pythonE2eEnabled)('public-alternative-bypass over Python packag
     'tests/test_orders.py':
       'from shop.billing.invoice import Invoice\n\n\ndef test_it():\n    assert Invoice\n',
   };
-  const bypasses = (project) =>
+  const bypasses = (project: Files) =>
     findingsOf('public-alternative-bypass', project).map(({ path, allowedForm }) => [
       path,
       allowedForm,
