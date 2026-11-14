@@ -17,7 +17,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava } from './maven-command.mjs';
-import { toolJava } from './errorprone/maven-jdk.mjs';
+import { skipWithoutJdk, toolJava } from './errorprone/maven-jdk.mjs';
+import { CHECKSTYLE_SKIPPED } from '../adapters/reporting/skips/skipped-tools.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
@@ -257,6 +258,22 @@ function checkstyleReport(options) {
 }
 
 export function runCheckstyle(options) {
+  const { reportDir, pinned } = options;
+  skipWithoutJdk(
+    {
+      reportDir,
+      file: CHECKSTYLE_SKIPPED,
+      placeholders: {
+        'checkstyle.xml': `<checkstyle version="${pinned.checkstyle}"></checkstyle>`,
+      },
+    },
+    () => {
+      runCheckstyleReports(options);
+    },
+  );
+}
+
+function runCheckstyleReports(options) {
   const { module, reportDir, tools, configs, pinned, style, spawn, timeoutMs } = options;
   const context = {
     module,
