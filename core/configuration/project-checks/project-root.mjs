@@ -14,7 +14,7 @@ import { uvWorkspaceOf } from './uv-workspace.mjs';
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
-export function resolveProjectRoot(cwd = process.cwd()) {
+export function resolveProjectRoot(cwd = process.cwd(), { noProjectAdvice } = {}) {
   const current = realpathSync(cwd);
   const repositoryRoot = repositoryRootOf(current);
   const directories = chainOf(current, (directory) => {
@@ -30,7 +30,7 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     return projectRoot;
   }
   throw troubleshootingError(
-    noProjectMessage(current, repositoryRoot),
+    noProjectMessage(current, repositoryRoot, noProjectAdvice?.(repositoryRoot)),
     TROUBLESHOOTING_ANCHORS.noProjectFound,
   );
 }
@@ -57,12 +57,15 @@ function repositoryRootOf(directory) {
   }
 }
 
-function noProjectMessage(current, repositoryRoot) {
+function noProjectMessage(current, repositoryRoot, suggestion) {
   const where =
     current === repositoryRoot
       ? `in the repository root ${current}`
       : `between ${current} and repository root ${repositoryRoot}`;
   const detected = detectedPreset(current);
+  if (suggestion !== undefined && detected === undefined) {
+    return `No package.json or ${CONFIG_FILE_NAME} found ${where}. ${suggestion}`;
+  }
   const advice =
     detected === undefined
       ? `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`

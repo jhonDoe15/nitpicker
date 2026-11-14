@@ -5,6 +5,7 @@ import { byText } from '../../../shared/text-order/by-text.mjs';
 
 const SKIPPED_SEGMENTS = new Set([
   'node_modules',
+  'fixture',
   'fixtures',
   'vendor',
   'third_party',

@@ -1,6 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { hasScriptSources } from '../../configuration/project-checks/preset-detection.mjs';
+import {
+  hasScriptSources,
+  scriptProjectPreset,
+} from '../../configuration/project-checks/preset-detection.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { javascriptWorkspaces } from './javascript-workspaces.mjs';
 import { JVM_MARKERS, jvmBuilds } from './jvm-builds.mjs';
 import { PYTHON_MARKERS, PYTHON_PROJECT_MARKERS, pythonWorkspace } from './python-projects.mjs';
@@ -43,18 +47,36 @@ function nestedPython(directories) {
   ).map((directory) => ({ path: directory, origin: 'Python project' }));
 }
 
+const SCRIPT_ORIGINS = { typescript: 'TypeScript package', javascript: 'JavaScript package' };
+
+function nestedScripts(root, directories) {
+  return outermost(
+    directories.filter((directory) => directory !== '.' && !isSkippedLocation(directory)),
+  ).flatMap((directory) => {
+    const preset = scriptProjectPreset({}, path.join(root, directory));
+    return preset === undefined ? [] : [{ path: directory, origin: SCRIPT_ORIGINS[preset] }];
+  });
+}
+
 function candidatesOf(root, files) {
   const python = nestedPython(directoriesWith(root, files, PYTHON_PROJECT_MARKERS));
   const jvm = jvmBuilds(root, directoriesWith(root, files, JVM_MARKERS)).filter(
     (build) => build.path !== '.',
   );
-  return [...python, ...jvm];
+  const scripts = nestedScripts(root, directoriesWith(root, files, ['package.json']));
+  return [...python, ...jvm, ...scripts];
 }
 
-export function undeclaredProjects({ root, files, projects }) {
+function isExcludedFolder(folder, exclude) {
+  const inside = `${folder}/project-file`;
+  return exclude.some((glob) => globMatcher(glob).test(inside));
+}
+
+export function undeclaredProjects({ root, files, projects, exclude = [] }) {
   const covering = projects.filter((project) => project.path !== '.');
   return candidatesOf(root, files)
     .filter((candidate) => !covering.some((project) => isInside(candidate.path, project.path)))
+    .filter((candidate) => !isExcludedFolder(candidate.path, exclude))
     .toSorted(byPath);
 }
 
