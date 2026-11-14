@@ -27,9 +27,7 @@ export function requestedAnalyzers(
   options: SelectionOptions,
   analyzers: readonly ProfiledAnalyzer[],
 ): readonly unknown[] {
-  return options.shardCount === undefined ||
-    options.shardIndex === undefined ||
-    options.all
+  return options.shardCount === undefined || options.shardIndex === undefined || options.all
     ? selectAll(analyzers, options.analyzerNames)
     : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
 }
