@@ -1,17 +1,23 @@
 import { chainOf } from '../analysis/ancestry.mjs';
 import { memberName } from '../analysis/test-code-analysis.mjs';
 
+const WITH_GLOBAL = 'withGlobal';
+const SINON = 'sinon';
+const DEFAULT_NAME = 'default';
+const VITEST = 'vitest';
+const CLOCK = 'clock';
+
 const GLOBAL_KINDS = [
-  ['vi', 'vitest'],
-  ['vitest', 'vitest'],
+  ['vi', VITEST],
+  [VITEST, VITEST],
   ['jest', 'jest'],
-  ['sinon', 'sinon'],
+  [SINON, SINON],
 ];
 
-const WHOLE_MODULE = ['default', '*'];
+const WHOLE_MODULE = [DEFAULT_NAME, '*'];
 
 const IMPORTS = [
-  { matches: (source) => source === 'vitest', names: ['vi', 'vitest'], kind: 'vitest' },
+  { matches: (source) => source === VITEST, names: ['vi', VITEST], kind: VITEST },
   { matches: (source) => source === '@jest/globals', names: ['jest'], kind: 'jest' },
   { matches: (source) => source === 'node:test', names: ['mock'], kind: 'node' },
   {
@@ -19,13 +25,13 @@ const IMPORTS = [
     names: ['waitFor'],
     kind: 'waitFor',
   },
-  { matches: (source) => source === 'mock-require', names: ['default'], kind: 'mockRequire' },
+  { matches: (source) => source === 'mock-require', names: [DEFAULT_NAME], kind: 'mockRequire' },
   { matches: (source) => source === 'testdouble', names: WHOLE_MODULE, kind: 'testdouble' },
-  { matches: (source) => source === 'quibble', names: ['default'], kind: 'quibble' },
+  { matches: (source) => source === 'quibble', names: [DEFAULT_NAME], kind: 'quibble' },
   {
-    matches: (source) => source === 'sinon',
+    matches: (source) => source === SINON,
     names: WHOLE_MODULE,
-    kind: 'sinon',
+    kind: SINON,
     functions: [
       'useFakeTimers',
       'createSandbox',
@@ -41,25 +47,25 @@ const IMPORTS = [
     matches: (source) => source === '@sinonjs/fake-timers',
     names: WHOLE_MODULE,
     kind: 'fakeTimers',
-    functions: ['install', 'createClock', 'withGlobal'],
+    functions: ['install', 'createClock', WITH_GLOBAL],
   },
   {
     matches: (source) => source === 'proxyquire',
-    names: ['default'],
+    names: [DEFAULT_NAME],
     kind: 'proxyquire',
     chained: true,
   },
-  { matches: (source) => source === 'esmock', names: ['default'], kind: 'esmock' },
+  { matches: (source) => source === 'esmock', names: [DEFAULT_NAME], kind: 'esmock' },
 ];
 
 const PRODUCED_KINDS = {
-  sinon: { createSandbox: 'sinon', useFakeTimers: 'clock' },
-  fakeTimers: { install: 'clock', createClock: 'clock' },
+  sinon: { createSandbox: SINON, useFakeTimers: CLOCK },
+  fakeTimers: { install: CLOCK, createClock: CLOCK },
 };
 
 function importedName(specifier) {
   if (specifier.type === 'ImportDefaultSpecifier') {
-    return 'default';
+    return DEFAULT_NAME;
   }
   if (specifier.type === 'ImportNamespaceSpecifier') {
     return '*';
@@ -118,7 +124,7 @@ function requireBindings(declarator, spec) {
   if (id.type === 'ObjectPattern') {
     return destructuredBindings(id, spec);
   }
-  return id.type === 'Identifier' && spec.names.includes('default')
+  return id.type === 'Identifier' && spec.names.includes(DEFAULT_NAME)
     ? [{ local: id.name, kind: spec.kind }]
     : [];
 }
@@ -180,9 +186,9 @@ function producedObjectKind(apis, { callee }) {
   const imported = importedFunction(apis, callee);
   const isWithGlobal =
     imported === undefined
-      ? memberName(callee) === 'withGlobal' &&
+      ? memberName(callee) === WITH_GLOBAL &&
         apis.kinds.get(bindingKey(callee.object) ?? '') === 'fakeTimers'
-      : imported.kind === 'fakeTimers' && imported.method === 'withGlobal';
+      : imported.kind === 'fakeTimers' && imported.method === WITH_GLOBAL;
   return isWithGlobal ? 'fakeTimers' : undefined;
 }
 

@@ -7,7 +7,7 @@ type SelectionOptions = {
   readonly analyzerNames: readonly string[];
   readonly shardCount?: number | undefined;
   readonly shardIndex?: number | undefined;
-  readonly all?: boolean;
+  readonly all: boolean;
 };
 
 type AnalyzerSelection = {
@@ -29,7 +29,7 @@ export function requestedAnalyzers(
 ): readonly unknown[] {
   return options.shardCount === undefined ||
     options.shardIndex === undefined ||
-    options.all === true
+    options.all
     ? selectAll(analyzers, options.analyzerNames)
     : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
 }

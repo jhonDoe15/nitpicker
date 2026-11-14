@@ -10,10 +10,13 @@ import {
 } from '../../analysis/test-code-analysis.mjs';
 import { isFunctionNode } from '../../analysis/constant-resolution.mjs';
 
+const HOOK_TIMEOUT = 'hookTimeout';
+const TEARDOWN_TIMEOUT = 'teardownTimeout';
+
 export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
 
 const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'before', 'after']);
-const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', 'hookTimeout', 'teardownTimeout']);
+const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', HOOK_TIMEOUT, TEARDOWN_TIMEOUT]);
 
 function timeoutProperties(context, node) {
   const resolved = resolveConstant(context, node);
@@ -41,7 +44,7 @@ function globalTimeouts(context, node) {
   if (member?.object === 'vi' && member.method === 'setConfig') {
     return timeoutProperties(context, node.arguments[0]).map((property) => ({
       node: property.value,
-      hook: ['hookTimeout', 'teardownTimeout'].includes(property.key.name),
+      hook: [HOOK_TIMEOUT, TEARDOWN_TIMEOUT].includes(property.key.name),
     }));
   }
   return member?.object === 'jest' && member.method === 'setTimeout'
@@ -66,7 +69,7 @@ function argumentTimeouts(context, argument, hook = false) {
   if (properties.length > 0) {
     return properties.map((property) => ({
       node: property.value,
-      hook: hook || ['hookTimeout', 'teardownTimeout'].includes(property.key.name),
+      hook: hook || [HOOK_TIMEOUT, TEARDOWN_TIMEOUT].includes(property.key.name),
     }));
   }
   return resolveConstant(context, argument)?.type === 'ObjectExpression'

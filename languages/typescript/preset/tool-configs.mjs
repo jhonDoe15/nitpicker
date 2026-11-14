@@ -24,6 +24,8 @@ import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-d
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
+const QUALITY_TSCONFIG = 'tsconfig.quality.json';
+
 const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
 const DEFAULT_TEST_ROOTS = new Set(testRoots);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
@@ -124,13 +126,13 @@ export function jsonTransform(rewrite, layout) {
 }
 
 const REWRITES = new Map([
-  ['tsconfig.quality.json', layoutTsconfig],
+  [QUALITY_TSCONFIG, layoutTsconfig],
   [STRYKER_TSCONFIG, layoutStrykerTsconfig],
   ['knip.json', layoutKnipConfig],
   ['jscpd.json', layoutJscpdConfig],
 ]);
 
-const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', STRYKER_TSCONFIG]);
+const TSCONFIG_POLICY_FILES = new Set([QUALITY_TSCONFIG, STRYKER_TSCONFIG]);
 
 export function layoutTransformFor(policyFileName, layout, { strictMutants = true } = {}) {
   const name = policyFileName.split('/').at(-1);
@@ -212,7 +214,7 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
   const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
-  const lib = libsWithTestDom(projectLibs(projectDirectory, extended), 'tsconfig.quality.json', {
+  const lib = libsWithTestDom(projectLibs(projectDirectory, extended), QUALITY_TSCONFIG, {
     projectDirectory,
     layout,
   });

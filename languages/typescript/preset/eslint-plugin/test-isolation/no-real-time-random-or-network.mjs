@@ -2,6 +2,8 @@ import { createRunnerApis, runnerApiVisitors } from '../rules/runner-apis/runner
 import { setsFakeClock, spiedMember } from '../rules/runner-apis/runner-doubles.mjs';
 import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mjs';
 
+const RANDOM = 'random';
+
 const NETWORK_MODULES = new Map([
   ['http', new Set(['request', 'get'])],
   ['https', new Set(['request', 'get'])],
@@ -34,7 +36,7 @@ function isRandomSpy(apis, node) {
   return (
     spied?.target.type === 'Identifier' &&
     spied.target.name === 'Math' &&
-    spied.property.value === 'random'
+    spied.property.value === RANDOM
   );
 }
 
@@ -82,7 +84,7 @@ function reportUnfaked(context, state, { clockCalls, randomCalls }) {
   const { fakeClock, fixRandom } = vocabularyOf(context);
   const unfaked = [
     ...(state.fakeClock ? [] : clockCalls.map((node) => ({ node, messageId: 'clock' }))),
-    ...(state.randomSpy ? [] : randomCalls.map((node) => ({ node, messageId: 'random' }))),
+    ...(state.randomSpy ? [] : randomCalls.map((node) => ({ node, messageId: RANDOM }))),
   ];
   for (const report of unfaked) {
     context.report({ ...report, data: { fakeClock, fixRandom } });
@@ -139,7 +141,7 @@ export const rule = {
         if (isMemberCall(node, 'Date', 'now')) {
           clockCalls.push(node);
         }
-        if (isMemberCall(node, 'Math', 'random')) {
+        if (isMemberCall(node, 'Math', RANDOM)) {
           randomCalls.push(node);
         }
         state.fakeClock ||= setsFakeClock(apis, node);

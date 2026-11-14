@@ -1,3 +1,5 @@
+const WATCH_OPTION = '--watch';
+
 export const TEST_RUNNERS = ['vitest', 'jest', 'node', 'mocha'];
 
 export const DEFAULT_TEST_RUNNER = 'vitest';
@@ -17,7 +19,7 @@ export const RUNNER_PACKAGES = {
 
 export const NODE_TEST_OPTIONS_NITPICKER_SETS = {
   flags: [
-    '--watch',
+    WATCH_OPTION,
     '--watch-preserve-output',
     '--test-only',
     '--experimental-test-coverage',
@@ -39,7 +41,7 @@ export const NODE_TEST_OPTIONS_NITPICKER_SETS = {
 };
 
 export const MOCHA_OPTIONS_NITPICKER_SETS = {
-  flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
+  flags: [WATCH_OPTION, '-w', '--forbid-only', '--bail', '-b'],
   valued: [
     '--reporter',
     '-R',
@@ -56,7 +58,7 @@ export const MOCHA_OPTIONS_NITPICKER_SETS = {
 
 export const JEST_OPTIONS_NITPICKER_SETS = {
   flags: [
-    '--watch',
+    WATCH_OPTION,
     '--watchAll',
     '--coverage',
     '--collectCoverage',

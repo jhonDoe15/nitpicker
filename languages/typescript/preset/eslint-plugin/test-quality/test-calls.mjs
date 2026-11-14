@@ -5,7 +5,10 @@ import {
   resolveFunction,
 } from '../rules/analysis/constant-resolution.mjs';
 
-const SUITE_NAMES = new Set(['describe', 'suite', 'context']);
+const DESCRIBE = 'describe';
+const SUITE = 'suite';
+
+const SUITE_NAMES = new Set([DESCRIBE, SUITE, 'context']);
 const CASE_NAMES = new Set(['it', 'test', 'specify', 'xit', 'fit', 'xtest']);
 const TEST_MODULES = new Set([
   'vitest',
@@ -35,7 +38,7 @@ const MODIFIERS = new Set([
 const MAX_EXTENSION_DEPTH = 4;
 const NOT_TESTS = [
   'step',
-  'describe',
+  DESCRIBE,
   'beforeEach',
   'afterEach',
   'beforeAll',
@@ -76,13 +79,13 @@ function testCallShape(node) {
   }
   const root = rootNameOf(node.callee);
   const names = memberNames(node.callee);
-  const isPlaywrightSuite = CASE_NAMES.has(root) && names[0] === 'describe';
+  const isPlaywrightSuite = CASE_NAMES.has(root) && names[0] === DESCRIBE;
   const modifiers = isPlaywrightSuite ? names.slice(1) : names;
   if (!modifiers.every((name) => MODIFIERS.has(name))) {
     return undefined;
   }
   if (isPlaywrightSuite || SUITE_NAMES.has(root)) {
-    return 'suite';
+    return SUITE;
   }
   return CASE_NAMES.has(root) ? 'case' : undefined;
 }
@@ -146,7 +149,7 @@ export function chainHasProperty(callee, name) {
 }
 
 export function isSuiteCall(node) {
-  return testCallShape(node) === 'suite';
+  return testCallShape(node) === SUITE;
 }
 
 export function isCaseCall(node) {

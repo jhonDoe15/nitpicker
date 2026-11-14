@@ -84,7 +84,7 @@ function gatedDiagnostics(
     }
     const file = projectFile(projectRoot, diagnostic.file.fileName);
     const untypedGlobal =
-      untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner) === true;
+      untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner);
     return !(layout.isExcluded(file) || untypedGlobal);
   });
 }

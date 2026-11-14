@@ -1,6 +1,9 @@
 import { chainOf } from '../analysis/ancestry.mjs';
 import { isExpectCall, memberName } from '../analysis/test-code-analysis.mjs';
 
+const PARTIAL_OUTPUT = 'partialOutput';
+const PARTIAL_MATCHER = 'partialMatcher';
+
 const ASSERT_NAMESPACE = 'assert';
 const TRUTHY_ASSERTIONS = new Set(['ok', 'isTrue']);
 const ASSERT_PARTIAL_OUTPUT = new Set(['deepInclude', 'deepNestedInclude', 'deepOwnInclude']);
@@ -59,29 +62,29 @@ function isIncludesCall(node) {
 }
 
 function textVerdict(node) {
-  return isTextArgument(node) ? 'partialOutput' : undefined;
+  return isTextArgument(node) ? PARTIAL_OUTPUT : undefined;
 }
 
 function includedValueVerdict(expected) {
-  return expected?.type === 'ObjectExpression' ? 'partialMatcher' : textVerdict(expected);
+  return expected?.type === 'ObjectExpression' ? PARTIAL_MATCHER : textVerdict(expected);
 }
 
 function assertVerdict(node) {
   const method = assertMethod(node.callee);
   const [actual, expected] = node.arguments;
   if (TRUTHY_ASSERTIONS.has(method) && isIncludesCall(actual)) {
-    return 'partialOutput';
+    return PARTIAL_OUTPUT;
   }
   if (method === 'include') {
     return includedValueVerdict(expected);
   }
   if (method === 'match') {
-    return isFragmentPattern(expected) ? 'partialOutput' : undefined;
+    return isFragmentPattern(expected) ? PARTIAL_OUTPUT : undefined;
   }
   if (ASSERT_PARTIAL_OUTPUT.has(method)) {
-    return 'partialOutput';
+    return PARTIAL_OUTPUT;
   }
-  return ASSERT_PARTIAL_MATCHERS.has(method) ? 'partialMatcher' : undefined;
+  return ASSERT_PARTIAL_MATCHERS.has(method) ? PARTIAL_MATCHER : undefined;
 }
 
 function chaiLinks(callee) {
@@ -93,18 +96,18 @@ function chaiLinks(callee) {
 function chaiMethodVerdict(node, links) {
   const method = memberName(node.callee);
   if (CHAI_INCLUDES.has(method)) {
-    return links.includes('deep') ? 'partialOutput' : includedValueVerdict(node.arguments[0]);
+    return links.includes('deep') ? PARTIAL_OUTPUT : includedValueVerdict(node.arguments[0]);
   }
   if (method === 'string') {
     return textVerdict(node.arguments[0]);
   }
   if (method === 'match' || method === 'matches') {
-    return isFragmentPattern(node.arguments[0]) ? 'partialOutput' : undefined;
+    return isFragmentPattern(node.arguments[0]) ? PARTIAL_OUTPUT : undefined;
   }
   if (method === 'members' && links.some((link) => CHAI_INCLUDES.has(link))) {
-    return 'partialMatcher';
+    return PARTIAL_MATCHER;
   }
-  return CHAI_PARTIAL_MATCHERS.has(method) ? 'partialMatcher' : undefined;
+  return CHAI_PARTIAL_MATCHERS.has(method) ? PARTIAL_MATCHER : undefined;
 }
 
 function chaiVerdict(node) {

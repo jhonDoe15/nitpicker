@@ -4,9 +4,11 @@ import { firstFileIn, isDirectory, isFile } from '../../../../../shared/filesyst
 import { manifestScripts, testScriptCommands } from '../../test-runner/detection/test-scripts.mjs';
 import { optionEntries, rootDirIn, scriptPreloads, withoutComments } from './setup-option-text.mjs';
 
+const VITEST = 'vitest';
+
 const CODE_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'];
 
-export const VITEST_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
+export const VITEST_CONFIG_NAMES = [VITEST, 'vite'].flatMap((name) =>
   CODE_EXTENSIONS.map((extension) => `${name}.config.${extension}`),
 );
 const JEST_CONFIG_NAMES = [...CODE_EXTENSIONS, 'json'].map(
@@ -29,7 +31,7 @@ const MANIFEST_KEYS = { jest: 'jest', mocha: 'mocha' };
 const CODE_FILE = /\.[cm]?[jt]sx?$/u;
 const ROOT_DIR = /^<rootDir>\//u;
 const PROJECT_GLOB = /\/\*$/u;
-const PROJECT_RUNNERS = new Set(['jest', 'vitest']);
+const PROJECT_RUNNERS = new Set(['jest', VITEST]);
 
 function directoryNames(directory) {
   if (!isDirectory(directory)) {
@@ -126,7 +128,7 @@ function codeFileOf(projectRoot, entry) {
   return candidates.find((candidate) => isFile(path.join(projectRoot, candidate)));
 }
 
-export function setupFilesIn(projectRoot, runner = 'vitest') {
+export function setupFilesIn(projectRoot, runner = VITEST) {
   const files = runnerEntries(projectRoot, runner)
     .filter((entry) => !entry.startsWith('@'))
     .map((entry) => path.posix.normalize(entry.replaceAll('\\', '/')))

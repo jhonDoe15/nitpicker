@@ -1,10 +1,13 @@
 import { calledMethod, kindOfObject, propertyName } from './runner-apis.mjs';
 
+const USE_FAKE_TIMERS = 'useFakeTimers';
+const SET_SYSTEM_TIME = 'setSystemTime';
+
 const FAKE_TIMERS_ON = {
-  vitest: ['useFakeTimers'],
-  jest: ['useFakeTimers'],
+  vitest: [USE_FAKE_TIMERS],
+  jest: [USE_FAKE_TIMERS],
   node: ['enable'],
-  sinon: ['useFakeTimers'],
+  sinon: [USE_FAKE_TIMERS],
   fakeTimers: ['install'],
 };
 
@@ -56,10 +59,10 @@ export function fakeTimerChange(apis, call) {
 }
 
 const CLOCK_SETTERS = {
-  vitest: ['setSystemTime'],
-  jest: ['setSystemTime'],
+  vitest: [SET_SYSTEM_TIME],
+  jest: [SET_SYSTEM_TIME],
   node: ['setTime'],
-  clock: ['setSystemTime'],
+  clock: [SET_SYSTEM_TIME],
 };
 const DATE_LISTS = ['apis', 'toFake'];
 
