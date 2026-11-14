@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { exportedNameCollisionRecipe as recipe } from './name-collision.mjs';
-import { reuseFindingsFor } from './reuse-findings.mjs';
+import { exportedNameCollisionRecipe as recipe } from './name-collision.mts';
+import { reuseFindingsFor } from './reuse-findings.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'structure/exported-name-collision';
@@ -30,9 +30,13 @@ describe('exportedNameCollisionRecipe', () => {
     expect(result.tree['src/orders/table.ts']).toBe(
       "import { getFilters as sharedGetFilters } from '../shared/filters.js';\nimport { getFilters as orderFilters } from './filters.js';\nexport const rows = [sharedGetFilters(1, 2), orderFilters(2)];\n",
     );
-    expect(
-      reuseFindingsFor({ projectRoot: result.projectRoot }, 'exported-name-collision'),
-    ).toEqual([]);
+    const context = {
+      projectRoot: result.projectRoot,
+      files: [],
+      read: () => undefined,
+      accepts: () => true,
+    };
+    expect(reuseFindingsFor(context, 'exported-name-collision')).toEqual([]);
   });
 
   it('declines when the alias is already declared in the importer', () => {

@@ -1,32 +1,32 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  fixtureGit,
-  useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
+import type { FixOptions } from '../../../../core/fix/run-fix.mts';
+import { fixOptions, topicRepository, useGitFixtures } from '../test-support/fix-test-support.mts';
 
 const { createGitRepository } = useGitFixtures();
 const TESTS = "import { it } from 'vitest';\nit('works', () => {});\n";
 
-function topic(committed, changed) {
-  const repository = createGitRepository(committed, { baseRef: 'base' });
-  fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
-  writeFiles(repository.root, changed);
-  return repository;
+function topic(
+  committed: Readonly<Record<string, string>>,
+  changed: Readonly<Record<string, string>>,
+) {
+  return topicRepository(createGitRepository, committed, changed);
 }
 
-function fix(repository, selectedRules, extra = {}) {
-  return fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    selectedRules,
-    ...extra,
-    executeFixCommand: () => ({ status: 0, stdout: '[]', stderr: '' }),
-  });
+function fix(
+  repository: { readonly root: string },
+  selectedRules: readonly string[],
+  extra: Partial<FixOptions> = {},
+) {
+  return fixWorkingTree(
+    fixOptions(repository.root, {
+      selectedRules,
+      ...extra,
+      executeFixCommand: () => ({ status: 0, stdout: '[]', stderr: '' }),
+    }),
+  );
 }
 
 describe('project recipes in fixWorkingTree', () => {
@@ -39,7 +39,7 @@ describe('project recipes in fixWorkingTree', () => {
       },
     );
     const result = fix(repository, ['eslint/nitpicker/no-uncollected-tests']);
-    const file = (name) => path.join(repository.root, name);
+    const file = (name: string) => path.join(repository.root, name);
     expect(existsSync(file('test/unit/checks.ts'))).toBe(false);
     expect(readFileSync(file('test/unit/checks.test.ts'), 'utf8')).toBe(TESTS);
     expect(readFileSync(file('test/unit/other.test.ts'), 'utf8')).toBe(
@@ -65,7 +65,7 @@ describe('project recipes in fixWorkingTree', () => {
       { 'README.md': 'x\n' },
     );
     const result = fix(repository, ['eslint/nitpicker/no-uncollected-tests'], { allFiles: true });
-    const file = (name) => path.join(repository.root, name);
+    const file = (name: string) => path.join(repository.root, name);
     expect([
       existsSync(file('test/unit/checks.ts')),
       existsSync(file('test/unit/checks.test.ts')),
@@ -95,7 +95,7 @@ describe('project recipes in fixWorkingTree', () => {
           : [],
       }),
     });
-    const file = (name) => path.join(repository.root, name);
+    const file = (name: string) => path.join(repository.root, name);
     expect({
       checks: existsSync(file('test/unit/checks.ts')),
       renamed: existsSync(file('test/unit/checks.test.ts')),

@@ -1,11 +1,13 @@
-export function reachable(graph, from, target) {
+import type { ProjectGraph } from '../typed/reuse-views.mts';
+
+export function reachable(graph: ProjectGraph, from: string, target: string): boolean {
   const dependencies = new Map(
     graph.modules.map(({ source, dependencies: found }) => [
       source,
       found.map(({ resolved }) => resolved),
     ]),
   );
-  const seen = new Set();
+  const seen = new Set<string>();
   const pending = [from];
   for (const name of pending) {
     if (name === target) {

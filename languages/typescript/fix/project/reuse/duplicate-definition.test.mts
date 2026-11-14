@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { duplicateDefinitionRecipe as recipe } from './duplicate-definition.mjs';
-import { reuseFindingsFor } from './reuse-findings.mjs';
+import type { FixedProject } from '../test-support/fixture-project.mts';
+import { duplicateDefinitionRecipe as recipe } from './duplicate-definition.mts';
+import { reuseFindingsFor } from './reuse-findings.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'structure/duplicate-definition';
 const USE = 'void [twice];\n';
 const TWICE = 'function twice(a: number) {\n  return a * 2;\n}\n';
 
-function remaining(result) {
-  return reuseFindingsFor({ projectRoot: result.projectRoot }, 'duplicate-definition');
+function remaining(result: FixedProject) {
+  const context = {
+    projectRoot: result.projectRoot,
+    files: [],
+    read: () => undefined,
+    accepts: () => true,
+  };
+  return reuseFindingsFor(context, 'duplicate-definition');
 }
 
 describe('duplicateDefinitionRecipe', () => {

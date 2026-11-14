@@ -1,15 +1,20 @@
 import path from 'node:path';
-import { productionFilter } from '../../../preset/coupling/analyze.mjs';
-import { sharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mjs';
-import { planFileMove } from '../edits/file-move.mjs';
-import { moduleReferences } from '../model/module-references.mjs';
-import { layoutOf, withProject } from '../model/project-model.mjs';
-import { recordPlan } from '../plan/record-plan.mjs';
-import { projectGraph } from '../model/project-graph.mjs';
+import { moduleReferences } from '../model/module-references.mts';
+import { withProject } from '../model/project-model.mts';
+import type { FixContext, Planned, Project, ProjectRecipe } from '../typed/project-types.mts';
+import { planFileMove } from '../typed/project-views.mts';
+import {
+  fullLayoutOf,
+  productionFilter,
+  projectGraph,
+  recordPlan,
+  sharedUsedByOneFeature,
+} from '../typed/reuse-views.mts';
+import type { FullLayout, PlanResult } from '../typed/reuse-views.mts';
 
 const RULE = { tool: 'coupling', rule: 'shared-used-by-one-feature' };
 
-function productionImporters(layout, project, target) {
+function productionImporters(layout: FullLayout, project: Project, target: string): string[] {
   return project.names.filter(
     (name) =>
       layout.isSourceFile(name) &&
@@ -19,7 +24,17 @@ function productionImporters(layout, project, target) {
   );
 }
 
-function planMove({ context, project, layout, entry }) {
+function planMove({
+  context,
+  project,
+  layout,
+  entry,
+}: {
+  readonly context: FixContext;
+  readonly project: Project;
+  readonly layout: FullLayout;
+  readonly entry: { readonly source: string; readonly directory: string };
+}): Planned {
   const outside = productionImporters(layout, project, entry.source).find(
     (importer) => !importer.startsWith(entry.directory),
   );
@@ -30,19 +45,19 @@ function planMove({ context, project, layout, entry }) {
   return planFileMove(context, project, { from: entry.source, to });
 }
 
-export const sharedUsedByOneFeatureRecipe = {
+export const sharedUsedByOneFeatureRecipe: ProjectRecipe = {
   id: 'typescript-shared-used-by-one-feature',
   rules: [RULE],
   presets: ['typescript', 'javascript'],
   scope: 'project',
   safety: 'review',
   plan(context) {
-    const layout = layoutOf(context.inputs);
+    const layout = fullLayoutOf(context.inputs);
     const changed = new Set(context.files.map(({ path: name }) => name));
     return withProject(context, (project) => {
       const graph = projectGraph(project);
-      const result = { fixes: [], notes: [] };
-      const entries = layout.sourceRoots.flatMap((sourceRoot) =>
+      const result: PlanResult = { fixes: [], notes: [] };
+      const entries = layout.sourceRoots.flatMap((sourceRoot: string) =>
         sharedUsedByOneFeature(graph, {
           sourceRoot,
           isProduction: productionFilter(layout, sourceRoot),

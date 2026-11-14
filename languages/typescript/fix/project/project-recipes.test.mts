@@ -1,11 +1,22 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { PROJECT_RECIPES } from './project-recipes.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { PROJECT_RECIPES as UNTYPED_RECIPES } from './project-recipes.mjs';
+
+type ProjectRecipe = {
+  readonly id: string;
+  readonly rules: readonly unknown[];
+  readonly presets: readonly string[];
+  readonly safety: string;
+  readonly scope: string;
+};
 
 const require = createRequire(import.meta.url);
-const MODULES = {
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
+const PROJECT_RECIPES: readonly ProjectRecipe[] = UNTYPED_RECIPES;
+const MODULES: Readonly<Record<string, readonly [string, string]>> = {
   'typescript-no-default-export': [
     './default-export/no-default-export.mjs',
     'noDefaultExportRecipe',
@@ -66,13 +77,24 @@ const MODULES = {
   ],
 };
 
-function traits({ id, rules, presets, safety, scope }) {
+function traits({ id, rules, presets, safety, scope }: ProjectRecipe) {
   return { id, rules, presets, safety, scope };
 }
 
-function loaded(recipe) {
-  const [module, exportName] = MODULES[recipe.id];
-  return require(checkoutModulePath(fileURLToPath(new URL(module, import.meta.url))))[exportName];
+function isRecipe(value: unknown): value is ProjectRecipe {
+  return typeof fieldOf(value, 'id') === 'string';
+}
+
+function loaded(recipe: ProjectRecipe): ProjectRecipe {
+  const [module = '', exportName = ''] = MODULES[recipe.id] ?? [];
+  const loadedModule: unknown = require(
+    checkoutModulePath(fileURLToPath(new URL(module, import.meta.url))),
+  );
+  const found = fieldOf(loadedModule, exportName);
+  if (!isRecipe(found)) {
+    throw new TypeError(`${exportName} is not a project recipe`);
+  }
+  return found;
 }
 
 describe('PROJECT_RECIPES', () => {

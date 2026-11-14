@@ -1,23 +1,34 @@
 import path from 'node:path';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { renameEdits } from '../edits/symbol-rename.mjs';
-import { declined } from '../edits/text-edits.mjs';
-import { verifyEdits } from '../edits/verify-edits.mjs';
-import { moduleReferences } from '../model/module-references.mjs';
-import { inCasing } from '../model/names.mjs';
-import { layoutOf, withProject } from '../model/project-model.mjs';
-import { recordPlan } from '../plan/record-plan.mjs';
-import { reuseFindingsFor } from './reuse-findings.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { moduleReferences } from '../model/module-references.mts';
+import { layoutOf, withProject } from '../model/project-model.mts';
+import type { FixContext, Planned, Project, ProjectRecipe } from '../typed/project-types.mts';
+import { declined, inCasing, renameEdits, verifyEdits } from '../typed/project-views.mts';
+import { recordPlan } from '../typed/reuse-views.mts';
+import type { PlanResult, ToolFinding } from '../typed/reuse-views.mts';
+import { reuseFindingsFor } from './reuse-findings.mts';
+
+const ts = typescriptApi();
 
 const RULE = 'exported-name-collision';
 
-function namedImports(project, name) {
+type NamedImport = {
+  readonly element: TypeScript.ImportSpecifier;
+  readonly module: string;
+  readonly imported: string;
+  readonly local: string;
+};
+
+function namedImports(project: Project, name: string): NamedImport[] {
   return moduleReferences(project.sourceFile(name))
-    .filter(({ kind, node }) => kind === 'import' && node.importClause?.namedBindings !== undefined)
+    .filter(({ kind }) => kind === 'import')
     .flatMap(({ node, specifier }) => {
-      const { namedBindings } = node.importClause;
-      const module = project.resolve(specifier, name);
-      return ts.isNamedImports(namedBindings) && module !== undefined
+      const namedBindings = ts.isImportDeclaration(node)
+        ? node.importClause?.namedBindings
+        : undefined;
+      const module = specifier === undefined ? undefined : project.resolve(specifier, name);
+      return namedBindings !== undefined && ts.isNamedImports(namedBindings) && module !== undefined
         ? namedBindings.elements.map((element) => ({
             element,
             module,
@@ -28,16 +39,20 @@ function namedImports(project, name) {
     });
 }
 
-function aliasFor(symbol, module) {
+function aliasFor(symbol: string, module: string): string {
   const folder = path.posix.basename(path.posix.dirname(module));
-  const stem = folder === '.' ? path.posix.basename(module).split('.')[0] : folder;
+  const stem = folder === '.' ? (path.posix.basename(module).split('.')[0] ?? '') : folder;
   const isType = /^[A-Z]/u.test(symbol);
   const prefix = inCasing(stem, isType ? 'PascalCase' : 'camelCase');
   const rest = symbol.charAt(0).toUpperCase() + symbol.slice(1);
-  return `${prefix}${rest}`;
+  return `${String(prefix)}${rest}`;
 }
 
-function planImporter(context, project, { importer, finding }) {
+function planImporter(
+  context: FixContext,
+  project: Project,
+  { importer, finding }: { readonly importer: string; readonly finding: ToolFinding },
+): Planned | undefined {
   const imports = namedImports(project, importer);
   const keeper = imports.find(
     ({ imported, local, module }) =>
@@ -62,7 +77,7 @@ function planImporter(context, project, { importer, finding }) {
   return unsafe === undefined ? { edits: renamed.edits } : declined(unsafe);
 }
 
-export const exportedNameCollisionRecipe = {
+export const exportedNameCollisionRecipe: ProjectRecipe = {
   id: 'typescript-exported-name-collision',
   rules: [{ tool: 'structure', rule: RULE }],
   presets: ['typescript', 'javascript'],
@@ -76,7 +91,7 @@ export const exportedNameCollisionRecipe = {
       return { fixes: [], notes: [] };
     }
     return withProject(context, (project) => {
-      const result = { fixes: [], notes: [] };
+      const result: PlanResult = { fixes: [], notes: [] };
       const sources = project.names.filter((name) => layout.isSourceFile(name));
       for (const finding of found) {
         for (const importer of sources) {
