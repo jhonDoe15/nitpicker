@@ -125,6 +125,7 @@ const REVIEW_RULES = new Set([
   'SortForExtreme',
   'RedundantStreamStep',
   'StreamedRowsCollected',
+  'SpringDataFilterInQuery',
   'HardcodedSecret',
   'CredentialLiteral',
   'SecretInLog',
