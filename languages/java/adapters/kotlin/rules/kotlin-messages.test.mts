@@ -1,12 +1,18 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { validateKotlinOptions } from '../kotlin-options.mjs';
-import { applyKotlinRuleMessages, KOTLIN_LISTED_RULES } from './kotlin-messages.mjs';
+import { KOTLIN_LISTED_RULES } from './kotlin-messages.mjs';
+import { applyKotlinRuleMessages, exceptionHint } from './test-support/kotlin-finding-views.mts';
+import type { RuleFinding } from './test-support/kotlin-finding-views.mts';
 
 const file = 'src/main/kotlin/demo/A.kt';
-const finding = (tool, rule, message, classification = 'enforceable') => ({
+const finding = (
+  tool: string,
+  rule: string,
+  message: string,
+  classification = 'enforceable',
+): RuleFinding => ({
   tool,
   rule,
   path: file,
@@ -24,16 +30,16 @@ describe('applyKotlinRuleMessages', () => {
       finding('kotlinc', 'unchecked', 'Unchecked cast.'),
     ]);
 
-    expect(detekt.message).toBe(
+    expect(detekt?.message).toBe(
       `This expression contains a magic number. ${exceptionHint('detekt.style.MagicNumber', file)}`,
     );
-    expect(oneWay.message).toBe(
+    expect(oneWay?.message).toBe(
       `let expression can be omitted. Call the member directly; \`let\` is for \`value?.let { ... }\`. ${exceptionHint('detekt.style.UnnecessaryLet', file)}`,
     );
-    expect(scanned.message).toBe(
+    expect(scanned?.message).toBe(
       `Keep state in an instance. ${exceptionHint('kotlin-source/MutableModuleState', file)}`,
     );
-    expect(compiler.message).toBe(`Unchecked cast. ${exceptionHint('kotlinc/unchecked', file)}`);
+    expect(compiler?.message).toBe(`Unchecked cast. ${exceptionHint('kotlinc/unchecked', file)}`);
   });
 
   it('leaves descriptive findings, other tools and messages that already give a route alone', () => {
@@ -56,7 +62,7 @@ describe('applyKotlinRuleMessages', () => {
       path: undefined,
     };
 
-    expect(applyKotlinRuleMessages([withoutPath])[0].message).toBe(
+    expect(applyKotlinRuleMessages([withoutPath])[0]?.message).toBe(
       'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`.',
     );
   });
@@ -79,7 +85,7 @@ describe('Kotlin finding messages', () => {
     /add an exception for|"exceptions" entry for|If it is right here|To allow it here|to "exceptions" in nitpicker/u;
 
   it('get their exception route only from the shared sentence', () => {
-    const sources = readdirSync(kotlinRoot, { recursive: true })
+    const sources = readdirSync(kotlinRoot, { recursive: true, encoding: 'utf8' })
       .map((entry) => entry.replaceAll('\\', '/'))
       .filter(
         (entry) =>

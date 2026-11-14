@@ -1,8 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { withKotlinRuleMessage } from './kotlin-messages.mjs';
+import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
+import {
+  exceptionHint,
+  withAllowedForm,
+  withKotlinRuleMessage,
+} from './test-support/kotlin-finding-views.mts';
+import type { RuleFinding } from './test-support/kotlin-finding-views.mts';
+import type { KotlinRuleCase } from './test-support/kotlin-guard-cases.mts';
 import {
   compilerWarningRule,
   DISABLED_DETEKT_RULES,
@@ -11,14 +17,23 @@ import {
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
-  withAllowedForm,
 } from './kotlin-rules.mjs';
-import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mjs';
+import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mts';
 import { fileURLToPath } from 'node:url';
-import { repeatedStringLiterals } from '../scan/literals/repeated-strings.mjs';
-import { scanKotlinSource } from '../scan/kotlin-source.mjs';
+import { repeatedStringLiterals as untypedRepeatedStringLiterals } from '../scan/literals/repeated-strings.mjs';
+import { scanKotlinSource } from '../scan/typed/typed-scan.mts';
 
-const detektFinding = (rule, message) => ({
+type Section = Record<string, string | undefined>;
+type Ruleset = { settings: Section; rules: Record<string, Section> };
+
+const repeatedStringLiterals: (scanned: unknown) => { rule: string; message: string }[] =
+  untypedRepeatedStringLiterals;
+
+function bannedMessage(testCase: KotlinRuleCase) {
+  return assigned(expectedMessage(testCase, 'banned'), 'banned message');
+}
+
+const detektFinding = (rule: string, message: string): RuleFinding => ({
   tool: 'detekt',
   rule,
   path: 'src/main/kotlin/demo/A.kt',
@@ -34,7 +49,7 @@ describe('one-way rule messages', () => {
     '%s names the allowed form and the exception route',
     (_id, testCase) => {
       const { message } = withKotlinRuleMessage(
-        detektFinding(testCase.rule, expectedMessage(testCase, 'banned')),
+        detektFinding(testCase.rule, bannedMessage(testCase)),
       );
 
       const wording = {
@@ -43,7 +58,7 @@ describe('one-way rule messages', () => {
         namesExceptionRoute: message.endsWith(
           exceptionHint(testCase.rule, 'src/main/kotlin/demo/A.kt'),
         ),
-        keepsDetektText: message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, '')),
+        keepsDetektText: message.startsWith(bannedMessage(testCase).replace(/\.$/, '')),
       };
 
       expect(wording).toEqual({
@@ -82,7 +97,11 @@ describe('one-way rule messages', () => {
     );
 
     expect(told.length).toBeGreaterThan(5);
-    expect(told.filter((finding) => !finding.message.endsWith(finding.allowedForm))).toEqual([]);
+    expect(
+      told.filter(
+        (finding) => !finding.message.endsWith(assigned(finding.allowedForm, 'allowedForm')),
+      ),
+    ).toEqual([]);
   });
 
   it('gives a rule whose detekt message names the allowed form no second one', () => {
@@ -110,7 +129,10 @@ describe('one-way rule messages', () => {
 
   it('leaves other detekt rules and other tools without an allowed form', () => {
     const other = detektFinding('detekt.style.MagicNumber', 'magic');
-    const sameRuleOtherTool = { ...detektFinding(ONE_WAY_RULES[0].id, 'x'), tool: 'ktlint' };
+    const sameRuleOtherTool = {
+      ...detektFinding(assigned(ONE_WAY_RULES[0], 'first rule').id, 'x'),
+      tool: 'ktlint',
+    };
 
     expect(withAllowedForm(other)).toBe(other);
     expect(withAllowedForm(sameRuleOtherTool)).toBe(sameRuleOtherTool);
@@ -131,7 +153,7 @@ describe('one-way rule messages', () => {
 describe('repeated string message', () => {
   it('names the constant form and ends with the exception sentence of its rule', () => {
     const scanned = scanKotlinSource('val a = "pending"\nval b = "pending"\nval c = "pending"\n');
-    const [reported] = repeatedStringLiterals(scanned);
+    const reported = assigned(repeatedStringLiterals(scanned)[0], 'repeated string');
     const path = 'src/main/kotlin/demo/A.kt';
     const shaped = withKotlinRuleMessage({
       tool: 'kotlin-source',
@@ -152,14 +174,17 @@ describe('repeated string message', () => {
 });
 
 describe('nitpicker-detekt.yml', () => {
-  function parseRulesets(text) {
-    const rulesets = {};
-    let ruleset;
-    let rule;
+  function parseRulesets(text: string) {
+    const rulesets: Record<string, Ruleset> = {};
+    let ruleset: Ruleset = { settings: {}, rules: {} };
+    let rule: Section = {};
     for (const [, indent, key, value] of text
       .split('\n')
       .map((line) => /^( *)([\w-]+):(?: ([^\n]*))?$/.exec(line) ?? [])
       .filter((match) => match.length > 0)) {
+      if (indent === undefined || key === undefined) {
+        continue;
+      }
       if (indent === '') {
         ruleset = { settings: {}, rules: {} };
         rulesets[key] = ruleset;
@@ -186,7 +211,7 @@ describe('nitpicker-detekt.yml', () => {
   const configured = Object.entries(rulesets).flatMap(([ruleset, { rules }]) =>
     Object.entries(rules).map(([name, rule]) => ({ id: `detekt.${ruleset}.${name}`, rule })),
   );
-  const isDisabled = ({ id }) => DISABLED_DETEKT_RULES.includes(id);
+  const isDisabled = ({ id }: { id: string }) => DISABLED_DETEKT_RULES.includes(id);
 
   it('configures exactly the rules of ONE_WAY_RULES, besides the rules it turns off', () => {
     const ids = configured.filter((entry) => !isDisabled(entry)).map(({ id }) => id);

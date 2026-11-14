@@ -1,36 +1,42 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { describe, expect, it } from 'vitest';
+import { exceptionHint } from './test-support/kotlin-finding-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 import { CATCH_LOG_MESSAGE, CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
 import {
-  readCatchLogFindings,
-  readTestAssertionFindings,
+  readCatchLogFindings as untypedReadCatchLogFindings,
+  readTestAssertionFindings as untypedReadTestAssertionFindings,
   TEST_ASSERTION_MESSAGE,
 } from './kotlin-source-rules.mjs';
 import { TEST_ASSERTION_RULE } from './kotlin-rules.mjs';
-import { readKotlinSourceFindings } from '../scan/kotlin-scan.mjs';
+import { useTempProjects } from './test-support/temp-projects.mts';
+import { findingsOf } from './test-support/findings-list.mts';
+import { readKotlinSourceFindings as untypedReadKotlinSourceFindings } from '../scan/kotlin-scan.mjs';
 
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-source-rules-'));
-  roots.push(root);
-  for (const [relative, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), text);
-  }
-  return root;
+function readCatchLogFindings(
+  projectRoot: string,
+  roots: { sourceRoots: string[]; testRoots?: string[] },
+): Finding[] {
+  return findingsOf(Reflect.apply(untypedReadCatchLogFindings, undefined, [projectRoot, roots]));
 }
 
-const finding = (file, rule, identity, message) => ({
+function readTestAssertionFindings(
+  projectRoot: string,
+  testRoots: string[],
+  helpers?: string[],
+): Finding[] {
+  return findingsOf(
+    Reflect.apply(untypedReadTestAssertionFindings, undefined, [projectRoot, testRoots, helpers]),
+  );
+}
+
+const readKotlinSourceFindings: (
+  projectRoot: string,
+  manifest: { kotlinSourceRoots: string[]; kotlinTestSourceRoots: string[] },
+) => Finding[] = untypedReadKotlinSourceFindings;
+
+const { projectWith } = useTempProjects('nitpicker-kotlin-source-rules-');
+
+const finding = (file: string, rule: string, identity: string, message: string) => ({
   tool: 'detekt',
   rule,
   path: file,
@@ -41,14 +47,14 @@ const finding = (file, rule, identity, message) => ({
 });
 
 describe('readCatchLogFindings', () => {
-  const catching = (body) =>
+  const catching = (body: string) =>
     `val log = LoggerFactory.getLogger(A::class.java)\nfun f(): Result<Int> {\n  try { return Result.success(run()) } catch (e: Exception) {\n${body}\n  }\n}\n`;
   const files = {
     'src/main/kotlin/Swallowed.kt': catching(
-      '    log.error("failed: ${e.message}")\n    return Result.success(0)',
+      `    log.error("failed: \${e.message}")\n    return Result.success(0)`,
     ),
     'src/main/kotlin/Handled.kt': catching(
-      '    log.error("failed: ${e.message}")\n    log.warn("again")\n    return Result.failure(e)',
+      `    log.error("failed: \${e.message}")\n    log.warn("again")\n    return Result.failure(e)`,
     ),
     'src/main/kotlin/Fixed.kt': catching(
       '    log.error("failed", e)\n    return Result.failure(e)',
@@ -57,7 +63,7 @@ describe('readCatchLogFindings', () => {
       '    log.error("failed")\n    throw IllegalStateException("failed", e)',
     ),
     'src/test/kotlin/ATest.kt': catching(
-      '    log.warn("failed: ${e.message}")\n    return Result.success(0)',
+      `    log.warn("failed: \${e.message}")\n    return Result.success(0)`,
     ),
     'src/main/kotlin/B.kt': 'fun g() = 1\n',
   };
