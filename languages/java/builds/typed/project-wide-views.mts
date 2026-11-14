@@ -17,7 +17,7 @@ export type ReportProject = {
   readonly sourceRoots: readonly string[];
   readonly filePrefix?: string | undefined;
 };
-export type Manifest = {
+type Manifest = {
   readonly sourceRoots?: readonly string[];
   readonly kotlinSourceRoots?: readonly string[];
   readonly testSourceRoots?: readonly string[];

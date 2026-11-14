@@ -26,7 +26,7 @@ type Warning = { readonly line: number; readonly source: string; readonly caret:
 export const JAVAC = textOf(javaCommand('javac'));
 const NO_SETTINGS: LintCompiler = { release: '17', source: undefined, target: undefined, args: [] };
 
-export function createTemporaries() {
+export function createTemporaries(): { directory(): string; remove(): void } {
   const roots: string[] = [];
   return {
     directory() {

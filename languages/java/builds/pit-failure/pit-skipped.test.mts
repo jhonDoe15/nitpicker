@@ -20,7 +20,9 @@ function pitLine(testClass: string, method: string): string {
 }
 
 function failingOutput(count: number, testClass = 'HttpClientExecutorTest') {
-  const lines = Array.from({ length: count }, (_, index) => pitLine(testClass, `case${index}`));
+  const lines = Array.from({ length: count }, (_, index) =>
+    pitLine(testClass, `case${String(index)}`),
+  );
   return `Running\n${lines.join('\n')}\nat org.pitest.Main\n`;
 }
 

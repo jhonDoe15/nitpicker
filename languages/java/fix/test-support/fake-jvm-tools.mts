@@ -9,30 +9,36 @@ const TOOL_PROPERTY = '-Pnitpicker.fix.tools=';
 const DEFAULTS_OPTION = '--editorconfig=';
 const CLASS_ARGUMENTS_OFFSET = 3;
 
-interface Invocation {
+type Invocation = {
   readonly operation: string;
   readonly cwd: string;
   readonly args: readonly string[];
-}
+};
 
-interface Launch {
+type Launch = {
   readonly jvmArgs: string[];
   readonly classpath: string | undefined;
   readonly mainClass: string | undefined;
   readonly args: string[];
-}
+};
 
-interface CommandResult {
+type CommandResult = {
   readonly status: number;
   readonly stdout: string;
   readonly stderr: string;
-}
+};
 
-interface FakeOptions {
+type FakeJvmTools = {
+  readonly executeFixCommand: (invocation: Invocation) => CommandResult;
+  readonly calls: Invocation[];
+  readonly launches: (Launch & Record<string, unknown>)[];
+  readonly operations: () => string[];
+};
+type FakeOptions = {
   readonly transform?: (content: string, file: string) => string;
   readonly failure?: Readonly<Record<string, CommandResult>>;
   readonly unparsable?: string;
-}
+};
 
 function squeezed(source: string): string {
   return source.replaceAll(/ {2,}/g, ' ');
@@ -55,7 +61,9 @@ function gradleClasspaths(args: readonly string[]): string {
     .slice(TOOL_PROPERTY.length)
     .split(',');
   return specs
-    .map((spec) => `${MARKER}\t${spec.split('=')[0]}\t/fake/${spec.split('=')[0]}.jar`)
+    .map(
+      (spec) => `${MARKER}\t${String(spec.split('=')[0])}\t/fake/${String(spec.split('=')[0])}.jar`,
+    )
     .join('\n');
 }
 
@@ -105,7 +113,7 @@ export function fakeJvmTools({
   transform = squeezed,
   failure = {},
   unparsable = 'BROKEN',
-}: FakeOptions = {}) {
+}: FakeOptions = {}): FakeJvmTools {
   const calls: Invocation[] = [];
   const launches: (Launch & Record<string, unknown>)[] = [];
   function format(invocation: Invocation): CommandResult {
