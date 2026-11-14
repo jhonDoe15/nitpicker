@@ -166,6 +166,10 @@ items that carry a deletion flag that skips the guard, helper or narrowed type t
 iterations over that item type use, with at least five iterations counted). It lives in
 `languages/python/rules/deleted_items/`.
 
+Python route auth rule: `route-without-auth` (a FastAPI route, a Django REST framework view or a Flask route without
+the auth requirement, a `Depends(...)`, `permission_classes` or login decorator, that at least 90% of the project's
+handlers declare, with at least five handlers counted). It lives in `languages/python/rules/route_auth/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
@@ -343,6 +347,11 @@ a changed loop or inline array callback over items that carry a deleted or visib
 `deletedAt`, `archived`, `hidden`, `isVisible`) when at least 80% of such iterations in the project (at least five) skip
 flagged items and this one does not. The finding names the flag and the project's guard form: a helper such as
 `getNonDeletedElements` or a narrowed type such as `NonDeleted<T>`.
+
+Route auth: `nitpicker/no-route-without-auth` (production source, in `eslint-lint`) reports a NestJS handler that lacks the
+auth decorator shape almost every handler declares (90%, for example `@Authenticated({ permission })`), or, when no
+shape has a majority but some handlers use a guard and there is no global guard, a handler with no guard and no public
+marker; an Express or Fastify route registered without the auth middleware most routes use is reported the same way.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

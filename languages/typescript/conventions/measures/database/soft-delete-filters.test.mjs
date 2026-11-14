@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
 import { SOFT_DELETE_FILTERS_CONVENTION, softDeleteFilterEntries } from './soft-delete-filters.mjs';
 
+const accepts = (_definition, file) => !/\.test\.|^test\//u.test(file);
+
 function detect(files) {
   const source = {
     paths: () => Object.keys(files),
     readMany: (paths) => new Map(paths.map((file) => [file, files[file]])),
   };
-  return detectConventions({ definitions: [SOFT_DELETE_FILTERS_CONVENTION], source })[
+  return detectConventions({ definitions: [SOFT_DELETE_FILTERS_CONVENTION], source, accepts })[
     SOFT_DELETE_FILTERS_CONVENTION.id
   ];
 }
@@ -20,14 +22,15 @@ const helped = (n) =>
   `export async function h${String(n)}(db) { return db.selectFrom('asset').$call(withDefaultVisibility).execute(); }\n`;
 
 function project(good, bad, make = guarded) {
-  const files = {};
-  for (let index = 0; index < good; index += 1) {
-    files[`src/good-${String(index)}.ts`] = make(index);
-  }
-  for (let index = 0; index < bad; index += 1) {
-    files[`src/bad-${String(index)}.ts`] = unguarded(index);
-  }
-  return files;
+  const goodFiles = Array.from({ length: good }, (_, index) => [
+    `src/good-${String(index)}.ts`,
+    make(index),
+  ]);
+  const badFiles = Array.from({ length: bad }, (_, index) => [
+    `src/bad-${String(index)}.ts`,
+    unguarded(index),
+  ]);
+  return Object.fromEntries([...goodFiles, ...badFiles]);
 }
 
 describe('typescript.softDeleteFilters', () => {

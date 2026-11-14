@@ -1,7 +1,7 @@
 import { ancestorsOf, contains, outermostWrapper } from '../analysis/ancestry.mjs';
 import { callsWithin, heldScope } from '../effects/held-scopes.mjs';
-import { childrenOf } from '../loops/loop-shapes.mjs';
-import { isEstreeConsumed } from '../support/flow/consumed.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
+import { isEstreeConsumed } from '../support/flow/estree-consumed.mjs';
 import { ormSite } from '../support/orm/sites.mjs';
 import { openerCallback } from './clients.mjs';
 import { endsInExit } from './exclusive-branches.mjs';

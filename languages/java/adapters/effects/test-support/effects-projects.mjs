@@ -19,6 +19,10 @@ const SAVE = 'MemberRepository.save()';
 const LOAD = 'OrderLoader.load()>OrderRepository.findById()';
 
 export const JAVA_EFFECTS = [
+  `CheckThenWriteWithoutLock 19 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 27 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 31 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 40 Registrations.rename ${BY_ID} ${SAVE}`,
   'IoCallInLoop 33 DualAllowed.relay loop OrderRepository.delete()',
   `IoCallInLoop 29 JobsAllowed.isolated loop ${LOAD}`,
   `IoCallInLoop 41 JobsAllowed.isolatedInCallback loop ${LOAD}`,
@@ -64,10 +68,6 @@ export const JAVA_EFFECTS = [
   `RemoteCallUnderLock 51 HeldScopes.inBlock synchronized ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 61 HeldScopes.guardedUnderLock ReentrantLock.lock() ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 73 HeldScopes.guardedBlock synchronized ${JAVA_REMOTE}`,
-  `CheckThenWriteWithoutLock 19 Registrations.register ${EXISTS} ${SAVE}`,
-  `CheckThenWriteWithoutLock 27 Registrations.join ${COUNT} ${SAVE}`,
-  `CheckThenWriteWithoutLock 31 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
-  `CheckThenWriteWithoutLock 40 Registrations.rename ${BY_ID} ${SAVE}`,
   `RetryWithoutIdempotency 25 Retries.announce @Retryable ${JAVA_SEND}`,
   'RetryWithoutIdempotency 31 Retries.record retry loop JdbcTemplate.update()',
   'RetryWithoutIdempotency 42 Retries.charge RetryTemplate.execute() Charge.create()',
@@ -87,10 +87,6 @@ export const JAVA_EFFECTS = [
   'RetryWithStaleObject 41 OrderSaves.annotated @Retryable order OrderRepository.save()',
   'AsyncMethodDoesBlockingWork 20 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
   'WaitOnAsyncTwin 32 OrderFutures.waits OrderFutures.findAsync()',
-  `CheckThenWriteWithoutLock 19 Registrations.register ${EXISTS} ${SAVE}`,
-  `CheckThenWriteWithoutLock 27 Registrations.join ${COUNT} ${SAVE}`,
-  `CheckThenWriteWithoutLock 31 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
-  `CheckThenWriteWithoutLock 40 Registrations.rename ${BY_ID} ${SAVE}`,
   `JobLoopWithoutItemIsolation 30 NightlyJobs.closeOrders @Scheduled ${LOAD}`,
   `JobLoopWithoutItemIsolation 37 NightlyJobs.refreshPrices @Scheduled ${JAVA_REMOTE}`,
   `JobLoopWithoutItemIsolation 43 NightlyJobs.reloadEach @Scheduled ${LOAD}`,
@@ -105,6 +101,7 @@ export const JAVA_EFFECTS = [
   'SoftDeleteFilterMissing 35 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
   'DeletedItemInMemory 85 BasketReports.count Item.deletedAt Basket.getItems()',
   'DeletedItemInMemory 92 BasketReports.quantities Item.deletedAt Basket.getItems()',
+  'HandlerWithoutAuth 54 AccountController.export @PreAuthorize 10/11',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -128,6 +125,10 @@ export const JAVA_BATCHED_EFFECTS = JAVA_EFFECTS.filter(
 );
 
 export const KOTLIN_EFFECTS = [
+  `CheckThenWriteWithoutLock 16 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 24 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 28 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 36 Registrations.rename CrudRepository.findByIdOrNull() ${SAVE}`,
   `IoCallInLoop 16 JobsAllowed.isolated loop ${KOTLIN_LOAD}`,
   `IoCallInLoop 26 JobsAllowed.isolatedByRunCatching loop ${KOTLIN_LOAD}`,
   `IoCallInLoop 53 JobsAllowed.notAJob loop ${KOTLIN_LOAD}`,
@@ -144,10 +145,6 @@ export const KOTLIN_EFFECTS = [
   'IoCallInLoop 21 LoopImports.throughHelper loop OrderLoader.load()>CrudRepository.findByIdOrNull()',
   'IoCallInLoop 24 LoopImports.remote loop OrderLoader.price()>RestClient.get()',
   'IoCallInLoop 27 LoopImports.concurrent concurrent OrderLoader.load()>CrudRepository.findByIdOrNull()',
-  `CheckThenWriteWithoutLock 16 Registrations.register ${EXISTS} ${SAVE}`,
-  `CheckThenWriteWithoutLock 24 Registrations.join ${COUNT} ${SAVE}`,
-  `CheckThenWriteWithoutLock 28 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
-  `CheckThenWriteWithoutLock 36 Registrations.rename CrudRepository.findByIdOrNull() ${SAVE}`,
   'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
   'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
   'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
@@ -183,10 +180,6 @@ export const KOTLIN_EFFECTS = [
   'RetryWithStaleObject 28 OrderSaves.annotated @Retryable order OrderRepository.save()',
   'AsyncMethodDoesBlockingWork 11 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
   'WaitOnAsyncTwin 18 OrderFutures.waits OrderFutures.findAsync()',
-  `CheckThenWriteWithoutLock 16 Registrations.register ${EXISTS} ${SAVE}`,
-  `CheckThenWriteWithoutLock 24 Registrations.join ${COUNT} ${SAVE}`,
-  `CheckThenWriteWithoutLock 28 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
-  `CheckThenWriteWithoutLock 36 Registrations.rename CrudRepository.findByIdOrNull() ${SAVE}`,
   `JobLoopWithoutItemIsolation 17 NightlyJobs.closeOrders @Scheduled ${KOTLIN_LOAD}`,
   `JobLoopWithoutItemIsolation 24 NightlyJobs.refreshPrices @Scheduled ${KOTLIN_REMOTE}`,
   `JobLoopWithoutItemIsolation 30 NightlyJobs.reloadEach @Scheduled ${KOTLIN_LOAD}`,
@@ -199,75 +192,43 @@ export const KOTLIN_EFFECTS = [
   'SoftDeleteFilterMissing 23 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
   'DeletedItemInMemory 73 BasketReports.count Item.deletedAt Basket.getItems()',
   'DeletedItemInMemory 79 BasketReports.quantities Item.deletedAt Basket.getItems()',
+  'HandlerWithoutAuth 42 AccountController.export @PreAuthorize 10/11',
 ];
 
-function summaryOf(violation) {
-  const {
-    rule,
-    line,
-    method,
-    form,
-    path: calls,
-    variable,
-    origin,
-    entity,
-    relation,
-    scope,
-    framework,
-    property,
-    object,
-    write,
-    read,
-    wrapper,
-    async,
-    job,
-    column,
-    flag,
-    source,
-  } = violation;
-  if (flag !== undefined) {
-    return [rule, line, method, `${entity}.${flag}`, source].join(' ');
-  }
-  if (column !== undefined) {
-    return [rule, line, method, `${entity}.${column}`, read].join(' ');
-  }
-  if (job !== undefined) {
-    return [rule, line, method, job, calls.join('>')].join(' ');
-  }
-  if (read !== undefined) {
-    return [rule, line, method, read, write].join(' ');
-  }
-  if (wrapper !== undefined) {
-    return [rule, line, method, wrapper, calls.join('>')].join(' ');
-  }
-  if (async !== undefined) {
-    return [rule, line, method, async].join(' ');
-  }
-  if (object !== undefined) {
-    return [rule, line, method, scope, object, write].join(' ');
-  }
-  if (framework !== undefined) {
-    return [rule, line, method, framework, calls.join('>')].join(' ');
-  }
-  if (scope !== undefined) {
-    return [rule, line, method, scope, calls.join('>')].join(' ');
-  }
-  if (property !== undefined) {
-    return [rule, line, method, origin, `${entity}.${property}`].join(' ');
-  }
+const KEYED_SUMMARIES = [
+  ['shape', (v) => [v.shape, `${v.declared}/${v.total}`]],
+  ['flag', (v) => [`${v.entity}.${v.flag}`, v.source]],
+  ['column', (v) => [`${v.entity}.${v.column}`, v.read]],
+  ['job', (v) => [v.job, v.path.join('>')]],
+  ['read', (v) => [v.read, v.write]],
+  ['wrapper', (v) => [v.wrapper, v.path.join('>')]],
+  ['async', (v) => [v.async]],
+  ['object', (v) => [v.scope, v.object, v.write]],
+  ['framework', (v) => [v.framework, v.path.join('>')]],
+  ['scope', (v) => [v.scope, v.path.join('>')]],
+  ['property', (v) => [v.origin, `${v.entity}.${v.property}`]],
+];
+
+function restOf({ form, path: calls, variable, origin, entity, relation }) {
   if (entity === undefined && form !== undefined && origin !== undefined) {
-    return [rule, line, method, form, origin].join(' ');
+    return [form, origin];
   }
   if (entity !== undefined && relation === undefined) {
-    return [rule, line, method, form, origin, entity].join(' ');
+    return [form, origin, entity];
   }
   if (origin !== undefined) {
-    return [rule, line, method, origin, `${entity}.${relation}`].join(' ');
+    return [origin, `${entity}.${relation}`];
   }
   if (form === undefined && calls !== undefined) {
-    return [rule, line, method, calls.join('>')].join(' ');
+    return [calls.join('>')];
   }
-  return [rule, line, method, form, calls === undefined ? variable : calls.join('>')].join(' ');
+  return [form, calls === undefined ? variable : calls.join('>')];
+}
+
+function summaryOf(violation) {
+  const keyed = KEYED_SUMMARIES.find(([field]) => violation[field] !== undefined);
+  const details = keyed === undefined ? restOf(violation) : keyed[1](violation);
+  return [violation.rule, violation.line, violation.method, ...details].join(' ');
 }
 
 export function effectsSummary({ violations }) {

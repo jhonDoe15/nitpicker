@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
 import { TRANSACTIONS_CONVENTION, projectOpensTransactions } from './transactions.mjs';
 
+const accepts = (_definition, file) => !/\.test\.|^test\//u.test(file);
+
 function detect(files) {
   const source = {
     paths: () => Object.keys(files),
     readMany: (paths) => new Map(paths.map((file) => [file, files[file]])),
   };
-  return detectConventions({ definitions: [TRANSACTIONS_CONVENTION], source })[
+  return detectConventions({ definitions: [TRANSACTIONS_CONVENTION], source, accepts })[
     TRANSACTIONS_CONVENTION.id
   ];
 }

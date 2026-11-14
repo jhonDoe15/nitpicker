@@ -114,6 +114,11 @@ describe('effect rules report', () => {
       'count_sku|LineItem|is_deleted|live()|5 of 6',
       "`count_sku` goes over a collection of `LineItem` without skipping items flagged by `is_deleted`, which 5 of 6 of the project's iterations over `LineItem` do (`live()`): deleted items take part in the result",
     ],
+    [
+      'route-without-auth',
+      'list_reports|FastAPI|Depends(get_current_user)|9 of 10',
+      "`list_reports` is a FastAPI route handler without the auth requirement that 9 of 10 of the project's handlers declare (`Depends(get_current_user)`): callers it was not meant for can reach it",
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

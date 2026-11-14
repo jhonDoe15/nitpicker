@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 54,
+      classes: 59,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -169,37 +169,56 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
   });
 
-  it('reports resolvers of a parent list that query once per parent, and leaves batch and root fields', () => {
-    expect(methodsOf(run.report, 'GraphqlFieldPerParent')).toEqual([
-      'Graphql.direct',
-      'Graphql.throughHelper',
-      'Graphql.price',
-      'Graphql.federated',
-      'Graphql.nested',
-      'Graphql.withContext',
-    ]);
-  });
-
-  it('reports lookups per element of an in-memory collection in a reactive pipeline', () => {
-    expect(methodsOf(run.report, 'ReactiveLookupPerElement')).toEqual([
-      'Reactive.byReference',
-      'Reactive.byLambda',
-      'Reactive.byHelper',
-      'Reactive.fromArray',
-      'Reactive.remote',
-      'Reactive.limitedDatabase',
-    ]);
-  });
-
-  it('reports rows loaded to be changed or deleted in memory, and skips lifecycle, other calls and other uses', () => {
-    expect(methodsOf(run.report, 'RowsChangedInMemory')).toEqual([
-      'Updates.forEachThenSave',
-      'Updates.loopThenSave',
-      'Updates.dirtyChecking',
-      'Updates.deleteAllRows',
-      'Updates.deleteEach',
-      'Updates.collectionTableUpdate',
-    ]);
+  it.each([
+    [
+      'reports resolvers of a parent list that query once per parent, and leaves batch and root fields',
+      'GraphqlFieldPerParent',
+      [
+        'Graphql.direct',
+        'Graphql.throughHelper',
+        'Graphql.price',
+        'Graphql.federated',
+        'Graphql.nested',
+        'Graphql.withContext',
+      ],
+    ],
+    [
+      'reports lookups per element of an in-memory collection in a reactive pipeline',
+      'ReactiveLookupPerElement',
+      [
+        'Reactive.byReference',
+        'Reactive.byLambda',
+        'Reactive.byHelper',
+        'Reactive.fromArray',
+        'Reactive.remote',
+        'Reactive.limitedDatabase',
+      ],
+    ],
+    [
+      'reports rows loaded to be changed or deleted in memory, and skips lifecycle, other calls and other uses',
+      'RowsChangedInMemory',
+      [
+        'Jobs.execute',
+        'Updates.forEachThenSave',
+        'Updates.loopThenSave',
+        'Updates.dirtyChecking',
+        'Updates.deleteAllRows',
+        'Updates.deleteEach',
+        'Updates.collectionTableUpdate',
+      ],
+    ],
+    [
+      'reports retries that resend an object read outside the retried scope',
+      'RetryWithStaleObject',
+      ['Stale.resend', 'Stale.captured', 'Stale.loop', 'Stale.loopBeforeLoop', 'Stale.annotated'],
+    ],
+    [
+      'reports a check that decides a write unless a lock, a version column or another repository guards it',
+      'CheckThenWriteWithoutLock',
+      ['Races.reserve', 'Races.claim'],
+    ],
+  ])('%s', (_title, rule, methods) => {
+    expect(methodsOf(run.report, rule)).toEqual(methods);
   });
 
   it('reports entities loaded for one column or for existence, and leaves computed, transient and reused loads', () => {
@@ -218,23 +237,6 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Projected.named',
       'Projected.atLeastOne',
       'Projected.none',
-    ]);
-  });
-
-  it('reports retries that resend an object read outside the retried scope', () => {
-    expect(methodsOf(run.report, 'RetryWithStaleObject')).toEqual([
-      'Stale.resend',
-      'Stale.captured',
-      'Stale.loop',
-      'Stale.loopBeforeLoop',
-      'Stale.annotated',
-    ]);
-  });
-
-  it('reports a check that decides a write unless a lock, a version column or another repository guards it', () => {
-    expect(methodsOf(run.report, 'CheckThenWriteWithoutLock')).toEqual([
-      'Races.reserve',
-      'Races.claim',
     ]);
   });
 
@@ -278,6 +280,14 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
         .filter((violation) => violation.rule === 'DeletedItemInMemory')
         .map((violation) => `${violation.method} ${violation.entity}.${violation.flag}`),
     ).toEqual(['Rooms.unguarded Bed.deletedAt']);
+  });
+
+  it('reports a route handler without the authorization the other handlers declare, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'HandlerWithoutAuth')
+        .map((violation) => `${violation.method} ${violation.declared}/${violation.total}`),
+    ).toEqual(['Handlers.open 22/24', 'Handlers.composed 22/24']);
   });
 
   it('reports lazy access per element only', () => {

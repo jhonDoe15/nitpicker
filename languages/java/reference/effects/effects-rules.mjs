@@ -8,13 +8,16 @@ const GUIDE = 'docs/java-preset.md';
 const METHOD = '<method>';
 const HOLDER = '<holder>';
 const PATH = ['<helper>', '<call>'];
-const WRITE = ['<repository>.save()'];
+const ENTITY = '<Entity>';
+const SAVE = '<repository>.save()';
+const FIND = '<repository>.findBy()';
+const WRITE = [SAVE];
 const SAMPLES = [
   ['IoCallInLoop', { method: METHOD, kind: 'database', form: 'loop', path: PATH }],
   ['AccumulatorCopyInLoop', { method: METHOD, variable: '<variable>', form: 'loop' }],
   [
     'LazyRelationInLoop',
-    { method: METHOD, entity: '<Entity>', relation: '<relation>', origin: '<query>' },
+    { method: METHOD, entity: ENTITY, relation: '<relation>', origin: '<query>' },
   ],
   [
     'RemoteCallInTransaction',
@@ -28,29 +31,23 @@ const SAMPLES = [
   ['DualWriteWithoutOutbox', { method: METHOD, form: 'inline', write: WRITE, path: PATH }],
   [
     'CheckThenWriteWithoutLock',
-    { method: METHOD, read: '<repository>.existsBy...()', write: '<repository>.save()' },
+    { method: METHOD, read: '<repository>.existsBy...()', write: SAVE },
   ],
   ['GraphqlFieldPerParent', { method: METHOD, framework: 'spring', kind: 'database', path: PATH }],
   ['ReactiveLookupPerElement', { method: METHOD, kind: 'database', path: PATH }],
-  [
-    'RowsChangedInMemory',
-    { method: METHOD, form: 'update', origin: '<repository>.findBy()', entity: '<Entity>' },
-  ],
+  ['RowsChangedInMemory', { method: METHOD, form: 'update', origin: FIND, entity: ENTITY }],
   [
     'EntityLoadedForOneColumn',
-    { method: METHOD, entity: '<Entity>', property: 'getEmail', origin: '<repository>.findBy()' },
+    { method: METHOD, entity: ENTITY, property: 'getEmail', origin: FIND },
   ],
   ['EntityLoadedForExistence', { method: METHOD, form: 'count', origin: '<repository>.countBy()' }],
-  [
-    'RetryWithStaleObject',
-    { method: METHOD, scope: 'retry loop', object: 'order', write: '<repository>.save()' },
-  ],
+  ['RetryWithStaleObject', { method: METHOD, scope: 'retry loop', object: 'order', write: SAVE }],
   [
     'AsyncMethodDoesBlockingWork',
     {
       method: METHOD,
       wrapper: 'CompletableFuture.completedFuture()',
-      path: ['<repository>.findBy()'],
+      path: [FIND],
     },
   ],
   ['WaitOnAsyncTwin', { method: METHOD, async: '<Dao>.findByIdAsync()', sync: 'findById()' }],
@@ -60,12 +57,13 @@ const SAMPLES = [
   ],
   [
     'SoftDeleteFilterMissing',
-    { entity: '<Entity>', column: 'deletedAt', read: '<query>', filtered: 9, total: 10 },
+    { entity: ENTITY, column: 'deletedAt', read: '<query>', filtered: 9, total: 10 },
   ],
   [
     'DeletedItemInMemory',
-    { entity: '<Entity>', flag: 'deletedAt', source: '<collection>', guarded: 9, units: 10 },
+    { entity: ENTITY, flag: 'deletedAt', source: '<collection>', guarded: 9, units: 10 },
   ],
+  ['HandlerWithoutAuth', { shape: '@PreAuthorize', declared: 9, total: 10 }],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

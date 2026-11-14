@@ -70,6 +70,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Soft delete in memory: a loop over an entity's collection (`basket.items`) skips the deleted items the way the
   project's other loops do, or the collection carries `@SQLRestriction`, `@Where` or `@Filter`
   (`effects/DeletedItemInMemory`).
+- Auth: a route handler function carries the authorization annotation the project's other handlers carry, on the
+  function or the controller (`effects/HandlerWithoutAuth`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

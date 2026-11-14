@@ -1,6 +1,6 @@
 import { importedBindings, isBindCall } from '../security/imported-names.mjs';
 import { typeServices } from '../security/security-values.mjs';
-import { isEstreeConsumed, isTerminalMethod } from './flow/consumed.mjs';
+import { isEstreeConsumed, isTerminalMethod } from './flow/estree-consumed.mjs';
 import { estreeCallView } from './io/call-views.mjs';
 import { directEffects, namedKind } from './io/call-tags.mjs';
 import { isKnownPackage, libraryKind, messagePackages } from './io/packages.mjs';

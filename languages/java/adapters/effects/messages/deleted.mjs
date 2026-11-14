@@ -20,7 +20,17 @@ function inMemory({ entity, flag, source, guarded, units }) {
   ].join(' ');
 }
 
+function handlerAuth({ shape, declared, total }) {
+  return [
+    `This route handler declares no authorization, while ${declared} of the ${total} handlers of the project`,
+    `do (usually \`${shape}\`), so it is open to every caller. Add the same requirement to the handler or`,
+    'its controller class, or mark it public the way the project marks its public routes; a handler that a',
+    '`SecurityFilterChain` opens on purpose (login, health) goes in `exceptions` for `effects/HandlerWithoutAuth`.',
+  ].join(' ');
+}
+
 export const DELETED_MESSAGES = {
   SoftDeleteFilterMissing: softDelete,
   DeletedItemInMemory: inMemory,
+  HandlerWithoutAuth: handlerAuth,
 };

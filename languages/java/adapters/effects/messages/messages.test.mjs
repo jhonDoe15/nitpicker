@@ -82,4 +82,21 @@ describe('the messages of the soft-delete filter rule', () => {
       ].join(' '),
     );
   });
+
+  it('explains a route handler without the auth requirement the others declare', () => {
+    const message = EFFECTS_MESSAGES.HandlerWithoutAuth({
+      shape: '@PreAuthorize',
+      declared: 10,
+      total: 11,
+    });
+
+    expect(message).toBe(
+      [
+        'This route handler declares no authorization, while 10 of the 11 handlers of the project',
+        'do (usually `@PreAuthorize`), so it is open to every caller. Add the same requirement to the handler or',
+        'its controller class, or mark it public the way the project marks its public routes; a handler that a',
+        '`SecurityFilterChain` opens on purpose (login, health) goes in `exceptions` for `effects/HandlerWithoutAuth`.',
+      ].join(' '),
+    );
+  });
 });

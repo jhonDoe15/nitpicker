@@ -1,3 +1,4 @@
+import { ROUTE_AUTH_HINTS } from '../auth/route-auth.mjs';
 import { DELETED_ITEM_HINTS } from '../deletion/deleted-items.mjs';
 import { SOFT_DELETE_HINTS } from '../deletion/soft-delete.mjs';
 import { JOB_HINTS } from '../jobs/jobs.mjs';
@@ -14,4 +15,5 @@ export const WRITE_HINTS = [
   ...JOB_HINTS,
   ...SOFT_DELETE_HINTS,
   ...DELETED_ITEM_HINTS,
+  ...ROUTE_AUTH_HINTS,
 ];

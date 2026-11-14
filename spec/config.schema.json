@@ -1397,7 +1397,12 @@
                 "enum": ["used", "unused"]
               },
               "typescript.softDeleteFilters": {
-                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility column or helper.",
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
@@ -1648,7 +1653,12 @@
                 "enum": ["used", "unused"]
               },
               "typescript.softDeleteFilters": {
-                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility column or helper.",
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               }
@@ -2329,6 +2339,7 @@
                             "effects/JobLoopWithoutItemIsolation",
                             "effects/SoftDeleteFilterMissing",
                             "effects/DeletedItemInMemory",
+                            "effects/HandlerWithoutAuth",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

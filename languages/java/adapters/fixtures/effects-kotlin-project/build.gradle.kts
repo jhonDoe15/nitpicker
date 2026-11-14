@@ -21,5 +21,7 @@ dependencies {
     compileOnly("com.netflix.graphql.dgs:graphql-dgs:10.0.4") { isTransitive = false }
     compileOnly("org.quartz-scheduler:quartz:2.3.2") { isTransitive = false }
     compileOnly("io.awspring.cloud:spring-cloud-aws-sqs:3.3.0") { isTransitive = false }
+    compileOnly("org.springframework.security:spring-security-core:6.4.4") { isTransitive = false }
+    compileOnly("jakarta.annotation:jakarta.annotation-api:2.1.1") { isTransitive = false }
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }

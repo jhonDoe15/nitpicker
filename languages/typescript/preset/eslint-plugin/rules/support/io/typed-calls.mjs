@@ -2,7 +2,8 @@ import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../analysis/ancestry.mjs';
 import { tsCallee, tsCallView } from './call-views.mjs';
 import { directEffects, namedKind } from './call-tags.mjs';
-import { isTerminalMethod, isTsConsumed } from '../flow/consumed.mjs';
+import { isTsConsumed } from '../flow/consumed.mjs';
+import { isTerminalMethod } from '../flow/estree-consumed.mjs';
 import { calleeDeclaration, functionLike, implementationsOf } from './implementations.mjs';
 import { libraryKind, packageFromPath } from './packages.mjs';
 

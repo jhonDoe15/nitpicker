@@ -1,5 +1,5 @@
 import { ancestorsOf, contains } from '../../analysis/ancestry.mjs';
-import { childrenOf } from '../../loops/loop-shapes.mjs';
+import { childrenOf } from '../../analysis/node/estree-children.mjs';
 
 const SETTERS = new Set(['set', 'add', 'setItem', 'put']);
 const READERS = new Set(['has', 'get', 'getItem']);

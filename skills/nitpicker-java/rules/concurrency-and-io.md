@@ -61,6 +61,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Soft delete in memory: a loop or stream over an entity's collection (`basket.getItems()`) skips the deleted items the
   way the project's other loops do, or the collection carries `@SQLRestriction`, `@Where` or `@Filter`
   (`effects/DeletedItemInMemory`).
+- Auth: a route handler carries the authorization annotation the project's other handlers carry, on the method or the
+  controller (`effects/HandlerWithoutAuth`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

@@ -1,4 +1,4 @@
-import { childrenOf } from '../loops/loop-shapes.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 import { describePath } from '../support/io-effects.mjs';
 import { isIsolated, itemWork, settlesAll } from './item-loops.mjs';
 import { jobKind } from './job-handlers.mjs';

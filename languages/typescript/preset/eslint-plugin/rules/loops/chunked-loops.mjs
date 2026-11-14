@@ -1,7 +1,7 @@
 import { hasArrayType } from '../support/checked-types.mjs';
 import { wordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 import { contains } from '../analysis/ancestry.mjs';
-import { childrenOf } from './loop-shapes.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 
 const CHUNK_WORDS = new Set(['chunk', 'chunks', 'chunked', 'batch', 'batches', 'batched']);
 const SLICES = new Set(['slice', 'splice', 'subarray']);

@@ -5,6 +5,7 @@ import { DETACHED_WORK_RUNNERS_CONVENTION } from './measures/detached-work-runne
 import { JSX_CONVENTIONS } from './measures/jsx-conventions.mjs';
 import { SOFT_DELETE_FILTERS_CONVENTION } from './measures/database/soft-delete-filters.mjs';
 import { TRANSACTIONS_CONVENTION } from './measures/database/transactions.mjs';
+import { ROUTE_AUTH_CONVENTION } from './measures/routes/route-auth.mjs';
 import { PRETTIER_CONVENTIONS } from './prettier-conventions.mjs';
 import { TYPE_IMPORT_CONVENTION } from './type-import-style.mjs';
 
@@ -16,6 +17,7 @@ const SHARED_CONVENTIONS = [
   DETACHED_WORK_RUNNERS_CONVENTION,
   TRANSACTIONS_CONVENTION,
   SOFT_DELETE_FILTERS_CONVENTION,
+  ROUTE_AUTH_CONVENTION,
 ];
 
 export const JAVASCRIPT_CONVENTIONS = SHARED_CONVENTIONS;

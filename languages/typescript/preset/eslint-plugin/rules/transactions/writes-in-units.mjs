@@ -1,6 +1,6 @@
 import { heldScope, callsWithin } from '../effects/held-scopes.mjs';
-import { isEstreeConsumed } from '../support/flow/consumed.mjs';
-import { childrenOf } from '../loops/loop-shapes.mjs';
+import { isEstreeConsumed } from '../support/flow/estree-consumed.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { findVariable } from '../analysis/constant-resolution.mjs';
 import { rootNode } from '../support/orm/chains.mjs';
