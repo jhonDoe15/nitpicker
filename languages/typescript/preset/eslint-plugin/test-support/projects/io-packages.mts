@@ -1,4 +1,4 @@
-function promise(type) {
+function promise(type: string) {
   return `Promise<${type}>`;
 }
 
@@ -83,7 +83,7 @@ const PRISMA = [
 
 const SMITHY = `export declare class Client { send<T>(command: T): ${promise('unknown')}; }`;
 
-function awsClient(client, commands) {
+function awsClient(client: string, commands: readonly string[]) {
   return [
     "import { Client } from '@smithy/smithy-client';",
     `export declare class ${client} extends Client {}`,
