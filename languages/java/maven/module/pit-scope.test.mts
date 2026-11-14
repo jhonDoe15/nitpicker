@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pitRunTargets, scopedPitTargets } from './pit-scope.mts';
 
-const roots = [];
+const roots: string[] = [];
 
-function utf8(text) {
+function utf8(text: string): Buffer {
   const bytes = Buffer.from(text, 'utf8');
   const header = Buffer.alloc(3);
   header[0] = 1;
@@ -14,7 +14,7 @@ function utf8(text) {
   return Buffer.concat([header, bytes]);
 }
 
-function u16(...values) {
+function u16(...values: number[]): Buffer {
   const buffer = Buffer.alloc(2 * values.length);
   for (const [index, value] of values.entries()) {
     buffer.writeUInt16BE(value, 2 * index);
@@ -22,7 +22,7 @@ function u16(...values) {
   return buffer;
 }
 
-function classFile(internalName, sourceFile) {
+function classFile(internalName: string, sourceFile: string): Buffer {
   return Buffer.concat([
     Buffer.from([0xca, 0xfe, 0xba, 0xbe]),
     u16(0, 65, 5),
@@ -37,7 +37,7 @@ function classFile(internalName, sourceFile) {
   ]);
 }
 
-function project(files) {
+function project(files: Readonly<Record<string, string | Buffer>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pit-scope-'));
   roots.push(root);
   for (const [name, content] of Object.entries(files)) {
@@ -47,7 +47,7 @@ function project(files) {
   return root;
 }
 
-function compiled(name, sourceFile) {
+function compiled(name: string, sourceFile: string): Record<string, Buffer> {
   return { [`classes/${name}.class`]: classFile(name, sourceFile) };
 }
 
@@ -58,7 +58,11 @@ afterEach(() => {
 });
 
 describe('scopedPitTargets', () => {
-  function targetsOf(root, mutationScope, sourceRoots = ['src/main/java', 'src/main/kotlin']) {
+  function targetsOf(
+    root: string,
+    mutationScope: unknown,
+    sourceRoots: string[] = ['src/main/java', 'src/main/kotlin'],
+  ): string[] {
     return scopedPitTargets({
       classDirectory: path.join(root, 'classes'),
       sourceRoots: sourceRoots.map((sourceRoot) => path.join(root, sourceRoot)),

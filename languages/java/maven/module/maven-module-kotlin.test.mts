@@ -4,8 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { readReactor } from '../maven-project.mts';
+import type { ModuleDescription } from '../typed/module-description.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -13,7 +14,7 @@ afterEach(() => {
   }
 });
 
-function moduleWith(build, directories) {
+function moduleWith(build: string, directories: readonly string[]): ModuleDescription {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-kotlin-'));
   roots.push(root);
   writeFileSync(
@@ -24,10 +25,14 @@ function moduleWith(build, directories) {
     mkdirSync(path.join(root, directory), { recursive: true });
   }
   const pom = `<project><groupId>demo</groupId><artifactId>shop</artifactId><build>${build}</build></project>`;
-  return readReactor(root, pom)[0];
+  const [module] = readReactor(root, pom);
+  if (module === undefined) {
+    throw new Error('The reactor has no module');
+  }
+  return module;
 }
 
-const kotlinPlugin = (sourceDirs = []) =>
+const kotlinPlugin = (sourceDirs: string[] = []): string =>
   '<plugins><plugin><groupId>org.jetbrains.kotlin</groupId>' +
   '<artifactId>kotlin-maven-plugin</artifactId><executions><execution>' +
   '<goals><goal>compile</goal></goals>' +
@@ -38,19 +43,19 @@ const kotlinPlugin = (sourceDirs = []) =>
         .join('')}</sourceDirs></configuration>`) +
   '</execution></executions></plugin></plugins>';
 
-function relativeKotlinRoots(module) {
+function relativeKotlinRoots(module: ModuleDescription): unknown {
   return moduleManifest({
     module,
-    classpaths: { mainCompile: [], testCompile: [] },
+    classpaths: { mainCompile: [], mainRuntime: [], testCompile: [], testRuntime: [] },
     pinned: {},
-  }).kotlinSourceRoots;
+  })['kotlinSourceRoots'];
 }
 
 describe('Kotlin source roots of a Maven module', () => {
   it('compiles the Maven source roots when the plugin configures no sourceDirs', () => {
     const module = moduleWith(kotlinPlugin(), ['src/main/java', 'src/main/kotlin']);
 
-    expect([module.kotlin.sourceRoots, relativeKotlinRoots(module)]).toEqual([
+    expect([module.kotlin?.sourceRoots, relativeKotlinRoots(module)]).toEqual([
       [path.join(module.basedir, 'src/main/java')],
       [],
     ]);

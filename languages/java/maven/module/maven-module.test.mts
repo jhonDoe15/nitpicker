@@ -6,9 +6,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { buildAndTest } from '../quick/maven-test-phase.mts';
 import { readReactor } from '../maven-project.mts';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import type { ModuleDescription } from '../typed/module-description.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
-const roots = [];
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -16,7 +19,7 @@ afterEach(() => {
   }
 });
 
-function singleModule() {
+function singleModule(): ModuleDescription {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-manifest-'));
   roots.push(root);
   writeFileSync(
@@ -37,6 +40,9 @@ function singleModule() {
 </project>
 `,
   );
+  if (module === undefined) {
+    throw new Error('The reactor has no module');
+  }
   return module;
 }
 
@@ -49,6 +55,7 @@ describe('moduleManifest', () => {
         module: singleModule(),
         classpaths: {
           mainCompile: ['/m2/spring-boot-3.3.5.jar'],
+          mainRuntime: [],
           testCompile: ['/m2/spring-boot-test-3.3.5.jar'],
           testRuntime: ['target/test-classes', 'target/classes', '/m2/spring-boot-3.3.5.jar'],
         },
@@ -85,62 +92,77 @@ describe('moduleManifest', () => {
   ])(
     'reads Spring from spring-context or spring-boot on the main classpath: %j',
     (jars, spring) => {
-      const classpaths = { mainCompile: jars, testCompile: ['/m2/spring-boot-test-3.3.5.jar'] };
+      const classpaths = {
+        mainCompile: jars,
+        mainRuntime: [],
+        testCompile: ['/m2/spring-boot-test-3.3.5.jar'],
+        testRuntime: [],
+      };
 
       const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
 
-      expect([manifest.spring, manifest.springArch]).toEqual([spring, spring]);
+      expect([manifest['spring'], manifest['springArch']]).toEqual([spring, spring]);
     },
   );
 
   it('runs the architecture rules, but not the Spring rules, for a module with jMolecules only', () => {
-    const classpaths = { mainCompile: ['/m2/jmolecules-ddd-2.0.1.jar'], testCompile: [] };
+    const classpaths = {
+      mainCompile: ['/m2/jmolecules-ddd-2.0.1.jar'],
+      mainRuntime: [],
+      testCompile: [],
+      testRuntime: [],
+    };
 
     const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
 
-    expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
+    expect([manifest['spring'], manifest['springArch']]).toEqual([false, true]);
   });
 });
 
 describe('buildAndTest', () => {
-  function mavenArguments(module) {
-    const calls = [];
+  function mavenArguments(module: ModuleDescription): readonly string[] {
+    const calls: (readonly string[])[] = [];
     buildAndTest({
       projectRoot: '/repo',
       maven: 'mvn',
       work: '/work',
+      timeoutMs: undefined,
+      quick: false,
       pinned: { jacoco: '0.8.12' },
       modules: [module],
-      spawn: (command, args) => {
+      spawn: (_command: string, args: readonly string[]) => {
         calls.push(args);
         return { status: 0, stdout: '', stderr: '' };
       },
     });
-    return calls[0];
+    return calls[0] ?? [];
   }
 
   it.each([
     ['Surefire', false, 'test'],
     ['Failsafe', true, 'verify'],
-  ])('keeps failing tests and turns reruns off for %s', (_name, runsFailsafe, phase) => {
-    const args = mavenArguments({ ...singleModule(), runsFailsafe });
+  ])(
+    'keeps failing tests and turns reruns off for %s',
+    (_name: string, runsFailsafe: boolean, phase: string) => {
+      const args = mavenArguments({ ...singleModule(), runsFailsafe });
 
-    expect([
-      args.includes(phase),
-      args.filter((arg) => /^-D(?:maven\.test\.failure|\w+\.rerun)/u.test(arg)),
-    ]).toEqual([
-      true,
-      [
-        '-Dmaven.test.failure.ignore=true',
-        '-Dsurefire.rerunFailingTestsCount=0',
-        '-Dfailsafe.rerunFailingTestsCount=0',
-      ],
-    ]);
-  });
+      expect([
+        args.includes(phase),
+        args.filter((arg: string) => /^-D(?:maven\.test\.failure|\w+\.rerun)/u.test(arg)),
+      ]).toEqual([
+        true,
+        [
+          '-Dmaven.test.failure.ignore=true',
+          '-Dsurefire.rerunFailingTestsCount=0',
+          '-Dfailsafe.rerunFailingTestsCount=0',
+        ],
+      ]);
+    },
+  );
 
   it('skips Spring AOT processing unless the tests run in AOT mode', () => {
-    const aotArguments = (module) =>
-      mavenArguments({ ...singleModule(), ...module }).filter((arg) => arg.includes('aot'));
+    const aotArguments = (module: Partial<ModuleDescription>): string[] =>
+      mavenArguments({ ...singleModule(), ...module }).filter((arg: string) => arg.includes('aot'));
 
     expect([
       aotArguments({ testJvmArgs: [] }),
@@ -155,13 +177,16 @@ describe('the tools a module runs in parallel processes', () => {
     const source = readFileSync(path.join(directory, 'maven-module.mts'), 'utf8');
     const urls = Object.fromEntries(
       [...source.matchAll(/const (\w+_URL) =[^']*new URL\('([^']+)'/gu)].map(([, name, file]) => [
-        name,
-        pathToFileURL(checkoutModulePath(path.join(directory, file))).href,
+        textOf(name),
+        pathToFileURL(checkoutModulePath(path.join(directory, textOf(file)))).href,
       ]),
     );
     const tasks = [...source.matchAll(/sourceTask\(\s*(\w+),\s*(\w+_URL)/gu)];
     const exported = await Promise.all(
-      tasks.map(async ([, tool, url]) => [tool, typeof (await import(urls[url]))[tool]]),
+      tasks.map(async ([, tool, url]) => [
+        tool,
+        typeof fieldOf(await import(textOf(urls[textOf(url)])), textOf(tool)),
+      ]),
     );
 
     expect(tasks.length).toBeGreaterThan(5);
