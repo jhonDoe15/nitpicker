@@ -1,31 +1,43 @@
+import { fieldOf, fieldsOf, textOf, textsOf } from '../../shared/values/readers.mts';
 import {
   resolveTestTimeouts,
   TEST_TIMEOUT_LANGUAGES,
   TIMEOUT_LIMIT_KEYS,
   validateTestTimeouts,
-} from '../../shared/test-timeouts/resolve.mjs';
-import { withoutTroubleshooting } from '../../shared/messages/troubleshooting.mjs';
+  withoutTroubleshooting,
+} from './types/config-views.mts';
+import type { TimeoutLimits } from './types/config-views.mts';
+import type { ChangePart, Loosening, PolicyConfig, TimeoutProject } from './types/policy-types.mts';
+
+type ProjectEntry = {
+  readonly name: string;
+  readonly project: TimeoutProject;
+  readonly identity: string;
+};
 
 const TIMEOUT_KIND = 'test-timeout';
 
-function settingsOf(config) {
-  return config.tools?.tests?.timeouts;
+function settingsOf(config: PolicyConfig): unknown {
+  return fieldOf(config.tools?.['tests'], 'timeouts');
 }
 
-function projectIdentity(project) {
+function projectIdentity(project: TimeoutProject): string {
   return JSON.stringify([project.language, [...new Set(project.include)].toSorted()]);
 }
 
-function projectsOf(config) {
-  return Object.entries(settingsOf(config)?.projects ?? {}).map(([name, project]) => ({
-    name,
-    project,
-    identity: projectIdentity(project),
-  }));
+function projectsOf(config: PolicyConfig): ProjectEntry[] {
+  const projects = fieldsOf(fieldOf(settingsOf(config), 'projects'));
+  return Object.entries(projects).map(([name, raw]) => {
+    const project = {
+      language: textOf(fieldOf(raw, 'language')),
+      include: textsOf(fieldOf(raw, 'include')),
+    };
+    return { name, project, identity: projectIdentity(project) };
+  });
 }
 
-function compareLimits(before, after, label) {
-  const result = { loosened: [], changed: [] };
+function compareLimits(before: TimeoutLimits, after: TimeoutLimits, label: string): ChangePart {
+  const result: { loosened: Loosening[]; changed: string[] } = { loosened: [], changed: [] };
   for (const key of TIMEOUT_LIMIT_KEYS) {
     const from = before[key];
     const to = after[key];
@@ -45,14 +57,17 @@ function compareLimits(before, after, label) {
   return result;
 }
 
-function projectLimits(config, entry) {
+function projectLimits(config: PolicyConfig, entry: ProjectEntry): TimeoutLimits {
   return resolveTestTimeouts(config, {
     language: entry.project.language,
     project: entry.name,
   });
 }
 
-function replacementOf(entry, projects) {
+function replacementOf(
+  entry: ProjectEntry,
+  projects: readonly ProjectEntry[],
+): ProjectEntry | undefined {
   return (
     projects.find((head) => head.identity === entry.identity) ??
     projects.find(
@@ -61,7 +76,15 @@ function replacementOf(entry, projects) {
   );
 }
 
-function removedProjectChanges(entry, { baseConfig, headConfig, headProjects }) {
+type Comparison = {
+  readonly baseConfig: PolicyConfig;
+  readonly headConfig: PolicyConfig;
+};
+
+function removedProjectChanges(
+  entry: ProjectEntry,
+  { baseConfig, headConfig, headProjects }: Comparison & { readonly headProjects: ProjectEntry[] },
+): ChangePart[] {
   const replacement = replacementOf(entry, headProjects);
   const fallback = resolveTestTimeouts(headConfig, { language: entry.project.language });
   const after = replacement === undefined ? fallback : projectLimits(headConfig, replacement);
@@ -81,7 +104,10 @@ function removedProjectChanges(entry, { baseConfig, headConfig, headProjects }) 
   return parts;
 }
 
-function addedProjectChanges(entry, { baseConfig, headConfig, baseProjects }) {
+function addedProjectChanges(
+  entry: ProjectEntry,
+  { baseConfig, headConfig, baseProjects }: Comparison & { readonly baseProjects: ProjectEntry[] },
+): ChangePart[] {
   if (baseProjects.some((base) => base.identity === entry.identity)) {
     return [];
   }
@@ -113,7 +139,7 @@ function addedProjectChanges(entry, { baseConfig, headConfig, baseProjects }) {
   ];
 }
 
-function validateProjectScopes(projects) {
+function validateProjectScopes(projects: readonly ProjectEntry[]): void {
   for (const [index, entry] of projects.entries()) {
     if (
       projects
@@ -125,7 +151,7 @@ function validateProjectScopes(projects) {
   }
 }
 
-function effectiveChanges(baseConfig, headConfig) {
+function effectiveChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig): ChangePart {
   const baseProjects = projectsOf(baseConfig);
   const headProjects = projectsOf(headConfig);
   validateProjectScopes(headProjects);
@@ -154,7 +180,7 @@ function effectiveChanges(baseConfig, headConfig) {
   };
 }
 
-export function timeoutChanges(baseConfig, headConfig) {
+export function timeoutChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig): ChangePart {
   if (JSON.stringify(settingsOf(baseConfig)) === JSON.stringify(settingsOf(headConfig))) {
     return { loosened: [], changed: [] };
   }
@@ -170,7 +196,7 @@ export function timeoutChanges(baseConfig, headConfig) {
     return {
       loosened: [
         {
-          text: `test timeout policy cannot be compared safely: ${withoutTroubleshooting(error.message)}`,
+          text: `test timeout policy cannot be compared safely: ${withoutTroubleshooting(error instanceof Error ? error.message : String(error))}`,
           kind: 'test-timeout-invalid',
         },
       ],

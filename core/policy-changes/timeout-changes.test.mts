@@ -1,27 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mjs';
-import { timeoutChanges } from './timeout-changes.mjs';
-import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from './policy-scope.mjs';
+import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mts';
+import { timeoutChanges } from './timeout-changes.mts';
+import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from './policy-scope.mts';
+import type { PolicyConfig } from './types/policy-types.mts';
 
 const LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
-const config = (timeouts) => ({ tools: { tests: { timeouts } } });
+const config = (timeouts: Record<string, unknown>): PolicyConfig => ({
+  tools: { tests: { timeouts } },
+});
 const project = (limits = {}, include = ['test/jvm/**']) => ({
   language: 'java',
   include,
   ...limits,
 });
-const ceilings = (value) => ({ testDeclarationCeilingMs: value, hookDeclarationCeilingMs: value });
+const ceilings = (value: number) => ({
+  testDeclarationCeilingMs: value,
+  hookDeclarationCeilingMs: value,
+});
 
-function loosenedTexts(base, head) {
+function loosenedTexts(base: PolicyConfig, head: PolicyConfig) {
   const { loosened } = timeoutChanges(base, head);
-  expect(loosened.filter(({ kind }) => !hasSpecificGuidance(kind)).map(({ text }) => text)).toEqual(
-    [],
-  );
+  expect(
+    loosened.filter(({ kind }) => !hasSpecificGuidance(kind ?? '')).map(({ text }) => text),
+  ).toEqual([]);
   return loosened.map(({ text }) => text);
 }
 
-function policyFields(base, head) {
+function policyFields(base: PolicyConfig, head: PolicyConfig) {
   const scope = createPolicyScope({
     files: [],
     baseRoots: rootSets(base, '.'),
@@ -57,8 +63,8 @@ describe('timeout policy changes', () => {
     const head = config({ languages: { java: ceilings(20_000) } });
     expect(loosenedTexts(base, head)).toEqual(
       LANGUAGES.flatMap((language) => [
-        `test timeout ${language} testDeclarationCeilingMs raised from 5000 to ${language === 'java' ? 20000 : 10000}`,
-        `test timeout ${language} hookDeclarationCeilingMs raised from 5000 to ${language === 'java' ? 20000 : 10000}`,
+        `test timeout ${language} testDeclarationCeilingMs raised from 5000 to ${String(language === 'java' ? 20000 : 10000)}`,
+        `test timeout ${language} hookDeclarationCeilingMs raised from 5000 to ${String(language === 'java' ? 20000 : 10000)}`,
       ]),
     );
     const strictProject = config({ projects: { jvm: project(ceilings(5_000)) } });
@@ -137,7 +143,7 @@ describe('timeout policy changes', () => {
 });
 
 describe('analyzer timeouts', () => {
-  function changes(base, head) {
+  function changes(base: PolicyConfig, head: PolicyConfig) {
     const files = ['src/a.ts'];
     return describePolicyChanges(
       base,

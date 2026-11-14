@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges } from './describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from './policy-scope.mjs';
+import { describePolicyChanges } from './describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from './policy-scope.mts';
+import type { ExceptionEntry, PolicyConfig } from './types/policy-types.mts';
 
-function changes(baseConfig, headConfig, files) {
+function changes(baseConfig: PolicyConfig, headConfig: PolicyConfig, files: string[]) {
   return describePolicyChanges(
     baseConfig,
     headConfig,
@@ -16,19 +17,19 @@ function changes(baseConfig, headConfig, files) {
   );
 }
 
-function loosened(baseConfig, headConfig, files) {
+function loosened(baseConfig: PolicyConfig, headConfig: PolicyConfig, files: string[]) {
   return changes(baseConfig, headConfig, files).loosened;
 }
 
 describe('an exception that names a function or a declaration', () => {
   const FILE = ['src/a.ts'];
-  const entry = (extra = {}) => ({
+  const entry = (extra: Partial<ExceptionEntry> = {}) => ({
     rule: 'function-lines-limit',
     paths: FILE,
     reason: 'Legacy',
     ...extra,
   });
-  const python = (exceptions) => ({
+  const python = (exceptions: ExceptionEntry[]) => ({
     preset: 'python',
     python: { sourceRoots: ['src'], exceptions },
   });

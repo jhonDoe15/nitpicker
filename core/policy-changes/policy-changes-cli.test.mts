@@ -1,27 +1,34 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mts';
-import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { policyFindings as findingsFor } from '../diff/reporting/review/policy-findings.mjs';
+import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { policyFindings as findingsFor } from '../diff/reporting/review/policy-findings.mts';
+import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+import { parseJson, textOf, fieldOf, listOf } from '../../shared/values/readers.mts';
+import type { Analyzer } from '../../shared/values/analyzers.mts';
+import type { PolicyConfig } from './types/policy-types.mts';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
-const fakeAnalyzerPath = path.resolve(
-  import.meta.dirname,
-  '../diff/execution/test-support/fake-analyzer.mjs',
+const fakeAnalyzerPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mjs', import.meta.url)),
 );
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
-function fakeAnalyzer(name = 'fake-quality-analyzer') {
+function fakeAnalyzer(name = 'fake-quality-analyzer'): Analyzer {
   return {
     name,
     version: '1.0.0',
     configurationHash: 'fixture-policy',
     exclusions: [],
     findingExitCodes: [1],
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
+    createInvocation(context: unknown) {
+      const projectRoot = textOf(fieldOf(context, 'projectRoot'));
+      const policyRoot = textOf(fieldOf(context, 'policyRoot'));
+      const toolRoot = textOf(fieldOf(context, 'toolRoot'));
       return {
         command: process.execPath,
         args: [
@@ -45,7 +52,41 @@ const TYPESCRIPT_FILES = {
   'src/vendor/lib.ts': 'export {};\n',
 };
 
-function prepareRepository({ baseConfig, headConfig, headFiles = {} }) {
+type RepositoryInput = {
+  baseConfig: PolicyConfig;
+  headConfig: PolicyConfig;
+  headFiles?: Record<string, string>;
+};
+
+type Summary = {
+  policyDigest: string;
+  headSha: string;
+  policyLoosenings: unknown;
+  policyAcceptanceSource: unknown;
+  policyChangeAccepted: unknown;
+};
+
+type NewFinding = { tool: string; message: string; policyKind: unknown };
+
+function summaryOf(value: unknown): Summary {
+  return {
+    policyDigest: textOf(fieldOf(value, 'policyDigest')),
+    headSha: textOf(fieldOf(value, 'headSha')),
+    policyLoosenings: fieldOf(value, 'policyLoosenings'),
+    policyAcceptanceSource: fieldOf(value, 'policyAcceptanceSource'),
+    policyChangeAccepted: fieldOf(value, 'policyChangeAccepted'),
+  };
+}
+
+function newFindingsOf(value: unknown): NewFinding[] {
+  return listOf(value).map((finding) => ({
+    tool: textOf(fieldOf(finding, 'tool')),
+    message: textOf(fieldOf(finding, 'message')),
+    policyKind: fieldOf(finding, 'policyKind'),
+  }));
+}
+
+function prepareRepository({ baseConfig, headConfig, headFiles = {} }: RepositoryInput) {
   const files = { 'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n', ...TYPESCRIPT_FILES };
   const repository = createGitRepository(
     { ...files, 'nitpicker.config.json': JSON.stringify(baseConfig) },
@@ -57,16 +98,20 @@ function prepareRepository({ baseConfig, headConfig, headFiles = {} }) {
   return repository.root;
 }
 
-function readReports(outputRoot) {
-  const read = (name) => readFileSync(path.join(outputRoot, name), 'utf8');
+function readReports(outputRoot: string) {
+  const read = (name: string) => readFileSync(path.join(outputRoot, name), 'utf8');
   return {
-    summary: JSON.parse(read('summary.json')),
+    summary: summaryOf(parseJson(read('summary.json'))),
     report: read('report.txt'),
-    newFindings: JSON.parse(read('new-findings.json')),
+    newFindings: newFindingsOf(parseJson(read('new-findings.json'))),
   };
 }
 
-function runWithHeadConfig({ extraArguments = [], environment = {}, ...repository }) {
+function runWithHeadConfig({
+  extraArguments = [],
+  environment = {},
+  ...repository
+}: RepositoryInput & { extraArguments?: string[]; environment?: Record<string, string> }) {
   const outputRoot = path.join(temporaryRoot('nitpicker-policy-output-'), 'reports');
   let stdoutText = '';
   let stderrText = '';
@@ -87,24 +132,24 @@ const HEADING = 'Policy changed in this change (nitpicker.config.json, head agai
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted):';
 
-function policyBlock(text, heading = HEADING) {
+function policyBlock(text: string, heading = HEADING) {
   const lines = text.split('\n');
   const start = lines.indexOf(heading);
   return lines.slice(start, start + 4);
 }
 
-function policyMessages(newFindings) {
+function policyMessages(newFindings: NewFinding[]) {
   return newFindings
     .filter(({ tool }) => tool === 'nitpicker-config')
     .map(({ message }) => message)
     .sort();
 }
 
-function policyFindings(newFindings) {
+function policyFindings(newFindings: NewFinding[]) {
   return policyMessages(newFindings).map((message) => message.split('. ')[0]);
 }
 
-function stderrLines(run, prefix) {
+function stderrLines(run: { stderrText: string }, prefix: string) {
   return run.stderrText.split('\n').filter((line) => line.startsWith(prefix));
 }
 
@@ -158,7 +203,7 @@ describe('a change that loosens nitpicker.config.json', () => {
     expect(
       outsideCi.newFindings
         .filter(({ tool }) => tool === 'nitpicker-config')
-        .map(({ policyKind }) => policyKind)
+        .map(({ policyKind }) => textOf(policyKind))
         .toSorted(),
     ).toEqual(['exclusion', 'react-disabled', 'threshold']);
     const { policyDigest } = outsideCi.summary;
@@ -167,7 +212,7 @@ describe('a change that loosens nitpicker.config.json', () => {
       '  Only a person may accept exactly these changes, after reviewing them: ' +
       `--accept-policy-change=${policyDigest} at an interactive terminal, ` +
       `NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI, ` +
-      `or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow. ${linkSentence('policyLoosened')}`;
+      `or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow. ${linkSentence('policyLoosened') ?? ''}`;
     expect(consoleLines.filter((line) => line.includes('policy-loosened'))).toEqual([
       '  Unapproved policy changes (nitpicker-config/policy-loosened): 3; ' +
         'the gate fails until each is undone or a person accepts the digest.',
@@ -189,7 +234,7 @@ describe('a loosening accepted for a commit', () => {
   const baseConfig = { exclude: ['src/legacy/**'] };
   const headConfig = { exclude: ['src/legacy/**', 'src/vendor/**'] };
 
-  function runAccepting(commitHead) {
+  function runAccepting(commitHead: boolean) {
     const repository = prepareRepository({ baseConfig, headConfig });
     if (commitHead) {
       fixtureGit(repository, ['add', '-A']);

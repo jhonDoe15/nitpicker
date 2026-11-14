@@ -1,96 +1,77 @@
+import { textOf, textsOf } from '../../shared/values/readers.mts';
 import {
-  DEFAULT_CRAP_SCORE_LIMIT,
-  FILE_LIMIT_DEFAULTS,
-  TEST_TIME_DEFAULTS,
-} from '../../shared/policy.mjs';
+  formattersDropped,
+  listGrew,
+  listShrank,
+  protocolsLoosened,
+} from './settings/list-looseners.mts';
+import { thresholdsOf } from './types/config-readers.mts';
+import { THRESHOLD_DEFAULTS } from './types/config-views.mts';
+import type {
+  ChangePart,
+  ListedConfig,
+  PolicyAnalyzer,
+  PolicyScope,
+  ScopedChange,
+  SettingChange,
+  SettingRule,
+  SettingValues,
+  Thresholds,
+} from './types/policy-types.mts';
 
-export const THRESHOLD_DEFAULTS = {
-  crapLimit: DEFAULT_CRAP_SCORE_LIMIT,
-  ...FILE_LIMIT_DEFAULTS,
-  ...TEST_TIME_DEFAULTS,
-};
 const DEFAULT_PRESET = 'typescript';
 const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
-const DEFAULT_PRECEDENCE = ['nitpicker'];
+const NITPICKER = 'nitpicker';
+const PROJECT = 'project';
+const DEFAULT_PRECEDENCE = [NITPICKER];
 const UNION_PRECEDENCE_TOOLS = new Set(['pmd']);
 const ADDITIVE_PRECEDENCE_TOOLS = new Set(['knip', 'dependency-cruiser']);
 
-function presetLoosened({ before, after, scope }) {
-  const from = before ?? DEFAULT_PRESET;
-  const to = after ?? DEFAULT_PRESET;
+function presetLoosened({ before, after, scope }: ScopedChange): boolean {
+  const from = before === undefined ? DEFAULT_PRESET : textOf(before);
+  const to = after === undefined ? DEFAULT_PRESET : textOf(after);
   if (from === to || STRICTER_PRESET.get(from) === to) {
     return false;
   }
-  return before !== undefined || to === 'javascript' || scope.presetRequired !== true;
+  return before !== undefined || to === 'javascript' || !scope.presetRequired;
 }
 
-const PROJECT_ANYWHERE_TOOLS = new Set(['eslint']);
+const PROJECT_ANYWHERE_TOOLS = new Set<string | undefined>(['eslint']);
 
-function projectWeight(precedence, tool) {
-  if (PROJECT_ANYWHERE_TOOLS.has(tool) && precedence.includes('project')) {
-    return precedence[0] === 'project' ? 2 : 1;
+function projectWeight(precedence: readonly string[], tool: string | undefined): number {
+  if (PROJECT_ANYWHERE_TOOLS.has(tool) && precedence.includes(PROJECT)) {
+    return precedence[0] === PROJECT ? 2 : 1;
   }
-  if (precedence[0] !== 'project') {
+  if (precedence[0] !== PROJECT) {
     return 0;
   }
-  return precedence.includes('nitpicker') ? 1 : 2;
+  return precedence.includes(NITPICKER) ? 1 : 2;
 }
 
-function additiveWeight(precedence) {
-  if (!precedence.includes('project')) {
+function additiveWeight(precedence: readonly string[]): number {
+  if (!precedence.includes(PROJECT)) {
     return 0;
   }
-  return precedence[0] === 'project' ? 2 : 1;
+  return precedence[0] === PROJECT ? 2 : 1;
 }
 
-function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECEDENCE, setting }) {
+function precedenceLoosened({ before, after, setting }: SettingChange): boolean {
   const tool = setting.split('.')[1];
-  if (ADDITIVE_PRECEDENCE_TOOLS.has(tool)) {
-    return additiveWeight(after) > additiveWeight(before);
+  const earlier = before === undefined ? DEFAULT_PRECEDENCE : textsOf(before);
+  const later = after === undefined ? DEFAULT_PRECEDENCE : textsOf(after);
+  if (tool !== undefined && ADDITIVE_PRECEDENCE_TOOLS.has(tool)) {
+    return additiveWeight(later) > additiveWeight(earlier);
   }
-  return UNION_PRECEDENCE_TOOLS.has(tool)
-    ? before.includes('nitpicker') && !after.includes('nitpicker')
-    : projectWeight(after, tool) > projectWeight(before, tool);
+  return tool !== undefined && UNION_PRECEDENCE_TOOLS.has(tool)
+    ? earlier.includes(NITPICKER) && !later.includes(NITPICKER)
+    : projectWeight(later, tool) > projectWeight(earlier, tool);
 }
 
-function listShrank({ before = [], after = [] }) {
-  const kept = new Set(after.map((entry) => JSON.stringify(entry)));
-  return before.some((entry) => !kept.has(JSON.stringify(entry)));
-}
-
-function lost(before = [], after = []) {
-  return before.some((name) => !after.includes(name));
-}
-
-function contractLoosened(before, after) {
-  return (
-    after === undefined ||
-    lost(before.open, after.open) ||
-    lost(after.close, before.close) ||
-    lost(before.steps, after.steps)
-  );
-}
-
-function protocolsLoosened({ before = [], after = [] }) {
-  const heads = new Map(after.map((contract) => [contract.type, contract]));
-  return before.some((contract) => contractLoosened(contract, heads.get(contract.type)));
-}
-
-function listGrew({ before = [], after = [] }) {
-  return after.some((entry) => !before.includes(entry));
-}
-
-function formattersDropped({ before = [], after = [] }) {
-  return before.some((formatter) =>
-    formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
-  );
-}
-
-function turnedOff(offValue) {
+function turnedOff(offValue: unknown): (values: SettingValues) => boolean {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
 
-const LOOSENING_SETTINGS = [
+const LOOSENING_SETTINGS: readonly SettingRule[] = [
   [/^preset$/u, 'preset', presetLoosened],
   [/^react\.enabled$/u, 'react-disabled', turnedOff(false)],
   [/^i18n\.enabled$/u, 'i18n-disabled', turnedOff(false)],
@@ -109,20 +90,26 @@ const LOOSENING_SETTINGS = [
   ],
 ];
 
-export function looseningKindOfSetting(change, scope) {
+export function looseningKindOfSetting(
+  change: SettingChange,
+  scope: PolicyScope,
+): string | undefined {
   return LOOSENING_SETTINGS.find(
     ([pattern, , loosens]) => pattern.test(change.setting) && loosens({ ...change, scope }),
   )?.[1];
 }
 
-function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
+function thresholdChanges(
+  baseThresholds: Thresholds = {},
+  headThresholds: Thresholds = {},
+): ChangePart {
   const keys = [...new Set([...Object.keys(baseThresholds), ...Object.keys(headThresholds)])];
   const moves = keys.map((key) => ({
     key,
-    before: baseThresholds[key] ?? THRESHOLD_DEFAULTS[key],
-    after: headThresholds[key] ?? THRESHOLD_DEFAULTS[key],
+    before: baseThresholds[key] ?? THRESHOLD_DEFAULTS[key] ?? Number.NaN,
+    after: headThresholds[key] ?? THRESHOLD_DEFAULTS[key] ?? Number.NaN,
   }));
-  function described(verb, wanted) {
+  function described(verb: string, wanted: (move: { before: number; after: number }) => boolean) {
     return moves
       .filter(wanted)
       .map(
@@ -139,7 +126,10 @@ function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
   };
 }
 
-function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
+function analyzerChanges(
+  baseAnalyzers: readonly PolicyAnalyzer[] = [],
+  headAnalyzers: readonly PolicyAnalyzer[] = [],
+): ChangePart {
   const heads = new Map(headAnalyzers.map((entry) => [entry.name, entry]));
   const bases = new Set(baseAnalyzers.map(({ name }) => name));
   return {
@@ -158,7 +148,7 @@ function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
   };
 }
 
-export function listedChanges(baseConfig, headConfig) {
+export function listedChanges(baseConfig: ListedConfig, headConfig: ListedConfig): ChangePart[] {
   const before = baseConfig.disable ?? [];
   const after = headConfig.disable ?? [];
   return [
@@ -170,7 +160,7 @@ export function listedChanges(baseConfig, headConfig) {
         .filter((name) => !after.includes(name))
         .map((name) => `analyzer enabled: ${name}`),
     },
-    thresholdChanges(baseConfig.thresholds, headConfig.thresholds),
+    thresholdChanges(thresholdsOf(baseConfig.thresholds), thresholdsOf(headConfig.thresholds)),
     analyzerChanges(baseConfig.analyzers, headConfig.analyzers),
   ];
 }

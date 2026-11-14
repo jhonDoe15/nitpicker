@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
-import { baseConfigCoveringHead } from './base-coverage.mjs';
+import { baseConfigCoveringHead } from './base-coverage.mts';
 
 describe('baseConfigCoveringHead', () => {
   it('keeps a config whose layout and excludes the head does not widen', () => {
@@ -58,7 +58,7 @@ describe('baseConfigCoveringHead', () => {
   });
 
   it('measures the base with the stricter side of every listed key', () => {
-    const exception = (paths) => ({ rule: 'file-lines-limit', paths, reason: 'Legacy' });
+    const exception = (paths: string[]) => ({ rule: 'file-lines-limit', paths, reason: 'Legacy' });
 
     expect(
       baseConfigCoveringHead(
@@ -81,7 +81,7 @@ describe('baseConfigCoveringHead', () => {
   });
 
   it('keeps only the exceptions of the same function and name in the head', () => {
-    const exception = (extra) => ({
+    const exception = (extra: Record<string, unknown>) => ({
       rule: 'function-lines-limit',
       paths: ['src/a.py'],
       reason: 'Legacy',

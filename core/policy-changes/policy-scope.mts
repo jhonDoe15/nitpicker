@@ -1,66 +1,56 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside } from '../../shared/filesystem.mjs';
-import { globMatcher } from '../../shared/paths/glob.mjs';
-import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
-import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
-import { jvmProductionReach } from '../../languages/java/builds/reach/source-reach.mjs';
-import { pythonProductionReach } from '../../languages/python/adapters/analysis/reach/python-reach.mjs';
-import { readPythonSelection } from '../../languages/python/adapters/configuration/pytest/test-selection.mjs';
-import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
-import { resolveLayout, resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import {
   packageEntryFiles,
   productionReach,
-} from '../../languages/typescript/preset/modules/production-imports.mjs';
-import {
+  pythonProductionReach,
+  resolveLayoutFor,
   checksJavascript,
+  detectSourceRoots,
+  GRADLE_PRESETS,
+  isGeneratedGo,
+  isGeneratedJvm,
+  isGeneratedPython,
+  isMarkedGenerated,
+  jvmProductionReach,
+  pathInside,
+  presetToDeclare,
+  projectFilePaths,
   projectTsconfigs,
-} from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
-import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
-import { readToolConfigs } from './build-files/tool-config-files.mjs';
-import { importedAmong } from './imported-files.mjs';
-import { isGeneratedJvm } from '../../languages/java/adapters/generated/generated-sources.mjs';
-import { isGeneratedPython } from '../../languages/python/libraries/generated-files.mjs';
-import { isMarkedGenerated } from '../../languages/typescript/preset/layout/generated-files.mjs';
-import { isGeneratedGo } from '../../languages/go/adapters/structure/go-generated.mjs';
+  readBuildSources,
+  readPythonSelection,
+} from './types/typed-views.mts';
+import type {
+  BuildSource,
+  PolicyConfig,
+  PolicyRead,
+  PolicyScope,
+  RootSets,
+  ScopeInputs,
+  Side,
+} from './types/policy-types.mts';
+import {
+  codeOf,
+  foldersOf,
+  isUnder,
+  layoutOf,
+  matcherOf,
+  PYTHON,
+  usesLayout,
+} from './scope/scope-files.mts';
+import { readToolConfigs } from './build-files/tool-config-files.mts';
+import { importedAmong } from './imported-files.mts';
 
-const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
-const PRESET_EXTENSIONS = new Map([
-  ['python', ['py']],
-  ['go', ['go']],
-  ['java', GRADLE_EXTENSIONS],
-  ['kotlin', GRADLE_EXTENSIONS],
-]);
-
-export function gitBlobId(content) {
+export function gitBlobId(content: string | Uint8Array): string {
   return createHash('sha1')
     .update(`blob ${String(content.length)}\0`)
     .update(content)
     .digest('hex');
 }
 
-export function matcherOf(globs = []) {
-  const patterns = globs.map(globMatcher);
-  return (file) => patterns.some((pattern) => pattern.test(file));
-}
-
-export function isUnder(file, root) {
-  return root === '.' || root === '' || file === root || file.startsWith(`${root}/`);
-}
-
-function usesLayout(config) {
-  return !PRESET_EXTENSIONS.has(config.preset);
-}
-
-function layoutOf(config) {
-  return resolveLayout(config.layout, [], { javascript: config.preset === 'javascript' });
-}
-
-export function rootSets(config, projectRoot) {
-  if (config.preset === 'python') {
+export function rootSets(config: PolicyConfig, projectRoot: string): RootSets {
+  if (config.preset === PYTHON) {
     return { 'python.sourceRoots': detectSourceRoots(projectRoot, config.python?.sourceRoots) };
   }
   if (!usesLayout(config)) {
@@ -70,18 +60,15 @@ export function rootSets(config, projectRoot) {
   return { 'layout.sourceRoots': layout.sourceRoots, 'layout.testRoots': layout.testRoots };
 }
 
-function extensionsOf(config) {
-  return PRESET_EXTENSIONS.get(config.preset) ?? layoutOf(config).extensions;
-}
-
-function foldersOf(file) {
-  const parts = file.split('/');
-  return parts.slice(1).map((_, index) => parts.slice(0, index + 1).join('/'));
-}
-
-function basePathResolver({ files = new Map(), directories = new Map() } = {}, folders) {
-  const fileSources = new Map([...files].map(([from, to]) => [to, from]));
-  const folderSources = [...directories].map(([from, to]) => [to, from]);
+function basePathResolver(
+  {
+    files = new Map<string, string>(),
+    directories = new Map<string, string>(),
+  }: ScopeInputs['moves'] = {},
+  folders: ReadonlySet<string>,
+): (headPath: string) => string {
+  const fileSources = new Map([...files].map(([from, to]): [string, string] => [to, from]));
+  const folderSources = [...directories].map(([from, to]): [string, string] => [to, from]);
   return (headPath) => {
     const renamed = fileSources.get(headPath);
     if (renamed !== undefined || !folders.has(headPath)) {
@@ -92,26 +79,23 @@ function basePathResolver({ files = new Map(), directories = new Map() } = {}, f
   };
 }
 
-function computedOnce(compute) {
-  const results = [];
+function computedOnce<Result>(compute: () => Result): () => Result {
+  let computed: { readonly value: Result } | undefined;
   return () => {
-    if (results.length === 0) {
-      results.push(compute());
-    }
-    return results[0];
+    computed ??= { value: compute() };
+    return computed.value;
   };
 }
 
-function codeOf(files, config) {
-  const extensions = new Set(extensionsOf(config));
-  return files.filter((file) => extensions.has(file.slice(file.lastIndexOf('.') + 1)));
-}
-
-function isTypescriptPreset(config) {
+function isTypescriptPreset(config: PolicyConfig): boolean {
   return usesLayout(config) && config.preset !== 'javascript';
 }
 
-function tsconfigsOf(projectRoot, files, config) {
+function tsconfigsOf(
+  projectRoot: string,
+  files: readonly string[],
+  config: PolicyConfig,
+): ReadonlyMap<string, boolean> {
   const hidden = resolveLayoutFor(config);
   return new Map(
     projectTsconfigs(projectRoot, files, hidden.isExcluded).map((file) => [
@@ -128,7 +112,7 @@ export function createPolicyScope({
   headRoots,
   headConfig,
   moves,
-  presetRequired = false,
+  presetRequired,
   tsconfigs,
   buildSources,
   toolConfigs = [],
@@ -136,7 +120,7 @@ export function createPolicyScope({
   importedBy = () => [],
   blobOf = () => 'unread',
   generated = { base: () => false, head: () => false },
-}) {
+}: ScopeInputs): PolicyScope {
   const code = codeOf(files, headConfig);
   const baseFileSet = new Set(baseFiles);
   const folders = new Set(code.flatMap(foldersOf));
@@ -152,7 +136,7 @@ export function createPolicyScope({
     headRoots,
     basePathOf,
     existsInBase: (file) => baseFileSet.has(file),
-    presetRequired,
+    presetRequired: presetRequired === true,
     tsconfigs,
     buildSources,
     toolConfigs,
@@ -163,11 +147,13 @@ export function createPolicyScope({
   };
 }
 
-export function listedFiles(projectRoot) {
-  return projectFilePaths(projectRoot);
-}
+export { isUnder, matcherOf, projectFilePaths as listedFiles };
 
-function typescriptReach(headProjectRoot, headConfig, files) {
+function typescriptReach(
+  headProjectRoot: string,
+  headConfig: PolicyConfig,
+  files: readonly string[],
+): ReadonlyMap<string, string> {
   const layout = resolveLayoutFor(headConfig);
   const isEntryPoint = matcherOf(headConfig.layout?.entryPoints ?? []);
   const code = codeOf(files, headConfig);
@@ -180,17 +166,29 @@ function typescriptReach(headProjectRoot, headConfig, files) {
   });
 }
 
-function mainSourceRoots(sources) {
-  return sources
-    .filter(({ type, set }) => type === 'roots' && set === 'main')
-    .flatMap(({ roots }) => roots);
+function mainSourceRoots(sources: readonly BuildSource[]): string[] {
+  return sources.flatMap((source) =>
+    source.type === 'roots' && source.set === 'main' ? (source.roots ?? []) : [],
+  );
 }
 
-function productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }) {
+function productionReachOf({
+  headProjectRoot,
+  headConfig,
+  files,
+  headRoots,
+  headSources,
+}: {
+  headProjectRoot: string;
+  headConfig: PolicyConfig;
+  files: readonly string[];
+  headRoots: RootSets;
+  headSources: readonly BuildSource[];
+}): ReadonlyMap<string, string> {
   const isHidden = matcherOf(headConfig.exclude ?? []);
-  if (headConfig.preset === 'python') {
+  if (headConfig.preset === PYTHON) {
     return pythonProductionReach(headProjectRoot, {
-      sourceRoots: headRoots['python.sourceRoots'],
+      sourceRoots: headRoots['python.sourceRoots'] ?? [],
       isHidden,
     });
   }
@@ -204,8 +202,11 @@ function productionReachOf({ headProjectRoot, headConfig, files, headRoots, head
   return usesLayout(headConfig) ? typescriptReach(headProjectRoot, headConfig, files) : new Map();
 }
 
-function buildSourcesOf({ preset }, { projectRoot, files, roots }) {
-  if (preset === 'python') {
+function buildSourcesOf(
+  { preset }: PolicyConfig,
+  { projectRoot, files, roots }: Side,
+): BuildSource[] {
+  if (preset === PYTHON) {
     return readPythonSelection(
       projectRoot,
       roots['python.sourceRoots'] ?? detectSourceRoots(projectRoot, undefined),
@@ -214,8 +215,10 @@ function buildSourcesOf({ preset }, { projectRoot, files, roots }) {
   return GRADLE_PRESETS.includes(preset) ? readBuildSources(projectRoot, files) : [];
 }
 
-function generatedTestOf(preset) {
-  if (preset === 'python') {
+function generatedTestOf(
+  preset: string | undefined,
+): (projectRoot: string, file: string) => boolean {
+  if (preset === PYTHON) {
     return isGeneratedPython;
   }
   if (preset === 'go') {
@@ -224,7 +227,11 @@ function generatedTestOf(preset) {
   return GRADLE_PRESETS.includes(preset) ? isGeneratedJvm : isMarkedGenerated;
 }
 
-function generatedReaders(preset, baseProjectRoot, headProjectRoot) {
+function generatedReaders(
+  preset: string | undefined,
+  baseProjectRoot: string,
+  headProjectRoot: string,
+): PolicyScope['generated'] {
   const isGenerated = generatedTestOf(preset);
   return {
     base: (file) => isGenerated(baseProjectRoot, file),
@@ -232,7 +239,7 @@ function generatedReaders(preset, baseProjectRoot, headProjectRoot) {
   };
 }
 
-function blobReader(projectRoot) {
+function blobReader(projectRoot: string): (file: string) => string {
   return (file) => {
     const absolute = pathInside(projectRoot, file);
     return absolute !== undefined && existsSync(absolute)
@@ -249,9 +256,9 @@ export function readPolicyScope({
   liveProjectRoot = headProjectRoot,
   moves,
   replacedOptions,
-}) {
-  const files = listedFiles(headProjectRoot);
-  const baseFiles = listedFiles(baseProjectRoot);
+}: PolicyRead): PolicyScope {
+  const files = projectFilePaths(headProjectRoot);
+  const baseFiles = projectFilePaths(baseProjectRoot);
   const baseRoots = rootSets(baseConfig, baseProjectRoot);
   const headRoots = rootSets(headConfig, headProjectRoot);
   const base = { projectRoot: baseProjectRoot, files: baseFiles, roots: baseRoots };
@@ -264,7 +271,7 @@ export function readPolicyScope({
     headRoots,
     headConfig,
     moves,
-    presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
+    presetRequired: presetToDeclare(headConfig, headProjectRoot) === undefined ? undefined : true,
     tsconfigs: isTypescriptPreset(headConfig)
       ? {
           base: tsconfigsOf(baseProjectRoot, baseFiles, baseConfig),
