@@ -11,6 +11,7 @@ import {
   SUPPRESS,
 } from './data-types.mjs';
 import { entityReceiver, inClearedLoop, repositoryReceiver } from './loops/loop-scopes.mjs';
+import { rowsInMemory } from './rows/rows.mjs';
 
 const QUERIES = new Set([...JPA_QUERY, ...NATIVE_QUERY]);
 const POSITIONAL = /\?\d/u;
@@ -171,17 +172,19 @@ function filtersAfterLoad(invocation) {
 }
 
 function filterInQuery(view) {
-  return view.file.invocations
-    .filter(
-      (invocation) =>
-        invocation.name === 'findAll' &&
-        invocation.arguments.length === 0 &&
-        repositoryReceiver(view, invocation) &&
-        filtersAfterLoad(invocation),
-    )
-    .map((invocation) =>
+  const loaded = view.file.invocations.filter(
+    (invocation) =>
+      invocation.name === 'findAll' &&
+      invocation.arguments.length === 0 &&
+      repositoryReceiver(view, invocation) &&
+      filtersAfterLoad(invocation),
+  );
+  return [
+    ...loaded.map((invocation) =>
       report('SpringDataFilterInQuery', invocation, symbolOf(view, invocation.scope, 'findAll')),
-    );
+    ),
+    ...rowsInMemory(view, new Set(loaded)),
+  ];
 }
 
 export const QUERY_RULES = [
