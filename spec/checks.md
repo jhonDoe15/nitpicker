@@ -195,6 +195,17 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
 
+Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
+database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
+`for await` loop or a comparator, where running them concurrently still sends one query per item) and a
+remote request once per item of a sequential loop, with the batch or bounded-concurrency form in the message.
+A call is classified by the type checker first (the package that declares the receiver's type or the callee),
+then through summaries of project helpers (effects proven by a type or an import, named in the finding as a
+path), then, where no type is known, by receiver names for a call written in the loop itself; the JavaScript
+preset runs the same rule. A call that takes a whole chunk, a paging or polling loop, a retry and a broker
+publish are left alone. A remote call inside `Promise.all` is the fan-out rule's, so no call is reported
+twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-in-loop` in the Go preset.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic

@@ -1,5 +1,10 @@
 /** The I/O rules and their parts: a change to one invalidates the lint cache. */
 export const IO_POLICY_FILES = [
+  'languages/typescript/preset/eslint-plugin/rules/loops/chunked-loops.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/loops/concurrent-batches.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/loops/loop-shapes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/loops/no-io-in-loop.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/support/checked-types.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/flow/consumed.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/flow/sync-callbacks.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/io-effects.mjs',

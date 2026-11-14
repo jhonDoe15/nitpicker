@@ -409,6 +409,64 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
   standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
   and without type information any name passed to `from()` counts as a collection.
+- Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
+  loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
+  `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
+  `findLast`, `findLastIndex`, the mapping function of `Array.from(items, fn)`, and a
+  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mjs` classifies them:
+  with the type checker first, a call whose receiver type or declaration comes from a database
+  package (`pg`, `mysql2`, `mongodb`, `mongoose`, `redis`, `ioredis`, `typeorm`, `sequelize`,
+  `knex`, `drizzle-orm`, `@prisma/client`, `better-sqlite3`, `@aws-sdk/client-dynamodb` and
+  similar) is a query, and one from `node:http`/`https`, `axios`, `got`, `undici`, `ky`,
+  `superagent`, `@grpc/grpc-js` or another `@aws-sdk` client is a request, when it returns a
+  promise or takes a callback (so `repository.create(...)`, which only builds an entity, is not
+  one). A query builder of `knex`, `mongoose`, `kysely`, `objection` or `drizzle-orm` counts only
+  where the query runs: the call is awaited, `then`-ed, returned, pushed or passed to
+  `Promise.all`, or is a terminal method (`exec`, `first`, `execute`, `getMany`, `getOne`), so
+  adding `query.where(...)` filters in a loop is not reported. Sequelize association getters
+  (`order.getCustomer()`) count as queries. A call to a project function or method counts when its
+  body does, through up to four helpers, and the message names the shortest path
+  (`` `loadOrder()`, which calls `pool.query()` ``); overloads, members of an object literal,
+  methods inherited from a base class and a method declared on a type (`type OrderStore = {
+find(...) }`, judged by the classes and object literals that implement it outside test files) are
+  followed. A helper's callback counts only when it runs during the call (iteration methods,
+  `then`/`catch`/`finally`, `new Promise`, transaction and lock callbacks, retry wrappers); a
+  handler registered with `on`, `setTimeout` or a router runs later and is not counted. Only where
+  the type is unknown (`any`, an untyped module, JavaScript the checker does not see, a member
+  declared without a body that nothing implements) are receiver names used, and only for a call
+  written in the loop itself: `find*`/`save*`/`query*`-style methods (`get` itself, `getById`,
+  `getAll`) on a receiver whose name ends in `repo`, `repository`, `dao`, `db`, `database`,
+  `prisma`, `connection`, `knex`, `redis`, `sql`, `pg` or `mongo` (a query), `pool` (for `query`,
+  `connect` and `execute`), `client` (a query when another word of the name is one of those or the
+  method is SQL-style, otherwise a request), `http`, `axios`, `api` or `gateway` (a request).
+  `find`, `filter`, `some`, `every` and `map` with a function argument search a collection and are
+  never a query, and a project type named like a repository whose method does no I/O is not
+  reported. A query is also reported inside `Promise.all(items.map(...))`, a `const` holding
+  `items.map(...)` that is only passed to `Promise.all`, `allSettled`, `any` or `race`, or an array
+  the loop only `push`es un-awaited calls into before passing it to one of them: running them
+  concurrently still sends one query per item. Fetch or write them in one query (`findByIds`,
+  `findAllById`, `createMany`, `insertMany`, `WHERE id IN (...)`); a Redis command is told to use
+  `mget`/`mset`/`hmget` or a `pipeline()`. A request is reported in a sequential loop only: in
+  `Promise.all` it is `nitpicker/unbounded-fan-out`'s, so no call is reported twice; use the API's
+  batch endpoint, or bounded concurrency (`p-limit`, `p-map` with `{ concurrency }`, or
+  `Promise.all` over fixed-size chunks). A call that takes a whole chunk of the items is the batch
+  form and is not reported: its argument uses the element of a loop over chunks (an iterable named
+  like `chunk(rows, 500)`, `_.chunk`, `chunks` or `batches`, a typed array of arrays, or a `const`
+  holding `rows.slice(...)` in the loop body) or slices the items in the argument itself
+  (`repo.findByIds(ids.slice(i, i + 100))`). Broker publishes and job enqueues (`kafkajs`,
+  `amqplib`, SQS `SendMessage`, SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`)
+  are not reported: one publish per item is the protocol. Paging, cursor and polling loops are not
+  reported: the loop condition reads a variable the body assigns from the call's result, and the
+  call's inputs either stay the same (polling) or carry state across iterations through a variable
+  assigned from another variable, as in
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`. Stepping an
+  index with `i += 1`, `i++` or `i = i + 1` is not state, so a lookup per item that stops early is
+  still reported. Retries (a `try` directly in the loop body that returns or breaks on success,
+  with a `catch` that lets the loop go on) are not reported, and neither are file system calls
+  (`node:fs`, `node:fs/promises`): one read or write per file has no batch form. One chain
+  (`db.select().from(t).where(...)`) is reported once. The JavaScript preset runs the same rule: JS
+  that the type checker covers (`allowJs` with `checkJs`, or JSDoc types) is classified by type,
+  and the rest by import and receiver name.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

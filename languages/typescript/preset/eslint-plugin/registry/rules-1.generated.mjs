@@ -43,6 +43,7 @@ import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-sec
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mjs';
 import { rule as ruleNoInternalModuleMocks } from '../rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
+import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mjs';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mjs';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mjs';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unin
 import { rule as ruleNoUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mjs';
-import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -145,6 +145,7 @@ export const partRules = {
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
+  'no-io-in-loop': ruleNoIoInLoop,
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-magic-numbers': ruleNoMagicNumbers,
   'no-managed-resource-construction-outside-composition-roots':
@@ -200,5 +201,4 @@ export const partRules = {
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
-  'no-unmapped-exception': ruleNoUnmappedException,
 };
