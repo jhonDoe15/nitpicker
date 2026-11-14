@@ -1,7 +1,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createToolContext, runPythonTools } from '../python-tools.mjs';
+import { createToolContext } from '../test-support/typed/tool-context.mts';
+import { runPythonTools } from '../typed/runner/runner-views.mts';
+import { launchEnv, runsOf, testsRanOf } from '../typed/tests/tools-test-views.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   callsLog,
   contextFor,
@@ -11,7 +14,7 @@ import {
   restoreTemporaryState,
   setEnvironment,
   temporaryRoot,
-} from './test-support/python-tools-project.mjs';
+} from './test-support/python-tools-project.mts';
 import { fileURLToPath } from 'node:url';
 
 afterEach(restoreTemporaryState);
@@ -54,7 +57,7 @@ describe('tool context', () => {
       PYTHONPATH: path.join(snapshot, 'src'),
       PYTHONDONTWRITEBYTECODE: '1',
     });
-    expect(context.launcher.launch('ruff', []).env.VIRTUAL_ENV).toBe(path.join(live, '.venv'));
+    expect(fieldOf(launchEnv(context, 'ruff'), 'VIRTUAL_ENV')).toBe(path.join(live, '.venv'));
     expect(context.project).toEqual({
       formatter: 'black',
       formatterDetected: false,
@@ -84,7 +87,7 @@ describe('running the tools', () => {
 
     expect(runPythonTools(context)).toEqual([]);
 
-    expect(JSON.parse(readReport(reportRoot, 'ruff.sarif')).runs[0].results).toHaveLength(1);
+    expect(fieldOf(runsOf(readReport(reportRoot, 'ruff.sarif'))[0], 'results')).toHaveLength(1);
     expect(readReport(reportRoot, 'format.txt')).toBe('src/demo/a.py');
     expect(readReport(reportRoot, 'coverage.json')).toBe('{"files":{}}');
     expect(JSON.parse(readReport(reportRoot, 'type-check.json'))).toEqual({
@@ -201,7 +204,7 @@ describe('running the tools', () => {
         ['dependencies-failed', 'python', 'python'],
       ].map(([rule, command, call]) => ({
         rule,
-        message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
+        message: `${String(command)} exited 2 in the virtualenv environment:\n${String(call)} blew up`,
       })),
     );
   });
@@ -238,10 +241,10 @@ describe('running the tools', () => {
   });
   it('accepts a run without tests', () => {
     const root = project({ 'test-exit.txt': '5\n' });
-    const { context } = contextFor(root);
+    const { context, reportRoot } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([]);
-    expect(JSON.parse(readReport(context.reportRoot, 'manifest.json')).testsRan).toBe(false);
+    expect(testsRanOf(readReport(reportRoot, 'manifest.json'))).toBe(false);
   });
   it('reports a failing test run with its output', () => {
     const root = project({ 'test-exit.txt': '1\n' });
@@ -258,7 +261,8 @@ describe('running the tools', () => {
     const root = project({ 'fail.json': JSON.stringify({ ruff: `${'x'.repeat(5000)}THE END` }) });
     const { context } = contextFor(root);
 
-    const [{ message }] = runPythonTools(context);
+    const [failure] = runPythonTools(context);
+    const message = failure?.message ?? '';
 
     expect(message).toMatch(
       /^ruff check exited 2 in the virtualenv environment:\n\.\.\.x+THE END$/,
@@ -288,9 +292,9 @@ describe('running the tools', () => {
 
     const [failure] = runPythonTools(context);
 
-    expect(failure.rule).toBe('ruff-failed');
-    expect(failure.message).toMatch(
-      /^ruff check (could not run in the virtualenv environment|exited)/,
+    expect(failure?.rule).toBe('ruff-failed');
+    expect(failure?.message).toMatch(
+      /^ruff check (could not run in the virtualenv environment|exited)[\s\S]*$/,
     );
   });
   it('names a failure that is not a tool failure', () => {

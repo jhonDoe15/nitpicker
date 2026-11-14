@@ -6,14 +6,19 @@ const OCTAL_RADIX = 8;
 const VARIABLES = '^(UV_PROJECT_ENVIRONMENT|POETRY_[A-Z_]+|PDM_[A-Z_]+|PIPENV_[A-Z_]+)=';
 
 export function installRecordingManager(
-  directory,
-  name,
-  { log, status = 0, stderr = '', createsEnvironment = true },
-) {
+  directory: string,
+  name: string,
+  {
+    log,
+    status = 0,
+    stderr = '',
+    createsEnvironment,
+  }: { log: string; status?: number; stderr?: string; createsEnvironment?: false },
+): void {
   const script = [
     '#!/bin/sh',
     `{ echo "${name} $*"; echo "cwd=$PWD"; env | grep -E '${VARIABLES}' | sort; } >> '${log}'`,
-    createsEnvironment ? 'mkdir -p "$PWD/.venv/bin"' : ':',
+    createsEnvironment === false ? ':' : 'mkdir -p "$PWD/.venv/bin"',
     `echo '${stderr}' >&2`,
     `exit ${String(status)}`,
   ].join('\n');
@@ -22,7 +27,7 @@ export function installRecordingManager(
   chmodSync(target, EXECUTABLE);
 }
 
-export function installRecordingPython(directory, { log }) {
+export function installRecordingPython(directory: string, { log }: { log: string }): void {
   const script = [
     '#!/bin/sh',
     `echo "python3 $*" >> '${log}'`,

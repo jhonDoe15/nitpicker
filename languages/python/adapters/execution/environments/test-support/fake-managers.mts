@@ -2,7 +2,10 @@ import { chmodSync, writeFileSync } from 'node:fs';
 
 const EXECUTABLE = 0o755;
 
-export function installFakeManager(target, { output = '', status = 0, error = '' }) {
+export function installFakeManager(
+  target: string,
+  { output = '', status = 0, error = '' }: { output?: string; status?: number; error?: string },
+): void {
   const script = [
     '#!/bin/sh',
     `echo '${output}'`,
