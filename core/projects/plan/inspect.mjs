@@ -53,17 +53,21 @@ function monorepoPlan({ root, files, found, repositoryRoot = repositoryRootOf(ro
     rootConfig,
     source: found.source,
     projects,
-    undeclared: found.source === 'detected' ? undeclaredProjects({ root, files, projects }) : [],
+    undeclared:
+      found.source === 'detected'
+        ? undeclaredProjects({ root, files, projects, exclude: rootConfig.exclude })
+        : [],
   };
 }
 
 export function inspectRepository({ root, files = listRepositoryFiles(root), repositoryRoot }) {
   const found = entriesOf({ root, files, repositoryRoot });
   if (found.entries === undefined) {
-    return {
-      files,
-      undeclared: found.optedOut === true ? [] : undeclaredProjects({ root, files, projects: [] }),
-    };
+    if (found.optedOut === true) {
+      return { files, undeclared: [] };
+    }
+    const { exclude } = detectionConfig(root, repositoryRoot).config;
+    return { files, undeclared: undeclaredProjects({ root, files, projects: [], exclude }) };
   }
   return { files, plan: monorepoPlan({ root, files, found, repositoryRoot }) };
 }

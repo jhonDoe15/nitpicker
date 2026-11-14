@@ -42,6 +42,7 @@ import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runne
 import { runMonorepo } from './projects/run/monorepo.mts';
 import { runProjectsCommand } from './projects/command/projects-command.mts';
 import { runScoped } from './projects/run/refusal.mjs';
+import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
@@ -158,7 +159,7 @@ function runProjectOf(
 }
 
 function runConfigured(cli: ConfiguredCli): ExitCode {
-  const target = resolveRunTarget({ ...cli, missingPathHint });
+  const target = resolveRunTarget({ ...cli, missingPathHint, noProjectAdvice });
   const currentProjectRoot = textOf(target.currentProjectRoot);
   const currentFolder =
     cli.currentProjectRoot === undefined

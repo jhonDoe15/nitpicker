@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
+import { noProjectAdvice } from '../plan/suggested-projects.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { isGitWorkTree } from '../plan/member-root.mjs';
@@ -29,7 +30,7 @@ const inspect: (query: { readonly root: string; readonly repositoryRoot: string 
 
 function rootOf(cli: ProjectsCli): string {
   return cli.currentProjectRoot === undefined
-    ? resolveProjectRoot(cli.workingDirectory)
+    ? resolveProjectRoot(cli.workingDirectory, { noProjectAdvice })
     : realpathSync(cli.currentProjectRoot);
 }
 

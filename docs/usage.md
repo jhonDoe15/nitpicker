@@ -2016,15 +2016,20 @@ A run fans out to several projects only when the repository says it holds severa
 Folders that only look like projects do not make a monorepo. A `package.json` with an
 `android/build.gradle`, or a Python package with `examples/*/pyproject.toml`, stays one project and
 runs exactly as it would without this feature. Nitpicker prints one line on stderr that names those
-folders and shows the `projects` list that would gate each with its own preset. To gate them, list
-them:
+folders (Python projects, Gradle and Maven builds, and `package.json` folders with TypeScript or
+JavaScript sources, at most ten of them and a count of the rest) and shows the `projects` list that
+would gate each with its own preset. A folder that the top config's `exclude` covers is left out. To
+gate them, list them:
 
 ```json
 { "projects": [".", "android", "examples/demo"] }
 ```
 
 A Gradle or Maven folder, a Python project without a uv workspace and any mix of languages always
-need an explicit `projects` list.
+need an explicit `projects` list. When the top folder holds no project file at all (a multi-service
+repository with `services/orders/pom.xml`, `services/users/build.gradle` and `web/package.json`),
+the run stops with exit 2 and prints the `nitpicker.config.json` to create at the top, with a
+`{ "path", "preset" }` entry for each project it found.
 
 Where you start the run matters:
 
@@ -2082,8 +2087,8 @@ Where you start the run matters:
 A Gradle multi-project build and a Maven reactor are always one project, however many modules they
 hold. A build that mixes Java and Kotlin is one project too; declare `"preset": "kotlin"` for it
 (detection picks `kotlin` only when `.kt` files outnumber `.java` files). Hidden folders,
-`node_modules`, `fixtures`, `vendor`, `third_party`, `test`, `tests`, `docs`, `build`, `dist`,
-`target` and `out` are not searched.
+`node_modules`, `fixture`, `fixtures`, `vendor`, `third_party`, `test`, `tests`, `docs`, `build`,
+`dist`, `target` and `out` are not searched.
 
 ### One base for every project
 

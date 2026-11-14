@@ -73,19 +73,40 @@ const UNDECLARED_WORDS = {
   many: ['look like projects of their own', 'them with their', 'gate each', 'list them'],
 };
 
+const LISTED_PROJECTS = 10;
+
+function moreOf(entries) {
+  const rest = entries.length - LISTED_PROJECTS;
+  return rest > 0 ? `, and ${String(rest)} more` : '';
+}
+
 export function undeclaredHint(entries, current = ['.']) {
   if (entries.length === 0) {
     return [];
   }
-  const listed = [...current, ...entries.map(({ path }) => path)]
+  const shown = entries.slice(0, LISTED_PROJECTS);
+  const listed = [...current, ...shown.map(({ path }) => path)]
     .map((path) => `"${path}"`)
     .join(', ');
   const [looks, them, gate, list] = UNDECLARED_WORDS[entries.length === 1 ? 'one' : 'many'];
   return [
-    `${described(entries)} ${looks}, and this run does not gate ${them} own preset. ` +
+    `${described(shown)}${moreOf(entries)} ${looks}, and this run does not gate ${them} own preset. ` +
       `To ${gate} in one run, ${list} in "projects" of ${CONFIG_FILE_NAME}, ` +
       `for example "projects": [${listed}].`,
   ];
+}
+
+export function projectsSuggestion(entries) {
+  const shown = entries.slice(0, LISTED_PROJECTS);
+  const listed = shown
+    .map(({ path, preset }) => `{"path": "${path}", "preset": "${preset}"}`)
+    .join(', ');
+  const more = moreOf(entries) === '' ? '' : ' (the first ten; add the rest the same way)';
+  return (
+    `The repository holds projects of its own: ${described(shown)}${moreOf(entries)}. ` +
+    `To gate each in one run, create ${CONFIG_FILE_NAME} at the repository root with ` +
+    `{"projects": [${listed}]}${more}.`
+  );
 }
 
 export function unlistedHint(folders) {

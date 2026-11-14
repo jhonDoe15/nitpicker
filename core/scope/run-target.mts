@@ -8,6 +8,7 @@ type TargetRequest = {
   readonly currentProjectRoot?: string | undefined;
   readonly workingDirectory?: string | undefined;
   readonly missingPathHint: (given: string) => string;
+  readonly noProjectAdvice?: (repositoryRoot: string) => string | undefined;
 };
 
 type RunTarget = {
@@ -17,7 +18,12 @@ type RunTarget = {
 
 type Target = { readonly given: string; readonly absolute: string };
 
-const projectRootOf: (start?: string) => string = resolveProjectRoot;
+const projectRootOf: (
+  start?: string,
+  hooks?: {
+    readonly noProjectAdvice?: ((repositoryRoot: string) => string | undefined) | undefined;
+  },
+) => string = resolveProjectRoot;
 
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -27,13 +33,14 @@ export function resolveRunTarget({
   currentProjectRoot,
   workingDirectory,
   missingPathHint,
+  noProjectAdvice,
 }: TargetRequest): RunTarget {
   const paths = options.paths ?? [];
   if (paths.length === 0) {
     return {
       currentProjectRoot:
         currentProjectRoot === undefined
-          ? projectRootOf(workingDirectory)
+          ? projectRootOf(workingDirectory, { noProjectAdvice })
           : realpathSync(currentProjectRoot),
     };
   }

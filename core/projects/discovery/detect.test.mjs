@@ -12,6 +12,7 @@ function detect(files, rootConfig = {}) {
     root,
     files: listRepositoryFiles(root),
     projects: detected.entries,
+    exclude: rootConfig.exclude,
   });
   return {
     ...detected,
@@ -255,5 +256,47 @@ describe('a mixed repository', () => {
       ['web'],
       ['api (Python project)', 'svc (Gradle build)'],
     ]);
+  });
+});
+
+describe('JavaScript and TypeScript folders under another project', () => {
+  it('names a package with sources under a Gradle, Maven or Python root', () => {
+    const roots = [
+      { 'build.gradle': '' },
+      { 'pom.xml': '<project/>' },
+      { 'pyproject.toml': '[project]\nname = "app"\n' },
+    ];
+
+    for (const top of roots) {
+      const result = detect({
+        ...top,
+        'frontend/package.json': MANIFEST('frontend'),
+        'frontend/src/index.ts': 'export {};\n',
+        'e2e/package.json': MANIFEST('e2e'),
+        'e2e/src/run.js': 'export {};\n',
+        'tooling/package.json': MANIFEST('tooling'),
+      });
+
+      expect(result.undeclared).toEqual([
+        'e2e (JavaScript package)',
+        'frontend (TypeScript package)',
+      ]);
+    }
+  });
+
+  it('skips fixture folders and folders the root config excludes', () => {
+    const result = detect(
+      {
+        'build.gradle': '',
+        'samples/web/package.json': MANIFEST('web'),
+        'samples/web/src/index.ts': 'export {};\n',
+        'evals/case/fixture/pom.xml': '<project/>',
+        'web/package.json': MANIFEST('web'),
+        'web/src/index.ts': 'export {};\n',
+      },
+      { exclude: ['samples/**'] },
+    );
+
+    expect(result.undeclared).toEqual(['web (TypeScript package)']);
   });
 });
