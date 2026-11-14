@@ -1694,12 +1694,16 @@ analyzers already read: `src/billing imports src/invoicing in 3 files`, both dir
 import each other, or that neither imports the other, in which case what they share (a format, a
 constant, a schema) is not visible as a dependency and the first question above is the likely one.
 The imports are those between production files: the TypeScript and JavaScript `coupling` analyzer
-(the dependency-cruiser graph, with path aliases resolved), the Python facts step (its import scan) and
+(the dependency-cruiser graph, with path aliases resolved, and a package-name import of a workspace
+package followed to that package's source file, also when its entry is a build output such as
+`dist/index.js` with the source under `src/`), the Python facts step (its import scan) and
 the Java and Kotlin analyzers (the source references of every module of the Gradle or Maven build).
 A file under a `featureRoots` folder counts for its feature, as for the pair itself. The analyzers
 collect them only when `history.coChange` is on. When none ran or published imports (the `go` preset,
 an analyzer that failed or was turned off with `disable`), the finding says the dependency is
-unknown rather than claiming there is none. The direction is evidence for the reading, not a
+unknown rather than claiming there is none. It says the same when one module imports a workspace
+package that holds the other by name and that import does not lead to a source file (an entry nitpicker
+cannot map back to source). The direction is evidence for the reading, not a
 verdict: an import can be the right shape and still change in step.
 
 Limits: an import that the language analyzer cannot resolve (a dynamic import, reflection,
