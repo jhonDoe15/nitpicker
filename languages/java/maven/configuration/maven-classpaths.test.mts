@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mavenModuleOf } from '../typed/maven-values.mts';
 import { moduleClasspaths, parseDependencyList } from './maven-classpaths.mts';
 
 describe('parseDependencyList', () => {
@@ -48,8 +49,18 @@ describe('parseDependencyList', () => {
 
 describe('moduleClasspaths', () => {
   it('keeps compile scopes for main code, adds runtime for the main runtime, test for test code, and everything at test runtime', () => {
-    const module = { outputDirectory: '/m/classes', testOutputDirectory: '/m/test-classes' };
+    const module = mavenModuleOf({
+      coordinates: 'demo:m',
+      packaging: 'jar',
+      basedir: '/m',
+      buildDirectory: '/m/target',
+      outputDirectory: '/m/classes',
+      testOutputDirectory: '/m/test-classes',
+    });
     const dependencies = ['compile', 'provided', 'runtime', 'test', 'system'].map((scope) => ({
+      groupId: 'demo',
+      artifactId: scope,
+      type: 'jar',
       scope,
       file: `${scope}.jar`,
     }));

@@ -2,16 +2,17 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseXml } from '../../../../../shared/ingest/common.mjs';
+import { type XmlElement, parseXml } from '../../../../../shared/values/xml.mts';
+import type { ToolchainContext } from '../../typed/toolchain-types.mts';
 import { jdkRequirements, toolchainJdkHome } from './toolchain-jdk.mts';
 
-const homes = [];
+const homes: string[] = [];
 
-function contextOf(home) {
+function contextOf(home: string): ToolchainContext {
   return { projectRoot: '/nowhere', environment: {}, home, maven: '/nonexistent/mvn' };
 }
 
-function mavenProject(files) {
+function mavenProject(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-toolchains-project-'));
   homes.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -21,12 +22,12 @@ function mavenProject(files) {
   return root;
 }
 
-function entry(version, vendor, jdkHome) {
+function entry(version: string, vendor: string, jdkHome: string): string {
   return `<toolchain><type>jdk</type><provides><version>${version}</version><vendor>${vendor}</vendor></provides>
     <configuration><jdkHome>${jdkHome}</jdkHome></configuration></toolchain>`;
 }
 
-function userHome(toolchains) {
+function userHome(toolchains: string): string {
   const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-toolchains-'));
   homes.push(home);
   mkdirSync(path.join(home, '.m2'));
@@ -34,7 +35,7 @@ function userHome(toolchains) {
   return home;
 }
 
-function project(build) {
+function project(build: string): XmlElement {
   return parseXml(`<project><build><plugins>${build}</plugins></build></project>`);
 }
 
@@ -46,7 +47,7 @@ afterEach(() => {
 
 describe('the JDK the build selects', () => {
   it('reads the requirement of the toolchains plugin, of its execution or of the compiler plugin', () => {
-    const toolchains = (configuration) =>
+    const toolchains = (configuration: string): string =>
       `<plugin><artifactId>maven-toolchains-plugin</artifactId>${configuration}</plugin>`;
     const jdk = '<toolchains><jdk><version>17</version><vendor>temurin</vendor></jdk></toolchains>';
 
