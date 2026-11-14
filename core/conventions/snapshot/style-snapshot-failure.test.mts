@@ -1,24 +1,24 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { lazyConfigRoot } from '../style-snapshot.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { lazyConfigRoot } from '../style-snapshot.mts';
 
-const created = vi.hoisted(() => []);
+const created = vi.hoisted((): string[] => []);
 
 vi.mock('node:fs', async (importOriginal) => {
-  const original = await importOriginal();
+  const original = await importOriginal<typeof import('node:fs')>();
   return {
     ...original,
-    mkdtempSync: (prefix, ...rest) => {
+    mkdtempSync: (prefix: string, ...rest: [options?: undefined]) => {
       const directory = original.mkdtempSync(prefix, ...rest);
       created.push(directory);
       return directory;
     },
-    writeFileSync: (file, ...rest) => {
-      if (String(file).includes('nitpicker-style-') && String(file).endsWith('broken.toml')) {
+    writeFileSync: (file: string, ...rest: [data: string]) => {
+      if (file.includes('nitpicker-style-') && file.endsWith('broken.toml')) {
         throw new Error('disk exploded');
       }
-      return original.writeFileSync(file, ...rest);
+      original.writeFileSync(file, ...rest);
     },
   };
 });

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { conventionDefinitions } from './definitions.mjs';
-import { followedPolicy } from '../diff/git/test-support/followed-policy.mjs';
+import { conventionDefinitions } from './definitions.mts';
+import { followedPolicy } from '../diff/git/test-support/followed-policy.mts';
+import { fieldOf } from '../../shared/values/readers.mts';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 
 const BIG_COMMENT = `// ${'x'.repeat(600 * 1024)}\n`;
 
-function followed(files, config) {
+function followed(files: Readonly<Record<string, string>>, config?: NitpickerConfig) {
   return followedPolicy(files, config).conventions;
 }
 
@@ -64,7 +66,7 @@ describe('file name casing in the head policy', () => {
 });
 
 describe('pinned conventions in the head policy', () => {
-  const policyFor = (config) =>
+  const policyFor = (config: NitpickerConfig) =>
     followedPolicy({ 'src/kebab-one.ts': 'export const a = 1;\n' }, config);
 
   it('records a pin even when it equals the default, so the rule can skip the folder majority', () => {
@@ -73,17 +75,17 @@ describe('pinned conventions in the head policy', () => {
       conventions: { 'typescript.fileNames': 'kebab-case' },
     });
 
-    expect(policy.conventionPins).toEqual({ 'typescript.fileNames': 'kebab-case' });
+    expect(fieldOf(policy, 'conventionPins')).toEqual({ 'typescript.fileNames': 'kebab-case' });
     expect(policy.conventions).toBeUndefined();
   });
 
   it('leaves the pins out of the policy when nothing is pinned', () => {
-    expect(policyFor({ preset: 'typescript' }).conventionPins).toBeUndefined();
+    expect(fieldOf(policyFor({ preset: 'typescript' }), 'conventionPins')).toBeUndefined();
   });
 });
 
 describe('conventions per preset', () => {
-  const nonPrettierIds = (preset) =>
+  const nonPrettierIds = (preset: string) =>
     conventionDefinitions(preset)
       .map(({ id }) => id)
       .filter((id) => !id.startsWith('prettier.'));
@@ -103,7 +105,7 @@ describe('conventions per preset', () => {
   });
 
   it('offers the JSX conventions to the typescript preset only', () => {
-    const jsxIds = (preset) =>
+    const jsxIds = (preset: string) =>
       conventionDefinitions(preset)
         .map(({ id }) => id)
         .filter((id) => id.startsWith('prettier.jsx') || id === 'prettier.bracketSameLine');

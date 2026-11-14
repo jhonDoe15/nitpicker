@@ -1,9 +1,9 @@
 import { mkdirSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mjs';
-import { commit, fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { commitSource, workingTreeSource } from '../sources.mjs';
+import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mts';
+import { commit, fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { commitSource, workingTreeSource } from '../sources.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { gitCheckout } = useGitCheckouts();

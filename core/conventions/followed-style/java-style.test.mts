@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { resolveComparison } from '../../diff/git/repository/git.mjs';
-import { branchOff } from '../../diff/git/test-support/branch-off.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { branchOff } from '../../diff/git/test-support/branch-off.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { wrappedCall } from '../../../languages/java/conventions/measures/test-support/wrapped-call.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-import { snapshotPolicy } from '../resolve.mjs';
-import { comparedConventions } from '../test-support/compare-policy.mjs';
+import { comparedConventions, followedConventions } from '../test-support/compare-policy.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+
+type Files = Readonly<Record<string, string>>;
 
 const { createGitRepository } = useGitFixtures();
 const HEADER = "Following this project's conventions:\n";
@@ -16,25 +18,22 @@ const CHECKSTYLE_PATH = 'config/checkstyle/checkstyle.xml';
 const CHECKSTYLE_120 =
   '<module name="Checker"><module name="TreeWalker"><module name="LineLength"><property name="max" value="120"/></module></module></module>';
 
-function follow(config, files) {
+function follow(config: NitpickerConfig, files: Files) {
   const { root } = createGitRepository(files);
-  const chunks = [];
-  const policy = snapshotPolicy({
+  return followedConventions({
     config,
     currentProjectRoot: root,
     headPolicy: resolveHeadPolicy(config, root),
-    stdout: { write: (chunk) => chunks.push(chunk) },
   });
-  return { conventions: policy.conventions, printed: chunks.join('') };
 }
 
-function compare(config, base, branch) {
+function compare(config: NitpickerConfig, base: Files, branch: Files) {
   const { root } = createGitRepository(base);
   branchOff(root, branch);
   return comparedConventions({ root, config, resolvers: { resolveComparison, resolveHeadPolicy } });
 }
 
-function javaFiles(code, count = 3) {
+function javaFiles(code: string, count = 3) {
   return Object.fromEntries(
     Array.from({ length: count }, (_, index) => [`src/main/java/a/A${String(index)}.java`, code]),
   );
@@ -106,7 +105,7 @@ describe('the Java formatter and line length', () => {
   });
 
   it('refuses a pin that a pinned or build-declared formatter contradicts, and names the source', () => {
-    const line = (formatter, source) =>
+    const line = (formatter: string, source: string) =>
       `"conventions.java.lineLength" is "120", but ${formatter} (${source}) fixes it at "100". Remove the pin, or pin "conventions.java.formatter" to "none"`;
     const declared = { preset: 'java', conventions: { 'java.lineLength': '120' } };
     const pinned = {
@@ -252,7 +251,7 @@ describe('evidence for the formatter', () => {
 
 describe('the Checkstyle LineLength', () => {
   const listed = { preset: 'java', tools: { checkstyle: { precedence: ['project'] } } };
-  const lineLength = (module) =>
+  const lineLength = (module: string) =>
     `<module name="Checker"><module name="TreeWalker">${module}</module></module>`;
 
   it.each(['110', '150', '160'])(
@@ -336,7 +335,7 @@ describe('where the formatter is declared', () => {
       'build-logic/convention/src/main/groovy/format.gradle',
       'services/api/pom.xml',
     ];
-    const conventionsOf = (file) => {
+    const conventionsOf = (file: string) => {
       const text = file.endsWith('pom.xml')
         ? '<project><plugin><artifactId>spotless-maven-plugin</artifactId><configuration><java><palantirJavaFormat/></java></configuration></plugin></project>'
         : SPOTLESS_PALANTIR;

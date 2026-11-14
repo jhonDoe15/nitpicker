@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { snapshotPolicy } from './resolve.mjs';
+import { followedConventions } from './test-support/compare-policy.mts';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 
 const { createGitRepository } = useGitFixtures();
 const SINGLE_QUOTED = "a = 'a'\nb = 'b'\nc = 'c'\ndef f():\n  return 'd'\n";
@@ -10,16 +11,13 @@ const LISTED = ['project', 'nitpicker'];
 const NO_COMMAS = 'fun f() {\n  g(\n    1,\n    2\n  )\n  g(\n    3,\n    4\n  )\n}\n';
 const TWO_SPACES = 'package a\n\nclass A {\n  fun f() {\n    run()\n  }\n}\n';
 
-function follow(config, files) {
+function follow(config: NitpickerConfig, files: Readonly<Record<string, string>>) {
   const { root } = createGitRepository(files);
-  const chunks = [];
-  const policy = snapshotPolicy({
+  return followedConventions({
     config,
     currentProjectRoot: root,
     headPolicy: resolveHeadPolicy(config, root),
-    stdout: { write: (chunk) => chunks.push(chunk) },
   });
-  return { conventions: policy.conventions, printed: chunks.join('') };
 }
 
 const HEADER = "Following this project's conventions:\n";
@@ -105,7 +103,8 @@ describe('Python conventions with the ruff config of the project', () => {
 
 describe('Python type checker configs of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
-  const optIn = (tool) => `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
+  const optIn = (tool: string) =>
+    `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
 
   it('says once that a pyright file is ignored, and stops after the opt-in', () => {
     const files = { 'pyrightconfig.json': '{ "reportAny": false }', 'a.py': DOUBLE_QUOTED };
@@ -129,7 +128,7 @@ describe('Python type checker configs of the project', () => {
 
 describe('Python mypy config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
-  const notice = (what) =>
+  const notice = (what: string) =>
     `Ignoring ${what} except its environment keys; opt in with "tools": { "mypy": { "precedence": ["project", "nitpicker"] } }\n`;
 
   it('names the file or table that is ignored, until the project is listed', () => {
@@ -159,7 +158,7 @@ describe('Python mypy config of the project', () => {
 
 describe('Python mutmut config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
-  const notice = (what) =>
+  const notice = (what: string) =>
     `Ignoring ${what} except also_copy and its process options; opt in with "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } }\n`;
   const table = '[tool.mutmut]\ndo_not_mutate = ["src/*"]\n';
 
@@ -194,7 +193,7 @@ describe('Python mutmut config of the project', () => {
 
 describe('Python coverage config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
-  const notice = (what) =>
+  const notice = (what: string) =>
     `Ignoring ${what} except concurrency, patch and plugins, which the run needs; opt in with "tools": { "coverage": { "precedence": ["project", "nitpicker"] } }\n`;
 
   it('names the coverage settings that are ignored, until the project is listed', () => {

@@ -2,31 +2,32 @@ import path from 'node:path';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import {
   fakeGradle,
   runTasksWithFakeGradle,
-} from '../command/java/test-support/java-cli-harness.mjs';
+} from '../command/java/test-support/java-cli-harness.mts';
 import { cacheKey } from '../diff/cache/findings-cache.mts';
 import { baseSetupResolver } from '../command/policy-review/base-setup.mts';
 import { runCli } from '../cli.mts';
+import { fieldOf, listOf } from '../../shared/values/readers.mts';
 
 const { createGitRepository } = useGitFixtures();
 
 const fourSpaces = 'package demo;\n\npublic final class A {\n    private int a;\n}\n';
-const outputs = [];
-let previousGradle;
+const outputs: string[] = [];
+let previousGradle: string | undefined;
 
 beforeEach(() => {
-  previousGradle = process.env.NITPICKER_GRADLE;
-  process.env.NITPICKER_GRADLE = fakeGradle;
+  previousGradle = process.env['NITPICKER_GRADLE'];
+  process.env['NITPICKER_GRADLE'] = fakeGradle;
 });
 
 afterEach(() => {
   if (previousGradle === undefined) {
-    delete process.env.NITPICKER_GRADLE;
+    delete process.env['NITPICKER_GRADLE'];
   } else {
-    process.env.NITPICKER_GRADLE = previousGradle;
+    process.env['NITPICKER_GRADLE'] = previousGradle;
   }
   for (const root of outputs.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -90,26 +91,35 @@ describe('conventions in a run', () => {
   it('gives the base the head conventions when the base has its own config', () => {
     const { root } = createGitRepository({ 'nitpicker.config.json': '{ "preset": "java" }\n' });
     const resolve = baseSetupResolver(
-      { injectedAnalyzers: [], stderr: { write: () => undefined } },
+      { injectedAnalyzers: [], options: {}, stderr: { write: () => undefined } },
       { preset: 'java', exclude: ['build/**'] },
       { conventions: { 'java.indentation': '4' } },
     );
 
-    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
+    const setup = resolve({
+      baseProjectRoot: root,
+      headSnapshotRoot: root,
+      liveProjectRoot: root,
+      moves: undefined,
+      analyzers: [],
+    });
 
-    expect(setup.headPolicy.conventions).toEqual({ 'java.indentation': '4' });
+    expect(fieldOf(fieldOf(setup, 'headPolicy'), 'conventions')).toEqual({
+      'java.indentation': '4',
+    });
   });
 
   it('applies a base config that disables an analyzer of the injected set', () => {
     const { root } = createGitRepository({
       'nitpicker.config.json': '{ "preset": "java", "disable": ["second"] }\n',
     });
-    const warnings = [];
-    const analyzer = (name) => ({ name, version: '1', configurationHash: name });
+    const warnings: string[] = [];
+    const analyzer = (name: string) => ({ name, version: '1', configurationHash: name });
     const resolve = baseSetupResolver(
       {
         injectedAnalyzers: [analyzer('first'), analyzer('second')],
-        stderr: { write: (text) => warnings.push(text) },
+        options: {},
+        stderr: { write: (text: string) => warnings.push(text) },
       },
       { preset: 'java' },
       {},
@@ -118,15 +128,19 @@ describe('conventions in a run', () => {
     const setup = resolve({
       baseProjectRoot: root,
       headSnapshotRoot: root,
+      liveProjectRoot: root,
+      moves: undefined,
       analyzers: [analyzer('first')],
     });
 
     expect(warnings).toEqual([]);
-    expect(setup.analyzers.map(({ name }) => name)).toEqual(['first']);
+    expect(listOf(fieldOf(setup, 'analyzers')).map((entry) => fieldOf(entry, 'name'))).toEqual([
+      'first',
+    ]);
   });
 
   it('keys cached findings by the conventions followed', () => {
-    const key = (conventions) =>
+    const key = (conventions: Record<string, string>) =>
       cacheKey({
         mergeBaseSha: 'a'.repeat(40),
         projectRelativePath: '.',
