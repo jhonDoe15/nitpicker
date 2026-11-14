@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { acceptFixes, checkFix, fixOrder } from './check-fixes.mjs';
-import { createSnapshot } from './snapshot.mjs';
+import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
+import { checkFix, fixOrder } from './check-fixes.mjs';
+import { acceptFixes, createSnapshot } from '../../test-support/engine-views.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
 const RULE = { tool: 'demo', rule: 'shout' };
 const RECIPE = { id: 'demo', rules: [RULE], scope: 'file' };
 
-function fixOf(edits, path = 'a.txt') {
+function fixOf(edits: readonly Readonly<Record<string, unknown>>[], path = 'a.txt') {
   return { finding: { ...RULE, path, line: 1 }, edits };
 }
 
-function settingsFor(files, extra = {}) {
+function settingsFor(files: Readonly<Record<string, string>>, extra = {}) {
   const projectRoot = temporaryRoot('nitpicker-check-fixes-');
   writeFiles(projectRoot, files);
   return {
@@ -25,7 +25,7 @@ function settingsFor(files, extra = {}) {
   };
 }
 
-function replace(start, end, path = 'a.txt') {
+function replace(start: number, end: number, path = 'a.txt') {
   return { type: 'replace', path, start, end, text: 'x' };
 }
 
@@ -119,7 +119,11 @@ describe('checkFix with an untrack edit', () => {
     }).toThrow(message);
   });
   it('accepts a file the recipe itself covers although the fixer does not', () => {
-    const recipe = { ...RECIPE, scope: 'project', accepts: (name) => name === '.gitignore' };
+    const recipe = {
+      ...RECIPE,
+      scope: 'project',
+      accepts: (name: string) => name === '.gitignore',
+    };
     const fix = fixOf([{ type: 'write', path: '.gitignore', text: '.env\n' }]);
 
     expect(() => {
@@ -137,7 +141,7 @@ describe('checkFix with an untrack edit', () => {
 describe('acceptFixes', () => {
   it('keeps pure inserts at one offset from different fixes and skips an insert beside a range', () => {
     const planned = [fixOf([replace(6, 6)]), fixOf([replace(6, 6)]), fixOf([replace(6, 8)])].map(
-      (fix, index) => ({ recipe: `r${index}`, fix }),
+      (fix, index) => ({ recipe: `r${String(index)}`, fix }),
     );
 
     const { accepted, skipped } = acceptFixes(planned);
@@ -145,8 +149,8 @@ describe('acceptFixes', () => {
     expect(accepted.map(({ recipe }) => recipe)).toEqual(['r0', 'r1']);
     expect(skipped.map(({ recipe }) => recipe)).toEqual(['r2']);
   });
-  function entries(...fixes) {
-    return fixes.map((fix, index) => ({ recipe: `r${index}`, fix }));
+  function entries(...fixes: readonly ReturnType<typeof fixOf>[]) {
+    return fixes.map((fix, index) => ({ recipe: `r${String(index)}`, fix }));
   }
 
   it('keeps the first of two fixes that overlap and skips the later one', () => {

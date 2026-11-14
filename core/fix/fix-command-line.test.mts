@@ -1,21 +1,30 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
-import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mts';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { fakeJvmTools, fakePythonTools } from './test-support/tool-views.mts';
+import type { ToolSet } from './test-support/tool-views.mts';
+import type { FixtureRepository } from '../command/test-support/fixture-types.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 
 const FORMAT_LINE = `Format with ruff: ruff format --isolated --target-version py39 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`;
 
-function transcript({ fixed, outputRoot, baseRef }) {
+function transcript({
+  fixed,
+  outputRoot,
+  baseRef,
+}: {
+  readonly fixed: string;
+  readonly outputRoot: string;
+  readonly baseRef: string;
+}) {
   return `${FORMAT_LINE}
 ${fixed}Base: ${baseRef} (argument)
 
@@ -25,7 +34,13 @@ Full diagnostics: ${outputRoot}/report.txt
 `;
 }
 
-function unchangedTranscript({ fixed, repository }) {
+function unchangedTranscript({
+  fixed,
+  repository,
+}: {
+  readonly fixed: string;
+  readonly repository: FixtureRepository;
+}) {
   const sha = fixtureGit(repository.root, ['rev-parse', repository.baseRef]).trim().slice(0, 12);
   return `${FORMAT_LINE}
 ${fixed}No changes since ${repository.baseRef} (${sha}); nothing to check.
@@ -46,7 +61,7 @@ function pythonRepository() {
   return repository;
 }
 
-function run(repository, extra, tools) {
+function run(repository: FixtureRepository, extra: readonly string[], tools?: ToolSet) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const exitCode = runCli({

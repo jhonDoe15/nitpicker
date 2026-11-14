@@ -1,24 +1,32 @@
 import { existsSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
-import { defineRecipes } from './recipes.mjs';
-import { MAX_PASSES, runRecipes } from './run-recipes.mjs';
+import { textOf } from '../../../shared/values/readers.mts';
+import { MAX_PASSES } from './run-recipes.mjs';
+import { defineRecipes, runRecipes } from '../test-support/engine-views.mts';
+import type { PlanFile, RecipeSpec } from '../test-support/engine-views.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
 const RULE = { tool: 'demo', rule: 'shout' };
 
-function fixFailure(message) {
-  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.fixersFail);
+type RunOptions = {
+  readonly changed?: Readonly<Record<string, true>>;
+  readonly selectedRules?: readonly string[];
+  readonly accepts?: (name: string) => boolean;
+};
+
+function fixFailure(message: string) {
+  return textOf(withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.fixersFail));
 }
 
-function recipe(overrides) {
+function recipe(overrides: Pick<RecipeSpec, 'plan'> & Partial<RecipeSpec>): RecipeSpec {
   return {
     id: 'demo',
     rules: [RULE],
@@ -29,7 +37,11 @@ function recipe(overrides) {
   };
 }
 
-function wordFixes(word, replacement, { files }) {
+function wordFixes(
+  word: string,
+  replacement: string,
+  { files }: { readonly files: readonly PlanFile[] },
+) {
   return {
     fixes: files.flatMap(({ path: name, text }) => {
       const start = text.indexOf(word);
@@ -49,24 +61,27 @@ function wordFixes(word, replacement, { files }) {
 
 const shout = recipe({ plan: (context) => wordFixes('quiet', 'LOUD', context) });
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>) {
   const root = temporaryRoot('nitpicker-recipes-');
   writeFiles(root, files);
   return root;
 }
 
-function run(root, recipes, options = {}) {
+function run(root: string, recipes: readonly RecipeSpec[], options: RunOptions = {}) {
+  const { changed, ...rest } = options;
   return runRecipes({
     projectRoot: root,
-    files: Object.keys(options.changed ?? { 'a.txt': true }).map((name) => ({ path: name })),
+    files: Object.keys(changed ?? { 'a.txt': true }).map((name) => ({ path: name })),
     recipes: defineRecipes(recipes),
     preset: 'java',
+    selectedRules: undefined,
     accepts: () => true,
-    ...options,
+    inputs: undefined,
+    ...rest,
   });
 }
 
-function read(root, name) {
+function read(root: string, name: string) {
   return readFileSync(path.join(root, name), 'utf8');
 }
 
@@ -96,7 +111,7 @@ describe('runRecipes', () => {
   });
   it('hands the plan the project root and the file filter', () => {
     const root = project({ 'a.txt': 'quiet\n' });
-    const seen = [];
+    const seen: unknown[] = [];
     const spy = recipe({
       plan: ({ projectRoot, accepts }) => {
         seen.push([projectRoot, accepts('a.txt')]);
@@ -135,7 +150,7 @@ describe('runRecipes', () => {
     ]);
     expect(result.notes).toEqual([]);
   });
-  it(`stops after ${MAX_PASSES} passes and names the fixes it did not get to`, () => {
+  it(`stops after ${String(MAX_PASSES)} passes and names the fixes it did not get to`, () => {
     const root = project({ 'a.txt': 'x' });
     const grow = recipe({
       plan: ({ files }) => ({
@@ -151,7 +166,7 @@ describe('runRecipes', () => {
     expect(read(root, 'a.txt')).toBe('x'.repeat(MAX_PASSES + 1));
     expect(result.fixedFindings).toHaveLength(MAX_PASSES);
     expect(result.notes).toEqual([
-      `--fix left a.txt:1 demo/shout (demo) for a later run: ${MAX_PASSES} passes did not get to it`,
+      `--fix left a.txt:1 demo/shout (demo) for a later run: ${String(MAX_PASSES)} passes did not get to it`,
     ]);
   });
   it('leaves a file that changed after the plan read it, and says so', () => {
@@ -216,7 +231,7 @@ describe('runRecipes', () => {
         }),
     });
 
-    const result = run(root, [wide], { accepts: (name) => name !== 'skip.txt' });
+    const result = run(root, [wide], { accepts: (name: string) => name !== 'skip.txt' });
 
     expect(result.toolErrors.map(({ message }) => message)).toEqual([
       fixFailure('skip.txt is outside the files --fix covers'),

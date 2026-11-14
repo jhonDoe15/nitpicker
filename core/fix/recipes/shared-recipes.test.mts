@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { runRecipes } from '../engine/run-recipes.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { recipeSpecs, runRecipes } from '../test-support/engine-views.mts';
 import { sharedInputs } from './shared-inputs.mjs';
 import { SHARED_RECIPES } from './shared-recipes.mjs';
 
@@ -20,14 +20,13 @@ const BASE = {
   'build/app.bin': 'compiled\n',
 };
 
-function fix(root, selectedRules, headPolicy = {}) {
-  const { inputs, toolErrors } = sharedInputs({ projectRoot: root, headPolicy, selectedRules });
+function fix(root: string, selectedRules: readonly string[], headPolicy = {}) {
+  const { inputs } = sharedInputs({ projectRoot: root, headPolicy, selectedRules });
   return {
-    toolErrors,
     ...runRecipes({
       projectRoot: root,
       files: [],
-      recipes: SHARED_RECIPES,
+      recipes: recipeSpecs(SHARED_RECIPES),
       preset: 'typescript',
       selectedRules,
       accepts: () => false,
@@ -36,7 +35,7 @@ function fix(root, selectedRules, headPolicy = {}) {
   };
 }
 
-function tracked(root) {
+function tracked(root: string) {
   return fixtureGit(root, ['ls-files']).split('\n').filter(Boolean);
 }
 

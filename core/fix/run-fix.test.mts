@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakeGoFormat } from '../../languages/go/fix/test-support/fake-go-format.mjs';
-import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
-import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { fixWorkingTree, spawnInvocation } from './run-fix.mts';
+import { fakeGoFormat, fakeJvmTools, fakePythonTools } from './test-support/tool-views.mts';
+import { fieldAt } from '../../scripts/json/fields.mts';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import type { FixInvocation } from './typed/fix-types.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -30,38 +31,51 @@ function repository() {
   return created;
 }
 
+const BASE_OPTIONS = {
+  scope: undefined,
+  environment: {},
+  spawnEnvironment: undefined,
+  dryRun: false,
+  allFiles: false,
+  recipes: undefined,
+  analyzeFixes: undefined,
+  verifyMode: 'narrow',
+} as const;
+
 const TYPESCRIPT_REPLIES = {
   'knip-fix': '',
   'eslint-fix': '[]',
   'prettier-fix': JSON.stringify({ results: [{ path: 'src/a.ts', ignored: true }] }),
 };
 
-function operationsFor(config, selectedRules = []) {
+function operationsFor(config: unknown, selectedRules: readonly string[] = []) {
   const created = repository();
   const python = fakePythonTools();
   const jvm = fakeJvmTools();
   const go = fakeGoFormat();
-  const operations = [];
+  const operations: string[] = [];
   const result = fixWorkingTree({
+    ...BASE_OPTIONS,
     repositoryRoot: created.root,
     projectRoot: created.root,
     baseRef: 'base',
     selectedRules,
     headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
     config,
-    executeFixCommand: (invocation) => {
-      operations.push(invocation.operation);
-      if (invocation.operation in TYPESCRIPT_REPLIES) {
-        return { status: 0, stdout: TYPESCRIPT_REPLIES[invocation.operation], stderr: '' };
+    executeFixCommand: (invocation: FixInvocation) => {
+      const operation = textOf(fieldOf(invocation, 'operation'));
+      operations.push(operation);
+      const reply = Object.entries(TYPESCRIPT_REPLIES).find(([name]) => name === operation);
+      if (reply !== undefined) {
+        return { status: 0, stdout: reply[1], stderr: '' };
       }
-      if (invocation.operation === 'go-format-fix') {
+      if (operation === 'go-format-fix') {
         return go.executeFixCommand(invocation);
       }
-      if (['ruff-fix', 'ruff-format-fix', 'python-probe'].includes(invocation.operation)) {
+      if (['ruff-fix', 'ruff-format-fix', 'python-probe'].includes(operation)) {
         return python.executeFixCommand(invocation);
       }
-      return invocation.operation.includes('-fix') ||
-        ['fix-tools', 'java-probe'].includes(invocation.operation)
+      return operation.includes('-fix') || ['fix-tools', 'java-probe'].includes(operation)
         ? jvm.executeFixCommand(invocation)
         : { status: 0, stdout: '', stderr: '' };
     },
@@ -124,15 +138,24 @@ describe('fixWorkingTree', () => {
 });
 
 describe('spawnInvocation', () => {
-  const base = { command: 'git', args: ['hash-object', '--stdin'], input: 'b', environment: {} };
+  const base = {
+    command: 'git',
+    args: ['hash-object', '--stdin'],
+    cwd: '.',
+    input: 'b',
+    environment: {},
+  };
 
   it('runs the command for real with the input', () => {
-    expect(spawnInvocation(base, {}).stdout.trim()).toBe(
+    expect(textOf(fieldAt(spawnInvocation(base, {}), 'stdout')).trim()).toBe(
       '63d8dbd40c23542e740659a7168a0ce3138ea748',
     );
   });
   it('passes the timeout, defaults it and inherits the environment when nothing overrides it', () => {
-    const optionsOf = (command, args, options) => [options.timeout, options.env];
+    const optionsOf = (_command: string, _args: readonly string[], options: object) => [
+      fieldOf(options, 'timeout'),
+      fieldOf(options, 'env'),
+    ];
 
     expect([
       spawnInvocation({ ...base, timeout: 5 }, undefined, optionsOf),
@@ -143,7 +166,8 @@ describe('spawnInvocation', () => {
     ]);
   });
   it('asks for a shell only when the invocation says so', () => {
-    const shellOf = (command, args, options) => options.shell;
+    const shellOf = (_command: string, _args: readonly string[], options: object) =>
+      fieldOf(options, 'shell');
 
     expect([
       spawnInvocation(base, {}, shellOf),
