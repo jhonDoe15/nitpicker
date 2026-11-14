@@ -22,7 +22,6 @@
   "kotlin-source/GenericTypeName": ["style"],
   "kotlin-source/HardcodedSecret": ["security"],
   "kotlin-source/HttpWithoutTimeout": ["reliability"],
-  "kotlin-source/IoCallInLoop": ["performance"],
   "kotlin-source/JvmSyntheticOnHandWrittenCode": ["tests", "maintainability"],
   "kotlin-source/LegacyCalendarApi": ["bug"],
   "kotlin-source/LinearLookupInLoop": ["performance"],
