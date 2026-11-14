@@ -289,4 +289,59 @@ describe('readErrorProneFindings', () => {
       ['check-crashed:UnnecessarilyFullyQualified', 'tool-error'],
     ]);
   });
+
+  it('drops a stream that Flux.using closes and keeps one that nothing closes', () => {
+    const source = [
+      'import reactor.core.publisher.Flux;',
+      'class A {',
+      '  Object closed() { return Flux.using(() -> Files.list(d), Flux::fromStream, Stream::close); }',
+      '  Object leaked() { return Flux.fromStream(Files.list(d)); }',
+      '}',
+    ].join('\n');
+    const { projectRoot, reportRoot } = reportRootWith((root) => {
+      const file = path.join(root, 'src/main/java/demo/A.java');
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, source);
+      const leak = (marker, line) => ({
+        file,
+        line,
+        position: source.indexOf(marker) + 5,
+        message:
+          '[StreamResourceLeak] Streams that encapsulate a closeable resource should be closed',
+      });
+      return [leak('Files.list(d), Flux', 3), leak('Files.list(d))', 4)];
+    });
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(findings.map(({ rule, location }) => [rule, location?.line])).toEqual([
+      ['StreamResourceLeak', 4],
+    ]);
+  });
+
+  it('leaves out AnnotationPosition when the build enforces Spring Java Format', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      {
+        file: path.join(root, 'src/main/java/demo/A.java'),
+        line: 4,
+        message:
+          "[AnnotationPosition] Annotations should be positioned before modifiers\n  Did you mean 'public @Nullable X f()'?",
+      },
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+    ]);
+    const read = (javaStyle) =>
+      readErrorProneFindings({
+        reportRoot,
+        roots: [projectRoot],
+        lintedRoots: ['src/main/java'],
+        javaStyle,
+      }).map(({ rule }) => rule);
+
+    expect(read('spring')).toEqual(['DeadException']);
+    expect(read('google')).toEqual(['AnnotationPosition', 'DeadException']);
+  });
 });

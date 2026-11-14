@@ -1,6 +1,11 @@
 import { childAt, parseXml } from '../../../../shared/ingest/common.mjs';
 import { buildFiles } from './build-files.mjs';
 import { withoutComments } from './build-comments.mjs';
+import {
+  declaresSpringJavaFormat,
+  SPRING_JAVA_FORMAT,
+  springFormatInPom,
+} from './spring-format/spring-java-format.mjs';
 
 const PALANTIR = /palantirjavaformat|palantir-java-format|com\.palantir\.java-format/u;
 const GOOGLE = /googlejavaformat|google-java-format|com\.spotify\.fmt/u;
@@ -15,7 +20,7 @@ const PALANTIR_STYLE = new RegExp(
 );
 const JAVA_BLOCK = /\bjava\s*\{/gu;
 const OTHER_FORMATTER = /\b(?:eclipse|prettier)\s*\(/u;
-const PREFERENCE = ['palantir', 'google', 'none'];
+const PREFERENCE = ['palantir', 'google', SPRING_JAVA_FORMAT, 'none'];
 const MAVEN_FORMATTER_ARTIFACTS = new Map([
   ['palantir-java-format', { formatter: 'palantir' }],
   ['google-java-format', { formatter: 'google' }],
@@ -48,6 +53,9 @@ function declaredInCode(text, kind) {
   }
   if (GOOGLE.test(code)) {
     return { formatter: 'google', aosp: GOOGLE_AOSP.test(code) };
+  }
+  if (declaresSpringJavaFormat(code)) {
+    return { formatter: SPRING_JAVA_FORMAT };
   }
   return declaresOtherFormatter(code) ? { formatter: 'none' } : undefined;
 }
@@ -110,6 +118,7 @@ function declaredInPom(text) {
     declared: pickFormatter([
       ...descendants(root, 'plugin').flatMap(pluginDeclarations),
       ...artifacts,
+      ...(springFormatInPom(root) ? [{ formatter: SPRING_JAVA_FORMAT }] : []),
     ]),
   };
 }

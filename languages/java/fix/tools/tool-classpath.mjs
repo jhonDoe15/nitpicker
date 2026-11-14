@@ -124,7 +124,9 @@ function resolveWithMaven({ projectRoot, tools, environment, executeFixCommand }
 
 export function resolveToolClasspaths({ environment = {}, ...settings }) {
   const resolve =
-    detectJavaBuild(settings.projectRoot) === 'maven' ? resolveWithMaven : resolveWithGradle;
+    detectJavaBuild(settings.projectRoot, settings.buildTool) === 'maven'
+      ? resolveWithMaven
+      : resolveWithGradle;
   const classpaths = resolve({ ...settings, environment });
   const unresolved = Object.keys(settings.tools).filter((name) => classpaths[name] === undefined);
   if (unresolved.length > 0) {

@@ -6,7 +6,12 @@ import path from 'node:path';
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
-import { functionUnits, isFunctionLike } from './units/function-units.mjs';
+import {
+  curriedChain,
+  functionUnits,
+  isCurriedInner,
+  isFunctionLike,
+} from './units/function-units.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
@@ -72,13 +77,14 @@ export function analyzeSource(source, filename) {
   const classes = [];
 
   for (const node of depthFirst(sourceFile, syntaxChildren)) {
-    if (isFunctionLike(node)) {
+    if (isFunctionLike(node) && !isCurriedInner(node)) {
+      const chain = curriedChain(node);
       functions.push({
         source: normalizePath(filename),
         function: names.get(node),
         ...location(sourceFile, node),
-        parameters: node.parameters.length,
-        ...functionBodyMetrics(node),
+        parameters: Math.max(...chain.map((link) => link.parameters.length)),
+        ...functionBodyMetrics(chain.at(-1)),
       });
     }
     if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {

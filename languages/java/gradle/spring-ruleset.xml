@@ -1199,7 +1199,8 @@ let $proxyNames := (
       return ('jakarta.validation.constraints.' || $name, 'javax.validation.constraints.' || $name),
       for $name in (
         'CodePointLength', 'CreditCardNumber', 'Currency', 'EAN', 'ISBN', 'Length', 'LuhnCheck',
-        'Mod10Check', 'Mod11Check', 'Normalized', 'Range', 'URL', 'UUID', 'UniqueElements')
+        'Mod10Check', 'Mod11Check', 'Normalized', 'ParameterScriptAssert', 'Range', 'URL', 'UUID',
+        'ScriptAssert', 'UniqueElements')
       return 'org.hibernate.validator.constraints.' || $name,
       'jakarta.validation.Valid', 'javax.validation.Valid', $projectConstraintAnnotations),
     $proxyAnnotation := function($annotation) {
@@ -1277,7 +1278,8 @@ let $proxyNames := (
       return ('jakarta.validation.constraints.' || $name, 'javax.validation.constraints.' || $name),
       for $name in (
         'CodePointLength', 'CreditCardNumber', 'Currency', 'EAN', 'ISBN', 'Length', 'LuhnCheck',
-        'Mod10Check', 'Mod11Check', 'Normalized', 'Range', 'URL', 'UUID', 'UniqueElements')
+        'Mod10Check', 'Mod11Check', 'Normalized', 'ParameterScriptAssert', 'Range', 'URL', 'UUID',
+        'ScriptAssert', 'UniqueElements')
       return 'org.hibernate.validator.constraints.' || $name,
       'jakarta.validation.Valid', 'javax.validation.Valid', $projectConstraintAnnotations),
     $proxyAnnotation := function($annotation) {
@@ -2094,7 +2096,7 @@ return
 ]]></value></property></properties>
   </rule>
   <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked.">
+        message="Add @Valid to this @RequestBody; without it the constraints of its type are never checked.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]

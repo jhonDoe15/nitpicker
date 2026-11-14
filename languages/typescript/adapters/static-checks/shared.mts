@@ -5,6 +5,7 @@ import path from 'node:path';
 import { type StaticCheckOptions, normalizedRelativePath } from './arguments.mts';
 import { createHash } from 'node:crypto';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -49,8 +50,7 @@ export function runNodeTool({
     throw result.error;
   }
   if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${options.kind} exited with ${String(result.status)}: ${detail}`);
+    throw new Error(describeProcessEnd(options.kind, result));
   }
   return result;
 }

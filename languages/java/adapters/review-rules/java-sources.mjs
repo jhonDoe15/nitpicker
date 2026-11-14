@@ -36,6 +36,19 @@ export function blankComments(text) {
   );
 }
 
+export function withoutGenerics(text) {
+  let depth = 0;
+  return text
+    .split('')
+    .filter((character) => {
+      depth += character === '<' ? 1 : 0;
+      const kept = depth === 0;
+      depth -= character === '>' ? 1 : 0;
+      return kept && character !== '>';
+    })
+    .join('');
+}
+
 function blankedBlocks(text, keeps) {
   let depth = 0;
   let kept = '';

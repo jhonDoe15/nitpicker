@@ -374,6 +374,27 @@ describe('where the formatter is declared', () => {
     });
   });
 
+  it.each([
+    [
+      'pom.xml',
+      '<project><plugin><groupId>io.spring.javaformat</groupId><artifactId>spring-javaformat-maven-plugin</artifactId></plugin></project>',
+    ],
+    ['build.gradle.kts', 'plugins { id("io.spring.javaformat") version "0.0.43" }'],
+  ])('reports Spring Java Format from %s', (file, text) => {
+    expect(follow({ preset: 'java' }, { [file]: text, ...javaFiles(GOOGLE_CODE) })).toEqual({
+      conventions: {
+        'java.formatter': 'spring',
+        'java.indentation': 'tab',
+        'java.lineLength': '120',
+      },
+      printed:
+        HEADER +
+        '  Java formatter: Spring Java Format (from your build file)\n' +
+        '  Java indentation: tabs (from Spring Java Format)\n' +
+        '  Java line length: 120 columns (from Spring Java Format)\n',
+    });
+  });
+
   it('finds the formatter next to globs that contain /*', () => {
     const build =
       "spotless {\n java {\n target '**/*.java'\n palantirJavaFormat()\n targetExclude '**/*Test.java'\n }\n}";

@@ -75,6 +75,8 @@ function applyJavaConfig(analyzers, config) {
     names.includes(analyzer.name)
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
+          java: config.java,
+          mutationOff: (config.disable ?? []).includes('mutation'),
           tools: config.tools,
           testConsole: config.testConsole,
           styleFiles: styleFilesOf(config, analyzer.name),

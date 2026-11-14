@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
-import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
+import { mavenErrorSummary, mavenTarget, runJava, runMaven } from './maven-command.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -117,6 +117,33 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
           'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command more time',
       ),
     );
+  });
+
+  it('names the signal when Maven is killed, with the memory remedy', () => {
+    const root = project();
+    const maven = project({ mvn: { text: '#!/bin/sh\nkill -KILL $$\n', mode: 0o755 } });
+
+    expect(() =>
+      runMaven({ projectRoot: root, maven: path.join(maven, 'mvn'), args: ['verify'] }),
+    ).toThrow(
+      `Maven was killed by SIGKILL (usually the out-of-memory killer; run fewer jobs at once`,
+    );
+  });
+
+  it('keeps the exit code and says when a Java tool printed nothing', () => {
+    const run = (exit) =>
+      runJava({
+        tool: 'PIT',
+        java: path.join(
+          project({ java: { text: `#!/bin/sh\nexit ${exit}\n`, mode: 0o755 } }),
+          'java',
+        ),
+        args: [],
+        cwd: project(),
+        accept: (result) => result.status === 0,
+      });
+
+    expect(() => run(137)).toThrow('PIT failed with exit code 137: no diagnostic output');
   });
 
   it('reports a failed Maven build of the analyzed project as java/maven-failure', () => {

@@ -1190,6 +1190,17 @@
         }
       }
     },
+    "java": {
+      "description": "Java and Kotlin build settings (java and kotlin presets).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buildTool": {
+          "description": "The build tool when the project has both a pom.xml and a Gradle build: \"maven\" or \"gradle\". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.",
+          "enum": ["maven", "gradle"]
+        }
+      }
+    },
     "spring": {
       "description": "Spring settings (java and kotlin presets).",
       "type": "object",
@@ -1530,7 +1541,8 @@
           "python": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -1761,7 +1773,8 @@
           "python": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -1804,8 +1817,8 @@
           "conventions": {
             "properties": {
               "java.formatter": {
-                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
-                "enum": ["google", "palantir", "none"]
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"spring\" (Spring Java Format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "spring", "none"]
               },
               "java.indentation": {
                 "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
@@ -2020,8 +2033,8 @@
           "conventions": {
             "properties": {
               "java.formatter": {
-                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
-                "enum": ["google", "palantir", "none"]
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"spring\" (Spring Java Format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "spring", "none"]
               },
               "java.indentation": {
                 "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
@@ -2608,7 +2621,8 @@
           "i18n": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -2809,7 +2823,8 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     }

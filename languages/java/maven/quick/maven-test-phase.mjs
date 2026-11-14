@@ -72,6 +72,9 @@ export function runCoverageTools(options) {
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
   const history = options.pitHistory;
   const scope = { projectRoot: options.projectRoot, mutationScope: options.mutationScope };
+  if (options.mutationOff) {
+    return;
+  }
   runPit({
     ...{ module, reportDir, tools, classpaths, isArchunit, configs, history, scope, ...run },
     deadline: options.pitDeadline,
