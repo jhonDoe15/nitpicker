@@ -20,12 +20,15 @@ import {
   runJacocoReport,
 } from './maven-tests.mts';
 import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
-import { readPitMutators } from '../builds/java-build.mjs';
+import { textOf } from '../../../shared/values/readers.mts';
+import { readPitMutators as untypedPitMutators } from '../builds/java-build.mjs';
 import { pitTargets } from './module/pit-scope.mts';
 
-const roots = [];
+const readPitMutators: () => string[] = untypedPitMutators;
 
-function tree(files) {
+const roots: string[] = [];
+
+function tree(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tests-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -35,7 +38,7 @@ function tree(files) {
   return root;
 }
 
-const suite = (name, cases) =>
+const suite = (name: string, cases: readonly (readonly [string, string?])[]): string =>
   `<?xml version="1.0"?><testsuite name="${name}">${cases
     .map(([test, failure]) =>
       failure === undefined
@@ -167,7 +170,12 @@ describe('collectTestResults', () => {
     const reportDir = tree({});
 
     collectTestResults({
-      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
+      module: {
+        basedir: '/m',
+        testOutputDirectory: '/missing',
+        surefireReports: reports,
+        failsafeReports: reports,
+      },
       reportDir,
       since,
       isArchunit: archunitMatcher(),
@@ -178,20 +186,25 @@ describe('collectTestResults', () => {
   });
 
   it('lists every failing test of the module', () => {
-    const cases = Array.from({ length: 12 }, (_, index) => [
+    const cases = Array.from({ length: 12 }, (_, index): [string, string] => [
       `case${String(index)}`,
       `expected ${String(index)}`,
     ]);
     const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
 
     const { failure } = collectTestResults({
-      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
+      module: {
+        basedir: '/m',
+        testOutputDirectory: '/missing',
+        surefireReports: reports,
+        failsafeReports: reports,
+      },
       reportDir: tree({}),
       since,
       isArchunit: archunitMatcher(),
     });
 
-    expect([failure.module, failure.tests]).toEqual([
+    expect([failure?.module, failure?.tests]).toEqual([
       '.',
       cases.map(([test, message]) => `shop.OrderTest.${test}: ${message}`),
     ]);
@@ -202,13 +215,18 @@ describe('collectTestResults', () => {
       'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
     });
     const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
-    const run = (failsafeReports) =>
+    const run = (failsafeReports: string) =>
       collectTestResults({
-        module: { basedir: '/m', surefireReports: surefire, failsafeReports },
+        module: {
+          basedir: '/m',
+          testOutputDirectory: '/missing',
+          surefireReports: surefire,
+          failsafeReports,
+        },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
-      }).failure.tests;
+      }).failure?.tests;
 
     expect([run(failsafe), run(`${surefire}/.`)]).toEqual([
       ['shop.OrderTest.totals: no', 'shop.OrderIT.stores: gone'],
@@ -217,7 +235,7 @@ describe('collectTestResults', () => {
   });
 
   it('reports whether any test ran', () => {
-    const run = (files) =>
+    const run = (files: Readonly<Record<string, string>>) =>
       collectTestResults({
         module: {
           basedir: '/m',
@@ -243,7 +261,12 @@ describe('collectTestResults', () => {
 
     expect(
       collectTestResults({
-        module: { basedir: '/m', surefireReports: reports, failsafeReports: tree({}) },
+        module: {
+          basedir: '/m',
+          testOutputDirectory: '/missing',
+          surefireReports: reports,
+          failsafeReports: tree({}),
+        },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -289,7 +312,7 @@ describe('collectTestResults', () => {
 describe('freshExecFiles', () => {
   it('keeps every coverage file written since the build started, once each', () => {
     const target = tree({ 'unit.exec': 'u', 'it.exec': 'i', 'old.exec': 'o' });
-    const file = (name) => path.join(target, name);
+    const file = (name: string): string => path.join(target, name);
     utimesSync(file('old.exec'), new Date(2020, 0, 1), new Date(2020, 0, 1));
 
     expect(
@@ -304,7 +327,12 @@ describe('freshExecFiles', () => {
 describe('runJacocoReport', () => {
   it('fails when tests ran but no coverage file is fresh', () => {
     const reportDir = tree({ 'classes/demo/A.class': '' });
-    const module = { basedir: '/m', outputDirectory: path.join(reportDir, 'classes') };
+    const module = {
+      basedir: '/m',
+      coordinates: 'shop:core',
+      outputDirectory: path.join(reportDir, 'classes'),
+      sourceRoots: [],
+    };
 
     expect(() => {
       runJacocoReport({
@@ -329,6 +357,7 @@ describe('runJacocoReport', () => {
       basedir: '/m',
       coordinates: 'shop:it',
       outputDirectory: path.join(reportDir, 'missing'),
+      sourceRoots: [],
     };
 
     runJacocoReport({
@@ -356,9 +385,9 @@ describe('runPit', () => {
       sourceRoots: [],
       testJvmArgs: [],
     };
-    const calls = [];
-    const spawn = (command, [argumentFile]) => {
-      calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+    const calls: string[][] = [];
+    const spawn = (_command: string, [argumentFile]: readonly string[]) => {
+      calls.push(readFileSync(textOf(argumentFile).slice(1), 'utf8').split('\n'));
       return { status: 0, stdout: '', stderr: '' };
     };
     runPit({
@@ -369,14 +398,14 @@ describe('runPit', () => {
       isArchunit: () => false,
       spawn,
     });
-    const [tokens] = calls;
+    const [tokens = []] = calls;
 
     expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
   });
 
   it('records the base history in the module build directory', () => {
     const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
-    const calls = [];
+    const calls: string[][] = [];
     runPit({
       module: {
         basedir: root,
@@ -391,12 +420,12 @@ describe('runPit', () => {
       classpaths: { testRuntime: [] },
       isArchunit: () => false,
       history: { snapshot: 'base', projectRoot: root },
-      spawn: (command, [argumentFile]) => {
-        calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+      spawn: (_command: string, [argumentFile]: readonly string[]) => {
+        calls.push(readFileSync(textOf(argumentFile).slice(1), 'utf8').split('\n'));
         return { status: 0, stdout: '', stderr: '' };
       },
     });
-    const [tokens] = calls;
+    const [tokens = []] = calls;
 
     expect(tokens[tokens.indexOf('"--historyOutputLocation"') + 1]).toBe(
       `"${path.join(root, 'target', 'nitpicker-pit-history', 'test.history')}"`,

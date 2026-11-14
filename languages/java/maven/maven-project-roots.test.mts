@@ -9,9 +9,9 @@ afterEach(removeReactors);
 
 describe('describeModule Groovy test sources', () => {
   it('adds the GMavenPlus test sources, src/test/groovy unless an execution or the plugin names others', () => {
-    const gmavenplus = (inner) =>
+    const gmavenplus = (inner: string) =>
       soloModule(inBuild(plugin('gmavenplus-plugin', inner, 'org.codehaus.gmavenplus')));
-    const testSource = (directory) =>
+    const testSource = (directory: string) =>
       `<configuration><testSources><testSource><directory>${directory}</directory></testSource></testSources></configuration>`;
     const named = gmavenplus(
       `${testSource('src/spec/groovy')}<executions><execution>${testSource('src/it/groovy')}</execution></executions>`,
@@ -37,7 +37,7 @@ describe('describeModule test roots of other compilers and outside the module', 
     const withoutGroovy = reactor({ 'pom.xml': raw('solo') });
 
     expect(
-      [withGroovy, withoutGroovy].map((root) => readReactor(root, solo)[0].testSourceRoots),
+      [withGroovy, withoutGroovy].map((root) => readReactor(root, solo)[0]?.testSourceRoots),
     ).toEqual([
       [path.join(withGroovy, 'src/test/java'), path.join(withGroovy, 'src/test/groovy')],
       [path.join(withoutGroovy, 'src/test/java')],

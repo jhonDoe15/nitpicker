@@ -35,8 +35,8 @@ type JacocoRun = {
   readonly execFiles: readonly string[];
   readonly since: number;
   readonly testsRan: boolean;
-  readonly spawn: JavaSpawn | undefined;
-  readonly timeoutMs: unknown;
+  readonly spawn?: JavaSpawn | undefined;
+  readonly timeoutMs?: unknown;
 };
 
 const patternMatcher: (pattern: string) => { test(file: string): boolean } = globMatcher;
