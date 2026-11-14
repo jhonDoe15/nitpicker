@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { rulesOf } from '../../test-support/sources.mjs';
+import { rulesOf } from '../../test-support/sources.mts';
 import { GLOBAL_STATE_RULE } from './global-state.mjs';
 
-const leaks = (text) => rulesOf(text, GLOBAL_STATE_RULE);
+function leaks(text: string): string[] {
+  return rulesOf(text, GLOBAL_STATE_RULE);
+}
 
 const HEAD = `package demo.orders
 

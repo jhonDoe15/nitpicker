@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../test-support/sources.mts';
 import { FLOAT_EQUALITY_RULE } from './float-equality.mjs';
 
-const floats = (text) => rulesOf(text, FLOAT_EQUALITY_RULE);
-const inTest = (...lines) =>
-  `${JUNIT_HEAD}class MathTest {\n    @Test\n    fun adds() {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n}\n`;
-const reportedLines = (...lines) => floats(inTest(...lines)).map((entry) => entry.split('@')[1]);
+function floats(text: string): string[] {
+  return rulesOf(text, FLOAT_EQUALITY_RULE);
+}
+function inTest(...lines: string[]): string {
+  return `${JUNIT_HEAD}class MathTest {\n    @Test\n    fun adds() {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n}\n`;
+}
+function reportedLines(...lines: string[]): (string | undefined)[] {
+  return floats(inTest(...lines)).map((entry) => entry.split('@')[1]);
+}
 
 describe('float equality in a JUnit or kotlin.test body', () => {
   it('reports a fractional literal as expected or actual, negated or in exponent form', () => {
@@ -136,8 +141,9 @@ describe('float equality with AssertJ', () => {
 });
 
 describe('float equality with Kotest', () => {
-  const spec = (...lines) =>
-    `${KOTEST_HEAD}class MathSpec : FunSpec({\n    test("adds") {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n})\n`;
+  function spec(...lines: string[]): string {
+    return `${KOTEST_HEAD}class MathSpec : FunSpec({\n    test("adds") {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n})\n`;
+  }
 
   it('reports shouldBe and shouldNotBe against a fractional literal', () => {
     expect(
@@ -242,9 +248,12 @@ class MathTest {
 });
 
 describe('Kotlin float literal edge cases', () => {
-  const spec = (...lines) =>
-    `${KOTEST_HEAD}class MathSpec : FunSpec({\n    test("adds") {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n})\n`;
-  const specLines = (...lines) => floats(spec(...lines)).map((entry) => entry.split('@')[1]);
+  function spec(...lines: string[]): string {
+    return `${KOTEST_HEAD}class MathSpec : FunSpec({\n    test("adds") {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n})\n`;
+  }
+  function specLines(...lines: string[]): (string | undefined)[] {
+    return floats(spec(...lines)).map((entry) => entry.split('@')[1]);
+  }
 
   it('does not report a parenthesised literal that is followed by more expression', () => {
     expect(

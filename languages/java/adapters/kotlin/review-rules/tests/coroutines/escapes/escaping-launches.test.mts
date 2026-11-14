@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
 import { ESCAPING_RULE } from './escaping-launches.mjs';
 
-const escapes = (text) => rulesOf(text, ESCAPING_RULE);
-const junit = (members) => `${JUNIT_HEAD}class WorkerTest {
+function escapes(text: string): string[] {
+  return rulesOf(text, ESCAPING_RULE);
+}
+function junit(members: string): string {
+  return `${JUNIT_HEAD}class WorkerTest {
 ${members}
 }
 `;
+}
 
 describe('coroutines that escape a JUnit test', () => {
   it.each([
