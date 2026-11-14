@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { buildAndTest } from '../quick/maven-test-phase.mts';
-import { readReactor } from '../maven-project.mjs';
+import { readReactor } from '../maven-project.mts';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const roots = [];

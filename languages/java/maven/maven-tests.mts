@@ -1,29 +1,67 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCaseEntries, freshReports } from '../builds/test-failures.mjs';
+import { callUntyped, type JavaSpawn } from '../adapters/typed/java-values.mts';
+import type { ToolClasspaths } from './typed/kotlin-types.mts';
+
+type ReportModule = { readonly surefireReports: string; readonly failsafeReports: string };
+type ArchunitMatch = (className: string) => boolean;
+type ArchunitRun = {
+  readonly module: ReportModule & {
+    readonly testOutputDirectory: string;
+    readonly basedir: string;
+  };
+  readonly reportDir: string;
+  readonly since: number;
+  readonly isArchunit: ArchunitMatch;
+};
+type TestFailure = { readonly text: string; readonly detail: unknown };
+type TestOutcome = {
+  readonly testsRan: boolean;
+  readonly failure: { module: string; tests: string[]; details: unknown[] } | undefined;
+};
+type JacocoRun = {
+  readonly module: {
+    readonly basedir: string;
+    readonly coordinates: string;
+    readonly outputDirectory: string;
+    readonly sourceRoots: readonly string[];
+  };
+  readonly reportDir: string;
+  readonly tools: ToolClasspaths;
+  readonly execFiles: readonly string[];
+  readonly since: number;
+  readonly testsRan: boolean;
+  readonly spawn: JavaSpawn | undefined;
+  readonly timeoutMs: unknown;
+};
+
+const patternMatcher: (pattern: string) => { test(file: string): boolean } = globMatcher;
+const failedCases: (report: string) => TestFailure[] = failedCaseEntries;
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
-export function archunitPatterns(includes = DEFAULT_ARCHUNIT_INCLUDES) {
+export function archunitPatterns(includes: string = DEFAULT_ARCHUNIT_INCLUDES): string[] {
   return includes
     .split(',')
     .map((pattern) => pattern.trim())
     .filter(Boolean);
 }
 
-export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
-  const patterns = archunitPatterns(includes).map((pattern) => globMatcher(pattern));
-  return (className) => {
+export function archunitMatcher(includes: string = DEFAULT_ARCHUNIT_INCLUDES): ArchunitMatch {
+  const patterns = archunitPatterns(includes).map((pattern) => patternMatcher(pattern));
+  return (className: string) => {
     const file = `${className.replaceAll('.', '/').replace(/\$.*$/u, '')}.class`;
     return patterns.some((pattern) => pattern.test(file));
   };
 }
 
-export function classFiles(directory) {
+export function classFiles(directory: string): string[] {
   return existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
@@ -33,21 +71,25 @@ export function classFiles(directory) {
     : [];
 }
 
-export function testReportDirectories(module) {
-  const surefire = ['surefire', module.surefireReports];
+export function testReportDirectories(module: ReportModule): [string, string][] {
+  const surefire: [string, string] = ['surefire', module.surefireReports];
   const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
   return shared ? [surefire] : [surefire, ['failsafe', module.failsafeReports]];
 }
 
-export function suiteNameOf(report) {
+export function suiteNameOf(report: string): string {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function freshTestReports(module, since) {
+function freshTestReports(module: ReportModule, since: number): string[] {
   return testReportDirectories(module).flatMap(([, directory]) => freshReports(directory, since));
 }
 
-function copyArchunitReports(reports, reportDir, isArchunit) {
+function copyArchunitReports(
+  reports: readonly string[],
+  reportDir: string,
+  isArchunit: ArchunitMatch,
+): void {
   const archunitDir = path.join(reportDir, 'archunit');
   for (const report of reports.filter((candidate) => isArchunit(suiteNameOf(candidate)))) {
     mkdirSync(archunitDir, { recursive: true });
@@ -55,7 +97,15 @@ function copyArchunitReports(reports, reportDir, isArchunit) {
   }
 }
 
-function testOutcome({ moduleName, failures, testsRan }) {
+function testOutcome({
+  moduleName,
+  failures,
+  testsRan,
+}: {
+  readonly moduleName: string;
+  readonly failures: readonly TestFailure[];
+  readonly testsRan: boolean;
+}): TestOutcome {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
@@ -67,18 +117,29 @@ function testOutcome({ moduleName, failures, testsRan }) {
   return { testsRan, failure };
 }
 
-export function collectArchunitResults({ module, reportDir, since, isArchunit }) {
+export function collectArchunitResults({
+  module,
+  reportDir,
+  since,
+  isArchunit,
+}: ArchunitRun): void {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   requireArchunitRun(module, reports, isArchunit);
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit, moduleName = '.' }) {
+export function collectTestResults({
+  module,
+  reportDir,
+  since,
+  isArchunit,
+  moduleName = '.',
+}: ArchunitRun & { readonly moduleName?: string }): TestOutcome {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   const failures = reports
     .filter((report) => !isArchunit(suiteNameOf(report)))
-    .flatMap((report) => failedCaseEntries(report));
+    .flatMap((report) => failedCases(report));
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
     moduleName,
@@ -87,7 +148,11 @@ export function collectTestResults({ module, reportDir, since, isArchunit, modul
   });
 }
 
-function requireArchunitRun(module, reports, isArchunit) {
+function requireArchunitRun(
+  module: ArchunitRun['module'],
+  reports: readonly string[],
+  isArchunit: ArchunitMatch,
+): void {
   const archunitClasses = topLevelClasses(module.testOutputDirectory).filter(isArchunit);
   if (archunitClasses.length > 0 && !reports.some((report) => isArchunit(suiteNameOf(report)))) {
     throw new Error(
@@ -98,13 +163,13 @@ function requireArchunitRun(module, reports, isArchunit) {
   }
 }
 
-export function freshExecFiles(execFiles, since) {
+export function freshExecFiles(execFiles: readonly string[], since: number): string[] {
   return [...new Set(execFiles)].filter(
     (file) => existsSync(file) && statSync(file).mtimeMs >= since,
   );
 }
 
-export function runJacocoReport(options) {
+export function runJacocoReport(options: JacocoRun): void {
   const { module, reportDir, tools, execFiles, since, testsRan, spawn, timeoutMs } = options;
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
@@ -117,9 +182,9 @@ export function runJacocoReport(options) {
       `JaCoCo recorded no coverage in ${module.basedir}: the tests ran without its agent. If maven-surefire-plugin sets <argLine>, start it with @{argLine} so the agent stays attached`,
     );
   }
-  runJava({
+  callUntyped(runJava, {
     tool: 'JaCoCo',
-    classpath: tools.jacoco,
+    classpath: tools['jacoco'],
     mainClass: 'org.jacoco.cli.internal.Main',
     args: [
       'report',
@@ -134,13 +199,13 @@ export function runJacocoReport(options) {
       '--quiet',
     ],
     cwd: module.basedir,
-    accept: (result) => result.status === 0,
+    accept: (result: unknown) => fieldOf(result, 'status') === 0,
     spawn,
     timeoutMs,
   });
 }
 
-function topLevelClasses(classDirectory) {
+function topLevelClasses(classDirectory: string): string[] {
   return [
     ...new Set(
       classFiles(classDirectory).map((file) =>
@@ -153,30 +218,32 @@ function topLevelClasses(classDirectory) {
   ];
 }
 
-export function pitTests(testClassDirectory, isArchunit) {
+export function pitTests(testClassDirectory: string, isArchunit: ArchunitMatch): string[] {
   return topLevelClasses(testClassDirectory).filter((name) => !isArchunit(name));
 }
 
-export function junitLauncherVersion(classpath) {
-  const names = classpath.map((entry) => path.basename(entry));
+export function junitLauncherVersion(classpath: readonly unknown[]): string | undefined {
+  const names = classpath.map((entry) => path.basename(textOf(entry)));
   const engine = names.find((name) => JUNIT_ENGINE_JAR.test(name));
   return engine === undefined || names.some((name) => name.startsWith('junit-platform-launcher-'))
     ? undefined
     : engine.replace(/^junit-platform-engine-|\.jar$/gu, '');
 }
 
-export function pitClasspath(tools, testRuntime) {
-  const names = testRuntime.map((entry) => path.basename(entry));
+export function pitClasspath(tools: ToolClasspaths, testRuntime: readonly unknown[]): string[] {
+  const names = testRuntime.map((entry) => path.basename(textOf(entry)));
   const launcher = junitLauncherVersion(testRuntime);
   return [
-    ...tools.pit,
-    ...(names.some((name) => JUNIT_ENGINE_JAR.test(name)) ? tools['pit-junit5'] : []),
-    ...(launcher === undefined ? [] : tools[`launcher-${launcher}`]),
-    ...(names.some((name) => TESTNG_JAR.test(name)) ? tools['pit-testng'] : []),
+    ...(tools['pit'] ?? []),
+    ...(names.some((name) => JUNIT_ENGINE_JAR.test(name)) ? (tools['pit-junit5'] ?? []) : []),
+    ...(launcher === undefined ? [] : (tools[`launcher-${launcher}`] ?? [])),
+    ...(names.some((name) => TESTNG_JAR.test(name)) ? (tools['pit-testng'] ?? []) : []),
   ];
 }
 
-export function missingLauncherVersions(analyzed) {
+export function missingLauncherVersions(
+  analyzed: readonly { readonly classpaths: { readonly testRuntime: readonly unknown[] } }[],
+): string[] {
   const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
   return [...new Set(versions.filter((version) => version !== undefined))];
 }

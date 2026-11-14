@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { springFacts } from '../spring/arch-rules-gate.mts';
-import { relativeRoots } from '../module/module-paths.mjs';
+import { relativeRoots } from '../module/module-paths.mts';
 import { fieldOf, fieldsOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths, MavenModule } from '../typed/maven-values.mts';
 

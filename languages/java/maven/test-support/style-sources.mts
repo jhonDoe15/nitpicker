@@ -44,9 +44,9 @@ export const OPTED_IN_CHECKSTYLE = `<?xml version="1.0"?>
 </module>
 `;
 
-export function withFourSpaces(root) {
+export function withFourSpaces(root: string): void {
   const base = path.resolve(root, 'src');
-  for (const file of readdirSync(base, { recursive: true })) {
+  for (const file of readdirSync(base, { recursive: true, encoding: 'utf8' })) {
     const source = path.resolve(base, file);
     if (!source.startsWith(`${base}${path.sep}`)) {
       throw new Error(`${file} leaves ${base}`);
@@ -57,11 +57,16 @@ export function withFourSpaces(root) {
   }
 }
 
-export function summaryOf(findings, matches) {
+type StyleFinding = { readonly tool: string; readonly rule: string; readonly path: string };
+
+export function summaryOf(
+  findings: readonly StyleFinding[],
+  matches: (finding: StyleFinding) => boolean,
+): string[] {
   return findings.filter(matches).map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
 }
 
-export function isFormatting({ tool, rule }) {
+export function isFormatting({ tool, rule }: Pick<StyleFinding, 'tool' | 'rule'>): boolean {
   return (
     ['google-java-format', 'palantir-java-format'].includes(tool) ||
     (tool === 'checkstyle' &&

@@ -18,10 +18,10 @@ import {
   pitTests,
   freshExecFiles,
   runJacocoReport,
-} from './maven-tests.mjs';
+} from './maven-tests.mts';
 import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
 import { readPitMutators } from '../builds/java-build.mjs';
-import { pitTargets } from './module/pit-scope.mjs';
+import { pitTargets } from './module/pit-scope.mts';
 
 const roots = [];
 
