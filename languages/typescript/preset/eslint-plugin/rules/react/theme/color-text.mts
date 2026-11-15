@@ -50,37 +50,55 @@ const NAMED_COLORS = new Set(
   teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen`.split(/\s+/u),
 );
 
-function colorIn(text, hexPattern) {
+export type ColorContext = {
+  readonly whole: boolean;
+  readonly css: boolean;
+  readonly style: boolean;
+  readonly colorPosition: boolean;
+};
+
+function colorIn(text: string, hexPattern: RegExp): string | undefined {
   return (hexPattern.exec(text) ?? functionCall.exec(text))?.[1];
 }
 
-function declaredColor(text, declaration) {
+function declaredColor(text: string, declaration: RegExp): string | undefined {
   for (const match of text.matchAll(declaration)) {
-    const color = colorIn(match[1], anyHex);
-    if (color !== undefined) return color;
+    const color = colorIn(match[1] ?? '', anyHex);
+    if (color !== undefined) {
+      return color;
+    }
   }
   return undefined;
 }
 
-function declaredNamedColor(text) {
+function declaredNamedColor(text: string): string | undefined {
   for (const match of text.matchAll(namedColorDeclaration)) {
-    const color = namedColor(match[1]);
-    if (color !== undefined) return color;
+    const color = namedColor(match[1] ?? '');
+    if (color !== undefined) {
+      return color;
+    }
   }
   return undefined;
 }
 
-function wholeColor(text, looseContext) {
-  if (longHex.test(text) || wholeFunction.test(text)) return text;
+function wholeColor(text: string, looseContext: boolean): string | undefined {
+  if (longHex.test(text) || wholeFunction.test(text)) {
+    return text;
+  }
   return looseContext && shortHex.test(text) ? text : undefined;
 }
 
-export function findColor(rawText, { whole, css, style, colorPosition }) {
+export function findColor(
+  rawText: string,
+  { whole, css, style, colorPosition }: ColorContext,
+): string | undefined {
   const withoutUrls = rawText.replaceAll(urlReference, '');
   const text = css ? withoutUrls.replaceAll(blockComment, '') : withoutUrls;
   const looseContext = css || style || colorPosition;
   const wholeMatch = whole ? wholeColor(text.trim(), looseContext) : undefined;
-  if (wholeMatch !== undefined) return wholeMatch;
+  if (wholeMatch !== undefined) {
+    return wholeMatch;
+  }
   const embedded = looseContext ? colorIn(text, css ? cssHex : anyHex) : undefined;
   const found =
     embedded ??
@@ -89,7 +107,7 @@ export function findColor(rawText, { whole, css, style, colorPosition }) {
   return found ?? (css ? declaredNamedColor(text) : undefined);
 }
 
-export function namedColor(text) {
+export function namedColor(text: string): string | undefined {
   const name = text.trim().toLowerCase();
   return NAMED_COLORS.has(name) ? name : undefined;
 }

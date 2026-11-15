@@ -1,3 +1,4 @@
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   attributeNamed,
   elementName,
@@ -5,11 +6,11 @@ import {
   isFixedValueInputType,
   hasSpread,
   literalValueOf,
-} from '../jsx.mjs';
+} from '../jsx.mts';
 
 const changeAttributes = ['onChange', 'readOnly', 'disabled'];
 
-function valueNeedsHandler(opening) {
+function valueNeedsHandler(opening: TSESTree.JSXOpeningElement): boolean {
   const isInput = elementName(opening) === 'input';
   const type = literalValueOf(attributeNamed(opening, 'type'));
   return (
@@ -17,11 +18,11 @@ function valueNeedsHandler(opening) {
   );
 }
 
-function checkedNeedsHandler(opening) {
+function checkedNeedsHandler(opening: TSESTree.JSXOpeningElement): boolean {
   return elementName(opening) === 'input' && attributeNamed(opening, 'checked') !== undefined;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'bothValues' | 'noHandler'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -38,7 +39,7 @@ export const rule = {
   },
   create(context) {
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         if (!isFieldElement(elementName(node)) || hasSpread(node)) {
           return;
         }

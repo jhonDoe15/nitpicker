@@ -1,6 +1,10 @@
-import { variableNamed } from '../../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { chainOf, nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 
-const queryMethods = new Set([
+type Wrapper = TSESTree.ChainExpression | TSESTree.TSNonNullExpression | TSESTree.TSAsExpression;
+type NameSet = ReadonlySet<string | undefined>;
+
+const queryMethods = new Set<string | undefined>([
   'getElementById',
   'getElementsByClassName',
   'getElementsByName',
@@ -8,8 +12,13 @@ const queryMethods = new Set([
   'querySelector',
   'querySelectorAll',
 ]);
-const creationMethods = new Set(['createElement', 'createElementNS']);
-const contentProperties = new Set(['innerHTML', 'innerText', 'outerHTML', 'textContent']);
+const creationMethods = new Set<string | undefined>(['createElement', 'createElementNS']);
+const contentProperties = new Set<string | undefined>([
+  'innerHTML',
+  'innerText',
+  'outerHTML',
+  'textContent',
+]);
 const contentMethods = new Set([
   'createContextualFragment',
   'insertAdjacentHTML',
@@ -33,46 +42,53 @@ const insertionMethods = new Set([
 const classListMethods = new Set(['add', 'remove', 'toggle', 'replace']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);
 const documentNames = new Set(['document']);
-const pageElements = new Set(['documentElement', 'body', 'head']);
-const changeablePageElements = new Set(['documentElement', 'body']);
-const rootMounts = new Set(['createRoot', 'hydrateRoot', 'createPortal']);
-const wrappers = new Set(['ChainExpression', 'TSNonNullExpression', 'TSAsExpression']);
+const pageElements = new Set<string | undefined>(['documentElement', 'body', 'head']);
+const changeablePageElements = new Set<string | undefined>(['documentElement', 'body']);
+const rootMounts = new Set<string | undefined>(['createRoot', 'hydrateRoot', 'createPortal']);
 const uiFile = /(?:^|\/)(?:ui\/|adapters\/|shared\/|lib\/|use(?:[A-Z]|-)[^/]*$)/u;
 const MAX_ALIASES = 8;
 
-function unwrapped(node) {
-  const chain = [node];
-  for (const current of chain) {
-    if (wrappers.has(current.type)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
+function isWrapper(node: TSESTree.Node): node is Wrapper {
+  return (
+    node.type === AST_NODE_TYPES.ChainExpression ||
+    node.type === AST_NODE_TYPES.TSNonNullExpression ||
+    node.type === AST_NODE_TYPES.TSAsExpression
+  );
 }
 
-function propertyName(member) {
-  return member.type === 'MemberExpression' && !member.computed ? member.property.name : undefined;
+function unwrapped(node: TSESTree.Node): TSESTree.Node {
+  return chainOf(node, (link) => (isWrapper(link) ? link.expression : undefined)).at(-1) ?? node;
 }
 
-function isNeverReassigned(variable, definition) {
+function propertyName(member: TSESTree.Node): string | undefined {
+  return member.type === AST_NODE_TYPES.MemberExpression && !member.computed
+    ? nameOf(member.property)
+    : undefined;
+}
+
+function isNeverReassigned(
+  variable: TSESLint.Scope.Variable,
+  definition: TSESLint.Scope.Definitions.VariableDefinition,
+): boolean {
   return (
     definition.parent.kind === 'const' ||
     variable.references.every((reference) => !reference.isWrite() || reference.init)
   );
 }
 
-function constInitOf(sourceCode, node) {
-  const variable = node.type === 'Identifier' ? variableNamed(sourceCode, node) : undefined;
+function constInitOf(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node | undefined {
+  const variable =
+    node.type === AST_NODE_TYPES.Identifier ? variableNamed(sourceCode, node) : undefined;
   const [definition] = variable?.defs ?? [];
   const isConstant =
     variable?.defs.length === 1 &&
-    definition.type === 'Variable' &&
-    definition.node.id.type === 'Identifier' &&
+    definition?.type === TSESLint.Scope.DefinitionType.Variable &&
+    definition.node.id.type === AST_NODE_TYPES.Identifier &&
     isNeverReassigned(variable, definition);
   return isConstant && definition.node.init ? unwrapped(definition.node.init) : undefined;
 }
 
-function aliasChain(sourceCode, node) {
+function aliasChain(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node[] {
   const chain = [unwrapped(node)];
   for (const current of chain) {
     const alias = chain.length <= MAX_ALIASES ? constInitOf(sourceCode, current) : undefined;
@@ -83,46 +99,60 @@ function aliasChain(sourceCode, node) {
   return chain;
 }
 
-function isGlobal(sourceCode, node, names) {
-  const target = aliasChain(sourceCode, node).at(-1);
-  const definitions =
-    target.type === 'Identifier' ? (variableNamed(sourceCode, target)?.defs ?? []) : [];
-  return target.type === 'Identifier' && names.has(target.name) && definitions.length === 0;
+function aliasTarget(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node {
+  return aliasChain(sourceCode, node).at(-1) ?? node;
 }
 
-function isDocument(sourceCode, node) {
-  const target = aliasChain(sourceCode, node).at(-1);
+function isGlobal(
+  sourceCode: SourceCode,
+  node: TSESTree.Node,
+  names: ReadonlySet<string>,
+): boolean {
+  const target = aliasTarget(sourceCode, node);
+  const definitions =
+    target.type === AST_NODE_TYPES.Identifier
+      ? (variableNamed(sourceCode, target)?.defs ?? [])
+      : [];
+  return (
+    target.type === AST_NODE_TYPES.Identifier && names.has(target.name) && definitions.length === 0
+  );
+}
+
+function isDocument(sourceCode: SourceCode, node: TSESTree.Node): boolean {
+  const target = aliasTarget(sourceCode, node);
   if (constInitOf(sourceCode, target) !== undefined) {
     return false;
   }
-  if (target.type === 'Identifier') {
+  if (target.type === AST_NODE_TYPES.Identifier) {
     return isGlobal(sourceCode, target, documentNames);
   }
   const name = propertyName(target);
   return (
     name === 'ownerDocument' ||
-    (name === 'document' && isGlobal(sourceCode, target.object, globalObjects))
+    (name === 'document' &&
+      target.type === AST_NODE_TYPES.MemberExpression &&
+      isGlobal(sourceCode, target.object, globalObjects))
   );
 }
 
-function isDocumentCall(sourceCode, node, methods) {
+function isDocumentCall(sourceCode: SourceCode, node: TSESTree.Node, methods: NameSet): boolean {
   const call = unwrapped(node);
   return (
-    call.type === 'CallExpression' &&
-    call.callee.type === 'MemberExpression' &&
+    call.type === AST_NODE_TYPES.CallExpression &&
+    call.callee.type === AST_NODE_TYPES.MemberExpression &&
     isDocument(sourceCode, call.callee.object) &&
     methods.has(propertyName(call.callee))
   );
 }
 
-function pageElementName(sourceCode, node) {
+function pageElementName(sourceCode: SourceCode, node: TSESTree.Node): string | undefined {
   const target = unwrapped(node);
-  return target.type === 'MemberExpression' && isDocument(sourceCode, target.object)
+  return target.type === AST_NODE_TYPES.MemberExpression && isDocument(sourceCode, target.object)
     ? propertyName(target)
     : undefined;
 }
 
-function isRefElement(sourceCode, node) {
+function isRefElement(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   const target = unwrapped(node);
   const alias = constInitOf(sourceCode, target);
   return (
@@ -130,7 +160,7 @@ function isRefElement(sourceCode, node) {
   );
 }
 
-function isPageNode(sourceCode, node) {
+function isPageNode(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   return aliasChain(sourceCode, node).some(
     (target) =>
       pageElements.has(pageElementName(sourceCode, target)) ||
@@ -139,43 +169,48 @@ function isPageNode(sourceCode, node) {
   );
 }
 
-function isChangeable(sourceCode, node) {
+function isChangeable(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   return (
     changeablePageElements.has(pageElementName(sourceCode, node)) || isRefElement(sourceCode, node)
   );
 }
 
-function isOutsideStyle(sourceCode, node) {
+function isOutsideStyle(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   const target = unwrapped(node);
-  return propertyName(target) === 'style' && !isChangeable(sourceCode, target.object);
+  return (
+    target.type === AST_NODE_TYPES.MemberExpression &&
+    propertyName(target) === 'style' &&
+    !isChangeable(sourceCode, target.object)
+  );
 }
 
-function isStyleAssign(sourceCode, call) {
+function isStyleAssign(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {
   const callee = unwrapped(call.callee);
-  const owner = callee.object;
   const [first] = call.arguments;
   return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
     propertyName(callee) === 'assign' &&
-    owner.type === 'Identifier' &&
-    owner.name === 'Object' &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
+    callee.object.name === 'Object' &&
     first !== undefined &&
     isOutsideStyle(sourceCode, first)
   );
 }
 
-function isClassListChange(sourceCode, name, owner) {
+function isClassListChange(sourceCode: SourceCode, name: string, owner: TSESTree.Node): boolean {
   const list = unwrapped(owner);
   return (
     classListMethods.has(name) &&
+    list.type === AST_NODE_TYPES.MemberExpression &&
     propertyName(list) === 'classList' &&
     !isChangeable(sourceCode, list.object)
   );
 }
 
-function isMethodChange(sourceCode, call) {
+function isMethodChange(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {
   const callee = unwrapped(call.callee);
   const name = propertyName(callee);
-  if (name === undefined) {
+  if (callee.type !== AST_NODE_TYPES.MemberExpression || name === undefined) {
     return false;
   }
   const owner = callee.object;
@@ -194,21 +229,26 @@ function isMethodChange(sourceCode, call) {
   );
 }
 
-function isDomAssignment(sourceCode, left) {
+function isDomAssignment(sourceCode: SourceCode, left: TSESTree.Node): boolean {
+  if (left.type !== AST_NODE_TYPES.MemberExpression) {
+    return false;
+  }
   if (contentProperties.has(propertyName(left))) {
     return true;
   }
   if (propertyName(left) === 'className') {
     return !isChangeable(sourceCode, left.object);
   }
-  return left.type === 'MemberExpression' && isOutsideStyle(sourceCode, left.object);
+  return isOutsideStyle(sourceCode, left.object);
 }
 
-function isRootMount(callee) {
-  return rootMounts.has(callee.type === 'Identifier' ? callee.name : propertyName(callee));
+function isRootMount(callee: TSESTree.Node): boolean {
+  return rootMounts.has(
+    callee.type === AST_NODE_TYPES.Identifier ? callee.name : propertyName(callee),
+  );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'directDom'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -222,8 +262,8 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const queries = [];
-    const changes = [];
+    const queries: TSESTree.Node[] = [];
+    const changes: TSESTree.Node[] = [];
     let rendersJsx = uiFile.test(context.filename.replaceAll('\\', '/'));
     let mountsRoot = false;
 
@@ -231,7 +271,7 @@ export const rule = {
       JSXElement() {
         rendersJsx = true;
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         mountsRoot ||= isRootMount(node.callee);
         if (isDocumentCall(sourceCode, node, queryMethods)) {
           queries.push(node);
@@ -240,7 +280,7 @@ export const rule = {
           changes.push(node);
         }
       },
-      AssignmentExpression(node) {
+      AssignmentExpression(node: TSESTree.AssignmentExpression) {
         if (isDomAssignment(sourceCode, node.left)) {
           changes.push(node);
         }
