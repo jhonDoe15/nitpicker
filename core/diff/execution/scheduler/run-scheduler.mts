@@ -24,7 +24,7 @@ const spawnCollected: (command: string, args: readonly string[], options: object
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const parseJson: (text: string) => unknown = JSON.parse;
 
-const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
+const MAX_ANALYZER_OUTPUT_BYTES = 200 * 1024 * 1024;
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
