@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -11,9 +12,14 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PAGE_IDS } from '../shared/reference/pages.mjs';
+import { REFERENCE_DATA_DIRECTORY } from '../shared/reference/store.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
+const EMIT = 'scripts/typescript/emit.mjs';
+const RULE_DATA = PAGE_IDS.map((id) => `${REFERENCE_DATA_DIRECTORY}/${id}.json`);
+const PREPACK = `node ${EMIT} && node scripts/reference/gen-rules.mjs --data`;
 
 const TEST_ONLY_PATH =
   /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.m[jt]s$|_test\.go$|\.pyc$/u;
@@ -59,6 +65,10 @@ function assertRuntimeFiles(files) {
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 
 function checkoutCopy() {
+  const missing = RULE_DATA.filter((file) => !existsSync(path.join(root, file)));
+  if (missing.length > 0) {
+    throw new Error(`${missing.join(', ')} missing: run npm run gen:rules -- --data`);
+  }
   const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-pack-contents-'));
   const files = execFileSync(
     'git',
@@ -75,6 +85,9 @@ function checkoutCopy() {
   for (const file of files) {
     cpSync(path.join(root, file), path.join(copy, file));
   }
+  for (const file of RULE_DATA) {
+    cpSync(path.join(root, file), path.join(copy, file));
+  }
   symlinkSync(path.join(root, 'node_modules'), path.join(copy, 'node_modules'), 'junction');
   return copy;
 }
@@ -84,22 +97,23 @@ describe('npm package contents', () => {
   let copy;
 
   afterAll(() => {
-    rmSync(copy, { recursive: true, force: true });
+    if (copy) rmSync(copy, { recursive: true, force: true });
   });
 
   beforeAll(() => {
     let listing;
     copy = checkoutCopy();
     try {
+      execFileSync(process.execPath, [EMIT], { cwd: copy, stdio: 'pipe', timeout: 120_000 });
       listing = JSON.parse(
-        execFileSync('npm', ['pack', '--dry-run', '--json'], {
+        execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
           cwd: copy,
           encoding: 'utf8',
           timeout: 120_000,
         }),
       );
     } catch (error) {
-      throw new Error('npm pack did not return a valid listing', {
+      throw new Error('Building the npm pack listing failed', {
         cause: error,
       });
     }
@@ -107,6 +121,10 @@ describe('npm package contents', () => {
     packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
   });
 
+  it('replays prepack: the emit runs in the copy, the rule data comes from the global setup', () => {
+    const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(manifest.scripts.prepack, 'replay new prepack steps in the listing hook').toBe(PREPACK);
+  });
   it('fails when a runtime file is omitted from files', () => {
     const files = new Set(['package.json']);
     expect(() => {

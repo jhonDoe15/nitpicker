@@ -1,0 +1,147 @@
+import { describe, expect, it } from 'vitest';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { formatTestFailures } from './test-report.mts';
+import { assertionDetails } from './failure-lines.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+
+const headline = '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:';
+
+function messageFor(failureMessage: string, runnerName: string = RUNNER_NAMES.vitest): string {
+  return formatTestFailures(
+    {
+      numFailedTests: 1,
+      testResults: [
+        {
+          name: '/p/test/panel.test.tsx',
+          assertionResults: [
+            { fullName: 'panel', status: 'failed', failureMessages: [failureMessage] },
+          ],
+        },
+      ],
+    },
+    '/p',
+    { runnerName, mockPin: false },
+  );
+}
+
+describe('a Vitest failure from a missing component test setup', () => {
+  it.each([
+    [
+      'ReferenceError: document is not defined',
+      "Hint: the test runs without a DOM. Set `environment: 'jsdom'` under `test` in the Vitest config.",
+    ],
+    [
+      'Error: Invalid Chai property: toBeInTheDocument',
+      'Hint: the jest-dom matchers are not registered. ' +
+        "Add `import '@testing-library/jest-dom/vitest'` to a file listed in `test.setupFiles`.",
+    ],
+    [
+      'ReferenceError: afterEach is not defined',
+      'Hint: the test globals are off. Set `globals: true` under `test` in the Vitest config, ' +
+        'which also lets Testing Library clean up after each test.',
+    ],
+  ])('names the setup line for %s', (failure, hint) => {
+    expect(messageFor(failure).split('\n')).toEqual([
+      headline,
+      `  test/panel.test.tsx > panel: ${failure}`,
+      hint,
+    ]);
+  });
+
+  it('adds no hint to an ordinary assertion failure', () => {
+    expect(messageFor('AssertionError: expected 500 to be 400').split('\n')).toEqual([
+      headline,
+      '  test/panel.test.tsx > panel: AssertionError: expected 500 to be 400',
+    ]);
+  });
+});
+
+describe('a failure from a missing environment variable', () => {
+  const hint =
+    'Hint: the tests need environment variables that are not set. ' +
+    'Ignored files such as `.env` are not in the snapshots; export the variables in the shell that runs nitpicker.';
+  function fileFailing(
+    message: string,
+    {
+      snapshot,
+      runnerName = RUNNER_NAMES.vitest,
+    }: { readonly snapshot?: string; readonly runnerName?: string } = {},
+  ): string {
+    return formatTestFailures(
+      {
+        numFailedTests: 0,
+        testResults: [
+          { name: '/p/test/env.test.ts', status: 'failed', message, assertionResults: [] },
+        ],
+      },
+      '/p',
+      { runnerName, snapshot, mockPin: false },
+    );
+  }
+
+  it.each([[RUNNER_NAMES.vitest], [RUNNER_NAMES.jest]])(
+    'names the cause on the head under %s',
+    (runnerName) => {
+      expect(fileFailing('Error: Invalid env provided.', { runnerName }).split('\n').at(-1)).toBe(
+        hint,
+      );
+    },
+  );
+
+  it('names the cause on the base', () => {
+    const message = fileFailing('Error: Invalid env provided.', { snapshot: 'base' });
+
+    expect(message.split('\n').at(-1)).toBe(hint);
+  });
+
+  it.each(['Missing required environment variable DATABASE_URL', 'API_KEY is required'])(
+    'matches a test file that fails to load with %s',
+    (failure) => {
+      expect(fileFailing(`Error: ${failure}`)).toContain(hint);
+    },
+  );
+
+  it.each(['EMAIL_ADDRESS is required', 'Invalid env provided'])(
+    'stays silent when a running test asserts %s',
+    (failure) => {
+      expect(messageFor(`AssertionError: ${failure}`)).not.toContain('environment variables');
+    },
+  );
+
+  it('stays silent for an ordinary failure', () => {
+    expect(messageFor('AssertionError: expected 1 to be 2')).not.toContain('environment variables');
+  });
+});
+
+describe('a failure under another runner', () => {
+  it('gets no Vitest setup hint', () => {
+    expect(messageFor('ReferenceError: document is not defined', RUNNER_NAMES.jest)).toBe(
+      `${headline}\n  test/panel.test.tsx > panel: ReferenceError: document is not defined`,
+    );
+  });
+});
+
+describe('the line of a failing assertion', () => {
+  function lineOf(frame: string): unknown {
+    return fieldOf(
+      assertionDetails(
+        { failureMessages: [`Error: no\n    at helper (/p/src/a.ts:3:1)\n${frame}`] },
+        { testFile: '/p/test/a b.test.ts', projectRoot: '/p' },
+      ),
+      'line',
+    );
+  }
+
+  it.each([
+    ['a raw path with a space', '    at /p/test/a b.test.ts:12:5'],
+    ['a call site with a space', '    at fn (/p/test/a b.test.ts:12:5)'],
+    ['a file URL', '    at file:///p/test/a%20b.test.ts:12:5'],
+    ['a path relative to the project with a query', '    at fn (test/a b.test.ts?v=3:12:5)'],
+  ])('comes from %s', (_, frame) => {
+    expect(lineOf(frame)).toBe(12);
+  });
+
+  it('is left out when no frame is in the test file', () => {
+    expect(lineOf('    at other (/p/test/other.test.ts:12:5)')).toBeUndefined();
+  });
+});

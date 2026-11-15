@@ -8,7 +8,11 @@ import { passedRuns, runKey } from './report-runs.mts';
 function rerunSelection(projectRoot: string, suspects: readonly TestRunTime[]): Rerun {
   const files = new Set(suspects.map(({ file }) => path.join(projectRoot, file)));
   const names = new Set(suspects.map(({ name }) => escapeRegExp(name)));
-  return { files: [...files], namePattern: `^(?:${[...names].join('|')})$` };
+  return {
+    files: [...files],
+    namePattern: `^(?:${[...names].join('|')})$`,
+    withoutMockPin: false,
+  };
 }
 
 export async function retimeWithoutCoverage(

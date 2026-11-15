@@ -70,17 +70,26 @@ function unitsOf({ parser, unitsOf: convert }: Grammar, root: string, file: stri
   }
 }
 
-type ExtractionSource = { readonly text: string; readonly mode: string };
+type Source = { readonly file: string; readonly text: string };
 
-function extractionsOf({ parser }: Grammar, file: string, source: ExtractionSource): unknown {
-  const tree = parser.parse(source.text);
-  if (tree === null) {
-    return { fixes: [], notes: [] };
-  }
+function extractionsOf(
+  { parser }: Grammar,
+  sources: readonly Source[],
+  options: { readonly root: string; readonly mode: string },
+): unknown {
+  const trees = sources.flatMap(({ file, text }) => {
+    const tree = parser.parse(text);
+    return tree === null ? [] : [{ tree, file, text }];
+  });
   try {
-    return javaExtractions(tree.rootNode, file, source);
+    return javaExtractions(
+      trees.map(({ tree, file, text }) => ({ rootNode: tree.rootNode, file, text })),
+      { ...options, parse: (text: string) => parser.parse(text) },
+    );
   } finally {
-    tree.delete();
+    for (const { tree } of trees) {
+      tree.delete();
+    }
   }
 }
 
@@ -90,11 +99,10 @@ async function main(): Promise<unknown> {
   const java = await grammarOf('java');
   const { texts } = request;
   if (texts !== undefined) {
-    return Object.fromEntries(
-      request.files.map((file) => [
-        file,
-        extractionsOf(java, file, { text: texts[file] ?? '', mode: request.mode }),
-      ]),
+    return extractionsOf(
+      java,
+      request.files.map((file) => ({ file, text: texts[file] ?? '' })),
+      { root: request.root, mode: request.mode },
     );
   }
   const kotlin = request.files.some((file) => file.endsWith('.kt'))
