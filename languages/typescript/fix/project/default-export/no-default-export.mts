@@ -12,7 +12,7 @@ import {
   symbolReferenceProblem,
   verifyEdits,
 } from '../typed/project-views.mts';
-import { importerEdits as untypedImporterEdits } from './importer-edits.mjs';
+import { importerEdits as untypedImporterEdits } from './importer-edits.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
 

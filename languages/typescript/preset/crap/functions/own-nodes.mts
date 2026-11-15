@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { childrenOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 
 const ts = typescriptApi();
 
@@ -23,14 +23,6 @@ const SHORT_CIRCUIT_KINDS = new Set([
 
 export function isNestedBoundary(node: TypeScript.Node): boolean {
   return NESTED_BOUNDARY_KINDS.has(node.kind);
-}
-
-export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
-  const children: TypeScript.Node[] = [];
-  ts.forEachChild(node, (child) => {
-    children.push(child);
-  });
-  return children;
 }
 
 export function nodesOwnedBy(root: TypeScript.Node): TypeScript.Node[] {

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
-import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
+import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { UNSAFE_ANY_RULES, untypedJavascriptConfig } from './untyped-javascript.mjs';
 import { resolveHeadPolicy } from '../../head-policy.mjs';
 import { resolveLayout } from '../../layout.mjs';
