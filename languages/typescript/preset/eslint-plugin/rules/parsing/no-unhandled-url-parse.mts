@@ -1,76 +1,94 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
   isFunctionNode,
   resolveConstant,
   stringValue,
-} from '../analysis/constant-resolution.mjs';
+  type SourceContext,
+} from '../analysis/constant-resolution.mts';
+import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
+
+type Candidate = { readonly node: TSESTree.NewExpression; readonly argument: TSESTree.Node };
+type Guard = { readonly text: string; readonly scope: TSESTree.Node | undefined };
 
 const MAX_PARTS = 100;
 const PARSED_MEMBERS = new Set(['href', 'url', 'origin']);
-const WRAPPERS = new Set(['TSNonNullExpression', 'TSAsExpression', 'TSSatisfiesExpression']);
-const NAMED_FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression']);
+const NAMED_FUNCTIONS = new Set<string>([
+  AST_NODE_TYPES.FunctionDeclaration,
+  AST_NODE_TYPES.FunctionExpression,
+]);
 
-function isUrlIdentifier(node) {
-  return node.type === 'Identifier' && node.name === 'URL';
+function isUrlIdentifier(node: TSESTree.Node): boolean {
+  return node.type === AST_NODE_TYPES.Identifier && node.name === 'URL';
 }
 
-function isUrlConstructor(node) {
+function isUrlConstructor(node: TSESTree.Node): boolean {
   return (
     isUrlIdentifier(node) ||
-    (node.type === 'MemberExpression' &&
-      node.object.type === 'Identifier' &&
+    (node.type === AST_NODE_TYPES.MemberExpression &&
+      node.object.type === AST_NODE_TYPES.Identifier &&
       node.object.name === 'globalThis' &&
       isUrlIdentifier(node.property))
   );
 }
 
-function bare(node) {
+function bare(node: TSESTree.Node): TSESTree.Node {
   const chain = [node];
   for (const current of chain) {
-    if (WRAPPERS.has(current.type)) {
+    if (
+      current.type === AST_NODE_TYPES.TSNonNullExpression ||
+      current.type === AST_NODE_TYPES.TSAsExpression ||
+      current.type === AST_NODE_TYPES.TSSatisfiesExpression
+    ) {
       chain.push(current.expression);
     }
   }
-  return chain.at(-1);
+  return chain.at(-1) ?? node;
 }
 
-function annotatedType(definition) {
-  const holder = definition.type === 'Variable' ? definition.node.id : definition.name;
-  return holder.typeAnnotation?.typeAnnotation;
+function annotatedType(definition: TSESLint.Scope.Definition): TSESTree.TypeNode | undefined {
+  const holder =
+    definition.type === TSESLint.Scope.DefinitionType.Variable
+      ? definition.node.id
+      : definition.name;
+  return 'typeAnnotation' in holder ? holder.typeAnnotation?.typeAnnotation : undefined;
 }
 
-function isUrlTyped(context, node) {
-  if (node.type !== 'Identifier') {
+function isUrlTyped(context: SourceContext, node: TSESTree.Node): boolean {
+  if (node.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
   const definitions = findVariable(context, node, node.name)?.defs ?? [];
-  const type = definitions.length === 1 ? annotatedType(definitions[0]) : undefined;
-  return type?.type === 'TSTypeReference' && isUrlIdentifier(type.typeName);
+  const [only] = definitions;
+  const type = definitions.length === 1 && only !== undefined ? annotatedType(only) : undefined;
+  return type?.type === AST_NODE_TYPES.TSTypeReference && isUrlIdentifier(type.typeName);
 }
 
-function isCanParse(node) {
+function isCanParse(node: TSESTree.CallExpression): boolean {
   const { callee } = node;
   return (
-    callee.type === 'MemberExpression' &&
+    callee.type === AST_NODE_TYPES.MemberExpression &&
     isUrlIdentifier(callee.object) &&
     !callee.computed &&
-    callee.property.name === 'canParse'
+    nameOf(callee.property) === 'canParse'
   );
 }
 
-function textParts(context, node) {
+function textParts(
+  context: SourceContext,
+  node: TSESTree.Node,
+): readonly TSESTree.Node[] | undefined {
   const value = resolveConstant(context, node);
   if (stringValue(value) !== undefined) {
     return [];
   }
-  if (value?.type === 'BinaryExpression' && value.operator === '+') {
+  if (value?.type === AST_NODE_TYPES.BinaryExpression && value.operator === '+') {
     return [value.left, value.right];
   }
-  return value?.type === 'TemplateLiteral' ? value.expressions : undefined;
+  return value?.type === AST_NODE_TYPES.TemplateLiteral ? value.expressions : undefined;
 }
 
-function isConstantText(context, node) {
+function isConstantText(context: SourceContext, node: TSESTree.Node): boolean {
   const pending = [node];
   for (const current of pending) {
     const parts = textParts(context, current);
@@ -82,39 +100,39 @@ function isConstantText(context, node) {
   return true;
 }
 
-function isParsedMember(node) {
+function isParsedMember(node: TSESTree.Node): boolean {
   return (
-    node.type === 'MemberExpression' &&
+    node.type === AST_NODE_TYPES.MemberExpression &&
     !node.computed &&
-    node.property.type === 'Identifier' &&
+    node.property.type === AST_NODE_TYPES.Identifier &&
     PARSED_MEMBERS.has(node.property.name)
   );
 }
 
-function isUrlValue(context, node) {
+function isUrlValue(context: SourceContext, node: TSESTree.Node): boolean {
   const value = bare(node);
   const resolved = resolveConstant(context, value);
   return (
     isParsedMember(value) ||
     isUrlTyped(context, value) ||
-    (resolved?.type === 'NewExpression' && isUrlConstructor(resolved.callee))
+    (resolved?.type === AST_NODE_TYPES.NewExpression && isUrlConstructor(resolved.callee))
   );
 }
 
-function isSafeText(context, node) {
+function isSafeText(context: SourceContext, node: TSESTree.Node): boolean {
   return isConstantText(context, node) || isUrlValue(context, node);
 }
 
-function isImportMetaUrl(node) {
+function isImportMetaUrl(node: TSESTree.Node | undefined): boolean {
   return (
-    node?.type === 'MemberExpression' &&
-    node.object.type === 'MetaProperty' &&
+    node?.type === AST_NODE_TYPES.MemberExpression &&
+    node.object.type === AST_NODE_TYPES.MetaProperty &&
     node.object.meta.name === 'import' &&
-    node.property.name === 'url'
+    nameOf(node.property) === 'url'
   );
 }
 
-function isModuleBase(context, node) {
+function isModuleBase(context: SourceContext, node: TSESTree.Node | undefined): boolean {
   const chain = [node];
   for (const current of chain) {
     const value = current === undefined ? undefined : resolveConstant(context, current);
@@ -122,7 +140,7 @@ function isModuleBase(context, node) {
       return true;
     }
     if (
-      value?.type === 'NewExpression' &&
+      value?.type === AST_NODE_TYPES.NewExpression &&
       isUrlConstructor(value.callee) &&
       chain.length < MAX_PARTS
     ) {
@@ -132,34 +150,41 @@ function isModuleBase(context, node) {
   return false;
 }
 
-function inBlock(block, node) {
+function inBlock(block: TSESTree.Node, node: TSESTree.Node): boolean {
   return block.range[0] <= node.range[0] && node.range[1] <= block.range[1];
 }
 
-function isInsideTry(node) {
+function isInsideTry(node: TSESTree.Node): boolean {
   const scope = ancestorsOf(node).find((ancestor) => NAMED_FUNCTIONS.has(ancestor.type));
   return ancestorsOf(node).some(
     (ancestor) =>
-      ancestor.type === 'TryStatement' &&
+      ancestor.type === AST_NODE_TYPES.TryStatement &&
       ancestor.handler !== null &&
       inBlock(ancestor.block, node) &&
       (scope === undefined || inBlock(scope, ancestor)),
   );
 }
 
-function functionOf(node) {
+function functionOf(node: TSESTree.Node): TSESTree.Node | undefined {
   return ancestorsOf(node).find(
-    (ancestor) => isFunctionNode(ancestor) || ancestor.type === 'Program',
+    (ancestor) => isFunctionNode(ancestor) || ancestor.type === AST_NODE_TYPES.Program,
   );
 }
 
-function isGuarded(sourceCode, candidate, guards) {
+function isGuarded(
+  sourceCode: SourceCode,
+  candidate: Candidate,
+  guards: readonly Guard[],
+): boolean {
   const text = sourceCode.getText(bare(candidate.argument));
-  const scopes = new Set([candidate.node, ...ancestorsOf(candidate.node)]);
+  const scopes = new Set<TSESTree.Node | undefined>([
+    candidate.node,
+    ...ancestorsOf(candidate.node),
+  ]);
   return guards.some((guard) => guard.text === text && scopes.has(guard.scope));
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'unhandledUrlParse'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -174,16 +199,16 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const candidates = [];
-    const guards = [];
+    const candidates: Candidate[] = [];
+    const guards: Guard[] = [];
 
     return {
-      NewExpression(node) {
+      NewExpression(node: TSESTree.NewExpression) {
         const [argument, base] = node.arguments;
         if (
           !isUrlConstructor(node.callee) ||
           argument === undefined ||
-          argument.type === 'SpreadElement' ||
+          argument.type === AST_NODE_TYPES.SpreadElement ||
           isModuleBase(context, base) ||
           (isSafeText(context, argument) && (base === undefined || isSafeText(context, base))) ||
           isInsideTry(node)
@@ -192,7 +217,7 @@ export const rule = {
         }
         candidates.push({ node, argument });
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         const [argument] = node.arguments;
         if (isCanParse(node) && argument !== undefined) {
           guards.push({ text: sourceCode.getText(bare(argument)), scope: functionOf(node) });

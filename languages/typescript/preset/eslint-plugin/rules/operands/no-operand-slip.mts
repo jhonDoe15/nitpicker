@@ -1,37 +1,52 @@
-import { key } from '../../../../../../shared/logic/terms.mjs';
-import { assignmentReport, erasingReport } from './operand-arithmetic.mjs';
-import { chainSlips } from './operand-chains.mjs';
-import { describeTerm, inBooleanContext, isStable, normalTerm } from './operand-terms.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { key } from '../analysis/logic/term-views.mts';
+import type { SourceCode } from '../typed/node-views.mts';
+import { assignmentReport, erasingReport } from './operand-arithmetic.mts';
+import { chainSlips } from './operand-chains.mts';
+import { describeTerm, inBooleanContext, isStable, normalTerm } from './operand-terms.mts';
 
-const SELF_OPERATORS = new Set(['<', '<=', '>', '>=', '-', '/', '%', '&', '|', '^']);
-const NAN_TESTS = new Set(['===', '!==', '==', '!=']);
-const VALUE_READS = new Set(['name', 'member', 'index']);
+type MessageId =
+  | 'sameOperand'
+  | 'nanTest'
+  | 'repeatedOperand'
+  | 'impossible'
+  | 'always'
+  | 'implied'
+  | 'covered'
+  | 'erasingOperation'
+  | 'misrefactoredAssignment';
+type Report = TSESLint.ReportDescriptor<MessageId>;
+type Text = Pick<SourceCode, 'getText'>;
+
+const SELF_OPERATORS = new Set<string>(['<', '<=', '>', '>=', '-', '/', '%', '&', '|', '^']);
+const NAN_TESTS = new Set<string>(['===', '!==', '==', '!=']);
+const VALUE_READS = new Set<string>(['name', 'member', 'index']);
 
 const FIX_COPY = ' One side was probably copied: fix the operand that was meant to differ.';
 
-function sameOperandReport(node, sourceCode) {
+function sameOperandReport(node: TSESTree.BinaryExpression, sourceCode: Text): Report | undefined {
   const left = normalTerm(node.left, sourceCode, false);
   const right = normalTerm(node.right, sourceCode, false);
   if (!isStable(left) || key(left) !== key(right)) {
     return undefined;
   }
   const isNanTest = NAN_TESTS.has(node.operator) && VALUE_READS.has(left.kind);
-  const messageId = isNanTest ? 'nanTest' : 'sameOperand';
+  const messageId: MessageId = isNanTest ? 'nanTest' : 'sameOperand';
   return { node, messageId, data: { operand: describeTerm(left).text, operator: node.operator } };
 }
 
-function binaryReport(node, sourceCode) {
+function binaryReport(node: TSESTree.BinaryExpression, sourceCode: Text): Report | undefined {
   const isSelfOperator = SELF_OPERATORS.has(node.operator) || NAN_TESTS.has(node.operator);
   const same = isSelfOperator ? sameOperandReport(node, sourceCode) : undefined;
   return same ?? erasingReport(node, sourceCode);
 }
 
-function isChainHead(node) {
+function isChainHead(node: TSESTree.LogicalExpression): boolean {
   const parent = node.parent;
-  return parent?.type !== 'LogicalExpression' || parent.operator !== node.operator;
+  return parent.type !== AST_NODE_TYPES.LogicalExpression || parent.operator !== node.operator;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -59,7 +74,7 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    function report(found) {
+    function report(found: Report | undefined): void {
       if (found !== undefined) {
         context.report(found);
       }

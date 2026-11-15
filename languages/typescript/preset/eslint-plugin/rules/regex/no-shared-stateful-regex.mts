@@ -1,3 +1,4 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   enclosingScope,
   heldRegex,
@@ -5,36 +6,57 @@ import {
   isInLoopWithout,
   isLoopCondition,
   unwrapped,
-} from './regex-bindings.mjs';
+  type HeldRegex,
+} from './regex-bindings.mts';
 
-const REGEX_METHODS = new Set(['test', 'exec']);
-const STICKY_STRING_METHODS = new Set(['match', 'replace']);
+type Docs = { readonly requiresTypeChecking: boolean };
+type Node = TSESTree.Node;
+type Context = TSESLint.RuleContext<'sharedRegex', readonly unknown[]>;
+type Holder = { readonly key: Node; readonly held: HeldRegex };
+type Use = Holder & {
+  readonly node: TSESTree.CallExpression;
+  readonly method: string;
+  readonly target: Node;
+  readonly scope: Node | undefined;
+};
+type Reset = {
+  readonly node: TSESTree.AssignmentExpression;
+  readonly key: Node;
+  readonly scope: Node | undefined;
+};
+type State = { readonly context: Context; readonly uses: Use[]; readonly resets: Reset[] };
 
-function methodName(callee) {
-  return callee.type === 'MemberExpression' &&
+const REGEX_METHODS = new Set<string>(['test', 'exec']);
+const STICKY_STRING_METHODS = new Set<string>(['match', 'replace']);
+
+function methodName(callee: Node): string | undefined {
+  return callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
-    callee.property.type === 'Identifier'
+    callee.property.type === AST_NODE_TYPES.Identifier
     ? callee.property.name
     : undefined;
 }
 
-function isBefore(left, right) {
+function isBefore(left: Node, right: Node): boolean {
   return left.range[1] <= right.range[0];
 }
 
-function regexArgument(node, method) {
+function regexArgument(node: TSESTree.CallExpression, method: string): Node | undefined {
   if (REGEX_METHODS.has(method)) {
-    return node.callee.object;
+    return node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.object : undefined;
   }
   return STICKY_STRING_METHODS.has(method) ? node.arguments[0] : undefined;
 }
 
-function holderKey(context, target) {
+function holderKey(context: Context, target: Node): Holder | undefined {
   const held = heldRegex(context, target);
   return held === undefined ? undefined : { key: held.creation, held };
 }
 
-function collectUse(state, { node, method, target }) {
+function collectUse(
+  state: State,
+  { node, method, target }: Pick<Use, 'node' | 'method' | 'target'>,
+): void {
   const holder = holderKey(state.context, target);
   const skipped =
     holder === undefined || (STICKY_STRING_METHODS.has(method) && holder.held.flag !== 'y');
@@ -43,9 +65,9 @@ function collectUse(state, { node, method, target }) {
   }
 }
 
-function collectReset(state, node) {
+function collectReset(state: State, node: TSESTree.AssignmentExpression): void {
   const { left } = node;
-  if (left.type !== 'MemberExpression' || methodName(left) !== 'lastIndex') {
+  if (left.type !== AST_NODE_TYPES.MemberExpression || methodName(left) !== 'lastIndex') {
     return;
   }
   const holder = holderKey(state.context, left.object);
@@ -54,11 +76,11 @@ function collectReset(state, node) {
   }
 }
 
-function isReset(state, use) {
+function isReset(state: State, use: Use): boolean {
   return state.resets.some((reset) => reset.key === use.key && reset.scope === use.scope);
 }
 
-function isEarlierUse(state, use) {
+function isEarlierUse(state: State, use: Use): boolean {
   return state.uses.some(
     (other) =>
       other !== use &&
@@ -69,7 +91,7 @@ function isEarlierUse(state, use) {
   );
 }
 
-function isShared(state, use) {
+function isShared(state: State, use: Use): boolean {
   const { creation } = use.held;
   return (
     enclosingScope(creation) !== use.scope ||
@@ -78,7 +100,7 @@ function isShared(state, use) {
   );
 }
 
-function report(context, use) {
+function report(context: Context, use: Use): void {
   context.report({
     node: use.node,
     messageId: 'sharedRegex',
@@ -90,7 +112,7 @@ function report(context, use) {
   });
 }
 
-function reportShared(state) {
+function reportShared(state: State): void {
   for (const use of state.uses) {
     if (!isLoopCondition(use.node) && !isReset(state, use) && isShared(state, use)) {
       report(state.context, use);
@@ -98,7 +120,7 @@ function reportShared(state) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'sharedRegex', [], Docs> = {
   meta: {
     type: 'problem',
     docs: {
@@ -113,11 +135,14 @@ export const rule = {
     },
   },
   create(context) {
-    const state = { context, uses: [], resets: [] };
+    const state: State = { context, uses: [], resets: [] };
     return {
       CallExpression(node) {
         const method = methodName(node.callee);
-        const target = method === undefined ? undefined : regexArgument(node, method);
+        if (method === undefined) {
+          return;
+        }
+        const target = regexArgument(node, method);
         if (target !== undefined) {
           collectUse(state, { node, method, target });
         }
