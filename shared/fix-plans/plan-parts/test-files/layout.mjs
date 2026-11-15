@@ -42,13 +42,26 @@ function infixOf(tests) {
   return specs > tests.length - specs ? 'spec' : 'test';
 }
 
+function nestedFolder(root, relative, tests) {
+  const mirrored = path.posix.join(root, relative);
+  const folders = new Set(tests.map((test) => path.posix.dirname(test)));
+  if (folders.has(mirrored)) {
+    return mirrored;
+  }
+  const named = relative
+    .split('/')
+    .map((segment) => path.posix.join(root, segment))
+    .find((folder) => folders.has(folder));
+  return named ?? mirrored;
+}
+
 function placed(file, { root, tests, mirror }) {
   const { dir, name } = path.posix.parse(file);
   const language = languageOf(file);
   const nested =
     mirror || tests.some((test) => testRootOf(test) === root && path.posix.dirname(test) !== root);
   const relative = dir.slice(parentOf(root).length).replace(/^\//u, '').replace(SOURCE_ROOT, '');
-  const folder = nested ? path.posix.join(root, relative) : root;
+  const folder = nested ? nestedFolder(root, relative, tests) : root;
   if (language === 'python') {
     return path.posix.join(folder, `test_${name}.py`);
   }

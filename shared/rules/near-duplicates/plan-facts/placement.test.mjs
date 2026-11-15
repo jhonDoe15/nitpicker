@@ -77,6 +77,14 @@ describe('suggestedPlace', () => {
     });
   });
 
+  it('keeps the function beside copies in two files of one folder', () => {
+    expect(place(['src/orders/a.ts', 'src/orders/b.ts'])).toEqual({
+      folder: 'src/orders',
+      kind: 'common',
+      reason: 'the copies are in one folder, so the function stays beside them',
+    });
+  });
+
   it('reads the default layout when none is given', () => {
     expect(suggestedPlace(['a/features/x/p.py', 'a/features/y/q.py'])).toEqual({
       folder: 'a/shared',

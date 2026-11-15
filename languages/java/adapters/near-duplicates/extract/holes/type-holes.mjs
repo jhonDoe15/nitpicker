@@ -4,6 +4,7 @@ import {
 } from '../../../../../../shared/fix/recipes/extract/bijection.mjs';
 import { namedChildren, squashed } from '../syntax.mjs';
 
+const NAMED = new Set(['type_identifier', 'scoped_type_identifier']);
 const DIFFERENT = 'the copies use different types';
 
 function zipped(left, right) {
@@ -35,6 +36,9 @@ function partsOf(x, y) {
   if (x.type === 'generic_type') {
     return genericParts(x, y);
   }
+  if (x.type === 'catch_type') {
+    return zipped(namedChildren(x), namedChildren(y));
+  }
   return x.type === 'array_type' ? arrayParts(x, y) : { declined: DIFFERENT };
 }
 
@@ -43,7 +47,7 @@ function expand(state, [x, y], pending) {
   if (texts[0] === texts[1]) {
     return undefined;
   }
-  if (x.type === 'type_identifier' && y.type === 'type_identifier') {
+  if (NAMED.has(x.type) && NAMED.has(y.type)) {
     recordTypeHole(state.holes, [x, y], texts);
     return undefined;
   }
@@ -70,9 +74,16 @@ const TYPE_NAMES = [
   ...Array.from({ length: 20 }, (_, index) => `T${index + 1}`),
 ];
 
+const EXCEPTION_NAMES = ['E', ...Array.from({ length: 9 }, (_, index) => `E${index + 2}`)];
+
 export function nameTypeHoles(holes, taken) {
-  const free = TYPE_NAMES.filter((name) => !taken.has(name));
-  return holes.length > free.length
-    ? undefined
-    : holes.map((hole, index) => ({ ...hole, name: free[index] }));
+  const free = {
+    type: TYPE_NAMES.filter((name) => !taken.has(name)),
+    exception: EXCEPTION_NAMES.filter((name) => !taken.has(name)),
+  };
+  const named = holes.map((hole) => ({
+    ...hole,
+    name: free[hole.usage === 'exception' ? 'exception' : 'type'].shift(),
+  }));
+  return named.some(({ name }) => name === undefined) ? undefined : named;
 }

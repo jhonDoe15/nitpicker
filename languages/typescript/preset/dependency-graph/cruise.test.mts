@@ -2,12 +2,12 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
 import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 import { projectImports as untypedProjectImports } from './cruise.mjs';
 
 type ImportGraph = {
@@ -39,7 +39,7 @@ function projectWith(files: Readonly<Record<string, string>>): string {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   roots.push(parent);
   const root = path.join(parent, 'head');
-  writeProjectFiles(root, files);
+  writeFiles(root, files);
   return root;
 }
 

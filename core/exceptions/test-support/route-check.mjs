@@ -1,6 +1,6 @@
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
-import { applyPythonExceptions } from '../../../languages/python/adapters/configuration/python-exceptions.mjs';
+import { applyPythonExceptions } from '../../../languages/python/adapters/configuration/python-exceptions.mts';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
 import { validateConfig } from '../../configuration/validate.mjs';
 
