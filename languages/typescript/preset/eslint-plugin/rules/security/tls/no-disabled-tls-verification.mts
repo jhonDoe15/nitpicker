@@ -1,6 +1,9 @@
-import { suggestible } from '../../../fixes/support/descriptors.mjs';
-import { tlsOptionFix } from '../../../fixes/security/tls-option-fix.mjs';
-import { isFunctionNode, stringValue } from '../../analysis/constant-resolution.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { suggestible } from '../../../fixes/support/descriptors.mts';
+import type { FixPlan } from '../../../fixes/support/ranges.mts';
+import { tlsOptionFix } from '../../../fixes/security/tls-option-fix.mts';
+import { isFunctionNode, stringValue } from '../../analysis/constant-resolution.mts';
+import { nameOf } from '../../typed/node-views.mts';
 import {
   isLiteral,
   leafValues,
@@ -8,8 +11,11 @@ import {
   propertyNamed,
   staticKey,
   unwrapped,
-} from '../security-values.mjs';
-import { hasInsecureText } from './tls-text.mjs';
+  type Context,
+} from '../security-values.mts';
+import { hasInsecureText } from './tls-text.mts';
+
+type MessageIds = 'tlsVerificationOff' | 'dropOption';
 
 const ENV_NAME = 'NODE_TLS_REJECT_UNAUTHORIZED';
 const FALSE_DISABLES = new Set([
@@ -28,51 +34,56 @@ const TRUE_DISABLES = new Set([
   'tlsAllowInvalidHostnames',
   'tlsInsecure',
 ]);
-const SERVER_FACTORIES = new Set(['createServer', 'createSecureServer', 'Server']);
+const SERVER_FACTORIES = new Set<string | undefined>([
+  'createServer',
+  'createSecureServer',
+  'Server',
+]);
 const CONDITION_OPERATORS = new Set(['===', '!==', '==', '!=']);
 
-function isOffValue(leaf) {
+function isOffValue(leaf: TSESTree.Node): boolean {
   return isLiteral(leaf, 0) || stringValue(leaf) === '0';
 }
 
-function isEnvRead(node) {
+function isEnvRead(node: TSESTree.Node): boolean {
   const target = unwrapped(node);
-  const owner = target?.type === 'MemberExpression' ? unwrapped(target.object) : undefined;
+  const owner =
+    target.type === AST_NODE_TYPES.MemberExpression ? unwrapped(target.object) : undefined;
   return (
-    owner?.type === 'MemberExpression' &&
+    owner?.type === AST_NODE_TYPES.MemberExpression &&
     memberName(owner) === 'env' &&
-    owner.object.type === 'Identifier' &&
+    owner.object.type === AST_NODE_TYPES.Identifier &&
     owner.object.name === 'process'
   );
 }
 
-function isCondition(leaf) {
+function isCondition(leaf: TSESTree.Node): boolean {
   const target = unwrapped(leaf);
   return (
-    (target.type === 'BinaryExpression' && CONDITION_OPERATORS.has(target.operator)) ||
-    (target.type === 'UnaryExpression' && target.operator === '!') ||
+    (target.type === AST_NODE_TYPES.BinaryExpression && CONDITION_OPERATORS.has(target.operator)) ||
+    (target.type === AST_NODE_TYPES.UnaryExpression && target.operator === '!') ||
     isEnvRead(target)
   );
 }
 
-function returnsNothing(fn) {
-  if (fn.body.type !== 'BlockStatement') {
+function returnsNothing(
+  fn: TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration,
+): boolean {
+  if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
     const body = unwrapped(fn.body);
     return (
-      (body.type === 'Identifier' && body.name === 'undefined') ||
-      (body.type === 'Literal' && body.raw === 'null')
+      (body.type === AST_NODE_TYPES.Identifier && body.name === 'undefined') ||
+      (body.type === AST_NODE_TYPES.Literal && body.raw === 'null')
     );
   }
   return fn.body.body.every(
     (statement) =>
-      statement.type === 'ReturnStatement' &&
-      (statement.argument === null ||
-        statement.argument === undefined ||
-        statement.argument.name === 'undefined'),
+      statement.type === AST_NODE_TYPES.ReturnStatement &&
+      (statement.argument === null || nameOf(statement.argument) === 'undefined'),
   );
 }
 
-function disablesNamed(context, name, value) {
+function disablesNamed(context: Context, name: string, value: TSESTree.Node): boolean {
   const leaves = leafValues(context, value);
   if (name === 'checkServerIdentity') {
     return leaves.some((leaf) => isFunctionNode(leaf) && returnsNothing(leaf));
@@ -88,7 +99,7 @@ function disablesNamed(context, name, value) {
   );
 }
 
-function isServerOptions(context, property) {
+function isServerOptions(context: Context, property: TSESTree.Property): boolean {
   const object = property.parent;
   const requestCert = propertyNamed(context, object, 'requestCert');
   if (
@@ -98,23 +109,24 @@ function isServerOptions(context, property) {
     return true;
   }
   const call = object.parent;
-  const callee =
-    call?.type === 'CallExpression' || call?.type === 'NewExpression'
-      ? unwrapped(call.callee)
-      : undefined;
-  const name = callee?.type === 'MemberExpression' ? memberName(callee) : callee?.name;
-  return (call?.arguments ?? []).includes(object) && SERVER_FACTORIES.has(name);
+  if (call.type !== AST_NODE_TYPES.CallExpression && call.type !== AST_NODE_TYPES.NewExpression) {
+    return false;
+  }
+  const callee = unwrapped(call.callee);
+  const name =
+    callee.type === AST_NODE_TYPES.MemberExpression ? memberName(callee) : nameOf(callee);
+  return call.arguments.some((argument) => argument === object) && SERVER_FACTORIES.has(name);
 }
 
-function targetName(left) {
+function targetName(left: TSESTree.Node): string | undefined {
   const target = unwrapped(left);
-  if (target.type === 'MemberExpression') {
+  if (target.type === AST_NODE_TYPES.MemberExpression) {
     return memberName(target);
   }
-  return target.type === 'Identifier' ? target.name : undefined;
+  return target.type === AST_NODE_TYPES.Identifier ? target.name : undefined;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds> = {
   meta: {
     type: 'problem',
     hasSuggestions: true,
@@ -127,13 +139,13 @@ export const rule = {
     },
   },
   create(context) {
-    function report(node, plan) {
+    function report(node: TSESTree.Node, plan?: FixPlan): void {
       context.report(
         suggestible({ node, messageId: 'tlsVerificationOff' }, { messageId: 'dropOption', plan }),
       );
     }
 
-    function checkNamed(node, name, value) {
+    function checkNamed(node: TSESTree.Node, name: string | undefined, value: TSESTree.Node): void {
       if (name !== undefined && disablesNamed(context, name, value)) {
         report(node, tlsOptionFix(context.sourceCode, node));
       }

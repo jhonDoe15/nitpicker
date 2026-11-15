@@ -1,74 +1,129 @@
-import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mjs';
-import { bindingsOf, importedFunction, isModuleValue, loadedModule } from '../imported-names.mjs';
-import { leafValues, propertyNamed, staticKey, unwrapped } from '../security-values.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mts';
+import {
+  bindingsOf,
+  importedFunction,
+  isModuleValue,
+  loadedModule,
+  type ModuleBindings,
+} from '../imported-names.mts';
+import {
+  leafValues,
+  propertyNamed,
+  staticKey,
+  unwrapped,
+  type Context,
+} from '../security-values.mts';
 
-const CODE_REBUILDING_PACKAGES = new Set(['node-serialize', 'funcster', 'cryo']);
+const FULL_SCHEMA_MESSAGE = 'yamlFullSchema';
+
+type MessageIds =
+  | 'rebuildsCode'
+  | 'v8Clone'
+  | 'yamlLegacyLoad'
+  | 'v8Deserialize'
+  | 'runsText'
+  | typeof FULL_SCHEMA_MESSAGE
+  | 'bsonFunctions'
+  | 'entityExpansion';
+type Options = readonly [Readonly<Record<string, unknown>>?];
+type Invocation = TSESTree.CallExpression | TSESTree.NewExpression;
+type Finding = readonly [MessageIds, string | undefined];
+type Scope = {
+  readonly context: Context;
+  readonly v8: ModuleBindings;
+  readonly vm: ModuleBindings;
+  readonly yaml: ModuleBindings;
+  readonly yamlMajor: unknown;
+};
+
+const CODE_REBUILDING_PACKAGES = new Set<string | undefined>([
+  'node-serialize',
+  'funcster',
+  'cryo',
+]);
 const V8_MODULES = new Set(['v8', 'node:v8']);
 const VM_MODULES = new Set(['vm', 'node:vm']);
 const YAML_MODULES = new Set(['js-yaml']);
-const V8_READERS = new Set(['deserialize', 'Deserializer']);
-const VM_RUNNERS = new Set([
+const V8_READERS = new Set<string | undefined>(['deserialize', 'Deserializer']);
+const VM_RUNNERS = new Set<string | undefined>([
   'runInNewContext',
   'runInThisContext',
   'runInContext',
   'compileFunction',
 ]);
-const VM_CONSTRUCTORS = new Set(['Script', 'SourceTextModule']);
-const YAML_FULL_SCHEMAS = new Set(['DEFAULT_FULL_SCHEMA', 'FULL_SCHEMA']);
-const YAML_LOADERS = new Set(['load', 'loadAll']);
+const VM_CONSTRUCTORS = new Set<string | undefined>(['Script', 'SourceTextModule']);
+const YAML_FULL_SCHEMAS = new Set<string | undefined>(['DEFAULT_FULL_SCHEMA', 'FULL_SCHEMA']);
+const YAML_LOADERS = new Set<string | undefined>(['load', 'loadAll']);
 const LEGACY_YAML_MAJOR = 3;
-const BSON_FUNCTION_OPTIONS = new Set(['evalFunctions', 'cacheFunctions']);
-const ENTITY_OPTIONS = new Set(['noent']);
+const BSON_FUNCTION_OPTIONS = new Set<string | undefined>(['evalFunctions', 'cacheFunctions']);
+const ENTITY_OPTIONS = new Set<string | undefined>(['noent']);
 
-function importedSource(node) {
-  if (node.type === 'ImportDeclaration') {
+function importedSource(
+  node:
+    | TSESTree.ImportDeclaration
+    | TSESTree.TSImportEqualsDeclaration
+    | TSESTree.ImportExpression
+    | TSESTree.CallExpression,
+): string | undefined {
+  if (node.type === AST_NODE_TYPES.ImportDeclaration) {
     return node.source.value;
   }
-  if (node.type === 'TSImportEqualsDeclaration') {
-    return node.moduleReference.type === 'TSExternalModuleReference'
+  if (node.type === AST_NODE_TYPES.TSImportEqualsDeclaration) {
+    return node.moduleReference.type === AST_NODE_TYPES.TSExternalModuleReference
       ? stringValue(node.moduleReference.expression)
       : undefined;
   }
   return loadedModule(node);
 }
 
-function isFixedText(context, node) {
+function isFixedText(context: Context, node: TSESTree.Node): boolean {
   const leaves = leafValues(context, node);
   return leaves.length > 0 && leaves.every((leaf) => stringValue(leaf) !== undefined);
 }
 
-function isTrue(context, node) {
-  return leafValues(context, node).some((leaf) => leaf.type === 'Literal' && leaf.value === true);
+function isTrue(context: Context, node: TSESTree.Node): boolean {
+  return leafValues(context, node).some(
+    (leaf) => leaf.type === AST_NODE_TYPES.Literal && leaf.value === true,
+  );
 }
 
-function report({ context }, node, finding) {
+function report({ context }: Scope, node: TSESTree.Node, finding: Finding): void {
   context.report({ node, messageId: finding[0], data: { name: finding[1] } });
 }
 
-function checkSource(scope, node) {
+function checkSource(
+  scope: Scope,
+  node:
+    | TSESTree.ImportDeclaration
+    | TSESTree.TSImportEqualsDeclaration
+    | TSESTree.ImportExpression
+    | TSESTree.CallExpression,
+): void {
   const source = importedSource(node);
   if (CODE_REBUILDING_PACKAGES.has(source)) {
     report(scope, node, ['rebuildsCode', source]);
   }
 }
 
-function runsTextAsCode(scope, node) {
+function runsTextAsCode(scope: Scope, node: Invocation): string | undefined {
   const runner = importedFunction(scope.context, node.callee, scope.vm);
   const known =
-    VM_RUNNERS.has(runner) || (node.type === 'NewExpression' && VM_CONSTRUCTORS.has(runner));
+    VM_RUNNERS.has(runner) ||
+    (node.type === AST_NODE_TYPES.NewExpression && VM_CONSTRUCTORS.has(runner));
   const text = node.arguments[0];
   return known && (text === undefined || !isFixedText(scope.context, text)) ? runner : undefined;
 }
 
-function isSerializeCall(scope, node) {
+function isSerializeCall(scope: Scope, node: TSESTree.Node | undefined): boolean {
   const call = unwrapped(resolveConstant(scope.context, unwrapped(node)));
   return (
-    call?.type === 'CallExpression' &&
+    call?.type === AST_NODE_TYPES.CallExpression &&
     importedFunction(scope.context, call.callee, scope.v8) === 'serialize'
   );
 }
 
-function checkInvocation(scope, node) {
+function checkInvocation(scope: Scope, node: Invocation): void {
   const reader = importedFunction(scope.context, node.callee, scope.v8);
   if (V8_READERS.has(reader)) {
     const clone = reader === 'deserialize' && isSerializeCall(scope, node.arguments[0]);
@@ -81,7 +136,7 @@ function checkInvocation(scope, node) {
   }
 }
 
-function checkLegacyYamlLoad(scope, node) {
+function checkLegacyYamlLoad(scope: Scope, node: TSESTree.CallExpression): void {
   const loader = importedFunction(scope.context, node.callee, scope.yaml);
   if (scope.yamlMajor !== LEGACY_YAML_MAJOR || !YAML_LOADERS.has(loader)) {
     return;
@@ -94,34 +149,40 @@ function checkLegacyYamlLoad(scope, node) {
   }
 }
 
-function checkYamlMember(scope, node) {
+function checkYamlMember(scope: Scope, node: TSESTree.MemberExpression): void {
   const schema = importedFunction(scope.context, node, scope.yaml);
   if (YAML_FULL_SCHEMAS.has(schema)) {
-    report(scope, node, ['yamlFullSchema', schema]);
+    report(scope, node, [FULL_SCHEMA_MESSAGE, schema]);
   }
 }
 
-function checkYamlImport(scope, node) {
+function checkYamlImport(
+  scope: Scope,
+  node: TSESTree.ImportSpecifier | TSESTree.ExportSpecifier,
+): void {
   const source = node.parent.source?.value;
-  const imported = node.type === 'ExportSpecifier' ? node.local : node.imported;
-  const name = imported.name ?? imported.value;
-  if (YAML_MODULES.has(source) && YAML_FULL_SCHEMAS.has(name)) {
-    report(scope, node, ['yamlFullSchema', name]);
+  const imported = node.type === AST_NODE_TYPES.ExportSpecifier ? node.local : node.imported;
+  const name = imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
+  if (source !== undefined && YAML_MODULES.has(source) && YAML_FULL_SCHEMAS.has(name)) {
+    report(scope, node, [FULL_SCHEMA_MESSAGE, name]);
   }
 }
 
-function checkYamlPattern(scope, node) {
-  const fromYaml =
-    node.id.type === 'ObjectPattern' && isModuleValue(scope.context, node.init, scope.yaml);
-  for (const property of fromYaml ? node.id.properties : []) {
+function checkYamlPattern(scope: Scope, node: TSESTree.VariableDeclarator): void {
+  const properties =
+    node.id.type === AST_NODE_TYPES.ObjectPattern &&
+    isModuleValue(scope.context, node.init ?? undefined, scope.yaml)
+      ? node.id.properties
+      : [];
+  for (const property of properties) {
     const key = staticKey(property);
     if (YAML_FULL_SCHEMAS.has(key)) {
-      report(scope, property, ['yamlFullSchema', key]);
+      report(scope, property, [FULL_SCHEMA_MESSAGE, key]);
     }
   }
 }
 
-function checkProperty(scope, node) {
+function checkProperty(scope: Scope, node: TSESTree.Property): void {
   const key = staticKey(node);
   if (!isTrue(scope.context, node.value)) {
     return;
@@ -133,7 +194,7 @@ function checkProperty(scope, node) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, Options> = {
   meta: {
     type: 'problem',
     docs: { description: 'Disallow rebuilding code or objects from untrusted data' },
@@ -164,18 +225,16 @@ export const rule = {
     },
   },
   create(context) {
-    let scope;
+    const { ast } = context.sourceCode;
+    const scope: Scope = {
+      context,
+      v8: bindingsOf(ast, V8_MODULES),
+      vm: bindingsOf(ast, VM_MODULES),
+      yaml: bindingsOf(ast, YAML_MODULES),
+      yamlMajor: context.options[0]?.['yamlMajor'],
+    };
 
     return {
-      Program(node) {
-        scope = {
-          context,
-          v8: bindingsOf(node, V8_MODULES),
-          vm: bindingsOf(node, VM_MODULES),
-          yaml: bindingsOf(node, YAML_MODULES),
-          yamlMajor: context.options[0]?.yamlMajor,
-        };
-      },
       ImportDeclaration(node) {
         checkSource(scope, node);
       },

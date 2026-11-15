@@ -1,13 +1,22 @@
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { findVariable } from '../../analysis/constant-resolution.mjs';
-import { bindingsOf, importedFunction } from '../imported-names.mjs';
-import { compositionKind, hasRuntimeValue, looksLikeSql, piecesOf } from './sql-composition.mjs';
-import { classify } from './sql-inert.mjs';
-import { sinkFor, variableSink } from './sql-sinks.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findVariable } from '../../analysis/constant-resolution.mts';
+import { ancestorsOf } from '../../typed/node-views.mts';
+import { bindingsOf, importedFunction } from '../imported-names.mts';
+import { type Context } from '../security-values.mts';
+import { compositionKind, hasRuntimeValue, looksLikeSql, piecesOf } from './sql-composition.mts';
+import { classify, type Piece } from './sql-inert.mts';
+import { sinkFor, variableSink, type Sink } from './sql-sinks.mts';
+
+type Options = readonly [Readonly<Record<string, unknown>>?];
+type Composition = TSESTree.BinaryExpression | TSESTree.TemplateLiteral | TSESTree.CallExpression;
 
 const FORMAT_MODULES = new Set(['util', 'node:util', 'sprintf-js']);
-const FORMAT_FUNCTIONS = new Set(['format', 'sprintf']);
-const COMPOSITION_TYPES = new Set(['BinaryExpression', 'TemplateLiteral', 'CallExpression']);
+const FORMAT_FUNCTIONS = new Set<string | undefined>(['format', 'sprintf']);
+const COMPOSITION_TYPES = new Set<string>([
+  AST_NODE_TYPES.BinaryExpression,
+  AST_NODE_TYPES.TemplateLiteral,
+  AST_NODE_TYPES.CallExpression,
+]);
 const EXAMPLE = 'SELECT * FROM users WHERE id = ${id}';
 const TAGGED_TEMPLATES = new Map([
   ['@prisma/client', `\`prisma.$queryRaw\`${EXAMPLE}\`\` (Prisma)`],
@@ -23,24 +32,33 @@ const ANY_TAGGED_TEMPLATE =
 
 export const SQL_LIBRARIES = [...TAGGED_TEMPLATES.keys()];
 
-export function taggedForm(library) {
-  const form = TAGGED_TEMPLATES.get(library);
+export function taggedForm(library: string | undefined): string {
+  const form = library === undefined ? undefined : TAGGED_TEMPLATES.get(library);
   return form === undefined ? ANY_TAGGED_TEMPLATE : `${form}, or `;
 }
 
-function initialPieces(context, identifier, isFormatCall) {
-  const init = findVariable(context, identifier, identifier.name)?.defs[0]?.node?.init;
+function initialPieces(
+  context: Context,
+  identifier: TSESTree.Identifier,
+  isFormatCall: (call: TSESTree.CallExpression) => boolean,
+): Piece[] {
+  const definition = findVariable(context, identifier, identifier.name)?.defs[0];
+  const init =
+    definition?.type === TSESLint.Scope.DefinitionType.Variable ? definition.node.init : undefined;
   if (init === undefined || init === null) {
     return [];
   }
   return piecesOf(context, init, isFormatCall) ?? [classify(context, init)];
 }
 
-function isComposition(node) {
-  return COMPOSITION_TYPES.has(node.type) && node.parent?.type !== 'TaggedTemplateExpression';
+function isComposition(node: TSESTree.Node): boolean {
+  return (
+    COMPOSITION_TYPES.has(node.type) &&
+    node.parent?.type !== AST_NODE_TYPES.TaggedTemplateExpression
+  );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'sqlBuilt', Options> = {
   meta: {
     type: 'problem',
     docs: { description: 'Disallow SQL text built from runtime values' },
@@ -57,17 +75,23 @@ export const rule = {
     },
   },
   create(context) {
-    const reported = new Set();
-    const tagged = taggedForm(context.options[0]?.sqlLibrary);
-    let formatters = bindingsOf({ body: [] }, FORMAT_MODULES);
+    const reported = new Set<TSESTree.Node>();
+    const library = context.options[0]?.['sqlLibrary'];
+    const tagged = taggedForm(typeof library === 'string' ? library : undefined);
+    const formatters = bindingsOf(context.sourceCode.ast, FORMAT_MODULES);
 
-    function isFormatCall(call) {
+    function isFormatCall(call: TSESTree.CallExpression): boolean {
       return FORMAT_FUNCTIONS.has(importedFunction(context, call.callee, formatters));
     }
 
-    function check(node, pieces, sink) {
+    function check(node: TSESTree.Node, pieces: Piece[] | undefined, sink: Sink | undefined): void {
       const covered = ancestorsOf(node).some((owner) => reported.has(owner));
-      if (!covered && hasRuntimeValue(pieces) && looksLikeSql(pieces, sink)) {
+      if (
+        !covered &&
+        pieces !== undefined &&
+        hasRuntimeValue(pieces) &&
+        looksLikeSql(pieces, sink)
+      ) {
         reported.add(node);
         context.report({
           node,
@@ -77,21 +101,22 @@ export const rule = {
       }
     }
 
+    function checkComposition(node: Composition): void {
+      const joined =
+        node.type === AST_NODE_TYPES.BinaryExpression &&
+        node.parent.type === AST_NODE_TYPES.BinaryExpression &&
+        node.parent.operator === '+';
+      if (isComposition(node) && !joined) {
+        check(node, piecesOf(context, node, isFormatCall), sinkFor(context, node));
+      }
+    }
+
     return {
-      Program(node) {
-        formatters = bindingsOf(node, FORMAT_MODULES);
-      },
-      'BinaryExpression, TemplateLiteral, CallExpression'(node) {
-        const joined =
-          node.type === 'BinaryExpression' &&
-          node.parent.type === 'BinaryExpression' &&
-          node.parent.operator === '+';
-        if (isComposition(node) && !joined) {
-          check(node, piecesOf(context, node, isFormatCall), sinkFor(context, node));
-        }
-      },
+      BinaryExpression: checkComposition,
+      TemplateLiteral: checkComposition,
+      CallExpression: checkComposition,
       AssignmentExpression(node) {
-        if (node.operator === '+=' && node.left.type === 'Identifier') {
+        if (node.operator === '+=' && node.left.type === AST_NODE_TYPES.Identifier) {
           const pieces = [
             ...initialPieces(context, node.left, isFormatCall),
             classify(context, node.right),

@@ -1,36 +1,51 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   hasCredentialShape,
   isHardcodedSecret,
   isSecretName,
 } from '../../../../../../shared/naming/secret-words.mjs';
-import { envKey, literalParts, memberName, stringKey } from './secret-nodes.mjs';
+import { envKey, literalParts, type LiteralPart, memberName, stringKey } from './secret-nodes.mts';
+
+type MessageIds = 'hardcodedSecret' | 'credentialLiteral';
+type Context = Readonly<TSESLint.RuleContext<MessageIds, readonly []>>;
 
 const FALLBACKS = new Set(['||', '??']);
 const ASSIGNMENTS = new Set(['=', '||=', '??=']);
 
-function propertyKey(node) {
+function propertyKey(node: TSESTree.Property | TSESTree.PropertyDefinition): string | undefined {
   if (node.computed) {
     return stringKey(node.key);
   }
-  return node.key.type === 'Identifier' ? node.key.name : stringKey(node.key);
+  return node.key.type === AST_NODE_TYPES.Identifier ? node.key.name : stringKey(node.key);
 }
 
-function bindingName(target) {
-  if (target.type === 'Identifier') {
+function bindingName(target: TSESTree.Node): string | undefined {
+  if (target.type === AST_NODE_TYPES.Identifier) {
     return target.name;
   }
-  return target.type === 'MemberExpression' ? memberName(target) : undefined;
+  return target.type === AST_NODE_TYPES.MemberExpression ? memberName(target) : undefined;
 }
 
-function secretParts(name, value) {
-  const named = name !== undefined && value !== null && value !== undefined && isSecretName(name);
-  return named ? literalParts(value).filter((part) => isHardcodedSecret(part.text, name)) : [];
+type SecretChecks = {
+  readonly checkValue: (name: string | undefined, value: TSESTree.Node | undefined) => void;
+  readonly checkCredential: (node: TSESTree.Node, text: string) => void;
+};
+
+function secretParts(name: string | undefined, value: TSESTree.Node | undefined): LiteralPart[] {
+  if (name === undefined || value === undefined || !isSecretName(name)) {
+    return [];
+  }
+  return literalParts(value).filter((part) => isHardcodedSecret(part.text, name));
 }
 
-function secretChecks(context) {
-  const reported = new Set();
+function secretChecks(context: Context): SecretChecks {
+  const reported = new Set<TSESTree.Node>();
 
-  function report(node, messageId, data = {}) {
+  function report(
+    node: TSESTree.Node,
+    messageId: MessageIds,
+    data: Readonly<Record<string, string>> = {},
+  ): void {
     if (!reported.has(node)) {
       reported.add(node);
       context.report({ node, messageId, data });
@@ -39,6 +54,9 @@ function secretChecks(context) {
 
   return {
     checkValue(name, value) {
+      if (name === undefined) {
+        return;
+      }
       for (const part of secretParts(name, value)) {
         report(part.node, 'hardcodedSecret', { name: `\`${name}\`` });
       }
@@ -51,7 +69,7 @@ function secretChecks(context) {
   };
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds> = {
   meta: {
     type: 'problem',
     docs: { description: 'Disallow secrets written into the source' },
@@ -68,16 +86,16 @@ export const rule = {
 
     return {
       VariableDeclarator(node) {
-        checks.checkValue(bindingName(node.id), node.init);
+        checks.checkValue(bindingName(node.id), node.init ?? undefined);
       },
       AssignmentPattern(node) {
         checks.checkValue(bindingName(node.left), node.right);
       },
       PropertyDefinition(node) {
-        checks.checkValue(propertyKey(node), node.value);
+        checks.checkValue(propertyKey(node), node.value ?? undefined);
       },
       Property(node) {
-        if (node.parent.type === 'ObjectExpression') {
+        if (node.parent.type === AST_NODE_TYPES.ObjectExpression) {
           checks.checkValue(propertyKey(node), node.value);
         }
       },
