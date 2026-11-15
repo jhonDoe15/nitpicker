@@ -9,7 +9,7 @@ import {
   normalizeCrap,
   normalizeMutation,
 } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
-import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../languages/typescript/preset/duplicates/normalize.mjs';
+import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../languages/typescript/preset/duplicates/normalize.mts';
 import { toEntryPointDiffFindings as toEntryPointDiffFindingsJs } from '../../../../languages/typescript/adapters/entry-points.mjs';
 import type { Finding } from '../../../../shared/values/findings.mts';
 

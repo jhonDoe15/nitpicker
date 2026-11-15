@@ -41,7 +41,7 @@ type CacheLocation = {
 const gitOutput: (repositoryRoot: string, args: readonly string[]) => string = runGit;
 
 const WORKER = fileURLToPath(
-  checkoutModuleUrl(new URL('./http-cache-worker.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('./http-cache-worker.mts', import.meta.url)),
 );
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;

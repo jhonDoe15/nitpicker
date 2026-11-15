@@ -1,6 +1,6 @@
 import { chainOf } from '../../../../../shared/traversal.mjs';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { freshName } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { nameHoles as sharedNameHoles } from '../../../../../shared/fix/recipes/extract/names.mjs';
 import { descendants } from './syntax.mjs';
 
 export function identifierTexts(sourceFile) {
@@ -25,26 +25,40 @@ function flowName(node) {
 }
 
 export function nameHoles(holes, taken) {
-  const names = new Set(taken);
-  const named = [];
-  for (const hole of holes) {
-    const name = freshName(flowName(hole.occurrences[0].a), names);
-    if (name === undefined) {
-      return undefined;
-    }
-    names.add(name);
-    named.push({ ...hole, name });
-  }
-  return named;
+  return sharedNameHoles(holes, taken, (hole) => flowName(hole.occurrences[0].a));
+}
+
+const TYPE_NAMES = [
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z',
+  ...Array.from({ length: 20 }, (_, index) => `T${index + 1}`),
+];
+
+export function nameTypeHoles(holes, taken) {
+  const free = TYPE_NAMES.filter((name) => !taken.has(name));
+  return holes.length > free.length
+    ? undefined
+    : holes.map((hole, index) => ({ ...hole, name: free[index] }));
+}
+
+export function typeArgumentText(hole, side, sourceFile) {
+  return hole.occurrences[0][side === 0 ? 'a' : 'b'].getText(sourceFile).replaceAll(/\s+/gu, ' ');
 }
 
 export function replacedText(range, holes, sourceFile) {
   const replacements = holes.flatMap((hole) =>
-    hole.occurrences.map(({ a }) => ({
-      start: a.getStart(sourceFile) - range.start,
-      end: a.end - range.start,
-      text: hole.kind === 'thunk' ? `${hole.name}()` : hole.name,
-    })),
+    hole.occurrences
+      .filter(({ a }) => a.getStart(sourceFile) >= range.start && a.end <= range.end)
+      .map(({ a }) => ({
+        start: a.getStart(sourceFile) - range.start,
+        end: a.end - range.start,
+        text: hole.kind === 'thunk' ? `${hole.name}()` : hole.name,
+      })),
   );
   return replacements
     .toSorted((left, right) => right.start - left.start)

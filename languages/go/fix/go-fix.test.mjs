@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { FAKE_GOFMT, fakeGoFormat } from './test-support/fake-go-format.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();

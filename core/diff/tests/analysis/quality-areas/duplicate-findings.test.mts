@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedFinding } from '../../../comparison/test-support/parsed-findings.mts';
-import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../../languages/typescript/preset/duplicates/normalize.mjs';
+import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../../languages/typescript/preset/duplicates/normalize.mts';
 
 type DuplicateOptions = {
   readonly configuredPaths: string[];

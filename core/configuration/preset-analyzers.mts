@@ -22,7 +22,7 @@ export const configureAll: (
   ...request: Parameters<typeof configureAnalyzers>
 ) => readonly ProfiledAnalyzer[] = configureAnalyzers;
 
-const entryPath = fileURLToPath(checkoutModuleUrl(new URL('../cli.mjs', import.meta.url)));
+const entryPath = fileURLToPath(checkoutModuleUrl(new URL('../cli.mts', import.meta.url)));
 const hygieneAnalyzers = analyzersOf(createHygieneAnalyzers(entryPath));
 const historyAnalyzers = analyzersOf(createHistoryAnalyzers(entryPath));
 

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 const ajv = new Ajv2020({ strict: false, allErrors: true });
 
@@ -11,7 +11,8 @@ function compiledSchema() {
   return ajv.getSchema(textOf(fieldOf(schema, '$id'))) ?? ajv.compile(fieldsOf(schema));
 }
 
-export function findingsSchemaErrors(findings: readonly unknown[]): string[] {
+export function findingsSchemaErrors(reported: unknown): string[] {
+  const findings = listOf(reported);
   const validate = compiledSchema();
   if (validate({ findings }) === true) {
     return [];

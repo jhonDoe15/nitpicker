@@ -65,22 +65,45 @@ the rule, and works on a `same` or `parameterizable` pair of methods in one clas
 becomes a private method placed after it, static when the body reads no instance state, and both
 bodies become one call. Signatures, `throws` clauses and annotations stay.
 
-- A differing literal becomes a parameter named after what it flows into. A differing call or any other expression is not passed: a `Supplier`
-  would need the static type of the expression, which the text does not give, so the finding stays.
+- A differing literal becomes a parameter named after what it flows into. A differing call or name read
+  becomes a `Supplier` parameter named `<name>Supplier` (`IntSupplier`, `LongSupplier`,
+  `DoubleSupplier` or `BooleanSupplier` for `int`, `long`, `double` and `boolean`), and the helper calls it
+  where the expression stood, so its timing and its count do not change. The type comes from where
+  the expression flows: the declared type of a non-`final` local it initializes, the return type when
+  it is returned, or `boolean` in an `if` condition. Anywhere else (an argument, an operand, a loop
+  condition), in a `final` local, in a `try` block (a lambda cannot throw the checked exceptions the
+  `catch` expects), in a method that has `throws`, inside a lambda or a nested class (a `return`
+  there belongs to that code), a hole used with two declared types gets one `Supplier` for each type, on a `byte`, `short`, `char` or `float`, or when it reads a local of the copied code or
+  a parameter the method writes, the finding stays. A lambda, an assignment, an increment or an
+  anonymous class inside the expression keeps it too.
+- A differing type becomes a type parameter (`<T>`, `<U>`, ...) of the helper, which stays callable with the
+  signatures of both copies: the callers infer it. The type must be a plain class name, alone or as the
+  argument of a generic type or an array, and sit in a parameter, return or local declaration or in a type
+  argument. The finding stays for a primitive, for a generic class that differs in its own name,
+  for a type after `new`, in a cast, in an `instanceof`, in a class literal or in a `throws` or
+  `catch`, and when the body calls a method on a value of the type, passes it to a call, or reads it
+  through a lambda: without the compiler the recipe cannot tell that the call still means the same for a
+  type parameter. A collection of the type may be iterated, sized, and filled with `add`, `put` and
+  the like, and its elements may be returned, assigned or compared with `==`.
 - A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
   that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to
   `byte`, `short` or `char`, an `int` literal that could narrow to them, a method with type parameters or varargs, copies with different
-  `throws`, a copy that is the only static one, copies in an interface, an enum, a record or an
-  anonymous class, a name the file already uses, and a copy in more than one pair are left alone.
+  `throws`, a copy that is the only static one, copies in an interface, an enum or a record, a name the file already uses, and a copy in more than one pair are left alone.
 - The helper is static only when the code provably uses no instance state. A capitalized name that
   a superclass or interface may declare, or a call whose name a static and an instance method (or a
   supertype) could both match, is ambiguous, and the finding stays.
 - A file that uses CRLF keeps CRLF in the inserted text.
-- Type holes are not turned into type parameters: `new URL(text)` against `new URI(text)` cannot be
-  written with a type parameter, and a changed signature would change callers.
-- Pairs in two classes or two files are not looked at. On gson, the URL and URI adapters are
-  anonymous classes and the SqlDate and SqlTime adapters are in two files, so the recipe changes
-  nothing there.
+- The methods of two anonymous classes of one class are extracted into a private static method of the
+  enclosing class, placed after the member that holds the first anonymous class. The enclosing class must
+  be a top-level or static class, the anonymous classes may declare only methods, and the shared code
+  must read no instance state of the class (the helper is static). The enclosing class must be
+  a class, not an enum, record or interface, and the anonymous classes must not sit in a generic method or
+  next to a local class. The rule only reports anonymous classes declared as fields, so the method-local
+  shape is never offered to the recipe.
+- Pairs in two named classes or two files are not looked at. On gson, the URL and URI adapters are
+  anonymous classes of one class, but they construct different classes (`new URL(text)` against
+  `new URI(text)`), which no type parameter can do, so they keep their fix plan. The SqlDate and SqlTime
+  adapters are in two files, so the recipe changes nothing there either.
 
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first

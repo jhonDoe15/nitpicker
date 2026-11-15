@@ -14,7 +14,7 @@ import type { PolicyConfig } from './types/policy-types.mts';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const fakeAnalyzerPath = fileURLToPath(
-  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mts', import.meta.url)),
 );
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 

@@ -103,6 +103,56 @@ function expectedOutcome(label, notebook) {
   };
 }
 
+const SOURCE_RECIPES = {
+  rules: [
+    'python-rules/forwarding-wrapper',
+    'python-rules/unused-option',
+    'mypy/unused-ignore',
+    'python-rules/falsy-default',
+  ],
+  changed: {
+    'app/api.py': [
+      'def _load(path: str, strict: bool = False) -> str:',
+      '    return path if strict else path.strip()',
+      '',
+      'def load(path: str, strict: bool = False) -> str:',
+      '    return _load(path, strict)',
+      '',
+      'def render(text: str, width: int = 80, indent: int = 4) -> str:',
+      '    return text.ljust(width)  +  " " * indent',
+      '',
+    ].join('\n'),
+    'app/use.py': [
+      'from app.api import load, render',
+      '',
+      'def run() -> str:',
+      '    return load("x", True)  +  render("a", 10)',
+      '',
+    ].join('\n'),
+    'app/typed.py': 'LIMIT: int = 1  # type: ignore[assignment]  # keep this\n',
+  },
+  expected: {
+    'app/api.py': [
+      'def _load(path: str, strict: bool = False) -> str:',
+      '    return path if strict else path.strip()',
+      '',
+      '',
+      'def render(text: str, width: int = 80) -> str:',
+      '    return text.ljust(width) + " " * 4',
+      '',
+    ].join('\n'),
+    'app/use.py': [
+      'from app.api import _load, render',
+      '',
+      '',
+      'def run() -> str:',
+      '    return _load("x", True) + render("a", 10)',
+      '',
+    ].join('\n'),
+    'app/typed.py': 'LIMIT: int = 1  # keep this\n',
+  },
+};
+
 describe.skipIf(!enabled)('nitpicker --fix for Python', () => {
   it.each([
     { label: 'ruff format', pyproject: PROJECT, black: 'black', notebook: true },
@@ -144,5 +194,28 @@ describe.skipIf(!enabled)('nitpicker --fix for Python', () => {
       app: FORMATTED,
       suppressed: SUPPRESSED(2),
     });
+  });
+
+  it('applies the project recipes and the mypy recipe, then formats with ruff last', () => {
+    const result = fix({
+      committed: {
+        '.gitignore': 'node_modules/\n.venv/\n',
+        'nitpicker.config.json': '{ "preset": "python" }\n',
+        'pyproject.toml': PROJECT,
+        'app/__init__.py': '',
+      },
+      changed: SOURCE_RECIPES.changed,
+      cliArguments: ['--fix', '--no-cache', ...SOURCE_RECIPES.rules.flatMap((r) => ['--rule', r])],
+    });
+
+    expect(
+      {
+        exitCode: result.exitCode,
+        files: Object.fromEntries(
+          Object.keys(SOURCE_RECIPES.changed).map((n) => [n, result.read(n)]),
+        ),
+      },
+      result.stdout + result.stderr,
+    ).toEqual({ exitCode: 0, files: SOURCE_RECIPES.expected });
   });
 });

@@ -2,8 +2,13 @@ import { createHash } from 'node:crypto';
 import { type CacheStore, createDirectoryStore, resolveCacheDirectory } from './cache-stores.mts';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import {
+  type AnalyzerMetadata,
   type MetadataContext,
-  resolveAnalyzerMetadata,
+  type MetadataMap,
+  mergeMetadata,
+  partialMetadataOf,
+  metadataValue,
+  resolvedAnalyzerMetadata,
 } from '../execution/report/analyzer-metadata.mts';
 import { nitpickerCodeFingerprint } from './code-fingerprint.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
@@ -11,34 +16,41 @@ import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import { analyzerNameOf as nameOf } from '../../../shared/values/analyzers.mts';
 
 export type FindingsCache = {
-  readonly read: (analyzer: unknown) => AnalyzerReport | undefined;
-  readonly write: (analyzer: unknown, report: AnalyzerReport) => boolean;
+  readonly read: (analyzer: unknown, resolved?: AnalyzerMetadata) => AnalyzerReport | undefined;
+  readonly write: (
+    analyzer: unknown,
+    report: AnalyzerReport,
+    resolved?: AnalyzerMetadata,
+  ) => boolean;
 };
 
 export type CachedRun = {
   readonly reports: Map<string, AnalyzerReport>;
   readonly timings: ReadonlyMap<string, unknown>;
   readonly toolErrors: readonly ReportEntry[];
+  readonly metadata?: MetadataMap;
 };
 
 type CacheKeyRequest = {
   readonly mergeBaseSha: string;
   readonly projectRelativePath: string;
   readonly analyzer: unknown;
+  readonly resolved?: AnalyzerMetadata | undefined;
   readonly configOverrides?: unknown;
   readonly headPolicy?: unknown;
   readonly codeFingerprint?: string;
 };
 
-type CacheRequest = Omit<CacheKeyRequest, 'analyzer'> & {
+type CacheRequest = Omit<CacheKeyRequest, 'analyzer' | 'resolved'> & {
   readonly store: CacheStore | undefined;
   readonly directory: string | undefined;
 };
 
-type Lookup =
+type Lookup = { readonly metadata?: AnalyzerMetadata } & (
   | { readonly kind: 'unresolved'; readonly error: unknown }
   | { readonly kind: 'miss' }
-  | { readonly kind: 'hit'; readonly report: AnalyzerReport };
+  | { readonly kind: 'hit'; readonly report: AnalyzerReport }
+);
 
 type Attempt<T> =
   | { readonly kind: 'done'; readonly value: T }
@@ -49,19 +61,13 @@ const parseJson: (text: string) => unknown = JSON.parse;
 
 const CACHE_SCHEMA = 1;
 
-const UNAVAILABLE_STORE: CacheStore = {
-  get(): undefined {
-    return undefined;
-  },
-  put(): boolean {
-    return false;
-  },
-};
+const UNAVAILABLE_STORE: CacheStore = { get: () => undefined, put: () => false };
 
 export function cacheKey({
   mergeBaseSha,
   projectRelativePath,
   analyzer,
+  resolved,
   configOverrides = [],
   headPolicy = {},
   codeFingerprint = nitpickerCodeFingerprint(),
@@ -74,8 +80,8 @@ export function cacheKey({
         mergeBaseSha,
         projectRelativePath,
         fieldOf(analyzer, 'name'),
-        fieldOf(analyzer, 'version'),
-        fieldOf(analyzer, 'configurationHash'),
+        metadataValue(analyzer, 'version', resolved),
+        metadataValue(analyzer, 'configurationHash', resolved),
         configOverrides,
         headPolicy,
         fieldOf(analyzer, 'legacyInventory'),
@@ -91,52 +97,45 @@ function cacheEntry(key: string, { findings, moduleImports }: AnalyzerReport): o
   return moduleImports === undefined ? { key, findings } : { key, findings, moduleImports };
 }
 
+function readReport(store: CacheStore, key: string, analyzer: unknown): AnalyzerReport | undefined {
+  const text = store.get(key);
+  const entry = text === undefined ? undefined : parseJson(text);
+  if (text === undefined || fieldOf(entry, 'key') !== key) {
+    return undefined;
+  }
+  const report = reportOf(entry, fieldOf(analyzer, 'name'));
+  store.keep?.(key, text);
+  return report;
+}
+
 export function createFindingsCache({
   store,
   directory,
-  mergeBaseSha,
-  projectRelativePath,
-  configOverrides,
-  headPolicy,
   codeFingerprint = nitpickerCodeFingerprint(),
+  ...keyed
 }: CacheRequest): FindingsCache {
   const backend =
     store ?? (directory === undefined ? UNAVAILABLE_STORE : createDirectoryStore(directory));
-  function keyFor(analyzer: unknown): string {
+  function keyFor(analyzer: unknown, resolved: AnalyzerMetadata | undefined): string {
     return cacheKey({
-      mergeBaseSha,
-      projectRelativePath,
+      ...keyed,
       analyzer,
-      configOverrides: configOverrides ?? [],
-      headPolicy: headPolicy ?? {},
+      resolved,
+      configOverrides: keyed.configOverrides ?? [],
+      headPolicy: keyed.headPolicy ?? {},
       codeFingerprint,
     });
   }
-  function readReport(analyzer: unknown): AnalyzerReport | undefined {
-    const key = keyFor(analyzer);
-    const text = backend.get(key);
-    if (text === undefined) {
-      return undefined;
-    }
-    const entry = parseJson(text);
-    if (fieldOf(entry, 'key') !== key) {
-      return undefined;
-    }
-    const report = reportOf(entry, fieldOf(analyzer, 'name'));
-    backend.keep?.(key, text);
-    return report;
-  }
-  function writeReport(analyzer: unknown, report: AnalyzerReport): boolean {
-    const key = keyFor(analyzer);
-    return backend.put(key, `${JSON.stringify(cacheEntry(key, report))}\n`);
-  }
   return {
-    read(analyzer: unknown): AnalyzerReport | undefined {
-      const outcome = attempt(() => readReport(analyzer));
+    read(analyzer: unknown, resolved?: AnalyzerMetadata): AnalyzerReport | undefined {
+      const outcome = attempt(() => readReport(backend, keyFor(analyzer, resolved), analyzer));
       return outcome.kind === 'done' ? outcome.value : undefined;
     },
-    write(analyzer: unknown, report: AnalyzerReport): boolean {
-      const outcome = attempt(() => writeReport(analyzer, report));
+    write(analyzer: unknown, report: AnalyzerReport, resolved?: AnalyzerMetadata): boolean {
+      const outcome = attempt(() => {
+        const key = keyFor(analyzer, resolved);
+        return backend.put(key, `${JSON.stringify(cacheEntry(key, report))}\n`);
+      });
       return outcome.kind === 'done' ? outcome.value : false;
     },
   };
@@ -162,18 +161,19 @@ export function runBaseWithCache<T extends CachedRun>({
   readonly run: (analyzers: readonly unknown[]) => T;
   readonly resolveContext: MetadataContext;
   readonly onCached?: (count: number) => unknown;
-}): T | CachedRun {
-  const cached = readCachedReports(cache, analyzers, resolveContext);
+}): (T | CachedRun) & { readonly metadata: MetadataMap } {
+  const { cached, metadata: lookedUp } = readCachedReports(cache, analyzers, resolveContext);
   if (cached.size > 0) {
     onCached?.(cached.size);
   }
 
   const toRun = uncachedDependencies(cached, analyzers);
 
-  const result =
+  const ran: CachedRun =
     toRun.size === 0
       ? { reports: new Map(), timings: new Map(), toolErrors: [] }
       : run(analyzers.filter((analyzer) => toRun.has(nameOf(analyzer))));
+  const result = { ...ran, metadata: mergeMetadata(lookedUp, ran.metadata) };
   for (const analyzer of analyzers) {
     applyCachedReport(analyzer, { result, cached, cache });
   }
@@ -184,15 +184,20 @@ function readCachedReports(
   cache: FindingsCache,
   analyzers: readonly unknown[],
   resolveContext: MetadataContext,
-): Map<string, AnalyzerReport> {
+): { readonly cached: Map<string, AnalyzerReport>; readonly metadata: MetadataMap } {
   const cached = new Map<string, AnalyzerReport>();
+  const metadata = new Map<unknown, AnalyzerMetadata>();
   for (const analyzer of analyzers) {
     const lookup = lookUpCachedReport(cache, analyzer, resolveContext);
+    const resolved =
+      lookup.metadata ??
+      (lookup.kind === 'unresolved' ? partialMetadataOf(lookup.error) : undefined);
+    metadata.set(analyzer, { ...metadata.get(analyzer), ...resolved });
     if (lookup.kind === 'hit') {
       cached.set(nameOf(analyzer), lookup.report);
     }
   }
-  return cached;
+  return { cached, metadata };
 }
 
 function lookUpCachedReport(
@@ -201,12 +206,12 @@ function lookUpCachedReport(
   resolveContext: MetadataContext,
 ): Lookup {
   try {
-    resolveAnalyzerMetadata(analyzer, resolveContext);
+    const metadata = resolvedAnalyzerMetadata(analyzer, resolveContext);
+    const report = cache.read(analyzer, metadata);
+    return report === undefined ? { kind: 'miss', metadata } : { kind: 'hit', report, metadata };
   } catch (error) {
     return { kind: 'unresolved', error };
   }
-  const report = cache.read(analyzer);
-  return report === undefined ? { kind: 'miss' } : { kind: 'hit', report };
 }
 
 export function isCacheable(
@@ -276,6 +281,6 @@ function applyCachedReport(
     return;
   }
   if (isCacheable(analyzer, report, result)) {
-    cache.write(analyzer, report);
+    cache.write(analyzer, report, result.metadata?.get(analyzer));
   }
 }

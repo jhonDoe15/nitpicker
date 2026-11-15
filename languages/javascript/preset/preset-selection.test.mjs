@@ -19,7 +19,7 @@ import { isJavascriptPolicy } from './javascript-preset.mjs';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
-const cliPath = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
+const cliPath = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mts', import.meta.url)));
 
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });

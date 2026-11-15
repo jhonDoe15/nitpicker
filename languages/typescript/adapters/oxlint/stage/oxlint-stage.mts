@@ -137,7 +137,7 @@ export function writeStageConfigs({
   readonly sampleFile: string | undefined;
   readonly translation: Translation;
 }): StageConfig[] {
-  const bridge = checkoutModuleUrl(new URL('../oxlint-bridge.mjs', import.meta.url)).href;
+  const bridge = checkoutModuleUrl(new URL('../oxlint-bridge.mts', import.meta.url)).href;
   const jsPlugins = translation.plugins.map((plugin) => {
     const request = { ...plugin, projectRoot, sampleFile };
     writeFileSync(

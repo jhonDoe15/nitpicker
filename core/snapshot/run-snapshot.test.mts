@@ -23,7 +23,7 @@ function runQualitySnapshot(options: SnapshotOptions) {
 }
 
 const fakeAnalyzerPath = fileURLToPath(
-  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mts', import.meta.url)),
 );
 const temporaryRoots: string[] = [];
 

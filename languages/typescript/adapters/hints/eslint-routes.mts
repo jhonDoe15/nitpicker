@@ -5,7 +5,7 @@ import { exceptionRoute as untypedExceptionRoute } from '../../../../shared/exce
 import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mjs';
 import { regexpRuleHints as untypedRegexpRuleHints } from '../../preset/eslint-config/regexp/regexp-rules.mjs';
-import { restrictedMatchers as untypedRestrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
+import { restrictedMatchers as untypedRestrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mts';
 
 export type HintInput = {
   readonly ruleId: string;

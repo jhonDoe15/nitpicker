@@ -34,8 +34,11 @@ function decoratorsOf(sourceCode, node, names) {
 }
 
 function optionsOf(sourceCode, call) {
-  return mergedProperties(sourceCode, call.arguments, (property) =>
-    valueOf(sourceCode, property.value),
+  return new Map(
+    [...mergedProperties(sourceCode, call.arguments)].map(([key, property]) => [
+      key,
+      valueOf(sourceCode, property.value),
+    ]),
   );
 }
 

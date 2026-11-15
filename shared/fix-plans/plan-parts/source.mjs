@@ -1,4 +1,5 @@
 import { leadingSpaces } from '../../conventions/lines.mjs';
+import { escapeRegExp } from '../../paths/glob.mjs';
 
 const BRACE_LANGUAGES = new Set(['typescript', 'java', 'kotlin', 'go']);
 const EXTENSIONS = {
@@ -190,4 +191,38 @@ export function sourceLine(finding, env) {
   const line = finding.location?.line;
   const text = env.read(finding.path);
   return line === undefined || text === undefined ? undefined : linesOf(text)[line - 1]?.trim();
+}
+
+const LOOK_BACK_LINES = 400;
+
+function declarationExtent(lines, at, { line, language, declaration }) {
+  if (!declaration.test(lines[at - 1] ?? '')) {
+    return undefined;
+  }
+  const endLine = blockEnd(lines, at, language);
+  return endLine >= line ? { startLine: at, endLine } : undefined;
+}
+
+export function functionExtent(finding, symbol, env) {
+  const text = env.read(finding.path);
+  const line = finding.location?.line;
+  if (text === undefined || symbol === undefined || line === undefined) {
+    return undefined;
+  }
+  const lines = linesOf(text);
+  const name = symbol.split(/[.#:]+/u).at(-1);
+  const context = {
+    line,
+    language: languageOf(finding.path),
+    declaration: new RegExp(String.raw`(?:^|[^\w$.])${escapeRegExp(name)}\s*[(=:<]`, 'u'),
+  };
+  const first = Math.max(1, line - LOOK_BACK_LINES);
+  const positions = Array.from({ length: line - first + 1 }, (_, offset) => line - offset);
+  for (const at of positions) {
+    const extent = declarationExtent(lines, at, context);
+    if (extent !== undefined) {
+      return extent;
+    }
+  }
+  return undefined;
 }

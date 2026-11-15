@@ -9,7 +9,7 @@ const { createGitRepository } = useGitFixtures();
 
 const SCRIPT_RECIPES = scriptRecipes({ runScript: localRunScript, optionsFor: () => ({}) });
 
-export function applyRecipes(files, { selectedRules = [], recipes = SCRIPT_RECIPES } = {}) {
+export function applyRecipes(files, { selectedRules = [], recipes = SCRIPT_RECIPES, inputs } = {}) {
   const { root: projectRoot } = createGitRepository(files, { prefix: 'nitpicker-python-recipes-' });
   const outcome = runRecipes({
     projectRoot,
@@ -17,6 +17,7 @@ export function applyRecipes(files, { selectedRules = [], recipes = SCRIPT_RECIP
     recipes,
     preset: 'python',
     selectedRules,
+    inputs,
     accepts: (name) => name.endsWith('.py'),
   });
   return {
