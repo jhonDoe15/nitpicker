@@ -1,11 +1,11 @@
-import { rule as noUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
-import { rule as boundedContainerTeardown } from '../rules/testing/lifecycle/bounded-container-teardown.mjs';
-import { rule as noFirstTestChargedSetup } from '../rules/testing/lifecycle/no-first-test-charged-setup.mjs';
-import { rule as noIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
-import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
-import { rule as containerPauseRequiresFinallyUnpause } from '../rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
-import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
-import { typescriptRuleTester } from '../test-support/rule-tester.mts';
+import { rule as noUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mts';
+import { rule as boundedContainerTeardown } from '../rules/testing/lifecycle/bounded-container-teardown.mts';
+import { rule as noFirstTestChargedSetup } from '../rules/testing/lifecycle/no-first-test-charged-setup.mts';
+import { rule as noIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mts';
+import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mts';
+import { rule as containerPauseRequiresFinallyUnpause } from '../rules/testing/lifecycle/container-pause-requires-finally-unpause.mts';
+import { withoutFixes } from '../../eslint-config/rule-hints.mts';
+import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 
@@ -14,7 +14,7 @@ const lines = (...parts: string[]) => parts.join('\n');
 const sourceFile = '/repo/src/service.ts';
 ruleTester.run(
   'container-pause-requires-finally-unpause',
-  withoutFixes(containerPauseRequiresFinallyUnpause),
+  withoutFixes(ruleModule(containerPauseRequiresFinallyUnpause)),
   {
     valid: [
       {
@@ -55,7 +55,7 @@ ruleTester.run(
     ],
   },
 );
-ruleTester.run('bounded-container-teardown', withoutFixes(boundedContainerTeardown), {
+ruleTester.run('bounded-container-teardown', withoutFixes(ruleModule(boundedContainerTeardown)), {
   valid: [
     {
       filename: '/repo/tests/integration/cleanup.test.ts',

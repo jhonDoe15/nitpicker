@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from '../no-unowned-async-assertion.mjs';
+import { rule } from '../no-unowned-async-assertion.mts';
 
 const filename = '/repo/test/report.test.ts';
 
