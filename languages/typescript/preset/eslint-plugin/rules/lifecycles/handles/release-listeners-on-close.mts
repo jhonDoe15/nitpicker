@@ -1,10 +1,14 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   compositionRootOptionsSchema,
   isCompositionRootFile,
-} from '../../boundaries/composition-root-files.mjs';
-import { closeScope } from '../scope/close-owners.mjs';
-import { functionName } from '../scope/close-scopes.mjs';
+  type CompositionRootOptions,
+} from '../../boundaries/composition-root-files.mts';
+import { nameOf, type SourceCode } from '../../typed/node-views.mts';
+import { closeScope, type CloseScope } from '../scope/close-owners.mts';
+import { functionName, type FunctionNode } from '../scope/close-scopes.mts';
 import {
+  type ContainerWithClosers,
   clearsHandle,
   containerWithClosers,
   insidePromiseExecutor,
@@ -13,42 +17,55 @@ import {
   releasesListener,
   runsOnce,
   timerHandle,
-} from './handle-releases.mjs';
+} from './handle-releases.mts';
 
-const REGISTER_METHODS = new Set(['on', 'addListener', 'addEventListener']);
-const TIMERS = new Set(['setTimeout', 'setInterval']);
+const REGISTER_METHODS = new Set<string>(['on', 'addListener', 'addEventListener']);
+const TIMERS = new Set<string>(['setTimeout', 'setInterval']);
+type Context = Readonly<TSESLint.RuleContext<'listener' | 'timer', CompositionRootOptions>>;
+
+function closerName(owner: { readonly closers: readonly FunctionNode[] }): string | undefined {
+  const [first] = owner.closers;
+  return first === undefined ? undefined : functionName(first);
+}
+
 const EXCEPTION = ' An exception fits only when the emitter or timer dies with this scope.';
 
-function reportListener(context, call) {
+function reportListener(context: Context, call: TSESTree.CallExpression): void {
   const { sourceCode } = context;
   const { callee } = call;
   const registers =
-    callee.type === 'MemberExpression' &&
+    callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
-    REGISTER_METHODS.has(callee.property.name) &&
+    REGISTER_METHODS.has(nameOf(callee.property) ?? '') &&
     call.arguments.length >= 2 &&
     !isOneShot(call);
   const owner = registers ? closeScope(sourceCode, callee.object) : undefined;
   const receiver = registers ? normalized(sourceCode, callee.object) : '';
   if (
+    !registers ||
     owner === undefined ||
     runsOnce(call, owner) ||
     releasesListener(sourceCode, owner.container, receiver)
   ) {
     return;
   }
-  const event = sourceCode.getText(call.arguments[0]);
+  const [first] = call.arguments;
+  const event = first === undefined ? '' : sourceCode.getText(first);
   context.report({
     node: call,
     messageId: 'listener',
     data: {
-      target: `${receiver}.${callee.property.name}(${event})`,
-      closer: functionName(owner.closers[0]),
+      target: `${receiver}.${String(nameOf(callee.property))}(${event})`,
+      closer: closerName(owner),
     },
   });
 }
 
-function timerOwner({ sourceCode, call }, handle, timer) {
+function timerOwner(
+  { sourceCode, call }: { readonly sourceCode: SourceCode; readonly call: TSESTree.CallExpression },
+  handle: TSESTree.Node | undefined,
+  timer: string,
+): CloseScope | ContainerWithClosers | undefined {
   if (handle !== undefined) {
     const owner = closeScope(sourceCode, handle);
     if (owner !== undefined) {
@@ -58,10 +75,10 @@ function timerOwner({ sourceCode, call }, handle, timer) {
   return timer === 'setInterval' ? containerWithClosers(call) : undefined;
 }
 
-function reportTimer(context, call) {
+function reportTimer(context: Context, call: TSESTree.CallExpression): void {
   const { sourceCode } = context;
-  const timer = call.callee.type === 'Identifier' ? call.callee.name : undefined;
-  if (!TIMERS.has(timer) || insidePromiseExecutor(call)) {
+  const timer = call.callee.type === AST_NODE_TYPES.Identifier ? call.callee.name : undefined;
+  if (timer === undefined || !TIMERS.has(timer) || insidePromiseExecutor(call)) {
     return;
   }
   const handle = timerHandle(call);
@@ -80,12 +97,12 @@ function reportTimer(context, call) {
       target: `${timer}(...)`,
       timer,
       clearer: timer === 'setTimeout' ? 'clearTimeout' : 'clearInterval',
-      closer: functionName(owner.closers[0]),
+      closer: closerName(owner),
     },
   });
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'listener' | 'timer', CompositionRootOptions> = {
   meta: {
     type: 'problem',
     docs: {
@@ -103,7 +120,7 @@ export const rule = {
       return {};
     }
     return {
-      CallExpression(call) {
+      CallExpression(call: TSESTree.CallExpression) {
         reportListener(context, call);
         reportTimer(context, call);
       },

@@ -1,9 +1,17 @@
-import { closersOf } from '../scope/close-owners.mjs';
-import { addedValue, holdsSettlers } from '../pending/pending-values.mjs';
-import { collectionsOf, destructuredFromThis, useKind, usesOf } from '../scope/collections.mjs';
-import { adderName, growingAdds, isDeclaration, isLongLived, isRemoved } from './growth-facts.mjs';
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
+import { closersOf } from '../scope/close-owners.mts';
+import { addedValue, holdsSettlers } from '../pending/pending-values.mts';
+import { collectionsOf, destructuredFromThis, useKind, usesOf } from '../scope/collections.mts';
+import {
+  adderName,
+  growingAdds,
+  isDeclaration,
+  isLongLived,
+  isRemoved,
+  type Container,
+} from './growth-facts.mts';
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'grows'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -19,11 +27,11 @@ export const rule = {
   create(context) {
     const { sourceCode } = context;
 
-    function check(container) {
+    function check(container: Container): void {
       if (!isLongLived(container, closersOf(container))) {
         return;
       }
-      const seen = new Set();
+      const seen = new Set<string | undefined>();
       for (const binding of collectionsOf(sourceCode, container)) {
         if (seen.has(binding.name)) {
           continue;
@@ -31,20 +39,25 @@ export const rule = {
         seen.add(binding.name);
         const uses = usesOf(binding, container).filter((use) => !isDeclaration(use));
         const adds = growingAdds(uses, container);
-        const settlers = uses
-          .map(useKind)
-          .filter(({ kind }) => kind === 'add')
-          .map(addedValue);
+        const settlers = uses.flatMap((use) => {
+          const found = useKind(use);
+          return found.kind === 'add' ? [addedValue(found)] : [];
+        });
         const owned = holdsSettlers(binding, settlers) && closersOf(container).length > 0;
         const aliased =
-          container.type === 'ClassBody' && destructuredFromThis(container, binding.name);
-        if (adds.length > 0 && !owned && !aliased && !isRemoved(uses)) {
+          container.type === AST_NODE_TYPES.ClassBody &&
+          destructuredFromThis(container, binding.name);
+        const [firstAdd] = adds;
+        if (firstAdd !== undefined && !owned && !aliased && !isRemoved(uses)) {
           context.report({
             node: binding.node,
             messageId: 'grows',
             data: {
-              name: container.type === 'ClassBody' ? `this.${binding.name}` : binding.name,
-              adder: adderName(adds[0]),
+              name:
+                container.type === AST_NODE_TYPES.ClassBody
+                  ? `this.${String(binding.name)}`
+                  : binding.name,
+              adder: adderName(firstAdd),
               bound: binding.kind === 'Array' ? 'length' : 'size',
             },
           });

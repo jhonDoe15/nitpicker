@@ -1,5 +1,14 @@
-const ALLOWED_FOLDERS = new Set(['features', 'shared', 'composition-root']);
-const REACT_UI_FOLDERS = new Set([
+import type { TSESLint } from '@typescript-eslint/utils';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+
+type MessageId = 'looseFile' | 'unknownFolder' | 'unknownFeatureFolder' | 'looseFeatureFile';
+type Options = readonly [Readonly<Record<string, unknown>>?];
+type Feature = { readonly entry: string | undefined; readonly separator: string };
+type Place = { readonly folder: string; readonly separator: string; readonly feature: Feature };
+
+const FEATURES = 'features';
+const ALLOWED_FOLDERS = new Set<string>(['features', 'shared', 'composition-root']);
+const REACT_UI_FOLDERS = new Set<string>([
   'ui',
   'components',
   'pages',
@@ -12,18 +21,23 @@ const REACT_UI_FOLDERS = new Set([
   'styles',
   'assets',
 ]);
-const FEATURE_FOLDERS = new Set(['domain', 'adapters']);
+const FEATURE_FOLDERS = new Set<string>(['domain', 'adapters']);
 const REACT_FEATURE_FOLDER = 'ui';
 const ROOT_FILE = /^(?:main|server|composition-root|index)\.[cm]?[jt]sx?$/;
 const REACT_ROOT_FILE = /^App\.[jt]sx$/;
 const FEATURE_INDEX = /^index\.[cm]?[jt]sx?$/;
 const UI = ' (and ui/ for components in a React project)';
 
-function escaped(text) {
-  return text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+function isStringList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string');
 }
 
-function mainFolderProblem({ folder, separator }, react) {
+const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
+
+function mainFolderProblem(
+  { folder, separator }: Place,
+  react: boolean,
+): 'unknownFolder' | 'looseFile' | undefined {
   if (separator === '/') {
     const allowed = ALLOWED_FOLDERS.has(folder) || (react && REACT_UI_FOLDERS.has(folder));
     return allowed ? undefined : 'unknownFolder';
@@ -32,7 +46,10 @@ function mainFolderProblem({ folder, separator }, react) {
   return allowed ? undefined : 'looseFile';
 }
 
-function featureProblem({ entry, separator }, react) {
+function featureProblem(
+  { entry, separator }: Feature,
+  react: boolean,
+): 'unknownFeatureFolder' | 'looseFeatureFile' | undefined {
   if (entry === undefined) {
     return undefined;
   }
@@ -43,29 +60,32 @@ function featureProblem({ entry, separator }, react) {
   return FEATURE_INDEX.test(entry) ? undefined : 'looseFeatureFile';
 }
 
-function placeOf(filename, roots) {
-  const main = new RegExp(`(?:^|/)(?:${roots.map(escaped).join('|')})/main/([^/]+)(/?)(.*)$`);
-  const [, folder, separator, rest] = main.exec(filename) ?? [];
+function placeOf(filename: string, roots: readonly string[]): Place | undefined {
+  const main = new RegExp(`(?:^|/)(?:${roots.map(escapeRegExp).join('|')})/main/([^/]+)(/?)(.*)$`);
+  const [, folder, separator = '', rest = ''] = main.exec(filename) ?? [];
   if (folder === undefined) {
     return undefined;
   }
-  const [, entry, entrySeparator] =
-    folder === 'features' ? (/^[^/]+\/([^/]+)(\/?)/.exec(rest) ?? []) : [];
+  const [, entry, entrySeparator = ''] =
+    folder === FEATURES ? (/^[^/]+\/([^/]+)(\/?)/.exec(rest) ?? []) : [];
   return { folder, separator, feature: { entry, separator: entrySeparator } };
 }
 
-function problemOf(place, react) {
+function problemOf(
+  place: Place,
+  react: boolean,
+): { readonly messageId: MessageId; readonly folder: string | undefined } | undefined {
   const atMain = mainFolderProblem(place, react);
   if (atMain !== undefined) {
     return { messageId: atMain, folder: place.folder };
   }
-  const inFeature = place.folder === 'features' ? featureProblem(place.feature, react) : undefined;
+  const inFeature = place.folder === FEATURES ? featureProblem(place.feature, react) : undefined;
   return inFeature === undefined
     ? undefined
     : { messageId: inFeature, folder: place.feature.entry };
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId, Options> = {
   meta: {
     type: 'problem',
     docs: { description: 'Allow only features, shared and the composition root under src/main' },
@@ -89,9 +109,11 @@ export const rule = {
     },
   },
   create(context) {
-    const { sourceRoots = ['src'], react = false } = context.options[0] ?? {};
-    const place = placeOf(context.filename.replaceAll('\\', '/'), sourceRoots);
-    const problem = place === undefined ? undefined : problemOf(place, react);
+    const option = context.options[0];
+    const sourceRoots = option?.['sourceRoots'];
+    const roots = isStringList(sourceRoots) ? sourceRoots : ['src'];
+    const place = placeOf(context.filename.replaceAll('\\', '/'), roots);
+    const problem = place === undefined ? undefined : problemOf(place, option?.['react'] === true);
     return {
       Program(node) {
         if (problem !== undefined) {

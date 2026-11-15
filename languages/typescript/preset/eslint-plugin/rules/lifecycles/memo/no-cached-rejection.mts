@@ -1,14 +1,19 @@
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { isThenable } from '../../promises/cannot-reject.mjs';
-import { isFunctionNode } from '../scope/close-scopes.mjs';
-import { cacheBinding, checksIdentity, isGuarded, rejectionClears } from './cache-bindings.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { hasTypeInformation, isThenable } from '../../promises/cannot-reject.mts';
+import { ancestorsOf } from '../../typed/node-views.mts';
+import { isFunctionNode } from '../scope/close-scopes.mts';
+import { cacheBinding, checksIdentity, isGuarded, rejectionClears } from './cache-bindings.mts';
 
 const EXCEPTION =
   ' An exception fits only when keeping the first failure is intended (a startup-only cache).';
 const SAFE_FORM =
   'const attempt = start(); {{name}} = attempt; try { return await attempt; } catch (error) { if ({{name}} === attempt) { {{name}} = undefined; } throw error; }';
 
-export const rule = {
+export const rule: TSESLint.RuleModule<
+  'kept' | 'stale',
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {
@@ -25,29 +30,31 @@ export const rule = {
   create(context) {
     const { sourceCode } = context;
     const services = sourceCode.parserServices;
-    if (services?.program === null || services?.program === undefined) {
+    if (!hasTypeInformation(services)) {
       return {};
     }
-    const checker = services.program.getTypeChecker();
+    const { esTreeNodeToTSNodeMap, program } = services;
+    const checker = program.getTypeChecker();
 
     return {
-      AssignmentExpression(assignment) {
+      AssignmentExpression(assignment: TSESTree.AssignmentExpression) {
         const binding = cacheBinding(sourceCode, assignment);
         const fn = ancestorsOf(assignment).find(isFunctionNode);
         if (
           binding === undefined ||
           fn === undefined ||
-          !isThenable(checker, services.esTreeNodeToTSNodeMap.get(assignment.right)) ||
+          !isThenable(checker, esTreeNodeToTSNodeMap.get(assignment.right)) ||
           !isGuarded({ sourceCode, binding, fn }, assignment)
         ) {
           return;
         }
         const clears = rejectionClears(sourceCode, fn, binding);
         const data = { name: binding.text };
-        if (clears.length === 0) {
+        const [firstClear] = clears;
+        if (firstClear === undefined) {
           context.report({ node: assignment, messageId: 'kept', data });
         } else if (!clears.some((clear) => checksIdentity(sourceCode, clear, binding))) {
-          context.report({ node: clears[0], messageId: 'stale', data });
+          context.report({ node: firstClear, messageId: 'stale', data });
         }
       },
     };
