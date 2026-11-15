@@ -1,6 +1,9 @@
-import { filterFirst, findAsBoolean, lengthCheck, mapFlat } from './array-steps.mjs';
-import { promiseSteps } from './promise-methods.mjs';
-import { fallbackSpread, uselessSpread } from './spreads.mjs';
+import type { TSESLint } from '@typescript-eslint/utils';
+import { filterFirst, findAsBoolean, lengthCheck, mapFlat } from './array-steps.mts';
+import { promiseSteps } from './promise-methods.mts';
+import { fallbackSpread, uselessSpread } from './spreads.mts';
+
+type MessageId = keyof typeof wastedStepMessages;
 
 const wastedStepMessages = {
   filterFirst:
@@ -21,7 +24,7 @@ const wastedStepMessages = {
     'This `await` waits for its promise before `Promise.{{method}}` sees it, so the promises no longer run together. Pass the promise without `await`.',
 };
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'suggestion',
     docs: {
@@ -33,7 +36,7 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    function report(descriptor) {
+    function report(descriptor: TSESLint.ReportDescriptor<MessageId> | undefined): void {
       if (descriptor !== undefined) {
         context.report(descriptor);
       }

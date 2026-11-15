@@ -1,8 +1,16 @@
-import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mjs';
-import { isRelayMark } from '../writes/relays.mjs';
-import { passesChunk } from './chunked-loops.mjs';
-import { isPushedForConcurrency } from './concurrent-batches.mjs';
-import { enclosingLoop, isPagingCall, isRetryAttempt } from './loop-shapes.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import type { Context } from '../security/security-values.mts';
+import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mts';
+import { isRelayMark } from '../writes/relays.mts';
+import { passesChunk } from './chunked-loops.mts';
+import { isPushedForConcurrency } from './concurrent-batches.mts';
+import { enclosingLoop, isRetryAttempt, type EnclosingLoop } from './loop-shapes.mts';
+import { isPagingCall } from './paging-calls.mts';
+
+type MessageIds = 'query' | 'cacheQuery' | 'concurrentQuery' | 'request';
+type Docs = { readonly requiresTypeChecking: boolean };
+type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
+type Effect = NonNullable<ReturnType<typeof ioEffect>>;
 
 const BATCH_QUERY = [
   'Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`,',
@@ -13,7 +21,7 @@ const EXCEPTION = 'An exception fits only when a call per item is intended';
 const PAGING =
   'Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.';
 
-function messageIdOf(effect, concurrent) {
+function messageIdOf(effect: Effect, concurrent: boolean): MessageIds {
   if (effect.kind === 'remote') {
     return 'request';
   }
@@ -23,16 +31,14 @@ function messageIdOf(effect, concurrent) {
   return concurrent ? 'concurrentQuery' : 'query';
 }
 
-function isLoopCall(node, found, context) {
+function isLoopCall(node: Call, found: EnclosingLoop, context: Context): boolean {
   const { visitorKeys } = context.sourceCode;
-  return (
-    found !== undefined &&
-    !isRetryAttempt(node, found.loop, visitorKeys) &&
-    !isPagingCall(node, found.loop, visitorKeys)
+  return !(
+    isRetryAttempt(node, found.loop, visitorKeys) || isPagingCall(node, found.loop, visitorKeys)
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
   meta: {
     type: 'problem',
     docs: {
@@ -70,11 +76,15 @@ export const rule = {
     },
   },
   create(context) {
-    function check(node) {
+    function check(node: Call): void {
       const { sourceCode } = context;
       const found = enclosingLoop(node, context);
-      const effect = isLoopCall(node, found, context) ? ioEffect(node, context) : undefined;
+      const effect =
+        found !== undefined && isLoopCall(node, found, context)
+          ? ioEffect(node, context)
+          : undefined;
       const exempt =
+        found === undefined ||
         effect === undefined ||
         effect.kind === 'message' ||
         passesChunk(node, found, context) ||

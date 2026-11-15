@@ -1,4 +1,5 @@
-import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mts';
 
 const ARRAY_RESULTS = new Set([
   'concat',
@@ -18,39 +19,48 @@ const ITERABLE_CONSTRUCTORS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet']);
 const PROMISE_METHODS = new Set(['all', 'allSettled', 'any', 'race']);
 const FALLBACKS = new Set(['||', '??']);
 
-function staticCall(node, owners) {
+function staticCall(
+  node: TSESTree.Node,
+  owners: ReadonlyMap<string, ReadonlySet<string>>,
+): boolean {
   const call = unwrapped(node);
-  const member = call.type === 'CallExpression' ? calledMember(call) : undefined;
+  const member = call.type === AST_NODE_TYPES.CallExpression ? calledMember(call) : undefined;
   const owner = member === undefined ? undefined : unwrapped(member.object);
-  return owner?.type === 'Identifier' && owners.get(owner.name)?.has(memberName(member)) === true;
-}
-
-function isNewArray(node) {
-  const value = unwrapped(node);
-  if (value.type === 'ArrayExpression') {
-    return true;
-  }
-  if (value.type === 'AwaitExpression') {
-    return staticCall(value.argument, new Map([['Promise', PROMISE_METHODS]]));
-  }
-  const member = value.type === 'CallExpression' ? calledMember(value) : undefined;
+  const name = member === undefined ? undefined : memberName(member);
   return (
-    staticCall(value, STATIC_ARRAY_RESULTS) ||
-    (member !== undefined && !member.computed && ARRAY_RESULTS.has(memberName(member)))
+    owner?.type === AST_NODE_TYPES.Identifier &&
+    name !== undefined &&
+    owners.get(owner.name)?.has(name) === true
   );
 }
 
-function takesIterable(outer) {
+function isNewArray(node: TSESTree.Node): boolean {
+  const value = unwrapped(node);
+  if (value.type === AST_NODE_TYPES.ArrayExpression) {
+    return true;
+  }
+  if (value.type === AST_NODE_TYPES.AwaitExpression) {
+    return staticCall(value.argument, new Map([['Promise', PROMISE_METHODS]]));
+  }
+  const member = value.type === AST_NODE_TYPES.CallExpression ? calledMember(value) : undefined;
+  const name = member === undefined ? undefined : memberName(member);
+  return (
+    staticCall(value, STATIC_ARRAY_RESULTS) ||
+    (member !== undefined && !member.computed && name !== undefined && ARRAY_RESULTS.has(name))
+  );
+}
+
+function takesIterable(outer: TSESTree.Node): boolean {
   const { parent } = outer;
-  if (parent.type === 'NewExpression') {
+  if (parent?.type === AST_NODE_TYPES.NewExpression) {
     const callee = unwrapped(parent.callee);
     return (
       parent.arguments[0] === outer &&
-      callee.type === 'Identifier' &&
+      callee.type === AST_NODE_TYPES.Identifier &&
       ITERABLE_CONSTRUCTORS.has(callee.name)
     );
   }
-  if (parent.type === 'CallExpression') {
+  if (parent?.type === AST_NODE_TYPES.CallExpression) {
     return (
       parent.arguments.length === 1 &&
       parent.arguments[0] === outer &&
@@ -66,9 +76,11 @@ function takesIterable(outer) {
   return false;
 }
 
-export function uselessSpread(array) {
+export function uselessSpread(
+  array: TSESTree.ArrayExpression,
+): TSESLint.ReportDescriptor<'uselessSpread'> | undefined {
   const [only] = array.elements;
-  if (array.elements.length !== 1 || only?.type !== 'SpreadElement') {
+  if (array.elements.length !== 1 || only?.type !== AST_NODE_TYPES.SpreadElement) {
     return undefined;
   }
   if (isNewArray(only.argument)) {
@@ -87,11 +99,16 @@ export function uselessSpread(array) {
     : undefined;
 }
 
-export function fallbackSpread(spread) {
+export function fallbackSpread(
+  spread: TSESTree.SpreadElement,
+): TSESLint.ReportDescriptor<'fallbackInSpread'> | undefined {
   const value = unwrapped(spread.argument);
-  const fallback = value.type === 'LogicalExpression' ? unwrapped(value.right) : undefined;
+  if (value.type !== AST_NODE_TYPES.LogicalExpression) {
+    return undefined;
+  }
+  const fallback = unwrapped(value.right);
   return FALLBACKS.has(value.operator) &&
-    fallback?.type === 'ObjectExpression' &&
+    fallback.type === AST_NODE_TYPES.ObjectExpression &&
     fallback.properties.length === 0
     ? { node: spread, messageId: 'fallbackInSpread', data: { operator: value.operator } }
     : undefined;

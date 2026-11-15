@@ -1,3 +1,6 @@
+export type SpreadKind = 'reduce' | 'reduceObject' | 'reduceArray' | 'loopObject' | 'loopArray';
+export type SpreadMessageId = keyof typeof accumulatingSpreadMessages;
+
 const DOMAIN_PATH = /(?:^|\/)features\/[^/]+\/domain\//u;
 
 const LEAD = 'Spreading the accumulator copies it on every step, which is quadratic';
@@ -11,7 +14,7 @@ const DOMAIN_OBJECT =
 const ARRAYS = 'xs.flatMap((x) => x.items), map or filter';
 const WRAPPED = 'map, flatMap or filter and wrap the result once (new Set, new Map)';
 
-function message(lead, advice) {
+function message(lead: string, advice: string): string {
   return `${lead}: ${advice}.${EXCEPTION}`;
 }
 
@@ -37,8 +40,14 @@ export const accumulatingSpreadMessages = {
   domainLoopArray: message(NO_LOOPS, `use ${ARRAYS}`),
 };
 
-export function accumulatingSpreadMessageId(kind, filePath) {
-  return DOMAIN_PATH.test(filePath.replaceAll('\\', '/'))
-    ? `domain${kind[0].toUpperCase()}${kind.slice(1)}`
-    : kind;
+const DOMAIN_IDS: Readonly<Record<SpreadKind, SpreadMessageId>> = {
+  reduce: 'domainReduce',
+  reduceObject: 'domainReduceObject',
+  reduceArray: 'domainReduceArray',
+  loopObject: 'domainLoopObject',
+  loopArray: 'domainLoopArray',
+};
+
+export function accumulatingSpreadMessageId(kind: SpreadKind, filePath: string): SpreadMessageId {
+  return DOMAIN_PATH.test(filePath.replaceAll('\\', '/')) ? DOMAIN_IDS[kind] : kind;
 }
