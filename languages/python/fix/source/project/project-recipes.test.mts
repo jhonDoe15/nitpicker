@@ -1,19 +1,20 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { localRunScript } from '../script-edits.mjs';
+import { localRunScript } from '../script-edits.mts';
 import { applyRecipes } from '../test-support/apply-recipes.mts';
-import { projectScriptRecipes } from './project-recipes.mjs';
+import { projectScriptRecipes } from './project-recipes.mts';
 
-const CASES = JSON.parse(
+const parseCases: (text: string) => Record<string, Record<string, string>> = JSON.parse;
+const CASES = parseCases(
   readFileSync(path.join(import.meta.dirname, 'fixtures/cases.json'), 'utf8'),
 );
 const RECIPES = projectScriptRecipes({ runScript: localRunScript, optionsFor: () => ({}) });
 const WRAPPER = 'python-rules/forwarding-wrapper';
 const OPTION = 'python-rules/unused-option';
 
-function apply(name, rule, inputs) {
-  return applyRecipes(CASES[name], { selectedRules: [rule], recipes: RECIPES, inputs });
+function apply(name: string, rule: string, inputs?: unknown): ReturnType<typeof applyRecipes> {
+  return applyRecipes(CASES[name] ?? {}, { selectedRules: [rule], recipes: RECIPES, inputs });
 }
 
 describe('Python forwarding-wrapper recipe', () => {
@@ -44,7 +45,7 @@ describe('Python forwarding-wrapper recipe', () => {
     const { read, outcome } = apply(name, WRAPPER);
 
     expect([read('app/api.py'), outcome.notes.join('\n').includes(reason)]).toEqual([
-      CASES[name]['app/api.py'],
+      CASES[name]?.['app/api.py'],
       true,
     ]);
   });
@@ -63,7 +64,7 @@ describe('Python unused-option recipe', () => {
     const { read, outcome } = apply('option-declined', OPTION);
 
     expect([read('app/view.py'), outcome.notes]).toEqual([
-      CASES['option-declined']['app/view.py'],
+      CASES['option-declined']?.['app/view.py'],
       [
         '--fix left app/view.py:4 unused-option as is: the body reads the parameter and its default is not a literal',
         '--fix left app/view.py:8 unused-option as is: the body rebinds the name of the parameter',
@@ -86,7 +87,7 @@ describe('Python recipe edge cases', () => {
   it.each(['wrapper-entry-string', 'wrapper-toml'])('declines %s', (name) => {
     const { read } = apply(name, WRAPPER);
 
-    expect(read('app/api.py')).toBe(CASES[name]['app/api.py']);
+    expect(read('app/api.py')).toBe(CASES[name]?.['app/api.py']);
   });
 
   it('removes the comment lines above a deleted wrapper', () => {
@@ -100,17 +101,17 @@ describe('Python recipe edge cases', () => {
   it.each(['option-lambda', 'option-comment'])('declines %s', (name) => {
     const { read } = apply(name, OPTION);
 
-    expect(read('app/view.py')).toBe(CASES[name]['app/view.py']);
+    expect(read('app/view.py')).toBe(CASES[name]?.['app/view.py']);
   });
 
   it('plans the mypy recipe as a review recipe', () => {
-    expect(RECIPES.find(({ id }) => id === 'python-unused-ignore').safety).toBe('review');
+    expect(RECIPES.find(({ id }) => id === 'python-unused-ignore')?.safety).toBe('review');
   });
 });
 
 describe('mypy unused-ignore recipe', () => {
-  const text = CASES.ignores['app/typed.py'];
-  const message = (codes) => `Unused "type: ignore${codes ?? ''}" comment`;
+  const text = CASES['ignores']?.['app/typed.py'];
+  const message = (codes?: string) => `Unused "type: ignore${codes ?? ''}" comment`;
   const inputs = {
     pythonUnusedIgnores: {
       'app/typed.py': {

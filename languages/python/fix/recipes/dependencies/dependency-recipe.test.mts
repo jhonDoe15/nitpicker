@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pythonDependenciesRecipe as recipe } from '../typed/recipe-views.mts';
 import type { Planned, TextEdit } from '../typed/recipe-views.mts';
+import type { DependencyFinding } from '../../typed/fix-types.mts';
 
 const PYPROJECT = `[project]
 name = "demo"
@@ -15,15 +16,25 @@ dev = [
 ]
 `;
 
-function finding(rule: string, identity: string, extra: object = {}) {
-  return { tool: 'dependencies', rule, path: 'pyproject.toml', identity, ...extra };
+function finding(
+  rule: string,
+  identity: string,
+  extra: Partial<DependencyFinding> = {},
+): DependencyFinding {
+  return { tool: 'dependencies', rule, path: 'pyproject.toml', identity, test: false, ...extra };
 }
 
 function plan(
-  findings: object[],
-  { text = PYPROJECT, versions = {} }: { text?: string | undefined; versions?: object } = {},
+  findings: DependencyFinding[],
+  {
+    text = PYPROJECT,
+    versions = {},
+  }: { text?: string | undefined; versions?: Record<string, unknown> } = {},
 ): Planned {
   return recipe.plan({
+    files: [],
+    projectRoot: '/',
+    accepts: () => true,
     read: (name: string) => (name === 'pyproject.toml' ? text : undefined),
     inputs: { pythonDependencies: { findings, versions } },
   });
@@ -146,7 +157,15 @@ describe('pythonDependenciesRecipe', () => {
   it('plans nothing without findings or a pyproject.toml', () => {
     expect(plan([]).fixes).toEqual([]);
     expect(plan([finding('unused-dependency', 'unused:x')], { text: undefined }).fixes).toEqual([]);
-    expect(recipe.plan({ read: () => PYPROJECT, inputs: {} }).fixes).toEqual([]);
+    expect(
+      recipe.plan({
+        files: [],
+        projectRoot: '/',
+        accepts: () => true,
+        read: () => PYPROJECT,
+        inputs: {},
+      }).fixes,
+    ).toEqual([]);
   });
 
   it('adds nothing for a dependency that is already declared', () => {

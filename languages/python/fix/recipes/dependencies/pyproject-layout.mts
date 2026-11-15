@@ -2,9 +2,10 @@ import {
   isDevelopmentGroup,
   normalizeRequirementName,
   requirementName,
-} from '../../../libraries/python-dependencies.mjs';
-import { addTableEntry, addToArray } from './toml-edits.mjs';
-import { arrayElements, scanToml } from './toml-scan.mjs';
+} from '../../../libraries/python-dependencies.mts';
+import type { DeclaredEntry, TextEdit, TomlKey, TomlSection } from '../../typed/fix-types.mts';
+import { addTableEntry, addToArray } from './toml-edits.mts';
+import { arrayElements, scanToml } from './toml-scan.mts';
 
 const POETRY_GROUP = /^tool\.poetry\.group\.([^.]+)\.dependencies$/u;
 const POETRY_FIRST = 'tool.poetry.dependencies';
@@ -18,7 +19,7 @@ const PRODUCTION = 'production';
 const PROJECT = 'project';
 const DEPENDENCIES = 'dependencies';
 
-function entriesOfArray(text, key, group) {
+function entriesOfArray(text: string, key: TomlKey, group: string): DeclaredEntry[] {
   return (arrayElements(text, key)?.elements ?? []).flatMap((element, index) => {
     const name = requirementName(element.value);
     return name === undefined
@@ -36,7 +37,7 @@ function entriesOfArray(text, key, group) {
   });
 }
 
-function entriesOfTable(text, section, group) {
+function entriesOfTable(text: string, section: TomlSection, group: string): DeclaredEntry[] {
   return section.keys
     .filter(({ key }) => key.toLowerCase() !== 'python')
     .map((key) => ({
@@ -48,9 +49,9 @@ function entriesOfTable(text, section, group) {
     }));
 }
 
-function sectionEntries(text, section) {
+function sectionEntries(text: string, section: TomlSection): DeclaredEntry[] {
   const { name, keys } = section;
-  function arrays(group) {
+  function arrays(group: (key: TomlKey) => string): (key: TomlKey) => DeclaredEntry[] {
     return (key) => entriesOfArray(text, key, group(key));
   }
   if (name === PROJECT) {
@@ -75,19 +76,26 @@ function sectionEntries(text, section) {
   return [];
 }
 
-export function declaredEntries(text) {
+export function declaredEntries(text: string): DeclaredEntry[] {
   return scanToml(text).flatMap((section) => sectionEntries(text, section));
 }
 
-function arrayKey(sections, sectionName, keyName) {
+function arrayKey(
+  sections: TomlSection[],
+  sectionName: string,
+  keyName: string,
+): TomlKey | undefined {
   return sections.find(({ name }) => name === sectionName)?.keys.find(({ key }) => key === keyName);
 }
 
-export function addDependency(text, { name, version, development }) {
+export function addDependency(
+  text: string,
+  { name, version, development }: { name: string; version: string; development: boolean },
+): TextEdit | undefined {
   const sections = scanToml(text);
   const requirement = `${name}>=${version}`;
   const tableLine = `${name} = ">=${version}"`;
-  const arrayTargets = development
+  const arrayTargets: [string, string][] = development
     ? [
         ['dependency-groups', 'dev'],
         ['tool.uv', 'dev-dependencies'],
@@ -100,16 +108,22 @@ export function addDependency(text, { name, version, development }) {
       return edit;
     }
   }
-  const tables = development ? POETRY_DEV.slice(2).concat(POETRY_DEV[1]) : [POETRY_FIRST];
+  const tables = development ? POETRY_DEV.slice(2).concat(POETRY_DEV.slice(1, 2)) : [POETRY_FIRST];
   const table = tables
     .map((tableName) => sections.find(({ name: found }) => found === tableName))
-    .find(Boolean);
+    .find((found) => found !== undefined);
   return table === undefined ? undefined : addTableEntry(text, table, tableLine);
 }
 
-export function addRaw(text, entry) {
+export function addRaw(
+  text: string,
+  entry: { kind: string; raw: string } | undefined,
+): TextEdit | undefined {
   const sections = scanToml(text);
   const key = arrayKey(sections, PROJECT, DEPENDENCIES);
+  if (entry === undefined) {
+    return undefined;
+  }
   if (entry.kind === 'array' && key !== undefined) {
     return addToArray(text, key, entry.raw);
   }
