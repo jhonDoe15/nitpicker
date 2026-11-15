@@ -135,6 +135,18 @@ const FIXTURES = {
         },
       },
     ),
+  'checked-js-scope': () =>
+    synthetic(
+      {},
+      {},
+      {
+        files: ['src/a.mjs'],
+        scope: {
+          tsconfigs: { base: new Map(), head: new Map() },
+          checkedJavascript: { base: new Set(['src/a.mjs']), head: new Set() },
+        },
+      },
+    ),
   'build-roots': gitBacked({
     base: GRADLE,
     head: {
