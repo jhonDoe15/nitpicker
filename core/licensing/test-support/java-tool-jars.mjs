@@ -7,12 +7,13 @@ import {
 } from '../../../languages/java/maven/maven-tools.mjs';
 
 const JAVA_DIRECTORY = path.resolve(import.meta.dirname, '../../../languages/java');
+const GRADLE_DIRECTORY = path.join(JAVA_DIRECTORY, 'gradle');
 const GRADLE_SCRIPTS = [
-  path.join(JAVA_DIRECTORY, 'gradle', 'nitpicker.init.gradle'),
-  path.join(JAVA_DIRECTORY, 'gradle', 'errorprone', 'error-prone.gradle'),
-  path.join(JAVA_DIRECTORY, 'gradle', 'kotlin', 'kotlin-detekt.gradle'),
-  path.join(JAVA_DIRECTORY, 'gradle', 'kotlin', 'kotlin-format.gradle'),
-];
+  'nitpicker.init.gradle',
+  'errorprone/error-prone.gradle',
+  'kotlin/kotlin-detekt.gradle',
+  'kotlin/kotlin-format.gradle',
+].map((script) => path.join(GRADLE_DIRECTORY, script));
 const MAVEN_TOOLS = path.join(JAVA_DIRECTORY, 'maven', 'maven-tools.mjs');
 const PINNED_COORDINATES = /([\w.-]+):([\w.-]+):\$\{(?:\w+ \?: )?(?:pinned|versions)\.(\w+)\}/g;
 const PINNED_KEY = /\bpinned\.(\w+)/g;

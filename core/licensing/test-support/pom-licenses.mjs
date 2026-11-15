@@ -22,6 +22,7 @@ const LICENSE_NAMES = [
   [/^(?:mozilla public license version 2\.0|mpl 2\.0)$/i, 'MPL-2.0'],
   [/^mpl 1\.1$/i, 'MPL-1.1'],
 ];
+const GROUP_ID = 'groupId';
 const SPDX_ID = /^[A-Za-z0-9.+-]+$/;
 const ARTIFACT_LICENSES = new Map([['org.dom4j:dom4j', 'BSD-style']]);
 
@@ -70,7 +71,7 @@ function parentPom(repository, project) {
     ? undefined
     : pomPath(
         repository,
-        ...['groupId', 'artifactId', 'version'].map((name) => textOf(parent, name)),
+        ...[GROUP_ID, 'artifactId', 'version'].map((name) => textOf(parent, name)),
       );
 }
 
@@ -94,7 +95,7 @@ function pomLicenses(jar) {
   if (project === undefined) {
     return { label: path.basename(jar), names: [] };
   }
-  const group = textOf(project, 'groupId') ?? textOf(childAt(project, 'parent'), 'groupId') ?? '';
+  const group = textOf(project, GROUP_ID) ?? textOf(childAt(project, 'parent'), GROUP_ID) ?? '';
   const repository = path.resolve(
     path.dirname(file),
     ...group.split('.').map(() => '..'),
