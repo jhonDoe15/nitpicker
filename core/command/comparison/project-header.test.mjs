@@ -32,7 +32,7 @@ function runFrom(repository, folder, extra = []) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const base = extra.includes('--all') ? [] : ['--base', repository.baseRef];
-  runCli({
+  const exitCode = runCli({
     arguments_: [...base, ...extra, '--output', outputRoot],
     environment: { NO_COLOR: '1' },
     workingDirectory: path.join(repository.root, folder),
@@ -43,6 +43,7 @@ function runFrom(repository, folder, extra = []) {
   });
   const read = (name) => readFileSync(path.join(outputRoot, name), 'utf8');
   return {
+    exitCode,
     firstLine: output.stdoutText.split('\n')[0],
     reportHead: read('report.txt').split('\n').slice(0, 2),
     projectPath: JSON.parse(read('summary.json')).projectPath,

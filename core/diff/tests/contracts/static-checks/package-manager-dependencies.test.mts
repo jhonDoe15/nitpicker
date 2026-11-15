@@ -247,7 +247,7 @@ describe('dependency preparation for every package manager', () => {
   it('installs a shared base once and lets the next project reuse it as it is', () => {
     vi.stubEnv(
       'PATH',
-      `${installFakeManagers(temporaryDirectory('fake-managers-'))}${path.delimiter}${process.env['PATH']}`,
+      `${installFakeManagers(temporaryDirectory('fake-managers-'))}${path.delimiter}${process.env['PATH'] ?? ''}`,
     );
     const { projectRoot, liveProjectRoot } = snapshotAndLive({
       snapshot: {
