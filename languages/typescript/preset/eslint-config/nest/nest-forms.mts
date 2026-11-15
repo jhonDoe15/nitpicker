@@ -21,13 +21,13 @@ const PROVIDER_INTERFACES = [
 ];
 const DTO_BASES = ['createZodDto', 'PartialType', 'PickType', 'OmitType', 'IntersectionType'];
 
-function anyOf(names) {
+function anyOf(names: readonly string[]): string {
   return `/^(${names.join('|')})$/`;
 }
 
 const LISTED_POSITIONS = [0, 1, 2, 3];
 
-function listedAt(list, member, names) {
+function listedAt(list: string, member: string, names: readonly string[]): string {
   const forms = LISTED_POSITIONS.flatMap((position) => [
     `[${list}.${String(position)}.${member}.name=${anyOf(names)}]`,
     `[${list}.${String(position)}.${member}.property.name=${anyOf(names)}]`,

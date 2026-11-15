@@ -1,7 +1,10 @@
 import {
-  patternRuleHints,
-  patternRuleIds,
+  patternRuleHints as untypedPatternRuleHints,
+  patternRuleIds as untypedPatternRuleIds,
 } from '../../../../../shared/rules/regex/pattern-rules.mjs';
+
+const patternRuleHints: () => [string, string][] = untypedPatternRuleHints;
+const patternRuleIds: readonly string[] = untypedPatternRuleIds;
 
 const USELESS_FLAG_HINT =
   ' Remove the flag: a `g` or `y` regex keeps `lastIndex` between calls, so a reused one gives order-dependent results.';
@@ -18,9 +21,11 @@ const SELF_EXPLAINING_RULES = [
   'regexp/no-useless-dollar-replacements',
 ];
 
-const RULE_OPTIONS = new Map([['regexp/no-useless-flag', { ignore: ['i', 'm', 's'] }]]);
+const RULE_OPTIONS = new Map<string, object>([
+  ['regexp/no-useless-flag', { ignore: ['i', 'm', 's'] }],
+]);
 
-export function regexpRuleHints() {
+export function regexpRuleHints(): [string, string][] {
   return [...patternRuleHints(), ...JAVASCRIPT_HINTS];
 }
 
@@ -30,7 +35,7 @@ export const regexpRuleIds = [
   ...SELF_EXPLAINING_RULES,
 ].toSorted();
 
-export function regexpRules() {
+export function regexpRules(): Record<string, 'error' | ['error', object]> {
   return Object.fromEntries(
     regexpRuleIds.map((rule) => {
       const options = RULE_OPTIONS.get(rule);

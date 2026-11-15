@@ -1,11 +1,36 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
-import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-string-building.mjs';
+import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-string-building.mts';
 import { codeExtensions } from '../../layout.mjs';
 import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mjs';
-import { packageMajorOf, readDependencyNames, storyGlobs } from '../scope-support.mjs';
+import {
+  packageMajorOf as untypedPackageMajorOf,
+  readDependencyNames as untypedReadDependencyNames,
+  storyGlobs as untypedStoryGlobs,
+} from '../scope-support.mjs';
 import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
+
+export type SecurityFacts = {
+  readonly browser: boolean;
+  readonly sqlLibrary: string | undefined;
+  readonly yamlMajor: number | undefined;
+  readonly nodeFetchTimeout: boolean;
+  readonly httpDefaults: readonly string[];
+};
+
+export type SecurityScope = {
+  readonly react: boolean;
+  readonly security?: Partial<SecurityFacts> | undefined;
+};
+
+const pathInside: (root: string, file: string) => string | undefined = untypedPathInside;
+const packageMajorOf: (projectRoot: string, name: string) => number | undefined =
+  untypedPackageMajorOf;
+const readDependencyNames: (projectRoot: string) => string[] = untypedReadDependencyNames;
+const storyGlobs: readonly string[] = untypedStoryGlobs;
+const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 
 export const SECURITY_RULES = [
   'nitpicker/no-disabled-tls-verification',
@@ -38,7 +63,7 @@ const DISPATCHER_TIMEOUT = new RegExp(
   'u',
 );
 
-export function securitySupportGlobs() {
+export function securitySupportGlobs(): string[] {
   return [
     ...SUPPORT_FOLDERS.map((folder) => `**/${folder}/**`),
     ...SUPPORT_FILES.map((name) => `**/${name}.${codeExtensions}`),
@@ -46,7 +71,7 @@ export function securitySupportGlobs() {
   ];
 }
 
-function filesSettingDefaults(projectRoot) {
+function filesSettingDefaults(projectRoot: string): string[] {
   const found = spawnSync(
     'git',
     [
@@ -67,18 +92,24 @@ function filesSettingDefaults(projectRoot) {
   return found.status === 0 ? found.stdout.split('\n').filter(Boolean) : [];
 }
 
-function setsAxiosDefaults(text) {
+function setsAxiosDefaults(text: string): boolean {
   return [...text.matchAll(AXIOS_BINDING)].some((match) => {
-    const name = match[1] ?? match[2];
-    return new RegExp(`\\b${name}\\.defaults\\.timeout\\s*=\\s*${NOT_ZERO}`, 'u').test(text);
+    const name = match[1] ?? match[2] ?? '';
+    return new RegExp(
+      `\\b${escapeRegExp(name)}\\.defaults\\.timeout\\s*=\\s*${NOT_ZERO}`,
+      'u',
+    ).test(text);
   });
 }
 
-function setsDispatcherTimeouts(text) {
+function setsDispatcherTimeouts(text: string): boolean {
   return UNDICI_IMPORT.test(text) && GLOBAL_DISPATCHER.test(text) && DISPATCHER_TIMEOUT.test(text);
 }
 
-function projectHttpDefaults(projectRoot, isProductionFile) {
+function projectHttpDefaults(
+  projectRoot: string,
+  isProductionFile: (file: string) => boolean,
+): string[] {
   const texts = filesSettingDefaults(projectRoot)
     .filter((file) => isProductionFile(file))
     .map((file) => pathInside(projectRoot, file))
@@ -90,7 +121,10 @@ function projectHttpDefaults(projectRoot, isProductionFile) {
   ];
 }
 
-export function securityFactsFor(projectRoot, isProductionFile) {
+export function securityFactsFor(
+  projectRoot: string,
+  isProductionFile: (file: string) => boolean,
+): SecurityFacts {
   const names = readDependencyNames(projectRoot);
   const nodeFetch = names.includes('node-fetch')
     ? packageMajorOf(projectRoot, 'node-fetch')
@@ -104,14 +138,17 @@ export function securityFactsFor(projectRoot, isProductionFile) {
   };
 }
 
-export function httpClientOptions({ react, security = {} }) {
+export function httpClientOptions({ react, security = {} }: SecurityScope): {
+  fetch: boolean;
+  nodeFetchTimeout: boolean;
+} {
   return {
     fetch: !(react || security.browser === true),
     nodeFetchTimeout: security.nodeFetchTimeout !== false,
   };
 }
 
-export function securityRules({ react, security = {} }) {
+export function securityRules({ react, security = {} }: SecurityScope): Record<string, unknown> {
   const sql = security.sqlLibrary === undefined ? {} : { sqlLibrary: security.sqlLibrary };
   const yaml = security.yamlMajor === undefined ? {} : { yamlMajor: security.yamlMajor };
   return {

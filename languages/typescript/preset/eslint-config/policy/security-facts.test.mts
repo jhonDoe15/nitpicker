@@ -5,8 +5,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
-import { productionPolicyConfigFor } from './production-policy.mjs';
-import { securityFactsFor, securityRules } from './security-facts.mjs';
+import { productionPolicyConfigFor } from './production-policy.mts';
+import { securityFactsFor, securityRules } from './security-facts.mts';
 
 const roots: string[] = [];
 

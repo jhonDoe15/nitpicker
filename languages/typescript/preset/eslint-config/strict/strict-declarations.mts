@@ -1,16 +1,21 @@
-import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
+import type { StrictOptions } from '../typed/config-types.mts';
 import {
   nestClassExclusions,
   nestClassMessage,
   nestExceptionSuperclass,
-} from '../nest/nest-forms.mjs';
+} from '../nest/nest-forms.mts';
+
+type FrameworkScope = Pick<StrictOptions, 'react' | 'nest'>;
+
+type Selector = { readonly selector: string; readonly message: string };
 
 const nonErrorSuperclass =
   ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
 const nonComponentSuperclass =
   ':not([superClass.name=/^(Pure)?Component$/]):not([superClass.property.name=/^(Pure)?Component$/])';
 
-function classSelectorExcluding(superclasses) {
+function classSelectorExcluding(superclasses: string): string {
   return `ClassDeclaration${superclasses}, ClassExpression${superclasses}`;
 }
 
@@ -20,7 +25,7 @@ const classSelector = {
     'Classes are only for `Error` subclasses (`class NameError extends Error`). Use a `type` for data and `function` declarations for behavior; construct dependencies in the composition root.',
 };
 
-function frameworkClassSelector({ react, nest }) {
+function frameworkClassSelector({ react, nest }: FrameworkScope): Selector {
   const component = react ? nonComponentSuperclass : '';
   const nestForms = nest ? `${nestExceptionSuperclass}${nestClassExclusions}` : '';
   return {
@@ -68,7 +73,7 @@ const declarationSelectors = [
   },
 ];
 
-export function declarationSelectorsFor({ react = false, nest = false } = {}) {
+export function declarationSelectorsFor({ react, nest }: FrameworkScope = {}): Selector[] {
   return declarationSelectors.map((entry) =>
     (react || nest) && entry === classSelector ? frameworkClassSelector({ react, nest }) : entry,
   );

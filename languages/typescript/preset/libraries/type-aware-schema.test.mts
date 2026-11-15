@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;

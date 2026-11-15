@@ -1,10 +1,7 @@
 import { RuleTester, type Rule } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule } from '../../eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mjs';
-
-function metaType(type: string): Rule.RuleMetaData['type'] {
-  return type === 'problem' || type === 'suggestion' || type === 'layout' ? type : undefined;
-}
+import { rule } from '../../eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mts';
+import { ruleModule } from '../../eslint-plugin/test-support/rule-tester.mts';
 
 export function productionRuntimeRule(): Rule.RuleModule {
   Object.assign(RuleTester, {
@@ -16,8 +13,5 @@ export function productionRuntimeRule(): Rule.RuleModule {
     it,
     itOnly: it.only,
   });
-  return {
-    ...rule,
-    meta: { ...rule.meta, type: metaType(rule.meta.type) },
-  };
+  return ruleModule(rule);
 }
