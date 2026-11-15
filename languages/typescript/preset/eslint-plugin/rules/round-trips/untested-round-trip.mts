@@ -1,16 +1,26 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import {
-  memberCall,
-  roundTripMessage,
-  shownMember,
+  memberCall as untypedMemberCall,
+  roundTripMessage as untypedRoundTripMessage,
+  shownMember as untypedShownMember,
 } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
-import { exportedPairs } from './exported-pairs.mjs';
-import { untestedPairs } from './tested-names.mjs';
+import { exportedPairs, type Member, type OwnedPair } from './exported-pairs.mts';
+import { untestedPairs } from './tested-names.mts';
 
-function example({ owner, inner, outer }) {
+const memberCall: (owner: string | undefined, member: Member, argument: string) => string =
+  untypedMemberCall;
+const roundTripMessage: (parts: {
+  readonly first: string;
+  readonly second: string;
+  readonly example: string;
+}) => string = untypedRoundTripMessage;
+const shownMember: (owner: string | undefined, member: Member) => string = untypedShownMember;
+
+function example({ owner, inner, outer }: OwnedPair): string {
   return `expect(${memberCall(owner, outer, memberCall(owner, inner, 'value'))}).toEqual(value)`;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'untested', readonly []> = {
   meta: {
     type: 'problem',
     docs: { description: 'Require a test that runs each exported inverse pair on its own output' },

@@ -1,11 +1,26 @@
-import { stringValue } from '../analysis/constant-resolution.mjs';
-import { isEnvRead } from '../database/orm-options.mjs';
-import { isAbsent } from '../security/http/http-config.mjs';
-import { resolvedValue, staticKey } from '../security/security-values.mjs';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { stringValue } from '../analysis/constant-resolution.mts';
+import { isEnvRead } from '../database/orm-options.mts';
+import { isAbsent } from '../security/http/http-config.mts';
+import { resolvedValue, staticKey, type Context } from '../security/security-values.mts';
 
 export const SET = 'set';
 export const MISSING = 'missing';
 export const UNKNOWN = 'unknown';
+
+export type State = typeof SET | typeof MISSING | typeof UNKNOWN;
+export type Timeout = {
+  readonly kind: 'aws' | 'database';
+  readonly name: string | undefined;
+  readonly state: State;
+};
+export type TimeoutOptions = {
+  readonly context: Context;
+  readonly entries: TSESTree.Property[];
+  opaque: boolean;
+};
+type MaybeNode = TSESTree.Node | undefined;
+type Piece = { readonly text: string; readonly complete: boolean };
 
 const TIMEOUT_KEYS = ['statement_timeout', 'query_timeout'];
 const ZERO_VALUE = /^0+(?:ms|s)?$/u;
@@ -13,19 +28,19 @@ const SEPARATORS = new Set([' ', '\t', '=', ':', "'", '"']);
 const MAX_SPREADS = 4;
 const SPREAD_ROUNDS = Array.from({ length: MAX_SPREADS }, (_, round) => round);
 
-export function either(states) {
+export function either(states: readonly State[]): State {
   if (states.includes(SET)) {
     return SET;
   }
   return states.includes(UNKNOWN) ? UNKNOWN : MISSING;
 }
 
-function isConcatenation(node) {
-  return node?.type === 'BinaryExpression' && node.operator === '+';
+function isConcatenation(node: MaybeNode): node is TSESTree.BinaryExpression {
+  return node?.type === AST_NODE_TYPES.BinaryExpression && node.operator === '+';
 }
 
-function pieceText(piece) {
-  if (piece?.type === 'TemplateLiteral') {
+function pieceText(piece: MaybeNode): Piece {
+  if (piece?.type === AST_NODE_TYPES.TemplateLiteral) {
     const text = piece.quasis.map((quasi) => quasi.value.cooked ?? '').join(' ');
     return { text, complete: piece.expressions.length === 0 };
   }
@@ -33,8 +48,8 @@ function pieceText(piece) {
   return { text: text ?? '', complete: text !== undefined };
 }
 
-function visibleText(context, node) {
-  const pieces = SPREAD_ROUNDS.reduce(
+function visibleText(context: Context, node: MaybeNode): Piece {
+  const pieces = SPREAD_ROUNDS.reduce<MaybeNode[]>(
     (current) =>
       current.flatMap((piece) =>
         isConcatenation(piece)
@@ -49,18 +64,18 @@ function visibleText(context, node) {
   };
 }
 
-export function textOf(context, node) {
+export function textOf(context: Context, node: MaybeNode): string | undefined {
   const visible = visibleText(context, node);
   return visible.complete ? visible.text : undefined;
 }
 
-function settingValue(rest) {
+function settingValue(rest: string): string {
   const decoded = rest.replaceAll(/%3D/giu, '=');
-  const first = [...decoded].findIndex((char) => !SEPARATORS.has(char));
+  const first = Array.from(decoded).findIndex((char) => !SEPARATORS.has(char));
   return first === -1 ? '' : (/^[\w.]*/u.exec(decoded.slice(first))?.[0] ?? '');
 }
 
-export function carriesTimeout(text) {
+export function carriesTimeout(text: string): boolean {
   return TIMEOUT_KEYS.some((key) =>
     text
       .split(key)
@@ -69,7 +84,7 @@ export function carriesTimeout(text) {
   );
 }
 
-export function textState(context, node, unknownText) {
+export function textState(context: Context, node: MaybeNode, unknownText: State): State {
   const visible = visibleText(context, node);
   if (carriesTimeout(visible.text)) {
     return SET;
@@ -77,13 +92,17 @@ export function textState(context, node, unknownText) {
   return visible.complete ? MISSING : unknownText;
 }
 
-function spreadItems(context, items, options) {
+function spreadItems(
+  context: Context,
+  items: readonly TSESTree.ObjectLiteralElement[],
+  options: TimeoutOptions,
+): TSESTree.ObjectLiteralElement[] {
   return items.flatMap((entry) => {
-    if (entry.type !== 'SpreadElement') {
+    if (entry.type !== AST_NODE_TYPES.SpreadElement) {
       return [entry];
     }
     const inner = resolvedValue(context, entry.argument);
-    if (inner?.type === 'ObjectExpression') {
+    if (inner?.type === AST_NODE_TYPES.ObjectExpression) {
       return inner.properties;
     }
     options.opaque = true;
@@ -91,18 +110,18 @@ function spreadItems(context, items, options) {
   });
 }
 
-export function optionsOf(context, node) {
+export function optionsOf(context: Context, node: MaybeNode): TimeoutOptions | undefined {
   const object = node === undefined ? undefined : resolvedValue(context, node);
-  if (object?.type !== 'ObjectExpression') {
+  if (object?.type !== AST_NODE_TYPES.ObjectExpression) {
     return undefined;
   }
-  const options = { context, entries: [], opaque: false };
+  const options: TimeoutOptions = { context, entries: [], opaque: false };
   const items = SPREAD_ROUNDS.reduce(
     (current) => spreadItems(context, current, options),
     object.properties,
   );
   for (const entry of items) {
-    if (entry.type === 'Property' && staticKey(entry) !== undefined) {
+    if (entry.type === AST_NODE_TYPES.Property && staticKey(entry) !== undefined) {
       options.entries.push(entry);
     } else {
       options.opaque = true;
@@ -111,15 +130,15 @@ export function optionsOf(context, node) {
   return options;
 }
 
-export function valueOf(options, key) {
+export function valueOf(options: TimeoutOptions, key: string): TSESTree.Node | undefined {
   return options.entries.findLast((entry) => staticKey(entry) === key)?.value;
 }
 
-function absentState(options) {
+function absentState(options: TimeoutOptions): State {
   return options.opaque ? UNKNOWN : MISSING;
 }
 
-export function keyState(options, key) {
+export function keyState(options: TimeoutOptions, key: string): State {
   const value = valueOf(options, key);
   if (value === undefined) {
     return absentState(options);
@@ -127,19 +146,23 @@ export function keyState(options, key) {
   return isAbsent(options.context, value) ? MISSING : SET;
 }
 
-function textKeyState(options, key, unknownText) {
+function textKeyState(options: TimeoutOptions, key: string, unknownText: State): State {
   const value = valueOf(options, key);
   return value === undefined
     ? absentState(options)
     : textState(options.context, value, unknownText);
 }
 
-export function nestedState(options, key, judge) {
+export function nestedState(
+  options: TimeoutOptions,
+  key: string,
+  judge: (context: Context, node: TSESTree.Node) => State,
+): State {
   const value = valueOf(options, key);
   return value === undefined ? absentState(options) : judge(options.context, value);
 }
 
-export function postgresOptionsState(context, node) {
+export function postgresOptionsState(context: Context, node: MaybeNode): State {
   if (node === undefined || isEnvRead(node)) {
     return MISSING;
   }

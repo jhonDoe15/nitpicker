@@ -1,15 +1,22 @@
-import { moduleScope } from '../database/orm-modules.mjs';
-import { clientTimeout } from './client-calls.mjs';
-import { ormOptionsTimeout, sequelizeUrlTimeout } from './orm-timeouts.mjs';
-import { MISSING } from './timeout-options.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { moduleScope } from '../database/orm-modules.mts';
+import { clientTimeout } from './client-calls.mts';
+import { ormOptionsTimeout, sequelizeUrlTimeout } from './orm-timeouts.mts';
+import { MISSING, type Timeout } from './timeout-options.mts';
 
-function report(context, node, found) {
+type MessageId = 'database' | 'aws';
+
+function report(
+  context: Readonly<TSESLint.RuleContext<MessageId, readonly []>>,
+  node: TSESTree.Node,
+  found: Timeout | undefined,
+): void {
   if (found?.state === MISSING) {
     context.report({ node, messageId: found.kind, data: { client: found.name } });
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId, readonly []> = {
   meta: {
     type: 'problem',
     docs: { description: 'Require a timeout on database and AWS SDK clients' },

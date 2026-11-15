@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-uncoerced-request-input.mjs';
+import { rule } from './no-uncoerced-request-input.mts';
 import { expectedError } from './test-support/expected-error.mts';
 
 const tester = typescriptRuleTester();
