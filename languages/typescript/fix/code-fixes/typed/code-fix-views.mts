@@ -6,7 +6,7 @@ import {
   codeName as untypedCodeName,
   fixesForCode as untypedFixesForCode,
   selectedCodeFixes as untypedSelectedCodeFixes,
-} from '../code-fix-rules.mjs';
+} from '../code-fix-rules.mts';
 
 export type CodeFix = {
   readonly id: string;
