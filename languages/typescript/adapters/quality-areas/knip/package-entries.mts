@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { listOf } from '../../../../../scripts/json/fields.mts';
-import { fieldOf, fieldsOf, stringsIn } from '../../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, stringsIn } from '../../../../../shared/values/readers.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { KnipConfig } from '../typed/policy.mts';
 import {
