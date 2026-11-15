@@ -4,7 +4,7 @@ Part of the [Python preset guide](../python-preset.md).
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits, `slow-test`, the [feature folder rules](feature-folders.md) and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits, `slow-test`, the [feature folder rules](feature-folders.md) and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mts` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -79,7 +79,7 @@ through the real tools.
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
   [runner parity](runner-parity.md)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are
-  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mts`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout`,
   `client-without-timeout` and `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
   TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
@@ -89,7 +89,7 @@ through the real tools.
   root or when no production module imports it (directly or through other support files). A production
   `testing/` or `fixtures/` package that the application imports keeps its findings. The rules script
   decides the support files (`security/support.py`) and lists them in `rules-allowances.json` beside its
-  report, where `rules/filters/test-support.mjs` reads them for ruff's findings.
+  report, where `rules/filters/test-support.mts` reads them for ruff's findings.
 - **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
   library only, never importing project code) over the files `ruff check --show-files` lists, so
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
