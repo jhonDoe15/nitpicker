@@ -21,11 +21,11 @@ import {
   parseJson,
   textOf,
 } from '../../../../../shared/values/readers.mts';
-import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import {
   copyGitTemplate as untypedCopyGitTemplate,
   createGitTemplate as untypedCreateGitTemplate,
-} from '../../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const withDefaultAnalyzerParallelism: <Result>(run: () => Result) => Result =
   untypedWithDefaultAnalyzerParallelism;

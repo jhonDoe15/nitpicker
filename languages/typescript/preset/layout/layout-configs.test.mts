@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { globMatcher as untypedGlobMatcher } from '../layout.mjs';
 import { readDefaultTsconfig } from './test-support/layout-readers.mts';

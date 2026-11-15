@@ -1,10 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { fixtureGit } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../../../../core/diff/git/test-support/git-repository.mts';
 import {
   edit,
   repeated,
   useHistoryRepositories,
-} from '../../../../core/diff/git/test-support/history-repository.mjs';
+} from '../../../../core/diff/git/test-support/history-repository.mts';
 import { cloneDepth, parseLog, readHistory } from './git-history.mjs';
 
 const { historyRepository, temporaryRoot } = useHistoryRepositories();

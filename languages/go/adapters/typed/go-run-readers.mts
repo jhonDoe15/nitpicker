@@ -16,7 +16,7 @@ import { readGoDuplicateFindings as untypedReadDuplicates } from '../duplicates/
 import { formatFindings as untypedFormatFindings } from '../formatting/go-format.mjs';
 import { lintFindings as untypedLintFindings } from '../lint/go-lint.mjs';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import { callUntyped as call } from '../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { isRow } from './row-readers.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import type { FindingRow, GoContext, GoFacts, GoPolicy, Spawn, ToolFailure } from '../go-types.mts';

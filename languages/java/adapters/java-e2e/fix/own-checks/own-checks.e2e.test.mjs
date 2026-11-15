@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useFixProject } from '../../../../../../core/fix/test-support/fix-project.mjs';
+import { useFixProject } from '../../../../../../core/fix/test-support/fix-project.mts';
 import {
   ALL_RULES,
   BUILDS,

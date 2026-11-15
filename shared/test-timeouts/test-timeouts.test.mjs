@@ -5,7 +5,7 @@ import {
   TEST_TIMEOUT_CEILING_MS,
   resolveTestTimeouts,
 } from './resolve.mjs';
-import { validateConfig } from '../../core/configuration/validate.mjs';
+import { validateConfig } from '../../core/configuration/validate.mts';
 
 describe('test timeout policy', () => {
   it('preserves execution grace separately from declaration ceilings and native hooks', () => {

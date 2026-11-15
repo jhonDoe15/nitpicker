@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mts';
 import { NO_MUTATION, SAME_NAME_SOURCES, VIOLATION } from './test-support/python-preset-data.mts';
 import {
   commitBranch,

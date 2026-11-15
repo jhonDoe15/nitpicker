@@ -1,36 +1,25 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { symlinkSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
 import { matchingFiles } from './matching-files.mts';
+import { useTemporaryProjects } from '../../preset/test-support/temporary-projects.mts';
 
-const temporaryRoots: string[] = [];
+const { projectWith } = useTemporaryProjects('nitpicker-prettier-matching-', { keepForFile: true });
 
-afterAll(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const FILES = [
+  '.x.json',
+  'root.ts',
+  'src/.d/a.ts',
+  'src/.d/deep/b.mjs',
+  'src/data.json',
+  'src/other.txt',
+  'src/node_modules/dependency/index.ts',
+  'node_modules/dependency/index.ts',
+  '.git/hidden.ts',
+];
 
 function project(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-matching-'));
-  temporaryRoots.push(root);
-  for (const name of [
-    '.x.json',
-    'root.ts',
-    'src/.d/a.ts',
-    'src/.d/deep/b.mjs',
-    'src/data.json',
-    'src/other.txt',
-    'src/node_modules/dependency/index.ts',
-    'node_modules/dependency/index.ts',
-    '.git/hidden.ts',
-  ]) {
-    const target = path.join(root, name);
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, '');
-  }
-  return root;
+  return projectWith(Object.fromEntries(FILES.map((name) => [name, ''])));
 }
 
 describe('Prettier formatting candidates', () => {

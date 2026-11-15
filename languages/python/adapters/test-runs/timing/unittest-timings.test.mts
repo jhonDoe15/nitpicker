@@ -8,7 +8,7 @@ import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mjs';
 import { readJunit } from '../../test-support/views/test-views.mts';
 import { readSlowTestFindings } from '../../typed/report/report-views.mts';
 import { retimeSlowTests } from './slow-retime.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
