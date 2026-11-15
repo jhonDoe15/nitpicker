@@ -18,6 +18,7 @@ import { applyRuleHints as untypedRuleHints } from '../../../rules/rule-hints.mj
 import { detectLibraries as untypedLibraries } from '../../../rules/libraries/project-libraries.mjs';
 import { pytestStyle as untypedPytestStyle } from '../../../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms as untypedAllowedForms } from '../../../rules/filters/ruff-allowed-forms.mts';
+import { withoutShadowedFindings as untypedShadowed } from '../../../rules/filters/shadowed-findings.mjs';
 import { readConsoleFindings as untypedConsole } from '../../test-results/console-output.mjs';
 import { readFactFindings as untypedFacts } from '../../facts/python-facts.mjs';
 import { readTestRuntimeFindings as untypedTestRuntime } from '../../analysis/test-runtime/python-test-runtime.mjs';
@@ -204,6 +205,13 @@ export function withoutAllowedForms(
   options: Options,
 ): IngestedFinding[] {
   return findingsOf(call(untypedAllowedForms, findings, options));
+}
+
+export function withoutShadowedFindings(
+  findings: readonly IngestedFinding[],
+  options: Options,
+): IngestedFinding[] {
+  return findingsOf(call(untypedShadowed, findings, options));
 }
 
 export function readStructureFunctions(reportRoot: string): readonly unknown[] {

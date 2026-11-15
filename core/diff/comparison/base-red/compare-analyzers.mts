@@ -36,6 +36,7 @@ export type ComparisonRequest = {
   readonly toolErrors: ReportEntry[];
   readonly baseToHeadRenames?: Moves | undefined;
   readonly baseToHeadDirectories?: Moves | undefined;
+  readonly baseToHeadPackages?: Moves | undefined;
   readonly touchedCode?:
     { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
 };
@@ -74,6 +75,7 @@ const findingsCompared: (request: {
   readonly headFindings: readonly Finding[];
   readonly baseToHeadRenames: Moves | undefined;
   readonly baseToHeadDirectories: Moves | undefined;
+  readonly baseToHeadPackages: Moves | undefined;
   readonly touchedCode: unknown;
   readonly unknownOnBase: unknown;
 }) => Readonly<Record<string, readonly Finding[]>> = compareFindings;
@@ -221,6 +223,7 @@ function compareOrReportError(context: ComparedContext): FindingComparison {
       headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
+      baseToHeadPackages: context.baseToHeadPackages,
       touchedCode: context.touchedCode,
       unknownOnBase: unknownOnBaseOf(context),
     });
