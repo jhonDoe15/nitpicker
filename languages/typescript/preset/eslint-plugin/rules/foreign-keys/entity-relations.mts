@@ -91,9 +91,7 @@ function firstString(sourceCode: SourceCode, value: MaybeNode): string | undefin
 function firstMember(node: TSESTree.ArrowFunctionExpression): string | undefined {
   const body =
     node.body.type === AST_NODE_TYPES.ArrayExpression ? node.body.elements[0] : undefined;
-  return body?.type === AST_NODE_TYPES.MemberExpression
-    ? staticKeyName(body)
-    : undefined;
+  return body?.type === AST_NODE_TYPES.MemberExpression ? staticKeyName(body) : undefined;
 }
 
 function leadingColumn(sourceCode: SourceCode, call: TSESTree.CallExpression): string | undefined {

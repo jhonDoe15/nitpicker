@@ -22,7 +22,7 @@ export type Ref = {
   readonly imported: string | undefined;
   readonly instance: false;
 };
-export type ModuleOrigin = Ref & {
+type ModuleOrigin = Ref & {
   readonly spec: ClientSpec;
   readonly member?: string | undefined;
 };

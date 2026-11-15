@@ -1,9 +1,9 @@
-import { rule as noUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mts';
-import { rule as boundedContainerTeardown } from '../rules/testing/lifecycle/bounded-container-teardown.mts';
-import { rule as noFirstTestChargedSetup } from '../rules/testing/lifecycle/no-first-test-charged-setup.mts';
-import { rule as noIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mts';
-import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mts';
-import { rule as containerPauseRequiresFinallyUnpause } from '../rules/testing/lifecycle/container-pause-requires-finally-unpause.mts';
+import { rule as noUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
+import { rule as boundedContainerTeardown } from '../rules/test-runtime/lifecycle/bounded-container-teardown.mts';
+import { rule as noFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
+import { rule as noIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
+import { rule as noFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
+import { rule as containerPauseRequiresFinallyUnpause } from '../rules/test-runtime/lifecycle/container-pause-requires-finally-unpause.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mts';
 import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 

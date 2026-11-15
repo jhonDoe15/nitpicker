@@ -8,6 +8,7 @@ import {
 import { isBrowserEndToEndTest, mockedModuleSource } from '../analysis/test-code-analysis.mts';
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 
 type ReachStep =
   | { readonly file: string; readonly truncated?: undefined }
@@ -174,15 +175,6 @@ function coreExpression(node: TSESTree.Node): TSESTree.Node | undefined {
   return chain.at(-1);
 }
 
-function loaderName(callee: TSESTree.Node): string | undefined {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? nameOf(callee.property)
-    : undefined;
-}
-
 function loadsReact(node: TSESTree.Node | undefined): boolean {
   if (node?.type === AST_NODE_TYPES.ImportExpression) {
     return node.source.type === AST_NODE_TYPES.Literal && node.source.value === REACT_PACKAGE;
@@ -191,7 +183,7 @@ function loadsReact(node: TSESTree.Node | undefined): boolean {
     return false;
   }
   const [argument] = node.arguments;
-  const name = loaderName(node.callee);
+  const name = calleeNameOf(node.callee);
   return (
     name !== undefined &&
     moduleLoaders.has(name) &&

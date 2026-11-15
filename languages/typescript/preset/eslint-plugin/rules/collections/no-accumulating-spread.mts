@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, chainOf, contains, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { ancestorsOf, contains, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { TYPE_ASSERTIONS, unwrapOf } from '../typed/syntax-views.mts';
 import {
   accumulatingSpreadMessageId,
   accumulatingSpreadMessages,
@@ -10,12 +11,6 @@ import {
 type Variable = TSESLint.Scope.Variable;
 type ParameterDefinition = TSESLint.Scope.Definitions.ParameterDefinition;
 type VariableDefinition = TSESLint.Scope.Definitions.VariableDefinition;
-type Wrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSTypeAssertion
-  | TSESTree.TSInstantiationExpression;
 type Location = { readonly node: TSESTree.Node } | { readonly loc: TSESTree.SourceLocation };
 type Report = {
   readonly kind: SpreadKind;
@@ -44,6 +39,11 @@ const LOOP_TYPES = new Set<string>([
   AST_NODE_TYPES.WhileStatement,
   AST_NODE_TYPES.DoWhileStatement,
 ]);
+const WRAPPERS = [
+  ...TYPE_ASSERTIONS,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.TSInstantiationExpression,
+];
 const REDUCE_KINDS = new Map<string, SpreadKind>([
   [AST_NODE_TYPES.ArrayExpression, 'reduceArray'],
   [AST_NODE_TYPES.ObjectExpression, 'reduceObject'],
@@ -53,22 +53,8 @@ const LOOP_KINDS = new Map<string, SpreadKind>([
   [AST_NODE_TYPES.ObjectExpression, 'loopObject'],
 ]);
 
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion ||
-    node.type === AST_NODE_TYPES.TSInstantiationExpression
-  );
-}
-
 function innerExpression(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf<TSESTree.Node>(node, (current) =>
-      isWrapper(current) ? current.expression : undefined,
-    ).at(-1) ?? node
-  );
+  return unwrapOf(node, WRAPPERS);
 }
 
 function staticPropertyName(member: TSESTree.MemberExpression): string | undefined {

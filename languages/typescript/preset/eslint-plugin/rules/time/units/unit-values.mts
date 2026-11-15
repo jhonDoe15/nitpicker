@@ -1,9 +1,5 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  constantNumber,
-  findVariable,
-  type SourceContext,
-} from '../../analysis/constant-resolution.mts';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { constantNumber, type SourceContext } from '../../analysis/constant-resolution.mts';
 import { calleeText, propertyName, unwrap } from './unit-nodes.mts';
 import {
   convertedUnit,
@@ -13,12 +9,11 @@ import {
   type Unit,
 } from './unit-views.mts';
 import { foldTree } from '../../typed/node-views.mts';
+import { constDefinition } from '../../typed/syntax-views.mts';
 
 export type UnitValue = { readonly unit: Unit; readonly epoch: boolean };
 type MaybeUnit = UnitValue | undefined;
 type Operands = readonly [MaybeUnit, MaybeUnit];
-
-const { DefinitionType } = TSESLint.Scope;
 
 const MAX_DEPTH = 8;
 const CLAIMS = new Set(['exp', 'iat', 'nbf', 'auth_time']);
@@ -43,11 +38,8 @@ function constInitializer(
   context: SourceContext,
   node: TSESTree.Identifier,
 ): TSESTree.Expression | undefined {
-  const variable = findVariable(context, node, node.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  return definition?.type === DefinitionType.Variable &&
-    definition.parent.kind === 'const' &&
-    definition.node.id.type === AST_NODE_TYPES.Identifier
+  const definition = constDefinition(context, node);
+  return definition?.node.id.type === AST_NODE_TYPES.Identifier
     ? (definition.node.init ?? undefined)
     : undefined;
 }

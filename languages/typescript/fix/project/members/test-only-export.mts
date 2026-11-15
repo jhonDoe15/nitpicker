@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { variableNames } from '../../../preset/eslint-plugin/rules/typed/typescript-views.mts';
 import { importSpecifier } from '../imports/retarget.mts';
 import { moduleReferences } from '../model/module-references.mts';
 import { withProject } from '../model/project-model.mts';
@@ -39,10 +40,7 @@ function exportedDeclarations(sourceFile: TypeScript.SourceFile | undefined): Ex
 
 function declarationNames(statement: TypeScript.Statement): string[] {
   if (ts.isVariableStatement(statement)) {
-    return statement.declarationList.declarations
-      .map(({ name }) => name)
-      .filter(ts.isIdentifier)
-      .map(({ text }) => text);
+    return variableNames(statement);
   }
   const named =
     ts.isFunctionDeclaration(statement) ||

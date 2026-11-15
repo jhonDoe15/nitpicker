@@ -7,7 +7,7 @@ export type Member = {
   readonly line: number;
   readonly isStatic: boolean;
 };
-export type RoundTripPair = {
+type RoundTripPair = {
   readonly earlier: Member;
   readonly later: Member;
   readonly inner: Member;

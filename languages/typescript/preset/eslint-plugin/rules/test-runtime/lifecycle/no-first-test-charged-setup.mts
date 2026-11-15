@@ -1,11 +1,12 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../../analysis/constant-resolution.mts';
-import { findVariable, perTestVisitors } from '../../analysis/test-code-analysis.mts';
-import { chainOf } from '../../typed/node-views.mts';
+import {
+  moduleVariableKind,
+  perTestVisitors,
+  registrationRoot,
+} from '../../analysis/test-code-analysis.mts';
 
 type StoredValue = TSESTree.AwaitExpression | TSESTree.CallExpression;
-
-const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 const CHEAP_CALL_ROOTS = new Set([
   'path',
@@ -23,28 +24,13 @@ const CHEAP_CALL_ROOTS = new Set([
 ]);
 const MEMO_LOGICAL_OPERATORS = new Set(['??=', '||=']);
 
-function calleeRoot(callee: TSESTree.Node): string | undefined {
-  const current = chainOf<TSESTree.Node>(callee, (link) => {
-    if (link.type === AST_NODE_TYPES.MemberExpression) {
-      return link.object;
-    }
-    return link.type === AST_NODE_TYPES.CallExpression ? link.callee : undefined;
-  }).at(-1);
-  return current?.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
-}
-
 function storedValue(call: TSESTree.CallExpression): StoredValue {
   return call.parent.type === AST_NODE_TYPES.AwaitExpression ? call.parent : call;
 }
 
 function isModuleLevelMutable(context: SourceContext, identifier: TSESTree.Identifier): boolean {
-  const variable = findVariable(context, identifier, identifier.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  return (
-    variable?.scope.type === ScopeType.module &&
-    definition?.type === DefinitionType.Variable &&
-    definition.parent.kind !== 'const'
-  );
+  const kind = moduleVariableKind(context, identifier);
+  return kind !== undefined && kind !== 'const';
 }
 
 function isNamed(node: TSESTree.Node | undefined, name: string): boolean {
@@ -58,11 +44,12 @@ function isNullish(node: TSESTree.Node | undefined): boolean {
   );
 }
 
-function isEmptyCheck(test: TSESTree.Node, name: string): boolean {
-  if (test.type === AST_NODE_TYPES.UnaryExpression && test.operator === '!') {
-    return isNamed(test.argument, name);
-  }
-  if (test.type !== AST_NODE_TYPES.BinaryExpression || !['==', '==='].includes(test.operator)) {
+function comparesToNullish(
+  test: TSESTree.Node,
+  name: string,
+  operators: readonly string[],
+): boolean {
+  if (test.type !== AST_NODE_TYPES.BinaryExpression || !operators.includes(test.operator)) {
     return false;
   }
   return (
@@ -71,17 +58,15 @@ function isEmptyCheck(test: TSESTree.Node, name: string): boolean {
   );
 }
 
+function isEmptyCheck(test: TSESTree.Node, name: string): boolean {
+  if (test.type === AST_NODE_TYPES.UnaryExpression && test.operator === '!') {
+    return isNamed(test.argument, name);
+  }
+  return comparesToNullish(test, name, ['==', '===']);
+}
+
 function isPresentCheck(test: TSESTree.Node, name: string): boolean {
-  if (isNamed(test, name)) {
-    return true;
-  }
-  if (test.type !== AST_NODE_TYPES.BinaryExpression || !['!=', '!=='].includes(test.operator)) {
-    return false;
-  }
-  return (
-    (isNamed(test.left, name) && isNullish(test.right)) ||
-    (isNamed(test.right, name) && isNullish(test.left))
-  );
+  return isNamed(test, name) || comparesToNullish(test, name, ['!=', '!==']);
 }
 
 function returns(statement: TSESTree.Statement): boolean {
@@ -158,7 +143,7 @@ export const rule: TSESLint.RuleModule<'chargedSetup'> = {
       if (node.type !== AST_NODE_TYPES.CallExpression) {
         return undefined;
       }
-      const root = calleeRoot(node.callee);
+      const root = registrationRoot(node.callee);
       if (root !== undefined && CHEAP_CALL_ROOTS.has(root)) {
         return undefined;
       }

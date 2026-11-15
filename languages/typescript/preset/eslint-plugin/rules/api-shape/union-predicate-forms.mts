@@ -1,9 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { TYPE_ASSERTIONS, unwrapOf } from '../typed/syntax-views.mts';
 import { nameOf } from '../typed/node-views.mts';
 
 type LiteralValue = TSESTree.StringLiteral | TSESTree.NumberLiteral;
-type TypeWrapper =
-  TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSTypeAssertion;
 type Returned = boolean | typeof FALLS_THROUGH | undefined;
 export type Comparison = { readonly subject: TSESTree.Node; readonly value: string | number };
 
@@ -33,23 +32,8 @@ export function isPlainReference(node: TSESTree.Node): boolean {
   return false;
 }
 
-function isTypeWrapper(node: TSESTree.Node): node is TypeWrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
 function withoutTypeWrappers(node: TSESTree.Node): TSESTree.Node {
-  const pending = [node];
-  for (const current of pending) {
-    if (!isTypeWrapper(current)) {
-      return current;
-    }
-    pending.push(current.expression);
-  }
-  return node;
+  return unwrapOf(node, TYPE_ASSERTIONS);
 }
 
 function literalElements(node: TSESTree.Node): LiteralValue[] | undefined {

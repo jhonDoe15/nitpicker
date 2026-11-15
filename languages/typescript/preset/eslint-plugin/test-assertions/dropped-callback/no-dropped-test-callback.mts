@@ -6,9 +6,9 @@ import {
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { ts } from '../../rules/typed/typescript-views.mts';
+import { NULLISH_WRAPPERS, unwrapOf } from '../../rules/typed/syntax-views.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
-type Wrapper = TSESTree.ChainExpression | TSESTree.TSNonNullExpression | TSESTree.TSAsExpression;
 type InlineFunction = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 const MESSAGE =
   'This call returns a function that is dropped, so it never runs and the check inside it never happens. Call it (`check(ctx)()`), pass it on (`run(check(ctx))`) or assign it. An exception fits only a function that returns a callback on purpose.';
@@ -56,23 +56,8 @@ function takesFunctionReturningVoid(
   });
 }
 
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.ChainExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSAsExpression
-  );
-}
-
 function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  const pending = [node];
-  for (const current of pending) {
-    if (!isWrapper(current)) {
-      return current;
-    }
-    pending.push(current.expression);
-  }
-  return node;
+  return unwrapOf(node, NULLISH_WRAPPERS);
 }
 
 function isPlainFunction(type: TypeScript.Type): boolean {

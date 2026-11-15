@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, chainOf, nameOf } from '../../typed/node-views.mts';
+import { vitestImportAliases } from '../vitest-aliases.mts';
 
 type Change = {
   readonly node: TSESTree.CallExpression;
@@ -9,6 +10,7 @@ type Change = {
 
 const TEST_BLOCKS = ['it', 'test', 'describe'];
 const VITEST_NAMES = ['vi', 'vitest'];
+const VITEST_IMPORTS: ReadonlySet<string> = new Set(VITEST_NAMES);
 
 function callName(node: TSESTree.Node | undefined): string | undefined {
   if (node?.type !== AST_NODE_TYPES.CallExpression) {
@@ -46,19 +48,6 @@ function owner(node: TSESTree.Node): TSESTree.Node | undefined {
     }
   }
   return undefined;
-}
-
-function recordVitestAliases(aliases: Set<string>, node: TSESTree.ImportDeclaration): void {
-  if (node.source.value !== 'vitest') {
-    return;
-  }
-  for (const specifier of node.specifiers) {
-    const imported =
-      specifier.type === AST_NODE_TYPES.ImportSpecifier ? nameOf(specifier.imported) : undefined;
-    if (imported !== undefined && VITEST_NAMES.includes(imported)) {
-      aliases.add(specifier.local.name);
-    }
-  }
 }
 
 function isInTeardown(node: TSESTree.Node): boolean {
@@ -102,7 +91,9 @@ export const rule: TSESLint.RuleModule<'fakeWait'> = {
     const waits: TSESTree.CallExpression[] = [];
     return {
       ImportDeclaration(node) {
-        recordVitestAliases(aliases, node);
+        for (const alias of vitestImportAliases(VITEST_IMPORTS, node)) {
+          aliases.add(alias);
+        }
       },
       CallExpression(node) {
         const callee = node.callee;

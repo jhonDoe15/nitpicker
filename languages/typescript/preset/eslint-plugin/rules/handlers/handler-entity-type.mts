@@ -17,6 +17,7 @@ type Scope = {
   readonly context: Readonly<TSESLint.RuleContext<'entity', readonly []>>;
   readonly nodes: ParserServicesWithTypeInformation['esTreeNodeToTSNodeMap'];
   readonly checker: TypeScript.TypeChecker;
+  readonly program: TypeScript.Program;
   readonly routeFile: boolean;
 };
 type Site = {
@@ -63,7 +64,8 @@ function isTransportObject(checker: TypeScript.TypeChecker, expression: TypeScri
   );
 }
 
-function isStaticSender(checker: TypeScript.TypeChecker, expression: TypeScript.Node): boolean {
+function isStaticSender(program: TypeScript.Program, expression: TypeScript.Node): boolean {
+  const checker = program.getTypeChecker();
   const symbol = checker.getSymbolAtLocation(expression);
   const target =
     symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
@@ -75,18 +77,19 @@ function isStaticSender(checker: TypeScript.TypeChecker, expression: TypeScript.
     STATIC_SENDERS.has(target.name) &&
     file !== undefined &&
     (packageOf(file.fileName) === 'next' ||
-      file.hasNoDefaultLib ||
+      program.isSourceFileDefaultLibrary(file) ||
       packageOf(file.fileName) === 'typescript')
   );
 }
 
-function sendTarget(checker: TypeScript.TypeChecker, tsCall: TypeScript.CallExpression): boolean {
+function sendTarget(program: TypeScript.Program, tsCall: TypeScript.CallExpression): boolean {
   const callee = tsCall.expression;
   if (!(ts.isPropertyAccessExpression(callee) && SEND_METHODS.has(callee.name.text))) {
     return false;
   }
   return (
-    isTransportObject(checker, callee.expression) || isStaticSender(checker, callee.expression)
+    isTransportObject(program.getTypeChecker(), callee.expression) ||
+    isStaticSender(program, callee.expression)
   );
 }
 
@@ -155,7 +158,7 @@ function visitCall(scope: Scope, node: TSESTree.CallExpression): void {
   const call = scope.nodes.get(node);
   const [first] = node.arguments;
   const [tsFirst] = call.arguments;
-  if (first !== undefined && tsFirst !== undefined && sendTarget(scope.checker, call)) {
+  if (first !== undefined && tsFirst !== undefined && sendTarget(scope.program, call)) {
     reportEntities(scope, {
       node: first,
       site: `${call.expression.getText()}(...)`,
@@ -187,6 +190,7 @@ function createVisitors(
     context,
     nodes: services.esTreeNodeToTSNodeMap,
     checker: services.program.getTypeChecker(),
+    program: services.program,
     routeFile: ROUTE_FILE.test(path.basename(context.filename)),
   };
   return {

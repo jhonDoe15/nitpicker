@@ -12,12 +12,12 @@ import {
 type Statement = TSESTree.Statement;
 type MaybeStatement = TSESTree.IfStatement['alternate'] | undefined;
 type Task = { readonly statements: readonly Statement[]; readonly facts: readonly Fact[] };
-export type ConditionCheck = {
+type ConditionCheck = {
   readonly condition: TSESTree.Node;
   readonly expression?: undefined;
   readonly facts: readonly Fact[];
 };
-export type ExpressionCheck = {
+type ExpressionCheck = {
   readonly condition?: undefined;
   readonly expression: TSESTree.Node;
   readonly facts: readonly Fact[];

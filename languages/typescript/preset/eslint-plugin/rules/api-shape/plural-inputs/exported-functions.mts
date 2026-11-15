@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { isExport } from '../../typed/syntax-views.mts';
 
 type FunctionValue =
   | TSESTree.FunctionDeclaration
@@ -8,7 +9,6 @@ type FunctionValue =
   | TSESTree.TSEmptyBodyFunctionExpression;
 type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression;
 type PublicMethod = TSESTree.MethodDefinition | TSESTree.TSAbstractMethodDefinition;
-type ExportDeclaration = TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration;
 type Locals = Map<string, FunctionValue[]>;
 
 const METHOD_KINDS = new Set<string>(['method', 'constructor']);
@@ -27,13 +27,6 @@ function isFunctionValue(node: TSESTree.Node): node is FunctionValue {
 function isClassNode(node: TSESTree.Node): node is ClassNode {
   return (
     node.type === AST_NODE_TYPES.ClassDeclaration || node.type === AST_NODE_TYPES.ClassExpression
-  );
-}
-
-function isExportDeclaration(node: TSESTree.Node): node is ExportDeclaration {
-  return (
-    node.type === AST_NODE_TYPES.ExportNamedDeclaration ||
-    node.type === AST_NODE_TYPES.ExportDefaultDeclaration
   );
 }
 
@@ -82,7 +75,7 @@ function declaredNames(node: TSESTree.Node): (readonly [string, FunctionValue[]]
 function localFunctions(program: TSESTree.Program): Locals {
   const locals: Locals = new Map();
   for (const statement of program.body) {
-    const declaration = isExportDeclaration(statement) ? statement.declaration : statement;
+    const declaration = isExport(statement) ? statement.declaration : statement;
     for (const [name, functions] of declaration === null ? [] : declaredNames(declaration)) {
       locals.set(name, [...(locals.get(name) ?? []), ...functions]);
     }
@@ -102,7 +95,7 @@ function exportedFrom(statement: TSESTree.ProgramStatement, locals: Locals): Fun
       ? statement.specifiers.flatMap(({ local }) => locals.get(local.name) ?? [])
       : [];
   }
-  return isExportDeclaration(statement) ? functionsOf(statement.declaration) : [];
+  return isExport(statement) ? functionsOf(statement.declaration) : [];
 }
 
 export function exportedFunctions(program: TSESTree.Program): FunctionValue[] {

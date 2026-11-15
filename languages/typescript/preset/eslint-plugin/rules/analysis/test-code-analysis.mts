@@ -1,7 +1,12 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, nameOf } from '../typed/node-views.mts';
 import type { PluginLayout } from '../typed/policy-views.mts';
-import { isFunctionNode, resolveFunction } from './constant-resolution.mts';
+import {
+  findVariable,
+  isFunctionNode,
+  resolveFunction,
+  type SourceContext,
+} from './constant-resolution.mts';
 import { forEachNode } from './node/wrapper-calls.mts';
 
 type Registration = TSESTree.CallExpression | TSESTree.NewExpression;
@@ -13,8 +18,8 @@ type TestReport<MessageIds extends string> = {
   readonly data?: Readonly<Record<string, unknown>>;
 };
 
-export { findVariable, resolveConstant, constantNumber } from './constant-resolution.mts';
-export { describeWrapperCall, type WrapperCall } from './node/wrapper-calls.mts';
+export { resolveConstant, constantNumber } from './constant-resolution.mts';
+export { describeWrapperCall } from './node/wrapper-calls.mts';
 export {
   moduleBindings,
   importedCalleeName,
@@ -101,6 +106,21 @@ const PER_TEST_TESTS = new Set(['it', 'test']);
 const TEST_FUNCTIONS = new Set(['it', 'test', 'describe', 'suite']);
 const TEST_FACTORY_MEMBERS = new Set(['each', 'for', 'runIf', 'skipIf', 'extend']);
 const REGISTRATION_FACTORIES = new Set([...TEST_FACTORY_MEMBERS, 'todo']);
+
+const { DefinitionType, ScopeType } = TSESLint.Scope;
+
+export { findVariable };
+
+export function moduleVariableKind(
+  context: SourceContext,
+  identifier: TSESTree.Identifier,
+): 'var' | 'let' | 'const' | 'using' | 'await using' | undefined {
+  const variable = findVariable(context, identifier, identifier.name);
+  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
+  return variable?.scope.type === ScopeType.module && definition?.type === DefinitionType.Variable
+    ? definition.parent.kind
+    : undefined;
+}
 
 export function isTestFunctionName(name: string | undefined): boolean {
   return name !== undefined && TEST_FUNCTIONS.has(name);

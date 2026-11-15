@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { Ranged } from '../typed/node-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 
 type Variable = TSESLint.Scope.Variable;
 
@@ -23,15 +24,7 @@ const COPY_FUNCTIONS = new Set(['structuredClone', 'from']);
 const FRESH_CONTAINERS = new Set(['Set', 'Map']);
 
 export function calleeName(call: TSESTree.CallExpression): string | undefined {
-  const { callee } = call;
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-    ? callee.property.name
-    : undefined;
+  return calleeNameOf(call.callee);
 }
 
 export function isObjectAssign(call: TSESTree.CallExpression): boolean {

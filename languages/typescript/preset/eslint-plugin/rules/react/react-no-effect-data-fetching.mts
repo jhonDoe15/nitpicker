@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, type SourceCode } from '../typed/node-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 import { enclosingFunction, isEffectCallback, type FunctionNode } from './react-effects.mts';
 
 type MessageIds = 'fetchInEffect' | 'asyncInEffect';
@@ -53,22 +54,12 @@ const promiseCallbacks = new Set<string | undefined>(['then', 'catch', 'finally'
 const stateSetter = /^set[A-Z]/u;
 const MAX_OWNERS = 8;
 
-function calleeName(call: TSESTree.CallExpression): string | undefined {
-  const { callee } = call;
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? nameOf(callee.property)
-    : undefined;
-}
-
 function isTimerCallback(fn: FunctionNode): boolean {
   const call = fn.parent;
   return (
     call.type === AST_NODE_TYPES.CallExpression &&
     call.arguments[0] === fn &&
-    timerFunctions.has(calleeName(call))
+    timerFunctions.has(calleeNameOf(call.callee))
   );
 }
 
@@ -78,7 +69,7 @@ function isPromiseCallback(fn: FunctionNode): boolean {
     call.type === AST_NODE_TYPES.CallExpression &&
     call.arguments.some((argument) => argument === fn) &&
     call.callee.type === AST_NODE_TYPES.MemberExpression &&
-    promiseCallbacks.has(calleeName(call))
+    promiseCallbacks.has(calleeNameOf(call.callee))
   );
 }
 
@@ -193,7 +184,7 @@ function checkSetterUse(state: State, chain: FunctionNode[], node: TSESTree.Call
     state.setterCalls.push({ chain, anchor: node });
   }
   if (
-    promiseCallbacks.has(calleeName(node)) &&
+    promiseCallbacks.has(calleeNameOf(node.callee)) &&
     node.arguments.some(isStateSetter) &&
     node.callee.type === AST_NODE_TYPES.MemberExpression
   ) {

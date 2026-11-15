@@ -1,9 +1,8 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../security/security-values.mts';
-import { isFixedCollection } from '../collections/fixed-collections.mts';
 import { skipped } from '../io-origin.mts';
 import { mappings, workerOf, type Site } from '../sites.mts';
-import { TARGETS, lazyScope, remoteIn, viaText, type FanOutScope } from '../unbounded-fan-out.mts';
+import { lazyScope, reportSites, type FanOutScope } from '../unbounded-fan-out.mts';
 import { isUnlimited, pipeSource, rxjsName } from './rxjs-calls.mts';
 
 type Group = {
@@ -12,7 +11,6 @@ type Group = {
   readonly sites: readonly Site[];
 };
 
-const MAX_TEXT = 50;
 const OPERATORS = new Set(['mergeMap', 'flatMap']);
 const COMBINATORS = new Set(['forkJoin', 'combineLatest', 'zip', 'merge']);
 const EXCEPTION = 'An exception fits only when the collection is always small.';
@@ -93,27 +91,14 @@ function report(
   group: Group & { readonly node: TSESTree.CallExpression },
 ): void {
   const { context } = scope;
-  const reported = new Set();
-  for (const { collection, worker } of group.sites) {
-    const found = remoteIn(scope, worker);
-    const text = context.sourceCode.getText(skipped(collection));
-    const key = `${String(found?.operation)}|${text}`;
-    if (found === undefined || reported.has(key) || isFixedCollection(context, collection)) {
-      continue;
-    }
-    reported.add(key);
-    context.report({
-      node: group.node,
-      messageId: group.form,
-      data: {
-        operator: group.operator,
-        operation: found.operation,
-        via: viaText(found),
-        collection: text.length <= MAX_TEXT ? text : 'the collection',
-        target: TARGETS[found.kind],
-      },
-    });
-  }
+  const at = {
+    node: group.node,
+    messageId: group.form,
+    data: { operator: group.operator },
+  };
+  reportSites(scope, at, group.sites, (collection) =>
+    context.sourceCode.getText(skipped(collection)),
+  );
 }
 
 export const rule: TSESLint.RuleModule<'operator' | 'combinator'> = {

@@ -3,6 +3,7 @@ import { suggestible } from '../../../fixes/support/descriptors.mts';
 import type { FixPlan } from '../../../fixes/support/ranges.mts';
 import { tlsOptionFix } from '../../../fixes/security/tls-option-fix.mts';
 import { isFunctionNode, stringValue } from '../../analysis/constant-resolution.mts';
+import { isTestExpression } from '../../database/orm-options.mts';
 import { nameOf } from '../../typed/node-views.mts';
 import {
   isLiteral,
@@ -45,27 +46,6 @@ function isOffValue(leaf: TSESTree.Node): boolean {
   return isLiteral(leaf, 0) || stringValue(leaf) === '0';
 }
 
-function isEnvRead(node: TSESTree.Node): boolean {
-  const target = unwrapped(node);
-  const owner =
-    target.type === AST_NODE_TYPES.MemberExpression ? unwrapped(target.object) : undefined;
-  return (
-    owner?.type === AST_NODE_TYPES.MemberExpression &&
-    memberName(owner) === 'env' &&
-    owner.object.type === AST_NODE_TYPES.Identifier &&
-    owner.object.name === 'process'
-  );
-}
-
-function isCondition(leaf: TSESTree.Node): boolean {
-  const target = unwrapped(leaf);
-  return (
-    (target.type === AST_NODE_TYPES.BinaryExpression && CONDITION_OPERATORS.has(target.operator)) ||
-    (target.type === AST_NODE_TYPES.UnaryExpression && target.operator === '!') ||
-    isEnvRead(target)
-  );
-}
-
 function returnsNothing(
   fn: TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration,
 ): boolean {
@@ -92,10 +72,13 @@ function disablesNamed(context: Context, name: string, value: TSESTree.Node): bo
     return leaves.some((leaf) => isOffValue(leaf));
   }
   if (TRUE_DISABLES.has(name)) {
-    return leaves.some((leaf) => isLiteral(leaf, true) || isCondition(leaf));
+    return leaves.some(
+      (leaf) => isLiteral(leaf, true) || isTestExpression(leaf, CONDITION_OPERATORS),
+    );
   }
   return (
-    FALSE_DISABLES.has(name) && leaves.some((leaf) => isLiteral(leaf, false) || isCondition(leaf))
+    FALSE_DISABLES.has(name) &&
+    leaves.some((leaf) => isLiteral(leaf, false) || isTestExpression(leaf, CONDITION_OPERATORS))
   );
 }
 

@@ -1,4 +1,5 @@
 import type { TSESLint } from '@typescript-eslint/utils';
+import { optionalReporter } from '../../support/optional-report.mts';
 import { filterFirst, findAsBoolean, lengthCheck, mapFlat } from './array-steps.mts';
 import { promiseSteps } from './promise-methods.mts';
 import { fallbackSpread, uselessSpread } from './spreads.mts';
@@ -36,11 +37,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
   },
   create(context) {
     const { sourceCode } = context;
-    function report(descriptor: TSESLint.ReportDescriptor<MessageId> | undefined): void {
-      if (descriptor !== undefined) {
-        context.report(descriptor);
-      }
-    }
+    const report = optionalReporter(context);
     return {
       MemberExpression(member) {
         report(filterFirst(member));

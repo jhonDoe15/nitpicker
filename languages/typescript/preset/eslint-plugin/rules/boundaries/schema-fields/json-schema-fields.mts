@@ -1,9 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { constantInitializer, type SourceCode } from '../../typed/node-views.mts';
+import { unwrapOf, TYPE_ASSERTIONS } from '../../typed/syntax-views.mts';
 import { initializerOf, isUnresolved, libraryBinding, variableOf } from './library-bindings.mts';
 import { propertyName, SCHEMA_LIBRARIES } from './library-nodes.mts';
 
-type Wrapper = TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSTypeAssertion;
 export type Finding = {
   readonly kind: 'loose' | 'field';
   readonly node: TSESTree.Node;
@@ -29,22 +29,8 @@ const SCHEMA_MAPS = new Set<string>(['$defs', 'definitions']);
 const MAX_DEPTH = 8;
 const ADDITIONAL_PROPERTIES = 'additionalProperties';
 
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
 function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  const chain = [node];
-  for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? node;
+  return unwrapOf(node, TYPE_ASSERTIONS);
 }
 
 function isAjvConstructor(sourceCode: SourceCode, node: TSESTree.Node): boolean {

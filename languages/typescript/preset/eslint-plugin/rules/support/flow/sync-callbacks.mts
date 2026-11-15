@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { nameOf } from '../../typed/node-views.mts';
+import { calleeNameOf } from '../../typed/syntax-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 
 type FunctionNode =
@@ -42,15 +42,6 @@ const SYNC_CALLEES = new Set([
 ]);
 const PROMISE = 'Promise';
 
-function estreeCalleeName(callee: TSESTree.Node): string | undefined {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? nameOf(callee.property)
-    : undefined;
-}
-
 export function estreeRunsWithCaller(fn: FunctionNode): boolean {
   const { parent } = fn;
   if (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === fn) {
@@ -63,7 +54,7 @@ export function estreeRunsWithCaller(fn: FunctionNode): boolean {
   if (!isArgument) {
     return false;
   }
-  const name = estreeCalleeName(parent.callee);
+  const name = calleeNameOf(parent.callee);
   return parent.type === AST_NODE_TYPES.NewExpression
     ? name === PROMISE
     : name !== undefined && SYNC_CALLEES.has(name);

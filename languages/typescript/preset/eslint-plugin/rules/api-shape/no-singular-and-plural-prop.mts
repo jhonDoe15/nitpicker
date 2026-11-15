@@ -32,7 +32,7 @@ function propsTypeOf(fn: FunctionNode): TSESTree.TypeNode | undefined {
     return annotation;
   }
   const declared = declaratorOf(fn)?.id.typeAnnotation?.typeAnnotation;
-  return declared?.type === AST_NODE_TYPES.TSTypeReference
+  return declared !== undefined && 'typeArguments' in declared
     ? declared.typeArguments?.params[0]
     : undefined;
 }

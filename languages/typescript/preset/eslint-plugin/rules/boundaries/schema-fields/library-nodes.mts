@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import type { SourceCode } from '../../typed/node-views.mts';
+import { chainOf, type SourceCode } from '../../typed/node-views.mts';
+import { callChainLink } from '../../typed/syntax-views.mts';
 import { libraryBinding, variableOf, VALIDATION_LIBRARIES } from './library-bindings.mts';
 import { SCHEMA_FORMS, type SchemaForms, type SchemaId } from './schema-forms.mts';
 
@@ -96,16 +97,7 @@ export function calledExport(sourceCode: SourceCode, node: TSESTree.Node): Named
 }
 
 export function chainBase(node: TSESTree.Node): TSESTree.Node {
-  const chain = [node];
-  for (const current of chain) {
-    if (current.type === AST_NODE_TYPES.CallExpression) {
-      chain.push(current.callee);
-    }
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      chain.push(current.object);
-    }
-  }
-  return chain.at(-1) ?? node;
+  return chainOf(node, callChainLink).at(-1) ?? node;
 }
 
 export function chainLibrary(

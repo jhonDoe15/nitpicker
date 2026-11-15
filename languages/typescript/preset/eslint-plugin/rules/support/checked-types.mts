@@ -1,4 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
+import type TypeScript from 'typescript';
 import { typeServices, type Context } from '../security/security-values.mts';
 import { ts } from '../typed/typescript-views.mts';
 
@@ -8,14 +9,27 @@ function answer(holds: boolean): TypeAnswer {
   return holds ? 'yes' : 'no';
 }
 
-export function hasArrayType(context: Context, node: TSESTree.Node, withTuples = true): TypeAnswer {
+function memberTypes(
+  context: Context,
+  node: TSESTree.Node,
+):
+  | { readonly checker: TypeScript.TypeChecker; readonly members: readonly TypeScript.Type[] }
+  | undefined {
   const services = typeServices(context);
   if (services === undefined) {
-    return 'unknown';
+    return undefined;
   }
   const checker = services.program.getTypeChecker();
   const type = checker.getNonNullableType(services.getTypeAtLocation(node));
-  const members = type.isUnion() ? type.types : [type];
+  return { checker, members: type.isUnion() ? type.types : [type] };
+}
+
+export function hasArrayType(context: Context, node: TSESTree.Node, withTuples = true): TypeAnswer {
+  const typed = memberTypes(context, node);
+  if (typed === undefined) {
+    return 'unknown';
+  }
+  const { checker, members } = typed;
   return answer(
     members.every(
       (member) => checker.isArrayType(member) || (withTuples && checker.isTupleType(member)),
@@ -26,13 +40,11 @@ export function hasArrayType(context: Context, node: TSESTree.Node, withTuples =
 const COLLECTION_NAME = /^(?:Readonly|Weak)?(?:Map|Set)$|Array$/u;
 
 export function hasCollectionType(context: Context, node: TSESTree.Node): TypeAnswer {
-  const services = typeServices(context);
-  if (services === undefined) {
+  const typed = memberTypes(context, node);
+  if (typed === undefined) {
     return 'unknown';
   }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
-  const members = type.isUnion() ? type.types : [type];
+  const { checker, members } = typed;
   return answer(
     members.some(
       (member) =>

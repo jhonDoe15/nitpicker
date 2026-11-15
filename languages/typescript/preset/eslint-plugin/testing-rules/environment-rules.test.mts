@@ -1,7 +1,7 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { rule } from '../rules/testing/environment/no-unused-dom-environment.mts';
+import { rule } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { createProject, docblock, lines, logic } from './test-support/environment-project.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mts';
 import { configuredRuleTester, ruleModule } from '../test-support/rule-tester.mts';

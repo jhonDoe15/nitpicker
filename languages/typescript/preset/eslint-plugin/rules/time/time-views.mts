@@ -3,16 +3,10 @@ import type {
   TSESLint,
   TSESTree,
 } from '@typescript-eslint/utils';
-import {
-  initializer as untypedInitializer,
-  libraryBinding as untypedLibraryBinding,
-  variableOf as untypedVariableOf,
-} from '../../../libraries/module-bindings.mjs';
-import type { SourceCode } from '../typed/node-views.mts';
+import { initializer as untypedInitializer } from '../../../libraries/module-bindings.mjs';
+export type { LibraryBinding } from '../boundaries/schema-fields/library-bindings.mts';
 
 type Variable = TSESLint.Scope.Variable;
-
-export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 
 export type TimeMessageId =
   | 'localDateMethod'
@@ -32,15 +26,7 @@ export type Problem = {
   readonly data: Readonly<Record<string, unknown>>;
 };
 
-export const variableOf: (
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-) => Variable | undefined = untypedVariableOf;
-
-export const libraryBinding: (
-  variable: Variable | undefined,
-  packages: readonly string[],
-) => LibraryBinding | undefined = untypedLibraryBinding;
+export { libraryBinding, variableOf } from '../boundaries/schema-fields/library-bindings.mts';
 
 const declaredInitializer: (
   variable: Variable | undefined,

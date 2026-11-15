@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../eslint/typed/engine.mts';
-import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mts';
+import { rule } from '../../preset/eslint-plugin/rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { normalizeEslintResults } from '../eslint/normalize.mts';
 import { lintWithOxlint } from './oxlint-runner.mts';
 import type { LintResult } from './plan/oxlint-shapes.mts';

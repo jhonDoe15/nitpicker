@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { failureMessagesFor } from './typed/lint-fixture.mts';
-import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mts';
+import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mts';

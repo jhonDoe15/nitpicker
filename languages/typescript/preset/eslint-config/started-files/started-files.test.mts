@@ -1,28 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { tempProjects } from '../test-support/temp-projects.mts';
 import { frameworkConventions } from '../scope-support.mjs';
 import { filesStartedByBuildTool } from './build-tool-commands.mjs';
 import { filesStartedByCommand } from './command-files.mjs';
 import { filesStartedBySource } from './source-starts.mjs';
 import { startedFiles } from './started-files.mjs';
 
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots) rmSync(root, { recursive: true, force: true });
-});
-
-function projectWith(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-started-files-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const projectWith = tempProjects('nitpicker-started-files-');
 
 describe('filesStartedByCommand', () => {
   it('finds the file a runner starts', () => {

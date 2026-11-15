@@ -89,14 +89,17 @@ function isBooleanCast(node: TSESTree.Node): boolean {
   );
 }
 
-export function isCondition(leaf: TSESTree.Node): boolean {
+export function isTestExpression(leaf: TSESTree.Node, operators: ReadonlySet<string>): boolean {
   const target = unwrapped(leaf);
   return (
-    (target.type === AST_NODE_TYPES.BinaryExpression && CONDITION_OPERATORS.has(target.operator)) ||
+    (target.type === AST_NODE_TYPES.BinaryExpression && operators.has(target.operator)) ||
     (target.type === AST_NODE_TYPES.UnaryExpression && target.operator === '!') ||
-    isBooleanCast(target) ||
     isEnvRead(target)
   );
+}
+
+export function isCondition(leaf: TSESTree.Node): boolean {
+  return isTestExpression(leaf, CONDITION_OPERATORS) || isBooleanCast(unwrapped(leaf));
 }
 
 export function isSwitchedOn(context: Context, value: TSESTree.Node): boolean {

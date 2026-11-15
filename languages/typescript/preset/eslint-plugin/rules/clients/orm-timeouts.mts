@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable, isFunctionNode } from '../analysis/constant-resolution.mts';
+import { isFunctionNode } from '../analysis/constant-resolution.mts';
 import { constructedName, SEQUELIZE, TYPEORM, type ModuleScope } from '../database/orm-modules.mts';
 import type { Context } from '../security/security-values.mts';
 import {
@@ -8,6 +8,7 @@ import {
   nestedState,
   optionsOf,
   postgresOptionsState,
+  referencesOfDeclaredVariable,
   SET,
   carriesTimeout,
   textOf,
@@ -38,15 +39,7 @@ function isIn(set: ReadonlySet<string>, value: string | undefined): boolean {
 }
 
 function isSpreadSource(context: Context, object: TSESTree.Node): boolean {
-  const declarator = object.parent;
-  if (
-    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
-    declarator.id.type !== AST_NODE_TYPES.Identifier
-  ) {
-    return false;
-  }
-  const variable = findVariable(context, declarator.id, declarator.id.name);
-  return (variable?.references ?? []).some(
+  return referencesOfDeclaredVariable(context, object.parent).some(
     (reference) => reference.identifier.parent.type === AST_NODE_TYPES.SpreadElement,
   );
 }

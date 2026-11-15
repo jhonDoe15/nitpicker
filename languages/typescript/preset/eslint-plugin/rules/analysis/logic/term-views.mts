@@ -1,4 +1,3 @@
-import { foldTree as untypedFoldTree } from '../../../../../../../shared/traversal.mjs';
 import { normalize as untypedNormalize } from '../../../../../../../shared/logic/normalize.mjs';
 import { print as untypedPrint } from '../../../../../../../shared/logic/print.mjs';
 import { isSideEffectFree as untypedIsSideEffectFree } from '../../../../../../../shared/logic/purity.mjs';
@@ -9,9 +8,19 @@ import {
   term as untypedTerm,
   withRange as untypedWithRange,
 } from '../../../../../../../shared/logic/terms.mjs';
-import type { Term } from './estree-terms.mts';
 
 export type Range = readonly [number, number];
+
+export type Term = {
+  readonly kind: string;
+  readonly value: string | undefined;
+  readonly children: Term[];
+  readonly range: Range | undefined;
+  readonly loose?: true;
+  readonly assignment?: true;
+  readonly boolean?: true;
+  readonly integer?: true;
+};
 
 export const key: (root: Term) => string = untypedKey;
 
@@ -34,14 +43,3 @@ export const normalize: (
 export const term: (kind: string, value?: string, children?: Term[]) => Term = untypedTerm;
 
 export const withRange: (node: Term, range: Range | undefined) => Term = untypedWithRange;
-
-type FoldSteps<Item, Context, Result> = {
-  readonly expand: (node: Item, context: Context) => readonly (readonly [Item, Context])[];
-  readonly combine: (node: Item, context: Context, results: Result[]) => Result;
-};
-
-export const foldTree: <Item, Context, Result>(
-  root: Item,
-  context: Context,
-  steps: FoldSteps<Item, Context, Result>,
-) => Result = untypedFoldTree;

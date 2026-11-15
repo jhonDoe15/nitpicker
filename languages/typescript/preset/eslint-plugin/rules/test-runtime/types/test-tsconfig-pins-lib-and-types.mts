@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant } from '../../analysis/test-code-analysis.mts';
-import type { SourceContext } from '../../analysis/constant-resolution.mts';
+import { collectObjectKeys } from '../object-keys.mts';
 import { fixable } from '../../../fixes/support/descriptors.mts';
 import { pinsFix } from '../../../fixes/tests/tsconfig-pins-fix.mts';
 
@@ -23,41 +23,6 @@ function isJsonStringify(callee: TSESTree.Node): boolean {
     callee.property.type === AST_NODE_TYPES.Identifier &&
     callee.property.name === 'stringify'
   );
-}
-
-function recordKey(
-  property: TSESTree.ObjectLiteralElement,
-  keys: Set<string>,
-  pending: (TSESTree.Node | undefined)[],
-): void {
-  if (property.type === AST_NODE_TYPES.SpreadElement) {
-    pending.push(property.argument);
-    return;
-  }
-  const name = propertyName(property);
-  if (name !== undefined) {
-    keys.add(name);
-  }
-}
-
-function knownKeys(
-  context: SourceContext,
-  node: TSESTree.Node | undefined,
-  seen = new Set<TSESTree.Node>(),
-): Set<string> | undefined {
-  const pending = [node];
-  const keys = new Set<string>();
-  for (const current of pending) {
-    const resolved = resolveConstant(context, current);
-    if (resolved?.type !== AST_NODE_TYPES.ObjectExpression || seen.has(resolved)) {
-      return undefined;
-    }
-    seen.add(resolved);
-    for (const property of resolved.properties) {
-      recordKey(property, keys, pending);
-    }
-  }
-  return keys;
 }
 
 export const rule: TSESLint.RuleModule<'unpinnedTsconfig'> = {
@@ -88,8 +53,8 @@ export const rule: TSESLint.RuleModule<'unpinnedTsconfig'> = {
         if (compilerOptions === undefined) {
           return;
         }
-        const keys = knownKeys(context, compilerOptions.value);
-        if (keys === undefined) {
+        const { keys, complete } = collectObjectKeys(context, compilerOptions.value, propertyName);
+        if (!complete) {
           return;
         }
         if (keys.has('types') && (keys.has('lib') || keys.has('noLib'))) {

@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, nameOf } from '../rules/typed/node-views.mts';
+import { vitestImportAliases } from '../rules/test-runtime/vitest-aliases.mts';
 import { fixable } from '../fixes/support/descriptors.mts';
 import { restoreHookFix } from '../fixes/tests/restore-hook-fix.mts';
 import { createWriteTracker } from './direct-writes/direct-writes.mts';
@@ -143,17 +144,8 @@ export const rule: TSESLint.RuleModule<MessageId, Options> = {
     return {
       ImportDeclaration(node) {
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
-        if (node.source.value !== 'vitest') {
-          return;
-        }
-        for (const specifier of node.specifiers) {
-          const imported =
-            specifier.type === AST_NODE_TYPES.ImportSpecifier
-              ? nameOf(specifier.imported)
-              : undefined;
-          if (imported !== undefined && aliases.has(imported)) {
-            aliases.add(specifier.local.name);
-          }
+        for (const alias of vitestImportAliases(aliases, node)) {
+          aliases.add(alias);
         }
       },
       AssignmentExpression: writes.record,

@@ -21,6 +21,7 @@ import {
   nestedState,
   optionsOf,
   postgresOptionsState,
+  referencesOfDeclaredVariable,
   textState,
   UNKNOWN,
   type State,
@@ -101,15 +102,7 @@ function isAwsClient(made: Made): boolean {
 }
 
 function listensOnConnect(context: Context, node: Call): boolean {
-  const declarator = node.parent;
-  if (
-    declarator.type !== AST_NODE_TYPES.VariableDeclarator ||
-    declarator.id.type !== AST_NODE_TYPES.Identifier
-  ) {
-    return false;
-  }
-  const variable = findVariable(context, declarator.id, declarator.id.name);
-  return (variable?.references ?? []).some((reference) => {
+  return referencesOfDeclaredVariable(context, node.parent).some((reference) => {
     const member = reference.identifier.parent;
     const call = member.parent;
     return (

@@ -1,21 +1,15 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, variableNamed, type Ranged, type SourceCode } from '../typed/node-views.mts';
 import {
-  ancestorsOf,
-  nameOf,
-  variableNamed,
-  type Ranged,
-  type SourceCode,
-} from '../typed/node-views.mts';
+  isExportedStatement,
+  isFunction,
+  TYPE_ASSERTIONS,
+  unwrapOf,
+  wrappedExpression,
+  type FunctionNode,
+} from '../typed/syntax-views.mts';
 import { calleeName, isFreshContainer, isReassignedToCopy } from './parameter-copies.mts';
 
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
-type ExportNode = TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration;
-type Wrapper =
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSTypeAssertion;
 type Variable = TSESLint.Scope.Variable;
 type CrossesProperty = (member: TSESTree.MemberExpression) => boolean;
 type Walk = { readonly sourceCode: SourceCode; readonly crossesProperty: CrossesProperty };
@@ -30,48 +24,20 @@ const DRAFT_CALLEES = new Set<string | undefined>([
   'useImmer',
   'useImmerReducer',
 ]);
+const ASSERTIONS = [...TYPE_ASSERTIONS, AST_NODE_TYPES.TSNonNullExpression];
 const ACCUMULATING_CALLEES = new Set<string | undefined>(['reduce', 'reduceRight']);
 
-function isFunction(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-}
-
-function isExport(node: TSESTree.Node): node is ExportNode {
-  return (
-    node.type === AST_NODE_TYPES.ExportNamedDeclaration ||
-    node.type === AST_NODE_TYPES.ExportDefaultDeclaration
-  );
-}
-
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
 export function withoutAssertion(node: TSESTree.Node): TSESTree.Node {
-  const chain = [node];
-  for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? node;
+  return unwrapOf(node, ASSERTIONS);
 }
 
 function chainStep(
   node: TSESTree.Node,
   crossesProperty: CrossesProperty,
 ): TSESTree.Node | undefined {
-  if (isWrapper(node)) {
-    return node.expression;
+  const inner = wrappedExpression(node, ASSERTIONS);
+  if (inner !== undefined) {
+    return inner;
   }
   if (node.type !== AST_NODE_TYPES.MemberExpression) {
     return undefined;
@@ -169,33 +135,6 @@ function isDraft(owner: FunctionNode): boolean {
   return ancestorsOf(owner).some(
     (ancestor) =>
       ancestor.type === AST_NODE_TYPES.CallExpression && DRAFT_CALLEES.has(calleeName(ancestor)),
-  );
-}
-
-function declaredName(statement: TSESTree.Node): string | undefined {
-  const declaration = isExport(statement) ? statement.declaration : statement;
-  if (declaration?.type === AST_NODE_TYPES.VariableDeclaration) {
-    return nameOf(declaration.declarations[0].id);
-  }
-  return declaration !== null && 'id' in declaration ? nameOf(declaration.id) : undefined;
-}
-
-function isExportedStatement(
-  program: TSESTree.Node | undefined,
-  statement: TSESTree.Node,
-): boolean {
-  if (isExport(statement)) {
-    return true;
-  }
-  const name = declaredName(statement);
-  return (
-    program?.type === AST_NODE_TYPES.Program &&
-    program.body.some(
-      (other) =>
-        other.type === AST_NODE_TYPES.ExportNamedDeclaration &&
-        other.source === null &&
-        other.specifiers.some((specifier) => nameOf(specifier.local) === name),
-    )
   );
 }
 

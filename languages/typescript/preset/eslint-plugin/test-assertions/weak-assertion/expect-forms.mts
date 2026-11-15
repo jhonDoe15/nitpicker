@@ -9,7 +9,7 @@ import {
   nullishName,
 } from './values.mts';
 
-export type Expectation = {
+type Expectation = {
   readonly matcher: string;
   readonly negated: boolean;
   readonly path: string;

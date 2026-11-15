@@ -41,9 +41,7 @@ function isFireEvent(object: TSESTree.Node): boolean {
 
 function hasKey(action: TSESTree.ObjectExpression, name: string): boolean {
   return action.properties.some(
-    (property) =>
-      property.type === AST_NODE_TYPES.Property &&
-      staticKeyName(property) === name,
+    (property) => property.type === AST_NODE_TYPES.Property && staticKeyName(property) === name,
   );
 }
 

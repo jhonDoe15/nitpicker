@@ -8,7 +8,7 @@ import { createResolverSummaries } from './summaries/resolver-summaries.mts';
 
 type Options = readonly [RootFileOptions?];
 type Docs = { readonly requiresTypeChecking: boolean };
-export type CheckedNode =
+type CheckedNode =
   | TSESTree.CallExpression
   | TSESTree.NewExpression
   | TSESTree.MemberExpression

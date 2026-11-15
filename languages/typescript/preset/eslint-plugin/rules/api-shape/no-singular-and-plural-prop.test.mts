@@ -108,6 +108,10 @@ tester.run('no-singular-and-plural-prop', rule, {
       errors: [pair('id', 'ids')],
     },
     {
+      code: "const Panel: import('react').FC<{ id?: string; ids?: string[] }> = () => <div />;",
+      errors: [pair('id', 'ids')],
+    },
+    {
       code: 'const Panel = memo(function Panel(props: { id?: string; ids?: string[] }) { return <div />; });',
       errors: [pair('id', 'ids')],
     },

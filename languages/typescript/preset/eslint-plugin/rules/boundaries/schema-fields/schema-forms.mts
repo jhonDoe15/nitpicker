@@ -11,7 +11,7 @@ export type SchemaId =
   | 'runtypes'
   | 'effect'
   | 'valita';
-export type Leaf =
+type Leaf =
   | { readonly kind: 'call'; readonly display: string; readonly noArguments: boolean }
   | { readonly kind: 'value'; readonly display: string };
 export type LooseForm = {

@@ -24,7 +24,7 @@ import {
   isConsumingMethod,
   type Handler,
 } from './emitter-modules.mts';
-import { helperOutcome } from './helpers/helper-bodies.mts';
+import { helperOutcome } from './helper-bodies.mts';
 
 const HANDLED = 'handled';
 const NEUTRAL = 'neutral';
