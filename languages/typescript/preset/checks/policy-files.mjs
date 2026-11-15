@@ -7,6 +7,7 @@ import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/orig
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
+import { CONVENTION_POLICY_FILES } from './convention-policy-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
@@ -162,12 +163,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/modules/no-module-level-let.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-production-console.mjs',
   'languages/typescript/preset/eslint-plugin/rules/naming/file-name-casing.mjs',
-  'languages/typescript/conventions/file-name-casing.mjs',
-  'languages/typescript/conventions/type-import-style.mjs',
-  'languages/typescript/conventions/measures/assertion-functions.mjs',
-  'languages/typescript/conventions/measures/detached-work-runners.mjs',
-  'languages/typescript/conventions/typed/measure-views.mjs',
-  'shared/conventions/detect.mjs',
+  ...CONVENTION_POLICY_FILES,
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
