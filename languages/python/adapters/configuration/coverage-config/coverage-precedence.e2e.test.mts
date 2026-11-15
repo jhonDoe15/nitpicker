@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
-import { COVERAGE_REPORT, test as runTests } from '../../test-runs/test-step.mjs';
+import { COVERAGE_REPORT, test as runTests } from '../../test-runs/test-step.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
@@ -66,7 +66,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
   });
 
   function measured(
-    precedence: readonly string[] | undefined,
+    precedence: string[] | undefined,
     {
       pyproject = PYPROJECT,
       policyFiles,
@@ -90,7 +90,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
       policyRoot,
       toolPrecedence: precedence === undefined ? undefined : { coverage: precedence },
     });
-    runTests(context, {});
+    runTests(context);
     const report = parseJson(readFileSync(path.join(reportRoot, COVERAGE_REPORT), 'utf8'));
     const [core] = Object.entries(fieldsOf(fieldOf(report, 'files'))).filter(([file]) =>
       file.endsWith('core.py'),
@@ -101,10 +101,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
     };
   }
 
-  function uncovered(
-    precedence: readonly string[] | undefined,
-    options?: Parameters<typeof measured>[1],
-  ) {
+  function uncovered(precedence: string[] | undefined, options?: Parameters<typeof measured>[1]) {
     return measured(precedence, options).missing;
   }
 
