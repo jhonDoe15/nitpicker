@@ -1570,7 +1570,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
 | `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
-| `field-limit-mismatch`     | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern that admits more than the column holds; or an OpenAPI or JSON Schema bound (`maxLength`, `minLength`, `maximum`, `pattern`) that differs from the validation of the same field |
+| `field-limit-mismatch`     | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern that admits more than the column holds; or an OpenAPI or JSON Schema bound (`maxLength`, `minLength`, `maximum`, `pattern`) that differs from the validation of the same field                                                                                                               |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -3669,9 +3669,15 @@ the file is compared instead (`stryker project config changed: stryker.config.mj
 #### TypeScript compiler options (typescript and javascript presets)
 
 The type check always extends the project's `tsconfig.json` (with the JavaScript preset, a
-`jsconfig.json` when there is no `tsconfig.json`; for a solution config, the referenced config that
-includes a source root), so its `paths`, `jsx`, module resolution and other settings apply without an
-opt-in. What `tools.typescript.precedence` decides is who wins for nitpicker's strict options:
+`jsconfig.json` when there is no `tsconfig.json`; for a solution config, one referenced config), so
+its `paths`, `jsx`, module resolution and other settings apply without an opt-in. A solution config
+(`"files": []` plus `references`, also through nested solution configs) resolves to the referenced
+config that covers the most source and test files, then the most test files, then the first in
+reference order, so test files keep their test-runner `types` and `jsx`. The `types` (and `lib`) of
+the other referenced configs are merged in, and `rootDir`, `composite`, `outDir` and `tsBuildInfoFile`
+are not inherited, so production files keep what they need. When the chosen config has a `rootDir`, files outside it (such as a root `vitest.config.ts`) are left out of the check and the note says so. The run prints one line, such as
+`TypeScript: solution tsconfig.json resolved to tsconfig.spec.json (it includes the test files; types merged from tsconfig.build.json)`,
+to say which config it used. What `tools.typescript.precedence` decides is who wins for nitpicker's strict options:
 `strict` and its family (`noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`,
 `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`,
 `useUnknownInCatchVariables`, `alwaysStrict`), `noImplicitReturns`, `noFallthroughCasesInSwitch`,

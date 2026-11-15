@@ -6,11 +6,9 @@ import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { solutionChoice } from './solution-resolution.mjs';
 import {
   PROJECT_TSCONFIG,
-  isSolutionTsconfig,
-  readJsonc,
-  referencedTsconfigs,
   tsconfigProblems,
   parsedTsconfig,
   tsconfigChain,
@@ -67,30 +65,26 @@ function projectConfigName(directory, layout) {
     : undefined;
 }
 
-function includesSourceRoot(config, layout) {
-  return (config?.include ?? []).some((entry) =>
-    layout.sourceRoots.includes(path.posix.normalize(entry).split('/')[0]),
-  );
-}
-
-function projectBaseTsconfig(projectDirectory, layout, projectConfig) {
-  const project = readJsonc(path.join(projectDirectory, projectConfig));
-  const projectBase = `./${projectConfig}`;
-  if (!isSolutionTsconfig(project)) {
-    return projectBase;
-  }
-  const sourceConfig = referencedTsconfigs(
-    path.join(projectDirectory, projectConfig),
-    project,
-  ).find((file) => includesSourceRoot(readJsonc(file), layout));
-  return sourceConfig === undefined
-    ? projectBase
-    : `./${path.relative(projectDirectory, sourceConfig).split(path.sep).join('/')}`;
-}
-
 export function extendedProjectTsconfig(projectDirectory, layout) {
   const name = projectConfigName(projectDirectory, layout);
-  return name === undefined ? undefined : projectBaseTsconfig(projectDirectory, layout, name);
+  if (name === undefined) {
+    return undefined;
+  }
+  return `./${solutionChoice(projectDirectory, layout, name)?.file ?? name}`;
+}
+
+export function solutionResolution(projectDirectory, layout) {
+  const name = projectConfigName(projectDirectory, layout);
+  const chosen = name === undefined ? undefined : solutionChoice(projectDirectory, layout, name);
+  return chosen === undefined ? undefined : { from: name, ...chosen };
+}
+
+export function solutionRootDir(projectDirectory, layout) {
+  return solutionResolution(projectDirectory, layout)?.keptRootDir;
+}
+
+export function solutionCompilerOptions(projectDirectory, layout) {
+  return solutionResolution(projectDirectory, layout)?.compilerOptions ?? {};
 }
 
 export function projectStrictValues(options, javascript) {
@@ -161,8 +155,13 @@ export function projectTsconfigFiles(projectRoot, layout) {
     return [];
   }
   const root = `./${projectConfigName(projectRoot, layout)}`;
+  const merged = (solutionResolution(projectRoot, layout)?.typesFrom ?? []).map(
+    (file) => `./${file}`,
+  );
   return [
-    ...new Set([selected, root].flatMap((config) => tsconfigChain(projectRoot, config.slice(2)))),
+    ...new Set(
+      [selected, root, ...merged].flatMap((config) => tsconfigChain(projectRoot, config.slice(2))),
+    ),
   ];
 }
 
