@@ -30,7 +30,7 @@ const BROKEN = [
 
 const SPY_FAILURE = 'AssertionError: expected "warn" to be called 1 times, but got 0 times';
 
-function pinnedMessage(setting, failures) {
+function pinnedMessage(setting: string, failures: readonly string[]): string {
   return [
     `2 tests fail only because nitpicker pins ${setting} for the coverage run; the same tests pass without it,`,
     ' so coverage, CRAP and mutation were skipped. Create the spy in `beforeEach` or inside the test instead of',
@@ -39,7 +39,7 @@ function pinnedMessage(setting, failures) {
   ].join('');
 }
 
-function vitestProject(testText) {
+function vitestProject(testText: string) {
   return projects.project({
     'package.json': { name: 'p', type: 'module', scripts: { test: 'vitest' } },
     'src/main/pick.ts': PICK_SOURCE,
@@ -51,8 +51,8 @@ describe('a Vitest test that relies on a spy created once', () => {
   it('names the restoreMocks pin and the fix when the test passes without it', async () => {
     const [finding] = await runArea('coverage', vitestProject(SHARED_SPY));
 
-    expect(finding.rule).toBe('tests-failed');
-    expect(finding.message).toBe(
+    expect(finding?.rule).toBe('tests-failed');
+    expect(finding?.message).toBe(
       pinnedMessage('`restoreMocks: true`', [
         `  test/pick.test.ts:6 > calls the spy: ${SPY_FAILURE}`,
         `  test/pick.test.ts:7 > still sees the spy call: ${SPY_FAILURE}`,
@@ -63,7 +63,7 @@ describe('a Vitest test that relies on a spy created once', () => {
   it('keeps the plain failure message for a test that also fails without the pin', async () => {
     const [finding] = await runArea('coverage', vitestProject(BROKEN));
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       [
         '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         "  test/pick.test.ts:3 > picks wrongly: AssertionError: expected 'yes' to be 'no' // Object.is equality",
@@ -89,7 +89,7 @@ describe('a Vitest test that relies on a spy created once', () => {
     const [finding] = await runArea('coverage', vitestProject(flaky));
     rmSync(markerDirectory, { recursive: true, force: true });
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       [
         '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  test/pick.test.ts:7 > fails only the first time: AssertionError: expected false to be true //' +
@@ -122,7 +122,7 @@ describe('a Jest test that relies on a spy created once', () => {
 
     const [finding] = await runArea('coverage', root);
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       pinnedMessage('`--restoreMocks`', [
         '  test/pick.test.js:5 > calls the spy: Error: expect(jest.fn()).toHaveBeenCalledTimes(expected)',
         '  test/pick.test.js:6 > still sees the spy call: Error: expect(jest.fn()).toHaveBeenCalledTimes(expected)',
