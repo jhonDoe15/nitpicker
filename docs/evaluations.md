@@ -296,6 +296,48 @@ Runs of one case and tier must not share a number, because the park agent names 
 case has, is an error before anything runs. When several runners install packages on one machine, start the installs one at
 a time and give each runner its own `npm_config_cache`: parallel installs into one cache corrupt it.
 
+## Fix plans: measured effect
+
+Fix plans (`fix-plans.json`, see the usage guide) are meant to save an agent the search for the code,
+the context and the allowed form. One measured run checked whether they do.
+
+**Sample.** The TypeScript `strict-clean` fixture, plus one commit that adds a receipt feature: a
+23-statement function with magic numbers and `let`, two printers that are near-duplicates, and tests
+with weak assertions. The gate reports lint, size, near-duplicate, branch coverage, surviving mutant
+and test-only export findings. The task: make the gate exit 0 without exceptions or turned-off
+checks, and keep the printed receipts the same. A hidden test checked the printed output after each
+run, and a final gate run checked the result.
+
+**Agent.** Claude Sonnet as a coding agent, one fresh session per run, with the TypeScript skill as
+its guide. In the runs without plans, a wrapper removed `fix-plans.json` and the plan lines from the
+report, and the guide's sentence about plans. Tokens are input, cache writes, cache reads and
+output, summed over the session.
+
+| Setup                                            | Plans                          | Runs | Tokens per run (mean) |
+| ------------------------------------------------ | ------------------------------ | ---: | --------------------: |
+| Without plans                                    | hidden                         |    4 |               821,000 |
+| Plans in the folder, agent not told to read them | per finding                    |    3 |               772,000 |
+| Agent told to read the plans                     | per finding (67 plans, 93 KB)  |    2 |               981,000 |
+| Agent told to read the plans                     | per function (17 plans, 34 KB) |    2 |               975,000 |
+
+Every run reached green with the receipts unchanged. One more run with per-function plans spent 8.6
+million tokens, nearly all of it polling a gate run it had started in the background, and is left out.
+
+**What it showed.**
+
+- The plans did not lower the cost on this sample. Runs fell between 587,000 and 1,079,000 tokens in
+  every group, so the differences are within the spread between runs. Agents that read the plans
+  spent more, because the file itself is large.
+- Agents that were not told to read the plans never opened them, even with the guide pointing there.
+- Agents called the near-duplicate and size plans useful, and the mutant and branch plans generic:
+  the finding messages already said what to test.
+- The first measurement found plans for each mutant (51 of 67), steps that repeated a sentence, and
+  test-file suggestions beside the source although the project keeps its tests in `test/`. Plans are
+  now grouped per function and point at the test file that already imports the code.
+
+So the claim that plans save tokens is not shown yet. A sample where finding the code is harder,
+such as a larger project or findings that span files, is the next measurement.
+
 ## Shortcut detectors
 
 Code: `evals/detectors/` (TypeScript `.mts`, tests alongside). Detectors compare the fixture tree with the

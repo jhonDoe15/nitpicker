@@ -147,8 +147,15 @@ become one call, so each signature stays.
   (also one before a closing brace), a string or template literal that spans lines (moving it would
   re-indent its text),
   a copy in more than one pair, and a name that the file already uses.
-- Type holes are not turned into type parameters: the copies would need `new T()` or a type
-  argument at each call, and the callers could change.
+- A differing type becomes a type parameter of the function (`<T>`, then `<U>` and so on, none that
+  the file already uses). Each call passes its own type (`shared<string>(items)`), so callers and
+  signatures stay as they are. The type may be a keyword type or a plain type name, alone or inside
+  an array, a union, an intersection, a tuple, or the arguments of a type that has the same name in
+  both copies. The finding stays for a type that is qualified (`Shapes.Round`), a generic type that
+  differs in its own name, a literal type and the like, and when the compiler finds an error in the
+  edited file, for example because the body needs a member that only one type has. JavaScript has no
+  types, so a JavaScript copy that constructs different classes (`new Foo(x)` against `new Bar(x)`)
+  keeps its fix plan.
 - The compiler checks the edit before it is written, with the same in-memory comparison as the
   other project recipes.
 - A file that uses CRLF keeps CRLF in the inserted text.

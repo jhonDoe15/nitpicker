@@ -3,6 +3,7 @@ import {
   analyzerName as nameOf,
 } from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
+import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
 import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
@@ -17,6 +18,7 @@ type Scope = unknown;
 type SnapshotRun = {
   readonly reports: ReadonlyMap<string, { readonly findings: readonly Finding[] }>;
   readonly toolErrors: Finding[];
+  readonly metadata: MetadataMap;
 };
 
 type SnapshotRequest = {
@@ -71,27 +73,24 @@ function isEnforceable(finding: Finding): boolean {
   return finding.classification === 'enforceable';
 }
 
-export function runQualitySnapshot({
-  analyzers,
-  projectRoot,
-  policyRoot = projectRoot,
-  toolRoot = projectRoot,
-  liveProjectRoot = projectRoot,
-  startedAt = Date.now(),
-  headPolicy = {},
-  scope,
-  setupErrors = [],
-  ...execution
-}: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors: runErrors } = withoutOverlaps(
+type HeadRunRequest = {
+  readonly analyzers: readonly unknown[];
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly toolRoot: unknown;
+  readonly liveProjectRoot: string;
+  readonly headPolicy: object;
+  readonly scope: Scope;
+  readonly execution: Readonly<Record<string, unknown>>;
+};
+
+function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
+  return withoutOverlaps(
     reconcileDirectives(
       withPolicyFile(headPolicy, (headPolicyFile) =>
         runAnalyzers({
           analyzers,
-          projectRoot,
-          policyRoot,
-          toolRoot,
-          liveProjectRoot,
+          ...roots,
           headPolicyFile,
           snapshot: 'head',
           mutationScope: fieldOf(scope, 'paths'),
@@ -105,6 +104,34 @@ export function runQualitySnapshot({
       analyzers,
     ),
   );
+}
+
+export function runQualitySnapshot({
+  analyzers,
+  projectRoot,
+  policyRoot = projectRoot,
+  toolRoot = projectRoot,
+  liveProjectRoot = projectRoot,
+  startedAt = Date.now(),
+  headPolicy = {},
+  scope,
+  setupErrors = [],
+  ...execution
+}: SnapshotRequest): QualitySnapshot {
+  const {
+    reports,
+    toolErrors: runErrors,
+    metadata,
+  } = headRun({
+    analyzers,
+    projectRoot,
+    policyRoot,
+    toolRoot,
+    liveProjectRoot,
+    headPolicy,
+    scope,
+    execution,
+  });
 
   const toolErrors = [...entriesOf(setupErrors), ...runErrors];
   const { findings, tools, outside } = collectSnapshotFindings({
@@ -112,6 +139,7 @@ export function runQualitySnapshot({
     reports,
     toolErrors,
     scope,
+    metadata,
   });
 
   return {
@@ -187,14 +215,17 @@ function toSnapshotToolError(finding: Finding): Finding & { readonly snapshot: s
 }
 
 function summarizeAnalyzer(
-  analyzer: unknown,
-  name: unknown,
+  {
+    analyzer,
+    name,
+    metadata,
+  }: { readonly analyzer: unknown; readonly name: unknown; readonly metadata: MetadataMap },
   analyzerFindings: readonly Finding[],
 ): ToolSummary {
   return {
     name,
-    version: metadataOf(analyzer, 'version'),
-    configurationHash: metadataOf(analyzer, 'configurationHash'),
+    version: metadataOf(analyzer, 'version', metadata),
+    configurationHash: metadataOf(analyzer, 'configurationHash', metadata),
     total: analyzerFindings.length,
     enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
       .length,
@@ -208,7 +239,12 @@ function collectSnapshotFindings({
   reports,
   toolErrors,
   scope,
-}: SnapshotRun & { readonly analyzers: readonly unknown[]; readonly scope: Scope }): {
+  metadata,
+}: SnapshotRun & {
+  readonly analyzers: readonly unknown[];
+  readonly scope: Scope;
+  readonly metadata: MetadataMap;
+}): {
   readonly findings: Finding[];
   readonly tools: ToolSummary[];
   readonly outside: number;
@@ -228,7 +264,7 @@ function collectSnapshotFindings({
     const analyzerFindings = analyzed.filter((finding) => inScope(finding.path, scope));
     outside += analyzed.length - analyzerFindings.length;
     findings.push(...analyzerFindings);
-    tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
+    tools.push(summarizeAnalyzer({ analyzer, name, metadata }, analyzerFindings));
   }
 
   return { findings, tools, outside };

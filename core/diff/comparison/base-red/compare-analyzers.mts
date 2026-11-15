@@ -16,6 +16,7 @@ import {
   withoutHeadUnmeasured,
   withoutUnmeasuredMutants,
 } from './unknown-findings.mts';
+import { type MetadataMap, mergeMetadata } from '../../execution/report/analyzer-metadata.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 
 export type AnalyzerRun = {
@@ -23,6 +24,7 @@ export type AnalyzerRun = {
   readonly timings: ReadonlyMap<string, number>;
   readonly skipped?: ReadonlyMap<string, unknown> | undefined;
   readonly toolErrors: readonly ReportEntry[];
+  readonly metadata?: MetadataMap | undefined;
 };
 
 export type Moves = Map<string, string>;
@@ -244,6 +246,7 @@ function toolSummary(
   context: ComparedContext & { readonly result: FindingComparison },
 ): ReportEntry {
   const { analyzer, name, baseRun, headRun, baseFindings, headFindings, result } = context;
+  const resolved = mergeMetadata(baseRun.metadata, headRun.metadata);
   const baseElapsedMs = baseRun.timings.get(name);
   const headElapsedMs = headRun.timings.get(name);
   const skippedBecause =
@@ -252,8 +255,8 @@ function toolSummary(
   return {
     name,
     ...(skippedBecause === undefined ? {} : { skippedBecause }),
-    version: metadataOf(analyzer, 'version'),
-    configurationHash: metadataOf(analyzer, 'configurationHash'),
+    version: metadataOf(analyzer, 'version', resolved),
+    configurationHash: metadataOf(analyzer, 'configurationHash', resolved),
     base: baseFindings.length,
     head: headFindings.length,
     new: result.newFindings.length,

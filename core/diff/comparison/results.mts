@@ -13,6 +13,7 @@ import {
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
 import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
+import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
@@ -72,6 +73,7 @@ export type DiffReport = {
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly outcomes: readonly ScopedOutcome[];
+  readonly metadata?: MetadataMap;
   readonly notes: ReportEntry[];
   readonly toolErrors: ReportEntry[];
 };
@@ -126,7 +128,8 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
   const notes = scopedNotes(compared.notes, context.scope);
-  const report = buildReport({ ...context, outcomes, notes, toolErrors });
+  const metadata = mergeMetadata(baseRun.metadata, headRun.metadata);
+  const report = buildReport({ ...context, outcomes, notes, toolErrors, metadata });
   return {
     ...report,
     newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
@@ -225,7 +228,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides),
+      policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides, context.metadata),
       configOverrides,
       policyChanges,
       policyLoosenings,

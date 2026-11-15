@@ -19,6 +19,7 @@ import {
   configuredAnalyzers,
   planAnalyzerShards,
   resolveMetadata,
+  resolvedExpectations,
   readAndValidateShard,
   readUnchangedShards,
   validateCommonSummaries,
@@ -76,7 +77,7 @@ export function aggregateShardReports({
     const report = unchangedReport(unchangedShards, { analyzers, configOverrides });
     return writeAggregate(report, { outputRoot, liveProjectRoot });
   }
-  const analyzerResolutionErrors = resolveMetadata({
+  const { errors: analyzerResolutionErrors, metadata } = resolveMetadata({
     analyzers,
     liveProjectRoot,
     policyRoot,
@@ -84,7 +85,7 @@ export function aggregateShardReports({
     warn,
   });
   const shardReports = plan.map((shardAnalyzers, index) =>
-    readAndValidateShard(inputRoot, index, shardAnalyzers),
+    readAndValidateShard(inputRoot, index, resolvedExpectations(shardAnalyzers, metadata)),
   );
   validateCommonSummaries(shardReports);
 
@@ -96,6 +97,7 @@ export function aggregateShardReports({
     configOverrides,
     newFindings,
     toolErrors,
+    metadata,
   });
   const report = {
     summary,

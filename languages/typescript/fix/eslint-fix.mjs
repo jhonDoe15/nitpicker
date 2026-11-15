@@ -8,6 +8,7 @@ import {
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import { containedPath } from '../../../core/fix/common/contained-path.mjs';
 import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.mjs';
 import { readBytes } from '../../../core/fix/common/fix-files.mjs';
@@ -46,10 +47,14 @@ function runEslint(settings, files, linked) {
     acceptedStatuses: [0, 1],
     environment: {
       ...policyEnvironment,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
+      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: checkoutModulePath(
+        path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
+      ),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
-      [EXTRA_POLICY_VARIABLE]: path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
+      [EXTRA_POLICY_VARIABLE]: checkoutModulePath(
+        path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
+      ),
       [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
         liveProjectRoot: projectRoot,
         addsRules: true,
