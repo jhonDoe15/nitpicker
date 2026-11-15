@@ -11,6 +11,7 @@ import type {
   Statement,
 } from 'acorn';
 import {
+  type DecodedSourceMap,
   type EncodedSourceMap,
   type SourceMapSegment,
   TraceMap,
@@ -34,7 +35,7 @@ type Range = { readonly low: number; readonly high: number };
 export type MappedCode = {
   readonly code: string;
   readonly ast: Program;
-  readonly sourceMap: EncodedSourceMap;
+  readonly sourceMap: EncodedSourceMap | DecodedSourceMap;
 };
 
 const SEGMENT_WITH_SOURCE_LENGTH = 4;

@@ -1,6 +1,6 @@
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 
 type BridgeRequest = {
@@ -15,7 +15,9 @@ type BridgedPlugin = { readonly meta: { readonly name: string }; readonly rules:
 
 export const CORE_RULES_NAMESPACE = '';
 
-const wrapperPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
+const wrapperPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url)),
+);
 
 export async function bridgedPlugin({
   namespace,

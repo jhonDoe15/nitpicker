@@ -10,7 +10,7 @@ import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs'
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import { realpathSync } from 'node:fs';

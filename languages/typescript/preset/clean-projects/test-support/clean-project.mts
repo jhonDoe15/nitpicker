@@ -130,6 +130,28 @@ export function readReport(root: string, ...segments: string[]): unknown {
   return parseJson(readFileSync(containedPath(root, path.join(...segments)), 'utf8'));
 }
 
+export function runSnapshot(
+  root: string,
+  extraArguments: readonly string[] = [],
+): ReturnType<typeof runNitpicker> & {
+  readonly summary: unknown;
+  readonly toolErrors: unknown;
+  readonly findings: unknown;
+} {
+  const result = runNitpicker(root, [
+    '--all',
+    '--output',
+    path.join(root, 'reports/snapshot'),
+    ...extraArguments,
+  ]);
+  return {
+    ...result,
+    summary: readReport(root, 'reports/snapshot/summary.json'),
+    toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
+    findings: readReport(root, 'reports/snapshot/findings.json'),
+  };
+}
+
 export type FindingView = {
   readonly rule: string;
   readonly path: string;
