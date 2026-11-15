@@ -1,7 +1,11 @@
 import type TypeScript from 'typescript';
-import { chainOf, typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
+import {
+  chainOf,
+  childrenOf,
+  typescriptApi,
+} from '../../../../adapters/typed/typescript-program.mts';
 import { declarationsOf, isInRegion, isLocalSymbol, isWithin } from '../scope.mts';
-import { childrenOf, descendants, symbolAt } from '../syntax.mts';
+import { descendants, symbolAt } from '../syntax.mts';
 import type { Region, RunOutput, RunSide, SymbolSet } from '../typed/extract-types.mts';
 import { writesOf } from '../writes.mts';
 import { isFunctionLike, lastStatement } from './runs.mts';

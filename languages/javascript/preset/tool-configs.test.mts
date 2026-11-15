@@ -1,8 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
+import { rootsRemovedAfterAll } from '../../typescript/adapters/test-support/temporary-roots.mts';
 import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
 import {
   jsonTransform as untypedJsonTransform,
@@ -37,13 +38,7 @@ const layoutTransformFor: (
 const defaults = path.join(import.meta.dirname, '../../typescript/preset/defaults');
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
 const typescriptLayout = resolveLayout();
-const temporaryRoots: string[] = [];
-
-afterAll(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const temporaryRoots = rootsRemovedAfterAll();
 
 function defaultText(name: string): string {
   return readFileSync(path.join(defaults, name), 'utf8');

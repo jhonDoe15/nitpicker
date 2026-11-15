@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs'
 import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { writeFileTree } from '../test-support/file-tree.mts';
 import { type CruiseReport, loadDependencyGraph } from './project-dependency-graph.mts';
 
 const analyzeEntryPoints: (
@@ -35,10 +36,7 @@ function temporaryDirectory(prefix: string): string {
 
 function projectWith(files: Record<string, string>): string {
   const root = temporaryDirectory('nitpicker-project-graph-');
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+  writeFileTree(root, files);
   return root;
 }
 

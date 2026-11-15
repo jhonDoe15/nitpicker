@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { chainOf, childrenOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 type Role = 'other' | 'member' | 'shorthand' | 'declaration' | 'reference';
@@ -38,14 +38,6 @@ const TRANSPARENT_PARENTS = [
 
 export function normalizedText(node: TypeScript.Node, sourceFile: TypeScript.SourceFile): string {
   return node.getText(sourceFile).replaceAll(/\s+/gu, ' ');
-}
-
-export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
-  const found: TypeScript.Node[] = [];
-  ts.forEachChild(node, (child) => {
-    found.push(child);
-  });
-  return found;
 }
 
 export function descendants(root: TypeScript.Node): TypeScript.Node[] {

@@ -29,6 +29,10 @@ function fix(files: Record<string, string>) {
   return projects.fix(files, { recipe, rule: 'structure/near-duplicate' });
 }
 
+function fixedSources(...sources: string[]) {
+  return fix({ 'src/a.ts': sources.join('\n') }).tree['src/a.ts'];
+}
+
 function isAligners(value: unknown): value is Aligners {
   return typeof fieldOf(value, 'alignTop') === 'function';
 }
@@ -236,8 +240,8 @@ describe('nearDuplicateExtractRecipe', () => {
   });
 
   it('turns a differing element type into a type parameter the callers pass', () => {
-    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}`;
-    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+    const fixed = fixedSources(typed('topStrings', 'string'), typed('topNumbers', 'number'));
+    expect(fixed).toMatchInlineSnapshot(`
       "export function topStrings(items: string[], limit: number): string[] {
         return sharedTopStrings<string>(items, limit);
       }
@@ -261,8 +265,11 @@ describe('nearDuplicateExtractRecipe', () => {
   });
 
   it('names one type parameter for each differing pair of types', () => {
-    const source = `${boxed('first', 'string', 'number')}\n${boxed('second', 'number', 'string')}`;
-    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+    const fixed = fixedSources(
+      boxed('first', 'string', 'number'),
+      boxed('second', 'number', 'string'),
+    );
+    expect(fixed).toMatchInlineSnapshot(`
       "export function first(rows: Map<string, number>, limit: number): Promise<number[]> {
         return sharedFirst<number, string>(rows, limit);
       }
@@ -286,8 +293,8 @@ describe('nearDuplicateExtractRecipe', () => {
   });
 
   it('skips a type parameter name the file already uses', () => {
-    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}\ntype T = string;\n`;
-    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+    const types = [typed('topStrings', 'string'), typed('topNumbers', 'number')];
+    expect(fixedSources(...types, 'type T = string;\n')).toMatchInlineSnapshot(`
       "export function topStrings(items: string[], limit: number): string[] {
         return sharedTopStrings<string>(items, limit);
       }
