@@ -1,6 +1,12 @@
-import { addingProperty, isPlainObject, keyName } from '../support/objects.mjs';
+import type { TSESTree } from '@typescript-eslint/utils';
+import type { SourceCode } from '../../rules/typed/node-views.mts';
+import { addingProperty, isPlainObject, keyName } from '../support/objects.mts';
+import type { FixPlan } from '../support/ranges.mts';
 
-export function pinsFix(sourceCode, compilerOptions) {
+export function pinsFix(
+  sourceCode: SourceCode,
+  compilerOptions: TSESTree.Property,
+): FixPlan | undefined {
   const object = compilerOptions.value;
   if (!isPlainObject(object)) {
     return undefined;

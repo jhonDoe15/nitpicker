@@ -1,8 +1,8 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noTestRetry } from '../../test-assertions/no-test-retry.mjs';
-import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
-import { rule as fakeTimersRequireRestore } from '../../test-quality/fake-timers-require-restore.mjs';
-import { rule as testTsconfigPins } from '../../rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as noTestRetry } from '../../test-assertions/no-test-retry.mts';
+import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mts';
+import { rule as fakeTimersRequireRestore } from '../../test-quality/fake-timers-require-restore.mts';
+import { rule as testTsconfigPins } from '../../rules/testing/types/test-tsconfig-pins-lib-and-types.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/tests/unit/service.test.ts';
