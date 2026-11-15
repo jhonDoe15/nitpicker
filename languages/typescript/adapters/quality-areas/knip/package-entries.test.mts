@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compareText } from '../../../../../shared/paths/path-order.mjs';
+import { writeFileTree } from '../../test-support/file-tree.mts';
 import { runDeadCode } from '../runners/repository.mts';
 import { nestedPackageFolders, publishedSourceEntries } from './package-entries.mts';
 
@@ -19,10 +20,15 @@ afterEach(() => {
 });
 
 function writeFiles(root: string, files: Readonly<Record<string, unknown>>) {
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), typeof text === 'string' ? text : JSON.stringify(text));
-  }
+  writeFileTree(
+    root,
+    Object.fromEntries(
+      Object.entries(files).map(([name, text]) => [
+        name,
+        typeof text === 'string' ? text : JSON.stringify(text),
+      ]),
+    ),
+  );
 }
 
 function project(files: Readonly<Record<string, unknown>>) {
