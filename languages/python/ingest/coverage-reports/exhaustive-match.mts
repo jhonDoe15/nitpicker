@@ -8,14 +8,14 @@ export const ASSERT_NEVER_ARM = [
   String.raw`(?!(?:\n${COMMENT}$)*\n(?P=case)(?P=arm)[^ \t\r\n#])`,
 ].join('');
 
-export function javascriptPattern(pythonPattern, flags = 'gmu') {
+export function javascriptPattern(pythonPattern: string, flags = 'gmu'): RegExp {
   return new RegExp(
     pythonPattern.replaceAll(NAMED_GROUP, '(?<').replaceAll(GROUP_REFERENCE, String.raw`\k<$1>`),
     flags,
   );
 }
 
-export function assertNeverArmLines(source) {
+export function assertNeverArmLines(source: string): { first: number; last: number }[] {
   return [...source.matchAll(javascriptPattern(ASSERT_NEVER_ARM))].map((match) => {
     const first = source.slice(0, match.index).split('\n').length - 1;
     return { first, last: first + match[0].split('\n').length - 1 };

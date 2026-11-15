@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { isStableRule as untypedStable } from '../../adapters/configuration/python-ruff-config.mjs';
+import { isStableRule as untypedStable } from '../../adapters/configuration/python-ruff-config.mts';
 import type { RuffRule } from '../../reference/typed/ruff-rule-views.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 
