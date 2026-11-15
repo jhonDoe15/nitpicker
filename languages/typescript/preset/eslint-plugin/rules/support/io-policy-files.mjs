@@ -1,6 +1,12 @@
 /** The I/O rules and their parts: a change to one invalidates the lint cache. */
 export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulator-concat.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/effects/relations/typeorm-schema.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/effects/scopes/scope-types.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/effects/scopes/scope-words.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/loops/paging-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/support/io/views/call-shapes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/support/io/views/ts-call-views.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/held-scopes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/lazy-relations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/no-lazy-relation-in-loop.mjs',
