@@ -35,6 +35,7 @@ import {
   trackTemporaryPath,
   withTroubleshooting,
 } from './typed/runner/runner-views.mts';
+import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
 
 const UNEXPECTED_FAILURE_RULES: Readonly<Record<string, string>> = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -247,13 +248,4 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 
-if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
-  try {
-    main(process.argv.slice(2));
-  } catch (error) {
-    process.stderr.write(
-      `Python differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
+runAdapterMain(import.meta.filename, 'Python', main);

@@ -33,6 +33,7 @@ import {
   callUntyped,
   javaPolicyOf,
 } from './typed/java-values.mts';
+import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
 
 type Budget = TimeBudget;
 type JavaSnapshotOptions = {
@@ -221,13 +222,4 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(runJava(runnerArguments))}\n`);
 }
 
-if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
-  try {
-    main(process.argv.slice(2));
-  } catch (error) {
-    process.stderr.write(
-      `Java differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
+runAdapterMain(import.meta.filename, 'Java', main);
