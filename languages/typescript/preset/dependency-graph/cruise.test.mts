@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
 import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
+import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 import { projectImports as untypedProjectImports } from './cruise.mjs';
 
 type ImportGraph = {
@@ -38,10 +39,7 @@ function projectWith(files: Readonly<Record<string, string>>): string {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   roots.push(parent);
   const root = path.join(parent, 'head');
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+  writeProjectFiles(root, files);
   return root;
 }
 
