@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
+import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mts';
 import { runCli as nitpickerCli } from '../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';

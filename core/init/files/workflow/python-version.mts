@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { hasProjectFile, insideProject } from '../../support/inside-project.mts';
-import { MINIMUM_PYTHON } from '../../../../languages/python/ingest/rules-report.mjs';
+import { MINIMUM_PYTHON } from '../../../../languages/python/ingest/rules-report.mts';
 import { type StepSettings, repositoryPath } from './yaml-steps.mts';
 
 type VersionChoice = { readonly settings: StepSettings; readonly notes: readonly string[] };
