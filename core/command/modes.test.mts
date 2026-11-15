@@ -1,0 +1,488 @@
+import { readFileSync, symlinkSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../cli.mts';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
+import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { linkSentence } from './test-support/report-readers.mts';
+import type { FixtureRepository } from './test-support/fixture-types.mts';
+import { fieldOf, listOf, parseJson } from '../../shared/values/readers.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { docsUrl as docsPageUrl } from '../../shared/messages/docs-url.mjs';
+const anyString: unknown = expect.any(String);
+const anyNumber: unknown = expect.any(Number);
+const baseFromLocalBranch: unknown = expect.stringMatching(/^Base: main \(local-branch\)\n/u);
+const docsUrl: (page: string) => string | undefined = docsPageUrl;
+
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
+describe('nitpicker CLI', () => {
+  it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/untracked.ts': findingLine(finding({ identity: 'untracked-finding' })),
+    });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+      runTasks: undefined,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
+
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
+    src/main/untracked.ts:1:4
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('exits zero for a change with no new findings', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
+
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  describe('with no change since the merge base', () => {
+    const runUnchanged = (repository: FixtureRepository) => {
+      const output = captureOutput();
+      const outputRoot = makeOutputRoot();
+      writeFiles(outputRoot, { 'new-findings.json': '[{"stale":true}]\n' });
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', outputRoot],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [crashingAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      const read = (name: string) => parseJson(readFileSync(path.join(outputRoot, name), 'utf8'));
+      return { exitCode, output, summary: read('summary.json'), read };
+    };
+    it('runs no analyzer, prints one line, exits 0 and writes an empty summary', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+
+      const { exitCode, output, summary, read } = runUnchanged(repository);
+
+      expect(exitCode).toBe(0);
+      expect(output.stdoutText).toBe(
+        `No changes since comparison-base (${repository.baseSha.slice(0, 12)}); nothing to check.\n`,
+      );
+      expect(output.stderrText).toBe('');
+      expect(summary).toEqual({
+        requestedBaseRef: 'comparison-base',
+        resolvedBaseSha: repository.baseSha,
+        mergeBaseSha: repository.baseSha,
+        headSha: repository.baseSha,
+        policyHash: anyString,
+        configOverrides: [],
+        policyChanges: [],
+        policyLoosenings: [],
+        policyChangeAccepted: false,
+        notices: [],
+        tools: [],
+        exclusions: [],
+        renamedPaths: 0,
+        elapsedMs: anyNumber,
+        mode: 'full',
+        overallStatus: 'completed',
+        newEnforceableFindings: 0,
+        noChanges: true,
+      });
+      expect([read('new-findings.json'), read('tool-errors.json')]).toEqual([[], []]);
+    });
+    it('skips the run when the working tree undoes the committed change', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+      writeFiles(repository.root, { 'src/main/clean.ts': 'export const clean = false;\n' });
+      commit(repository.root, 'edit');
+      writeFiles(repository.root, { 'src/main/clean.ts': 'export const clean = true;\n' });
+
+      const { exitCode, summary } = runUnchanged(repository);
+
+      expect(exitCode).toBe(0);
+      expect(fieldOf(summary, 'noChanges')).toBe(true);
+      expect(fieldOf(summary, 'headSha')).not.toBe(repository.baseSha);
+    });
+    it('runs the analyzers for a change made only in the working tree', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+      writeFiles(repository.root, { 'src/main/untracked.ts': 'export const added = true;\n' });
+
+      const { exitCode, summary } = runUnchanged(repository);
+
+      expect(exitCode).toBe(2);
+      expect(fieldOf(summary, 'noChanges')).toBeUndefined();
+      expect(listOf(fieldOf(summary, 'tools')).map((tool) => fieldOf(tool, 'name'))).toEqual([
+        'crashing-analyzer',
+      ]);
+    });
+  });
+  it('resolves the base from the remote HEAD when no base is given', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    fixtureGit(repository.root, ['update-ref', 'refs/remotes/origin/main', repository.baseSha]);
+    fixtureGit(repository.root, [
+      'symbolic-ref',
+      'refs/remotes/origin/HEAD',
+      'refs/remotes/origin/main',
+    ]);
+    fixtureGit(repository.root, ['remote', 'add', 'origin', repository.root]);
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: origin/main (remote-head)
+
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('compares with the local main when the repository has no remote', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const run = (arguments_: readonly string[]) => {
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_,
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return { exitCode, stdout: output.stdoutText, stderr: output.stderrText };
+    };
+
+    expect(run(['base'])).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr:
+        'nitpicker failed: No base found: no remote, and you are on main. Pass --base <ref>, set "base" in nitpicker.config.json, or run nitpicker --all to check the whole project.\n',
+    });
+    fixtureGit(repository.root, ['checkout', '-q', '-b', 'feature']);
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
+    expect(run(['base'])).toEqual({ exitCode: 0, stdout: 'main\n', stderr: '' });
+    expect(run(['--output', makeOutputRoot()])).toEqual({
+      exitCode: 0,
+      stdout: baseFromLocalBranch,
+      stderr: '',
+    });
+  });
+  it.each([[['--all']], [[]], [['base']]])(
+    'asks for a first commit before %j in a repository without one',
+    (arguments_) => {
+      const repository = createRepository({ 'quality-policy.json': policy() });
+      fixtureGit(repository.root, ['checkout', '-q', '--orphan', 'empty']);
+      const output = captureOutput();
+
+      const exitCode = runCli({
+        arguments_: arguments_.includes('base')
+          ? arguments_
+          : [...arguments_, '--output', makeOutputRoot()],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        snapshotAnalyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+
+      expect(exitCode).toBe(2);
+      expect(output.stderrText).toBe(
+        'nitpicker failed: This repository has no commits yet. Commit your files, then run nitpicker --all, or compare later changes against that commit.\n',
+      );
+    },
+  );
+  it('works when the project root is passed through a symlink', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const symlinkRoot = path.join(makeTemporaryRoot('nitpicker-symlink-'), 'project');
+    symlinkSync(repository.root, symlinkRoot, 'dir');
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: symlinkRoot,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect([exitCode, output.stderrText]).toEqual([0, '']);
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
+
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`),
+    );
+  });
+  it('reports every finding in --all mode without a baseline', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/first.ts': findingLine(finding({ identity: 'first-finding' })),
+      'src/main/second.ts': findingLine(
+        finding({ identity: 'second-finding', rule: 'other-rule' }),
+      ),
+    });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      snapshotAnalyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Enforceable findings: 2',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'fake-quality-analyzer: total=2 enforceable=2 descriptive=0',
+        '',
+        'Enforceable findings:',
+        'fake-quality-analyzer/fixture-rule src/main/first.ts:1 Fixture finding',
+        'fake-quality-analyzer/other-rule src/main/second.ts:1 Fixture finding',
+        '',
+      ].join('\n'),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('returns a tool error for a crashing --all analyzer', () => {
+    const repository = createRepository({
+      'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--output', makeOutputRoot()],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+        runTasks: undefined,
+      }),
+    ).toBe(2);
+    expect(output.stdoutText).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: tool-error',
+        'Enforceable findings: 0',
+        'Descriptive findings: 0',
+        'Tool errors: 1',
+        '',
+        'Per-tool counts:',
+        'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
+        '',
+        'Tool errors:',
+        `fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
+        '',
+      ].join('\n'),
+    );
+  });
+  it('supports --all analyzer selection and rule drill-down', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/existing.ts': findingLine(finding({ rule: 'match-me' })),
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: [
+          '--all',
+          '--analyzer',
+          'fake-quality-analyzer',
+          '--rule',
+          'match-me',
+          '--output',
+          makeOutputRoot(),
+        ],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      }),
+    ).toBe(1);
+    expect(output.stdoutText).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Enforceable findings: 1',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
+        '',
+        'Enforceable findings:',
+        'fake-quality-analyzer/match-me src/main/existing.ts:1 Fixture finding',
+        '',
+        'Findings matching --rule match-me:',
+        '',
+        '  Matching:',
+        'fake-quality-analyzer/match-me src/main/existing.ts:1 Fixture finding',
+        '',
+      ].join('\n'),
+    );
+    const unknown = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--analyzer', 'unknown'],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: unknown.stdout,
+        stderr: unknown.stderr,
+      }),
+    ).toBe(2);
+    expect(unknown.stderrText).toEqual(
+      'nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n',
+    );
+  });
+  it('runs the packaged prettier preset against a consumer snapshot', () => {
+    const repository = createRepository({
+      'src/main/example.ts': 'export const example=1\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['--all', '--analyzer', 'prettier-format', '--output', makeOutputRoot()],
+      currentProjectRoot: repository.root,
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(1);
+    expect(output.stdoutText).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Enforceable findings: 3',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
+        '',
+        'Per-tool counts:',
+        'prettier-format: total=3 enforceable=3 descriptive=0',
+        '',
+        'Enforceable findings:',
+        'prettier-format/prettier/prettier package-lock.json:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+        'prettier-format/prettier/prettier package.json:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+        'prettier-format/prettier/prettier src/main/example.ts:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
+        '',
+      ].join('\n'),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('keeps staged and unstaged checkout state intact in --all mode', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/staged.ts': 'export const staged = false;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/staged.ts': 'export const staged = true;\n',
+    });
+    fixtureGit(repository.root, ['add', 'src/main/staged.ts']);
+    writeFiles(repository.root, {
+      'src/main/staged.ts': 'export const staged = 2;\n',
+      'src/main/untracked.ts': findingLine(finding({ identity: 'untracked-all' })),
+    });
+    const beforeStatus = fixtureGit(repository.root, ['status', '--porcelain=v1']);
+    const beforeIndex = fixtureGit(repository.root, ['ls-files', '--stage']);
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', makeOutputRoot()],
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Enforceable findings: 1',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
+        '',
+        'Enforceable findings:',
+        'fake-quality-analyzer/fixture-rule src/main/untracked.ts:1 Fixture finding',
+        '',
+      ].join('\n'),
+    );
+    expect(fixtureGit(repository.root, ['status', '--porcelain=v1'])).toBe(beforeStatus);
+    expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
+  });
+});

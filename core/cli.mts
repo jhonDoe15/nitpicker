@@ -13,14 +13,14 @@ import {
   describeConfigOverrides,
   describeDisableCascade,
   loadConfig,
-} from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
+} from './configuration/config.mts';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
 import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
-import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mts';
@@ -61,7 +61,7 @@ import type {
   RunSetup,
   Subcommand,
 } from './cli-context.mts';
-import type { NitpickerConfig } from './configuration/config-types.mts';
+import type { NitpickerConfig } from '../shared/values/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {

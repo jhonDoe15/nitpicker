@@ -15,7 +15,7 @@ import {
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
 } from './python-analyzer.mjs';
-import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();
 

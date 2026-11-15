@@ -3,7 +3,7 @@ import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../.
 import { isIntegrationTestFor as untypedIsIntegrationTestFor } from '../../../preset/layout/end-to-end-tests.mjs';
 
 export type TimeoutPolicy = {
-  readonly preset?: string;
+  readonly preset?: string | undefined;
   readonly tools?: { readonly tests?: { readonly timeouts?: unknown } };
 };
 

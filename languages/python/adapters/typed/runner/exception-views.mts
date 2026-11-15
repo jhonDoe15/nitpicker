@@ -1,7 +1,7 @@
 import { applyFindingExceptions as untypedApply } from '../../../../../shared/exceptions/finding-exceptions.mjs';
 import { findingPaths as untypedPaths } from '../../../../../shared/exceptions/matching.mjs';
 import { globMatcher as untypedMatcher } from '../../../../../shared/paths/glob.mjs';
-import { callUntyped as call } from '../../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 
 export type Matcher = { test(file: string): boolean };
