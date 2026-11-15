@@ -48,7 +48,7 @@ import {
 import { precedenceLayers as untypedPrecedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots as untypedExistingRoots } from '../layout.mjs';
 import { fileNameRuleOptions as untypedFileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
-import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-helpers.mts';
+import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
 import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';
 import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mts';
 import {
