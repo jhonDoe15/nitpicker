@@ -174,6 +174,41 @@ describe('dryRun', () => {
     expect(headers).toEqual(['--- a/app/a.txt', '+++ b/app/a.txt']);
     expect(readFileSync(path.join(projectRoot, 'a.txt'), 'utf8')).toBe('a  b\n');
   });
+  it('lists every finding one fix repairs once, and not the same one twice', () => {
+    const { root } = createGitRepository({ 'a.txt': 'quiet\n' });
+    const journal = createJournal(root);
+    const first = { ...finding('a.txt'), line: 1 };
+    const second = { ...finding('a.txt'), line: 7 };
+    const shout = { type: 'replace', path: 'a.txt', start: 0, end: 5, text: 'LOUD' } as const;
+    const entries: JournalEntry[] = [
+      {
+        name: 'shout',
+        recipe: 'shout',
+        safety: 'review',
+        fix: {
+          finding: first,
+          alsoFixes: [second, first, second],
+          edits: [shout],
+        },
+      },
+    ];
+
+    const outcome = dryRun({
+      repositoryRoot: root,
+      journal,
+      run: () => journalWriter(journal).apply(createSnapshot(root, ['a.txt']), entries),
+    });
+
+    expect(outcome.fixes).toEqual([
+      {
+        recipe: 'shout',
+        safety: 'review',
+        finding: first,
+        alsoFindings: [second],
+        files: ['a.txt'],
+      },
+    ]);
+  });
   it('puts a path an untrack edit removed back into the git index', () => {
     const { root } = createGitRepository({ '.env': 'A=1\n', 'a.txt': 'a\n' });
     const journal = createJournal(root);

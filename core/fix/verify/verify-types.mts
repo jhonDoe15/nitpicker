@@ -84,4 +84,5 @@ export type RunEvent = {
   readonly recipe?: string | undefined;
   readonly files: readonly string[];
   readonly finding?: FindingKey | undefined;
+  readonly alsoFindings?: readonly FindingKey[] | undefined;
 };

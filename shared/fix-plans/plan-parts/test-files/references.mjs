@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { languageOf } from '../source.mjs';
 import { isTestFile, memoized, projectFiles, textOf } from './project-tests.mjs';
+import { callRank } from './scripts/import-chains.mjs';
 import { exportedNames, importsOf, isScript, reExportsOf } from './scripts/script-imports.mjs';
 import { jvmTest, jvmTestImports } from './others/jvm-references.mjs';
 import { pythonTest, pythonImports } from './others/python-references.mjs';
@@ -58,13 +59,16 @@ function reachRank(test, file, env) {
 }
 
 function isBetter(a, b) {
-  return a.rank < b.rank || (a.rank === b.rank && a.test < b.test);
+  return (
+    a.rank < b.rank ||
+    (a.rank === b.rank && (a.calls < b.calls || (a.calls === b.calls && a.test < b.test)))
+  );
 }
 
-function scriptTest(file, env) {
+function scriptTest(file, env, symbol) {
   return projectFiles(env)
     .tests.filter((test) => isScript(test))
-    .map((test) => ({ test, rank: reachRank(test, file, env) }))
+    .map((test) => ({ test, rank: reachRank(test, file, env), calls: callRank(env, test, symbol) }))
     .filter(({ rank }) => rank !== -1)
     .reduce(
       (best, found) => (best === undefined || isBetter(found, best) ? found : best),
@@ -87,9 +91,11 @@ const FINDERS = {
   go: goTest,
 };
 
-export function testReferencing(file, env) {
+export function testReferencing(file, env, symbol) {
   const language = languageOf(file);
-  return language === undefined || isTestFile(file) ? undefined : FINDERS[language](file, env);
+  return language === undefined || isTestFile(file)
+    ? undefined
+    : FINDERS[language](file, env, symbol);
 }
 
 export function testImports(test, file, env) {

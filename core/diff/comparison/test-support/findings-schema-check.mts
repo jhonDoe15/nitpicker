@@ -32,7 +32,7 @@ export function schemaAccepts(findings: readonly unknown[]): boolean {
 
 type Checked = { readonly newFindings?: readonly unknown[] };
 
-export function schemaChecked(result: Checked): Checked {
+export function schemaChecked<Result extends Checked>(result: Result): Result {
   const errors = findingsSchemaErrors(result.newFindings ?? []);
   if (errors.length > 0) {
     throw new Error(
