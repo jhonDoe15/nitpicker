@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
 import { byCodeUnits } from '../../../../core/scope/mutation-scope.mjs';
 import { affectedModules } from './affected/affected-modules.mjs';
 import { comparisonRoots, readChangedFiles } from './comparison-changes.mjs';

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { textsOf } from '../../../../shared/values/readers.mts';
 import { pythonConfigFiles } from './config-files.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

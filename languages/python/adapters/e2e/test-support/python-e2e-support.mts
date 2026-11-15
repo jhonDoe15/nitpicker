@@ -11,13 +11,13 @@ import {
 } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { runCli } from '../../../../../core/cli.mts';
-import { readConfigFile } from '../../../../../core/configuration/config.mjs';
-import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
-import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mjs';
-import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
-import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
+import { readConfigFile } from '../../../../../core/configuration/config.mts';
+import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mts';
+import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mts';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
+import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mts';
 import { fileURLToPath } from 'node:url';
 import type {
   BranchSpec,
@@ -29,7 +29,17 @@ import type {
   Summary,
 } from './python-e2e-types.mts';
 
-const withoutHelp: (report: unknown) => Summary | Finding[] = withoutHelpUris;
+function isReport(value: unknown): value is Summary | Finding[] {
+  return typeof value === 'object' && value !== null;
+}
+
+function withoutHelp(report: unknown): Summary | Finding[] {
+  const cleaned = withoutHelpUris(report);
+  if (!isReport(cleaned)) {
+    throw new Error('a report file holds no JSON object or array');
+  }
+  return cleaned;
+}
 
 const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
 const PROVISIONING_TIMEOUT_MS = 120_000;

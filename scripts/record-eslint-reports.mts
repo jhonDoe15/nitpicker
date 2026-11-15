@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 import { type Fields, requiredFields } from './json/fields.mts';
 import { containedPath } from '../core/fix/common/contained-path.mjs';
 import { TOOL_RUN_CEILING_MS } from '../shared/processes/deadlines.mjs';
-import { installedVersions } from '../core/diff/tests/analysis/eslint/test-support/eslint-recording-key.mjs';
+import { installedVersions } from '../core/diff/tests/analysis/eslint/test-support/eslint-recording-key.mts';
 
 const toolRoot = path.resolve(import.meta.dirname, '..');
 const outputPath = path.join(toolRoot, 'core/diff/fixtures/eslint-recorded-reports.json');

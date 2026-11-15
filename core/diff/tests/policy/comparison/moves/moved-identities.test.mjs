@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../comparison/compare.mjs';
-import { finding } from '../../../../execution/test-support/analyzer-findings.mjs';
+import { finding } from '../../../../execution/test-support/analyzer-findings.mts';
 
 function held(base, head, moves) {
   const comparison = compareFindings({

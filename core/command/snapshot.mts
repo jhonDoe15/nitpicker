@@ -10,7 +10,7 @@ import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs'
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import {
@@ -21,7 +21,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mts';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
-import { runProfileSummary } from '../quick/summary.mjs';
+import { runProfileSummary } from '../quick/summary.mts';
 import { outputRootFor } from '../diff/reporting/reporters.mts';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
 import { runStamp as untypedRunStamp } from '../diff/reporting/run-stamp/run-stamp.mjs';

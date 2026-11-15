@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
 import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mjs';
 import { isJvmTestPath } from './jvm-paths.mjs';
 import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mjs';

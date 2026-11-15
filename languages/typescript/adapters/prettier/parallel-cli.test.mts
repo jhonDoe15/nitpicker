@@ -1,17 +1,10 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { toolBinaryPath } from '../typed/tooling.mts';
 import { exclusionIgnoreLines, listUnformattedInParallel } from './parallel-cli.mts';
+import { writeFileTree } from '../test-support/file-tree.mts';
 
 const toolPath = toolBinaryPath('prettier', { bin: 'bin/prettier.cjs' });
 const temporaryRoots: string[] = [];
@@ -27,10 +20,7 @@ afterAll(() => {
 function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-parallel-'));
   temporaryRoots.push(root);
-  for (const [relativePath, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), content);
-  }
+  writeFileTree(root, files);
   return root;
 }
 

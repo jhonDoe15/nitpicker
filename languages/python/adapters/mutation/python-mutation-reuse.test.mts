@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const roots: string[] = [];
 

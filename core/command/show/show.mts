@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectRoot as untypedResolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
+import { resolveProjectRoot as untypedResolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
 import {
   renderConsoleSummary as diffConsole,
   renderSnapshotConsole as snapshotConsole,

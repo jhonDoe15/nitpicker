@@ -8,7 +8,7 @@ import type {
   ImportsByFile,
 } from '../analysis/typed/python-graph-types.mts';
 import { pythonPersistence } from './python-persistence.mts';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

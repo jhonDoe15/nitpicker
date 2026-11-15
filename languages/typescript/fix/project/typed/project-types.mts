@@ -75,7 +75,7 @@ export type LintMessage = {
   readonly end: number | undefined;
 };
 
-type ProjectFinding = {
+export type ProjectFinding = {
   readonly tool: string;
   readonly rule: string;
   readonly path: string;
@@ -87,7 +87,7 @@ export type ProjectFix = {
   readonly edits: readonly ProjectEdit[];
 };
 
-type ProjectPlan = {
+export type ProjectPlan = {
   readonly fixes: readonly ProjectFix[];
   readonly notes: readonly string[];
 };

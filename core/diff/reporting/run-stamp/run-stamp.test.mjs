@@ -1,8 +1,8 @@
 import { mkdirSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../git/test-support/fixture-files.mjs';
-import { commit, useGitFixtures } from '../../git/test-support/git-repository.mjs';
+import { writeFiles } from '../../git/test-support/fixture-files.mts';
+import { commit, useGitFixtures } from '../../git/test-support/git-repository.mts';
 import { runStamp, workingTreeDigest as digestResult } from './run-stamp.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();

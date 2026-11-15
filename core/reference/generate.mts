@@ -29,7 +29,7 @@ export {
 export {
   liveEslintInventory,
   writeEslintInventory,
-} from '../../languages/typescript/reference/eslint-inventory.mjs';
+} from '../../languages/typescript/reference/eslint-inventory.mts';
 
 const JSON_FILE = /\.json$/u;
 

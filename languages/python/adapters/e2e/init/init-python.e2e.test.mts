@@ -1,22 +1,13 @@
 import { rmSync } from 'node:fs';
-import type { ExitCode } from '../../../../../core/cli-context.mts';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   copyFixtureRepository,
-  runInitThenAll as untypedRunInitThenAll,
-} from '../../../../../core/init/test-support/init-then-all.mjs';
+  runInitThenAll,
+} from '../../../../../core/init/test-support/init-then-all.mts';
 import { fixture, installPackages } from '../test-support/python-e2e-support.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
-
-type CliRun = { readonly exitCode: ExitCode; readonly text: string };
-const runInitThenAll: (root: string) => {
-  readonly init: CliRun;
-  readonly all: CliRun;
-  readonly config: string;
-  readonly summary: { readonly overallStatus: string };
-  readonly toolErrors: readonly unknown[];
-} = untypedRunInitThenAll;
 
 const roots: string[] = [];
 
@@ -46,6 +37,6 @@ describe.skipIf(!pythonE2eEnabled)('nitpicker init then --all on a Python projec
     expect(result.config).toBe('{ "preset": "python" }\n');
     expect(result.all.exitCode, result.all.text).not.toBe(2);
     expect(result.toolErrors).toEqual([]);
-    expect(result.summary.overallStatus).not.toBe('tool-error');
+    expect(fieldOf(result.summary, 'overallStatus')).not.toBe('tool-error');
   });
 });

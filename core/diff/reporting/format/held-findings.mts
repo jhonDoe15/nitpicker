@@ -1,4 +1,4 @@
-import { singleLine } from './text.mjs';
+import { singleLine } from './text.mts';
 import { withoutRoute } from './rule-groups/rule-groups.mts';
 import { ANSI, pluralize, style } from '../console/style.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';

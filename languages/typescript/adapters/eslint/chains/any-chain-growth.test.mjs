@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { normalizeEslintResults } from '../normalize.mts';
-import { makeTemporaryRoot } from '../test-support/finding-for.mjs';
+import { makeTemporaryRoot } from '../test-support/finding-for.mts';
 
 function sourceWithReads(count) {
   const reads = Array.from({ length: count }, (_, index) => `value.field${String(index)}`);

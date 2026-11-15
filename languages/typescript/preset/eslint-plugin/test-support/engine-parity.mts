@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
-import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
+import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 
 type PolicyKind = 'logic' | 'production-policy' | 'production-layout';
 
