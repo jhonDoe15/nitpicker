@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { routeProblems } from '../../../../core/exceptions/test-support/route-check.mts';
-import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
+import { appendSentence } from './test-support/typed/harness-views.mts';
 import { eslintRoute } from '../../adapters/hints/eslint-routes.mts';
 import { checkFailureMessageCase, lintFixture, projectRelative } from './test-support/harness.mts';
 import type { FailureMessageCase } from './test-support/typed/case-types.mts';

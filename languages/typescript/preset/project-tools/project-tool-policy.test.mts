@@ -5,8 +5,7 @@ import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
 } from '../head-policy.mjs';
-import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mts';
-import type { StyleParts } from '../../../../core/conventions/typed/convention-types.mts';
+import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
 import {
   projectToolLayer as untypedProjectToolLayer,
   withProjectToolConfigs as untypedWithProjectToolConfigs,
@@ -27,18 +26,6 @@ const resolveHeadPolicy: (config: { tools?: ToolMap }, projectRoot?: string) => 
   untypedResolveHeadPolicy;
 const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
   untypedWithHeadCheckoutFacts;
-function conventionStyle(
-  preset: string | undefined,
-  { config, projectRoot }: { config: Record<string, unknown>; projectRoot: string },
-): StyleParts {
-  return untypedConventionStyle(preset, {
-    config,
-    projectRoot,
-    headPolicy: undefined,
-    source: { paths: () => [], readMany: () => new Map() },
-    configRoot: () => ({ path: projectRoot, snapshot: 'head', dispose: () => {}, notes: [] }),
-  });
-}
 const withProjectToolConfigs: (
   tools: ToolMap | undefined,
   projectRoot: string,

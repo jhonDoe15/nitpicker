@@ -1,8 +1,7 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mts';
-import type { StyleParts } from '../../../../core/conventions/typed/convention-types.mts';
+import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
@@ -21,18 +20,6 @@ type EslintSettings = {
 type HeadPolicy = { tools: { eslint: EslintSettings } };
 type Files = Record<string, string>;
 
-function conventionStyle(
-  preset: string | undefined,
-  { config, projectRoot }: { config: Record<string, unknown>; projectRoot: string },
-): StyleParts {
-  return untypedConventionStyle(preset, {
-    config,
-    projectRoot,
-    headPolicy: undefined,
-    source: { paths: () => [], readMany: () => new Map() },
-    configRoot: () => ({ path: projectRoot, snapshot: 'head', dispose: () => {}, notes: [] }),
-  });
-}
 const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot?: string) => HeadPolicy =
   untypedResolveHeadPolicy;
 const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =

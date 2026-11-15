@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { describeConfigOverrides } from '../configuration/config.mts';
 import { validateConfig } from '../configuration/validate.mts';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
@@ -18,13 +19,6 @@ const fourSpaces = 'class B {\n    void b() {\n        run();\n    }\n}\n';
 const resolveHeadPolicy: (config: NitpickerConfig, root: string) => unknown = untypedHeadPolicy;
 
 type Files = Readonly<Record<string, string>>;
-
-function writeFiles(root: string, files: Files) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
-    writeFileSync(path.join(root, relativePath), contents);
-  }
-}
 
 function commitBranch(root: string, files: Files) {
   fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
