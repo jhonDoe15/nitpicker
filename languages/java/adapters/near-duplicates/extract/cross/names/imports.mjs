@@ -147,13 +147,17 @@ function staticMeaning(words, root) {
     .join('\n');
 }
 
+export function typeWords(texts) {
+  return new Set(texts.flatMap((text) => codeAndTags(text)[0].match(WORD) ?? []));
+}
+
 export function meaningProblem({ sources, texts, siblings }) {
-  const code = texts.flatMap((text) => codeAndTags(text)[0].match(WORD) ?? []);
+  const code = typeWords(texts);
   const names = new Set(
     texts.flatMap((text) => codeAndTags(text)[0].match(/(?<![\w$.])[A-Za-z_$][\w$]*/gu) ?? []),
   );
   const roots = sources.map(({ rootNode }) => rootNode);
-  const word = [...new Set(code)].find(
+  const word = [...code].find(
     (name) => new Set(roots.map((root) => typeMeaning(name, root, siblings))).size > 1,
   );
   if (word !== undefined) {

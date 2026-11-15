@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
 import { packageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mjs';
 import { urlAndUri } from '../test-support/creation-sources.mjs';
-import { filesOf } from '../test-support/cross-sources.mjs';
+import { family, filesOf } from '../test-support/cross-sources.mjs';
 
 const FOLDER = 'src/main/java/demo';
 const roots = [];
@@ -104,6 +104,23 @@ describe('javaExtractNearDuplicateRecipe across two files and the package around
       expect([fixes.length, reasons]).toEqual([1, []]);
     },
   );
+
+  it.each(['src/test/java/demo', 'src/integrationTest/kotlin/demo'])(
+    'declines a class name that a file of %s mentions',
+    (folder) => {
+      const root = projectWith({
+        [`${folder}/UsesWidgets.java`]: 'package demo;\n\nclass UsesWidgets { Widgets w; }\n',
+      });
+      const files = family('ReadWidget', 'WriteWidget', { ext: ' extends Object' });
+      expect(outcome(files, root).reasons).toEqual(['the name Widgets is used in the package']);
+    },
+  );
+
+  it('declines a class name that is the name of a class of the JDK', () => {
+    expect(outcome(family('ReadArray', 'WriteArray', { ext: ' extends Object' })).reasons).toEqual([
+      'the name Arrays is the name of a class of the JDK',
+    ]);
+  });
 
   it('declines copies whose classes suppress different warnings', () => {
     expect(outcome(filesOf({}, { suppress: '@SuppressWarnings("rawtypes")' })).reasons).toEqual([

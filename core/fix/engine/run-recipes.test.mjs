@@ -101,6 +101,20 @@ describe('runRecipes', () => {
       'a.txt:7 demo/shout (demo)',
     ]);
   });
+  it('lists a finding once when two fixes both name it', () => {
+    const root = project({ 'a.txt': 'quiet\n' });
+    const also = { ...RULE, path: 'a.txt', line: 1 };
+    const both = recipe({
+      plan: (context) => ({
+        fixes: wordFixes('quiet', 'LOUD', context).fixes.map((fix) => ({
+          ...fix,
+          alsoFixes: [also, also],
+        })),
+      }),
+    });
+
+    expect(run(root, [both]).fixedFindings).toEqual(['a.txt:1 demo/shout (demo)']);
+  });
   it('runs a review recipe only when one of its rules is selected, and then only those fixes', () => {
     const root = project({ 'a.txt': 'quiet\n' });
     const review = recipe({ safety: 'review', plan: shout.plan });

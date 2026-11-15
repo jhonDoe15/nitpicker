@@ -32,6 +32,7 @@ describe('javaExtractNearDuplicateRecipe across two files of one package', () =>
     expect([fixes.length, notes]).toEqual([1, []]);
     expect(Object.keys(after).toSorted()).toMatchInlineSnapshot(`
       [
+        "src/main/java/demo/Adapter.java",
         "src/main/java/demo/SqlAdapters.java",
         "src/main/java/demo/SqlDateAdapter.java",
         "src/main/java/demo/SqlTimeAdapter.java",

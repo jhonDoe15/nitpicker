@@ -110,6 +110,7 @@ export function filesOf(first = {}, second = {}) {
   return [
     { path: 'src/main/java/demo/SqlDateAdapter.java', text: adapterFile(first) },
     { path: 'src/main/java/demo/SqlTimeAdapter.java', text: timeFile(second) },
+    { path: 'src/main/java/demo/Adapter.java', text: BASE },
   ];
 }
 
@@ -126,4 +127,64 @@ export function appliedFiles(files, fixes) {
     ),
   ]);
   return { ...Object.fromEntries(changed), ...written };
+}
+
+const SCAN = `        List<String> picked = new ArrayList<>();
+        int seen = 0;
+        for (String item : source) {
+            seen++;
+            if (picked.size() < limit) {
+                picked.add(item);
+            }
+        }
+        String joined = String.join(",", picked);`;
+
+const SCAN_WHILE = `        List<String> picked = new ArrayList<>();
+        int seen = 0;
+        int at = 0;
+        while (at < source.size()) {
+            seen += 2;
+            if (picked.size() < limit + 1) {
+                picked.add(source.get(at).trim());
+            }
+            at++;
+        }
+        String joined = String.join(",", picked);`;
+
+function classOf(name, type, { shape = SCAN, ext = '' } = {}) {
+  return `final class ${name}${ext} {
+    Object make(List<String> source, int limit) {
+${shape}
+        return new ${type}(joined);
+    }
+}
+`;
+}
+
+const HEADER = 'package demo;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\n';
+
+export function family(first, second, { ext = '', shape = false } = {}) {
+  const body = shape ? SCAN_WHILE : SCAN;
+  return [
+    {
+      path: `src/main/java/demo/${first}.java`,
+      text: HEADER + classOf(first, 'StringBuilder', { shape: body, ext }),
+    },
+    {
+      path: `src/main/java/demo/${second}.java`,
+      text: HEADER + classOf(second, 'StringBuffer', { shape: body, ext }),
+    },
+  ];
+}
+
+function twoClassFile(name, type, [one, two]) {
+  const classes = [classOf(one, type, { shape: SCAN }), classOf(two, type, { shape: SCAN_WHILE })];
+  return { path: `src/main/java/demo/${name}s.java`, text: `${HEADER}${classes.join('\n')}` };
+}
+
+export function twoClasses() {
+  return [
+    twoClassFile('Reader', 'StringBuilder', ['OrderReader', 'LineReader']),
+    twoClassFile('Writer', 'StringBuffer', ['OrderWriter', 'LineWriter']),
+  ];
 }

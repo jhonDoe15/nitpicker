@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { isJdkType } from './names/jdk-types.mjs';
 import {
   isRealPathInside,
   readRealInside,
@@ -31,6 +32,7 @@ export function classNameFor([first, second]) {
 }
 
 const SOURCE_FILE = /\.(?:java|kt|groovy)$/u;
+const ANY_SET = /^((?:.*\/)?src\/)[^/]+\/(?:java|kotlin|groovy)\/$/u;
 const SOURCE_SET = /^((?:.*\/)?src\/(?:main|test)\/)(?:java|kotlin|groovy)\/$/u;
 const PACKAGE = /^\s*package\s+([\w.]+)\s*;/mu;
 
@@ -50,6 +52,19 @@ export function packageFolders(folder, packageLine) {
   return set === null
     ? [folder]
     : ['java', 'kotlin', 'groovy'].map((lang) => `${set[1]}${lang}/${tail}`);
+}
+
+function everyFolder(root, folder, packageLine) {
+  const tail = (PACKAGE.exec(packageLine)?.[1] ?? '').replaceAll('.', '/');
+  const set = ANY_SET.exec(sourceRootOf(folder, tail));
+  if (set === null) {
+    return [folder];
+  }
+  const sets = listing(root, set[1].slice(0, -1));
+  const folders = sets.flatMap((name) =>
+    ['java', 'kotlin', 'groovy'].map((lang) => `${set[1]}${name}/${lang}/${tail}`),
+  );
+  return [...new Set([...packageFolders(folder, packageLine), ...folders])];
 }
 
 function listing(root, folder) {
@@ -73,13 +88,15 @@ function scanFolders(root, folders) {
 
 export function packageScanner(root) {
   const scans = new Map();
-  return function scan(folders) {
+  function scan(folders) {
     const key = folders.join('\u0000');
     if (!scans.has(key)) {
       scans.set(key, scanFolders(root, folders));
     }
     return scans.get(key);
-  };
+  }
+  scan.everySet = (folder, packageLine) => everyFolder(root, folder, packageLine);
+  return scan;
 }
 
 export function folderTypes(scan, folders) {
@@ -87,6 +104,9 @@ export function folderTypes(scan, folders) {
 }
 
 export function diskProblem({ scan, folders, name }) {
+  if (isJdkType(name)) {
+    return `the name ${name} is the name of a class of the JDK`;
+  }
   const files = scan(folders);
   if (files.some((entry) => entry.name === name)) {
     return `a file named ${name} already exists in the package`;
