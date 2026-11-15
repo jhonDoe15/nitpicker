@@ -3,7 +3,7 @@
 Part of the [Python preset guide](../python-preset.md).
 
 ```
-node languages/python/adapters/python-runner.mjs --part python     (analyzer python, per snapshot)
+node languages/python/adapters/python-runner.mts --part python     (analyzer python, per snapshot)
   -> ruff check  --config nitpicker-ruff.toml      -> ruff.sarif
   -> ruff format --check --diff | black --check    -> format.txt
   -> coverage run -m pytest | unittest | nose2, or manage.py test -> coverage.json (coverage.py JSON)
@@ -13,8 +13,8 @@ node languages/python/adapters/python-runner.mjs --part python     (analyzer pyt
   -> jscpd --format python (all source roots at once) -> duplicates.json
   -> python import-scan.py (stdlib ast)            -> imports.json    (modules and their imports)
   -> lint-imports (only with an import-linter config) -> import-linter.txt
-  -> readPythonFindings                             (languages/python/adapters/python-reports.mjs)
-node languages/python/adapters/python-runner.mjs --part mutation   (analyzer mutation, after python)
+  -> readPythonFindings                             (languages/python/adapters/python-reports.mts)
+node languages/python/adapters/python-runner.mts --part mutation   (analyzer mutation, after python)
   -> mutmut run                                    -> findings read from mutmut's mutants/
 compareFindings(base, head, renames) per analyzer   (core)
 ```
@@ -37,7 +37,7 @@ directory is the contract between the tool runs and the readers; later slices ad
 - **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
   presets: `sarif.mjs` (ruff, with `prepareSarif`), `format-check.mjs` (the format check), `common.mjs` and
   `lizard-crap.mjs`.
-  The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
+  The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mts` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
   `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
   take the tool name for a `baseline-expansion` finding as an option.
