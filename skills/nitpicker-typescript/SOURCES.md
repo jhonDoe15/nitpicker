@@ -156,6 +156,11 @@ become one call, so each signature stays.
   edited file, for example because the body needs a member that only one type has. JavaScript has no
   types, so a JavaScript copy that constructs different classes (`new Foo(x)` against `new Bar(x)`)
   keeps its fix plan.
+- Copies in two files are left alone, unlike the Java recipe, which extracts a pair of two files of one
+  folder into a new class. A TypeScript or JavaScript module needs an import in each file, and the
+  specifier depends on the module system, the file extensions, `paths` aliases and the barrel files of
+  the project, so the recipe cannot write it without guessing. The fix plan says so, and puts the
+  function in the folder that holds both files.
 - The compiler checks the edit before it is written, with the same in-memory comparison as the
   other project recipes.
 - A file that uses CRLF keeps CRLF in the inserted text.

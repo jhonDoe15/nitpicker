@@ -159,4 +159,17 @@ describe('projectEnvironment files', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('puts a new test in the feature test folder before a layer folder of the same name', () => {
+    const files = {
+      'src/features/pricing/domain/rates.ts': 'export const rate = 1;',
+      'test/domain/money.test.ts': '',
+      'test/pricing/pricing.test.ts': '',
+    };
+
+    expect(find('src/features/pricing/domain/rates.ts', files)).toEqual({
+      path: 'test/pricing/rates.test.ts',
+      exists: false,
+    });
+  });
 });
