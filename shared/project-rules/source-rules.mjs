@@ -37,7 +37,7 @@ export function sourceRules(ids, enforcedBy) {
       id: ids.decidedCondition,
       check: STRUCTURE_TOOL,
       limit:
-        'an `if`, `while`, `when` arm, ternary or `&&`/`||` operand in a production function that the guards before it decide, proved by a solver (Z3, fixed resource limit): enclosing `if`s and their `else`, guard clauses that return, throw, break or continue, earlier `when` arms and the left side of `&&`/`||`; a write to a name, or a call that is not pure, forgets what was known about it, and arithmetic is an opaque value (JVM integers overflow); TypeScript and JavaScript report it as `nitpicker/no-decided-condition`',
+        'an `if`, `while`, `when` arm, ternary or `&&`/`||` operand in a production function that the guards before it decide, proved by a solver (Z3, fixed resource limit): enclosing `if`s and their `else`, guard clauses that return, throw, break or continue, earlier `when` arms and the left side of `&&`/`||`, and also a coercion of the tested value that the same guards settle (`Boolean.TRUE.equals(x)` under `if (x != null && x)`, Kotlin `x == true` under `if (x == true)`, Python `bool(x)` under `if x:`, TypeScript `Boolean(x)` or `!!x` under `if (x)`); a write to a name, or a call that is not pure, forgets what was known about it, and arithmetic is an opaque value (JVM integers overflow); TypeScript and JavaScript report it as `nitpicker/no-decided-condition`',
     },
     {
       id: ids.duplicateBranch,

@@ -1,5 +1,10 @@
 import path from 'node:path';
-import { checksJavascript, projectTsconfigs, resolveLayoutFor } from '../types/typed-views.mts';
+import {
+  checkedJavascriptFiles,
+  checksJavascript,
+  projectTsconfigs,
+  resolveLayoutFor,
+} from '../types/typed-views.mts';
 import type { PolicyConfig, PolicyScope } from '../types/policy-types.mts';
 import { usesLayout } from './scope-files.mts';
 
@@ -19,9 +24,19 @@ function tsconfigsOf({ root, files, config }: ScopeSide): ReadonlyMap<string, bo
   );
 }
 
-export function typescriptScope(base: ScopeSide, head: ScopeSide): Pick<PolicyScope, 'tsconfigs'> {
+function checkedOf({ root, config }: ScopeSide): ReadonlySet<string> {
+  return new Set(checkedJavascriptFiles(root, resolveLayoutFor(config)));
+}
+
+export function typescriptScope(
+  base: ScopeSide,
+  head: ScopeSide,
+): Pick<PolicyScope, 'tsconfigs' | 'checkedJavascript'> {
   if (!usesLayout(head.config) || head.config.preset === 'javascript') {
-    return { tsconfigs: undefined };
+    return { tsconfigs: undefined, checkedJavascript: undefined };
   }
-  return { tsconfigs: { base: tsconfigsOf(base), head: tsconfigsOf(head) } };
+  return {
+    tsconfigs: { base: tsconfigsOf(base), head: tsconfigsOf(head) },
+    checkedJavascript: { base: checkedOf(base), head: checkedOf(head) },
+  };
 }
