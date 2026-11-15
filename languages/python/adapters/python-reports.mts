@@ -3,7 +3,7 @@ import path from 'node:path';
 import { containedPath } from '../../../core/fix/common/contained-path.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-branches.mts';
 import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mts';
-import { withoutLineNumbers } from '../ingest/identities.mts';
+import { withoutLineNumbers } from '../ingest/typed/type-check-views.mts';
 import { ingestRulesReport } from '../ingest/rules-report.mts';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';

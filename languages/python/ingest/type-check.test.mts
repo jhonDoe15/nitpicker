@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestMypy, ingestPyright } from './type-check.mts';
+import { ingestMypy, ingestPyright } from './typed/type-check-views.mts';
 
 const fixture = (name: string): string =>
   readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
