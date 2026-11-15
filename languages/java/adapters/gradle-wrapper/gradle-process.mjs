@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 
 export const SUPERVISOR = fileURLToPath(
-  checkoutModuleUrl(new URL('./gradle-supervisor.mts', import.meta.url)),
+  checkoutModuleUrl(new URL('./gradle-supervisor.mjs', import.meta.url)),
 );
 const JSON_OVERHEAD = 6;
 const ENVELOPE_OVERHEAD_BYTES = 4096;

@@ -34,7 +34,7 @@ const hygieneCli: (cli: HygieneCli) => number = runHygieneCli;
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const fakeAnalyzerPath = fileURLToPath(
-  checkoutModuleUrl(new URL('./fake-analyzer.mts', import.meta.url)),
+  checkoutModuleUrl(new URL('./fake-analyzer.mjs', import.meta.url)),
 );
 const javaRunnerPath = path.resolve(
   import.meta.dirname,

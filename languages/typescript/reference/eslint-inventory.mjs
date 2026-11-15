@@ -17,7 +17,7 @@ const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 export const ESLINT_CONFIGS = [
   [
     'eslint-lint',
-    checkoutModuleUrl(new URL('../preset/defaults/eslint.config.mts', import.meta.url)),
+    checkoutModuleUrl(new URL('../preset/defaults/eslint.config.mjs', import.meta.url)),
   ],
   ['eslint-errors', checkoutModuleUrl(new URL('errors.config.mjs', POLICIES))],
   ['eslint-logging', checkoutModuleUrl(new URL('logging.config.mjs', POLICIES))],

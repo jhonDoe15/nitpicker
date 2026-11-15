@@ -12,7 +12,7 @@ const PATTERNS = ['src/**/*.{ts,mjs}', 'test/**/*.{ts,mjs}'];
 
 function policy({ javascript }) {
   const logic = checkoutModuleUrl(
-    new URL('../../../eslint-config/logic/logic-rules.mts', import.meta.url),
+    new URL('../../../eslint-config/logic/logic-rules.mjs', import.meta.url),
   ).href;
   const layoutModule = import.meta.resolve('../../../layout.mjs');
   const dialect = import.meta.resolve('../../../../../javascript/preset/eslint-dialect.mjs');

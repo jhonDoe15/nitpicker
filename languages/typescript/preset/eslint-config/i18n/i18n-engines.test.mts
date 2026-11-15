@@ -9,7 +9,7 @@ import { createProject, lintProject } from '../typed/oxlint/oxlint-views.mts';
 const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { i18nScopeConfigFor } from ${JSON.stringify(checkoutModuleUrl(new URL('./i18n-scope.mts', import.meta.url)).href)};
+import { i18nScopeConfigFor } from ${JSON.stringify(checkoutModuleUrl(new URL('./i18n-scope.mjs', import.meta.url)).href)};
 import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mjs'))};
 
 export default [
