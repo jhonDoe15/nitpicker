@@ -9,7 +9,12 @@ type NoticeContext = {
 
 type BaseSnapshot = SnapshotRoots & {
   readonly liveProjectRoot: string;
-  readonly moves: unknown;
+  readonly moves:
+    | {
+        readonly files?: ReadonlyMap<string, string>;
+        readonly directories?: ReadonlyMap<string, string>;
+      }
+    | undefined;
   readonly analyzers: RunSettings['analyzers'];
 };
 

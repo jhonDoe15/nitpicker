@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { movedPackages } from '../../comparison/moved-names/packages/moved-packages.mjs';
-import { commit, fixtureGit } from '../test-support/git-repository.mjs';
-import { writeFiles } from '../test-support/fixture-files.mjs';
+import { commit, fixtureGit } from '../test-support/git-repository.mts';
+import { writeFiles } from '../test-support/fixture-files.mts';
 import { readBaseFiles, readHeadFiles, readProjectMoves } from './project-moves.mjs';
 
 const roots = [];

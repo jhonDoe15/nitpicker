@@ -8,8 +8,8 @@ import {
   json,
   writeReports,
 } from '../diff/reporting/reporters.mts';
-import { quickLines, stagedLines } from '../quick/summary.mjs';
-import { junitRunProfile } from '../quick/report-formats.mjs';
+import { quickLines, stagedLines } from '../quick/summary.mts';
+import { junitRunProfile } from '../quick/report-formats.mts';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
 import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';

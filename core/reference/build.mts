@@ -2,12 +2,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jvmRuleEntries } from '../../languages/java/reference/index.mjs';
 import { pythonRuleEntries } from '../../languages/python/reference/index.mts';
-import { typescriptRuleEntries } from '../../languages/typescript/reference/index.mjs';
+import { typescriptRuleEntries } from '../../languages/typescript/reference/index.mts';
 import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.mjs';
 import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
 import { coreRuleEntries } from './config-entries.mts';
-import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mjs';
+import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
 import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
 import { fieldOf, listOf, textOf } from '../../shared/values/readers.mts';
 

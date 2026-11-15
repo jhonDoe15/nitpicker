@@ -2,7 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { format, resolveConfig } from 'prettier';
-import { buildConfigSchema } from '../../core/configuration/schema/config-schema.mjs';
+import { buildConfigSchema } from '../../core/configuration/schema/config-schema.mts';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const SCHEMA_FILE = path.join(repositoryRoot, 'spec/config.schema.json');

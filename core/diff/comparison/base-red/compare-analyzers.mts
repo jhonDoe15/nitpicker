@@ -37,7 +37,8 @@ export type ComparisonRequest = {
   readonly baseToHeadRenames?: Moves | undefined;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly baseToHeadPackages?: Moves | undefined;
-  readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
+  readonly touchedCode?:
+    { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
 };
 
 export type FindingComparison = {

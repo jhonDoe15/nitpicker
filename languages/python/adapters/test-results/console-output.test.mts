@@ -9,7 +9,7 @@ import {
   TEST_CONSOLE_TOOL,
 } from './console-output.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

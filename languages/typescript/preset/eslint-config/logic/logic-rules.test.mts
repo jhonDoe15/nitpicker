@@ -5,7 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
-import { createProject, lintProject } from '../typed/oxlint/oxlint-views.mts';
+import {
+  createProject,
+  lintProject,
+} from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { logicRuleHints, logicRuleIds } from './logic-rules.mts';
 
 const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
@@ -179,7 +182,7 @@ async function oxlintFindings(root: string) {
     root,
     patterns: PATTERNS,
     projectConfigName: undefined,
-    runEslintCli: () => [],
+    runEslintCli: () => Promise.resolve([]),
   });
   return findingsOf(root, results);
 }

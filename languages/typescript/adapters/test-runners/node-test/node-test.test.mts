@@ -1,0 +1,272 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  PICK_SOURCE,
+  UNCOVERED_ELSE,
+  rulesOf,
+  runArea,
+  createRunnerProjects,
+} from '../test-support/runner-project.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+
+const projects = createRunnerProjects();
+
+const IMPORTS = "import { it } from 'node:test';\nimport assert from 'node:assert/strict';\n";
+
+const PICK_TEST = `${IMPORTS}it('says yes', () => {\n  assert.equal(pick(true), 'yes');\n});\n`;
+
+const ENUM_AND_ARROW = [
+  'export enum Kind {',
+  '  Yes,',
+  '}',
+  'export const pick = (flag: boolean): string => {',
+  '  if (flag) {',
+  "    return 'yes';",
+  '  }',
+  "  return 'no';",
+  '};',
+  '',
+].join('\n');
+
+const COLORS = [
+  "import type { Color } from './ports.ts';",
+  'export function closed(color: Color): string {',
+  '  switch (color) {',
+  "    case 'red':",
+  "      return 'R';",
+  "    case 'blue':",
+  "      return 'B';",
+  '    default: {',
+  '      const unreachable: never = color;',
+  '      return unreachable;',
+  '    }',
+  '  }',
+  '}',
+  'export function open(color: Color): string {',
+  '  switch (color) {',
+  "    case 'red':",
+  "      return 'R';",
+  "    case 'blue':",
+  "      return 'B';",
+  '  }',
+  '}',
+  '',
+].join('\n');
+
+const CODES_JS = [
+  'export function label(code) {',
+  '  switch (code) {',
+  '    case 1:',
+  "      return 'one';",
+  '    default:',
+  "      return 'other';",
+  '  }',
+  '}',
+  '',
+].join('\n');
+
+function changedBranchMessages(findings: readonly Finding[]): string[] {
+  return findings
+    .filter(({ rule }) => rule === 'changed-branch-coverage')
+    .map(({ message }) => message);
+}
+
+function nodeTestProject(files: Readonly<Record<string, unknown>>, test = 'node --test'): string {
+  return projects.project({
+    'package.json': { name: 'p', type: 'module', scripts: { test } },
+    'src/main/pick.ts': PICK_SOURCE,
+    ...files,
+  });
+}
+
+afterEach(() => {
+  projects.remove();
+});
+
+describe('coverage on a node:test project', () => {
+  it('runs the tests with node:test, then CRAP reads the coverage it wrote', async () => {
+    const root = nodeTestProject({
+      'test/pick.test.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says yes', () => {\n  assert.equal(pick(true), 'yes');\n});\n`,
+    });
+
+    const coverage = await runArea('coverage', root);
+    const crap = await runArea('crap', root);
+
+    expect(coverage.find(({ rule }) => rule === 'changed-branch-coverage')?.message).toMatch(
+      UNCOVERED_ELSE,
+    );
+    expect(
+      fieldAt(
+        crap.find(({ identity }) => identity.endsWith(':branchCoverage')),
+        'metric',
+        'value',
+      ),
+    ).toBe(50);
+  });
+
+  it('names the failing test and the file that could not load', async () => {
+    const root = nodeTestProject({
+      'test/pick.test.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says no', () => {\n  assert.equal(pick(true), 'no');\n});\n`,
+      'test/broken.test.ts': "import { missing } from 'not-installed';\nmissing();\n",
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
+    expect(findings[0]?.message).toMatch(/^.*test\/pick\.test\.ts:5 > says no: .*$/su);
+    expect(findings[0]?.message).toMatch(
+      /^.*test\/broken\.test\.ts > could not run: Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package 'not-installed'.*$/su,
+    );
+  });
+
+  it('also runs the test files the test script names', async () => {
+    const root = nodeTestProject(
+      {
+        'test/pick.test.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says yes', () => {\n  assert.equal(pick(true), 'yes');\n});\n`,
+        'checks/no.check.ts': `${IMPORTS}import { pick } from '../src/main/pick.ts';\nit('says no', () => {\n  assert.equal(pick(false), 'no');\n});\n`,
+      },
+      'node --test "checks/*.check.ts"',
+    );
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
+    expect(
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
+    ).toBe(2);
+  });
+
+  it('maps the coverage of code tsx rewrote back to the TypeScript file', async () => {
+    const root = nodeTestProject(
+      {
+        'test/pick.test.ts': `${IMPORTS}import { pick } from '../src/main/pick';\nit('says yes', () => {\n  assert.equal(pick(true), 'yes');\n});\n`,
+      },
+      'tsx --test test/pick.test.ts',
+    );
+
+    const findings = await runArea('coverage', root);
+
+    expect(findings.find(({ rule }) => rule === 'changed-branch-coverage')?.message).toMatch(
+      UNCOVERED_ELSE,
+    );
+  });
+
+  it('runs each test file once when the test script names no files', async () => {
+    const root = nodeTestProject({
+      'test/pick.test.ts': `import { pick } from '../src/main/pick.ts';\n${PICK_TEST}`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
+    ).toBe(1);
+  });
+
+  it('loads the tests through a require hook and maps what ts-node compiled for an old target', async () => {
+    const root = projects.project({
+      'package.json': {
+        name: 'p',
+        scripts: {
+          test: 'TS_NODE_TRANSPILE_ONLY=true node --require ts-node/register --test test/fallback.test.ts',
+        },
+      },
+      'tsconfig.json': {
+        compilerOptions: { module: 'commonjs', target: 'es2017', types: ['node'], rootDir: '.' },
+      },
+      'src/main/fallback.ts':
+        "export const fallback = (value?: string): string => value ?? 'none';\n",
+      'test/fallback.test.ts': `${IMPORTS}import { fallback } from '../src/main/fallback';\nit('keeps it', () => {\n  assert.equal(fallback('a'), 'a');\n});\n`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the right side of ?? at 1:62. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/fallback.ts"],"function":"fallback","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it.each([
+    ['tsx --test test/pick.test.ts', '../src/main/pick'],
+    ['node --experimental-transform-types --test test/pick.test.ts', '../src/main/pick.ts'],
+  ])(
+    'keeps an arrow function next to an enum and no branch of the enum (%s)',
+    async (test, from) => {
+      const root = nodeTestProject(
+        {
+          'src/main/pick.ts': ENUM_AND_ARROW,
+          'test/pick.test.ts': `import { pick } from '${from}';\n${PICK_TEST}`,
+        },
+        test,
+      );
+
+      const coverage = await runArea('coverage', root);
+      const crap = await runArea('crap', root);
+
+      expect(
+        fieldAt(
+          coverage.find(({ identity }) => identity === 'branches'),
+          'metric',
+          'value',
+        ),
+      ).toBe(50);
+      expect(
+        crap
+          .filter(({ identity }) => identity.endsWith(':branchCoverage'))
+          .map((finding) => [finding.identity, fieldAt(finding, 'metric', 'value')]),
+      ).toEqual([['function:pick:occurrence:1:branchCoverage', 50]]);
+    },
+  );
+
+  it('leaves out the module a test mocks with mock.module', async () => {
+    const root = nodeTestProject(
+      {
+        'src/main/use.ts':
+          "import { pick } from './pick.ts';\nexport const use = (flag: boolean): string => pick(flag);\n",
+        'test/use.test.ts': `${IMPORTS}import { mock } from 'node:test';\nit('uses the mock', async () => {\n  mock.module('../src/main/pick.ts', { namedExports: { pick: () => 'mocked' } });\n  const { use } = await import('../src/main/use.ts');\n  assert.equal(use(true), 'mocked');\n});\n`,
+      },
+      'node --experimental-test-module-mocks --test',
+    );
+
+    const findings = await runArea('coverage', root);
+
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pick.ts"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('measures no branch in type declarations and names the default an exhaustive switch needs none of', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'node --test' } },
+      'src/main/ports.ts':
+        "export interface Writer {\n  write(text: string): string;\n}\nexport type Color = 'red' | 'blue';\n",
+      'src/main/colors.ts': COLORS,
+      'test/colors.test.ts': `${IMPORTS}import { closed, open } from '../src/main/colors.ts';\nit('names both', () => {\n  for (const name of [closed, open]) {\n    assert.equal(name('red'), 'R');\n    assert.equal(name('blue'), 'B');\n  }\n});\n`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 66.67%; minimum is 95%. Not taken: the default case at 8:5 (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/colors.ts"],"function":"closed","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+  it('tells to test the default of a JavaScript switch that no test reaches', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'node --test' } },
+      'src/main/codes.js': CODES_JS,
+      'test/codes.test.js': `${IMPORTS}import { label } from '../src/main/codes.js';\nit('names one', () => {\n  assert.equal(label(1), 'one');\n});\n`,
+    });
+    const findings = await runArea('coverage', root);
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the default case at 5:5 (pass a value that no case lists). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/codes.js"],"function":"label","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+});

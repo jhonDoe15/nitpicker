@@ -2,14 +2,15 @@ import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
-import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
-import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
+import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
   git,
   readReport,
   runNitpicker,
+  runSnapshot,
   useCleanProjects,
   viewFindings,
 } from './test-support/clean-project.mts';
@@ -71,21 +72,6 @@ describe('the strict-clean fixture project', () => {
 
   function createProject(): string {
     return createFixtureProject({ fixtureRoot, name: 'strict-clean' });
-  }
-
-  function runSnapshot(root: string, extraArguments: string[] = []) {
-    const result = runNitpicker(root, [
-      '--all',
-      '--output',
-      path.join(root, 'reports/snapshot'),
-      ...extraArguments,
-    ]);
-    return {
-      ...result,
-      summary: readReport(root, 'reports/snapshot/summary.json'),
-      toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
-      findings: readReport(root, 'reports/snapshot/findings.json'),
-    };
   }
 
   it(

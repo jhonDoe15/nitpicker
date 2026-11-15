@@ -22,7 +22,7 @@ import {
   unmatchedLayoutRootNotices,
 } from '../../../shared/notices/layout-roots-notice.mjs';
 
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
 
 type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };

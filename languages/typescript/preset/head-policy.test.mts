@@ -1,7 +1,7 @@
 import {
   createGitTemplate,
   copyGitTemplate,
-} from '../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../core/diff/git/test-support/git-repository.mts';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

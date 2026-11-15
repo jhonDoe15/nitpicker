@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { newerToolchain, sourceHash } from './go-tools.mjs';
 
 describe('the toolchain the lint program builds with', () => {
@@ -22,17 +22,10 @@ describe('the toolchain the lint program builds with', () => {
 });
 
 describe('the cache key of a Go program', () => {
-  const roots: string[] = [];
-
-  afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { temporaryRoot } = useGitFixtures();
 
   function program() {
-    const root = mkdtempSync(path.join(tmpdir(), 'go-source-'));
-    roots.push(root);
+    const root = temporaryRoot('go-source-');
     const files: [string, string][] = [
       ['main.go', 'package main\n'],
       ['catalog/catalog.go', 'package catalog\n'],

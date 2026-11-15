@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { applySkillSection, applySnippetSections } from './fix-loop.mts';
 import { SLOTS } from './fix-loop-slots.mts';
-import { SUPPORTED_PRESETS } from '../configuration/validate.mjs';
+import { SUPPORTED_PRESETS } from '../configuration/validate.mts';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const read = (file: string): string => readFileSync(path.join(root, file), 'utf8');

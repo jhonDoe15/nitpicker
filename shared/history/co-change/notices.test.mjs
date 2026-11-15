@@ -1,12 +1,12 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mts';
 import { availabilityNotices, coChangeNotices } from './notices.mjs';
 import {
   edit,
   importHistory,
   repeated,
   useHistoryRepositories,
-} from '../../../core/diff/git/test-support/history-repository.mjs';
+} from '../../../core/diff/git/test-support/history-repository.mts';
 
 const { historyRepository, temporaryRoot } = useHistoryRepositories();
 const ENABLED = { history: { coChange: true } };
