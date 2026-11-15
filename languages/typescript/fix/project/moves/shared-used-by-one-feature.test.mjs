@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mjs';
 import { projectGraph } from '../model/project-graph.mjs';
 import { withProject } from '../model/project-model.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { sharedUsedByOneFeatureRecipe as recipe } from './shared-used-by-one-feature.mjs';
 
 const projects = useFixtureProjects();

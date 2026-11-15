@@ -59,7 +59,7 @@ node core/cli.mjs go-analyzer --part mutation --project-root <snapshot>   (head 
 ```
 
 The analyzer runs as a `nitpicker` subcommand, the way the repository-hygiene analyzer does,
-instead of a separate runner script (`languages/go/adapters/go-runner.mjs`). The consumer project
+instead of a separate runner script (`languages/go/adapters/go-runner.mts`). The consumer project
 is not edited and nothing is added to its `go.mod`.
 
 **Tools.** The pinned versions live in one map (`languages/go/adapters/execution/go-tools.mjs`):
