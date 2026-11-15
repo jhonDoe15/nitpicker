@@ -17,7 +17,7 @@ import { startSchemaPushes, startSchemaPushMessage } from './start-scripts.mjs';
 import { GIT_TIMEOUT_MS } from '../../processes/deadlines.mjs';
 
 export const REPOSITORY_HYGIENE_TOOL = 'repository-hygiene';
-const PRIVATE_KEY_HEADER = '-----BEGIN [A-Z ]*PRIVATE KEY';
+export const PRIVATE_KEY_HEADER = '-----BEGIN [A-Z ]*PRIVATE KEY';
 const BINARY_EXTENSION =
   /\.(?:jar|war|ear|class|exe|dll|so|dylib|a|o|lib|bin|zip|tar|tgz|gz|bz2|xz|7z|rar|whl|egg|pyc|pyo|node)$/iu;
 const MAX_GREP_BYTES = 64 * 1024 * 1024;

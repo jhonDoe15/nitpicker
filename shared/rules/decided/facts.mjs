@@ -90,6 +90,14 @@ function isOpaque(node) {
   return OPAQUE_KINDS.has(node.kind) && node.children.length === 0 && OPAQUE_VALUE.test(node.value);
 }
 
+const BOOLEAN_CONVERSIONS = new Set(['bool']);
+
+export function isBooleanConversion(callee) {
+  return (
+    callee.kind === 'name' && callee.binding === 'free' && BOOLEAN_CONVERSIONS.has(callee.value)
+  );
+}
+
 function isEffectCall(node) {
   if (node.kind === 'new') {
     return true;
@@ -98,7 +106,10 @@ function isEffectCall(node) {
     return SUSPENDING.has(node.value);
   }
   return (
-    node.kind === 'call' && !isStableModel(node) && pureCallKind(node.children[0]) === undefined
+    node.kind === 'call' &&
+    !isStableModel(node) &&
+    !isBooleanConversion(node.children[0]) &&
+    pureCallKind(node.children[0]) === undefined
   );
 }
 

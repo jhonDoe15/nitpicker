@@ -8,6 +8,7 @@ import { hasModels } from '../../../../../../shared/logic/models/models.mjs';
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
+import { coercionSites } from './coercions/coercion-sites.mjs';
 import { recordCaptures } from './flow/closures.mjs';
 import { sitesIn } from './flow/sites.mjs';
 import { checkLabel } from './flow/switch.mjs';
@@ -111,6 +112,37 @@ function checkChain(scan, node, facts) {
   }
 }
 
+function guardFacts(scan, guards) {
+  return guards.flatMap(({ test, holds, branch }) => {
+    const text = scan.sourceCode.getText(test);
+    const reason = `it is only reached when \`${text}\` is ${String(holds)}`;
+    const known = fact(test, scan.sourceCode, { holds, reason });
+    const written = effectsOf([branch], scan.flow);
+    const isWritten =
+      [...known.names].some((name) => written.writes.has(name)) ||
+      (written.memberWrite && known.readsMembers);
+    return isWritten ? [] : [known];
+  });
+}
+
+function checkCoercion(scan, site, facts) {
+  const { sourceCode } = scan;
+  const { node, operand, guards } = site;
+  const known = relevantFacts(
+    [...facts, ...guardFacts(scan, guards)],
+    fact(operand, sourceCode, { holds: true }).names,
+  );
+  const query = conditionTerm(operand, sourceCode);
+  const verdict = verdictOf(known, { term: query });
+  if (verdict === undefined || !isNarrowed(operand, sourceCode.parserServices)) {
+    return;
+  }
+  const { reason } = reasonFor(known, query, verdict);
+  const condition = sourceCode.getText(node);
+  const messageId = verdict === 'true' ? 'coercionTrue' : 'coercionFalse';
+  scan.context.report({ node, messageId, data: { condition, reason } });
+}
+
 function sitesOf(scan, found) {
   return found.condition === undefined
     ? sitesIn(found.expression, scan)
@@ -125,6 +157,9 @@ function analyze(scan, statements, initial = []) {
     }
     for (const site of sitesOf(scan, found)) {
       checkChain(scan, site.node, [...initial, ...found.facts, ...site.extra]);
+    }
+    for (const site of coercionSites(found.condition ?? found.expression)) {
+      checkCoercion(scan, site, [...initial, ...found.facts]);
     }
   }
 }
@@ -149,6 +184,10 @@ export const rule = {
         '`{{condition}}` is always true here: {{reason}}. Remove the check, or fix the condition that was meant.',
       alwaysFalse:
         '`{{condition}}` is always false here: {{reason}}, so the code it guards never runs. Remove it, or fix the condition that was meant.',
+      coercionTrue:
+        '`{{condition}}` is always true here: {{reason}}. Use the value itself, or fix the test that was meant.',
+      coercionFalse:
+        '`{{condition}}` is always false here: {{reason}}. Use `false`, or fix the test that was meant.',
     },
   },
   create(context) {

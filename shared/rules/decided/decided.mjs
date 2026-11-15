@@ -5,6 +5,7 @@ import { key } from '../../logic/terms.mjs';
 import { isIntegerType } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { depthFirst } from '../../traversal.mjs';
+import { coercionSites } from './coercions.mjs';
 import {
   afterEffects,
   conditionTerm,
@@ -82,16 +83,17 @@ function collectSlips(scan, root, facts) {
   }
 }
 
-function decide(scan, node, facts) {
-  const query = node.viaHelper ? undefined : conditionTerm(node, scan.scope);
-  if (query === undefined || scan.checked.has(node) || scan.checked.size >= MAX_CHECKS) {
+function decide(scan, node, { facts, part, query }) {
+  const seen = part === 'value' ? scan.coerced : scan.checked;
+  const isReported = scan.found.some((reported) => reported.node === node);
+  if (query === undefined || seen.has(node) || isReported || seen.size >= MAX_CHECKS) {
     return undefined;
   }
   const known = relevantFacts(facts, namesOf(node));
   if (known.length === 0 && !hasModels([query])) {
     return undefined;
   }
-  scan.checked.add(node);
+  seen.add(node);
   const verdict = solveFacts(
     known.map(({ term }) => term),
     query,
@@ -103,13 +105,19 @@ function decide(scan, node, facts) {
   return basis === undefined ? undefined : { verdict, basis, query };
 }
 
-function check(scan, node, { facts, part = 'condition' }) {
-  collectSlips(scan, node, facts);
-  const decision = scan.slipsOnly ? undefined : decide(scan, node, facts);
+function conditionQuery(scan, node) {
+  return node.viaHelper ? undefined : conditionTerm(node, scan.scope);
+}
+
+function check(scan, node, { facts, part = 'condition', query = conditionQuery(scan, node) }) {
+  if (part !== 'value') {
+    collectSlips(scan, node, facts);
+  }
+  const decision = scan.slipsOnly ? undefined : decide(scan, node, { facts, part, query });
   if (decision === undefined) {
     return false;
   }
-  const { verdict, basis, query } = decision;
+  const { verdict, basis } = decision;
   scan.found.push({
     node,
     verdict,
@@ -139,6 +147,15 @@ function checkChain(scan, node, facts) {
     repeated.add(operandKey);
     const effects = effectsOf([operand], scan.flow);
     left = afterEffects([...left, ...operandFact(scan, node, operand)], effects, scan.flow.mutable);
+  }
+}
+
+function checkCoercions(scan, root, facts) {
+  if (scan.slipsOnly || root === undefined) {
+    return;
+  }
+  for (const site of coercionSites(root, scan.scope)) {
+    check(scan, site.node, { facts: [...facts, ...site.facts], part: 'value', query: site.query });
   }
 }
 
@@ -220,6 +237,7 @@ export function decidedConditions(source, options = {}) {
     slips: [],
     probed: new Set(),
     checked: new Set(),
+    coerced: new Set(),
     slipsOnly: options.slipsOnly === true,
     solver: options.solver ?? solverBudget(),
     parameters: parametersOf(tree),
@@ -236,6 +254,7 @@ export function decidedConditions(source, options = {}) {
       const known = [...found.facts, ...armFacts(scan, site.earlier), ...site.extra];
       checkChain(scan, site.node, known);
     }
+    checkCoercions(scan, found.condition ?? found.expression, found.facts);
   }
   const reported = scan.slipsOnly ? scan.slips : scan.found;
   return reported.toSorted((left, right) => left.node.start - right.node.start);

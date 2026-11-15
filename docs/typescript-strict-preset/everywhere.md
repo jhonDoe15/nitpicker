@@ -182,6 +182,32 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
   `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
   (Python).
+- TypeScript and JavaScript have no map collector that fails on an `undefined` or `null` value (the Java
+  `pmd/NullMapValue` rule for `Collectors.toMap`): `Object.fromEntries` and `Map` accept both, so no rule covers it.
+- `nitpicker/no-raw-http-value`: HTTP text compared by exact case or split by hand, in all production
+  code (not in tests). A value read by `headers.get('x')`, `req.header('x')`, `req.get('x')`,
+  `req.headers['x']` or `req.headers.accept`, of a header whose value is case-insensitive
+  (`Content-Type`, `Accept*`, `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`,
+  `Cache-Control`, `Authorization`, `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like),
+  directly or through a local that is never assigned again (also behind `trim()`, `?? ''` and
+  `|| ''`), is reported when it meets a string literal with a letter in `===`, `==`, `!==`, `!=`,
+  `startsWith`, `endsWith`, `includes`, `indexOf`, a `switch`, `in`, a regular expression without
+  the `i` flag, or as the key of `Set.has`, `Map.get`, `Array.includes` or `table[value]`. Also
+  reported: a structured header (`Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match`,
+  `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by `split(',')` or `split(';')` or
+  matched by a regular expression with a separator, `name.startsWith('__Host-')` or
+  `'__Secure-'` on a cookie name, a file extension from `extname` or `split('.').pop()` used as the
+  key of a table named `mime` or `contentType` without `toLowerCase()`, and a header name written
+  with capitals (`req.headers['Content-Type']`) on the request's `headers` object, which Node
+  lowercases. The allowed forms are `value.toLowerCase()` before the comparison, or a parser: the
+  `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework's own helper
+  (`req.accepts`, `req.is`, `c.req.parseBody`). A header name read through `Headers.get`,
+  `req.header` or `req.get` is case-insensitive and never reported, an HTTP method is case-sensitive
+  and not part of the rule, and a parsed `URL` already lowercases its `protocol` and `hostname`, so those are reported only when compared with a literal that has capitals (`u.protocol === 'HTTPS:'` never matches). Types (`Headers`, `Request`, `URL`, `IncomingHttpHeaders`) are used when available, names such as `headers` and `req` otherwise. A library
+  that is itself the parser takes an exception for this rule. The same forms run as
+  `pmd/HttpValueCase` and `pmd/HandSplitHttpHeader` (Java), `kotlin-source/HttpValueCase` and
+  `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
+  (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
   that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,
@@ -1119,7 +1145,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   expression is read as that expression with the arguments bound, through at most 2 levels and
   never through recursion, and the message names the helper; methods, helpers that read a variable
   the call site does not see and helpers in other files stay opaque. An order comparison counts as a number comparison only when both operands
-  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. The same facts decide a
+  coercion of the tested value: `x ? Boolean(x) : d`, `x ? !!x : d`, `if (x) return Boolean(x)` and
+  `x && Boolean(x)` are always `true` (in the other branch, always `false`), so either the coercion
+  or the test is wrong; the message says to use the value itself or fix the test. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
   `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
@@ -1352,9 +1381,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   comparison: `count > 0`, `index !== -1`, `items.length > 0`, `id !== undefined` for an optional
   number, and `value ?? fallback` for a default. A union that mixes a number with another type
   (`string | number`) is reported too. Strings, objects, `any`/`unknown` and nullable booleans and
-  strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
-  `allowNullableBoolean`, `allowAny`): a nullable boolean is only wrong when `false` carries a
-  meaning of its own, so it is left out for now rather than reported everywhere. Not reported: a
+  strings stay allowed here (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`): `nitpicker/no-presence-truthiness` reports the part of those
+  that is a presence test, as notes. Not reported: a
   link of a sort comparator chain (`a.rank - b.rank || a.name.localeCompare(b.name)`, a `compare...`
   call), when the chain ends in another comparison rather than a literal; a bit test
   (`flags & MASK`); an operand whose `||` chain falls back to `0` (`count || 0`, `(ready && count) ||
@@ -1364,6 +1393,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same. When `0` must take the same path as a missing value, add an exception for the rule. In the
   JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
   and is not reported.
+- `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
+  findings print as design notes and never fail the change): an optional string
+  (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
+  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
+  `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
+  `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
+  Write `x !== undefined`, `x != null`, `typeof x === 'string'`, or `x ?? d` for a default. Not
+  reported: a plain `string` or `boolean`, a string union of non-empty literals, `x || ''` and
+  `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
+  which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
+  path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
+  from JSDoc and inference (`checkJs`).
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
@@ -1476,3 +1518,8 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
+- The "no limit" integer overflow that the Java, Kotlin and Go presets report (`Integer.MAX_VALUE` plus an offset
+  becoming a negative index) has no counterpart in the TypeScript and JavaScript presets: numbers are doubles, so a
+  sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
+  sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
+  reported.
