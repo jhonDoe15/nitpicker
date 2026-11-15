@@ -16,11 +16,11 @@ export {
   installedRuffRules,
   isOlderVersion,
   withSelectedNewerRules,
-} from '../../languages/python/reference/ruff-selection.mjs';
+} from '../../languages/python/reference/ruff-selection.mts';
 export {
   readRuffSnapshot,
   RUFF_RULES_FILE,
-} from '../../languages/python/reference/ruff-entries.mjs';
+} from '../../languages/python/reference/ruff-entries.mts';
 export {
   liveToolText,
   TOOL_TEXT_TOOLS,

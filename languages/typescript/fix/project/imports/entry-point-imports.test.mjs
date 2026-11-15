@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { analyzeEntryPoints } from '../../../preset/entry-points/analyze.mjs';
 import { projectGraph } from '../model/project-graph.mjs';
 import { withProject } from '../model/project-model.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import {
   featureInternalsOnlyThroughIndexRecipe,
   publicAlternativeBypassRecipe,
