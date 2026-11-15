@@ -1,16 +1,17 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
+import { ts } from '../../typed/typescript-views.mts';
 import {
   classDeclarationOf,
   decoratedWith,
   decoratorArguments,
   isProjectDeclaration,
-} from './nest-classes.mjs';
+} from './nest-classes.mts';
 
 const CATCH = new Set(['Catch']);
 const USE_FILTERS = new Set(['UseFilters']);
 const REGISTRATIONS = ['APP_FILTER', 'useGlobalFilters'];
 
-function nodesOf(root) {
+function nodesOf(root: TypeScript.Node): TypeScript.Node[] {
   const nodes = [root];
   for (const node of nodes) {
     node.forEachChild((child) => {
@@ -20,17 +21,23 @@ function nodesOf(root) {
   return nodes;
 }
 
-function instanceChecks(checker, filter) {
+function instanceChecks(
+  checker: TypeScript.TypeChecker,
+  filter: TypeScript.ClassLikeDeclaration,
+): TypeScript.ClassLikeDeclaration[] {
   return nodesOf(filter)
-    .filter(
-      (node) =>
-        ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword,
+    .flatMap((node) =>
+      ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword
+        ? [classDeclarationOf(checker, node.right)]
+        : [],
     )
-    .map((node) => classDeclarationOf(checker, node.right))
     .filter((declaration) => declaration !== undefined);
 }
 
-export function filterCoverage(checker, filter) {
+export function filterCoverage(
+  checker: TypeScript.TypeChecker,
+  filter: TypeScript.ClassLikeDeclaration,
+): TypeScript.ClassLikeDeclaration[] {
   const [decorator] = decoratedWith(filter, CATCH);
   if (decorator === undefined) {
     return [];
@@ -48,14 +55,17 @@ export function filterCoverage(checker, filter) {
   return catchesAll ? [...classes, ...instanceChecks(checker, filter)] : classes;
 }
 
-function propertyName(property) {
+function propertyName(property: TypeScript.ObjectLiteralElementLike): string | undefined {
   const { name } = property;
   return name !== undefined && (ts.isIdentifier(name) || ts.isStringLiteral(name))
     ? name.text
     : undefined;
 }
 
-function propertyNamed(object, name) {
+function propertyNamed(
+  object: TypeScript.ObjectLiteralExpression,
+  name: string,
+): TypeScript.Node | undefined {
   const property = object.properties.find((candidate) => propertyName(candidate) === name);
   if (property !== undefined && ts.isShorthandPropertyAssignment(property)) {
     return property.name;
@@ -65,7 +75,10 @@ function propertyNamed(object, name) {
     : undefined;
 }
 
-function providedFilter(checker, node) {
+function providedFilter(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.ClassLikeDeclaration | undefined {
   if (!ts.isObjectLiteralExpression(node)) {
     return undefined;
   }
@@ -79,7 +92,10 @@ function providedFilter(checker, node) {
   );
 }
 
-function registeredFilters(checker, node) {
+function registeredFilters(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.ClassLikeDeclaration[] {
   const isRegistration =
     ts.isCallExpression(node) &&
     ts.isPropertyAccessExpression(node.expression) &&
@@ -93,7 +109,7 @@ function registeredFilters(checker, node) {
     .filter((declaration) => declaration !== undefined);
 }
 
-function registeringFiles(program) {
+function registeringFiles(program: TypeScript.Program): TypeScript.SourceFile[] {
   return program
     .getSourceFiles()
     .filter(
@@ -104,14 +120,17 @@ function registeringFiles(program) {
     );
 }
 
-export function globalFilters(program) {
+export function globalFilters(program: TypeScript.Program): TypeScript.ClassLikeDeclaration[] {
   const checker = program.getTypeChecker();
   return registeringFiles(program).flatMap((file) =>
     nodesOf(file).flatMap((node) => registeredFilters(checker, node)),
   );
 }
 
-export function localFilters(checker, declarations) {
+export function localFilters(
+  checker: TypeScript.TypeChecker,
+  declarations: readonly TypeScript.Node[],
+): TypeScript.ClassLikeDeclaration[] {
   return declarations
     .flatMap((declaration) => decoratedWith(declaration, USE_FILTERS))
     .flatMap((decorator) => decoratorArguments(decorator))

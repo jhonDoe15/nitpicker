@@ -1,11 +1,25 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { causeFix } from '../../fixes/errors/cause-fix.mjs';
-import { fixable } from '../../fixes/support/descriptors.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, nameOf, type Ranged, type SourceCode } from '../typed/node-views.mts';
+import { causeFix } from '../../fixes/errors/cause-fix.mts';
+import { fixable } from '../../fixes/support/descriptors.mts';
+
+type Wrapper = {
+  readonly name?: string;
+  readonly optionsIndex?: number | undefined;
+  readonly classificationIndex?: number;
+  readonly unclassifiedValue?: string;
+};
+type Options = readonly [{ readonly wrappers?: readonly Wrapper[] }?];
+type CauseSite = {
+  readonly wrapper: Wrapper;
+  readonly node: TSESTree.NewExpression;
+  readonly handler: TSESTree.CatchClause;
+};
 
 const ERROR_SUBCLASS_NAME = /Error$/;
-const SUBCLASS_WRAPPER = { optionsIndex: undefined };
+const SUBCLASS_WRAPPER: Wrapper = { optionsIndex: undefined };
 
-function wrapperFor(wrappers, name) {
+function wrapperFor(wrappers: readonly Wrapper[], name: string): Wrapper | undefined {
   const configured = wrappers.find((candidate) => candidate.name === name);
   if (configured !== undefined) {
     return configured;
@@ -13,17 +27,32 @@ function wrapperFor(wrappers, name) {
   return ERROR_SUBCLASS_NAME.test(name) ? SUBCLASS_WRAPPER : undefined;
 }
 
-function matchingWrapper(wrappers, node) {
-  if (node.callee.type !== 'Identifier') return undefined;
+function matchingWrapper(
+  wrappers: readonly Wrapper[],
+  node: TSESTree.NewExpression,
+): Wrapper | undefined {
+  if (node.callee.type !== AST_NODE_TYPES.Identifier) {
+    return undefined;
+  }
   const wrapper = wrapperFor(wrappers, node.callee.name);
-  if (!wrapper) return undefined;
+  if (!wrapper) {
+    return undefined;
+  }
   const isClassified = wrapper.classificationIndex !== undefined;
+  const classified =
+    wrapper.classificationIndex === undefined
+      ? undefined
+      : node.arguments[wrapper.classificationIndex];
   const isUnclassified =
-    node.arguments[wrapper.classificationIndex]?.value === wrapper.unclassifiedValue;
+    (classified?.type === AST_NODE_TYPES.Literal ? classified.value : undefined) ===
+    wrapper.unclassifiedValue;
   return isClassified && !isUnclassified ? undefined : wrapper;
 }
 
-function referencesCatch(caughtVariables, expression) {
+function referencesCatch(
+  caughtVariables: readonly TSESLint.Scope.Variable[],
+  expression: Ranged,
+): boolean {
   return caughtVariables.some((variable) =>
     variable.references.some(
       (reference) =>
@@ -33,26 +62,40 @@ function referencesCatch(caughtVariables, expression) {
   );
 }
 
-function hasCauseProperty(options, caughtVariables) {
+function keyValue(key: TSESTree.Node): unknown {
+  return nameOf(key) ?? (key.type === AST_NODE_TYPES.Literal ? key.value : undefined);
+}
+
+function hasCauseProperty(
+  options: TSESTree.Node | undefined,
+  caughtVariables: readonly TSESLint.Scope.Variable[],
+): boolean {
   return (
-    options?.type === 'ObjectExpression' &&
+    options?.type === AST_NODE_TYPES.ObjectExpression &&
     options.properties.some(
       (property) =>
-        property.type === 'Property' &&
-        (property.key.name ?? property.key.value) === 'cause' &&
+        property.type === AST_NODE_TYPES.Property &&
+        keyValue(property.key) === 'cause' &&
         referencesCatch(caughtVariables, property.value),
     )
   );
 }
 
-function isCaughtValue(argument, caughtVariables) {
-  const values = argument.type === 'ArrayExpression' ? argument.elements : [argument];
+function isCaughtValue(
+  argument: TSESTree.Node,
+  caughtVariables: readonly TSESLint.Scope.Variable[],
+): boolean {
+  const values = argument.type === AST_NODE_TYPES.ArrayExpression ? argument.elements : [argument];
   return values.some(
-    (value) => value?.type === 'Identifier' && referencesCatch(caughtVariables, value),
+    (value) => value?.type === AST_NODE_TYPES.Identifier && referencesCatch(caughtVariables, value),
   );
 }
 
-function preservesCause(wrapper, node, caughtVariables) {
+function preservesCause(
+  wrapper: Wrapper,
+  node: TSESTree.NewExpression,
+  caughtVariables: readonly TSESLint.Scope.Variable[],
+): boolean {
   if (wrapper.optionsIndex !== undefined) {
     return hasCauseProperty(node.arguments[wrapper.optionsIndex], caughtVariables);
   }
@@ -62,17 +105,23 @@ function preservesCause(wrapper, node, caughtVariables) {
   );
 }
 
-function constAlias(sourceCode, { identifier }) {
+function constAlias(
+  sourceCode: SourceCode,
+  { identifier }: TSESLint.Scope.Reference,
+): readonly TSESLint.Scope.Variable[] {
   const declarator = identifier.parent;
-  return declarator.type === 'VariableDeclarator' &&
+  return declarator.type === AST_NODE_TYPES.VariableDeclarator &&
     declarator.init === identifier &&
     declarator.parent.kind === 'const' &&
-    declarator.id.type === 'Identifier'
+    declarator.id.type === AST_NODE_TYPES.Identifier
     ? sourceCode.getDeclaredVariables(declarator)
     : [];
 }
 
-function withAliases(sourceCode, caughtVariables) {
+function withAliases(
+  sourceCode: SourceCode,
+  caughtVariables: readonly TSESLint.Scope.Variable[],
+): TSESLint.Scope.Variable[] {
   return [
     ...caughtVariables,
     ...caughtVariables.flatMap((variable) =>
@@ -81,41 +130,46 @@ function withAliases(sourceCode, caughtVariables) {
   ];
 }
 
-function isPromiseReject(call) {
+function isPromiseReject(call: TSESTree.Node): call is TSESTree.CallExpression {
   return (
-    call.type === 'CallExpression' &&
-    call.callee.type === 'MemberExpression' &&
+    call.type === AST_NODE_TYPES.CallExpression &&
+    call.callee.type === AST_NODE_TYPES.MemberExpression &&
     !call.callee.computed &&
-    call.callee.object.type === 'Identifier' &&
+    call.callee.object.type === AST_NODE_TYPES.Identifier &&
     call.callee.object.name === 'Promise' &&
     call.callee.property.name === 'reject'
   );
 }
 
-function isThrownLocal(sourceCode, declarator) {
+function isThrownLocal(sourceCode: SourceCode, declarator: TSESTree.VariableDeclarator): boolean {
   return sourceCode
     .getDeclaredVariables(declarator)
     .some((variable) =>
-      variable.references.some(({ identifier }) => identifier.parent.type === 'ThrowStatement'),
+      variable.references.some(
+        ({ identifier }) => identifier.parent.type === AST_NODE_TYPES.ThrowStatement,
+      ),
     );
 }
 
-function isThrown(sourceCode, node) {
+function isThrown(sourceCode: SourceCode, node: TSESTree.NewExpression): boolean {
   const { parent } = node;
-  if (parent.type === 'ThrowStatement') {
+  if (parent.type === AST_NODE_TYPES.ThrowStatement) {
     return true;
   }
   if (isPromiseReject(parent)) {
     return parent.arguments[0] === node;
   }
   return (
-    parent.type === 'VariableDeclarator' &&
+    parent.type === AST_NODE_TYPES.VariableDeclarator &&
     parent.init === node &&
     isThrownLocal(sourceCode, parent)
   );
 }
 
-function causeReport(sourceCode, { wrapper, node, handler }) {
+function causeReport(
+  sourceCode: SourceCode,
+  { wrapper, node, handler }: CauseSite,
+): 'bindingLess' | 'lostCause' | undefined {
   const caughtVariables = withAliases(sourceCode, sourceCode.getDeclaredVariables(handler));
   const thrown = isThrown(sourceCode, node);
   if (thrown && handler.param === null) {
@@ -129,7 +183,7 @@ function causeReport(sourceCode, { wrapper, node, handler }) {
 const EXCEPTION_ROUTE =
   ' An exception fits only when the original failure is deliberately dropped.';
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'lostCause' | 'bindingLess', Options> = {
   meta: {
     type: 'problem',
     fixable: 'code',
@@ -165,9 +219,16 @@ export const rule = {
     return {
       NewExpression(node) {
         const wrapper = matchingWrapper(wrappers, node);
-        if (!wrapper) return;
-        const handler = ancestorsOf(node).find((ancestor) => ancestor.type === 'CatchClause');
-        if (!handler) return;
+        if (!wrapper) {
+          return;
+        }
+        const handler = ancestorsOf(node).find(
+          (ancestor): ancestor is TSESTree.CatchClause =>
+            ancestor.type === AST_NODE_TYPES.CatchClause,
+        );
+        if (!handler) {
+          return;
+        }
         const messageId = causeReport(context.sourceCode, { wrapper, node, handler });
         if (messageId !== undefined) {
           const plan =
