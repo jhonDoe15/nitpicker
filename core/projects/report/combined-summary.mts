@@ -18,7 +18,7 @@ type RanFields = {
   readonly summary: string;
 };
 
-export type SummaryEntry = Partial<RanFields> & {
+type SummaryEntry = Partial<RanFields> & {
   readonly path: string;
   readonly preset: string;
   readonly status: string;

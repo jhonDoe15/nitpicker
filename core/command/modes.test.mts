@@ -7,15 +7,12 @@ import { finding, findingLine, policy } from '../diff/execution/test-support/ana
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
-import { linkSentence } from './test-support/report-readers.mts';
 import type { FixtureRepository } from './test-support/fixture-types.mts';
 import { fieldOf, listOf, parseJson } from '../../shared/values/readers.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
-import { docsUrl as docsPageUrl } from '../../shared/messages/docs-url.mjs';
 const anyString: unknown = expect.any(String);
 const anyNumber: unknown = expect.any(Number);
 const baseFromLocalBranch: unknown = expect.stringMatching(/^Base: main \(local-branch\)\n/u);
-const docsUrl: (page: string) => string | undefined = docsPageUrl;
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
