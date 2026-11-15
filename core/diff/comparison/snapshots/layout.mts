@@ -16,6 +16,7 @@ import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
 } from '../../git/repository/worktree.mjs';
+import type { DeclaredMoves } from '../moved-names/declared/move-types.mts';
 import type { SnapshotRoots } from './run-types.mts';
 
 export type Comparison = {
@@ -32,7 +33,10 @@ type Moves = {
   readonly inferred: Map<string, string>;
 };
 
-type LayoutMoves = Moves & { readonly packages: Map<string, string> };
+type LayoutMoves = Moves & {
+  readonly packages: Map<string, string>;
+  readonly declared: DeclaredMoves;
+};
 
 type GitRange = {
   readonly repositoryRoot: string;
@@ -75,7 +79,11 @@ const changedLinesOf: (
   request: ProjectRange & { readonly inferredMoves: Moves['inferred'] },
 ) => ReadonlyMap<string, unknown> = readChangedLines;
 const removesTests: (request: ProjectRange) => unknown = readRemovesTests;
-const movedPackages: (moves: Moves, range: ProjectRange) => Map<string, string> = readMovedPackages;
+const movedPackages: (
+  moves: Moves,
+  range: ProjectRange,
+) => { readonly packages: Map<string, string>; readonly declared: DeclaredMoves } =
+  readMovedPackages;
 const inWorktree: <T>(root: string, worktree: Worktree, operation: (root: string) => T) => T =
   withTemporaryWorktree;
 const inNamedWorktree: <T>(
@@ -95,7 +103,7 @@ export function readSnapshotLayout(
   const moves = movesOf({ ...projectRange, changes });
   return {
     baseProjectRelativePath,
-    moves: { ...moves, packages: movedPackages(moves, projectRange) },
+    moves: { ...moves, ...movedPackages(moves, projectRange) },
     touchedPaths: touchedPathsOf({ ...projectRange, changes }),
     touchedCode: {
       changedLines: changedLinesOf({ ...projectRange, inferredMoves: moves.inferred }),

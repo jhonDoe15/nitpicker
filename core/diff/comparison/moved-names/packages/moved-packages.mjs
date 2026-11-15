@@ -1,10 +1,12 @@
 import path from 'node:path';
 import { directoryOf } from '../../../git/patches/renames.mjs';
+import { sharedTail } from '../module-folders.mjs';
 import { directoryNamePairs } from '../qualified-names.mjs';
+import { JVM_SOURCE } from '../declared/declared-package.mjs';
+import { declaredPackageMoves, MIN_MOVED_FILES } from './declared-package-moves.mjs';
 
 const SOURCE_FILE = /\.(?:java|kt|groovy|scala|py|[cm]?[jt]sx?)$/u;
 const AMBIGUOUS = Symbol('ambiguous');
-const MIN_MOVED_FILES = 2;
 
 function segmentsOf(directory) {
   return directory === '' ? [] : directory.split('/');
@@ -72,18 +74,12 @@ function dottedMoves(directories, moved) {
   return [...names].map((name) => [name, agreedDestination(name, directories, moved)]);
 }
 
-function sharedTailLength(from, to) {
-  const reversed = to.toReversed();
-  const mismatch = from.toReversed().findIndex((segment, index) => segment !== reversed[index]);
-  return mismatch === -1 ? from.length : mismatch;
-}
-
 function renamedFolders(renames) {
   const folders = new Map();
   for (const [oldPath, newPath] of renames) {
     const from = segmentsOf(directoryOf(oldPath));
     const to = segmentsOf(directoryOf(newPath));
-    const tail = sharedTailLength(from, to);
+    const tail = sharedTail(from, to);
     const oldFolder = from.slice(0, from.length - tail);
     const newFolder = to.slice(0, to.length - tail);
     if (
@@ -140,7 +136,7 @@ function isTaken(name, directories) {
   return [...directories.keys()].some((directory) => endsWith(directory, segments));
 }
 
-export function movedPackages({ baseFiles, headFiles, renames }) {
+function pathBasedMoves({ baseFiles, headFiles, renames }) {
   const sources = baseFiles.filter((file) => SOURCE_FILE.test(file));
   const directories = groupedByDirectory(sources);
   const headDirectories = new Set(
@@ -159,4 +155,20 @@ export function movedPackages({ baseFiles, headFiles, renames }) {
     known.set(from, to === undefined || (earlier !== undefined && earlier !== to) ? AMBIGUOUS : to);
   }
   return new Map([...known].filter(([, to]) => to !== AMBIGUOUS && !isTaken(to, directories)));
+}
+
+function isOtherSource(file) {
+  return !JVM_SOURCE.test(file);
+}
+
+export function movedPackages({ baseFiles, headFiles, renames, declared }) {
+  if (declared === undefined) {
+    return pathBasedMoves({ baseFiles, headFiles, renames });
+  }
+  const undeclared = {
+    baseFiles: baseFiles.filter(isOtherSource),
+    headFiles: headFiles.filter(isOtherSource),
+    renames: new Map([...renames].filter(([oldPath]) => isOtherSource(oldPath))),
+  };
+  return new Map([...pathBasedMoves(undeclared), ...declaredPackageMoves({ renames, declared })]);
 }

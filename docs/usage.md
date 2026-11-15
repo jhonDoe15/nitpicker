@@ -324,6 +324,21 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
+- **Moves**: a file that git sees as a rename keeps its findings as unchanged, also when the
+  move only changes its `package` and import lines. A finding follows the class or module name,
+  the package, the Gradle project path (`:lib` follows a moved `lib` folder) and the Maven module
+  folder of the moved code. For Java, Kotlin, Groovy and Scala the package comes from the `package`
+  line of the old and the new file, so a default package, a Kotlin package that omits the folder
+  root and a file moved with its `package` line unchanged are read right; a top-level Python
+  module (`tax.py` to `shop/tax.py`) follows its path. A package is the same package after a move
+  only when every file of it moved to one new package or folder, and at least two files moved. When
+  only some files moved, the files that stayed keep the old package and the moved ones are a
+  different package, so a package-level finding that moves with them may be new. A Gradle project
+  or Maven module follows its folder only when every file under the folder moved to the same new
+  folder, and the old project path or folder is kept when the head still reports it. A message
+  that names a class of a moved package (an unused import, an Error Prone or kotlinc warning) stays
+  unchanged when the head message differs only in the moved class names; a different class of the
+  same name is new.
 - **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
   adds or edits on the head side, so every surviving mutant it reports is new. When the change
   edits or deletes a test, the production modules that test imports are mutated whole on head, and
