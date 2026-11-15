@@ -46,6 +46,26 @@ export function projectRootFiles(projectDirectory, configName) {
     .filter((file) => !file.startsWith('./..'));
 }
 
+export function configFileNames(configFile) {
+  const typescript = typescriptCompiler();
+  return typescript
+    .parseJsonConfigFileContent(
+      readJsonc(configFile) ?? {},
+      typescript.sys,
+      path.dirname(configFile),
+      undefined,
+      configFile,
+    )
+    .fileNames.map((file) => path.resolve(file));
+}
+
+export function includedFileNames(directory, { include, exclude }) {
+  const typescript = typescriptCompiler();
+  return typescript
+    .parseJsonConfigFileContent({ include, exclude }, typescript.sys, directory)
+    .fileNames.map((file) => path.resolve(file));
+}
+
 function referencedConfigFile(projectDirectory, reference) {
   const target = path.resolve(projectDirectory, reference.path);
   return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
