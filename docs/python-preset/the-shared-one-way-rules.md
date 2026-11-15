@@ -51,6 +51,7 @@ are listed at the end.
 | Foreign key indexes                             | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                        | `unindexed-foreign-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -952,6 +953,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `C419` for `any([...])`), `PERF` and `RUF015` (`list(xs)[0]` instead of `next(iter(xs))`). The
   same forms run as `nitpicker/no-wasted-collection-step` (TypeScript), `pmd/RedundantStreamStep`
   (Java) and `kotlin-source/RedundantStreamStep` (Kotlin).
+- Python has no map collector that fails on a `None` value (the Java `pmd/NullMapValue` rule for
+  `Collectors.toMap` and `groupingBy`): `dict` comprehensions and `defaultdict` accept it.
 - `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
   over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
   `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,
@@ -1241,6 +1244,38 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
+- `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
+  reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
+  annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
+  or `False` reads as missing: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
+  annotated local (a parameter is `falsy-default`'s), `filter(None, items)` and
+  `[v for v in items if v]` over a `list`, `Sequence`, `Iterable` or `set` of such a type. The
+  allowed form tests `None` only (`x is not None`, `x if x is not None else d`). Not reported: a
+  plain `str` or `bool`, `x or ''` and `x or False`, a test that does not use the value, a name the
+  function binds again, and test files. When an empty string or `False` must take the same path as
+  a missing value, add an exception for the rule.
+- `http-value-case` reports HTTP text compared by exact case, in production code. A value read by
+  `request.headers["x"]`, `request.headers.get("x")` (any mapping or attribute named `*headers`) or
+  `request.content_type`, of a header whose value is case-insensitive (`Content-Type`, `Accept*`,
+  `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`, `Cache-Control`, `Authorization`,
+  `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like), a `urlparse(...).netloc`,
+  directly or through a local assigned once, is reported when it meets a string literal with a
+  letter in `==`, `!=`, `in`, `startswith`, `endswith`, `find`, a `match` statement, a
+  `re.match`, `search` or `fullmatch` without `re.I`, or as the key of a table. Also reported:
+  `name.startswith("__Host-")` or `"__Secure-"` without `lower()`, a file extension from
+  `os.path.splitext(...)[1]`, `Path(...).suffix` or `split(".")[-1]` used as the key of a table named
+  `mime` or `content_type` without `lower()`, and a capitalised header name read from a plain copy of
+  the request headers (`dict(request.headers)["Content-Type"]`). Not reported: `.lower()`,
+  `.casefold()` or a parser on the way (`email.message.Message.get_content_type`,
+  `werkzeug.http.parse_options_header`), the request header mapping itself (it ignores case), an HTTP
+  method (case-sensitive) and a parsed URL's `scheme` and `hostname`, which `urllib` lowercases.
+  Allowed form: `value.lower()` or `casefold()` first, or a parser.
+- `hand-split-http-header` reports a structured header (`Accept*`, `Content-Type`, `Cache-Control`,
+  `If-None-Match`, `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by hand: `split`,
+  `rsplit` or `partition` on `,` or `;`, or a `re` call whose pattern has a separator, `q=`,
+  `charset` or `boundary`. Allowed form: `email.message.Message`, `werkzeug.http`
+  (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
+  `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a
@@ -1256,6 +1291,22 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
   `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
   `nitpicker/strict-boolean-expressions`.
+- `untrimmed-request-text` reports request text that reaches a lookup without `strip()`, in a route
+  handler (a decorated FastAPI or Flask function) or a function taking `request` (a Django view) of a module
+  that imports a web framework. The text is a `str` (or `str | None`, `Optional[str]`) route parameter that
+  is not a path parameter, header, cookie or dependency; a field typed `str` of a project class used as a
+  parameter (a pydantic request model, `payload.name`); or a value read from `request.args`, `request.form`,
+  `request.values`, `request.json`, `request.GET` or `request.POST` (`get` or subscript, directly or through
+  a variable assigned once). It reaches a lookup when it is a keyword of a `filter`, `filter_by`, `get` or
+  `where` method call (not an identifier such as `id` or `status`), an operand of `==`, `like`, `ilike` or
+  `contains` inside one, an argument of a `find_...`, `search...` or `get_..._by_...` call, or a parameter of
+  an `execute` or `fetch` call after its SQL. A name the function binds again (`name = name.strip()`), a
+  model field typed `Annotated[str, StringConstraints(strip_whitespace=True)]`, a model whose class or a base
+  class of the project sets `str_strip_whitespace=True` (`model_config = ConfigDict(...)` or an inner
+  `Config` with `anystr_strip_whitespace`), and text that reaches no lookup are not reported. Django forms
+  and DRF serializer `CharField` strip by default, so they are not read. The allowed form is
+  `name = name.strip()` before the lookup, or one shared base model with
+  `ConfigDict(str_strip_whitespace=True)` that the request models extend.
 - `simpler-boolean-logic` and ruff's `SIM` rules report boolean logic with a strictly simpler
   exact form (#905; the counterpart of the TypeScript `nitpicker/simpler-boolean-logic` and of the
   Java PMD rules `SimplifyBooleanReturns`, `SimplifiedTernary`, `CollapsibleIfStatements`,
@@ -1742,3 +1793,5 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
+- Integer overflow on a "no limit" maximum (`MaxValueOverflow` in the Java and Kotlin presets,
+  `go-rules/max-value-overflow` in Go) does not apply to Python: `int` has arbitrary precision, so a sum never wraps.

@@ -212,3 +212,107 @@ Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) few
 change the sequencer estimated about 1,334 seconds per unit shard (run with one worker per vCPU,
 so roughly six to nine minutes of wall time) and 70 seconds for Go; the measured end-to-end loads
 are at the top of this file.
+
+## Validation of the shard counts
+
+The numbers below come from the eight most recent successful runs of each language workflow on
+`main`, taken on 2026-11-13 through the REST API: a shard job's time is its `completed_at` minus
+`started_at`, its setup overhead is that time minus its longest step (the test step), which
+includes checkout, Node, toolchain and cache restore, `npm ci`, the artifact upload and the post
+steps, and the queue delay is `started_at` minus `created_at`. Runner minutes add up every shard
+job of a run; the shard-plan, change-detection and aggregate jobs are not included. Each cell is
+the median of the eight runs with the range after it. Every run in the sample restored its npm,
+Maven, Gradle or pip caches, so no cold-cache timing exists in it; a cold run is expected to add
+the dependency download time to the setup overhead and to the first cases that resolve tools.
+The weights in `java-e2e.json`, `kotlin-e2e.json`, `python-e2e.json` and `go-e2e.json` were
+refreshed from the same logs (the median of the eight per-file times, rounded up to whole seconds).
+
+### Java: 4 shards, 72 files, 233 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 1,365 s | 1,119 to 1,679 s |
+| Median shard job | 1,149 s | 1,081 to 1,425 s |
+| Runner minutes per run | 77.5 | 71.2 to 98.1 |
+| Setup overhead per shard job | 42.5 s | 34 to 50 s |
+| Queue delay per shard job | 971 s | 4.5 to 4,305 s |
+
+The sequencer plans 1,102 seconds of test time for each of the four shards, so the plan is even and
+the measured spread between the shards comes from runner speed and from the Gradle and Maven
+builds inside the files. Nine of the 72 weights had drifted by more than a quarter and ten seconds
+(for example the Maven reactor modules file, 45 to 153 seconds, and the guards file, 160 to 56) and
+are refreshed.
+
+Outcome against the target of two to three minutes per runner: not met. The shards run about 19
+minutes of tests and the suite has grown from 124 to 233 cases since the 16-shard measurement of
+3,043 runner-seconds (50.7 runner minutes, median shard about 165 seconds). Going from 16 shards to
+four was a deliberate maintainer decision to fit more pull request runs into the account's
+concurrent job limit; it costs wall time per run and, with the larger suite, about 27 more runner
+minutes. Setup is about 4 percent of a shard job, so the setup repeated by additional shards is
+not what limits the shard count. Reaching the target again means returning to roughly 16 to 20
+shards, which only the queue delay (a median of 16 minutes in this sample) argues against.
+
+### Kotlin: 3 shards, 63 files, 261 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 2,365 s | 2,039 to 2,778 s |
+| Median shard job | 2,088 s | 1,806 to 2,631 s |
+| Runner minutes per run | 104.8 | 94.9 to 131.9 |
+| Setup overhead per shard job | 42.5 s | 33 to 47 s |
+| Queue delay per shard job | 923 s | 3 to 4,116 s |
+
+The sequencer plans 2,078 to 2,081 seconds of test time per shard. Six of the 63 weights had
+drifted by more than a quarter and ten seconds (the review rules findings file, 227 to 345
+seconds, is the largest) and are refreshed; the profile now sums to 6,238 seconds against 5,635.
+
+Outcome against the target of two to three minutes per runner: not met. A shard runs about 35
+minutes of tests, against 110 to 206 seconds per job in the 10-shard sample recorded above, and
+the suite has grown from 79 to 261 cases since then. As for Java, the lower shard count is the
+maintainers' choice to stay within the concurrent job limit, and it costs wall time per run (the
+slowest shard is 39 minutes, under the 60-minute job limit but with little margin: the maximum
+was 46 minutes). Setup is about 2 percent of a shard job.
+
+### Python: 2 shards, 136 files, 1,668 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 556 s | 489 to 632 s |
+| Median shard job | 522 s | 468 to 548 s |
+| Runner minutes per run | 17.4 | 15.6 to 18.3 |
+| Setup overhead per shard job | 54 s | 47.5 to 58.5 s |
+| Queue delay per shard job | 182 s | 3 to 271 s |
+
+Setup is about 10 percent of a shard job: roughly 19 seconds for the three Python versions, 12 for
+the constrained tool install, 3 for Poetry and 15 for `npm ci`. The sequencer plans 903
+seconds of test time per shard (two workers each), against the measured 470 to 580 seconds of
+test step. Four of the 135 weighted files had drifted by more than a quarter and ten seconds and five
+files had no weight; all are refreshed or added. The earlier four-shard sample (127 to 193 seconds per
+shard, 760 runner-seconds) came from a smaller suite.
+
+Outcome against the target of two to four minutes: not met. The slowest shard takes about nine
+minutes, and with two shards the runner minutes (17.4) are above the four-shard run (12.7) because
+the suite has grown. The Python weights shown above hold for any shard count, so raising it again
+is a one-line matrix change.
+
+The uv cache is not added. The only cache in the workflow is the pip cache of `setup-python`,
+which holds the constrained tool wheels (the 12-second install step); the environments of the sample
+projects are built by `uv` inside the test step, and the logs of that step do not separate download
+time from build and test time, so no measurement shows what a `~/.cache/uv` cache would save. It could
+save at most the wheel downloads of a test step of about 520 seconds per shard, while each shard
+would pay a restore and a save step (about 10 seconds for the Gradle one) and a cache that is
+stored per shard and per constraints hash. Without a measured saving that exceeds this cost the
+cache is not worth carrying. To measure it, run a shard once with `UV_CACHE_DIR` on an
+`actions/cache` path and compare the test step of a warm run against this table.
+
+### Go: 1 shard, 9 files
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Shard job | 382 s | 318 to 416 s |
+| Runner minutes per run | 6.4 | 5.3 to 6.9 |
+| Setup overhead per job | 31.5 s | 29 to 40 s |
+| Queue delay | 464 s | 59 to 1,490 s |
+
+Only two of the nine Go files had a weight (30 and 40 seconds); the profile now holds the measured
+medians of all nine (31 to 293 seconds). It does not change the plan while there is one shard.

@@ -12,6 +12,7 @@ import { relaxKey } from './spring-config-parser.mjs';
 import { readTestProfiles, testSourceRootsOr, withProfileKinds } from './spring-profiles.mjs';
 import { unboundPropertyProblems } from './unbound-keys/unbound-keys.mjs';
 import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { untrimmedRequestTextProblems } from './request-text/untrimmed-request-text.mjs';
 import { springWiringProblems } from './wiring/spring-wiring.mjs';
 
 const SPRING_TOOL = 'spring';
@@ -61,6 +62,7 @@ export const SPRING_CONFIG_RULES = [
   'missing-enable',
   'datasource-without-timeout',
   'unbound-property',
+  'untrimmed-request-text',
   ...ENTRY_RULES.map(({ rule }) => rule),
 ];
 
@@ -130,6 +132,11 @@ export function readSpringConfigFindings(projectRoot, options = {}) {
     ...problemFindings(
       'missing-enable',
       springWiringProblems(projectRoot, sourceRoots, resources),
+      occurrences,
+    ),
+    ...problemFindings(
+      'untrimmed-request-text',
+      untrimmedRequestTextProblems(projectRoot, sourceRoots),
       occurrences,
     ),
     ...unboundFindings(projectRoot, { sourceRoots, resources, options, occurrences }),
