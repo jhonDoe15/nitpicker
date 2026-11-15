@@ -1,3 +1,6 @@
+const REPOSITORY_HYGIENE = 'repository-hygiene';
+const DEAD_CODE = 'dead-code';
+
 export const HYGIENE_RULE_IDS = {
   committedEnvFile: 'committed-env-file',
   committedPrivateKey: 'committed-private-key',
@@ -8,6 +11,7 @@ export const HYGIENE_RULE_IDS = {
   migrationHardcodedName: 'migration-hardcoded-name',
   startSchemaPush: 'start-schema-push',
   foreignKeyIndex: 'foreign-key-index',
+  fieldLimitMismatch: 'field-limit-mismatch',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -31,81 +35,88 @@ const GO_RESOLVES_IMPORTS =
 export const HYGIENE_RULES = [
   {
     id: HYGIENE_RULE_IDS.committedEnvFile,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit: 'a committed `.env` file (templates such as `.env.example` are fine)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.committedPrivateKey,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit: 'a committed private key: a key file, or any text file holding a private-key block',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.committedBinary,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a committed archive or compiled binary (`gradle-wrapper.jar` and a tarball that a package.json dependency spec names are allowed)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.largeFile,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit: `a file larger than ${String(LARGE_FILE_BYTES / (1024 * 1024))} MB (lockfiles are exempt)`,
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.committedBuildOutput,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a committed build output folder (`dist`, `build`, `out`, `coverage`, `target` next to a project manifest; `.next`, `.nuxt`, `storybook-static`, `.turbo`, `.parcel-cache` anywhere)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.migrationOrder,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a migration the change adds whose version sorts before (or with) the newest migration of its folder on the base branch (Flyway, Prisma, Drizzle, Knex, Kysely, TypeORM, MikroORM, Sequelize, golang-migrate, goose), or an Alembic or Django migration that follows a parent which already has a child on the base branch (two heads)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.migrationHardcodedName,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a migration file that names the `public` schema (`public.table`), a database in `ALTER DATABASE` or a role in `OWNER TO`',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.foreignKeyIndex,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a foreign key that a migration adds, or a Prisma relation, with no index that starts with its columns, unless the project uses MySQL or MariaDB (which index foreign keys themselves)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
+    id: HYGIENE_RULE_IDS.fieldLimitMismatch,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM) written from a request with no validation bound at or below `n`, a validation bound or pattern that admits more than the column holds, or an OpenAPI or JSON Schema bound that disagrees with the validation of the same field',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
     id: HYGIENE_RULE_IDS.startSchemaPush,
-    check: 'repository-hygiene',
+    check: REPOSITORY_HYGIENE,
     limit:
       'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: PACKAGE_RULE_IDS.unusedDependency,
-    check: 'dead-code',
+    check: DEAD_CODE,
     limit:
       "a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes) that nothing imports or runs",
     enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,
-    check: 'dead-code',
+    check: DEAD_CODE,
     limit:
       "an import of a package that package.json (Python: the project's dependency files; Go: a direct `require` that `go mod tidy` adds) does not list",
     enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unresolvedImport,
-    check: 'dead-code',
+    check: DEAD_CODE,
     limit: 'an import that resolves to no file and no package',
     enforcedBy: TYPESCRIPT_AND_PYTHON,
     notApplicable: { java: IMPORTS_COMPILE, kotlin: IMPORTS_COMPILE, go: GO_RESOLVES_IMPORTS },

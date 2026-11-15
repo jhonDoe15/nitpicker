@@ -1,4 +1,5 @@
 const TRUTHINESS_RULE = 'nitpicker/strict-boolean-expressions';
+const PRESENCE_RULE = 'nitpicker/no-presence-truthiness';
 
 export const truthinessRuleOptions = {
   allowAny: true,
@@ -11,4 +12,7 @@ export const truthinessRuleOptions = {
   allowString: true,
 };
 
-export const truthinessRules = { [TRUTHINESS_RULE]: ['error', truthinessRuleOptions] };
+export const truthinessRules = {
+  [TRUTHINESS_RULE]: ['error', truthinessRuleOptions],
+  [PRESENCE_RULE]: 'error',
+};

@@ -151,6 +151,12 @@ export type PolicyScope = {
         readonly head: ReadonlyMap<string, boolean>;
       }
     | undefined;
+  readonly checkedJavascript?:
+    | {
+        readonly base: ReadonlySet<string>;
+        readonly head: ReadonlySet<string>;
+      }
+    | undefined;
   readonly buildSources?:
     | {
         readonly base: readonly BuildSource[];
@@ -218,6 +224,7 @@ export type ScopeInputs = {
     readonly changed: readonly string[];
   };
   readonly tsconfigs?: PolicyScope['tsconfigs'];
+  readonly checkedJavascript?: PolicyScope['checkedJavascript'];
   readonly buildSources?: PolicyScope['buildSources'];
   readonly toolConfigs?: readonly ToolConfigEntry[];
   readonly reach?: () => ReadonlyMap<string, string>;

@@ -25,7 +25,7 @@ const HONO_TARGETS = {
 };
 const FASTIFY_PARTS = { querystring: 'query string', params: 'path', headers: 'headers' };
 
-function unwrapped(node) {
+export function unwrapped(node) {
   const chain = [node];
   for (const current of chain) {
     if (
@@ -39,7 +39,7 @@ function unwrapped(node) {
   return chain.at(-1);
 }
 
-function isRequest(node) {
+export function isRequest(node) {
   if (ts.isIdentifier(node)) {
     return REQUEST_NAMES.has(node.text);
   }
@@ -56,7 +56,7 @@ function honoAccessor(node) {
     : undefined;
 }
 
-function transportSource(expression) {
+export function transportSource(expression) {
   const node = expression === undefined ? undefined : unwrapped(expression);
   if (node === undefined) {
     return undefined;
@@ -67,7 +67,7 @@ function transportSource(expression) {
   return ts.isCallExpression(node) ? honoAccessor(node) : undefined;
 }
 
-function calleeName(call) {
+export function calleeName(call) {
   const callee = call.expression;
   if (ts.isPropertyAccessExpression(callee)) {
     return callee.name.text;

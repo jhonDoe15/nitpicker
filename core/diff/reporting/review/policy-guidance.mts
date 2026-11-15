@@ -59,6 +59,10 @@ export const POLICY_GUIDANCE = {
     'JavaScript files this tsconfig covers are no longer type-checked.',
     'Set checkJs back to true.',
   ].join(' '),
+  'checked-js-scope': [
+    'These JavaScript files lose the type-aware unsafe-value checks because their tsconfig coverage narrowed.',
+    'Restore their checked config coverage, or have a person confirm the weaker checks.',
+  ].join(' '),
   'build-roots': [
     'The build file no longer includes this checked code, so the build and the checks that need it skip the code.',
     'Restore the directory in the build file.',

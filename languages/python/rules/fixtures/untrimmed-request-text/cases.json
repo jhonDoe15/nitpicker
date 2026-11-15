@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "untrimmed-request-text",
+    "mention": "strip()"
+  }
+]

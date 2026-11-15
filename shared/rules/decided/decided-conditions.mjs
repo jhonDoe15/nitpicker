@@ -8,6 +8,10 @@ const OUTCOMES = {
     consequence: ', so the code it guards never runs',
     fix: 'Remove it, or fix the condition that was meant.',
   },
+  value: {
+    consequence: '',
+    fix: 'Write the constant (`true` or `false`), or fix the test that was meant.',
+  },
   operand: { consequence: '', fix: 'Remove the operand, or fix the condition that was meant.' },
 };
 
@@ -25,7 +29,7 @@ function unitFindings(unit, analyzerName) {
         identity: `decided-condition:${base}#${String(count)}`,
         symbol: unit.name,
         line: node.start,
-        values: { condition, verdict, reason, ...OUTCOMES[part === 'operand' ? part : verdict] },
+        values: { condition, verdict, reason, ...OUTCOMES[part === 'condition' ? verdict : part] },
       });
     },
   );
