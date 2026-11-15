@@ -8,7 +8,7 @@ import {
 } from './python-size.mts';
 import type { ClassEntry, PythonModule } from '../analysis/typed/python-graph-types.mts';
 import type { DepthOptions } from './typed/size-types.mts';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

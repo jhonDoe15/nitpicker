@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { yamlDocuments } from '../../../core/tooling/yaml/yaml-documents.mjs';
 import { trackedFiles } from '../tracked-files.mjs';
 import { fieldLimitFindings } from './field-limits.mjs';

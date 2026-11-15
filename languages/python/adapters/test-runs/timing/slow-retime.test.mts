@@ -3,8 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { rerunCommand, retimeSlowTests } from './slow-retime.mjs';
 import { readSlowTestFindings } from '../../typed/report/report-views.mts';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

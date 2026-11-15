@@ -3,8 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { writeMutmutConfig } from './mutmut-config.mjs';
 import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mts';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 type Context = { readonly projectRoot: string; readonly [field: string]: unknown };
 

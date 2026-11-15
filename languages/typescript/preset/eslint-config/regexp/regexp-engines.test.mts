@@ -1,7 +1,10 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createProject, lintProject } from '../typed/oxlint/oxlint-views.mts';
+import {
+  createProject,
+  lintProject,
+} from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { regexpRules } from './regexp-rules.mjs';
 import { regexpRuleCases } from './test-support/regexp-cases.mts';
 

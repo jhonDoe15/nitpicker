@@ -1,5 +1,5 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from '../../test-runs/test-step.mjs';

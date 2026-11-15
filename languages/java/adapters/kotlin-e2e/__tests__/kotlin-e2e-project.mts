@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { runJavaDiff as untypedRunJavaDiff } from '../../java-diff.mjs';
-import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 
 export const kotlinE2eEnabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 

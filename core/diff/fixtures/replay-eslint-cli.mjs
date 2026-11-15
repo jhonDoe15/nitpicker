@@ -18,7 +18,7 @@ import {
   installedVersions,
   sameKey,
   snapshotKey,
-} from '../tests/analysis/eslint/test-support/eslint-recording-key.mjs';
+} from '../tests/analysis/eslint/test-support/eslint-recording-key.mts';
 
 const projectRoot = process.cwd();
 const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');

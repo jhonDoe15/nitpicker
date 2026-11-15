@@ -1,12 +1,12 @@
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mts';
 import { projectFilePaths, projectFilesUnder } from './project-files.mjs';
 import {
   relativeTo,
   useProjectFixtures,
-} from '../../core/diff/git/test-support/projects/project-fixtures.mjs';
+} from '../../core/diff/git/test-support/projects/project-fixtures.mts';
 
 const { gitProject, outsideGit } = useProjectFixtures();
 

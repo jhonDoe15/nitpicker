@@ -1,6 +1,6 @@
 import type { Finding } from '../../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../../shared/values/readers.mts';
-import { loadConfig as untypedLoadConfig } from '../../../../../../core/configuration/config.mjs';
+import { loadConfig as untypedLoadConfig } from '../../../../../../core/configuration/config.mts';
 import { readEffectsFindings as untypedReadEffectsFindings } from '../../../effects/effects-findings.mjs';
 import { effectsSummary as untypedEffectsSummary } from '../../../effects/test-support/effects-projects.mjs';
 import {
