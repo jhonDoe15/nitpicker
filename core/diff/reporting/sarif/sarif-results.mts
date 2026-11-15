@@ -4,7 +4,7 @@ import { plainText } from '../../../../shared/reference/facts.mjs';
 import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mjs';
 import { repositoryFindingPath } from '../../git/paths.mjs';
 import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
-import { sarifFixes } from './sarif-fixes.mjs';
+import { sarifFixes } from './sarif-fixes.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { type LabelsOf, findingLabeler } from '../../../labels/finding-labels.mts';
 import { areaOf } from '../format/rule-groups/finding-areas.mts';

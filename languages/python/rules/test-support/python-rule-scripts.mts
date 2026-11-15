@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { createToolContext } from '../../adapters/python-tools.mjs';
 
 export type RuleEntry = {

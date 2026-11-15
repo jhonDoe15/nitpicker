@@ -1,8 +1,8 @@
 import {
-  fixtureGit as untypedFixtureGit,
-  useGitFixtures as untypedUseGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles as untypedWriteFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+  fixtureGit,
+  useGitFixtures,
+} from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { directWriter as untypedDirectWriter } from '../../../../core/fix/engine/writer.mjs';
 import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../preset/head-policy.mjs';
 import { resolveLayoutFor as untypedResolveLayoutFor } from '../../preset/layout.mjs';
@@ -12,27 +12,13 @@ import type { FixInvocation, FixWriter } from '../../../../core/fix/typed/fix-ty
 import type { Layout } from '../typed/fix-views.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
-type HeadPolicy = { readonly tools?: { readonly knip?: unknown } };
-
 type Files = Readonly<Record<string, string>>;
 
-type GitRepository = { readonly root: string; readonly baseSha: string; readonly baseRef: string };
+type GitRepository = ReturnType<ReturnType<typeof useGitFixtures>['createGitRepository']>;
 
-export const fixtureGit: (
-  repositoryRoot: string,
-  arguments_: readonly string[],
-  options?: { readonly input?: string },
-) => string = untypedFixtureGit;
+export { fixtureGit, useGitFixtures, writeFiles };
 
-export const writeFiles: (root: string, files: Files) => void = untypedWriteFiles;
-
-export const useGitFixtures: () => {
-  readonly temporaryRoot: (prefix: string) => string;
-  readonly createGitRepository: (
-    files: Files,
-    options: { readonly prefix?: string; readonly baseRef: string },
-  ) => GitRepository;
-} = untypedUseGitFixtures;
+type HeadPolicy = { readonly tools?: { readonly knip?: unknown } };
 
 export const directWriter: (projectRoot: string) => FixWriter = untypedDirectWriter;
 

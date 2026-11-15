@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { ALL_RECIPES } from '../fix/engine/all-recipes.mjs';
+import { ALL_RECIPES } from '../fix/engine/all-recipes.mts';
 import { fixWorkingTree } from '../fix/run-fix.mts';
 import type { FixInvocation, FixOutcome } from '../fix/typed/fix-types.mts';
 import { runGit } from '../diff/git/repository/command.mjs';

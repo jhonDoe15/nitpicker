@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mjs';
+import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mts';
 import { spawnSyncWithOutputFile } from '../../../tooling/output-file/output-file.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
@@ -24,7 +24,7 @@ const spawnCollected: (command: string, args: readonly string[], options: object
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const parseJson: (text: string) => unknown = JSON.parse;
 
-const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
+const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 

@@ -3,9 +3,9 @@ import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { pytestStyle, pytestStyleFlags } from './pytest-style.mjs';
 
 const { gitCheckout } = useGitCheckouts();

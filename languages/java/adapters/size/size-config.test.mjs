@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../core/configuration/validate.mts';
 
 describe('size limits in the config', () => {
   const exception = { paths: ['src/main/**'], reason: 'Generated mapping' };

@@ -77,7 +77,7 @@ export function sourcesElsewhere(projectRoot: string, layout: Layout): string {
 }
 
 export function emptySourcesMessage(
-  config: { preset?: string },
+  config: { preset?: string | undefined },
   projectRoot: string,
   headPolicy: unknown,
 ): string | undefined {
@@ -101,7 +101,7 @@ export function emptySourcesMessage(
 }
 
 export function emptySourcesErrors(
-  config: { preset?: string },
+  config: { preset?: string | undefined },
   projectRoot: string,
   { headPolicy, analyzerNames }: { headPolicy: unknown; analyzerNames?: readonly string[] },
 ): EmptySourcesError[] {
