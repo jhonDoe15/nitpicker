@@ -4,10 +4,10 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compareText } from '../../../../../shared/paths/path-order.mjs';
 import { runDeadCode } from '../runners/repository.mts';
-import { nestedPackageFolders, publishedSourceEntries } from './package-entries.mjs';
+import { nestedPackageFolders, publishedSourceEntries } from './package-entries.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
-let directories;
+let directories: string[];
 
 beforeEach(() => {
   directories = [];
@@ -18,14 +18,14 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Readonly<Record<string, unknown>>) {
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), typeof text === 'string' ? text : JSON.stringify(text));
   }
 }
 
-function project(files) {
+function project(files: Readonly<Record<string, unknown>>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-package-entries-'));
   directories.push(root);
   symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
@@ -33,7 +33,7 @@ function project(files) {
   return root;
 }
 
-function unusedFiles(root, layout = { sourceRoots: ['src'] }) {
+function unusedFiles(root: string, layout: { sourceRoots: string[] } = { sourceRoots: ['src'] }) {
   const policyFile = path.join(root, '.nitpicker-test-policy.json');
   writeFileSync(
     policyFile,
@@ -42,10 +42,18 @@ function unusedFiles(root, layout = { sourceRoots: ['src'] }) {
   vi.stubEnv('NITPICKER_POLICY', policyFile);
   return runDeadCode({
     projectRoot: root,
+    projectPolicyRoot: packageRoot,
     policyRoot: packageRoot,
+    toolRoot: packageRoot,
     liveProjectRoot: packageRoot,
     analyzerName: 'dead-code',
     kind: 'dead-code',
+    snapshot: 'head',
+    legacyInventory: '',
+    crapScoreLimit: 0,
+    baselineRoot: undefined,
+    baselineMovesFile: undefined,
+    mutationScope: undefined,
   })
     .filter(({ rule }) => rule === 'files')
     .map(({ path: file }) => file)
