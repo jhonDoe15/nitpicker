@@ -113,9 +113,10 @@ function useOf(scanned, source) {
 }
 
 export function httpValues(scanned) {
-  const reported = httpSources(scanned)
-    .map((source) => ({ rule: useOf(scanned, source), offset: source.from }))
-    .filter(({ rule }) => rule !== undefined);
+  const reported = httpSources(scanned).flatMap((source) => {
+    const rule = useOf(scanned, source);
+    return rule === undefined ? [] : [{ rule, offset: source.from }];
+  });
   return [...reported, ...cookiePrefixes(scanned), ...extensionLookups(scanned)];
 }
 
