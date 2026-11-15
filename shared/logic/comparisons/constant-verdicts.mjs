@@ -1,9 +1,13 @@
-export const RELATIONS = new Map([
+const RELATIONS = new Map([
   ['<', (value, constant) => value < constant],
   ['<=', (value, constant) => value <= constant],
   ['>', (value, constant) => value > constant],
   ['>=', (value, constant) => value >= constant],
 ]);
+export function isRelation(operator) {
+  return RELATIONS.has(operator);
+}
+
 const POLARITIES = new Map([
   ['===', true],
   ['==', true],
