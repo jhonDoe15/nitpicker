@@ -1,4 +1,5 @@
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf } from '../../typed/node-views.mts';
 import {
   attributeNamed,
   isButtonLikeInputType,
@@ -6,11 +7,13 @@ import {
   isFieldElement,
   hasSpread,
   literalValueOf,
-} from '../jsx.mjs';
+} from '../jsx.mts';
+
+type LabelTargets = { readonly ids: Set<string>; dynamic: boolean };
 
 const ariaLabels = ['aria-label', 'aria-labelledby'];
 
-function isButtonLike(opening) {
+function isButtonLike(opening: TSESTree.JSXOpeningElement): boolean {
   return (
     elementName(opening) === 'input' &&
     isButtonLikeInputType(literalValueOf(attributeNamed(opening, 'type')))
@@ -19,19 +22,21 @@ function isButtonLike(opening) {
 
 const labelComponent = /^[A-Z]\w*Label$|^Label$/u;
 
-function isLabelElement(opening) {
+function isLabelElement(opening: TSESTree.JSXOpeningElement): boolean {
   const { name } = opening;
-  const lastName = name.type === 'JSXMemberExpression' ? name.property.name : elementName(opening);
+  const lastName =
+    name.type === AST_NODE_TYPES.JSXMemberExpression ? name.property.name : elementName(opening);
   return lastName === 'label' || (lastName !== undefined && labelComponent.test(lastName));
 }
 
-function isInsideLabel(opening) {
+function isInsideLabel(opening: TSESTree.JSXOpeningElement): boolean {
   return ancestorsOf(opening).some(
-    (ancestor) => ancestor.type === 'JSXElement' && isLabelElement(ancestor.openingElement),
+    (ancestor) =>
+      ancestor.type === AST_NODE_TYPES.JSXElement && isLabelElement(ancestor.openingElement),
   );
 }
 
-function idPointedTo(opening, labelTargets) {
+function idPointedTo(opening: TSESTree.JSXOpeningElement, labelTargets: LabelTargets): boolean {
   const id = attributeNamed(opening, 'id');
   if (id === undefined) {
     return false;
@@ -40,7 +45,7 @@ function idPointedTo(opening, labelTargets) {
   return typeof value !== 'string' || labelTargets.dynamic || labelTargets.ids.has(value);
 }
 
-function isLabelled(opening, labelTargets) {
+function isLabelled(opening: TSESTree.JSXOpeningElement, labelTargets: LabelTargets): boolean {
   return (
     hasSpread(opening) ||
     isButtonLike(opening) ||
@@ -50,7 +55,7 @@ function isLabelled(opening, labelTargets) {
   );
 }
 
-function recordLabelTarget(opening, labelTargets) {
+function recordLabelTarget(opening: TSESTree.JSXOpeningElement, labelTargets: LabelTargets): void {
   const htmlFor = attributeNamed(opening, 'htmlFor');
   if (htmlFor === undefined) {
     return;
@@ -63,7 +68,7 @@ function recordLabelTarget(opening, labelTargets) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'unlabelled'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -76,10 +81,10 @@ export const rule = {
     },
   },
   create(context) {
-    const fieldsToCheck = [];
-    const labelTargets = { ids: new Set(), dynamic: false };
+    const fieldsToCheck: TSESTree.JSXOpeningElement[] = [];
+    const labelTargets: LabelTargets = { ids: new Set(), dynamic: false };
     return {
-      JSXOpeningElement(node) {
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
         recordLabelTarget(node, labelTargets);
         if (isFieldElement(elementName(node))) {
           fieldsToCheck.push(node);
