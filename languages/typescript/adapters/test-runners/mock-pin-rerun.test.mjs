@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PICK_SOURCE, createRunnerProjects, runArea } from './test-support/runner-project.mjs';
+import { PICK_SOURCE, createRunnerProjects, runArea } from './test-support/runner-project.mts';
 
 const projects = createRunnerProjects();
 

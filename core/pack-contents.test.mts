@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -13,9 +14,16 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fieldAt } from '../scripts/json/fields.mts';
 import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
+import { PAGE_IDS as UNTYPED_PAGE_IDS } from '../shared/reference/pages.mjs';
+import { REFERENCE_DATA_DIRECTORY as UNTYPED_DATA_DIRECTORY } from '../shared/reference/store.mjs';
 import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
 
 const root: string = untypedPackageRoot;
+const PAGE_IDS: readonly string[] = UNTYPED_PAGE_IDS;
+const REFERENCE_DATA_DIRECTORY: string = UNTYPED_DATA_DIRECTORY;
+const EMIT = 'scripts/typescript/emit.mjs';
+const RULE_DATA = PAGE_IDS.map((id) => `${REFERENCE_DATA_DIRECTORY}/${id}.json`);
+const PREPACK = `node ${EMIT} && node scripts/reference/gen-rules.mjs --data`;
 
 const TEST_ONLY_PATH =
   /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.m[jt]s$|_test\.go$|\.pyc$/u;
@@ -61,6 +69,10 @@ function assertRuntimeFiles(files: ReadonlySet<string>): void {
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 
 function checkoutCopy(): string {
+  const missing = RULE_DATA.filter((file) => !existsSync(path.join(root, file)));
+  if (missing.length > 0) {
+    throw new Error(`${missing.join(', ')} missing: run npm run gen:rules -- --data`);
+  }
   const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-pack-contents-'));
   const files = execFileSync(
     'git',
@@ -77,31 +89,38 @@ function checkoutCopy(): string {
   for (const file of files) {
     cpSync(path.join(root, file), path.join(copy, file));
   }
+  for (const file of RULE_DATA) {
+    cpSync(path.join(root, file), path.join(copy, file));
+  }
   symlinkSync(path.join(root, 'node_modules'), path.join(copy, 'node_modules'), 'junction');
   return copy;
 }
 
 describe('npm package contents', () => {
   let packedFiles: ReadonlySet<string>;
-  let copy: string;
+  let copy: string | undefined;
 
   afterAll(() => {
-    rmSync(copy, { recursive: true, force: true });
+    if (copy !== undefined) {
+      rmSync(copy, { recursive: true, force: true });
+    }
   });
 
   beforeAll(() => {
     let listing: unknown;
-    copy = checkoutCopy();
+    const packed = checkoutCopy();
+    copy = packed;
     try {
+      execFileSync(process.execPath, [EMIT], { cwd: packed, stdio: 'pipe', timeout: 120_000 });
       listing = parseJson(
-        execFileSync('npm', ['pack', '--dry-run', '--json'], {
-          cwd: copy,
+        execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+          cwd: packed,
           encoding: 'utf8',
           timeout: 120_000,
         }),
       );
     } catch (error) {
-      throw new Error('npm pack did not return a valid listing', {
+      throw new Error('Building the npm pack listing failed', {
         cause: error,
       });
     }
@@ -111,6 +130,13 @@ describe('npm package contents', () => {
     );
   });
 
+  it('replays prepack: the emit runs in the copy, the rule data comes from the global setup', () => {
+    const manifest = parseJson(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(
+      fieldAt(manifest, 'scripts', 'prepack'),
+      'replay new prepack steps in the listing hook',
+    ).toBe(PREPACK);
+  });
   it('fails when a runtime file is omitted from files', () => {
     const files = new Set(['package.json']);
     expect(() => {
