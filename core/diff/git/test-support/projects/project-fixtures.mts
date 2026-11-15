@@ -1,10 +1,9 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { type FileMap, writeFiles } from '../fixture-files.mts';
-import { fixtureGit } from '../git-repository.mts';
+import { fixtureGit, useGitFixtures } from '../git-repository.mts';
 
 const LONG_AGO = new Date('2020-01-01T00:00:00Z');
 
@@ -31,19 +30,14 @@ export function useProjectFixtures(): {
   ) => string;
   readonly tracedGit: (traceFile: string) => void;
 } {
-  const roots: string[] = [];
+  const git = useGitFixtures();
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
   });
 
-  function temporaryRoot() {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-files-'));
-    roots.push(root);
-    return root;
+  function temporaryRoot(): string {
+    return git.temporaryRoot('nitpicker-project-files-');
   }
 
   function outsideGit(files: FileMap): string {
