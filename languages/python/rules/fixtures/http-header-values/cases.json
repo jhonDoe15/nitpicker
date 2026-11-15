@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "http-value-case",
+    "mention": "casefold"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "hand-split-http-header",
+    "mention": "parse_options_header"
+  }
+]

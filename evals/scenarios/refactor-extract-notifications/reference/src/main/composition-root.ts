@@ -1,7 +1,7 @@
+import { chooseChannel, formatDate, formatMoney } from './features/notifications/index.js';
 import type { Message } from './features/notifications/index.js';
 import { orderReceipt, orderReminder } from './features/orders/index.js';
 import { subscriptionReceipt, subscriptionReminder } from './features/subscriptions/index.js';
-export { chooseChannel } from './features/notifications/index.js';
 
 type Order = Parameters<typeof orderReceipt>[0];
 type Customer = Parameters<typeof orderReceipt>[1];
@@ -125,4 +125,16 @@ export function subscriptionsMain(now: string): void {
     deliver(subscriptionReceipt(subscription, subscriber, now));
     deliver(subscriptionReminder(subscription, subscriber, now));
   }
+}
+
+export function deliveryPlanMain(now: string): void {
+  const recipients: readonly Customer[] = [ada, grace, alan, hopper, linus];
+  const channels = recipients.map(
+    (recipient) => `${recipient.name}: ${chooseChannel(recipient, now)}\n`,
+  );
+  const dues = orders.map(
+    ({ order, customer }) =>
+      `${order.id}: due ${formatDate(order.payBy, customer.utcOffsetMinutes)}, shipping ${formatMoney(order.shippingCents)}\n`,
+  );
+  process.stdout.write([...channels, ...dues].join(''));
 }

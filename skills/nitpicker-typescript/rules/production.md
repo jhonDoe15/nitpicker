@@ -89,6 +89,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `z.stringbool()`, `@Type(() => Number)` with class-validator, `@Transform(({ value }) => value === 'true')`
   for a boolean, `ParseIntPipe`/`ParseBoolPipe` on a single NestJS parameter. Never `z.coerce.boolean()`
   or `@Type(() => Boolean)`: they turn `"false"` into true (`nitpicker/no-uncoerced-request-input`).
+- In a server project, text from a search or filter field is trimmed once before it reaches a lookup:
+  `req.query.q?.trim()`, a zod `.trim()` schema, `@Transform(({ value }) => value.trim())` on the DTO field,
+  or one global pipe or middleware that trims every string; a padded `" Davis"` finds nothing
+  (`nitpicker/no-untrimmed-request-text`).
 - Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
@@ -102,6 +106,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
+- Give every field written from a request a validation bound at or below its column width (`z.string().max(30)`,
+  `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
@@ -131,6 +138,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
   before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
   `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
+- Compare HTTP text case-insensitively and parse structured headers: lowercase a header value, media
+  type, charset, scheme, cookie name or file extension (`value.toLowerCase()`) before comparing it, and
+  parse `Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match` and `Cookie` with the `content-type`,
+  `negotiator`, `accepts` or `cookie` package or the framework's own helper instead of `split(',')` or
+  `split(';')` (`nitpicker/no-raw-http-value`). Header names read with `Headers.get`, `req.header` or
+  `req.get` ignore case already; a library that is itself the parser takes an exception.
 - Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
   `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
   shared folder under such a name (`nitpicker/no-generic-name`).

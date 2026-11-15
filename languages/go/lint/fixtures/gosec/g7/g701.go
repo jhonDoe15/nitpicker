@@ -3,6 +3,7 @@ package g7
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 )
 
 func Injected(db *sql.DB, request *http.Request) (*sql.Rows, error) {
@@ -12,6 +13,6 @@ func Injected(db *sql.DB, request *http.Request) (*sql.Rows, error) {
 }
 
 func Parameterised(db *sql.DB, request *http.Request) (*sql.Rows, error) {
-	rows, err := db.QueryContext(request.Context(), "SELECT id FROM users WHERE name = $1", request.URL.Query().Get("name"))
+	rows, err := db.QueryContext(request.Context(), "SELECT id FROM users WHERE name = $1", strings.TrimSpace(request.URL.Query().Get("name")))
 	return rows, err
 }

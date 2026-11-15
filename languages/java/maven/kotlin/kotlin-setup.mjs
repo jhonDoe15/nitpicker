@@ -74,6 +74,7 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolcha
 
 export function kotlinSetup({
   projectRoot,
+  mavenRoot = projectRoot,
   policy,
   modules,
   effectivePom,
@@ -92,7 +93,14 @@ export function kotlinSetup({
       'The kotlin preset needs a Maven project that applies kotlin-maven-plugin; this one does not. Use the java preset for its Java sources',
     );
   }
-  const toolchains = { projectRoot, maven, environment, home: homedir(), spawn, timeoutMs };
+  const toolchains = {
+    projectRoot: mavenRoot,
+    maven,
+    environment,
+    home: homedir(),
+    spawn,
+    timeoutMs,
+  };
   const options = resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolchains });
   return { options, extraTools: kotlinTools(pinned, options.formatter) };
 }
