@@ -72,7 +72,7 @@ Part of the [Python preset guide](../python-preset.md).
   copies and virtualenvs are not gated. Node lists the files once per snapshot
   (`python-files.txt`) and hands the list to the metrics script. Tests are
   outside the default source roots, so they are not gated.
-- **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
+- **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mts` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
   per-function metrics are not emitted). Identity: qualified name, occurrence among the functions of that name and the same text
   that are over the same limit (so a property getter and setter, or a function defined in two
