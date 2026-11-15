@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
-import { configuredRuleTester } from './test-support/rule-tester.mts';
-import { rule as noComments } from './rules/modules/no-comments.mjs';
-import { withoutFixes } from '../eslint-config/rule-hints.mjs';
+import { configuredRuleTester, ruleModule } from './test-support/rule-tester.mts';
+import { rule as noComments } from './rules/modules/no-comments.mts';
+import { withoutFixes } from '../eslint-config/rule-hints.mts';
 
 const ruleTester = configuredRuleTester({
   languageOptions: {
@@ -11,7 +11,7 @@ const ruleTester = configuredRuleTester({
   },
 });
 
-ruleTester.run('no-comments', withoutFixes(noComments), {
+ruleTester.run('no-comments', withoutFixes(ruleModule(noComments)), {
   valid: [
     { code: '/** Parses a date. */\nexport function parse(text: string) { return text; }' },
     { code: '/** The default port. */\nexport const port = 80;' },
@@ -164,7 +164,7 @@ ruleTester.run('no-comments', withoutFixes(noComments), {
 
 const suppressionsOnly = [{ suppressionsOnly: true }];
 
-ruleTester.run('no-comments, suppression comments only', withoutFixes(noComments), {
+ruleTester.run('no-comments, suppression comments only', withoutFixes(ruleModule(noComments)), {
   valid: [
     { code: "// the order matters here\nit('x', () => {});", options: suppressionsOnly },
     { code: '/** Builds a user. */\nfunction build() { return 1; }', options: suppressionsOnly },
