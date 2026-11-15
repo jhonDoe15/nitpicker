@@ -1,8 +1,16 @@
-import { isFixedCollection } from '../collections/fixed-collections.mjs';
-import { skipped } from '../io-origin.mjs';
-import { mappings, workerOf } from '../sites.mjs';
-import { TARGETS, lazyScope, remoteIn, viaText } from '../unbounded-fan-out.mjs';
-import { isUnlimited, pipeSource, rxjsName } from './rxjs-calls.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { Context } from '../../security/security-values.mts';
+import { isFixedCollection } from '../collections/fixed-collections.mts';
+import { skipped } from '../io-origin.mts';
+import { mappings, workerOf, type Site } from '../sites.mts';
+import { TARGETS, lazyScope, remoteIn, viaText, type FanOutScope } from '../unbounded-fan-out.mts';
+import { isUnlimited, pipeSource, rxjsName } from './rxjs-calls.mts';
+
+type Group = {
+  readonly form: 'operator' | 'combinator';
+  readonly operator: string;
+  readonly sites: readonly Site[];
+};
 
 const MAX_TEXT = 50;
 const OPERATORS = new Set(['mergeMap', 'flatMap']);
@@ -11,15 +19,25 @@ const EXCEPTION = 'An exception fits only when the collection is always small.';
 const CONSEQUENCE =
   "at once, so a large collection exhausts the {{target}}'s connections or rate limit.";
 
-function mappedBefore(context, call, collection) {
-  const operators = call.parent.arguments;
+function mappedBefore(
+  context: Context,
+  call: TSESTree.CallExpression,
+  collection: TSESTree.Node,
+): Site[] {
+  const pipe = call.parent;
+  if (pipe.type !== AST_NODE_TYPES.CallExpression) {
+    return [];
+  }
+  const operators = pipe.arguments;
   const previous = operators[operators.indexOf(call) - 1];
-  const isMap = previous?.type === 'CallExpression' && rxjsName(context, previous.callee) === 'map';
+  const isMap =
+    previous?.type === AST_NODE_TYPES.CallExpression &&
+    rxjsName(context, previous.callee) === 'map';
   const worker = isMap ? workerOf(context, previous.arguments[0]) : undefined;
   return worker === undefined ? [] : [{ collection, worker }];
 }
 
-function operatorSites(context, call, name) {
+function operatorSites(context: Context, call: TSESTree.CallExpression, name: string): Site[] {
   if (name === 'mergeAll') {
     const source = call.arguments.length === 0 ? pipeSource(context, call) : undefined;
     return source === undefined
@@ -30,30 +48,38 @@ function operatorSites(context, call, name) {
   const limit = rest.find((argument) => !isUnlimited(context, argument));
   const worker = limit === undefined ? workerOf(context, project) : undefined;
   const collection = worker === undefined ? undefined : pipeSource(context, call);
-  return collection === undefined ? [] : [{ collection, worker }];
+  return worker === undefined || collection === undefined ? [] : [{ collection, worker }];
 }
 
-function lastLimits(context, name, args) {
+function lastLimits(
+  context: Context,
+  name: string,
+  args: TSESTree.CallExpression['arguments'],
+): boolean {
   const last = args.at(-1);
   return (
     name === 'merge' &&
     args.length > 1 &&
-    last.type !== 'SpreadElement' &&
+    last !== undefined &&
+    last.type !== AST_NODE_TYPES.SpreadElement &&
     !isUnlimited(context, last)
   );
 }
 
-function combinatorSites(context, call, name) {
+function combinatorSites(context: Context, call: TSESTree.CallExpression, name: string): Site[] {
   if (lastLimits(context, name, call.arguments)) {
     return [];
   }
   return call.arguments.flatMap((argument) =>
-    mappings(context, argument.type === 'SpreadElement' ? argument.argument : argument),
+    mappings(
+      context,
+      argument.type === AST_NODE_TYPES.SpreadElement ? argument.argument : argument,
+    ),
   );
 }
 
-function sitesOf(context, call) {
-  const name = rxjsName(context, call.callee);
+function sitesOf(context: Context, call: TSESTree.CallExpression): Group | undefined {
+  const name = rxjsName(context, call.callee) ?? '';
   if (OPERATORS.has(name) || name === 'mergeAll') {
     return { form: 'operator', operator: name, sites: operatorSites(context, call, name) };
   }
@@ -62,13 +88,16 @@ function sitesOf(context, call) {
     : undefined;
 }
 
-function report(scope, group) {
+function report(
+  scope: FanOutScope,
+  group: Group & { readonly node: TSESTree.CallExpression },
+): void {
   const { context } = scope;
   const reported = new Set();
   for (const { collection, worker } of group.sites) {
     const found = remoteIn(scope, worker);
     const text = context.sourceCode.getText(skipped(collection));
-    const key = `${found?.operation}|${text}`;
+    const key = `${String(found?.operation)}|${text}`;
     if (found === undefined || reported.has(key) || isFixedCollection(context, collection)) {
       continue;
     }
@@ -87,7 +116,7 @@ function report(scope, group) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'operator' | 'combinator'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Bound the concurrency of remote calls that RxJS subscribes per element' },

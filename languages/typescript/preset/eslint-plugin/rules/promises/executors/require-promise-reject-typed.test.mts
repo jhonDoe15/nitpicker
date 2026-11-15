@@ -1,6 +1,6 @@
 import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
-import { rule as deadlineRule } from './promise-wait-deadline.mjs';
-import { rule } from './require-promise-reject.mjs';
+import { rule as deadlineRule } from './promise-wait-deadline.mts';
+import { rule } from './require-promise-reject.mts';
 
 const PRELUDE = [
   'interface ErrnoException extends Error { code?: string }',

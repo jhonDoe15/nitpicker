@@ -8,10 +8,17 @@ import {
   NODE_FETCH_MODULES,
   OFETCH_MODULES,
   UNDICI_MODULES,
-} from '../security/http/http-modules.mjs';
+} from '../security/http/http-modules.mts';
+import type { ClientSpec } from './io-origin.mts';
 
+const REMOTE = 'remote';
+const REQUEST = 'request';
+const MESSAGE = 'message';
+const DEFAULT = 'default';
+const PUBLISH = 'publish';
+const CONNECT = 'connect';
 const HTTP_METHODS = [
-  'request',
+  REQUEST,
   'get',
   'delete',
   'head',
@@ -25,14 +32,16 @@ const HTTP_METHODS = [
 ];
 const BODY_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head'];
 const FETCH_FUNCTIONS = ['fetch', 'ofetch', '$fetch'];
-const REDIS_PUBLISH = ['publish', 'spublish', 'sPublish'];
+const REDIS_PUBLISH = [PUBLISH, 'spublish', 'sPublish'];
 const MESSAGE_SERVICES = /client-(?:sqs|sns|eventbridge|kinesis|firehose)$/u;
 const DATABASE_SERVICES = /client-dynamodb$/u;
 
-function client(kind, spec) {
+function client(kind: ClientSpec['kind'], spec: Partial<ClientSpec>): ClientSpec {
   return {
     kind,
-    methods: new Set(),
+    callable: false,
+    deep: false,
+    methods: new Set<string>(),
     makers: new Set(),
     types: new Set(),
     functions: new Set(),
@@ -41,19 +50,19 @@ function client(kind, spec) {
   };
 }
 
-const SPECS = new Map([
-  ...AXIOS_MODULES.map((name) => [
+const SPECS = new Map<string, ClientSpec>([
+  ...AXIOS_MODULES.map((name): [string, ClientSpec] => [
     name,
-    client('remote', {
+    client(REMOTE, {
       callable: true,
       methods: new Set(HTTP_METHODS),
       makers: new Set(['create']),
       types: new Set(['AxiosInstance', 'AxiosStatic']),
     }),
   ]),
-  ...GOT_MODULES.map((name) => [
+  ...GOT_MODULES.map((name): [string, ClientSpec] => [
     name,
-    client('remote', {
+    client(REMOTE, {
       callable: true,
       methods: new Set([...GOT_METHODS, 'paginate']),
       makers: new Set(['extend']),
@@ -62,7 +71,7 @@ const SPECS = new Map([
   ]),
   [
     'ky',
-    client('remote', {
+    client(REMOTE, {
       callable: true,
       methods: new Set(BODY_METHODS),
       makers: new Set(['create', 'extend']),
@@ -71,40 +80,40 @@ const SPECS = new Map([
   ],
   [
     'superagent',
-    client('remote', {
+    client(REMOTE, {
       callable: true,
       methods: new Set(BODY_METHODS),
       makers: new Set(['agent']),
     }),
   ],
-  ['needle', client('remote', { callable: true, methods: new Set([...BODY_METHODS, 'request']) })],
-  ...UNDICI_MODULES.map((name) => [
+  ['needle', client(REMOTE, { callable: true, methods: new Set([...BODY_METHODS, REQUEST]) })],
+  ...UNDICI_MODULES.map((name): [string, ClientSpec] => [
     name,
-    client('remote', {
-      functions: new Set(['fetch', 'request', 'stream']),
-      methods: new Set(['request', 'stream']),
+    client(REMOTE, {
+      functions: new Set(['fetch', REQUEST, 'stream']),
+      methods: new Set([REQUEST, 'stream']),
       makers: new Set(['Client', 'Pool', 'Agent']),
       types: new Set(['Dispatcher']),
     }),
   ]),
   [
     '@nestjs/axios',
-    client('remote', {
-      methods: new Set(BODY_METHODS.concat('request')),
+    client(REMOTE, {
+      methods: new Set(BODY_METHODS.concat(REQUEST)),
       makers: new Set(['HttpService']),
       types: new Set(['HttpService']),
     }),
   ],
   [
     '@angular/common/http',
-    client('remote', {
-      methods: new Set([...BODY_METHODS, 'options', 'request', 'jsonp']),
+    client(REMOTE, {
+      methods: new Set([...BODY_METHODS, 'options', REQUEST, 'jsonp']),
       types: new Set(['HttpClient']),
     }),
   ],
   [
     'rxjs/ajax',
-    client('remote', {
+    client(REMOTE, {
       callable: true,
       functions: new Set(['ajax']),
       methods: new Set([...BODY_METHODS, 'getJSON']),
@@ -112,33 +121,24 @@ const SPECS = new Map([
   ],
   [
     'graphql-request',
-    client('remote', {
-      functions: new Set(['request', 'rawRequest']),
-      methods: new Set(['request', 'rawRequest']),
+    client(REMOTE, {
+      functions: new Set([REQUEST, 'rawRequest']),
+      methods: new Set([REQUEST, 'rawRequest']),
       makers: new Set(['GraphQLClient']),
     }),
   ],
-  [
-    'openai',
-    client('remote', { methods: '*', deep: true, makers: new Set(['default', 'OpenAI']) }),
-  ],
+  ['openai', client(REMOTE, { methods: '*', deep: true, makers: new Set([DEFAULT, 'OpenAI']) })],
   [
     '@anthropic-ai/sdk',
-    client('remote', { methods: '*', deep: true, makers: new Set(['default', 'Anthropic']) }),
+    client(REMOTE, { methods: '*', deep: true, makers: new Set([DEFAULT, 'Anthropic']) }),
   ],
-  [
-    'stripe',
-    client('remote', { methods: '*', deep: true, makers: new Set(['default', 'Stripe']) }),
-  ],
-  ['@octokit/rest', client('remote', { methods: '*', deep: true, makers: new Set(['Octokit']) })],
-  ['octokit', client('remote', { methods: '*', deep: true, makers: new Set(['Octokit']) })],
-  [
-    '@slack/web-api',
-    client('remote', { methods: '*', deep: true, makers: new Set(['WebClient']) }),
-  ],
+  ['stripe', client(REMOTE, { methods: '*', deep: true, makers: new Set([DEFAULT, 'Stripe']) })],
+  ['@octokit/rest', client(REMOTE, { methods: '*', deep: true, makers: new Set(['Octokit']) })],
+  ['octokit', client(REMOTE, { methods: '*', deep: true, makers: new Set(['Octokit']) })],
+  ['@slack/web-api', client(REMOTE, { methods: '*', deep: true, makers: new Set(['WebClient']) })],
   [
     'kafkajs',
-    client('message', {
+    client(MESSAGE, {
       methods: new Set(['send', 'sendBatch']),
       makers: new Set(['Kafka']),
       derivers: new Set(['producer']),
@@ -147,34 +147,34 @@ const SPECS = new Map([
   ],
   [
     'amqplib',
-    client('message', {
-      methods: new Set(['publish', 'sendToQueue']),
-      makers: new Set(['connect']),
+    client(MESSAGE, {
+      methods: new Set([PUBLISH, 'sendToQueue']),
+      makers: new Set([CONNECT]),
       derivers: new Set(['createChannel', 'createConfirmChannel']),
       types: new Set(['Channel', 'ConfirmChannel']),
     }),
   ],
   [
     'amqp-connection-manager',
-    client('message', {
-      methods: new Set(['publish', 'sendToQueue']),
-      makers: new Set(['connect']),
+    client(MESSAGE, {
+      methods: new Set([PUBLISH, 'sendToQueue']),
+      makers: new Set([CONNECT]),
       derivers: new Set(['createChannel']),
       types: new Set(['ChannelWrapper']),
     }),
   ],
-  ['nats', client('message', { methods: new Set(['publish']), makers: new Set(['connect']) })],
+  ['nats', client(MESSAGE, { methods: new Set([PUBLISH]), makers: new Set([CONNECT]) })],
   [
     'ioredis',
-    client('message', {
+    client(MESSAGE, {
       methods: new Set(REDIS_PUBLISH),
-      makers: new Set(['default', 'Redis', 'Cluster']),
+      makers: new Set([DEFAULT, 'Redis', 'Cluster']),
       types: new Set(['Redis', 'Cluster']),
     }),
   ],
   [
     'redis',
-    client('message', {
+    client(MESSAGE, {
       methods: new Set(REDIS_PUBLISH),
       makers: new Set(['createClient', 'createCluster']),
       types: new Set(['RedisClientType', 'RedisClusterType']),
@@ -182,49 +182,45 @@ const SPECS = new Map([
   ],
   [
     '@google-cloud/pubsub',
-    client('message', {
-      methods: new Set(['publish', 'publishMessage', 'publishJSON']),
+    client(MESSAGE, {
+      methods: new Set([PUBLISH, 'publishMessage', 'publishJSON']),
       makers: new Set(['PubSub']),
       derivers: new Set(['topic']),
       types: new Set(['Topic']),
     }),
   ],
-  [
-    'bullmq',
-    client('message', { methods: new Set(['add', 'addBulk']), makers: new Set(['Queue']) }),
-  ],
-  [
-    'bull',
-    client('message', { methods: new Set(['add', 'addBulk']), makers: new Set(['default']) }),
-  ],
+  ['bullmq', client(MESSAGE, { methods: new Set(['add', 'addBulk']), makers: new Set(['Queue']) })],
+  ['bull', client(MESSAGE, { methods: new Set(['add', 'addBulk']), makers: new Set([DEFAULT]) })],
   [
     'mqtt',
-    client('message', {
-      methods: new Set(['publish', 'publishAsync']),
-      makers: new Set(['connect', 'connectAsync']),
+    client(MESSAGE, {
+      methods: new Set([PUBLISH, 'publishAsync']),
+      makers: new Set([CONNECT, 'connectAsync']),
     }),
   ],
   [
     '@azure/service-bus',
-    client('message', {
+    client(MESSAGE, {
       methods: new Set(['sendMessages']),
       makers: new Set(['ServiceBusClient']),
       derivers: new Set(['createSender']),
     }),
   ],
-  ...[...FETCH_MODULES, ...NODE_FETCH_MODULES, ...OFETCH_MODULES].map((name) => [
+  ...[...FETCH_MODULES, ...NODE_FETCH_MODULES, ...OFETCH_MODULES].map(
+    (name): [string, ClientSpec] => [
+      name,
+      client(REMOTE, { callable: true, functions: new Set(FETCH_FUNCTIONS) }),
+    ],
+  ),
+  ...HTTP_MODULES.map((name): [string, ClientSpec] => [
     name,
-    client('remote', { callable: true, functions: new Set(FETCH_FUNCTIONS) }),
-  ]),
-  ...HTTP_MODULES.map((name) => [
-    name,
-    client('remote', { functions: new Set(HTTP_MODULE_FUNCTIONS) }),
+    client(REMOTE, { functions: new Set(HTTP_MODULE_FUNCTIONS) }),
   ]),
 ]);
 
-export function clientSpec(source) {
+export function clientSpec(source: string): ClientSpec | undefined {
   if (source.startsWith('@aws-sdk/client-') && !DATABASE_SERVICES.test(source)) {
-    return client(MESSAGE_SERVICES.test(source) ? 'message' : 'remote', {
+    return client(MESSAGE_SERVICES.test(source) ? MESSAGE : REMOTE, {
       methods: new Set(['send']),
       makerPattern: /Client$/u,
       typePattern: /Client$/u,

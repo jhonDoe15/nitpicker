@@ -5,7 +5,13 @@ import {
   FS_EXTRA_MODULES,
   FS_MODULES,
   ZLIB_MODULES,
-} from '../analysis/node/node-sync-modules.mjs';
+} from '../analysis/node/node-sync-modules.mts';
+
+export type SyncFamily = {
+  readonly modules: ReadonlySet<string>;
+  readonly matches: (name: string) => boolean;
+  readonly alternative: (name: string) => string;
+};
 
 const ENDS_WITH_SYNC = /Sync$/u;
 const FS_PROMISES = '"node:fs/promises"';
@@ -24,13 +30,13 @@ const DESCRIPTOR_CALLS = [
   'fchmodSync',
   'fchownSync',
 ];
-const FS_ALTERNATIVES = new Map([
+const FS_ALTERNATIVES = new Map<string, string>([
   ['globSync', `\`for await (const entry of glob(pattern))\` with \`glob\` from ${FS_PROMISES}`],
   [
     'existsSync',
     `\`access\` or \`stat\` from ${FS_PROMISES} (\`await access(path)\` rejects when the path is missing)`,
   ],
-  ...DESCRIPTOR_CALLS.map((name) => [name, FILE_HANDLE]),
+  ...DESCRIPTOR_CALLS.map((name): [string, string] => [name, FILE_HANDLE]),
 ]);
 const CRYPTO_SYNC_CALLS = [
   'pbkdf2Sync',
@@ -44,47 +50,47 @@ const CRYPTO_SYNC_CALLS = [
 const SUBPROCESS_SYNC_CALLS = ['execSync', 'execFileSync', 'spawnSync'];
 const EXECA_SYNC_CALLS = ['execaSync', 'execaCommandSync'];
 
-function asyncName(name) {
+function asyncName(name: string): string {
   return name.replace(ENDS_WITH_SYNC, '');
 }
 
-function promisified(name) {
+function promisified(name: string): string {
   return `\`await promisify(${asyncName(name)})(...)\` with \`promisify\` from "node:util"`;
 }
 
-export const SYNC_FAMILIES = [
+export const SYNC_FAMILIES: readonly SyncFamily[] = [
   {
     modules: new Set(FS_MODULES),
-    matches: (name) => ENDS_WITH_SYNC.test(name),
-    alternative: (name) =>
+    matches: (name: string) => ENDS_WITH_SYNC.test(name),
+    alternative: (name: string) =>
       FS_ALTERNATIVES.get(name) ?? `\`await ${asyncName(name)}()\` from ${FS_PROMISES}`,
   },
   {
     modules: new Set(FS_EXTRA_MODULES),
-    matches: (name) => ENDS_WITH_SYNC.test(name),
-    alternative: (name) =>
+    matches: (name: string) => ENDS_WITH_SYNC.test(name),
+    alternative: (name: string) =>
       `\`await ${name === 'existsSync' ? 'pathExists' : asyncName(name)}()\` from "fs-extra"`,
   },
   {
     modules: new Set(CHILD_PROCESS_MODULES),
-    matches: (name) => SUBPROCESS_SYNC_CALLS.includes(name),
+    matches: (name: string) => SUBPROCESS_SYNC_CALLS.includes(name),
     alternative: () =>
       '`await promisify(execFile)(file, args)` with `execFile` from "node:child_process" and `promisify` from "node:util"',
   },
   {
     modules: new Set(CRYPTO_MODULES),
-    matches: (name) => CRYPTO_SYNC_CALLS.includes(name),
+    matches: (name: string) => CRYPTO_SYNC_CALLS.includes(name),
     alternative: promisified,
   },
   {
     modules: new Set(ZLIB_MODULES),
-    matches: (name) => ENDS_WITH_SYNC.test(name),
-    alternative: (name) => `${promisified(name)}, or the stream \`pipeline\` API`,
+    matches: (name: string) => ENDS_WITH_SYNC.test(name),
+    alternative: (name: string) => `${promisified(name)}, or the stream \`pipeline\` API`,
   },
   {
     modules: new Set(EXECA_MODULES),
-    matches: (name) => EXECA_SYNC_CALLS.includes(name),
-    alternative: (name) => `\`await ${asyncName(name)}()\``,
+    matches: (name: string) => EXECA_SYNC_CALLS.includes(name),
+    alternative: (name: string) => `\`await ${asyncName(name)}()\``,
   },
 ];
 

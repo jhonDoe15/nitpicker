@@ -1,11 +1,14 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { SourceContext } from '../analysis/constant-resolution.mts';
 import {
   moduleBindings,
   subprocessBindings,
   withPromisified,
-} from '../analysis/subprocess-calls.mjs';
-import { calleeMethod, displayName, promisifiedBinding, templateTag } from './process-callees.mjs';
-import { lacksDeadline, optionsArgument } from './process-timeout-options.mjs';
-import { isAwaited, waitsForChildEnd } from './process-completion.mjs';
+  type ModuleBindings,
+} from '../analysis/subprocess-calls.mts';
+import { calleeMethod, displayName, promisifiedBinding, templateTag } from './process-callees.mts';
+import { lacksDeadline, optionsArgument } from './process-timeout-options.mts';
+import { isAwaited, waitsForChildEnd } from './process-completion.mts';
 
 const EVENTS = new Set(['events', 'node:events']);
 const COMMAND_ONLY = new Set(['execSync', 'exec', 'execaCommand', 'execaCommandSync']);
@@ -23,7 +26,11 @@ const STREAM_CALLS = new Set(['spawn', 'fork']);
 const NODE_SIGNALS = ['signal'];
 const EXECA_SIGNALS = ['cancelSignal', 'signal'];
 
-function waits(context, node, { name, events }) {
+function waits(
+  context: SourceContext,
+  node: TSESTree.CallExpression,
+  { name, events }: { name: string; events: ModuleBindings },
+): boolean {
   if (SYNC_CALLS.has(name) || BUFFERED_CALLS.has(name)) {
     return true;
   }
@@ -33,26 +40,34 @@ function waits(context, node, { name, events }) {
   return STREAM_CALLS.has(name) && waitsForChildEnd(context, node, events);
 }
 
-function signalKeys(name) {
+function signalKeys(name: string): readonly string[] {
   if (SYNC_CALLS.has(name)) {
     return [];
   }
   return name.startsWith('execa') || name === '$' ? EXECA_SIGNALS : NODE_SIGNALS;
 }
 
-function report(context, node, method) {
+function report(
+  context: Readonly<TSESLint.RuleContext<'missingTimeout' | 'missingDeadline', []>>,
+  node: TSESTree.Node,
+  method: string,
+): void {
   const messageId = SYNC_CALLS.has(method) ? 'missingTimeout' : 'missingDeadline';
   context.report({ node, messageId, data: { method: displayName(method) } });
 }
 
-function taggedLacksDeadline(context, call, method) {
+function taggedLacksDeadline(
+  context: SourceContext,
+  call: TSESTree.CallExpression | undefined,
+  method: string,
+): boolean {
   return (
     call === undefined ||
     lacksDeadline(context, call, { options: call.arguments[0], signalKeys: signalKeys(method) })
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'missingTimeout' | 'missingDeadline'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Require a deadline on subprocesses that production code waits for' },
@@ -65,7 +80,7 @@ export const rule = {
     },
   },
   create(context) {
-    let bindings = { named: new Map(), namespaces: new Set() };
+    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
     let events = bindings;
     return {
       Program(node) {
@@ -77,7 +92,8 @@ export const rule = {
       },
       CallExpression(node) {
         const method = calleeMethod(node.callee, bindings);
-        const isTag = node.parent?.type === 'TaggedTemplateExpression' && node.parent.tag === node;
+        const isTag =
+          node.parent.type === AST_NODE_TYPES.TaggedTemplateExpression && node.parent.tag === node;
         if (method === undefined || isTag || !waits(context, node, { name: method, events })) {
           return;
         }
