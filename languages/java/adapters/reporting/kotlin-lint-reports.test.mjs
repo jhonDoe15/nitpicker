@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {

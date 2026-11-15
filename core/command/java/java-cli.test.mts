@@ -1,0 +1,486 @@
+import { readFileSync, realpathSync } from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mts';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import {
+  unusedFieldConsoleEntry,
+  unusedFieldFields,
+  unusedFieldMessage,
+  useGradleFixtures,
+  useMavenFixtures,
+} from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { acceptedDigest } from '../test-support/accepted-digest.mts';
+import {
+  labelsOf,
+  linkSentence,
+  pickFields,
+  toolNames,
+  whereField,
+} from '../test-support/report-readers.mts';
+import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
+
+const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
+
+const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
+const addedField = unusedFieldMessage('added');
+const xmlText = (text: string) =>
+  text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+
+const CLONE_SIZE_NOTE =
+  'duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java';
+const CLONE_MESSAGE = [
+  'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
+  'Keep one copy and call it from both places.',
+  'If the repetition is intended, add src/main/java/demo/First.java or',
+  'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
+].join(' ');
+
+const UNUSED_FIELD_HELP_URI = docsUrl('docs/rules/java-pmd.md', 'pmd-unusedprivatefield');
+
+const addedFieldOutput: unknown = expect.stringMatching(exactText`Base: comparison-base (argument)
+
+Quality gate summary
+✖ 1 new enforceable violation
+${unusedFieldConsoleEntry('added', 4)}
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`);
+
+describe.each([
+  ['a Gradle build', useGradleFixtures, true],
+  ['a Maven build', useMavenFixtures, undefined],
+] as const)('nitpicker with "preset": "java" on %s', (_name, useFixtures, subprocess) => {
+  const { build, run, runCli, temporaryRoot, ...fixtures } = useFixtures(nitpickerCli);
+  const repository = (files: Readonly<Record<string, string>> = {}) =>
+    fixtures.repository({ ...EMPTY_JDEPS, ...files });
+  it('passes when the change adds no finding and keeps the legacy one baselined', () => {
+    const root = repository();
+    writeFiles(root, {
+      'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n',
+    });
+    commit(root, 'move only');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(toolNames(result.json('summary.json'))).toEqual(['java', 'repository-hygiene']);
+  });
+  it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
+    const root = repository();
+    writeFiles(root, {
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'add violation');
+
+    const result = run(root, [], { subprocess });
+
+    expect({ exitCode: result.exitCode, output: result.text }).toEqual({
+      exitCode: 1,
+      output: addedFieldOutput,
+    });
+    expect(result.output.out).toEqual(addedFieldOutput);
+    expect(
+      pickFields(
+        parseJson(readFileSync(path.join(result.reports, 'new-findings.json'), 'utf8')),
+        'helpUri',
+      ),
+    ).toEqual([[UNUSED_FIELD_HELP_URI]]);
+    expect(result.json('new-findings.json')).toEqual([
+      {
+        tool: 'pmd',
+        rule: 'UnusedPrivateField',
+        path: 'src/main/java/demo/A.java',
+        identity: 'fp:nitpicker/subject=Avoid unused field: added',
+        message: addedField,
+        ...unusedFieldFields(),
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
+    expect(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8')).toEqual(
+      expect.stringMatching(exactText`{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "nitpicker",
+          "informationUri": "https://github.com/jhonDoe15/nitpicker",
+          "rules": [
+            {
+              "id": "pmd/UnusedPrivateField",
+              "name": "UnusedPrivateField",
+              "shortDescription": {
+                "text": "Detects when a private field is declared and/or assigned a value, but not used."
+              },
+              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)},
+              "properties": {
+                "tags": [
+                  "simplification"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "uri": ${JSON.stringify(`${pathToFileURL(realpathSync(root)).href}/`)},
+          "description": {
+            "text": "The root of the git repository the findings are in."
+          }
+        }
+      },
+      "columnKind": "utf16CodeUnits",
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "pmd/UnusedPrivateField",
+          "level": "error",
+          "baselineState": "new",
+          "message": {
+            "text": ${JSON.stringify(addedField)}
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main/java/demo/A.java",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "nitpickerIdentity/v1": "${/[a-f0-9]{64}/}"
+          }
+        }
+      ]
+    }
+  ]
+}
+`),
+    );
+    expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toEqual(
+      expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="quality.diff" tests="3" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
+  <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
+  <testcase classname="quality.diff" name="repository-hygiene" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
+  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${xmlText(addedField)}" type="pmd/UnusedPrivateField">${xmlText(addedField)}</failure></testcase>
+</testsuite>
+`),
+    );
+  });
+  it('honours exclude from nitpicker.config.json', () => {
+    const root = repository();
+    writeFiles(root, {
+      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'add violation in an excluded path');
+
+    const digest = acceptedDigest(['exclude added: src/main/java/demo/**'], {
+      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
+      'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+    });
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('new-findings.json')).toEqual([]);
+  });
+  it('fails a newly added clone', () => {
+    const body = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `    int v${String(i)} = compute(a, b) + ${String(i)} * helper(a);\n    if (v${String(i)} > 10) { total += v${String(i)}; }`,
+    ).join('\n');
+    const source = (name: string) =>
+      `package demo;\n\npublic final class ${name} {\n  int run(int a, int b) {\n    int total = 0;\n${body}\n    return total;\n  }\n}\n`;
+    const root = repository({ 'src/main/java/demo/First.java': source('First') });
+    writeFiles(root, { 'src/main/java/demo/Second.java': source('Second') });
+    commit(root, 'copy the class');
+
+    const result = run(root);
+
+    const cloneOutput: unknown = expect.stringMatching(exactText`Base: comparison-base (argument)
+
+Quality gate summary
+✖ 1 new enforceable violation
+  duplicates/duplicate-clone: ${CLONE_MESSAGE}
+    src/main/java/demo/First.java:3
+Fix plans: 1, see ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/fix-plans.json
+Design notes for review (not failing): 2 new
+  ${CLONE_SIZE_NOTE} (lines 30)
+  ${CLONE_SIZE_NOTE} (tokens 381)
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+`);
+    expect({ exitCode: result.exitCode, output: result.text }).toEqual({
+      exitCode: 1,
+      output: cloneOutput,
+    });
+    const clones = whereField(result.json('new-findings.json'), 'rule', 'duplicate-clone');
+    expect(clones).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/main/java/demo/First.java',
+        identity:
+          'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
+        message: CLONE_MESSAGE,
+        classification: 'enforceable',
+        location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:clone',
+          value: 381,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/java/demo/First.java', startLine: 3, endLine: 32 },
+            { path: 'src/main/java/demo/Second.java', startLine: 3, endLine: 32 },
+          ],
+        },
+      },
+    ]);
+  });
+  it('reports a build failure on head as a tool error with exit 2 instead of throwing', () => {
+    const root = repository();
+    writeFiles(root, build.failure.files);
+    fixtureGit(root, ['rm', '-q', 'violations.txt']);
+    commit(root, 'break the build');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.output.err).toBe('');
+    expect(fieldOf(result.json('summary.json'), 'overallStatus')).toBe('tool-error');
+    expect(result.json('tool-errors.json')).toEqual([
+      {
+        tool: 'java',
+        snapshot: 'head',
+        rule: build.failure.error.rule,
+        path: '.',
+        message: build.failure.error.message('head', result.reports),
+      },
+    ]);
+  });
+  it('reports a build failure on base as a tool error with exit 2', () => {
+    const root = repository(build.failure.files);
+    fixtureGit(root, ['rm', '-q', ...Object.keys(build.failure.files)]);
+    commit(root, 'fix the build');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(fieldOf(result.json('summary.json'), 'overallStatus')).toBe('tool-error');
+    expect(result.json('tool-errors.json')).toEqual([
+      {
+        tool: 'java',
+        snapshot: 'base',
+        rule: build.failure.error.rule,
+        path: '.',
+        message: build.failure.error.message('base', result.reports),
+      },
+    ]);
+  });
+  describe('on a base whose tests fail', () => {
+    const failing = (name: string) =>
+      `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="${name}">` +
+      '<failure message="expected: 1"/></testcase></testsuite>';
+    const repaired = (
+      root: string,
+      {
+        write = {},
+        remove = [],
+      }: { readonly write?: Readonly<Record<string, string>>; readonly remove?: readonly string[] },
+    ) => {
+      if (remove.length > 0) {
+        fixtureGit(root, ['rm', '-q', ...remove]);
+      }
+      writeFiles(root, write);
+      commit(root, 'repair the tests');
+    };
+
+    it('records the failing base as a note and passes a change that repairs it', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      repaired(root, build.redBase.repair);
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('tool-errors.json')).toEqual([]);
+      expect(result.json('notes.json')).toEqual([
+        {
+          tool: 'java',
+          snapshot: 'base',
+          rule: 'tests-failed',
+          path: '.',
+          message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+        },
+      ]);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
+        "Note: the project's tests fail on the base (java).",
+      ]);
+    });
+
+    it.runIf('modules' in build.redBase)('names the failing module of a multi-module build', () => {
+      const modules = 'modules' in build.redBase ? build.redBase.modules : undefined;
+      const root = repository(modules?.files(failing('works')));
+      repaired(root, modules?.repair ?? {});
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(labelsOf(result.json('notes.json'), 'message')).toEqual([
+        `Tests fail on the base in core:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+      ]);
+    });
+
+    it('reads the base as red and fails the head whose tests fail too, with exit 1', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      writeFiles(root, {
+        'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
+      });
+      commit(root, 'change something else');
+
+      const result = run(root);
+
+      expect({
+        exitCode: result.exitCode,
+        errors: labelsOf(result.json('tool-errors.json'), 'snapshot', 'rule'),
+        notes: result.json('notes.json'),
+      }).toEqual({
+        exitCode: 1,
+        errors: ['head tests-failed'],
+        notes: [
+          {
+            tool: 'java',
+            snapshot: 'base',
+            rule: 'tests-failed',
+            path: '.',
+            message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+          },
+        ],
+      });
+    });
+
+    it('leads the summary with tests that fail only on the head, and exits 1', () => {
+      const root = repository();
+      writeFiles(root, build.redBase.files(failing('works')));
+      commit(root, 'break a test');
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+          'Fix the tests and rerun:',
+      ]);
+      expect(labelsOf(result.json('tool-errors.json'), 'tool', 'snapshot', 'rule')).toEqual([
+        'tests head tests-failed',
+      ]);
+    });
+  });
+  it('lets an exception entry for the rule and path allow a new finding', () => {
+    const root = repository();
+    const config = `${JSON.stringify({
+      preset: 'java',
+      exceptions: [
+        {
+          rule: 'pmd/UnusedPrivateField',
+          paths: ['src/main/java/demo/A.java'],
+          reason: 'generated holder',
+        },
+      ],
+    })}\n`;
+    writeFiles(root, {
+      'nitpicker.config.json': config,
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'add a violation with an exception');
+
+    const digest = acceptedDigest(
+      ['exception added: pmd/UnusedPrivateField for src/main/java/demo/A.java (generated holder)'],
+      {
+        'nitpicker.config.json': config,
+        'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+      },
+    );
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('new-findings.json')).toEqual([]);
+  });
+  it('reports a missing build tool binary as a tool error', () => {
+    const binary = path.join(temporaryRoot('nitpicker-java-none-'), 'no-build-tool');
+    build.missingBinary.stub(binary);
+    const root = repository();
+    writeFiles(root, { 'notes.txt': 'edited\n' });
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(listOf(result.json('tool-errors.json'))[0]).toEqual({
+      tool: 'java',
+      snapshot: 'base',
+      rule: build.missingBinary.rule,
+      path: '.',
+      message: build.missingBinary.message(binary, result.reports),
+    });
+  });
+  it('gates a snapshot with --all', () => {
+    const root = repository();
+    const reports = path.join(temporaryRoot('nitpicker-java-snapshot-'), 'reports');
+    const out = { text: '' };
+
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', reports],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      stdout: { write: (value: string) => (out.text += value) },
+      stderr: { write: () => undefined },
+    });
+
+    expect(exitCode).toBe(1);
+    expect(out.text).toEqual(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Enforceable findings: 1',
+        'Descriptive findings: 3',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'java: total=4 enforceable=1 descriptive=3',
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
+        '',
+        'Enforceable findings:',
+        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
+        '',
+        'Design notes for review (not failing): 3 in the snapshot',
+        '  coupling/coupling . dependencies summary (dependencies 0)',
+        '  coupling/coupling . modules summary (modules 0)',
+        '  coupling/coupling . packages summary (packages 0)',
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
+        '',
+      ].join('\n'),
+    );
+  });
+});

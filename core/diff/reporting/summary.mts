@@ -1,15 +1,15 @@
-import { isPolicyFinding } from './review/policy-findings.mjs';
+import { isPolicyFinding } from './review/policy-findings.mts';
 import { consolePolicySummary } from './review/policy-changes.mts';
 import { heldFindings, heldLine } from './format/held-findings.mts';
 import { foldMutants } from './format/mutants.mts';
 import { noteSummaryLines } from './format/notes.mts';
-import { singleLine } from './format/text.mjs';
+import { singleLine } from './format/text.mts';
 import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { planCountLines } from '../../../shared/fix-plans/render.mjs';
-import { quickLines } from '../../quick/summary.mjs';
+import { quickLines } from '../../quick/summary.mts';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { labelCountLine } from '../../labels/label-filter.mts';
@@ -45,7 +45,6 @@ type ViolationSummary = {
   readonly policyCount: number;
 };
 
-const isPolicyEntry: (finding: ReportEntry) => boolean = isPolicyFinding;
 const oneLine: (value: unknown) => string = singleLine;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
@@ -92,10 +91,10 @@ function renderGateSummary(
   appendViolationSummary(
     lines,
     {
-      violations: violations.filter((finding) => !isPolicyEntry(finding)),
+      violations: violations.filter((finding) => !isPolicyFinding(finding)),
       incomplete: otherErrors.length > 0,
       testsFail: failingTests.length > 0,
-      policyCount: violations.filter(isPolicyEntry).length,
+      policyCount: violations.filter(isPolicyFinding).length,
     },
     { color, details, labelCounts: labelCountLine(report.summary) },
   );

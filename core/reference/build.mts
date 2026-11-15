@@ -8,7 +8,7 @@ import { typescriptCheckEntries } from '../../shared/reference/checks/other-entr
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
 import { coreRuleEntries } from './config-entries.mts';
 import { entryLabeler } from './labels/entry-labels.mts';
-import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mjs';
+import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
 import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
 import { fieldOf, listOf, textOf } from '../../shared/values/readers.mts';
 

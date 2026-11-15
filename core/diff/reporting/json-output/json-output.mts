@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { areaCounts, areaOf } from '../format/rule-groups/finding-areas.mts';
 import { foldMutants as folded } from '../format/mutants.mts';
-import { printable } from '../format/text.mjs';
+import { printable } from '../format/text.mts';
 import { heldFindingsOf as heldFindings } from '../report-model.mts';
 import { errorHeadline as headlineOf, withoutSkipNotices as withoutSkips } from '../summary.mts';
 import { withHelpUris } from '../../../../shared/reference/store.mjs';

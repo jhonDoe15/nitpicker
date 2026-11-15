@@ -1,19 +1,19 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
-import { runTasksInProcess } from '../../diff/execution/test-support/in-process-analyzers.mjs';
+import { policy } from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import { runTasksInProcess } from '../../diff/execution/test-support/in-process-analyzers.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
 describe('nitpicker CLI --all snapshot', () => {
-  it('checks the --all snapshot out into a directory named for its head label', () => {
+  it('checks the --all snapshot out into a directory named for its head label', async () => {
     const repository = createRepository({ 'quality-policy.json': policy() });
     const roots = [];
 
-    runCli({
+    await runCli({
       arguments_: ['--all', '--output', makeOutputRoot()],
       environment: {},
       currentProjectRoot: repository.root,

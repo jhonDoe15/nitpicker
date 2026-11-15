@@ -108,7 +108,7 @@ Part of the [Python preset guide](../python-preset.md).
   generated ruff config keeps the group selectors and the rules the installed ruff knows) and
   `adapters/formatting/format-scope.e2e.test.mts` (the formatters run isolated from the project
   config) run in the same suite.
-- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+- `core/pack-contents.test.mts` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mts` (module naming, exclusions), `python-coupling.test.mts`
   (import resolution, packages, stability direction, type-only edges, the scan step with a fake
@@ -121,5 +121,5 @@ Part of the [Python preset guide](../python-preset.md).
   domain package importing the web package fails as `stability-direction` and as two broken
   import-linter chains; `importLinter: false` skips the contracts; a clean change passes) and needs
   `import-linter` from PyPI.
-- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+- `core/pack-contents.test.mts` checks that the Python files, including the ruff config and the
   import scan, are in the npm package.

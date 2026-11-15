@@ -1,15 +1,6 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach } from 'vitest';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
 import type { FixInputs, ProjectRecipe } from '../typed/project-types.mts';
 
@@ -67,15 +58,9 @@ function treeOf(root: string): [string, string][] {
 }
 
 export function useFixtureProjects(): FixtureProjects {
-  const roots: string[] = [];
-  afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { temporaryRoot } = useGitFixtures();
   function create(files: FixtureFiles): string {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-fix-'));
-    roots.push(root);
+    const root = temporaryRoot('nitpicker-project-fix-');
     const all: FixtureFiles = {
       'tsconfig.json': JSON.stringify(TSCONFIG),
       'package.json': '{"type":"module"}',

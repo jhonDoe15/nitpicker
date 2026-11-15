@@ -1,6 +1,6 @@
 import { noteSectionLines as noteLines } from './format/notes.mts';
-import { singleLine } from './format/text.mjs';
-import { junitRunProfile } from '../../quick/report-formats.mjs';
+import { singleLine } from './format/text.mts';
+import { junitRunProfile } from '../../quick/report-formats.mts';
 import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 

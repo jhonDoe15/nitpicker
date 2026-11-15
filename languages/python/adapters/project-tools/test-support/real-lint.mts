@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { ruffFindings } from '../../python-reports.mts';
 import { lint, RUFF_REPORT } from '../../python-tools.mjs';
 import { createToolContext } from '../../typed/runner/runner-views.mts';

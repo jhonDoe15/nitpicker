@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { project, removeProjects, resource } from './test-support/spring-config-projects.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';

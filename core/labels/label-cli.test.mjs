@@ -2,16 +2,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mts';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { readJson } from '../diff/git/test-support/fixture-files.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { readJson } from '../diff/git/test-support/fixture-files.mts';
 import { LABELS } from './taxonomy.mts';
 import {
   commitFiles,
   fakeAnalyzer,
   IN_PROCESS_TASKS,
   useQualityDiffRepositories,
-} from '../diff/tests/policy/test-support/quality-diff-harness.mjs';
+} from '../diff/tests/policy/test-support/quality-diff-harness.mts';
 
 const { createRepository } = useQualityDiffRepositories();
 

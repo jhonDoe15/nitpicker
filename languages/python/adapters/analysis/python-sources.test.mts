@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { createScratch } from '../test-support/scratch.mts';
 import { NON_PRODUCTION_GLOBS } from './python-sources.mjs';
 import {
@@ -16,7 +16,7 @@ import {
   pythonSourceFiles,
   writeSourceListing,
 } from './typed/sources-views.mts';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

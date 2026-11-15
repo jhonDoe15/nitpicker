@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { quickSummary } from './summary.mjs';
+import { quickSummary } from './summary.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 

@@ -3,8 +3,8 @@ import {
   isPolicyChangeAccepted,
   policyDigest,
   policyFindings,
-} from '../reporting/review/policy-findings.mjs';
-import { attachFixes } from './fixes/attach-fixes.mjs';
+} from '../reporting/review/policy-findings.mts';
+import { attachFixes } from './fixes/attach-fixes.mts';
 import {
   type AnalyzerOutcome,
   type AnalyzerRun,
@@ -15,13 +15,13 @@ import {
 import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
-import { runProfileSummary } from '../../quick/summary.mjs';
+import { runProfileSummary } from '../../quick/summary.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
 import { labeledFindings, labeledOutcomes, labelRun } from '../../labels/label-filter.mts';
 import type { LabelFilter } from '../../labels/taxonomy.mts';
-import { fieldOf, objectOf } from '../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { areaOf } from '../reporting/format/rule-groups/finding-areas.mts';
 
 type ScopedOutcome = AnalyzerOutcome & { readonly outside?: number };
@@ -85,17 +85,6 @@ const withFixes: (
   root: string | undefined,
   recipes: unknown[] | undefined,
 ) => Finding[] = attachFixes;
-const accepted: (
-  loosenings: readonly unknown[],
-  digest: unknown,
-  acceptance: { readonly acceptedDigest: unknown; readonly headSha: unknown },
-) => boolean = isPolicyChangeAccepted;
-const digestOf: (request: { readonly loosenings: readonly unknown[] }) => string = policyDigest;
-const loosenedFindings: (
-  loosenings: readonly unknown[],
-  digest: unknown,
-  options: object,
-) => Finding[] = policyFindings;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
 const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
   withSharedUnusedDirectives;
@@ -197,18 +186,28 @@ function declaredExclusions(analyzers: readonly unknown[]): string[] {
   return [...new Set(analyzers.flatMap((analyzer) => exclusionsOf(analyzer)))].sort();
 }
 
+function optionalText(value: unknown): string | undefined {
+  return value === undefined ? undefined : textOf(value);
+}
+
 function policyReview(
   context: BuildContext,
-  digest: unknown,
+  digest: string,
 ): { readonly findings: Finding[]; readonly accepted: boolean } {
-  const { policyLoosenings, acceptPolicyChange, comparison } = context;
-  const acceptance = { acceptedDigest: acceptPolicyChange, headSha: comparison['headSha'] };
-  const kinds = context.policyKinds;
+  const { acceptPolicyChange, comparison } = context;
+  const loosenings = textsOf(context.policyLoosenings);
+  const acceptance = {
+    acceptedDigest: optionalText(acceptPolicyChange),
+    headSha: optionalText(comparison['headSha']),
+  };
+  const kinds = Object.fromEntries(
+    Object.entries(fieldsOf(context.policyKinds)).map(([name, kind]) => [name, textOf(kind)]),
+  );
   return {
     findings: context.reportsPolicy
-      ? loosenedFindings(policyLoosenings, digest, { ...acceptance, kinds })
+      ? policyFindings(loosenings, digest, { ...acceptance, kinds })
       : [],
-    accepted: accepted(policyLoosenings, digest, acceptance),
+    accepted: isPolicyChangeAccepted(loosenings, digest, acceptance),
   };
 }
 
@@ -232,7 +231,9 @@ function runAndScopeSummary(context: BuildContext, outcomes: readonly ScopedOutc
 function buildReport(context: BuildContext): DiffReport {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
   const { configOverrides, policyChanges, policyLoosenings, notices } = context;
-  const digest = context.policyDigest ?? digestOf({ loosenings: policyLoosenings });
+  const digest = textOf(
+    context.policyDigest ?? policyDigest({ loosenings: textsOf(policyLoosenings) }),
+  );
   const review = policyReview(context, digest);
   const newFindings = [...collect(outcomes, 'newFindings'), ...review.findings];
   return {

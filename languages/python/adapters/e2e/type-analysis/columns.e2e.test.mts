@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
+import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
 
 const { fixtureRepository, removeRepositories } = useRepositories();

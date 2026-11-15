@@ -1,8 +1,8 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import {

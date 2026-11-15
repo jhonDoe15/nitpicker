@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach } from 'vitest';
+import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 
 type TempProjects = {
   tempRoot: () => string;
@@ -9,18 +8,10 @@ type TempProjects = {
 };
 
 export function useTempProjects(prefix: string): TempProjects {
-  const roots: string[] = [];
-
-  afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const { temporaryRoot } = useGitFixtures();
 
   function tempRoot() {
-    const root = mkdtempSync(path.join(tmpdir(), prefix));
-    roots.push(root);
-    return root;
+    return temporaryRoot(prefix);
   }
 
   function projectWith(files: Record<string, string>) {

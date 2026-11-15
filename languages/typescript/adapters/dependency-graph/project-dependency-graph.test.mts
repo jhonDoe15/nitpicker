@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../core/tooling/build-once/build-once.mjs';
+import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../core/tooling/build-once/build-once.mts';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { analyzeCoupling } from '../../preset/coupling/analyze.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs';

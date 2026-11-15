@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import type { Files, Scratch, ScratchProject } from './typed/project-types.mts';
 import { createToolContext } from './typed/tool-context.mts';
 import { installFakeToolchain } from './fake-toolchain.mts';

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { designFiles } from './design-files.mjs';
 import { textsOf } from '../../../../../shared/values/readers.mts';
 import { designDistributions } from './design-distributions.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
