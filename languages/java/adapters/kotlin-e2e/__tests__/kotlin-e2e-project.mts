@@ -42,7 +42,7 @@ export function runJavaDiff(input: DiffInput): DiffResult {
     newFindings: findingsOf(fieldOf(result, 'newFindings')),
     newEnforceable: findingsOf(fieldOf(result, 'newEnforceable')),
     unchangedFindings: findingsOf(fieldOf(result, 'unchangedFindings')),
-    toolErrors: findingsOf(fieldOf(result, 'toolErrors')),
+    toolErrors: findingsOf(fieldOf(result, 'toolErrors') ?? []),
     failed: fieldOf(result, 'failed') === true,
   };
 }
