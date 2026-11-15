@@ -43,7 +43,7 @@ const VALUES = new Map<string, ValueOption>([
   ['--output', 'outputRoot'],
   ['--verify', 'verify'],
 ]);
-const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init', 'projects'];
+const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init', 'projects', 'show'];
 
 export const COMPARISON_OPTIONS = [
   ...FLAGS.keys(),

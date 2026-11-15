@@ -2,14 +2,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { runCli } from '../../cli.mts';
+import { maskedDiagnostics } from '../../diff/reporting/test-support/output-expectations.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mts';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { enforceableFindings, linkSentence, pickFields } from '../test-support/report-readers.mts';
-import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
-
-const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -152,22 +150,14 @@ describe('nitpicker with "preset": "python" running the project', () => {
 
     expect(exitCode).toBe(1);
     expect(out.text).toMatch(/^Format with ruff: ruff format --isolated /);
-    expect(out.text.replace(/^Format with ruff: .*\n/, '')).toBe(
+    expect(maskedDiagnostics(out.text.replace(/^Format with ruff: .*\n/, ''))).toBe(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 1',
-        'Descriptive findings: 12',
-        'Tool errors: 0',
         '',
-        'Per-tool counts:',
-        'python: total=13 enforceable=1 descriptive=12',
-        'mutation: total=0 enforceable=0 descriptive=0',
-        'repository-hygiene: total=0 enforceable=0 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'ruff/F401 src/demo/a.py:1 `os` imported but unused. If this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
-        '',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        '  ruff/F401: `os` imported but unused.',
+        '    src/demo/a.py:1:1',
+        '    If this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         'Design notes for review (not failing): 12 in the snapshot',
         '  coupling/coupling . dependencies summary (dependencies 0)',
         '  coupling/coupling . modules summary (modules 1)',
@@ -180,8 +170,10 @@ describe('nitpicker with "preset": "python" running the project', () => {
         '  coupling/package-coupling . modules for package demo (modules 1)',
         '  coupling/module-coupling src/demo/a.py fanIn for src/demo/a.py (fanIn 0)',
         `  … 2 more; see ${path.join(reports, 'report.txt')}`,
-        '',
-        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
+        'By analyzer:',
+        '  python: 1 enforceable, 12 descriptive',
+        '  2 analyzers ran clean',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );

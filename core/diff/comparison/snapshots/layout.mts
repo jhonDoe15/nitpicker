@@ -10,12 +10,13 @@ import {
   readTouchedPaths,
 } from '../../git/patches/project-moves.mjs';
 import { readChangedLines } from '../../git/patches/changed-lines.mjs';
+import { readMovedPackages } from '../moved-names/packages/read-moved-packages.mjs';
 import { readRemovesTests } from '../../git/patches/test-removal.mjs';
 import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
 } from '../../git/repository/worktree.mjs';
-import type { SharedWorktree, SnapshotRoots } from '../quick/head-run.mts';
+import type { SharedWorktree, SnapshotRoots } from './run-types.mts';
 
 export type Comparison = {
   readonly mergeBaseSha: string;
@@ -31,6 +32,8 @@ type Moves = {
   readonly inferred: Map<string, string>;
 };
 
+type LayoutMoves = Moves & { readonly packages: Map<string, string> };
+
 type GitRange = {
   readonly repositoryRoot: string;
   readonly mergeBaseSha: string;
@@ -42,7 +45,7 @@ type ProjectRange = GitRange & { readonly baseProjectRelativePath: string };
 
 export type SnapshotLayout = {
   readonly baseProjectRelativePath: string;
-  readonly moves: Moves;
+  readonly moves: LayoutMoves;
   readonly touchedPaths: ReadonlySet<string>;
   readonly touchedCode: {
     readonly changedLines: ReadonlyMap<string, unknown>;
@@ -73,6 +76,7 @@ const changedLinesOf: (
   request: ProjectRange & { readonly inferredMoves: Moves['inferred'] },
 ) => ReadonlyMap<string, unknown> = readChangedLines;
 const removesTests: (request: ProjectRange) => unknown = readRemovesTests;
+const movedPackages: (moves: Moves, range: ProjectRange) => Map<string, string> = readMovedPackages;
 const inWorktree: <T>(root: string, worktree: Worktree, operation: (root: string) => T) => T =
   withTemporaryWorktree;
 const inNamedWorktree: <T>(
@@ -92,7 +96,7 @@ export function readSnapshotLayout(
   const moves = movesOf({ ...projectRange, changes });
   return {
     baseProjectRelativePath,
-    moves,
+    moves: { ...moves, packages: movedPackages(moves, projectRange) },
     touchedPaths: touchedPathsOf({ ...projectRange, changes }),
     touchedCode: {
       changedLines: changedLinesOf({ ...projectRange, inferredMoves: moves.inferred }),

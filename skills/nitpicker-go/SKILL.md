@@ -23,41 +23,62 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 
 ## Finish with the gate
 
+`--analyzer <name>` runs one analyzer only, which is faster still. A run narrowed with `--quick` or
+`--analyzer` is never a pass: finish with the full run below, without them.
+
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
-   without a pipe: you need its exit code. It first formats the changed `.go` files with the
-   formatter the project already uses (gofmt, gofumpt or goimports; never switch it) and lists the
-   rewritten ones under "Fixed files:"; re-read those files before you edit them again. A file that
-   was unformatted before your change is left as it is: format the lines you changed there with
-   the command the finding prints. Then it runs `go vet`, `go test` and its own checks on the merge
-   base and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress
-   line for each slow analyzer.
+   without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
+   first formats the changed `.go` files with the formatter the project already uses (gofmt, gofumpt
+   or goimports; never switch it) and lists the rewritten ones under "Fixed files:". A file that was
+   unformatted before your change is left as it is: format the lines you changed there with the
+   command the finding prints. Then it runs `go vet`, `go test` and its own checks on the merge base
+   and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
+   each slow analyzer.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
-     and you run the gate again without it before you finish.
-   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
-     below them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,
-     or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
-     says another run is in progress, wait for that run; never kill it.
-     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
+   - 0: done, unless you narrowed the run with `--analyzer`: the summary then says `Ran only: ...`
+     or names the skipped checks, and you run the gate again without them before you finish.
+   - 1: fix the failing tests the summary leads with, every new finding (printed as
+     `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Re-read the files `--fix`
+     changed before editing them. Then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not
+     load, or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it says another run
+     is in progress, wait for that run; never kill it. When the message links to
+     [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md),
+     the fix is there.
+
+   If the console output is cut off, read `reports/quality/diff/report.txt`, then
+   `new-findings.json` and `tool-errors.json` in the same folder.
+
+   A note such as `Note: 1 existing lint finding in edited code (not failing, no more than before)`
+   or a "Touched, still over limit" list names held findings in code you edited. It never fails the
+   run: leave that code alone.
+
 4. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
-   failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
-   or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person
-   to accept.
+   failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set
+   `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
+5. Code that is right despite a rule: a finding message may end with the `exceptions` entry that
+   would accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`).
+   That entry is for a human reviewer. Never add one, and never fill in its `reason`, to get past
+   the gate: stop and ask a human, and quote the finding with its entry.
 
 Before you change code other packages use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md). Why each rule is here: [SOURCES.md](SOURCES.md).
 
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
-[rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
-and swallowed errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`,
-names, HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets, test
-honesty): read
-[rules/own-rules.md](rules/own-rules.md).
+[rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged and
+swallowed errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`, names,
+HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets, test honesty):
+read [rules/own-rules.md](rules/own-rules.md).
+
+To learn why a rule is on and what form it allows before you write or change code, run
+`npx nitpicker explain <tool/rule>` with the name a finding prints, or read the
+[rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md).
+`npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 

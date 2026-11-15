@@ -57,7 +57,7 @@ function run(
   const exitCode = runCli(input);
   return {
     exitCode,
-    stdout: output.stdoutText.slice(0, output.stdoutText.indexOf('Nitpicker quality snapshot')),
+    stdout: output.stdoutText.slice(0, output.stdoutText.indexOf('\nQuality snapshot summary')),
     stderr: output.stderrText,
     patch: path.join(outputRoot, 'fix.patch'),
   };

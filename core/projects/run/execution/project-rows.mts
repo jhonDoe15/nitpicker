@@ -4,7 +4,7 @@ import { clearSnapshotReports } from '../../../snapshot/reporters.mts';
 import { reportFolder as untypedReportFolder } from '../../plan/project-entry.mts';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf, writeFailureReport } from '../../report/outcome.mjs';
-import type { SharedWorktree } from '../../../diff/comparison/quick/head-run.mts';
+import type { SharedWorktree } from '../../../diff/comparison/snapshots/run-types.mts';
 import type {
   Comparison,
   MonorepoCli,

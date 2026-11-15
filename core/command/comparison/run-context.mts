@@ -7,7 +7,7 @@ import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
 import type { Loosening as PolicyLoosening } from '../../policy-changes/types/policy-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
-import type { SharedWorktree } from '../../diff/comparison/quick/head-run.mts';
+import type { SharedWorktree } from '../../diff/comparison/snapshots/run-types.mts';
 
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;

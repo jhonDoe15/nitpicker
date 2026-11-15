@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
-import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
@@ -15,24 +15,18 @@ import {
   viewFindings,
 } from './test-support/clean-project.mts';
 
-const docsUrl: (relativePath: string, anchor: undefined) => string | undefined = untypedDocsUrl;
-
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/strict-clean');
 const BANNED_FORM_OUTPUT = [
-  'Nitpicker quality snapshot',
-  'Status: violations',
-  'Enforceable findings: 1',
-  'Descriptive findings: 0',
-  'Tool errors: 0',
+  '',
+  'Quality snapshot summary',
+  '✖ 1 enforceable finding',
+  '  eslint-lint/no-restricted-syntax: Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+  '    src/main/features/greeting/domain/greet.ts:21:24',
+  '    If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  'By analyzer:',
+  '  eslint-lint: 1 enforceable, 0 descriptive',
   'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
-  '',
-  'Per-tool counts:',
-  'eslint-lint: total=1 enforceable=1 descriptive=0',
-  '',
-  'Enforceable findings:',
-  'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-  '',
-  `Rule reference: ${String(docsUrl('docs/rules/README.md', undefined))} (nitpicker explain <tool/rule> prints one rule)`,
+  'Full diagnostics: <path>',
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -130,7 +124,7 @@ describe('the strict-clean fixture project', () => {
     const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
 
     expect(exitCode).toBe(1);
-    expect(stdoutText).toBe(BANNED_FORM_OUTPUT);
+    expect(maskedDiagnostics(stdoutText)).toBe(BANNED_FORM_OUTPUT);
   });
 
   it(

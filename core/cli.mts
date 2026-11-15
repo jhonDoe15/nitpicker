@@ -2,11 +2,9 @@
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
 import { withCliDefaults } from './cli-defaults.mts';
 import { selectAnalyzers } from './diff/execution/run-analyzers.mts';
-import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
-import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
-import { runBaseCommand } from './command/base.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
+import { SUBCOMMANDS } from './command/subcommands/subcommands.mts';
 import { resolveRunTarget } from './scope/run-target.mts';
 import { realpathSync } from 'node:fs';
 import {
@@ -37,11 +35,8 @@ import { baseSetupResolver } from './command/policy-review/base-setup.mts';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
-import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
-import { runProjectsCommand } from './projects/command/projects-command.mts';
-import { runScoped } from './projects/run/refusal.mts';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -63,7 +58,6 @@ import type {
   ConfiguredRun,
   ExitCode,
   RunSetup,
-  Subcommand,
 } from './cli-context.mts';
 import type { NitpickerConfig } from '../shared/values/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
@@ -75,15 +69,6 @@ const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   },
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
-};
-const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
-  cache: (cli, rest) =>
-    runScoped(cli, 'cache', (scope) => runCacheCommand({ ...cli, ...scope, arguments_: rest })),
-  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
-  projects: (cli, rest) => runProjectsCommand({ ...cli, arguments_: rest }),
-  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
-  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
-  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
 };
 
 export function runCli(options: CliInput = {}): ExitCode {
@@ -265,7 +250,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     requestedBaseRef,
     outputRoot,
     analyzers,
-    partialRun: selection.partialRun,
+    ...selection.runFields,
     cacheStore,
     includeWorkingTree: true,
     captureHead: cli.captureHead,
