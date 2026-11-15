@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from '../../rules/testing/environment/no-unused-dom-environment.mts';
+import { rule } from '../../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import {
   createProject,
   docblock,

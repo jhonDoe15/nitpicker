@@ -1,32 +1,19 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  libraryBinding as untypedLibraryBinding,
-  variableOf as untypedVariableOf,
-} from '../../../libraries/module-bindings.mjs';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKeyName } from '../analysis/static-shapes.mts';
 import { constantInitializer, type SourceCode } from '../typed/node-views.mts';
+import { libraryBinding, variableOf, type LibraryBinding } from './library-bindings.mts';
 
 export const TYPEORM = 'TypeORM';
 export const MIKRO_ORM = 'MikroORM';
 export const SEQUELIZE = 'Sequelize';
 export type DecoratedOrm = typeof TYPEORM | typeof MIKRO_ORM;
 export type Orm = DecoratedOrm | typeof SEQUELIZE;
-type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 type Wrapper =
   | TSESTree.TSAsExpression
   | TSESTree.TSSatisfiesExpression
   | TSESTree.TSNonNullExpression
   | TSESTree.TSTypeAssertion;
 type MaybeNode = TSESTree.Node | undefined;
-
-const variableOf: (
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-) => TSESLint.Scope.Variable | undefined = untypedVariableOf;
-const libraryBinding: (
-  variable: TSESLint.Scope.Variable | undefined,
-  packages: readonly string[],
-) => LibraryBinding | undefined = untypedLibraryBinding;
 
 const ORM_PACKAGES = new Map<Orm, readonly string[]>([
   [TYPEORM, ['typeorm']],
@@ -59,9 +46,7 @@ export function importedName(
     return undefined;
   }
   const binding = bindingOf(sourceCode, node.object, orm);
-  return binding !== undefined && binding.name === undefined
-    ? staticKeyName(node)
-    : undefined;
+  return binding !== undefined && binding.name === undefined ? staticKeyName(node) : undefined;
 }
 
 export function ormOf(

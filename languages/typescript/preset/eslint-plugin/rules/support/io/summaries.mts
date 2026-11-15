@@ -12,7 +12,7 @@ import {
 import { messagePackages, packageFromPath } from './packages.mts';
 import { resolveCall, type Resolved } from './typed-calls.mts';
 
-export type SummaryState = ImplementationState & {
+type SummaryState = ImplementationState & {
   readonly descriptors: Map<TsFunction, Resolved[]>;
   readonly summaries: Map<TsFunction, Map<number, Effects>>;
   readonly calls: Map<TypeScript.Node, Effects>;

@@ -1,28 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { tempProjects } from '../test-support/temp-projects.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { productionPolicyConfigFor } from './production-policy.mts';
 import { securityFactsFor, securityRules } from './security-facts.mts';
 
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots) rmSync(root, { recursive: true, force: true });
-});
-
-function projectWith(files: Readonly<Record<string, string | object>>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-security-facts-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), typeof text === 'string' ? text : JSON.stringify(text));
-  }
-  return root;
-}
+const projectWith = tempProjects('nitpicker-security-facts-');
 
 const production = (file: string) => defaultResolvedLayout.isSourceFile(file) === true;
 const manifest = (dependencies: Readonly<Record<string, string>>) => ({

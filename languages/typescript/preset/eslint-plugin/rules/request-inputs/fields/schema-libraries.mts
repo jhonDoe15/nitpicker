@@ -3,7 +3,7 @@ import { ts } from '../../typed/typescript-views.mts';
 import { baseIdentifier, importOf, isFromPackage } from '../bindings/ts-nodes.mts';
 import type { Kind } from '../problem-types.mts';
 
-export type SchemaLibrary = {
+type SchemaLibrary = {
   readonly id: 'zod' | 'valibot';
   readonly packages: readonly string[];
   readonly objects: readonly string[];

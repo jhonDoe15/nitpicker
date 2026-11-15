@@ -15,7 +15,9 @@ describe("the ESLint plugin's rule map", () => {
     const rules = eslintPluginRules(REPOSITORY_ROOT);
 
     expect(Object.keys(nitpickerRules.rules)).toEqual(rules.map(({ id }) => id));
-    expect(rules.filter(({ id, file }) => path.basename(file, path.extname(file)) !== id)).toEqual([]);
+    expect(rules.filter(({ id, file }) => path.basename(file, path.extname(file)) !== id)).toEqual(
+      [],
+    );
     const generated = await eslintRegistrySources(REPOSITORY_ROOT);
     const committed = [...generated.keys()].map((file) => [
       file,

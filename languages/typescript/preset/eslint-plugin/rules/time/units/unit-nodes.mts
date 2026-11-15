@@ -1,25 +1,15 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf } from '../../typed/node-views.mts';
+import { TYPE_ASSERTIONS, unwrapOf } from '../../typed/syntax-views.mts';
 
-type Wrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSTypeAssertion
-  | TSESTree.ChainExpression;
-
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion ||
-    node.type === AST_NODE_TYPES.ChainExpression
-  );
-}
+const WRAPPERS = [
+  ...TYPE_ASSERTIONS,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.ChainExpression,
+];
 
 export function unwrap(node: TSESTree.Node): TSESTree.Node {
-  return chainOf(node, (link) => (isWrapper(link) ? link.expression : undefined)).at(-1) ?? node;
+  return unwrapOf(node, WRAPPERS);
 }
 
 export function propertyName(node: TSESTree.Node | undefined): string | undefined {

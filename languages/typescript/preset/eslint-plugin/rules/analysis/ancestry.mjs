@@ -1,7 +1,5 @@
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 
-export { chainOf };
-
 export function contains(outer, inner) {
   return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
@@ -31,8 +29,4 @@ export function constantInitializer(sourceCode, identifier) {
   return definition?.type === 'Variable' && definition.parent.kind === 'const'
     ? (definition.node.init ?? undefined)
     : undefined;
-}
-
-export function isIdentifierNamed(node, name) {
-  return node.type === 'Identifier' && node.name === name;
 }

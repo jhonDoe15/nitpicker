@@ -1,5 +1,5 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { stringValue } from '../analysis/constant-resolution.mts';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findVariable, stringValue } from '../analysis/constant-resolution.mts';
 import { isEnvRead } from '../database/orm-options.mts';
 import { isAbsent } from '../security/http/http-config.mts';
 import { resolvedValue, staticKey, type Context } from '../security/security-values.mts';
@@ -20,6 +20,7 @@ export type TimeoutOptions = {
   opaque: boolean;
 };
 type MaybeNode = TSESTree.Node | undefined;
+type Reference = TSESLint.Scope.Reference;
 type Piece = { readonly text: string; readonly complete: boolean };
 
 const TIMEOUT_KEYS = ['statement_timeout', 'query_timeout'];
@@ -179,4 +180,17 @@ export function postgresOptionsState(context: Context, node: MaybeNode): State {
     textKeyState(options, 'options', UNKNOWN),
     textKeyState(options, 'connectionString', MISSING),
   ]);
+}
+
+export function referencesOfDeclaredVariable(
+  context: Context,
+  declarator: MaybeNode,
+): readonly Reference[] {
+  if (
+    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    declarator.id.type !== AST_NODE_TYPES.Identifier
+  ) {
+    return [];
+  }
+  return findVariable(context, declarator.id, declarator.id.name)?.references ?? [];
 }

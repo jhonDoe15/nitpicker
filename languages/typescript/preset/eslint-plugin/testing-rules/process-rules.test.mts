@@ -1,8 +1,8 @@
-import { rule as hermeticGitInTests } from '../rules/testing/processes/hermetic-git-in-tests.mts';
-import { rule as noNodeProcessPerTest } from '../rules/testing/processes/no-node-process-per-test.mts';
-import { rule as noGitRepositoryPerTest } from '../rules/testing/processes/no-git-repository-per-test.mts';
-import { rule as noServerOrWorkerPerTest } from '../rules/testing/processes/no-server-or-worker-per-test.mts';
-import { rule as noExternalExecutables } from '../rules/testing/processes/no-external-executables-in-unit-tests.mts';
+import { rule as hermeticGitInTests } from '../rules/test-runtime/processes/hermetic-git-in-tests.mts';
+import { rule as noNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
+import { rule as noGitRepositoryPerTest } from '../rules/test-runtime/processes/no-git-repository-per-test.mts';
+import { rule as noServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
+import { rule as noExternalExecutables } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mts';
 import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 

@@ -1,15 +1,10 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  ancestorsOf,
-  depthFirst,
-  nameOf,
-  scopeChain,
-  type SourceCode,
-} from '../../typed/node-views.mts';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, depthFirst, nameOf, type SourceCode } from '../../typed/node-views.mts';
 import {
   astChildren,
   functionName,
   isFunctionNode,
+  longLivedVariable,
   unwrapExpression,
   type FunctionNode,
 } from '../scope/close-scopes.mts';
@@ -20,8 +15,6 @@ type Guard = {
   readonly binding: CacheBinding;
   readonly fn: FunctionNode;
 };
-
-const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 const CACHING_OPERATORS = new Set<string>(['=', '??=', '||=']);
 const HANDLER_METHODS = new Set<string>(['catch', 'then', 'finally']);
@@ -44,17 +37,9 @@ function outlivesCall(
   identifier: TSESTree.Identifier,
   assignment: TSESTree.AssignmentExpression,
 ): boolean {
-  const variable = scopeChain(sourceCode.getScope(assignment))
-    .map((scope) => scope.set.get(identifier.name))
-    .find((found) => found !== undefined);
-  const declared = variable?.defs.every(
-    (definition) => definition.type === DefinitionType.Variable,
-  );
-  const type = variable?.scope.type;
+  const variable = longLivedVariable(sourceCode, assignment, identifier.name);
   return (
-    declared === true &&
-    variable?.scope.block !== ancestorsOf(assignment).find(isFunctionNode) &&
-    (type === ScopeType.function || type === ScopeType.module || type === ScopeType.global)
+    variable !== undefined && variable.scope.block !== ancestorsOf(assignment).find(isFunctionNode)
   );
 }
 

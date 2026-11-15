@@ -5,7 +5,8 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import tseslint from 'typescript-eslint';
-import { ancestorsOf, nameOf } from '../typed/node-views.mts';
+import { ancestorsOf } from '../typed/node-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { pluginRule, reportedNode, withReportFilter, type Context } from './report-filter.mts';
 
@@ -63,12 +64,7 @@ function unwrapped(node: TSESTree.Node): TSESTree.Node {
 }
 
 function calleeName(callee: TSESTree.Node): string {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? (nameOf(callee.property) ?? '')
-    : '';
+  return calleeNameOf(callee) ?? '';
 }
 
 function returnedValue(node: TSESTree.Node): TSESTree.Node {

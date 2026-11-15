@@ -1,4 +1,4 @@
-import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mts';
+import { rule as noRaisedTestTimeout } from '../../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { withoutFixes } from '../../../eslint-config/rule-hints.mts';
 import { typescriptRuleTester, ruleModule } from '../../test-support/rule-tester.mts';
 

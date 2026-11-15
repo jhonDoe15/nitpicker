@@ -3,6 +3,7 @@ import { findVariable, isFunctionNode } from '../../analysis/constant-resolution
 import { isFixedCollection } from '../../concurrency/collections/fixed-collections.mts';
 import { descendants } from '../../concurrency/io-origin.mts';
 import {
+  callName,
   memberName,
   typeServices,
   unwrapped,
@@ -226,14 +227,6 @@ function checksSize(context: Context, fn: FunctionNode, texts: Set<string>): boo
           child.arguments.length === 1 &&
           texts.has(context.sourceCode.getText(unwrapped(child.arguments[0])))),
     );
-}
-
-function callName(call: TSESTree.CallExpression): string | undefined {
-  const callee = unwrapped(call.callee);
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression ? memberName(callee) : undefined;
 }
 
 function isChunkCall(node: MaybeNode): boolean {

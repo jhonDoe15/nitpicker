@@ -1,5 +1,5 @@
 import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
-import { rule } from '../rules/testing/processes/timeouts/require-test-process-timeout.mts';
+import { rule } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();

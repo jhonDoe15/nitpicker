@@ -1,8 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  libraryBinding as untypedLibraryBinding,
-  variableOf as untypedVariableOf,
-} from '../../../libraries/module-bindings.mjs';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mts';
 import {
   isTypeWrapper,
@@ -10,27 +6,18 @@ import {
   unwrapped,
   type Context,
 } from '../security/security-values.mts';
-import { ancestorsOf, chainOf, type SourceCode } from '../typed/node-views.mts';
+import { ancestorsOf, chainOf } from '../typed/node-views.mts';
 import { readsOnlyFields } from './row-callbacks.mts';
+import { libraryBinding, variableOf } from '../persistence/library-bindings.mts';
 
 export const COUNT = 'count';
 export const FILTER = 'filter';
 export const SORT = 'sort';
 export const AGGREGATE = 'aggregate';
 
-export type Shape = typeof COUNT | typeof FILTER | typeof SORT | typeof AGGREGATE;
+type Shape = typeof COUNT | typeof FILTER | typeof SORT | typeof AGGREGATE;
 export type Use = { readonly node: TSESTree.Node; readonly shape: Shape };
 type MaybeNode = TSESTree.Node | undefined;
-type LibraryBinding = { readonly source: string; readonly name: string | undefined };
-
-const variableOf: (
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-) => TSESLint.Scope.Variable | undefined = untypedVariableOf;
-const libraryBinding: (
-  variable: TSESLint.Scope.Variable | undefined,
-  packages: readonly string[],
-) => LibraryBinding | undefined = untypedLibraryBinding;
 
 const FILTER_METHODS = new Set<string | undefined>([
   'filter',

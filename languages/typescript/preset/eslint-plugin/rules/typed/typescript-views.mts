@@ -4,3 +4,10 @@ import { lazyTypeScriptApi as untypedLazyTypeScriptApi } from '../../../../types
 const lazyTypeScriptApi: () => typeof TypeScript = untypedLazyTypeScriptApi;
 
 export const ts = lazyTypeScriptApi();
+
+export function variableNames(statement: TypeScript.VariableStatement): string[] {
+  return statement.declarationList.declarations
+    .map(({ name }) => name)
+    .filter(ts.isIdentifier)
+    .map(({ text }) => text);
+}

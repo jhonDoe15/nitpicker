@@ -1,4 +1,4 @@
-import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mts';
+import { rule as noFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();

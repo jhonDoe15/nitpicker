@@ -6,10 +6,13 @@ import {
 } from '@typescript-eslint/utils';
 import { jsdocOptionSchema, type JsdocOptions } from '../typed/jsdoc-views.mts';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
+import {
+  isExport,
+  isExportedStatement,
+  isFunction,
+  type FunctionNode,
+} from '../typed/syntax-views.mts';
 
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
-type ExportNode = TSESTree.ExportNamedDeclaration | TSESTree.ExportDefaultDeclaration;
 type MemberNode = TSESTree.MethodDefinition | TSESTree.PropertyDefinition;
 type BooleanLiteral = TSESTree.BooleanLiteral;
 type ConditionParent = TSESTree.Node | undefined;
@@ -37,21 +40,6 @@ const FACTORY_NAME = /^(?:(?:set|with|from)[A-Z_]|of$|builder$)/;
 const STATIC_FACTORY = /^(?:create|valueOf)/;
 const BOOLEAN_TAG = /@param\s+\{\s*boolean\s*\}\s+(?:\[\s*)?([\w$]+)/g;
 
-function isFunction(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-}
-
-function isExport(node: TSESTree.Node): node is ExportNode {
-  return (
-    node.type === AST_NODE_TYPES.ExportNamedDeclaration ||
-    node.type === AST_NODE_TYPES.ExportDefaultDeclaration
-  );
-}
-
 function isMember(node: TSESTree.Node): node is MemberNode {
   return (
     node.type === AST_NODE_TYPES.MethodDefinition || node.type === AST_NODE_TYPES.PropertyDefinition
@@ -63,34 +51,6 @@ function isDirectParent(node: TSESTree.Node): boolean {
     node.type === AST_NODE_TYPES.Program ||
     node.type === AST_NODE_TYPES.VariableDeclarator ||
     isExport(node)
-  );
-}
-
-function declaredName(statement: TSESTree.Node): string | undefined {
-  const declaration = isExport(statement) ? statement.declaration : statement;
-  if (declaration?.type === AST_NODE_TYPES.VariableDeclaration) {
-    return nameOf(declaration.declarations[0].id);
-  }
-  return declaration !== null && 'id' in declaration ? nameOf(declaration.id) : undefined;
-}
-
-function isExportedStatement(
-  program: TSESTree.Node | undefined,
-  statement: TSESTree.Node,
-): boolean {
-  if (isExport(statement)) {
-    return true;
-  }
-  const name = declaredName(statement);
-  return (
-    name !== undefined &&
-    program?.type === AST_NODE_TYPES.Program &&
-    program.body.some(
-      (other) =>
-        other.type === AST_NODE_TYPES.ExportNamedDeclaration &&
-        other.source === null &&
-        other.specifiers.some((specifier) => nameOf(specifier.local) === name),
-    )
   );
 }
 

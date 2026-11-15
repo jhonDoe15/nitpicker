@@ -9,7 +9,7 @@ import { VALIDATION_LIBRARIES as untypedValidationLibraries } from '../../../../
 import { isNode, type SourceCode } from '../../typed/node-views.mts';
 
 type Variable = TSESLint.Scope.Variable;
-type LibraryBinding = { readonly source: unknown; readonly name: string | undefined };
+export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 type ValidationLibrary = { readonly id: string; readonly packages: readonly string[] };
 
 export const variableOf: (

@@ -10,6 +10,7 @@ import {
   unwrapped,
   type Context,
 } from '../security/security-values.mts';
+import { returnedExpression } from '../collections/costly-forms/repeated-runs.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import {
@@ -203,16 +204,6 @@ function bindPattern(pattern: TSESTree.Parameter, state: State): boolean {
     }
     return key !== undefined && bound !== undefined;
   });
-}
-
-function returnedExpression(fn: Callback): MaybeNode {
-  if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
-    return fn.body;
-  }
-  const [only] = fn.body.body;
-  return fn.body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
 }
 
 function isComputed(services: ParserServicesWithTypeInformation, { owner, name }: Field): boolean {

@@ -6,7 +6,7 @@ import {
   scriptKindOf as untypedScriptKindOf,
 } from '../../../modules/module-sources.mjs';
 import { readLayout } from '../../rules/typed/policy-views.mts';
-import { ts } from '../../rules/typed/typescript-views.mts';
+import { ts, variableNames } from '../../rules/typed/typescript-views.mts';
 import {
   DEFAULT_EXPORT,
   isConstantName,
@@ -105,10 +105,7 @@ function listedConstants(
 
 function declaredNames(statement: TypeScript.Statement): string[] {
   if (ts.isVariableStatement(statement)) {
-    return statement.declarationList.declarations
-      .map(({ name }) => name)
-      .filter(ts.isIdentifier)
-      .map(({ text }) => text);
+    return variableNames(statement);
   }
   const named = ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement);
   if (named && hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {

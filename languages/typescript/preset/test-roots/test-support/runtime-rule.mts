@@ -1,6 +1,6 @@
 import { RuleTester, type Rule } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule } from '../../eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mts';
+import { rule } from '../../eslint-plugin/rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { ruleModule } from '../../eslint-plugin/test-support/rule-tester.mts';
 
 export function productionRuntimeRule(): Rule.RuleModule {

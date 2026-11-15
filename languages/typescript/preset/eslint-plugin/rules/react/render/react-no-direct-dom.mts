@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf, nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { NULLISH_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
 
-type Wrapper = TSESTree.ChainExpression | TSESTree.TSNonNullExpression | TSESTree.TSAsExpression;
 type NameSet = ReadonlySet<string | undefined>;
 
 const queryMethods = new Set<string | undefined>([
@@ -48,16 +48,8 @@ const rootMounts = new Set<string | undefined>(['createRoot', 'hydrateRoot', 'cr
 const uiFile = /(?:^|\/)(?:ui\/|adapters\/|shared\/|lib\/|use(?:[A-Z]|-)[^/]*$)/u;
 const MAX_ALIASES = 8;
 
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.ChainExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSAsExpression
-  );
-}
-
 function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  return chainOf(node, (link) => (isWrapper(link) ? link.expression : undefined)).at(-1) ?? node;
+  return unwrapOf(node, NULLISH_WRAPPERS);
 }
 
 function propertyName(member: TSESTree.Node): string | undefined {

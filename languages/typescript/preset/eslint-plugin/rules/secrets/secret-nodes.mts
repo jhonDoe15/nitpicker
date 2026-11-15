@@ -1,41 +1,22 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { foldTree } from '../typed/node-views.mts';
+import { TYPE_ASSERTIONS, unwrapOf } from '../typed/syntax-views.mts';
 
 export type LiteralPart = { readonly node: TSESTree.Node; readonly text: string };
-type Wrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSTypeAssertion
-  | TSESTree.ChainExpression
-  | TSESTree.AwaitExpression;
 type FoldEntries = readonly (readonly [TSESTree.Node, TSESTree.Node])[];
 
-function isWrapper(node: TSESTree.Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion ||
-    node.type === AST_NODE_TYPES.ChainExpression ||
-    node.type === AST_NODE_TYPES.AwaitExpression
-  );
-}
+const WRAPPERS = [
+  ...TYPE_ASSERTIONS,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.ChainExpression,
+  AST_NODE_TYPES.AwaitExpression,
+];
 const TEXT_PRESERVING_METHODS = new Set(['trim', 'trimStart', 'trimEnd', 'toString', 'normalize']);
 const STRING_WRAPPERS = new Set(['String', 'Buffer.from']);
 const ENV_OBJECTS = new Set(['process.env', 'import.meta.env', 'Deno.env', 'Bun.env']);
 
 export function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  const pending = [node];
-  for (const current of pending) {
-    if (!isWrapper(current)) {
-      return current;
-    }
-    pending.push(
-      current.type === AST_NODE_TYPES.AwaitExpression ? current.argument : current.expression,
-    );
-  }
-  return node;
+  return unwrapOf(node, WRAPPERS);
 }
 
 function baseName(inner: TSESTree.Node): string | undefined {

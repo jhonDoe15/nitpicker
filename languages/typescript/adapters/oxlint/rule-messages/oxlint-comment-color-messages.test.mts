@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { rule as noComments } from '../../../preset/eslint-plugin/rules/modules/no-comments.mts';
-import { rule as noFixedSleep } from '../../../preset/eslint-plugin/rules/testing/lifecycle/no-fixed-sleep-synchronization.mts';
+import { rule as noFixedSleep } from '../../../preset/eslint-plugin/rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as noHardcodedColors } from '../../../preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mts';
 import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 

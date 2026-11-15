@@ -1,4 +1,5 @@
 import type { TSESLint } from '@typescript-eslint/utils';
+import { optionalReporter } from '../../support/optional-report.mts';
 import { arrayMembership } from './array-membership.mts';
 import { keyedLookup } from './keyed-lookup.mts';
 import { sortedExtreme } from './sorted-extreme.mts';
@@ -25,11 +26,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
   },
   create(context) {
     const { sourceCode } = context;
-    function report(descriptor: TSESLint.ReportDescriptor<MessageId> | undefined): void {
-      if (descriptor !== undefined) {
-        context.report(descriptor);
-      }
-    }
+    const report = optionalReporter(context);
     return {
       VariableDeclarator(declarator) {
         report(arrayMembership(sourceCode, declarator));

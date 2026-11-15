@@ -9,7 +9,7 @@ import { combinatorName, callsOf, mappings, workerOf, type Site, type Worker } f
 
 type FunctionNode =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
-export type Found = {
+type Found = {
   readonly kind: ClientSpec['kind'];
   readonly operation: string;
   readonly via?: string;
@@ -33,7 +33,7 @@ type Group = {
 
 const MAX_HELPER_DEPTH = 3;
 const MAX_TEXT = 50;
-export const TARGETS: Readonly<Record<string, string>> = {
+const TARGETS: Readonly<Record<string, string>> = {
   remote: 'remote service',
   message: 'broker',
 };
@@ -80,7 +80,7 @@ function inspect(
   return { helpers };
 }
 
-export function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined {
+function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined {
   const seen = new Set<FunctionNode>();
   const pending: Entry[] = [{ worker, depth: 0, origin: undefined }];
   for (const entry of pending) {
@@ -100,7 +100,7 @@ export function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined 
   return undefined;
 }
 
-export function viaText(found: Found): string {
+function viaText(found: Found): string {
   if (found.via === undefined) {
     return '';
   }
@@ -108,23 +108,31 @@ export function viaText(found: Found): string {
   return ` (which ${verb} \`${found.via}\`)`;
 }
 
-function reportSites(scope: FanOutScope, group: Group): void {
+export function reportSites(
+  scope: FanOutScope,
+  at: {
+    readonly node: TSESTree.Node;
+    readonly messageId: string;
+    readonly data: Readonly<Record<string, string>>;
+  },
+  sites: readonly Site[],
+  textOf: (collection: TSESTree.Node) => string,
+): void {
   const { context } = scope;
-  const { node, combinator, sites } = group;
   const reported = new Set();
   for (const { collection, worker } of sites) {
     const found = remoteIn(scope, worker);
-    const text = context.sourceCode.getText(collection);
+    const text = textOf(collection);
     const key = `${String(found?.operation)}|${text}`;
     if (found === undefined || reported.has(key) || isFixedCollection(context, collection)) {
       continue;
     }
     reported.add(key);
     context.report({
-      node,
-      messageId: 'unbounded',
+      node: at.node,
+      messageId: at.messageId,
       data: {
-        combinator,
+        ...at.data,
         operation: found.operation,
         via: viaText(found),
         collection: text.length <= MAX_TEXT ? text : 'the collection',
@@ -132,6 +140,13 @@ function reportSites(scope: FanOutScope, group: Group): void {
       },
     });
   }
+}
+
+function reportGroup(scope: FanOutScope, group: Group): void {
+  const { context } = scope;
+  const { node, combinator, sites } = group;
+  const at = { node, messageId: 'unbounded', data: { combinator } };
+  reportSites(scope, at, sites, (collection) => context.sourceCode.getText(collection));
 }
 
 function mentionsPMap(context: Context): boolean {
@@ -170,7 +185,7 @@ export const rule: TSESLint.RuleModule<'unbounded'> = {
       CallExpression(node) {
         const combinator = combinatorName(context, node);
         if (combinator !== undefined) {
-          reportSites(scope, {
+          reportGroup(scope, {
             node,
             combinator,
             sites: mappings(context, node.arguments[0] ?? node),
@@ -180,7 +195,7 @@ export const rule: TSESLint.RuleModule<'unbounded'> = {
           const [collection] = node.arguments;
           const sites =
             worker === undefined || collection === undefined ? [] : [{ collection, worker }];
-          reportSites(scope, { node, combinator: 'pMap', sites });
+          reportGroup(scope, { node, combinator: 'pMap', sites });
         }
       },
     };

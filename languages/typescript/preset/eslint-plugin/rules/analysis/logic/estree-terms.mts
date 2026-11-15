@@ -1,17 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { isNode, type SourceCode } from '../../typed/node-views.mts';
-import { foldTree, term, withRange, type Range } from './term-views.mts';
+import { foldTree, isNode, type SourceCode } from '../../typed/node-views.mts';
+import { term, withRange, type Term } from './term-views.mts';
 
-export type Term = {
-  readonly kind: string;
-  readonly value: string | undefined;
-  readonly children: Term[];
-  readonly range: Range | undefined;
-  readonly loose?: true;
-  readonly assignment?: true;
-  readonly boolean?: true;
-  readonly integer?: true;
-};
+export type { Term } from './term-views.mts';
 
 export type TermOptions = {
   readonly isBoolean?: (node: TSESTree.Node) => boolean;

@@ -1,10 +1,11 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../../analysis/constant-resolution.mts';
 import {
   constantNumber,
   findVariable,
   importedCalleeName,
   moduleBindings,
+  moduleVariableKind,
 } from '../../analysis/test-code-analysis.mts';
 import { ancestorsOf, depthFirst } from '../../typed/node-views.mts';
 
@@ -16,8 +17,6 @@ type TopLevel = {
   readonly host: FunctionNode | TSESTree.VariableDeclaration;
 };
 type GlobalTimer = TSESTree.Identifier | TSESTree.MemberExpressionNonComputedName;
-
-const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 const MIN_UNINJECTABLE_DELAY_MS = 500;
 
@@ -106,13 +105,7 @@ function parameterCanCarryDelay(parameter: TSESTree.Parameter): boolean {
 }
 
 function isModuleConstant(context: SourceContext, identifier: TSESTree.Identifier): boolean {
-  const variable = findVariable(context, identifier, identifier.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  return (
-    variable?.scope.type === ScopeType.module &&
-    definition?.type === DefinitionType.Variable &&
-    definition.parent.kind === 'const'
-  );
+  return moduleVariableKind(context, identifier) === 'const';
 }
 
 function delayOperands(node: TSESTree.Node | undefined): (TSESTree.Node | undefined)[] {

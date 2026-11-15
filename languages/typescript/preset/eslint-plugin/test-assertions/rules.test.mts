@@ -1,4 +1,4 @@
-import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mts';
+import { rule as noPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as noFloatEqualityInTests } from './no-float-equality-in-tests.mts';
 import { rule as noSwitchedOffTests } from './no-switched-off-tests.mts';
 import { typescriptRuleTester } from '../test-support/rule-tester.mts';

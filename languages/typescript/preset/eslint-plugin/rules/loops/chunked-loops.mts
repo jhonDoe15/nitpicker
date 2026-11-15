@@ -2,7 +2,8 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import type { Context } from '../security/security-values.mts';
 import { hasArrayType } from '../support/checked-types.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
-import { contains, nameOf } from '../typed/node-views.mts';
+import { contains } from '../typed/node-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 import { childrenOf, type EnclosingLoop, type LoopNode } from './loop-shapes.mts';
 
 type FunctionNode =
@@ -14,12 +15,7 @@ const CHUNK_WORDS = new Set(['chunk', 'chunks', 'chunked', 'batch', 'batches', '
 const SLICES = new Set(['slice', 'splice', 'subarray']);
 
 function calleeName(callee: TSESTree.Node): string {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? (nameOf(callee.property) ?? '')
-    : '';
+  return calleeNameOf(callee) ?? '';
 }
 
 function isChunkSource(node: TSESTree.Node): boolean {

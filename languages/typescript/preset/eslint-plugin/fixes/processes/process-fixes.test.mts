@@ -1,8 +1,8 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as boundedContainerTeardown } from '../../rules/testing/lifecycle/bounded-container-teardown.mts';
-import { rule as containerPause } from '../../rules/testing/lifecycle/container-pause-requires-finally-unpause.mts';
-import { rule as hermeticGit } from '../../rules/testing/processes/hermetic-git-in-tests.mts';
-import { rule as processTimeout } from '../../rules/testing/processes/timeouts/require-test-process-timeout.mts';
+import { rule as boundedContainerTeardown } from '../../rules/test-runtime/lifecycle/bounded-container-teardown.mts';
+import { rule as containerPause } from '../../rules/test-runtime/lifecycle/container-pause-requires-finally-unpause.mts';
+import { rule as hermeticGit } from '../../rules/test-runtime/processes/hermetic-git-in-tests.mts';
+import { rule as processTimeout } from '../../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
 import { rule as noShellStringCommand } from '../../rules/guards/no-shell-string-command.mts';
 
 const tester = typescriptRuleTester();

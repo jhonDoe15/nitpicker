@@ -50,6 +50,23 @@ function client(kind: ClientSpec['kind'], spec: Partial<ClientSpec>): ClientSpec
   };
 }
 
+function amqpClient(derivers: readonly string[], types: readonly string[]): ClientSpec {
+  return client(MESSAGE, {
+    methods: new Set([PUBLISH, 'sendToQueue']),
+    makers: new Set([CONNECT]),
+    derivers: new Set(derivers),
+    types: new Set(types),
+  });
+}
+
+function redisClient(makers: readonly string[], types: readonly string[]): ClientSpec {
+  return client(MESSAGE, {
+    methods: new Set(REDIS_PUBLISH),
+    makers: new Set(makers),
+    types: new Set(types),
+  });
+}
+
 const SPECS = new Map<string, ClientSpec>([
   ...AXIOS_MODULES.map((name): [string, ClientSpec] => [
     name,
@@ -145,40 +162,13 @@ const SPECS = new Map<string, ClientSpec>([
       types: new Set(['Producer']),
     }),
   ],
-  [
-    'amqplib',
-    client(MESSAGE, {
-      methods: new Set([PUBLISH, 'sendToQueue']),
-      makers: new Set([CONNECT]),
-      derivers: new Set(['createChannel', 'createConfirmChannel']),
-      types: new Set(['Channel', 'ConfirmChannel']),
-    }),
-  ],
-  [
-    'amqp-connection-manager',
-    client(MESSAGE, {
-      methods: new Set([PUBLISH, 'sendToQueue']),
-      makers: new Set([CONNECT]),
-      derivers: new Set(['createChannel']),
-      types: new Set(['ChannelWrapper']),
-    }),
-  ],
+  ['amqplib', amqpClient(['createChannel', 'createConfirmChannel'], ['Channel', 'ConfirmChannel'])],
+  ['amqp-connection-manager', amqpClient(['createChannel'], ['ChannelWrapper'])],
   ['nats', client(MESSAGE, { methods: new Set([PUBLISH]), makers: new Set([CONNECT]) })],
-  [
-    'ioredis',
-    client(MESSAGE, {
-      methods: new Set(REDIS_PUBLISH),
-      makers: new Set([DEFAULT, 'Redis', 'Cluster']),
-      types: new Set(['Redis', 'Cluster']),
-    }),
-  ],
+  ['ioredis', redisClient([DEFAULT, 'Redis', 'Cluster'], ['Redis', 'Cluster'])],
   [
     'redis',
-    client(MESSAGE, {
-      methods: new Set(REDIS_PUBLISH),
-      makers: new Set(['createClient', 'createCluster']),
-      types: new Set(['RedisClientType', 'RedisClusterType']),
-    }),
+    redisClient(['createClient', 'createCluster'], ['RedisClientType', 'RedisClusterType']),
   ],
   [
     '@google-cloud/pubsub',

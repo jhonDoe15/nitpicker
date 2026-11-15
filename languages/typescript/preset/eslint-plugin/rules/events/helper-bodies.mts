@@ -1,15 +1,15 @@
 import type { ParserServicesWithTypeInformation, TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { chainOf } from '../../typed/node-views.mts';
-import { ts } from '../../typed/typescript-views.mts';
-import { moduleOfFile } from '../emitter-creations.mts';
+import { chainOf } from '../typed/node-views.mts';
+import { ts } from '../typed/typescript-views.mts';
+import { moduleOfFile } from './emitter-creations.mts';
 import {
   isChainableMethod,
   isHandlingLibrary,
   isHelperHandlingName,
   isListenMethod,
   isStreamWaiter,
-} from '../emitter-modules.mts';
+} from './emitter-modules.mts';
 
 const MAX_DEPTH = 3;
 

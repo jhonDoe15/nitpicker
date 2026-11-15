@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import tseslint from 'typescript-eslint';
-import { nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { chainOf, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { callChainLink, wrappedExpression } from '../typed/syntax-views.mts';
 import {
   createObject,
   pluginRule,
@@ -54,23 +55,13 @@ const SCHEMA_DERIVATIONS = new Set([
   'brand',
 ]);
 
+const ASSERTION_LINKS = [AST_NODE_TYPES.TSAsExpression, AST_NODE_TYPES.TSSatisfiesExpression];
+
 function chainRoot(expression: TSESTree.Node): TSESTree.Node | undefined {
-  const chain = [expression];
-  for (const current of chain) {
-    if (current.type === AST_NODE_TYPES.CallExpression) {
-      chain.push(current.callee);
-    }
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      chain.push(current.object);
-    }
-    if (
-      current.type === AST_NODE_TYPES.TSAsExpression ||
-      current.type === AST_NODE_TYPES.TSSatisfiesExpression
-    ) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
+  return chainOf(
+    expression,
+    (link) => callChainLink(link) ?? wrappedExpression(link, ASSERTION_LINKS),
+  ).at(-1);
 }
 
 function isSchemaLibraryBinding(sourceCode: SourceCode, identifier: TSESTree.Identifier): boolean {

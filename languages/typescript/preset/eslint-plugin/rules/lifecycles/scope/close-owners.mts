@@ -1,23 +1,18 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  ancestorsOf,
-  depthFirst,
-  nameOf,
-  scopeChain,
-  type SourceCode,
-} from '../../typed/node-views.mts';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, depthFirst, nameOf, type SourceCode } from '../../typed/node-views.mts';
 import {
   astChildren,
   chainEnd,
   functionName,
   isCloseName,
   isFunctionNode,
+  longLivedVariable,
   unwrapExpression,
   type FunctionNode,
 } from './close-scopes.mts';
 
 type Variable = TSESLint.Scope.Variable;
-export type BindingOwner =
+type BindingOwner =
   | {
       readonly container: TSESTree.Node;
       readonly name: string | undefined;
@@ -31,8 +26,6 @@ export type BindingOwner =
       readonly kind: 'variable';
     };
 export type CloseScope = BindingOwner & { readonly closers: readonly FunctionNode[] };
-
-const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 function containerOf(fn: FunctionNode): TSESTree.Node | undefined {
   const { parent } = fn;
@@ -85,22 +78,6 @@ export function rootIdentifier(expression: TSESTree.Node): TSESTree.Identifier |
   return identifier.type === AST_NODE_TYPES.Identifier ? identifier : undefined;
 }
 
-function longLivedVariable(
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-): Variable | undefined {
-  const variable = scopeChain(sourceCode.getScope(identifier))
-    .map((scope) => scope.set.get(identifier.name))
-    .find((found) => found !== undefined);
-  const declared = variable?.defs.every(
-    (definition) => definition.type === DefinitionType.Variable,
-  );
-  const type = variable?.scope.type;
-  const long =
-    type === ScopeType.function || type === ScopeType.module || type === ScopeType.global;
-  return declared === true && long ? variable : undefined;
-}
-
 function bindingOwner(sourceCode: SourceCode, expression: TSESTree.Node): BindingOwner | undefined {
   const field = thisField(expression);
   if (field !== undefined) {
@@ -112,7 +89,7 @@ function bindingOwner(sourceCode: SourceCode, expression: TSESTree.Node): Bindin
       : { container, name: nameOf(field.property), field, kind: 'field' };
   }
   const identifier = rootIdentifier(expression);
-  const variable = identifier && longLivedVariable(sourceCode, identifier);
+  const variable = identifier && longLivedVariable(sourceCode, identifier, identifier.name);
   return identifier !== undefined && variable !== undefined
     ? { container: variable.scope.block, name: identifier.name, variable, kind: 'variable' }
     : undefined;

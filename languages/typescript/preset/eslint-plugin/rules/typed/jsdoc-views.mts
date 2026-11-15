@@ -10,7 +10,7 @@ import {
   withJsdoc as untypedWithJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
 
-export type JsdocTag = {
+type JsdocTag = {
   readonly tag: string;
   readonly type?: string;
   readonly name?: string;

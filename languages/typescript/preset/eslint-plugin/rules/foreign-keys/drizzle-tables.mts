@@ -1,12 +1,8 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  initializer as untypedInitializer,
-  libraryBinding as untypedLibraryBinding,
-  variableOf as untypedVariableOf,
-} from '../../../libraries/module-bindings.mjs';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKeyName } from '../analysis/static-shapes.mts';
 import { objectOf, propertiesOf, valueOf } from '../persistence/orm-bindings.mts';
 import type { SourceCode } from '../typed/node-views.mts';
+import { initializer, libraryBinding, variableOf } from '../persistence/library-bindings.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type Columns = (string | undefined)[];
@@ -16,19 +12,6 @@ type Facts = {
   readonly indexes: Columns[];
   readonly foreignKeys: { readonly node: TSESTree.CallExpression; readonly columns: Columns }[];
 };
-type LibraryBinding = { readonly source: string; readonly name: string | undefined };
-
-const variableOf: (
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-) => TSESLint.Scope.Variable | undefined = untypedVariableOf;
-const libraryBinding: (
-  variable: TSESLint.Scope.Variable | undefined,
-  packages: readonly string[],
-) => LibraryBinding | undefined = untypedLibraryBinding;
-const initializer: (
-  variable: TSESLint.Scope.Variable | undefined,
-) => TSESTree.Expression | undefined = untypedInitializer;
 
 const DRIZZLE = ['drizzle-orm'];
 const TABLES = new Set(['pgTable']);

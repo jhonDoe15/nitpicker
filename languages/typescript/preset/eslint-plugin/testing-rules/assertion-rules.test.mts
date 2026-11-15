@@ -1,10 +1,10 @@
-import { rule as noWaitFor } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mts';
-import { rule as noInternalMocks } from '../rules/testing/assertions/no-internal-module-mocks.mts';
-import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mts';
-import { rule as noMockingSubjectUnderTest } from '../rules/testing/assertions/no-mocking-subject-under-test.mts';
-import { rule as testTsconfigPinsLibAndTypes } from '../rules/testing/types/test-tsconfig-pins-lib-and-types.mts';
-import { rule as testMustUseProductionRuntime } from '../rules/testing/assertions/test-must-use-production-runtime.mts';
-import { rule as integrationTestUsesApprovedHarness } from '../rules/testing/processes/integration-test-uses-approved-harness.mts';
+import { rule as noWaitFor } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as noInternalMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
+import { rule as noPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
+import { rule as noMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { rule as testTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
+import { rule as testMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
+import { rule as integrationTestUsesApprovedHarness } from '../rules/test-runtime/processes/integration-test-uses-approved-harness.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mts';
 import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 

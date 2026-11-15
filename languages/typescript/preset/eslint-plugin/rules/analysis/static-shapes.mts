@@ -1,7 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 type KeyOwner = { readonly computed: boolean } & (
-  | { readonly key: TSESTree.Node }
-  | { readonly property: TSESTree.Node }
+  { readonly key: TSESTree.Node } | { readonly property: TSESTree.Node }
 );
 
 export function staticKeyName(owner: KeyOwner): string | undefined {

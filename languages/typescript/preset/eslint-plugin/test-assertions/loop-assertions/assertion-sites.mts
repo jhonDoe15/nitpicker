@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, type SourceContext } from '../../rules/analysis/constant-resolution.mts';
+import { memoized } from '../../rules/support/memo.mts';
 import { chainOf } from '../../rules/typed/node-views.mts';
 import { resolvedFunction } from '../unowned-async/hosts.mts';
 import {
@@ -42,25 +43,22 @@ function isDetached(node: TSESTree.Node): boolean {
   return isFunctionNode(node) && !isInline(node);
 }
 
-export function factsOf(env: LoopEnv, fn: FunctionNode): Facts {
-  const known = env.facts.get(fn);
-  if (known !== undefined) {
-    return known;
-  }
-  const { context, bindings } = env;
+function collectFacts({ context, bindings }: LoopEnv, fn: FunctionNode): Facts {
   const nodes = nodesIn(
     context,
     fn.body,
     (child) => !(isTestBoundary(context, child) || isDetached(child)),
   );
   const callees = nodes.map((node) => referencedFunction(context, node));
-  const facts = {
+  return {
     nodes,
     callees: [...new Set(callees.filter((callee) => callee !== undefined))],
     direct: nodes.some((node) => countsAsAssertion(node, bindings)),
   };
-  env.facts.set(fn, facts);
-  return facts;
+}
+
+export function factsOf(env: LoopEnv, fn: FunctionNode): Facts {
+  return memoized(env.facts, fn, () => collectFacts(env, fn));
 }
 
 function remember(

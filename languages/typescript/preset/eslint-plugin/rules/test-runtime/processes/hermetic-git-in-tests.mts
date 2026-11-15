@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { hermeticFix } from '../../../fixes/processes/hermetic-git-fix.mts';
+import { collectObjectKeys } from '../object-keys.mts';
 import { fixable } from '../../../fixes/support/descriptors.mts';
 import type { SourceContext } from '../../analysis/constant-resolution.mts';
 import type { ModuleBindings, Subprocess } from '../../analysis/subprocess-calls.mts';
@@ -12,41 +13,6 @@ import {
 } from '../../analysis/test-code-analysis.mts';
 
 const HERMETIC_KEYS = ['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM'];
-
-function recordKey(
-  property: TSESTree.ObjectLiteralElement,
-  keys: Set<string>,
-  pending: (TSESTree.Node | undefined)[],
-): void {
-  if (property.type === AST_NODE_TYPES.SpreadElement) {
-    pending.push(property.argument);
-    return;
-  }
-  const name = propertyKeyName(property);
-  if (name !== undefined) {
-    keys.add(name);
-  }
-}
-
-function objectKeys(
-  context: SourceContext,
-  node: TSESTree.Node | undefined,
-  seen = new Set<TSESTree.Node>(),
-): Set<string> {
-  const pending = [node];
-  const keys = new Set<string>();
-  for (const current of pending) {
-    const resolved = resolveConstant(context, current);
-    if (resolved?.type !== AST_NODE_TYPES.ObjectExpression || seen.has(resolved)) {
-      continue;
-    }
-    seen.add(resolved);
-    for (const property of resolved.properties) {
-      recordKey(property, keys, pending);
-    }
-  }
-  return keys;
-}
 
 function environmentNode(
   context: SourceContext,
@@ -64,7 +30,11 @@ function environmentNode(
 }
 
 function isHermetic(context: SourceContext, described: Subprocess): boolean {
-  const keys = objectKeys(context, environmentNode(context, described.optionsNode));
+  const keys = collectObjectKeys(
+    context,
+    environmentNode(context, described.optionsNode),
+    propertyKeyName,
+  ).keys;
   return HERMETIC_KEYS.every((key) => keys.has(key));
 }
 

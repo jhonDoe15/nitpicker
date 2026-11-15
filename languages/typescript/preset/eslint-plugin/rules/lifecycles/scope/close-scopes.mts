@@ -1,5 +1,5 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf, nodeChildren } from '../../typed/node-views.mts';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { nameOf, nodeChildren, scopeChain, type SourceCode } from '../../typed/node-views.mts';
 
 export type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
@@ -9,6 +9,7 @@ type Wrapper =
   | TSESTree.TSSatisfiesExpression
   | TSESTree.TSNonNullExpression
   | TSESTree.ChainExpression;
+const { DefinitionType, ScopeType } = TSESLint.Scope;
 const DISPOSE = 'dispose';
 const CLOSE_NAMES = new Set<string>([
   'close',
@@ -104,4 +105,21 @@ export function isCloseName(name: string | undefined): boolean {
 
 export function astChildren(node: TSESTree.Node): TSESTree.Node[] {
   return nodeChildren(node);
+}
+
+export function longLivedVariable(
+  sourceCode: SourceCode,
+  at: TSESTree.Node,
+  name: string,
+): TSESLint.Scope.Variable | undefined {
+  const variable = scopeChain(sourceCode.getScope(at))
+    .map((scope) => scope.set.get(name))
+    .find((found) => found !== undefined);
+  const declared = variable?.defs.every(
+    (definition) => definition.type === DefinitionType.Variable,
+  );
+  const type = variable?.scope.type;
+  const long =
+    type === ScopeType.function || type === ScopeType.module || type === ScopeType.global;
+  return declared === true && long ? variable : undefined;
 }
