@@ -8,7 +8,7 @@ import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
-import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
+import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 
 type Finding = ReportEntry;
 
@@ -54,12 +54,8 @@ export type QualitySnapshot = {
   readonly toolErrors: Finding[];
 };
 
-const withPolicyFile: (
-  headPolicy: object,
-  run: (headPolicyFile: unknown) => SnapshotRun,
-) => SnapshotRun = withHeadPolicyFile;
-const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
-  withSharedUnusedDirectives;
+const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
+  withHeadPolicyFile;
 const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
@@ -83,7 +79,7 @@ type HeadRunRequest = {
 };
 
 function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
-  return reconcileDirectives(
+  return withSharedUnusedDirectives(
     withPolicyFile(headPolicy, (headPolicyFile) =>
       runAnalyzers({
         analyzers,

@@ -14,7 +14,7 @@ import {
 } from './base-red/compare-analyzers.mts';
 import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
-import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
+import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 import { runProfileSummary } from '../../quick/summary.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
