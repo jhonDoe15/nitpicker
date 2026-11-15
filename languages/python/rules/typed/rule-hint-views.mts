@@ -4,7 +4,7 @@ import {
   hintFor as untypedHintFor,
   RULE_HINTS as UNTYPED_HINTS,
   withHint as untypedWithHint,
-} from '../rule-hints.mjs';
+} from '../rule-hints.mts';
 import { exceptionRoute as untypedRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 

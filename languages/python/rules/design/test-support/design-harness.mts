@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
-import { testFileMatcher } from '../../../adapters/analysis/python-sources.mjs';
-import { designDistributions } from '../../../adapters/analysis/design/design-distributions.mjs';
+import { testFileMatcher } from '../../../adapters/analysis/python-sources.mts';
+import { designDistributions } from '../../../adapters/analysis/design/design-distributions.mts';
 import type {
   DesignFacts,
   DesignOptions,

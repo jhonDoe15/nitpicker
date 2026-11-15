@@ -6,7 +6,7 @@ import {
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { pytestStyle, pytestStyleFlags } from './pytest-style.mjs';
+import { pytestStyle, pytestStyleFlags } from './pytest-style.mts';
 
 const { gitCheckout } = useGitCheckouts();
 
