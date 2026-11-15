@@ -27,6 +27,7 @@ import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mjs';
 import { STREAM_HINTS } from './hints/streams/streams.mjs';
 import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mjs';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
+import { HTTP_VALUE_HINTS } from './hints/http/http-values.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
@@ -82,6 +83,7 @@ export const RULE_HINTS = [
   ...CONTAINER_HINTS,
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
+  ...HTTP_VALUE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

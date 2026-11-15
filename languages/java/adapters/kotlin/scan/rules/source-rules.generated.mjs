@@ -3,10 +3,12 @@ import { kotlinSourceRules as rulesSuspendCleanup } from '../../review-rules/cor
 import { kotlinSourceRules as rulesFanOut } from '../../review-rules/main/fan-out/fan-out.mjs';
 import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs';
 import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
+import { kotlinSourceRules as rulesNullMapValues } from '../collectors/null-map-values.mjs';
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
 import { kotlinSourceRules as rulesRootScopeLaunches } from '../futures/root-scope-launches.mjs';
 import { kotlinSourceRules as rulesUnboundedWaits } from '../futures/unbounded-waits.mjs';
+import { kotlinSourceRules as rulesHttpValues } from '../http/http-values.mjs';
 import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
 import { kotlinSourceRules as rulesAddOnlyProperties } from '../lifecycles/growth/add-only-properties.mjs';
 import { kotlinSourceRules as rulesCachedDeferred } from '../lifecycles/memo/cached-deferred.mjs';
@@ -45,10 +47,12 @@ export const directoryRules = [
   rulesFanOut,
   rulesUnsafeCasts,
   rulesCostlyCollections,
+  rulesNullMapValues,
   rulesConfigurationReads,
   rulesFutureCompletions,
   rulesRootScopeLaunches,
   rulesUnboundedWaits,
+  rulesHttpValues,
   rulesCleanupOrder,
   rulesAddOnlyProperties,
   rulesCachedDeferred,

@@ -39,6 +39,21 @@ user's browser.
   `{ zone }`, `{ in: tz(zone) }`, `.tz(zone)`. A command-line tool that prints local time on
   purpose needs an exception for the rule in `nitpicker.config.json`. An exception for it is
   skipped while the scope is off.
+- `nitpicker/no-untrimmed-request-text`: request text that reaches a search or filter without being
+  trimmed. A search box sends the text with its surrounding whitespace, so `" Davis"` finds nothing.
+  It reads the same inputs as the rule below: a NestJS `@Query('q') q: string` or `@Body()` field
+  (typed; a DTO field with a `@Transform` that trims or a `@Trim...` decorator is clean), `req.query.x`,
+  `req.body.x` and `const { x } = req.query` in Express, Fastify and Koa, and `c.req.query('x')` in
+  Hono, either direct or through a `const`. It reports once per input when the text reaches
+  `Like`/`ILike`/`eq`/`like`/`ilike`, `where`/`andWhere`, a `findBy...` or `search...` method, a
+  `where`, `contains`, `startsWith` or `equals` filter property, the object of `find`/`findOne`, or an
+  SQL argument. Identifier-like names (`id`, `uuid`, `token`, `code`, `slug`, `status`, `type`),
+  `@Param`, headers and values that reach no lookup are not read. The allowed form is `.trim()` on
+  the text, parsing it with a zod schema that trims (`z.string().trim()`; a parsed value is not request text
+  any more), or one place that trims every string: when a file of the package registers a `...Trim...` pipe,
+  interceptor or middleware globally (`app.useGlobalPipes(new TrimPipe())`, an `APP_PIPE` provider,
+  `app.use(trim...)`, a Fastify `preValidation` hook that trims), the rule reports nothing for that package.
+  A mention in a comment or a pipe used on one route does not count.
 - `nitpicker/no-uncoerced-request-input`: a number, bigint, boolean or date field read from the
   query string, path parameters, headers or a multipart form without converting the text. These
   values always arrive as strings, so a validator that expects a number rejects every request that

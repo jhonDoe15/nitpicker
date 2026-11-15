@@ -37,7 +37,7 @@ describe('runToolsConcurrently', () => {
   it('runs every tool in a process of its own', () => {
     const tasks = markerTasks(9);
 
-    runToolsConcurrently(tasks, { concurrent: true });
+    runToolsConcurrently(tasks, {});
 
     expect(markers(tasks)).toEqual(tasks.map((_, index) => `tool ${String(index)}`));
   });
@@ -46,12 +46,12 @@ describe('runToolsConcurrently', () => {
     const tasks = [...markerTasks(1), failing('first failure'), failing('second failure')];
 
     expect(() => {
-      runToolsConcurrently(tasks, { concurrent: true });
+      runToolsConcurrently(tasks, {});
     }).toThrow(new Error('first failure'));
     expect(markers(tasks.slice(0, 1))).toEqual(['tool 0']);
   });
 
-  it('runs the tools in order in this process with an injected spawn or outside a quick run', () => {
+  it('runs the tools in order in this process with an injected spawn', () => {
     const calls = [];
     const spawn = vi.fn();
     const tasks = ['a', 'b'].map((name) => ({
@@ -61,14 +61,11 @@ describe('runToolsConcurrently', () => {
       options: {},
     }));
 
-    runToolsConcurrently(tasks, { spawn, concurrent: true });
-    runToolsConcurrently(tasks, { spawn: undefined, concurrent: false });
+    runToolsConcurrently(tasks, { spawn });
 
     expect(calls).toEqual([
       ['a', spawn],
       ['b', spawn],
-      ['a', undefined],
-      ['b', undefined],
     ]);
   });
 });

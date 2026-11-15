@@ -1,9 +1,8 @@
 import { printStatement } from './features/invoicing/index.js';
 import type { Invoice } from './features/invoicing/index.js';
-import { statusLabel } from './features/orders/index.js';
+import { placeOnHold, releaseFromHold, statusLabel } from './features/orders/index.js';
 import type { Order } from './features/orders/index.js';
 import { summarizeShipping } from './features/shipping/index.js';
-export { placeOnHold, releaseFromHold } from './features/orders/index.js';
 
 const orders: readonly Order[] = [
   { id: 'O-1', status: 'pending', totalCents: 2500 },
@@ -12,12 +11,22 @@ const orders: readonly Order[] = [
   { id: 'O-4', status: 'cancelled', totalCents: 800 },
 ];
 
+const paidOrder: Order = { id: 'O-5', status: 'paid', totalCents: 4200 };
+const heldOrder: Order = {
+  id: 'O-6',
+  status: 'on-hold',
+  holdReason: 'fraud check',
+  totalCents: 1500,
+};
+
 const invoices: readonly Invoice[] = [
   { number: 'INV-1', orderStatus: 'pending', amountCents: 2500 },
   { number: 'INV-2', orderStatus: 'paid', amountCents: 1999 },
   { number: 'INV-3', orderStatus: 'shipped', amountCents: 12050 },
   { number: 'INV-4', orderStatus: 'cancelled', amountCents: 800 },
 ];
+
+const heldInvoice: Invoice = { number: 'INV-6', orderStatus: 'on-hold', amountCents: 1500 };
 
 export function dailyReportMain(date: string): void {
   const writer = { write: (text: string) => process.stdout.write(text) };
@@ -26,4 +35,12 @@ export function dailyReportMain(date: string): void {
   }
   writer.write(`${summarizeShipping(orders, date)}\n`);
   printStatement(invoices, writer);
+}
+
+export function holdReportMain(date: string): void {
+  const writer = { write: (text: string) => process.stdout.write(text) };
+  writer.write(`${JSON.stringify(placeOnHold(paidOrder, 'fraud check'))}\n`);
+  writer.write(`${JSON.stringify(releaseFromHold(heldOrder))}\n`);
+  writer.write(`${summarizeShipping([...orders, heldOrder], date)}\n`);
+  printStatement([...invoices, heldInvoice], writer);
 }

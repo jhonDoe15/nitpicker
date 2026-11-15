@@ -12,10 +12,12 @@ import {
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
+import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
 import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mts';
+import { skippedSummary } from '../skipping/lines.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
@@ -48,6 +50,8 @@ export type ReportContext = {
   readonly staged?: unknown;
   readonly labels?: LabelFilter | undefined;
   readonly labelsOf?: LabelsOf | undefined;
+  readonly policyAnalyzers?: readonly unknown[] | undefined;
+  readonly skippedAnalyzers?: readonly string[] | undefined;
 };
 
 export type CombineRequest = ReportContext & {
@@ -56,6 +60,7 @@ export type CombineRequest = ReportContext & {
   readonly fixRecipes?: unknown[] | undefined;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
+  readonly baseToHeadPackages?: Moves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
   readonly policies?: { readonly base?: unknown; readonly head?: unknown } | undefined;
 };
@@ -86,6 +91,13 @@ const withFixes: (
   recipes: unknown[] | undefined,
 ) => Finding[] = attachFixes;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
+const withoutSharedOverlaps: (runs: { readonly baseRun: unknown; readonly headRun: unknown }) => {
+  readonly baseRun: unknown;
+  readonly headRun: unknown;
+} = withoutSharedCrossToolOverlaps;
+const skippedFields: (context: {
+  readonly skippedAnalyzers?: readonly string[] | undefined;
+}) => object = skippedSummary;
 const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
   withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
@@ -99,12 +111,13 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
+  const deduplicated = withoutSharedOverlaps(context);
   const baseRun = withSharedDirectives(
-    withDependencies(context.baseRun, objectOf(policies.base)),
+    withDependencies(deduplicated.baseRun, objectOf(policies.base)),
     context.analyzers,
   );
   const headRun = withSharedDirectives(
-    withDependencies(context.headRun, objectOf(policies.head)),
+    withDependencies(deduplicated.headRun, objectOf(policies.head)),
     context.analyzers,
   );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
@@ -153,6 +166,12 @@ export function noChangesReport(
     reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
+export function allSkippedReport(context: Parameters<typeof noChangesReport>[0]): DiffReport {
+  const report = noChangesReport(context);
+  const { noChanges, ...summary } = report.summary;
+  return { ...report, summary: { ...summary, skippedAll: noChanges } };
 }
 
 const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
@@ -242,7 +261,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(analyzers, configOverrides, context.metadata),
+      policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides, context.metadata),
       configOverrides,
       policyChanges,
       policyLoosenings,
@@ -253,8 +272,9 @@ function buildReport(context: BuildContext): DiffReport {
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...runAndScopeSummary(context, outcomes),
+      ...skippedFields(context),
       tools: outcomes.map(({ tool }) => tool),
-      exclusions: declaredExclusions(analyzers),
+      exclusions: declaredExclusions(context.policyAnalyzers ?? analyzers),
       renamedPaths: context.baseToHeadRenames.size,
       elapsedMs: Date.now() - startedAt,
       overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',
