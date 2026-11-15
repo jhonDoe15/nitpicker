@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
+import { ingestErrorProne } from './errorprone/errorprone.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 
 const ROOT = '/work/app';
@@ -85,5 +87,73 @@ describe('findings of classes moved to another package', () => {
     expect(keys(finding('shop.service', before), new Map([[before, after]]))).toEqual(
       keys(finding('shop.audit', after)),
     );
+  });
+});
+
+describe('findings whose message names a class of a package that moved', () => {
+  const MOVE = new Map([
+    ['src/main/java/shop/service/Request.java', 'src/main/java/shop/audit/Request.java'],
+  ]);
+  const FILE = 'src/main/java/shop/Audit.java';
+
+  function compared(base, head) {
+    const { newFindings, unchangedFindings } = compareFindings({
+      baseFindings: base,
+      headFindings: head,
+      baseToHeadRenames: MOVE,
+    });
+    return { fresh: newFindings.length, kept: unchangedFindings.length };
+  }
+
+  function unusedImports(...names) {
+    const errors = names.map(
+      (name, index) =>
+        `<error line="${String(3 + index)}" severity="error" message="Unused import - ${name}." source="com.puppycrawl.tools.checkstyle.checks.imports.UnusedImportsCheck"/>`,
+    );
+    return ingestCheckstyle(
+      `<checkstyle version="10.12.0"><file name="${ROOT}/${FILE}">${errors.join('')}</file></checkstyle>`,
+      { root: ROOT },
+    ).findings;
+  }
+
+  function errorProne(typeName) {
+    const diagnostic = {
+      file: `/project/${FILE}`,
+      line: 7,
+      message: `[UnusedVariable] The field 'request' of type ${typeName} is never read.`,
+    };
+    return ingestErrorProne(JSON.stringify([diagnostic]), {
+      resolvePath: (file) => file.slice('/project/'.length),
+    }).findings;
+  }
+
+  it('keeps an unused import of a class that moved, whose import line the move rewrote', () => {
+    expect(
+      compared(
+        unusedImports('shop.service.Request', 'java.util.List'),
+        unusedImports('shop.audit.Request', 'java.util.List'),
+      ),
+    ).toEqual({ fresh: 0, kept: 2 });
+  });
+
+  it('keeps an Error Prone finding that names a class that moved', () => {
+    expect(compared(errorProne('shop.service.Request'), errorProne('shop.audit.Request'))).toEqual({
+      fresh: 0,
+      kept: 1,
+    });
+  });
+
+  it('reports an unused import swapped for another class of the same name as new', () => {
+    expect(compared(unusedImports('a.Foo'), unusedImports('b.Foo'))).toEqual({
+      fresh: 1,
+      kept: 0,
+    });
+    expect(compared(errorProne('a.Foo'), errorProne('b.Foo'))).toEqual({ fresh: 1, kept: 0 });
+  });
+
+  it('reports an unused import of a class that did not move as new when it names another one', () => {
+    expect(
+      compared(unusedImports('shop.service.Other'), unusedImports('shop.audit.Other')),
+    ).toEqual({ fresh: 1, kept: 0 });
   });
 });
