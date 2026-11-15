@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/util
 import { findVariable } from '../analysis/constant-resolution.mts';
 import { moduleScope } from '../database/orm-modules.mts';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
+import { assignedTarget } from '../typed/syntax-views.mts';
 import {
   chainLibrary,
   libraryOf,
@@ -107,16 +108,6 @@ function builderVariable(
     : undefined;
 }
 
-function heldBy(node: TSESTree.Node): MaybeNode {
-  const parent = node.parent;
-  if (parent?.type === AST_NODE_TYPES.VariableDeclarator && parent.init === node) {
-    return parent.id;
-  }
-  return parent?.type === AST_NODE_TYPES.AssignmentExpression && parent.right === node
-    ? parent.left
-    : undefined;
-}
-
 function referenceChain(reference: TSESLint.Scope.Reference): ChainShape | undefined {
   if (reference.isWrite()) {
     return reference.writeExpr ? chainSteps(reference.writeExpr) : undefined;
@@ -154,7 +145,7 @@ function declaredRoot(variable: TSESLint.Scope.Variable): ChainShape | undefined
 
 function expandedChain(context: Context, node: TSESTree.Node): Expanded | undefined {
   const own = chainSteps(node);
-  const variables = [own.root, heldBy(node)]
+  const variables = [own.root, assignedTarget(node)]
     .map((identifier) => builderVariable(context, identifier))
     .filter((variable): variable is TSESLint.Scope.Variable => variable !== undefined);
   const chains = variables.map((variable) => variableChains(variable));

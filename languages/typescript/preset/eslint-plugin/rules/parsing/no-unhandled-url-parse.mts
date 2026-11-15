@@ -7,6 +7,7 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
 
 type Candidate = { readonly node: TSESTree.NewExpression; readonly argument: TSESTree.Node };
 type Guard = { readonly text: string; readonly scope: TSESTree.Node | undefined };
@@ -30,20 +31,6 @@ function isUrlConstructor(node: TSESTree.Node): boolean {
       node.object.name === 'globalThis' &&
       isUrlIdentifier(node.property))
   );
-}
-
-function bare(node: TSESTree.Node): TSESTree.Node {
-  const chain = [node];
-  for (const current of chain) {
-    if (
-      current.type === AST_NODE_TYPES.TSNonNullExpression ||
-      current.type === AST_NODE_TYPES.TSAsExpression ||
-      current.type === AST_NODE_TYPES.TSSatisfiesExpression
-    ) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? node;
 }
 
 function annotatedType(definition: TSESLint.Scope.Definition): TSESTree.TypeNode | undefined {
@@ -110,7 +97,7 @@ function isParsedMember(node: TSESTree.Node): boolean {
 }
 
 function isUrlValue(context: SourceContext, node: TSESTree.Node): boolean {
-  const value = bare(node);
+  const value = unwrapOf(node, ASSERTION_FORMS);
   const resolved = resolveConstant(context, value);
   return (
     isParsedMember(value) ||
@@ -176,7 +163,7 @@ function isGuarded(
   candidate: Candidate,
   guards: readonly Guard[],
 ): boolean {
-  const text = sourceCode.getText(bare(candidate.argument));
+  const text = sourceCode.getText(unwrapOf(candidate.argument, ASSERTION_FORMS));
   const scopes = new Set<TSESTree.Node | undefined>([
     candidate.node,
     ...ancestorsOf(candidate.node),
@@ -220,7 +207,10 @@ export const rule: TSESLint.RuleModule<'unhandledUrlParse'> = {
       CallExpression(node: TSESTree.CallExpression) {
         const [argument] = node.arguments;
         if (isCanParse(node) && argument !== undefined) {
-          guards.push({ text: sourceCode.getText(bare(argument)), scope: functionOf(node) });
+          guards.push({
+            text: sourceCode.getText(unwrapOf(argument, ASSERTION_FORMS)),
+            scope: functionOf(node),
+          });
         }
       },
       'Program:exit'() {

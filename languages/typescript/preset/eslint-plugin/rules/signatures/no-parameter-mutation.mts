@@ -7,18 +7,14 @@ import {
 import { nameOf, type Ranged, type SourceCode } from '../typed/node-views.mts';
 import { isCallerObject } from '../analysis/mutation/caller-objects.mts';
 import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mts';
-import { hasTypeInformation } from '../promises/cannot-reject.mts';
+import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
 import { isObjectAssign } from './parameter-copies.mts';
 import { changedParameter, withoutAssertion } from './parameter-owners.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
 type MessageIds = 'parameterMutation' | 'propertyWrite';
 type Services = ParserServicesWithTypeInformation;
-type Scope = {
-  readonly context: Readonly<TSESLint.RuleContext<MessageIds, []>>;
-  readonly sourceCode: SourceCode;
-  readonly services: Services;
-};
+type Scope = TypedScope<MessageIds>;
 
 function isMutableIndexed(services: Services, node: TSESTree.Node): boolean {
   const checker = services.program.getTypeChecker();
@@ -122,12 +118,10 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     },
   },
   create(context) {
-    const { sourceCode } = context;
-    const services = sourceCode.parserServices;
-    if (!hasTypeInformation(services)) {
+    const scope = typedScopeOf(context);
+    if (scope === undefined) {
       return {};
     }
-    const scope: Scope = { context, sourceCode, services };
     return {
       CallExpression(node: TSESTree.CallExpression) {
         checkCall(scope, node);

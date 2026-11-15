@@ -58,6 +58,55 @@ function isComposition(node: TSESTree.Node): boolean {
   );
 }
 
+type Builder = {
+  readonly context: Context;
+  readonly reported: Set<TSESTree.Node>;
+  readonly tagged: string;
+  readonly formatters: ReturnType<typeof bindingsOf>;
+};
+
+function isFormatCall({ context, formatters }: Builder, call: TSESTree.CallExpression): boolean {
+  return FORMAT_FUNCTIONS.has(importedFunction(context, call.callee, formatters));
+}
+
+function check(
+  { context, reported, tagged }: Builder,
+  node: TSESTree.Node,
+  found: { readonly pieces: Piece[] | undefined; readonly sink: Sink | undefined },
+): void {
+  const { pieces, sink } = found;
+  const covered = ancestorsOf(node).some((owner) => reported.has(owner));
+  if (!covered && pieces !== undefined && hasRuntimeValue(pieces) && looksLikeSql(pieces, sink)) {
+    reported.add(node);
+    context.report({ node, messageId: 'sqlBuilt', data: { kind: compositionKind(node), tagged } });
+  }
+}
+
+function checkComposition(state: Builder, node: Composition): void {
+  const joined =
+    node.type === AST_NODE_TYPES.BinaryExpression &&
+    node.parent.type === AST_NODE_TYPES.BinaryExpression &&
+    node.parent.operator === '+';
+  if (isComposition(node) && !joined) {
+    const { context } = state;
+    const pieces = piecesOf(context, node, (call) => isFormatCall(state, call));
+    check(state, node, { pieces, sink: sinkFor(context, node) });
+  }
+}
+
+function checkAppend(state: Builder, node: TSESTree.AssignmentExpression): void {
+  if (node.operator !== '+=' || node.left.type !== AST_NODE_TYPES.Identifier) {
+    return;
+  }
+  const { context } = state;
+  const pieces = [
+    ...initialPieces(context, node.left, (call) => isFormatCall(state, call)),
+    classify(context, node.right),
+  ];
+  const variable = findVariable(context, node.left, node.left.name);
+  check(state, node, { pieces, sink: variableSink(context, variable) });
+}
+
 export const rule: TSESLint.RuleModule<'sqlBuilt', Options> = {
   meta: {
     type: 'problem',
@@ -75,55 +124,26 @@ export const rule: TSESLint.RuleModule<'sqlBuilt', Options> = {
     },
   },
   create(context) {
-    const reported = new Set<TSESTree.Node>();
     const library = context.options[0]?.['sqlLibrary'];
-    const tagged = taggedForm(typeof library === 'string' ? library : undefined);
-    const formatters = bindingsOf(context.sourceCode.ast, FORMAT_MODULES);
-
-    function isFormatCall(call: TSESTree.CallExpression): boolean {
-      return FORMAT_FUNCTIONS.has(importedFunction(context, call.callee, formatters));
-    }
-
-    function check(node: TSESTree.Node, pieces: Piece[] | undefined, sink: Sink | undefined): void {
-      const covered = ancestorsOf(node).some((owner) => reported.has(owner));
-      if (
-        !covered &&
-        pieces !== undefined &&
-        hasRuntimeValue(pieces) &&
-        looksLikeSql(pieces, sink)
-      ) {
-        reported.add(node);
-        context.report({
-          node,
-          messageId: 'sqlBuilt',
-          data: { kind: compositionKind(node), tagged },
-        });
-      }
-    }
-
-    function checkComposition(node: Composition): void {
-      const joined =
-        node.type === AST_NODE_TYPES.BinaryExpression &&
-        node.parent.type === AST_NODE_TYPES.BinaryExpression &&
-        node.parent.operator === '+';
-      if (isComposition(node) && !joined) {
-        check(node, piecesOf(context, node, isFormatCall), sinkFor(context, node));
-      }
-    }
+    const state: Builder = {
+      context,
+      reported: new Set(),
+      tagged: taggedForm(typeof library === 'string' ? library : undefined),
+      formatters: bindingsOf(context.sourceCode.ast, FORMAT_MODULES),
+    };
 
     return {
-      BinaryExpression: checkComposition,
-      TemplateLiteral: checkComposition,
-      CallExpression: checkComposition,
+      BinaryExpression(node) {
+        checkComposition(state, node);
+      },
+      TemplateLiteral(node) {
+        checkComposition(state, node);
+      },
+      CallExpression(node) {
+        checkComposition(state, node);
+      },
       AssignmentExpression(node) {
-        if (node.operator === '+=' && node.left.type === AST_NODE_TYPES.Identifier) {
-          const pieces = [
-            ...initialPieces(context, node.left, isFormatCall),
-            classify(context, node.right),
-          ];
-          const variable = findVariable(context, node.left, node.left.name);
-          check(node, pieces, variableSink(context, variable));
-        }
+        checkAppend(state, node);
       },
     };
   },

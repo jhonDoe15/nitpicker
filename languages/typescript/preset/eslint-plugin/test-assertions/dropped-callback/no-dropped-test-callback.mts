@@ -6,7 +6,8 @@ import {
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { ts } from '../../rules/typed/typescript-views.mts';
-import { NULLISH_WRAPPERS, unwrapOf } from '../../rules/typed/syntax-views.mts';
+import { hasTypeInformation } from '../../rules/time/time-views.mts';
+import { unwrapped } from '../../rules/typed/syntax-views.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
 type InlineFunction = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
@@ -56,10 +57,6 @@ function takesFunctionReturningVoid(
   });
 }
 
-function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  return unwrapOf(node, NULLISH_WRAPPERS);
-}
-
 function isPlainFunction(type: TypeScript.Type): boolean {
   return type.getCallSignatures().length > 0 && type.getProperties().length === 0;
 }
@@ -88,16 +85,6 @@ function returnsFunction(
   }
   const tsNode = services.esTreeNodeToTSNodeMap.get(call);
   return isPlainFunction(checker.getTypeAtLocation(tsNode));
-}
-
-function hasTypeInformation(
-  services: TSESLint.SourceCode['parserServices'],
-): services is ParserServicesWithTypeInformation {
-  return (
-    services?.program !== null &&
-    services?.program !== undefined &&
-    services.esTreeNodeToTSNodeMap !== undefined
-  );
 }
 
 export const rule: TSESLint.RuleModule<'dropped', [], Docs> = {

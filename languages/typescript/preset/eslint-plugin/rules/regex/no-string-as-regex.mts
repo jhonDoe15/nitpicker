@@ -1,11 +1,11 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
-import { typeServices } from '../security/security-values.mts';
+import { typeServices, unwrapped } from '../security/security-values.mts';
 import { nameOf } from '../typed/node-views.mts';
+import { calleeNameOf, operandsOf } from '../typed/syntax-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { dependsOnInput } from './input-dependence.mts';
-import { unwrapped } from './regex-bindings.mts';
 
 type Node = TSESTree.Node;
 type Context = TSESLint.RuleContext<'stringPattern' | 'unescapedValue', readonly unknown[]>;
@@ -29,28 +29,6 @@ function isRuntimeStringType(type: TypeScript.Type): boolean {
   return parts.some((part) => (part.flags & RUNTIME_STRING_FLAGS) !== 0);
 }
 
-function calleeName(callee: Node): string | undefined {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-    ? nameOf(callee.property)
-    : undefined;
-}
-
-function concatenationParts(node: Node): Node[] {
-  const pending = [node];
-  const parts: Node[] = [];
-  for (const current of pending) {
-    if (current.type === AST_NODE_TYPES.BinaryExpression && current.operator === '+') {
-      pending.push(current.left, current.right);
-    } else {
-      parts.push(current);
-    }
-  }
-  return parts;
-}
-
 function patternParts(node: Node): readonly Node[] {
   const target = unwrapped(node);
   if (target.type === AST_NODE_TYPES.TemplateLiteral) {
@@ -65,7 +43,7 @@ function patternParts(node: Node): readonly Node[] {
     return target.quasi.expressions;
   }
   if (target.type === AST_NODE_TYPES.BinaryExpression && target.operator === '+') {
-    const parts = concatenationParts(target);
+    const parts = operandsOf(target, '+');
     const hasText = parts.some((part) => stringValue(part) !== undefined);
     return hasText ? parts.filter((part) => stringValue(part) === undefined) : [];
   }
@@ -116,7 +94,7 @@ function checkConstruction(
 }
 
 function checkStringArgument(state: State, node: TSESTree.CallExpression): void {
-  const method = calleeName(node.callee);
+  const method = calleeNameOf(node.callee);
   const [argument] = node.arguments;
   if (
     node.callee.type !== AST_NODE_TYPES.MemberExpression ||

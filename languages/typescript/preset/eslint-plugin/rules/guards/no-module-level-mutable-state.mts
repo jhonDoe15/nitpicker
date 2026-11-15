@@ -6,14 +6,13 @@ import {
   type CompositionRootOptions,
 } from '../boundaries/composition-root-files.mts';
 import { nameOf } from '../typed/node-views.mts';
+import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
 
 type Node = TSESTree.Node;
 type ConstantDeclarator = TSESTree.VariableDeclarator & {
   readonly id: TSESTree.Identifier;
   readonly init: TSESTree.Expression;
 };
-type Wrapper =
-  TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSNonNullExpression;
 
 const COLLECTION_CONSTRUCTORS = new Set<string>([
   'Map',
@@ -49,24 +48,6 @@ const MUTATING_METHODS = new Set<string>([
   'delete',
 ]);
 
-function isWrapper(node: Node): node is Wrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression
-  );
-}
-
-function unwrap(expression: Node): Node {
-  const chain = [expression];
-  for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? expression;
-}
-
 function isObjectCreate(expression: Node): boolean {
   return (
     expression.type === AST_NODE_TYPES.CallExpression &&
@@ -85,12 +66,12 @@ function isConstructed(expression: Node, constructors: ReadonlySet<string>): boo
 }
 
 function isCollection(initializer: Node): boolean {
-  const expression = unwrap(initializer);
+  const expression = unwrapOf(initializer, ASSERTION_FORMS);
   return isObjectCreate(expression) || isConstructed(expression, COLLECTION_CONSTRUCTORS);
 }
 
 function hasMutatingMethods(initializer: Node): boolean {
-  const expression = unwrap(initializer);
+  const expression = unwrapOf(initializer, ASSERTION_FORMS);
   return (
     expression.type === AST_NODE_TYPES.ArrayExpression ||
     isConstructed(expression, CONTAINER_CONSTRUCTORS)
@@ -98,7 +79,7 @@ function hasMutatingMethods(initializer: Node): boolean {
 }
 
 function isContainer(initializer: Node): boolean {
-  const expression = unwrap(initializer);
+  const expression = unwrapOf(initializer, ASSERTION_FORMS);
   if (
     expression.type === AST_NODE_TYPES.ArrayExpression ||
     expression.type === AST_NODE_TYPES.ObjectExpression

@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../../typed/node-views.mts';
+import { limitedList as untypedLimitedList } from '../../../../../../../shared/messages/format/limited-list.mjs';
 import {
   firstRelease,
   isCleanupFunction,
@@ -11,6 +12,7 @@ import { isFunctionNode, unwrapExpression } from '../scope/close-scopes.mts';
 
 const EXCEPTION_ROUTE =
   ' An exception fits only when a failed release should abort the remaining ones.';
+const limitedList: (items: readonly string[], limit: number) => string = untypedLimitedList;
 const MAX_NAMED = 3;
 
 function promiseAll(call: TSESTree.CallExpression): boolean {
@@ -52,11 +54,6 @@ function releasesAll(call: TSESTree.CallExpression): boolean {
     );
   }
   return argument !== undefined && mappedRelease(argument);
-}
-
-function named(steps: readonly string[]): string {
-  const shown = steps.slice(0, MAX_NAMED).join(', ');
-  return steps.length > MAX_NAMED ? `${shown} and ${String(steps.length - MAX_NAMED)} more` : shown;
 }
 
 function inCleanup(node: TSESTree.Node): boolean {
@@ -107,7 +104,7 @@ export const rule: TSESLint.RuleModule<'sequential' | 'parallel'> = {
           messageId: 'sequential',
           data: {
             release: `${sourceCode.getText(release.callee)}()`,
-            skipped: named(skipped),
+            skipped: limitedList(skipped, MAX_NAMED),
           },
         });
       },

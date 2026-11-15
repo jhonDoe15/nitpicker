@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { isStrictlyInside } from '../../../../../../shared/paths/strictly-inside.mjs';
 import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
 
 type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
@@ -77,15 +78,12 @@ function ancestors(fileName: string): string[] {
   return parts.map((_, index) => parts.slice(0, index + 1).join(path.sep) || path.sep).reverse();
 }
 
-function inside(fileName: string, directory: string): boolean {
-  const relative = path.relative(directory, fileName);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
 export function isGeneratedPrismaClient(fileName: string): boolean {
   const directories = ancestors(path.resolve(fileName));
   return (
     directories.slice(0, CLIENT_DEPTH).some((directory) => isClientDirectory(directory)) ||
-    directories.some((directory) => outputsOf(directory).some((output) => inside(fileName, output)))
+    directories.some((directory) =>
+      outputsOf(directory).some((output) => isStrictlyInside(output, fileName)),
+    )
   );
 }

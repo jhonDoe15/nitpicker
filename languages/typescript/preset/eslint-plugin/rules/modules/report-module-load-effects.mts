@@ -6,7 +6,8 @@ import {
   moduleBindings,
   type ModuleBindings,
 } from '../analysis/subprocess-calls.mts';
-import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { ancestorsOf, type SourceCode } from '../typed/node-views.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 import { guardedByMain, isMainGuard } from './entry/main-guard.mts';
 
 type MessageIds =
@@ -70,15 +71,6 @@ function executesAtModuleLoad(node: TSESTree.Node, sourceCode: SourceCode): bool
   return false;
 }
 
-function segmentName(node: TSESTree.Node): string | undefined {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return node.name;
-  }
-  return node.type === AST_NODE_TYPES.MemberExpression && !node.computed
-    ? nameOf(node.property)
-    : undefined;
-}
-
 function memberPath(node: TSESTree.Node): (string | undefined)[] {
   const chain = [node];
   for (const current of chain) {
@@ -86,7 +78,7 @@ function memberPath(node: TSESTree.Node): (string | undefined)[] {
       chain.push(current.object);
     }
   }
-  return chain.map(segmentName).reverse();
+  return chain.map(calleeNameOf).reverse();
 }
 
 const EFFECT_CALLEES = new Set<string | undefined>([

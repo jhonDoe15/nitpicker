@@ -1,7 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
 import { chainOf, type SourceCode } from '../typed/node-views.mts';
-import { objectKeys, propertyName, typeNames } from './date-calls.mts';
+import { objectKeys, typeNames } from './date-calls.mts';
+import { propertyName } from './units/unit-nodes.mts';
 import {
   hasTypeInformation,
   libraryBinding,

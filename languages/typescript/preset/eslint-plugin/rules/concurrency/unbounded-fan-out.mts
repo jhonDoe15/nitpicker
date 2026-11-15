@@ -114,13 +114,13 @@ export function reportSites(
     readonly node: TSESTree.Node;
     readonly messageId: string;
     readonly data: Readonly<Record<string, string>>;
+    readonly sites: readonly Site[];
   },
-  sites: readonly Site[],
   textOf: (collection: TSESTree.Node) => string,
 ): void {
   const { context } = scope;
   const reported = new Set();
-  for (const { collection, worker } of sites) {
+  for (const { collection, worker } of at.sites) {
     const found = remoteIn(scope, worker);
     const text = textOf(collection);
     const key = `${String(found?.operation)}|${text}`;
@@ -145,8 +145,8 @@ export function reportSites(
 function reportGroup(scope: FanOutScope, group: Group): void {
   const { context } = scope;
   const { node, combinator, sites } = group;
-  const at = { node, messageId: 'unbounded', data: { combinator } };
-  reportSites(scope, at, sites, (collection) => context.sourceCode.getText(collection));
+  const at = { node, messageId: 'unbounded', data: { combinator }, sites };
+  reportSites(scope, at, (collection) => context.sourceCode.getText(collection));
 }
 
 function mentionsPMap(context: Context): boolean {

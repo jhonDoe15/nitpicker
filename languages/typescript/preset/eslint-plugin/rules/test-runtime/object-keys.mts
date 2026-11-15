@@ -2,6 +2,26 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
 import { resolveConstant } from '../analysis/test-code-analysis.mts';
 
+type Scan = {
+  readonly pending: (TSESTree.Node | undefined)[];
+  readonly keys: Set<string>;
+};
+
+function collectProperty(
+  { pending, keys }: Scan,
+  property: TSESTree.ObjectLiteralElement,
+  keyName: (property: TSESTree.Property) => string | undefined,
+): void {
+  if (property.type === AST_NODE_TYPES.SpreadElement) {
+    pending.push(property.argument);
+    return;
+  }
+  const name = keyName(property);
+  if (name !== undefined) {
+    keys.add(name);
+  }
+}
+
 export function collectObjectKeys(
   context: SourceContext,
   node: TSESTree.Node | undefined,
@@ -19,14 +39,7 @@ export function collectObjectKeys(
     }
     seen.add(resolved);
     for (const property of resolved.properties) {
-      if (property.type === AST_NODE_TYPES.SpreadElement) {
-        pending.push(property.argument);
-        continue;
-      }
-      const name = keyName(property);
-      if (name !== undefined) {
-        keys.add(name);
-      }
+      collectProperty({ pending, keys }, property, keyName);
     }
   }
   return { keys, complete };

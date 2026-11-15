@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { parentOf } from '../../../../adapters/typed/typescript-program.mts';
 import { lazyTypeScriptApi as untypedLazyTypeScriptApi } from '../../../../typescript-api/lazy-typescript-api.mjs';
 
 const lazyTypeScriptApi: () => typeof TypeScript = untypedLazyTypeScriptApi;
@@ -12,6 +13,18 @@ export function variableNames(statement: TypeScript.VariableStatement): string[]
     .map(({ text }) => text);
 }
 
-export function parentOf(node: TypeScript.Node): TypeScript.Node | undefined {
-  return node.parent;
+export { parentOf };
+
+export function aliasedSymbolAt(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.Symbol | undefined {
+  const symbol = checker.getSymbolAtLocation(node);
+  return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+    ? checker.getAliasedSymbol(symbol)
+    : symbol;
+}
+
+export function isType(value: unknown): value is TypeScript.Type {
+  return typeof value === 'object' && value !== null && 'flags' in value && 'getSymbol' in value;
 }

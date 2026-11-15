@@ -17,6 +17,8 @@ import {
 export type Ranged = { readonly range: readonly [number, number] };
 
 export type SourceCode = Readonly<TSESLint.SourceCode>;
+export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
+export type VisitorKeys = SourceCode['visitorKeys'];
 
 export type FoldSteps<Item, Context, Result> = {
   readonly expand: (node: Item, context: Context) => readonly (readonly [Item, Context])[];

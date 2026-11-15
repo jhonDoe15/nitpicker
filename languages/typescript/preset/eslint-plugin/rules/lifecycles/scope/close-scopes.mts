@@ -1,8 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { isFunction as isFunctionNode, type FunctionNode } from '../../typed/syntax-views.mts';
 import { nameOf, nodeChildren, scopeChain, type SourceCode } from '../../typed/node-views.mts';
 
-export type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
 export type NonRoot = Exclude<TSESTree.Node, TSESTree.Program>;
 type Wrapper =
   | TSESTree.TSAsExpression
@@ -34,14 +33,6 @@ function isWrapper(node: TSESTree.Node): node is Wrapper {
     node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
     node.type === AST_NODE_TYPES.TSNonNullExpression ||
     node.type === AST_NODE_TYPES.ChainExpression
-  );
-}
-
-export function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
   );
 }
 
@@ -123,3 +114,5 @@ export function longLivedVariable(
     type === ScopeType.function || type === ScopeType.module || type === ScopeType.global;
   return declared === true && long ? variable : undefined;
 }
+
+export { isFunctionNode, type FunctionNode };

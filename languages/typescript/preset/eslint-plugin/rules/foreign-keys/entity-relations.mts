@@ -6,6 +6,7 @@ import {
   MIKRO_ORM,
   TYPEORM,
   type DecoratedOrm,
+  maybeValue,
   mergedProperties,
   objectOf,
   ormOf,
@@ -42,10 +43,6 @@ const UPPER = /[A-Z]/gu;
 
 function isPresent(value: string | undefined): value is string {
   return value !== undefined && value !== '';
-}
-
-function maybeValue(sourceCode: SourceCode, node: MaybeNode): MaybeNode {
-  return node === undefined ? undefined : valueOf(sourceCode, node);
 }
 
 function decoratorsOf(sourceCode: SourceCode, node: TSESTree.Node, names: Names): DecoratorUse[] {

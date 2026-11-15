@@ -12,6 +12,7 @@ import {
 } from '../security/security-values.mts';
 import { returnedExpression } from '../collections/costly-forms/repeated-runs.mts';
 import { nameOf } from '../typed/node-views.mts';
+import { isCallback } from '../typed/syntax-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import {
   FIELD_METHODS,
@@ -23,7 +24,6 @@ import {
 } from './rows/field-visitor.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
-type Callback = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 type Entry = { readonly node: MaybeNode; readonly state: State };
 type Work = {
   readonly entries: Entry[];
@@ -214,13 +214,6 @@ function isComputed(services: ParserServicesWithTypeInformation, { owner, name }
 function readsColumns(context: Context, state: State): boolean {
   const services = typeServices(context);
   return services === undefined || !state.fields.some((field) => isComputed(services, field));
-}
-
-function isCallback(node: MaybeNode): node is Callback {
-  return (
-    node?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    node?.type === AST_NODE_TYPES.FunctionExpression
-  );
 }
 
 export function readsOnlyFields(

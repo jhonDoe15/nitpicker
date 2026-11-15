@@ -6,10 +6,9 @@ import {
   variableOf as untypedVariableOf,
 } from '../../../../libraries/module-bindings.mjs';
 import { VALIDATION_LIBRARIES as untypedValidationLibraries } from '../../../../libraries/validation-libraries.mjs';
-import { isNode, type SourceCode } from '../../typed/node-views.mts';
+import { isNode, type LibraryBinding, type SourceCode } from '../../typed/node-views.mts';
 
 type Variable = TSESLint.Scope.Variable;
-export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
 type ValidationLibrary = { readonly id: string; readonly packages: readonly string[] };
 
 export const variableOf: (

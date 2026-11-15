@@ -6,7 +6,7 @@ import {
 } from '@typescript-eslint/utils';
 import tseslint from 'typescript-eslint';
 import { ancestorsOf } from '../typed/node-views.mts';
-import { calleeNameOf } from '../typed/syntax-views.mts';
+import { calleeName } from '../typed/syntax-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { pluginRule, reportedNode, withReportFilter, type Context } from './report-filter.mts';
 
@@ -61,10 +61,6 @@ const OTHER_FORMS =
 
 function unwrapped(node: TSESTree.Node): TSESTree.Node {
   return node.type === AST_NODE_TYPES.ChainExpression ? node.expression : node;
-}
-
-function calleeName(callee: TSESTree.Node): string {
-  return calleeNameOf(callee) ?? '';
 }
 
 function returnedValue(node: TSESTree.Node): TSESTree.Node {

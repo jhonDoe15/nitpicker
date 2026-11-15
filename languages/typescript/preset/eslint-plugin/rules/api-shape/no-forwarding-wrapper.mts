@@ -4,11 +4,10 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import type TypeScript from 'typescript';
 import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mjs';
 import { hasTypeInformation } from '../promises/cannot-reject.mts';
 import { variableNamed, type SourceCode } from '../typed/node-views.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { hasSameFunctionSignature, isAsyncCallee } from './forwarding-signatures.mts';
 
 type Services = ParserServicesWithTypeInformation;
 type FunctionNode =
@@ -20,7 +19,6 @@ type Candidate = {
   readonly statement: TSESTree.FunctionDeclaration | TSESTree.VariableDeclaration;
   readonly reportNode: TSESTree.Node;
 };
-type ParameterShape = { type: TypeScript.Type; optional: boolean; rest: boolean };
 type Docs = { readonly requiresTypeChecking: boolean };
 
 const isComponentName: (name: string | undefined) => boolean = untypedIsComponentName;
@@ -52,29 +50,21 @@ function forwardedCall(fn: FunctionNode): TSESTree.Node | undefined {
   return fn.async && value?.type === AST_NODE_TYPES.AwaitExpression ? value.argument : value;
 }
 
-function parameterName(parameter: TSESTree.Parameter): string | undefined {
-  if (parameter.type === AST_NODE_TYPES.Identifier) {
-    return parameter.name;
+function identifierName(
+  node: TSESTree.Parameter | TSESTree.CallExpressionArgument,
+): string | undefined {
+  if (node.type === AST_NODE_TYPES.Identifier) {
+    return node.name;
   }
-  return parameter.type === AST_NODE_TYPES.RestElement &&
-    parameter.argument.type === AST_NODE_TYPES.Identifier
-    ? parameter.argument.name
-    : undefined;
-}
-
-function argumentName(argument: TSESTree.CallExpressionArgument): string | undefined {
-  if (argument.type === AST_NODE_TYPES.Identifier) {
-    return argument.name;
-  }
-  return argument.type === AST_NODE_TYPES.SpreadElement &&
-    argument.argument.type === AST_NODE_TYPES.Identifier
-    ? argument.argument.name
+  return (node.type === AST_NODE_TYPES.RestElement || node.type === AST_NODE_TYPES.SpreadElement) &&
+    node.argument.type === AST_NODE_TYPES.Identifier
+    ? node.argument.name
     : undefined;
 }
 
 function forwardsOwnParameters(fn: FunctionNode, call: TSESTree.CallExpression): boolean {
-  const names = fn.params.map(parameterName);
-  const forwarded = call.arguments.map(argumentName);
+  const names = fn.params.map(identifierName);
+  const forwarded = call.arguments.map(identifierName);
   const sameShape = fn.params.every(
     (parameter, index) =>
       (parameter.type === AST_NODE_TYPES.RestElement) ===
@@ -143,89 +133,50 @@ function hasOverloads(sourceCode: SourceCode, fn: FunctionNode): boolean {
   return variable !== undefined && variable.defs.length > 1;
 }
 
-function parameterShape(
-  checker: TypeScript.TypeChecker,
-  parameter: TypeScript.Symbol,
-): ParameterShape {
-  const valueDeclaration = parameter.valueDeclaration;
-  const declaration =
-    valueDeclaration !== undefined && ts.isParameter(valueDeclaration)
-      ? valueDeclaration
-      : undefined;
-  return {
-    type: checker.getTypeOfSymbol(parameter),
-    optional: declaration !== undefined && checker.isOptionalParameter(declaration),
-    rest: declaration?.dotDotDotToken !== undefined,
-  };
-}
+type WrapperScope = {
+  readonly context: Readonly<
+    TSESLint.RuleContext<'forwardingWrapper' | 'forwardingWrapperLocal', []>
+  >;
+  readonly sourceCode: SourceCode;
+  readonly typed: Services;
+};
 
-function sameParameters(
-  checker: TypeScript.TypeChecker,
-  own: TypeScript.Signature,
-  target: TypeScript.Signature,
-): boolean {
-  return (
-    own.parameters.length === target.parameters.length &&
-    own.parameters.every((parameter, index) => {
-      const mine = parameterShape(checker, parameter);
-      const other = target.parameters[index];
-      const theirs = other === undefined ? undefined : parameterShape(checker, other);
-      return (
-        theirs !== undefined &&
-        mine.type === theirs.type &&
-        mine.optional === theirs.optional &&
-        mine.rest === theirs.rest
-      );
-    })
-  );
-}
-
-function isAsyncDeclaration(declaration: TypeScript.Declaration): boolean {
-  const fn = ts.isVariableDeclaration(declaration) ? declaration.initializer : declaration;
-  return (
-    fn !== undefined &&
-    ts.isFunctionLike(fn) &&
-    ts.canHaveModifiers(fn) &&
-    (ts.getModifiers(fn) ?? []).some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword)
-  );
-}
-
-function isAsyncCallee(services: Services, callee: TSESTree.Node): boolean {
-  const checker = services.program.getTypeChecker();
-  const symbol = checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(callee));
-  const target =
-    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
-      ? checker.getAliasedSymbol(symbol)
-      : symbol;
-  return (target?.declarations ?? []).some(isAsyncDeclaration);
-}
-
-function hasSameSignature(
-  services: Services,
-  wrapper: FunctionNode,
-  callee: TSESTree.Node,
-): boolean {
-  const checker = services.program.getTypeChecker();
-  const wrapperSignatures = services.getTypeAtLocation(wrapper).getCallSignatures();
-  const calleeSignatures = services.getTypeAtLocation(callee).getCallSignatures();
-  const [own] = wrapperSignatures;
-  const [target] = calleeSignatures;
+function forwardedTarget(
+  { sourceCode, typed }: WrapperScope,
+  { fn, name, statement }: Candidate,
+): TSESTree.Identifier | undefined {
+  const call = forwardedCall(fn);
   if (
-    wrapperSignatures.length !== 1 ||
-    calleeSignatures.length !== 1 ||
-    own === undefined ||
-    target === undefined
+    isComponentName(name) ||
+    !isPlainFunction(fn) ||
+    !isModuleLevel(statement) ||
+    call?.type !== AST_NODE_TYPES.CallExpression ||
+    call.optional ||
+    !isAbsent(call.typeArguments) ||
+    !isImportableCallee(sourceCode, call.callee) ||
+    call.callee.name === name ||
+    !forwardsOwnParameters(fn, call) ||
+    hasOverloads(sourceCode, fn) ||
+    (fn.async && !isAsyncCallee(typed, call.callee)) ||
+    !hasSameFunctionSignature(typed, fn, call.callee)
   ) {
-    return false;
+    return undefined;
   }
-  const predicates = [own, target].filter(
-    (signature) => checker.getTypePredicateOfSignature(signature) !== undefined,
-  );
-  return (
-    predicates.length === 0 &&
-    sameParameters(checker, own, target) &&
-    own.getReturnType() === target.getReturnType()
-  );
+  return call.callee;
+}
+
+function checkWrapper(scope: WrapperScope, candidate: Candidate): void {
+  const { name, statement, reportNode } = candidate;
+  const target = forwardedTarget(scope, candidate);
+  if (target === undefined) {
+    return;
+  }
+  const exported = exportedNameOf(statement, name);
+  scope.context.report({
+    node: reportNode,
+    messageId: exported === undefined ? 'forwardingWrapperLocal' : 'forwardingWrapper',
+    data: { name, target: target.name, exported },
+  });
 }
 
 export const rule: TSESLint.RuleModule<'forwardingWrapper' | 'forwardingWrapperLocal', [], Docs> = {
@@ -250,38 +201,12 @@ export const rule: TSESLint.RuleModule<'forwardingWrapper' | 'forwardingWrapperL
       return {};
     }
 
-    const typed: Services = services;
-
-    function check({ fn, name, statement, reportNode }: Candidate): void {
-      const call = forwardedCall(fn);
-      if (
-        isComponentName(name) ||
-        !isPlainFunction(fn) ||
-        !isModuleLevel(statement) ||
-        call?.type !== AST_NODE_TYPES.CallExpression ||
-        call.optional ||
-        !isAbsent(call.typeArguments) ||
-        !isImportableCallee(sourceCode, call.callee) ||
-        call.callee.name === name ||
-        !forwardsOwnParameters(fn, call) ||
-        hasOverloads(sourceCode, fn) ||
-        (fn.async && !isAsyncCallee(typed, call.callee)) ||
-        !hasSameSignature(typed, fn, call.callee)
-      ) {
-        return;
-      }
-      const exported = exportedNameOf(statement, name);
-      context.report({
-        node: reportNode,
-        messageId: exported === undefined ? 'forwardingWrapperLocal' : 'forwardingWrapper',
-        data: { name, target: call.callee.name, exported },
-      });
-    }
+    const scope: WrapperScope = { context, sourceCode, typed: services };
 
     return {
       FunctionDeclaration(node) {
         if (node.id !== null) {
-          check({ fn: node, name: node.id.name, statement: node, reportNode: node });
+          checkWrapper(scope, { fn: node, name: node.id.name, statement: node, reportNode: node });
         }
       },
       VariableDeclarator(node) {
@@ -292,7 +217,12 @@ export const rule: TSESLint.RuleModule<'forwardingWrapper' | 'forwardingWrapperL
           node.id.type === AST_NODE_TYPES.Identifier &&
           isAbsent(node.id.typeAnnotation)
         ) {
-          check({ fn: init, name: node.id.name, statement: node.parent, reportNode: node });
+          checkWrapper(scope, {
+            fn: init,
+            name: node.id.name,
+            statement: node.parent,
+            reportNode: node,
+          });
         }
       },
     };

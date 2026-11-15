@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
-import { ts } from '../../typed/typescript-views.mts';
+import { aliasedSymbolAt, ts } from '../../typed/typescript-views.mts';
+import { decoratorsOf } from '../../request-inputs/bindings/ts-nodes.mts';
 
 type ClassSearch = {
   readonly found?: TypeScript.ClassLikeDeclaration | undefined;
@@ -22,10 +23,6 @@ export function isProjectDeclaration(node: TypeScript.Node): boolean {
   return !(
     file.isDeclarationFile || file.fileName.replaceAll('\\', '/').includes('/node_modules/')
   );
-}
-
-function decoratorsOf(node: TypeScript.Node): readonly TypeScript.Decorator[] {
-  return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
 function decoratorName(decorator: TypeScript.Decorator): string | undefined {
@@ -52,16 +49,6 @@ export function decoratedWith(
   });
 }
 
-function targetSymbol(
-  checker: TypeScript.TypeChecker,
-  node: TypeScript.Node,
-): TypeScript.Symbol | undefined {
-  const symbol = checker.getSymbolAtLocation(node);
-  return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
-    ? checker.getAliasedSymbol(symbol)
-    : symbol;
-}
-
 function valueSymbol(
   checker: TypeScript.TypeChecker,
   node: TypeScript.Node,
@@ -69,7 +56,7 @@ function valueSymbol(
   const { parent } = node;
   return ts.isShorthandPropertyAssignment(parent) && parent.name === node
     ? checker.getShorthandAssignmentValueSymbol(parent)
-    : targetSymbol(checker, node);
+    : aliasedSymbolAt(checker, node);
 }
 
 function isInitializedVariable(node: TypeScript.Node): node is TypeScript.VariableDeclaration {

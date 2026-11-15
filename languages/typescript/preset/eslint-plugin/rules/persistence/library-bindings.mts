@@ -4,9 +4,9 @@ import {
   libraryBinding as untypedLibraryBinding,
   variableOf as untypedVariableOf,
 } from '../../../libraries/module-bindings.mjs';
-import type { SourceCode } from '../typed/node-views.mts';
+import type { LibraryBinding, SourceCode } from '../typed/node-views.mts';
 
-export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
+export type { LibraryBinding };
 
 export const variableOf: (
   sourceCode: SourceCode,

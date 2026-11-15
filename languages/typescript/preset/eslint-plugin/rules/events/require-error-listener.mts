@@ -8,6 +8,7 @@ import {
 } from '../analysis/constant-resolution.mts';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 import { ancestorsOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
+import { isExported } from '../typed/syntax-views.mts';
 import {
   createBindings,
   isEmitterCreation,
@@ -84,10 +85,6 @@ function variableReferences(variable: Variable, written?: TSESTree.Node): Inner[
   return variable.references
     .filter((reference) => !reference.init && reference.identifier !== written)
     .map((reference) => reference.identifier);
-}
-
-function isExported(declarator: TSESTree.VariableDeclarator): boolean {
-  return declarator.parent.parent.type === AST_NODE_TYPES.ExportNamedDeclaration;
 }
 
 function isServerReceiver(scope: EmitterScope, receiver: TSESTree.Node): boolean {

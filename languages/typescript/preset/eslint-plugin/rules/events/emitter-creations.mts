@@ -9,6 +9,7 @@ import {
 } from '../security/imported-names.mts';
 import { memberName, typeServices, unwrapped, type Context } from '../security/security-values.mts';
 import { chainOf } from '../typed/node-views.mts';
+import { isType } from '../typed/typescript-views.mts';
 import {
   EMITTER_SOURCES,
   type EmitterSource,
@@ -73,10 +74,6 @@ function sourceOf(
 export function moduleOfFile(fileName: string): string | undefined {
   const matches = [...fileName.replaceAll('\\', '/').matchAll(MODULE_PATH)];
   return matches.at(-1)?.[1];
-}
-
-function isType(value: unknown): value is TypeScript.Type {
-  return typeof value === 'object' && value !== null && 'flags' in value && 'getSymbol' in value;
 }
 
 function referenceTarget(type: TypeScript.Type): TypeScript.Type {

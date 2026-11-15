@@ -129,12 +129,9 @@ function follow(pending: Goal[], goal: Goal, link: Link): void {
   goal.combine = ([value]) => link.combine(value);
 }
 
-function expandIdentifier(
-  env: Env,
-  pending: Goal[],
-  goal: Goal,
-  identifier: TSESTree.Identifier,
-): void {
+type Frame = { readonly env: Env; readonly pending: Goal[]; readonly goal: Goal };
+
+function expandIdentifier({ env, pending, goal }: Frame, identifier: TSESTree.Identifier): void {
   const ref = moduleRef(env, identifier, identifier.name);
   if (ref !== undefined) {
     const spec = env.clientSpec(ref.source);
@@ -177,12 +174,7 @@ function fieldCandidate(env: Env, node: TSESTree.Node, key: string): Candidate |
   return assigns ? { value: undefined, next: node.right } : undefined;
 }
 
-function expandField(
-  env: Env,
-  pending: Goal[],
-  goal: Goal,
-  member: TSESTree.MemberExpression,
-): void {
+function expandField({ env, pending, goal }: Frame, member: TSESTree.MemberExpression): void {
   const key = memberName(member);
   const owner = classOf(member);
   if (owner === undefined || key === undefined) {
@@ -197,14 +189,10 @@ function expandField(
   goal.combine = (values) => values.find((value) => value !== undefined);
 }
 
-function expandMember(
-  env: Env,
-  pending: Goal[],
-  goal: Goal,
-  member: TSESTree.MemberExpression,
-): void {
+function expandMember(frame: Frame, member: TSESTree.MemberExpression): void {
+  const { pending, goal } = frame;
   if (member.object.type === AST_NODE_TYPES.ThisExpression) {
-    expandField(env, pending, goal, member);
+    expandField(frame, member);
   } else {
     follow(pending, goal, { node: member.object, combine: (base) => memberOf(base, member) });
   }
@@ -229,7 +217,7 @@ function injected(env: Env, call: CreationNode, target: TSESTree.Identifier): Ma
     : undefined;
 }
 
-function expandCall(env: Env, pending: Goal[], goal: Goal, call: CreationNode): void {
+function expandCall({ env, pending, goal }: Frame, call: CreationNode): void {
   const target = skipped(call.callee);
   const site = { target, call };
   if (target.type === AST_NODE_TYPES.Identifier && target.name === 'inject') {
@@ -242,6 +230,7 @@ function expandCall(env: Env, pending: Goal[], goal: Goal, call: CreationNode): 
 }
 
 function expand(env: Env, pending: Goal[], goal: Goal): void {
+  const frame: Frame = { env, pending, goal };
   const target = skipped(goal.node);
   if (goal.value !== undefined || target === undefined) {
     return;
@@ -250,14 +239,14 @@ function expand(env: Env, pending: Goal[], goal: Goal): void {
     return;
   }
   if (target.type === AST_NODE_TYPES.Identifier) {
-    expandIdentifier(env, pending, goal, target);
+    expandIdentifier(frame, target);
   } else if (
     target.type === AST_NODE_TYPES.CallExpression ||
     target.type === AST_NODE_TYPES.NewExpression
   ) {
-    expandCall(env, pending, goal, target);
+    expandCall(frame, target);
   } else if (target.type === AST_NODE_TYPES.MemberExpression) {
-    expandMember(env, pending, goal, target);
+    expandMember(frame, target);
   }
 }
 

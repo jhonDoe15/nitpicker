@@ -3,7 +3,7 @@ import { catchLoggingFix } from '../../fixes/errors/catch-logging-fix.mts';
 import { fixable } from '../../fixes/support/descriptors.mts';
 import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
 import { loggerShapes as untypedLoggerShapes } from '../../../libraries/project-libraries.mjs';
-import type { Ranged, SourceCode } from '../typed/node-views.mts';
+import { contains, type Ranged, type SourceCode } from '../typed/node-views.mts';
 import { readHeadPolicy, type LibraryChoices } from '../typed/policy-views.mts';
 
 type MessageId = 'caughtErrorShape' | 'caughtValueShape' | 'caughtEitherShape';
@@ -37,13 +37,9 @@ function isLoggerCall(node: TSESTree.CallExpression): boolean {
   );
 }
 
-function rangeContains(outer: Ranged, inner: Ranged): boolean {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
-}
-
 function referencesCaughtValue(node: Ranged, variables: readonly Variable[]): boolean {
   return variables.some((variable) =>
-    variable.references.some((reference) => rangeContains(node, reference.identifier)),
+    variable.references.some((reference) => contains(node, reference.identifier)),
   );
 }
 

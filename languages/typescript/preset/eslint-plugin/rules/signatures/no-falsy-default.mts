@@ -3,7 +3,7 @@ import type TypeScript from 'typescript';
 import { suggestible } from '../../fixes/support/descriptors.mts';
 import { nullishDefaultFix } from '../../fixes/code/nullish-default-fix.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
-import { hasTypeInformation } from '../promises/cannot-reject.mts';
+import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
 import { ancestorsOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 
@@ -154,6 +154,43 @@ function isParameter(sourceCode: SourceCode, identifier: TSESTree.Identifier): b
   );
 }
 
+type Scope = TypedScope<MessageIds>;
+
+function reportParameter({ context, sourceCode }: Scope, identifier: TSESTree.Identifier): void {
+  const descriptor: TSESLint.ReportDescriptor<MessageIds> = {
+    node: identifier,
+    messageId: 'falsyDefault',
+    data: { name: identifier.name },
+  };
+  const plan = nullishDefaultFix(sourceCode, identifier);
+  context.report(suggestible(descriptor, { messageId: 'useNullishCoalescing', plan }));
+}
+
+type Defaulted = { readonly identifiers: TSESTree.Node[]; readonly fallback: TSESTree.Node };
+
+function checkDefault(
+  scope: Scope,
+  report: TSESTree.Node,
+  { identifiers, fallback }: Defaulted,
+): void {
+  if (isAbsentValue(fallback)) {
+    return;
+  }
+  const finalClass = literalClass(fallback);
+  const parameters = identifiers.flatMap((identifier) =>
+    identifier.type === AST_NODE_TYPES.Identifier && isParameter(scope.sourceCode, identifier)
+      ? [identifier]
+      : [],
+  );
+  for (const identifier of parameters) {
+    const classes = falsyClasses(scope.services.getTypeAtLocation(identifier));
+    const equal = classes.size === 1 && finalClass !== undefined && classes.has(finalClass);
+    if (classes.size > 0 && !equal && !isCondition(report)) {
+      reportParameter(scope, identifier);
+    }
+  }
+}
+
 export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
   meta: {
     type: 'problem',
@@ -171,40 +208,9 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     },
   },
   create(context) {
-    const { sourceCode } = context;
-    const services = sourceCode.parserServices;
-    if (!hasTypeInformation(services)) {
+    const scope = typedScopeOf(context);
+    if (scope === undefined) {
       return {};
-    }
-    const typedServices = services;
-
-    function check(
-      report: TSESTree.Node,
-      identifiers: TSESTree.Node[],
-      fallback: TSESTree.Node,
-    ): void {
-      if (isAbsentValue(fallback)) {
-        return;
-      }
-      const finalClass = literalClass(fallback);
-      const parameters = identifiers.flatMap((identifier) =>
-        identifier.type === AST_NODE_TYPES.Identifier && isParameter(sourceCode, identifier)
-          ? [identifier]
-          : [],
-      );
-      for (const identifier of parameters) {
-        const classes = falsyClasses(typedServices.getTypeAtLocation(identifier));
-        const equal = classes.size === 1 && finalClass !== undefined && classes.has(finalClass);
-        if (classes.size > 0 && !equal && !isCondition(report)) {
-          const descriptor: TSESLint.ReportDescriptor<MessageIds> = {
-            node: identifier,
-            messageId: 'falsyDefault',
-            data: { name: identifier.name },
-          };
-          const plan = nullishDefaultFix(sourceCode, identifier);
-          context.report(suggestible(descriptor, { messageId: 'useNullishCoalescing', plan }));
-        }
-      }
     }
 
     return {
@@ -213,7 +219,7 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
           const operands = operandsOf(node);
           const fallback = operands.at(-1);
           if (fallback !== undefined) {
-            check(node, operands.slice(0, -1), fallback);
+            checkDefault(scope, node, { identifiers: operands.slice(0, -1), fallback });
           }
         }
       },
@@ -223,7 +229,7 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
           node.consequent.type === AST_NODE_TYPES.Identifier &&
           node.test.name === node.consequent.name
         ) {
-          check(node, [node.test], node.alternate);
+          checkDefault(scope, node, { identifiers: [node.test], fallback: node.alternate });
         }
       },
     };

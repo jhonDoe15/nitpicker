@@ -6,16 +6,11 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
+import { unwrapped } from '../security/security-values.mts';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
 
 type Node = TSESTree.Node;
 type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression;
-type TypeWrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSTypeAssertion
-  | TSESTree.ChainExpression;
 export type HeldRegex = { readonly creation: Node; readonly flag: string };
 
 const { DefinitionType } = TSESLint.Scope;
@@ -40,22 +35,6 @@ const LOOP_TEST_WRAPPERS = new Set<string>([
   'UnaryExpression',
   'LogicalExpression',
 ]);
-
-function isTypeWrapper(node: Node | undefined): node is TypeWrapper {
-  return node !== undefined && TYPE_WRAPPERS.has(node.type);
-}
-
-export function unwrapped(node: Node): Node;
-export function unwrapped(node: Node | undefined): Node | undefined;
-export function unwrapped(node: Node | undefined): Node | undefined {
-  const chain = [node];
-  for (const current of chain) {
-    if (isTypeWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
-}
 
 function isRegExpCall(
   node: Node | undefined,

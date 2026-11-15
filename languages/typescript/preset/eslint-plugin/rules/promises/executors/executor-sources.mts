@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isNode, type SourceCode } from '../../typed/node-views.mts';
+import { isCall, type CallLike } from '../../typed/syntax-views.mts';
 import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mts';
 import { memberName } from '../../analysis/test-code-analysis.mts';
 
@@ -62,7 +63,6 @@ const PAGE_GLOBALS = new Set<string>(['window', 'document', 'globalThis', 'self'
 const MAX_TEXT = 40;
 
 type Context = { readonly sourceCode: SourceCode };
-type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
 type MemberCall = CallLike & { readonly callee: TSESTree.MemberExpression };
 type ExecutorFunction = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 type PromiseConstruction = TSESTree.NewExpression & {
@@ -107,10 +107,6 @@ export function isFunctionExpression(node: TSESTree.Node | undefined): node is E
     node?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     node?.type === AST_NODE_TYPES.FunctionExpression
   );
-}
-
-function isCall(node: TSESTree.Node): node is CallLike {
-  return node.type === AST_NODE_TYPES.CallExpression || node.type === AST_NODE_TYPES.NewExpression;
 }
 
 function hasMemberCallee(call: CallLike): call is MemberCall {

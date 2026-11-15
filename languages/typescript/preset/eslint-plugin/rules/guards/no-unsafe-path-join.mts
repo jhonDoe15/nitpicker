@@ -8,7 +8,8 @@ import {
   type ModuleBindings,
 } from '../analysis/subprocess-calls.mts';
 import { depthFirst, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
-import { isContained, unwrapped } from './path-containment.mts';
+import { CONTAINMENT_WRAPPERS, isContained } from './path-containment.mts';
+import { unwrapOf } from '../typed/syntax-views.mts';
 
 type Node = TSESTree.Node;
 type Scope = {
@@ -92,19 +93,9 @@ function callTaintSources(call: TSESTree.CallExpression, pathModule: ModuleBindi
     : [call.callee, ...call.arguments];
 }
 
-function taintSources(scope: Scope, expression: Node): readonly Node[] {
-  const inner = unwrapped(expression);
-  if (inner !== expression) {
-    return [inner];
-  }
-  if (expression.type === AST_NODE_TYPES.Identifier) {
-    return boundValues(scope.sourceCode, expression);
-  }
+function operandSources(expression: Node): readonly Node[] {
   if (expression.type === AST_NODE_TYPES.MemberExpression) {
     return [expression.object];
-  }
-  if (expression.type === AST_NODE_TYPES.CallExpression) {
-    return callTaintSources(expression, scope.pathModule);
   }
   if (expression.type === AST_NODE_TYPES.TemplateLiteral) {
     return expression.expressions;
@@ -122,6 +113,20 @@ function taintSources(scope: Scope, expression: Node): readonly Node[] {
     expression.type === AST_NODE_TYPES.AwaitExpression
     ? [expression.argument]
     : [];
+}
+
+function taintSources(scope: Scope, expression: Node): readonly Node[] {
+  const inner = unwrapOf(expression, CONTAINMENT_WRAPPERS);
+  if (inner !== expression) {
+    return [inner];
+  }
+  if (expression.type === AST_NODE_TYPES.Identifier) {
+    return boundValues(scope.sourceCode, expression);
+  }
+  if (expression.type === AST_NODE_TYPES.CallExpression) {
+    return callTaintSources(expression, scope.pathModule);
+  }
+  return operandSources(expression);
 }
 
 function isTainted(scope: Scope, expression: Node): boolean {
@@ -203,7 +208,7 @@ function listedEntryBase(
 function isUnsafeBuild(scope: Scope, expression: Node): boolean {
   const pending = [expression];
   for (const current of pending) {
-    const node = unwrapped(current);
+    const node = unwrapOf(current, CONTAINMENT_WRAPPERS);
     const parts = node.type === AST_NODE_TYPES.Identifier ? undefined : pathParts(scope, node);
     if (
       parts

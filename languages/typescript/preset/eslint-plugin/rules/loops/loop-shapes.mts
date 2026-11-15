@@ -1,7 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../security/security-values.mts';
 import { hasCollectionType } from '../support/checked-types.mts';
-import { ancestorsOf, contains, isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { ancestorsOf, contains, isNode, nameOf, type VisitorKeys } from '../typed/node-views.mts';
+import { isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 import { isConcurrentBatch } from './concurrent-batches.mts';
 
 export type LoopNode =
@@ -12,12 +13,10 @@ export type LoopNode =
   | TSESTree.DoWhileStatement;
 export type TestedLoop =
   TSESTree.ForStatement | TSESTree.WhileStatement | TSESTree.DoWhileStatement;
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
 export type IdentifierAssignment = TSESTree.AssignmentExpression & {
   readonly left: TSESTree.Identifier;
 };
-export type VisitorKeys = SourceCode['visitorKeys'];
+export type { VisitorKeys };
 export type EnclosingLoop =
   | {
       readonly loop: LoopNode;
@@ -61,14 +60,6 @@ function isLoop(node: TSESTree.Node): node is LoopNode {
     node.type === AST_NODE_TYPES.ForStatement ||
     node.type === AST_NODE_TYPES.WhileStatement ||
     node.type === AST_NODE_TYPES.DoWhileStatement
-  );
-}
-
-export function isFunction(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
   );
 }
 

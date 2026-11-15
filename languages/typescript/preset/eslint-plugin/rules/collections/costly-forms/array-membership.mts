@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../../typed/node-views.mts';
+import { isExported } from '../../typed/syntax-views.mts';
 import {
   equalitySides,
   methodCallOn,
@@ -123,10 +124,6 @@ function useOf(reference: TSESLint.Scope.Reference, name: string): Use {
   }
   const method = methodCallOn(reference.identifier);
   return method === undefined ? NEUTRAL : memberUse(method);
-}
-
-function isExported(declarator: TSESTree.VariableDeclarator): boolean {
-  return declarator.parent.parent.type === AST_NODE_TYPES.ExportNamedDeclaration;
 }
 
 export function arrayMembership(

@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices } from '../security/security-values.mts';
+import { memoized } from '../support/memo.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { displayedLibrary, isModeledPackage } from './container-apis.mts';
 import { rootFileMatcher, rootFileOptionsSchema, type RootFileOptions } from './root-files.mts';
@@ -35,20 +36,6 @@ const WRAPPER_FORM =
 const summariesByProgram = new WeakMap<TypeScript.Program, Summaries>();
 const containerUseByProgram = new WeakMap<TypeScript.Program, ReadonlySet<string>>();
 
-function remembered<Key extends WeakKey, Value>(
-  cache: WeakMap<Key, Value>,
-  key: Key,
-  build: () => Value,
-): Value {
-  const cached = cache.get(key);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const built = build();
-  cache.set(key, built);
-  return built;
-}
-
 function textOf(node: TypeScript.Node): string {
   return 'text' in node && typeof node.text === 'string' ? node.text : '';
 }
@@ -68,7 +55,7 @@ function importedModules(source: TypeScript.SourceFile): string[] {
 }
 
 function containerPackages(program: TypeScript.Program): ReadonlySet<string> {
-  return remembered(
+  return memoized(
     containerUseByProgram,
     program,
     () =>
@@ -85,7 +72,7 @@ function containerPackages(program: TypeScript.Program): ReadonlySet<string> {
 }
 
 function summariesFor(program: TypeScript.Program): Summaries {
-  return remembered(summariesByProgram, program, () => createResolverSummaries({ program }));
+  return memoized(summariesByProgram, program, () => createResolverSummaries({ program }));
 }
 
 const FUNCTION_METHODS = new Set(['call', 'apply', 'bind']);

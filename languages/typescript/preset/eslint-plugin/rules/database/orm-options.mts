@@ -145,7 +145,7 @@ export function hasOpaqueSpread(context: Context, object: TSESTree.ObjectExpress
   );
 }
 
-function textOf(context: Context, object: TSESTree.Node, key: string): string | undefined {
+export function textOf(context: Context, object: TSESTree.Node, key: string): string | undefined {
   const value = propertyNamed(context, object, key);
   return value === undefined ? undefined : stringValue(resolvedValue(context, value));
 }

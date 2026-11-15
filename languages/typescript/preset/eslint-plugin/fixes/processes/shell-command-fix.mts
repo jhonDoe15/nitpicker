@@ -153,6 +153,34 @@ function literalWords(command: TSESTree.Node | undefined): string[] | undefined 
   return text.trim().split(/\s+/u);
 }
 
+function shellProperty(options: TSESTree.Node | undefined): TSESTree.Property | undefined {
+  if (options?.type !== AST_NODE_TYPES.ObjectExpression) {
+    return undefined;
+  }
+  return options.properties.find(
+    (property): property is TSESTree.Property =>
+      property.type === AST_NODE_TYPES.Property && keyName(property) === 'shell',
+  );
+}
+
+function shellRemoval(
+  sourceCode: SourceCode,
+  options: TSESTree.Node | undefined,
+): ReturnType<typeof removingProperty> | undefined {
+  const shell = shellProperty(options);
+  const isShellTrue = shell?.value.type === AST_NODE_TYPES.Literal && shell.value.value === true;
+  return isShellTrue ? removingProperty(sourceCode, shell) : undefined;
+}
+
+function isPlainList(list: TSESTree.Node | undefined): boolean {
+  return (
+    list?.type !== AST_NODE_TYPES.ArrayExpression ||
+    list.elements.every(
+      (element) => element !== null && element.type !== AST_NODE_TYPES.SpreadElement,
+    )
+  );
+}
+
 export function dropShellFix(
   sourceCode: SourceCode,
   call: TSESTree.CallExpression,
@@ -161,26 +189,14 @@ export function dropShellFix(
   const words = literalWords(command);
   const hasList = second?.type === AST_NODE_TYPES.ArrayExpression;
   const options = hasList ? third : second;
-  const shell =
-    options?.type === AST_NODE_TYPES.ObjectExpression
-      ? options.properties.find(
-          (property): property is TSESTree.Property =>
-            property.type === AST_NODE_TYPES.Property && keyName(property) === 'shell',
-        )
-      : undefined;
-  const listIsPlain =
-    !hasList ||
-    second.elements.every(
-      (element) => element !== null && element.type !== AST_NODE_TYPES.SpreadElement,
-    );
+  const listIsPlain = isPlainList(second);
   const program = words?.[0];
   const keepsProgram =
     words !== undefined &&
     program !== undefined &&
     !program.includes('=') &&
     (!hasList || words.length === 1);
-  const isShellTrue = shell?.value.type === AST_NODE_TYPES.Literal && shell.value.value === true;
-  const removal = isShellTrue ? removingProperty(sourceCode, shell) : undefined;
+  const removal = shellRemoval(sourceCode, options);
   if (
     removal === undefined ||
     !isPlainObject(options) ||

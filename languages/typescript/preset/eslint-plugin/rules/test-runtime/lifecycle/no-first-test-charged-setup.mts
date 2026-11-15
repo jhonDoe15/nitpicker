@@ -99,24 +99,20 @@ function isGuardedByEmptyCheck(statement: TSESTree.ExpressionStatement, name: st
   );
 }
 
-function memoTarget(value: StoredValue): TSESTree.Identifier | undefined {
-  const parent = value.parent;
-  if (parent.type === AST_NODE_TYPES.LogicalExpression && parent.right === value) {
-    const assignment = parent.parent;
-    if (
-      assignment.type === AST_NODE_TYPES.AssignmentExpression &&
-      assignment.operator === '=' &&
-      assignment.left.type === AST_NODE_TYPES.Identifier &&
-      ['??', '||'].includes(parent.operator) &&
-      isNamed(parent.left, assignment.left.name)
-    ) {
-      return assignment.left;
-    }
-    return undefined;
-  }
-  if (parent.type !== AST_NODE_TYPES.AssignmentExpression || parent.right !== value) {
-    return undefined;
-  }
+function logicalMemoTarget(parent: TSESTree.LogicalExpression): TSESTree.Identifier | undefined {
+  const assignment = parent.parent;
+  return assignment.type === AST_NODE_TYPES.AssignmentExpression &&
+    assignment.operator === '=' &&
+    assignment.left.type === AST_NODE_TYPES.Identifier &&
+    ['??', '||'].includes(parent.operator) &&
+    isNamed(parent.left, assignment.left.name)
+    ? assignment.left
+    : undefined;
+}
+
+function assignedMemoTarget(
+  parent: TSESTree.AssignmentExpression,
+): TSESTree.Identifier | undefined {
   if (parent.left.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
@@ -128,6 +124,17 @@ function memoTarget(value: StoredValue): TSESTree.Identifier | undefined {
     return isGuardedByEmptyCheck(statement, parent.left.name) ? parent.left : undefined;
   }
   return undefined;
+}
+
+function memoTarget(value: StoredValue): TSESTree.Identifier | undefined {
+  const parent = value.parent;
+  if (parent.type === AST_NODE_TYPES.LogicalExpression && parent.right === value) {
+    return logicalMemoTarget(parent);
+  }
+  if (parent.type !== AST_NODE_TYPES.AssignmentExpression || parent.right !== value) {
+    return undefined;
+  }
+  return assignedMemoTarget(parent);
 }
 
 export const rule: TSESLint.RuleModule<'chargedSetup'> = {

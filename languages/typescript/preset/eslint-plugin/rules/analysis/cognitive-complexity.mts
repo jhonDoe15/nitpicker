@@ -116,6 +116,36 @@ function reportFunction({ context, max, scores }: Report, fn: FunctionNode): voi
   });
 }
 
+type Tally = {
+  readonly positions: Map<TSESTree.Node, Position>;
+  readonly scores: Map<FunctionNode, number>;
+};
+
+function positionOf(positions: Tally['positions'], node: TSESTree.Node): Position {
+  if (isFunction(node)) {
+    return { root: node, nesting: 0 };
+  }
+  const owner = node.parent;
+  const parent = owner ? positions.get(owner) : undefined;
+  if (owner === undefined || parent === undefined) {
+    return outsideFunctions;
+  }
+  const nests = nestsChild(owner, node) ? 1 : 0;
+  return { root: parent.root, nesting: parent.nesting + nests };
+}
+
+function add(
+  { positions, scores }: Tally,
+  node: TSESTree.Node,
+  { nested }: { readonly nested: boolean },
+): void {
+  const { root, nesting } = positionOf(positions, node);
+  if (root === undefined) {
+    return;
+  }
+  scores.set(root, (scores.get(root) ?? 0) + (nested ? 1 + nesting : 1));
+}
+
 export const rule: TSESLint.RuleModule<'tooComplex', Options> = {
   meta: {
     type: 'suggestion',
@@ -131,51 +161,30 @@ export const rule: TSESLint.RuleModule<'tooComplex', Options> = {
   },
   create(context) {
     const max = context.options[0] ?? DEFAULT_MAX;
-    const positions = new Map<TSESTree.Node, Position>();
-    const scores = new Map<FunctionNode, number>();
-
-    function positionOf(node: TSESTree.Node): Position {
-      if (isFunction(node)) {
-        return { root: node, nesting: 0 };
-      }
-      const owner = node.parent;
-      const parent = owner ? positions.get(owner) : undefined;
-      if (owner === undefined || parent === undefined) {
-        return outsideFunctions;
-      }
-      const nests = nestsChild(owner, node) ? 1 : 0;
-      return { root: parent.root, nesting: parent.nesting + nests };
-    }
-
-    function add(node: TSESTree.Node, { nested }: { readonly nested: boolean }): void {
-      const { root, nesting } = positionOf(node);
-      if (root === undefined) {
-        return;
-      }
-      scores.set(root, (scores.get(root) ?? 0) + (nested ? 1 + nesting : 1));
-    }
+    const state: Tally = { positions: new Map(), scores: new Map() };
+    const { positions, scores } = state;
 
     return {
       '*'(node: TSESTree.Node) {
-        positions.set(node, positionOf(node));
+        positions.set(node, positionOf(positions, node));
       },
       IfStatement(node: TSESTree.IfStatement) {
-        add(node, { nested: !isElseIf(node) });
+        add(state, node, { nested: !isElseIf(node) });
         if (node.alternate && node.alternate.type !== AST_NODE_TYPES.IfStatement) {
-          add(node.alternate, { nested: false });
+          add(state, node.alternate, { nested: false });
         }
       },
       [[...nestedStructureTypes].join(',')](node: TSESTree.Node) {
-        add(node, { nested: true });
+        add(state, node, { nested: true });
       },
       'BreakStatement[label], ContinueStatement[label]'(
         node: TSESTree.BreakStatement | TSESTree.ContinueStatement,
       ) {
-        add(node, { nested: false });
+        add(state, node, { nested: false });
       },
       LogicalExpression(node: TSESTree.LogicalExpression) {
         if (startsLogicalSequence(node)) {
-          add(node, { nested: false });
+          add(state, node, { nested: false });
         }
       },
       ':function:exit'(fn: FunctionNode) {

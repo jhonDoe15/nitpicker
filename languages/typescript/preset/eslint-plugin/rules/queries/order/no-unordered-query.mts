@@ -123,6 +123,54 @@ function unorderedSubquery(argument: TSESTree.Node | undefined): boolean {
   return names.has('selectFrom') && !isOrdered({ names }) && !isOpaque({ names });
 }
 
+type Tracker = {
+  readonly context: Context;
+  readonly scope: ChainScope;
+  readonly reported: Set<string>;
+};
+type MessageId = 'page' | typeof AGGREGATE;
+
+function report(
+  { context, reported }: Tracker,
+  node: TSESTree.Node,
+  { messageId, form }: { readonly messageId: MessageId; readonly form: string },
+): void {
+  const key = `${node.range.join()}:${messageId}:${form}`;
+  if (!reported.has(key)) {
+    reported.add(key);
+    context.report({ node, messageId, data: { form } });
+  }
+}
+
+function reportStep(tracker: Tracker, step: Step, messageId: MessageId): void {
+  const { callee } = step.call;
+  if (callee.type === AST_NODE_TYPES.MemberExpression) {
+    report(tracker, callee.property, { messageId, form: stepForm(tracker.context, step) });
+  }
+}
+
+function checkChain(tracker: Tracker, node: TSESTree.CallExpression): void {
+  const { context, scope } = tracker;
+  const chain = insideExists(node) ? undefined : queryChain(scope, node);
+  const page = chain === undefined ? undefined : unorderedPageStep(context, chain);
+  if (page !== undefined) {
+    reportStep(tracker, page, 'page');
+  }
+  const aggregate = scope.libraries.has(KYSELY)
+    ? unorderedAggregateStep(chainSteps(node).steps)
+    : undefined;
+  if (aggregate !== undefined) {
+    reportStep(tracker, aggregate, AGGREGATE);
+  }
+}
+
+function checkText(tracker: Tracker, node: TSESTree.Node): void {
+  for (const gap of sqlGaps(tracker.context, node)) {
+    const messageId = gap.kind === AGGREGATE_GAP ? AGGREGATE : 'page';
+    report(tracker, node, { messageId, form: gap.form });
+  }
+}
+
 export const rule: TSESLint.RuleModule<'page' | typeof AGGREGATE, readonly []> = {
   meta: {
     type: 'problem',
@@ -137,59 +185,33 @@ export const rule: TSESLint.RuleModule<'page' | typeof AGGREGATE, readonly []> =
     },
   },
   create(context) {
-    const scope = queryScope(context);
-    const reported = new Set<string>();
-
-    function report(node: TSESTree.Node, messageId: 'page' | typeof AGGREGATE, form: string): void {
-      const key = `${node.range.join()}:${messageId}:${form}`;
-      if (!reported.has(key)) {
-        reported.add(key);
-        context.report({ node, messageId, data: { form } });
-      }
-    }
-
-    function reportStep(step: Step, messageId: 'page' | typeof AGGREGATE): void {
-      const { callee } = step.call;
-      if (callee.type === AST_NODE_TYPES.MemberExpression) {
-        report(callee.property, messageId, stepForm(context, step));
-      }
-    }
-
-    function checkChain(node: TSESTree.CallExpression): void {
-      const chain = insideExists(node) ? undefined : queryChain(scope, node);
-      const page = chain === undefined ? undefined : unorderedPageStep(context, chain);
-      if (page !== undefined) {
-        reportStep(page, 'page');
-      }
-      const aggregate = scope.libraries.has(KYSELY)
-        ? unorderedAggregateStep(chainSteps(node).steps)
-        : undefined;
-      if (aggregate !== undefined) {
-        reportStep(aggregate, AGGREGATE);
-      }
-    }
-
-    function checkText(node: TSESTree.Node): void {
-      for (const gap of sqlGaps(context, node)) {
-        report(node, gap.kind === AGGREGATE_GAP ? AGGREGATE : 'page', gap.form);
-      }
-    }
+    const tracker: Tracker = { context, scope: queryScope(context), reported: new Set() };
+    const { scope } = tracker;
 
     return {
       CallExpression(node) {
         if (isJsonArrayFrom(scope, node) && unorderedSubquery(node.arguments[0])) {
-          report(node, AGGREGATE, 'jsonArrayFrom(...)');
+          report(tracker, node, { messageId: AGGREGATE, form: 'jsonArrayFrom(...)' });
         }
         for (const page of unorderedOptionPages(scope, node)) {
-          report(page, 'page', context.sourceCode.getText(page).slice(0, FORM_LENGTH));
+          report(tracker, page, {
+            messageId: 'page',
+            form: context.sourceCode.getText(page).slice(0, FORM_LENGTH),
+          });
         }
         if (node.callee.type === AST_NODE_TYPES.MemberExpression && isOutermostStep(node)) {
-          checkChain(node);
+          checkChain(tracker, node);
         }
       },
-      Literal: checkText,
-      TemplateLiteral: checkText,
-      TaggedTemplateExpression: checkText,
+      Literal: (node) => {
+        checkText(tracker, node);
+      },
+      TemplateLiteral: (node) => {
+        checkText(tracker, node);
+      },
+      TaggedTemplateExpression: (node) => {
+        checkText(tracker, node);
+      },
     };
   },
 };

@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf, nameOf } from '../typed/node-views.mts';
+import { nameOf } from '../typed/node-views.mts';
+import { chainRootName } from '../typed/syntax-views.mts';
 import type { PluginLayout } from '../typed/policy-views.mts';
 import {
   findVariable,
@@ -27,6 +28,7 @@ export {
   describeSubprocess,
   gitSubcommand,
 } from './subprocess-calls.mts';
+export { chainRootName as registrationRoot } from '../typed/syntax-views.mts';
 
 export function memberName(node: TSESTree.Node): string | undefined {
   if (node.type !== AST_NODE_TYPES.MemberExpression) {
@@ -130,16 +132,6 @@ export function isTestFactoryMember(name: string | undefined): boolean {
   return name !== undefined && TEST_FACTORY_MEMBERS.has(name);
 }
 
-export function registrationRoot(callee: TSESTree.Node): string | undefined {
-  const root = chainOf<TSESTree.Node>(callee, (link) => {
-    if (link.type === AST_NODE_TYPES.MemberExpression) {
-      return link.object;
-    }
-    return link.type === AST_NODE_TYPES.CallExpression ? link.callee : undefined;
-  }).at(-1);
-  return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
-}
-
 function isCallback(
   argument: TSESTree.CallExpressionArgument,
 ): argument is TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression {
@@ -153,7 +145,7 @@ function perTestCallback(
   call: TSESTree.CallExpression,
   hooks: readonly string[] = ['beforeEach'],
 ): TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | undefined {
-  const root = registrationRoot(call.callee);
+  const root = chainRootName(call.callee);
   if (root === undefined || !(PER_TEST_TESTS.has(root) || hooks.includes(root))) {
     return undefined;
   }

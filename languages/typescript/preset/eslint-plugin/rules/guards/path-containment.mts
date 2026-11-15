@@ -15,17 +15,13 @@ import {
   variableNamed,
   type SourceCode,
 } from '../typed/node-views.mts';
+import { unwrapOf } from '../typed/syntax-views.mts';
 
 type Node = TSESTree.Node;
 const INSIDE = 'inside';
 const OUTSIDE = 'outside';
 
 type Containment = typeof INSIDE | typeof OUTSIDE;
-type Wrapped =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.ChainExpression;
 export type ContainmentScope = {
   readonly context: SourceContext;
   readonly sourceCode: SourceCode;
@@ -33,33 +29,18 @@ export type ContainmentScope = {
 };
 type Check = ContainmentScope & { readonly variable: TSESLint.Scope.Variable };
 
+export const CONTAINMENT_WRAPPERS = [
+  AST_NODE_TYPES.TSAsExpression,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.TSSatisfiesExpression,
+  AST_NODE_TYPES.ChainExpression,
+];
 const EXITS = new Set<string>([
   'ReturnStatement',
   'ThrowStatement',
   'ContinueStatement',
   'BreakStatement',
 ]);
-
-function isWrapped(node: Node | undefined): node is Wrapped {
-  return (
-    node?.type === AST_NODE_TYPES.TSAsExpression ||
-    node?.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node?.type === AST_NODE_TYPES.ChainExpression
-  );
-}
-
-export function unwrapped(expression: Node): Node;
-export function unwrapped(expression: Node | undefined): Node | undefined;
-export function unwrapped(expression: Node | undefined): Node | undefined {
-  const chain = [expression];
-  for (const current of chain) {
-    if (isWrapped(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
-}
 
 function lastPiece(scope: ContainmentScope, node: Node): Node | undefined {
   const resolved = resolveConstant(scope.context, node);
@@ -88,7 +69,7 @@ function endsWithSeparator(scope: ContainmentScope, node: Node): boolean {
 }
 
 function isPathOf(check: Check, node: Node): boolean {
-  const expression = unwrapped(node);
+  const expression = unwrapOf(node, CONTAINMENT_WRAPPERS);
   const callee =
     expression.type === AST_NODE_TYPES.CallExpression
       ? importedCalleeName(expression.callee, check.pathModule)
@@ -98,7 +79,7 @@ function isPathOf(check: Check, node: Node): boolean {
     expression.arguments.length === 1 &&
     callee !== undefined &&
     ['resolve', 'normalize'].includes(callee)
-      ? unwrapped(expression.arguments[0])
+      ? unwrapOf(expression.arguments[0], CONTAINMENT_WRAPPERS)
       : expression;
   return (
     target?.type === AST_NODE_TYPES.Identifier &&
@@ -107,7 +88,10 @@ function isPathOf(check: Check, node: Node): boolean {
 }
 
 function isRelativeOf(check: Check, node: Node): boolean {
-  const call = unwrapped(resolveConstant(check.context, unwrapped(node)));
+  const call = unwrapOf(
+    resolveConstant(check.context, unwrapOf(node, CONTAINMENT_WRAPPERS)),
+    CONTAINMENT_WRAPPERS,
+  );
   return (
     call?.type === AST_NODE_TYPES.CallExpression &&
     importedCalleeName(call.callee, check.pathModule) === 'relative' &&
@@ -117,7 +101,7 @@ function isRelativeOf(check: Check, node: Node): boolean {
 }
 
 function directContainment(check: Check, node: Node): Containment | undefined {
-  const call = unwrapped(node);
+  const call = unwrapOf(node, CONTAINMENT_WRAPPERS);
   if (
     call.type !== AST_NODE_TYPES.CallExpression ||
     call.callee.type !== AST_NODE_TYPES.MemberExpression ||
@@ -141,7 +125,7 @@ function directContainment(check: Check, node: Node): Containment | undefined {
 const NEGATED: Record<Containment, Containment> = { [INSIDE]: OUTSIDE, [OUTSIDE]: INSIDE };
 
 function containment(check: Check, node: Node): Containment | undefined {
-  const test = unwrapped(node);
+  const test = unwrapOf(node, CONTAINMENT_WRAPPERS);
   if (test.type === AST_NODE_TYPES.UnaryExpression && test.operator === '!') {
     const direct = directContainment(check, test.argument);
     return direct === undefined ? undefined : NEGATED[direct];
@@ -194,7 +178,7 @@ function guards(check: Check, node: Node, child: Node): boolean {
 }
 
 export function isContained(scope: ContainmentScope, sink: Node, argument: Node): boolean {
-  const target = unwrapped(argument);
+  const target = unwrapOf(argument, CONTAINMENT_WRAPPERS);
   const variable =
     target.type === AST_NODE_TYPES.Identifier ? variableNamed(scope.sourceCode, target) : undefined;
   if (variable === undefined) {

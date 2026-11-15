@@ -1,16 +1,12 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, isIdentifierNamed } from '../rules/typed/node-views.mts';
+import { ASSERTION_WRAPPERS, unwrapOf } from '../rules/typed/syntax-views.mts';
 import { moduleBindings } from '../rules/analysis/test-code-analysis.mts';
 
 type Bindings = ReturnType<typeof moduleBindings>;
 type NamedMember = TSESTree.MemberExpressionNonComputedName & {
   readonly property: TSESTree.Identifier;
 };
-type TypeWrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSTypeAssertion;
 
 const MATCHERS = new Map([
   ['toBe', false],
@@ -48,27 +44,11 @@ const ASSERT = 'assert';
 const ASSERT_ALIASES = new Set([ASSERT, 'strict']);
 const EXPECT_VARIANTS = new Set(['soft', 'poll']);
 const MODIFIERS = new Set(['not', 'resolves', 'rejects', 'to', 'be', 'been', 'is', 'deep']);
-function isTypeWrapper(node: TSESTree.Node): node is TypeWrapper {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
-function unwrap(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf(node, (current) => (isTypeWrapper(current) ? current.expression : undefined)).at(-1) ??
-    node
-  );
-}
-
 function isNonIntegral(node: TSESTree.Node): boolean {
-  const literal = unwrap(node);
+  const literal = unwrapOf(node, ASSERTION_WRAPPERS);
   const operand =
     literal.type === AST_NODE_TYPES.UnaryExpression && SIGNS.has(literal.operator)
-      ? unwrap(literal.argument)
+      ? unwrapOf(literal.argument, ASSERTION_WRAPPERS)
       : literal;
   return (
     operand.type === AST_NODE_TYPES.Literal &&
@@ -102,7 +82,7 @@ function firstFloat(
       return node;
     }
     if (deep) {
-      pending.push(...nestedValues(unwrap(node)));
+      pending.push(...nestedValues(unwrapOf(node, ASSERTION_WRAPPERS)));
     }
   }
   return undefined;
@@ -144,7 +124,7 @@ function equalityFloat(node: TSESTree.Node): TSESTree.Node | undefined {
 function comparedFloat(expression: TSESTree.Node): TSESTree.Node | undefined {
   const pending = [expression];
   for (const node of pending) {
-    const current = unwrap(node);
+    const current = unwrapOf(node, ASSERTION_WRAPPERS);
     const literal = equalityFloat(current);
     if (literal !== undefined) {
       return literal;

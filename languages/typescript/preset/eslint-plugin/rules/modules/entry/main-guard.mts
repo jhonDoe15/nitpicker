@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, variableNamed, type Ranged, type SourceCode } from '../../typed/node-views.mts';
+import { operandsOf } from '../../typed/syntax-views.mts';
 
 type Predicate = (node: TSESTree.Node) => boolean;
 type HelperCall = { readonly name: string; readonly argument: Predicate };
@@ -158,21 +159,8 @@ function isScriptPathCheck(sourceCode: SourceCode, test: TSESTree.Node): boolean
   );
 }
 
-function conjuncts(test: TSESTree.Expression): TSESTree.Expression[] {
-  const pending = [test];
-  const operands: TSESTree.Expression[] = [];
-  for (const node of pending) {
-    if (node.type === AST_NODE_TYPES.LogicalExpression && node.operator === '&&') {
-      pending.push(node.left, node.right);
-    } else {
-      operands.push(node);
-    }
-  }
-  return operands;
-}
-
 function isEntryCheck(sourceCode: SourceCode, test: TSESTree.Expression): boolean {
-  const operands = conjuncts(test);
+  const operands = operandsOf(test, '&&');
   return (
     operands.some((operand) => isEntryComparison(sourceCode, operand)) &&
     operands.every(

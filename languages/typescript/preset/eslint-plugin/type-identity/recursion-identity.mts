@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { memoized } from '../rules/support/memo.mts';
 import { ts } from '../rules/typed/typescript-views.mts';
 
 const MAX_TYPE_ARGUMENT_DEPTH = 12;
@@ -43,16 +44,6 @@ function nestsTooDeep(checker: TypeScript.TypeChecker, type: TypeScript.Type): b
   return false;
 }
 
-function scopedKey(scope: Scope, identity: Identity): { readonly identity: Identity } {
-  const existing = scope.get(identity);
-  if (existing !== undefined) {
-    return existing;
-  }
-  const created = { identity };
-  scope.set(identity, created);
-  return created;
-}
-
 function currentScope(checker: object): Scope {
   const scope: unknown = Reflect.get(checker, IDENTITY_SCOPE);
   return isScope(scope) ? scope : new WeakMap();
@@ -79,6 +70,12 @@ export function giveEachInstantiationItsOwnIdentity(program: ProgramLike | undef
   Reflect.set(checker, SHARED_IDENTITY, sharedIdentity);
   Reflect.set(checker, IDENTITY_SCOPE, new WeakMap());
   checker.getRecursionIdentity = (type: TypeScript.Type) =>
-    scopedKey(currentScope(checker), nestsTooDeep(checker, type) ? sharedIdentity(type) : type);
+    memoized(
+      currentScope(checker),
+      nestsTooDeep(checker, type) ? sharedIdentity(type) : type,
+      (identity) => ({
+        identity,
+      }),
+    );
   return true;
 }

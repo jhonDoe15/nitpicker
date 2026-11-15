@@ -1,8 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, depthFirst, isNode } from '../typed/node-views.mts';
+import { isFunction } from '../typed/syntax-views.mts';
 
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+export { isFunction };
 
 const SKIPPED = new Set(['parent', 'loc', 'range', 'tokens', 'comments']);
 
@@ -18,15 +18,6 @@ export function syntaxChildren(node: TSESTree.Node): TSESTree.Node[] {
   return Object.keys(node)
     .filter((name) => !SKIPPED.has(name))
     .flatMap((name) => syntaxIn(Reflect.get(node, name)));
-}
-
-/** Whether `node` starts a function of its own. */
-export function isFunction(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
 }
 
 /** `root` and the syntax below it, without entering functions nested in it. */

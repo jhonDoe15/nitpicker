@@ -13,8 +13,7 @@ type CauseSite = {
 
 function bindsCaught(
   sourceCode: SourceCode,
-  node: TSESTree.Node,
-  handler: TSESTree.CatchClause,
+  { node, handler }: Pick<CauseSite, 'node' | 'handler'>,
   caught: string,
 ): boolean {
   const variable = visibleVariable(sourceCode, node, caught);
@@ -33,7 +32,7 @@ export function causeFix(
   if (param?.type !== AST_NODE_TYPES.Identifier || optionsIndex === undefined || hasSpread) {
     return undefined;
   }
-  if (!bindsCaught(sourceCode, node, handler, param.name)) {
+  if (!bindsCaught(sourceCode, { node, handler }, param.name)) {
     return undefined;
   }
   const cause = `cause: ${param.name}`;

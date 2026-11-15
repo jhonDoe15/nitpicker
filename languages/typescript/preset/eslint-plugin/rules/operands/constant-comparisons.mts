@@ -1,36 +1,54 @@
 import type { Term } from '../analysis/logic/estree-terms.mts';
 import { key } from '../analysis/logic/term-views.mts';
+import {
+  conjunctionVerdict as untypedConjunctionVerdict,
+  disjunctionVerdict as untypedDisjunctionVerdict,
+  numberSamples as untypedNumberSamples,
+  RELATIONS as untypedRelations,
+} from '../../../../../../shared/logic/comparisons/constant-verdicts.mjs';
 import { isStable } from './operand-terms.mts';
 
 type Constant =
   | { readonly kind: 'number'; readonly value: number }
   | { readonly kind: 'string'; readonly value: string };
-type Sample =
-  | { readonly kind: 'number' | 'other'; readonly value: number }
-  | { readonly kind: 'string'; readonly value: string };
-type Comparison = {
-  readonly subject: Term;
-  readonly operator: string;
-  readonly constant: Constant;
-};
-export type ConstantComparison = Comparison & { readonly subjectKey: string };
-type Decided<Compared> = {
-  readonly redundant: Compared;
-  readonly deciding: Compared;
-};
+type Sample = { readonly kind: string; readonly value: number | string };
+type Comparison = { readonly operator: string; readonly constant: Constant };
+type Decided<Compared> = { readonly redundant: Compared; readonly deciding: Compared };
 export type Verdict<Compared> =
   | { readonly verdict: 'impossible' }
   | { readonly verdict: 'always' }
   | (Decided<Compared> & { readonly verdict: 'implied' })
   | (Decided<Compared> & { readonly verdict: 'covered' });
+type UntypedVerdict = { readonly verdict: string; readonly redundant?: unknown } | undefined;
+type Combine = (
+  samples: readonly Sample[],
+  first: Comparison,
+  second: Comparison,
+) => UntypedVerdict;
 
-const RELATIONS = new Map<string, (value: number | string, constant: number | string) => boolean>([
-  ['<', (value, constant) => value < constant],
-  ['<=', (value, constant) => value <= constant],
-  ['>', (value, constant) => value > constant],
-  ['>=', (value, constant) => value >= constant],
-]);
-const EQUALITIES = new Set<string>(['===', '!==']);
+const RELATIONS: ReadonlyMap<string, unknown> = untypedRelations;
+const numberSamples: (first: number, second: number) => Sample[] = untypedNumberSamples;
+const conjunctionVerdict: Combine = untypedConjunctionVerdict;
+const disjunctionVerdict: Combine = untypedDisjunctionVerdict;
+
+function typedVerdict<Compared>(
+  untyped: UntypedVerdict,
+  first: Compared,
+  second: Compared,
+): Verdict<Compared> | undefined {
+  const verdict = untyped?.verdict;
+  if (verdict === 'impossible' || verdict === 'always') {
+    return { verdict };
+  }
+  const decided =
+    untyped?.redundant === first
+      ? { redundant: first, deciding: second }
+      : { redundant: second, deciding: first };
+  return verdict === 'implied' || verdict === 'covered' ? { verdict, ...decided } : undefined;
+}
+
+type TermComparison = Comparison & { readonly subject: Term };
+export type ConstantComparison = TermComparison & { readonly subjectKey: string };
 const MIRRORED = new Map<string, string>([
   ['<', '>'],
   ['<=', '>='],
@@ -67,7 +85,7 @@ function constantOf(node: Term): Constant | undefined {
   return typeof parsed === 'string' ? { kind: 'string', value: parsed } : undefined;
 }
 
-function oriented(node: Term, operator: string): Comparison | undefined {
+function oriented(node: Term, operator: string): TermComparison | undefined {
   const [left, right] = node.children;
   if (left === undefined || right === undefined) {
     return undefined;
@@ -98,29 +116,6 @@ export function constantComparison(term: Term): ConstantComparison | undefined {
   return { ...comparison, subjectKey: key(comparison.subject) };
 }
 
-function holds(comparison: Comparison, sample: Sample): boolean {
-  const { operator, constant } = comparison;
-  const relation = RELATIONS.get(operator);
-  if (relation !== undefined) {
-    return relation(sample.value, constant.value);
-  }
-  const equal = sample.kind === constant.kind && sample.value === constant.value;
-  return EQUALITIES.has(operator) && (operator === '===') === equal;
-}
-
-function numberSamples(first: number, second: number): Sample[] {
-  const low = Math.min(first, second);
-  const high = Math.max(first, second);
-  const below = low - Math.max(1, Math.abs(low));
-  const above = high + Math.max(1, Math.abs(high));
-  const values = [below, low, low / 2 + high / 2, high, above];
-  return [
-    ...values.map((value): Sample => ({ kind: 'number', value })),
-    ...values.map((value): Sample => ({ kind: 'other', value })),
-    { kind: 'number', value: Number.NaN },
-  ];
-}
-
 function samplesFor(first: Constant, second: Constant): Sample[] {
   if (first.kind === 'number' && second.kind === 'number') {
     return numberSamples(first.value, second.value);
@@ -130,42 +125,6 @@ function samplesFor(first: Constant, second: Constant): Sample[] {
     kind: 'string',
     value: String(value),
   }));
-}
-
-function implies(samples: readonly Sample[], premise: Comparison, conclusion: Comparison): boolean {
-  return samples.every((sample) => !holds(premise, sample) || holds(conclusion, sample));
-}
-
-function conjunctionVerdict<Compared extends Comparison>(
-  samples: readonly Sample[],
-  first: Compared,
-  second: Compared,
-): Verdict<Compared> | undefined {
-  if (!samples.some((sample) => holds(first, sample) && holds(second, sample))) {
-    return { verdict: 'impossible' };
-  }
-  if (implies(samples, first, second)) {
-    return { verdict: 'implied', redundant: second, deciding: first };
-  }
-  return implies(samples, second, first)
-    ? { verdict: 'implied', redundant: first, deciding: second }
-    : undefined;
-}
-
-function disjunctionVerdict<Compared extends Comparison>(
-  samples: readonly Sample[],
-  first: Compared,
-  second: Compared,
-): Verdict<Compared> | undefined {
-  if (samples.every((sample) => holds(first, sample) || holds(second, sample))) {
-    return { verdict: 'always' };
-  }
-  if (implies(samples, first, second)) {
-    return { verdict: 'covered', redundant: first, deciding: second };
-  }
-  return implies(samples, second, first)
-    ? { verdict: 'covered', redundant: second, deciding: first }
-    : undefined;
 }
 
 /** How two comparisons of one operand against constants combine under `&&` or `||`, if wrongly. */
@@ -178,7 +137,6 @@ export function comparisonVerdict<Compared extends ConstantComparison>(
     return undefined;
   }
   const samples = samplesFor(first.constant, second.constant);
-  return operator === '&&'
-    ? conjunctionVerdict(samples, first, second)
-    : disjunctionVerdict(samples, first, second);
+  const combine = operator === '&&' ? conjunctionVerdict : disjunctionVerdict;
+  return typedVerdict(combine(samples, first, second), first, second);
 }

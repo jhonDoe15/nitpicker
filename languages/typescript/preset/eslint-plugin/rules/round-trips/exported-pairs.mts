@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
 import { roundTripPairs as untypedRoundTripPairs } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
 
 export type Member = {
@@ -32,20 +33,6 @@ function member(name: string, node: TSESTree.Node, isStatic = true): Member {
   return { name, node, line: node.loc.start.line, isStatic };
 }
 
-function unwrapped(value: TSESTree.Node): TSESTree.Node {
-  const chain = [value];
-  for (const current of chain) {
-    if (
-      current.type === AST_NODE_TYPES.TSAsExpression ||
-      current.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-      current.type === AST_NODE_TYPES.TSNonNullExpression
-    ) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? value;
-}
-
 function functionsOf(statement: TSESTree.Node): Member[] {
   if (statement.type === AST_NODE_TYPES.FunctionDeclaration && statement.id !== null) {
     return [member(statement.id.name, statement.id)];
@@ -56,7 +43,7 @@ function functionsOf(statement: TSESTree.Node): Member[] {
   return statement.declarations.flatMap(({ id, init }) =>
     id.type === AST_NODE_TYPES.Identifier &&
     init !== null &&
-    FUNCTION_VALUES.has(unwrapped(init).type)
+    FUNCTION_VALUES.has(unwrapOf(init, ASSERTION_FORMS).type)
       ? [member(id.name, id)]
       : [],
   );

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf, variableNamed, type Ranged, type SourceCode } from '../typed/node-views.mts';
+import { contains, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
 
 export type ResourceRegion = {
   readonly variable: TSESLint.Scope.Variable;
@@ -11,10 +11,6 @@ const USING_KINDS = new Set(['using', 'await using']);
 const DISPOSERS = new Set(['close', 'dispose', 'destroy', 'release', 'disconnect', 'end']);
 const DECLARATION_OWNER = 'using declaration';
 const FINALLY_OWNER = 'finally block';
-
-function containsRange(outer: Ranged, inner: Ranged): boolean {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
-}
 
 function disposedIdentifier(statement: TSESTree.Statement): TSESTree.Identifier | undefined {
   if (statement.type !== AST_NODE_TYPES.ExpressionStatement) {
@@ -58,7 +54,7 @@ export function finallyRegions(
     .map((identifier) => variableNamed(sourceCode, identifier))
     .flatMap((variable) =>
       variable === undefined ||
-      variable.defs.some((definition) => containsRange(statement.block, definition.name))
+      variable.defs.some((definition) => contains(statement.block, definition.name))
         ? []
         : [variable],
     )
@@ -67,6 +63,6 @@ export function finallyRegions(
 
 export function referencesIn({ variable, region }: ResourceRegion): TSESTree.Node[] {
   return variable.references
-    .filter(({ init, identifier }) => !init && containsRange(region, identifier))
+    .filter(({ init, identifier }) => !init && contains(region, identifier))
     .map(({ identifier }) => identifier);
 }

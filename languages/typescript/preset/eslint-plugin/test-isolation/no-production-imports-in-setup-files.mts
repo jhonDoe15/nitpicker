@@ -1,9 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { literalValue } from '../rules/typed/syntax-views.mts';
 import { productionModulePath } from './production-source.mts';
-
-function literalValue(node: TSESTree.Node | undefined): unknown {
-  return node?.type === AST_NODE_TYPES.Literal ? node.value : undefined;
-}
 
 function requireSource(node: TSESTree.CallExpression): unknown {
   const argument = node.arguments[0];

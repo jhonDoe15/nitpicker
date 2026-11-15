@@ -13,7 +13,6 @@ import {
   readStamped,
   resolvedFile,
   type ConstantValue,
-  type ModuleAlias,
 } from './copied-constants-views.mts';
 import { hasModifier, localConstants, type ConstantEntry } from './constant-literals.mts';
 
@@ -182,15 +181,12 @@ function throughReexport(reexport: Reexport, outer: Rename): Rename {
   };
 }
 
-function reexportSteps(
-  step: Step,
-  { aliases }: { readonly aliases: readonly ModuleAlias[] },
-): Step[] {
+function reexportSteps(step: Step): Step[] {
   if (step.depth >= MAX_REEXPORT_DEPTH) {
     return [];
   }
   return parsedModule(step.file).reexports.flatMap((reexport) => {
-    const target = resolvedFile(reexport.specifier, step.file, { aliases });
+    const target = resolvedFile(reexport.specifier, step.file);
     return target !== undefined
       ? [
           {
@@ -207,11 +203,9 @@ export function exportedConstants(
   file: string,
   {
     root,
-    aliases = [],
     only,
   }: {
     readonly root: string;
-    readonly aliases?: readonly ModuleAlias[];
     readonly only?: ReadonlySet<string> | undefined;
   },
 ): Map<string, ConstantValue> {
@@ -236,7 +230,7 @@ export function exportedConstants(
     for (const [name, value] of fresh) {
       found.set(name, value);
     }
-    pending.push(...reexportSteps(step, { aliases }));
+    pending.push(...reexportSteps(step));
   }
   return found;
 }

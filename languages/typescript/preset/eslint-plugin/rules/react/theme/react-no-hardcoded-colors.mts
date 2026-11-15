@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, chainOf, nameOf, type SourceCode } from '../../typed/node-views.mts';
+import { ancestorsOf, nameOf, type SourceCode } from '../../typed/node-views.mts';
+import { chainRootName } from '../../typed/syntax-views.mts';
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { propertyKeyName } from '../../analysis/test-code-analysis.mts';
 import { findColor, namedColor } from './color-text.mts';
@@ -75,16 +76,6 @@ const NOT_A_VALUE_PARENT = new Set([
   'TSLiteralType',
 ]);
 
-function rootName(node: TSESTree.Node): string | undefined {
-  const root = chainOf(node, (current) => {
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      return current.object;
-    }
-    return current.type === AST_NODE_TYPES.CallExpression ? current.callee : undefined;
-  }).at(-1);
-  return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
-}
-
 function camelCase(name: string | undefined): string | undefined {
   return name?.replace(/-([a-z])/gu, (_match: string, letter: string) => letter.toUpperCase());
 }
@@ -120,7 +111,7 @@ function ownerVerdict(
   }
   if (parent.type === AST_NODE_TYPES.CallExpression) {
     return parent.arguments.some((argument) => argument === child) &&
-      STYLE_CALL_ROOTS.has(rootName(parent.callee))
+      STYLE_CALL_ROOTS.has(chainRootName(parent.callee))
       ? 'yes'
       : 'no';
   }
@@ -195,7 +186,7 @@ function isCssTemplate(node: TSESTree.Node): boolean {
   return (
     parent.type === AST_NODE_TYPES.TaggedTemplateExpression &&
     parent.quasi === template &&
-    CSS_TAG_ROOTS.has(rootName(parent.tag))
+    CSS_TAG_ROOTS.has(chainRootName(parent.tag))
   );
 }
 

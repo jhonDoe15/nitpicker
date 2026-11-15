@@ -3,7 +3,7 @@ import type { Context } from '../security/security-values.mts';
 import { hasArrayType } from '../support/checked-types.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 import { contains } from '../typed/node-views.mts';
-import { calleeNameOf } from '../typed/syntax-views.mts';
+import { calleeName } from '../typed/syntax-views.mts';
 import { childrenOf, type EnclosingLoop, type LoopNode } from './loop-shapes.mts';
 
 type FunctionNode =
@@ -13,10 +13,6 @@ const wordsOf: (name: string) => string[] = untypedWordsOf;
 
 const CHUNK_WORDS = new Set(['chunk', 'chunks', 'chunked', 'batch', 'batches', 'batched']);
 const SLICES = new Set(['slice', 'splice', 'subarray']);
-
-function calleeName(callee: TSESTree.Node): string {
-  return calleeNameOf(callee) ?? '';
-}
 
 function isChunkSource(node: TSESTree.Node): boolean {
   const target = node.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
