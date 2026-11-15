@@ -7,7 +7,7 @@ import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/orig
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
-import { CONVENTION_POLICY_FILES } from './convention-policy-files.mjs';
+import { CONVENTION_POLICY_FILES } from './conventions/convention-policy-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
