@@ -1,4 +1,4 @@
-export type Range = readonly [number, number];
+type Range = readonly [number, number];
 
 export type AstNode = {
   readonly type: string;
@@ -13,7 +13,7 @@ export type Comment = {
   readonly loc: { readonly start: { readonly line: number } };
 };
 
-export type Token = { readonly range: Range };
+type Token = { readonly range: Range };
 
 export type Program = AstNode & {
   readonly tokens: readonly Token[];
