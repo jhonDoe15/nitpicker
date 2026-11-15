@@ -1,32 +1,50 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { libraryCall, schemaProblems } from '../fields/schema-fields.mjs';
-import { importOf, isFromPackage, nameOf } from './ts-nodes.mjs';
+import type TypeScript from 'typescript';
+import { ts } from '../../typed/typescript-views.mts';
+import { schemaProblems } from '../fields/schema-fields.mts';
+import { libraryCall } from '../fields/schema-libraries.mts';
+import type { Checker, Located } from '../problem-types.mts';
+import { nameOf } from './import-bindings.mts';
+import { importOf, isFromPackage } from './ts-nodes.mts';
 
-const PARSE_METHODS = new Set(['parse', 'safeParse', 'parseAsync', 'safeParseAsync', 'spa']);
-const REQUEST_FIELDS = { query: 'query string', params: 'path', headers: 'headers' };
+type Names = Readonly<Record<string, string>>;
+type Binding = {
+  readonly schema: TypeScript.Node | undefined;
+  readonly source: string | undefined;
+};
+
+const PARSE_METHODS = new Set<string | undefined>([
+  'parse',
+  'safeParse',
+  'parseAsync',
+  'safeParseAsync',
+  'spa',
+]);
+const QUERY_STRING = 'query string';
+const HEADERS = 'headers';
+const REQUEST_FIELDS: Names = { query: QUERY_STRING, params: 'path', headers: HEADERS };
 const REQUEST_NAMES = new Set(['req', 'request', 'ctx']);
 const REQUEST_MEMBERS = new Set(['req', 'request']);
-const HONO_ACCESSORS = {
-  query: 'query string',
-  queries: 'query string',
+const HONO_ACCESSORS: Names = {
+  query: QUERY_STRING,
+  queries: QUERY_STRING,
   param: 'path',
-  header: 'headers',
+  header: HEADERS,
 };
 const HONO_VALIDATORS = [
   '@hono/zod-validator',
   '@hono/valibot-validator',
   '@hono/standard-validator',
 ];
-const HONO_TARGETS = {
-  query: 'query string',
+const HONO_TARGETS: Names = {
+  query: QUERY_STRING,
   param: 'path',
-  header: 'headers',
+  header: HEADERS,
   form: 'multipart form',
 };
-const FASTIFY_PARTS = { querystring: 'query string', params: 'path', headers: 'headers' };
+const FASTIFY_PARTS: Names = { querystring: QUERY_STRING, params: 'path', headers: HEADERS };
 
-function unwrapped(node) {
-  const chain = [node];
+function unwrapped(node: TypeScript.Expression): TypeScript.Node | undefined {
+  const chain: TypeScript.Node[] = [node];
   for (const current of chain) {
     if (
       ts.isParenthesizedExpression(current) ||
@@ -39,14 +57,14 @@ function unwrapped(node) {
   return chain.at(-1);
 }
 
-function isRequest(node) {
+function isRequest(node: TypeScript.Node): boolean {
   if (ts.isIdentifier(node)) {
     return REQUEST_NAMES.has(node.text);
   }
   return ts.isPropertyAccessExpression(node) && REQUEST_MEMBERS.has(node.name.text);
 }
 
-function honoAccessor(node) {
+function honoAccessor(node: TypeScript.CallExpression): string | undefined {
   const callee = node.expression;
   return node.arguments.length === 0 &&
     ts.isPropertyAccessExpression(callee) &&
@@ -56,7 +74,7 @@ function honoAccessor(node) {
     : undefined;
 }
 
-function transportSource(expression) {
+function transportSource(expression: TypeScript.Expression | undefined): string | undefined {
   const node = expression === undefined ? undefined : unwrapped(expression);
   if (node === undefined) {
     return undefined;
@@ -67,7 +85,7 @@ function transportSource(expression) {
   return ts.isCallExpression(node) ? honoAccessor(node) : undefined;
 }
 
-function calleeName(call) {
+function calleeName(call: TypeScript.CallExpression): string | undefined {
   const callee = call.expression;
   if (ts.isPropertyAccessExpression(callee)) {
     return callee.name.text;
@@ -75,7 +93,7 @@ function calleeName(call) {
   return ts.isIdentifier(callee) ? callee.text : undefined;
 }
 
-function parsed(call) {
+function parsed(call: TypeScript.CallExpression): Binding | undefined {
   if (!PARSE_METHODS.has(calleeName(call))) {
     return undefined;
   }
@@ -89,7 +107,7 @@ function parsed(call) {
     : undefined;
 }
 
-function honoValidator(call) {
+function honoValidator(call: TypeScript.CallExpression): Binding | undefined {
   const callee = call.expression;
   const [target, schema] = call.arguments;
   if (!ts.isIdentifier(callee) || target === undefined || !ts.isStringLiteralLike(target)) {
@@ -103,22 +121,30 @@ function honoValidator(call) {
     : undefined;
 }
 
-function located(binding, checker, anchor) {
+function located(
+  binding: Binding | undefined,
+  checker: Checker,
+  anchor: TypeScript.Node,
+): Located[] {
   if (binding?.source === undefined || binding.schema === undefined) {
     return [];
   }
-  return (schemaProblems(binding.schema, checker) ?? []).map((entry) => ({
+  const { source, schema } = binding;
+  return (schemaProblems(schema, checker) ?? []).map((entry) => ({
     ...entry,
-    source: binding.source,
+    source,
     binding: anchor,
   }));
 }
 
-export function callProblems(call, checker) {
+export function callProblems(call: TypeScript.CallExpression, checker: Checker): Located[] {
   return located(parsed(call) ?? honoValidator(call), checker, call);
 }
 
-export function routeSchemaProblems(property, checker) {
+export function routeSchemaProblems(
+  property: TypeScript.PropertyAssignment,
+  checker: Checker,
+): Located[] {
   if (!ts.isPropertyAssignment(property) || nameOf(property.name) !== 'schema') {
     return [];
   }
@@ -127,7 +153,11 @@ export function routeSchemaProblems(property, checker) {
     return [];
   }
   return parts.properties.flatMap((part) => {
-    const source = ts.isPropertyAssignment(part) ? FASTIFY_PARTS[nameOf(part.name)] : undefined;
+    if (!ts.isPropertyAssignment(part)) {
+      return [];
+    }
+    const name = nameOf(part.name);
+    const source = name === undefined ? undefined : FASTIFY_PARTS[name];
     return located({ source, schema: part.initializer }, checker, part);
   });
 }

@@ -1,7 +1,13 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { handlerProblems } from './bindings/nest-handlers.mjs';
-import { callProblems, routeSchemaProblems } from './bindings/request-calls.mjs';
-import { sourceOf } from './bindings/ts-nodes.mjs';
+import type { TSESLint } from '@typescript-eslint/utils';
+import type TypeScript from 'typescript';
+import { ts } from '../typed/typescript-views.mts';
+import { handlerProblems } from './bindings/nest-handlers.mts';
+import { callProblems, routeSchemaProblems } from './bindings/request-calls.mts';
+import { sourceOf } from './bindings/ts-nodes.mts';
+import type { Checker, Kind, Library, Located, Problem } from './problem-types.mts';
+
+type MessageIds = 'rejected' | 'unconverted' | 'booleanCast';
+type Context = Readonly<TSESLint.RuleContext<MessageIds, readonly []>>;
 
 const ZOD_BOOLEAN =
   "z.stringbool() (zod 4) or z.enum(['true', 'false']).transform((value) => value === 'true')";
@@ -10,7 +16,7 @@ const VALIBOT_BOOLEAN =
 const DTO_BOOLEAN = "@Transform(({ value }) => value === 'true')";
 const CONVERTING_SCHEMA = 'a DTO or schema that converts it';
 
-const FIXES = {
+const FIXES: Readonly<Record<Library, Readonly<Partial<Record<Kind, string>>>>> = {
   zod: {
     number: 'z.coerce.number()',
     integer: 'z.coerce.number().int()',
@@ -44,9 +50,9 @@ const FIXES = {
   },
 };
 
-const UNCHECKED = new Set(['param', 'type']);
+const UNCHECKED = new Set<Library>(['param', 'type']);
 
-function nodeProblems(node, checker) {
+function nodeProblems(node: TypeScript.Node, checker: Checker): Located[] {
   if (ts.isMethodDeclaration(node)) {
     return handlerProblems(node, checker);
   }
@@ -56,9 +62,9 @@ function nodeProblems(node, checker) {
   return ts.isPropertyAssignment(node) ? routeSchemaProblems(node, checker) : [];
 }
 
-function collect(file, checker) {
-  const pending = [file];
-  const found = [];
+function collect(file: TypeScript.SourceFile, checker: Checker): Located[] {
+  const pending: TypeScript.Node[] = [file];
+  const found: Located[] = [];
   for (const node of pending) {
     found.push(...nodeProblems(node, checker));
     ts.forEachChild(node, (child) => {
@@ -68,18 +74,18 @@ function collect(file, checker) {
   return found;
 }
 
-function messageId(problem) {
+function messageId(problem: Problem): MessageIds {
   if (problem.cast) {
     return 'booleanCast';
   }
   return UNCHECKED.has(problem.library) ? 'unconverted' : 'rejected';
 }
 
-function anchorOf(file, entry) {
+function anchorOf(file: TypeScript.SourceFile, entry: Located): TypeScript.Node {
   return entry.node.getSourceFile() === file ? entry.node : entry.binding;
 }
 
-function report(context, file, entry) {
+function report(context: Context, file: TypeScript.SourceFile, entry: Located): void {
   const anchor = anchorOf(file, entry);
   const { sourceCode } = context;
   const { problem } = entry;
@@ -98,7 +104,7 @@ function report(context, file, entry) {
   });
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds> = {
   meta: {
     type: 'problem',
     docs: {
@@ -119,9 +125,9 @@ export const rule = {
     return {
       'Program:exit'() {
         const { file, checker } = sourceOf(context);
-        const reported = new Set();
+        const reported = new Set<string>();
         for (const entry of collect(file, checker)) {
-          const key = `${entry.field}@${anchorOf(file, entry).pos}`;
+          const key = `${entry.field}@${String(anchorOf(file, entry).pos)}`;
           if (!reported.has(key)) {
             reported.add(key);
             report(context, file, entry);

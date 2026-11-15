@@ -1,18 +1,36 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
+import type { TSESLint } from '@typescript-eslint/utils';
+import type TypeScript from 'typescript';
+import { ts } from '../../typed/typescript-views.mts';
+import { nameOf, topLevelImport, type ImportBinding } from './import-bindings.mts';
+
+export type DecoratorCall = {
+  readonly name: string | undefined;
+  readonly base: TypeScript.Identifier | undefined;
+  readonly arguments: TypeScript.Expression[];
+};
+type Context = Readonly<TSESLint.RuleContext<string, readonly unknown[]>>;
+type Wrapper =
+  | TypeScript.ParenthesizedExpression
+  | TypeScript.AsExpression
+  | TypeScript.SatisfiesExpression
+  | TypeScript.NonNullExpression;
 
 const MAX_ALIAS_DEPTH = 4;
 
-const SCRIPT_KINDS = [
+const SCRIPT_KINDS: readonly (readonly [RegExp, TypeScript.ScriptKind])[] = [
   [/\.tsx$/, ts.ScriptKind.TSX],
   [/\.[cm]?js$/, ts.ScriptKind.JS],
   [/\.jsx$/, ts.ScriptKind.JSX],
 ];
 
-function scriptKind(filename) {
+function scriptKind(filename: string): TypeScript.ScriptKind {
   return SCRIPT_KINDS.find(([pattern]) => pattern.test(filename))?.[1] ?? ts.ScriptKind.TS;
 }
 
-export function sourceOf(context) {
+export function sourceOf(context: Context): {
+  readonly file: TypeScript.SourceFile;
+  readonly checker: TypeScript.TypeChecker | undefined;
+} {
   const { sourceCode, filename } = context;
   const services = sourceCode.parserServices;
   const program = services?.program ?? undefined;
@@ -30,17 +48,7 @@ export function sourceOf(context) {
   return { file, checker: mapped === file ? program?.getTypeChecker() : undefined };
 }
 
-export function nameOf(node) {
-  if (node === undefined) {
-    return undefined;
-  }
-  if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
-    return node.text;
-  }
-  return ts.isStringLiteralLike(node) || ts.isNumericLiteral(node) ? node.text : undefined;
-}
-
-export function baseIdentifier(node) {
+export function baseIdentifier(node: TypeScript.Node): TypeScript.Identifier | undefined {
   const chain = [node];
   for (const current of chain) {
     if (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
@@ -48,65 +56,12 @@ export function baseIdentifier(node) {
     }
   }
   const base = chain.at(-1);
-  return ts.isIdentifier(base) ? base : undefined;
+  return base !== undefined && ts.isIdentifier(base) ? base : undefined;
 }
 
-function moduleText(specifier) {
-  return specifier !== undefined && ts.isStringLiteral(specifier) ? specifier.text : undefined;
-}
-
-function importedName(clause, name) {
-  if (clause.name?.text === name) {
-    return { imported: 'default' };
-  }
-  const bindings = clause.namedBindings;
-  if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
-    return bindings.name.text === name ? { imported: '*' } : undefined;
-  }
-  const element = bindings?.elements.find((entry) => entry.name.text === name);
-  return element === undefined
-    ? undefined
-    : { imported: (element.propertyName ?? element.name).text };
-}
-
-function requiredName(declaration, name) {
-  const call = declaration.initializer;
-  const isRequire =
-    call !== undefined &&
-    ts.isCallExpression(call) &&
-    ts.isIdentifier(call.expression) &&
-    call.expression.text === 'require';
-  if (!isRequire) {
-    return undefined;
-  }
-  const source = moduleText(call.arguments[0]);
-  if (ts.isIdentifier(declaration.name)) {
-    return declaration.name.text === name ? { source, imported: '*' } : undefined;
-  }
-  const element = ts.isObjectBindingPattern(declaration.name)
-    ? declaration.name.elements.find((entry) => nameOf(entry.name) === name)
-    : undefined;
-  return element === undefined
-    ? undefined
-    : { source, imported: nameOf(element.propertyName ?? element.name) };
-}
-
-function statementBinding(statement, name) {
-  if (ts.isImportDeclaration(statement) && statement.importClause !== undefined) {
-    const found = importedName(statement.importClause, name);
-    return found === undefined
-      ? undefined
-      : { source: moduleText(statement.moduleSpecifier), ...found };
-  }
-  if (!ts.isVariableStatement(statement)) {
-    return undefined;
-  }
-  return statement.declarationList.declarations
-    .map((declaration) => requiredName(declaration, name))
-    .find((found) => found !== undefined);
-}
-
-function declaredNames(statement) {
+function declaredNames(
+  statement: TypeScript.Statement,
+): (readonly [string | undefined, TypeScript.Node])[] {
   if (
     (ts.isClassDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) &&
     statement.name !== undefined
@@ -114,21 +69,16 @@ function declaredNames(statement) {
     return [[statement.name.text, statement]];
   }
   return ts.isVariableStatement(statement)
-    ? statement.declarationList.declarations.map((entry) => [nameOf(entry.name), entry])
+    ? statement.declarationList.declarations.map(
+        (entry): readonly [string | undefined, TypeScript.Node] => [nameOf(entry.name), entry],
+      )
     : [];
 }
 
-function topLevelImport(file, name) {
-  for (const statement of file.statements) {
-    const binding = statementBinding(statement, name);
-    if (binding !== undefined) {
-      return binding;
-    }
-  }
-  return undefined;
-}
-
-function topLevelDeclaration(file, name) {
+function topLevelDeclaration(
+  file: TypeScript.SourceFile,
+  name: string,
+): TypeScript.Node | undefined {
   for (const statement of file.statements) {
     const found = declaredNames(statement).find(([declared]) => declared === name);
     if (found !== undefined) {
@@ -138,14 +88,16 @@ function topLevelDeclaration(file, name) {
   return undefined;
 }
 
-export function importOf(identifier) {
+export function importOf(identifier: TypeScript.Identifier): ImportBinding | undefined {
   return isShadowed(identifier)
     ? undefined
     : topLevelImport(identifier.getSourceFile(), identifier.text);
 }
 
-function declaresName(node, name) {
-  const parameters = ts.isFunctionLike(node) ? node.parameters : [];
+function declaresName(node: TypeScript.Node, name: string): boolean {
+  const parameters: readonly TypeScript.ParameterDeclaration[] = ts.isFunctionLike(node)
+    ? node.parameters
+    : [];
   if (parameters.some((parameter) => nameOf(parameter.name) === name)) {
     return true;
   }
@@ -157,8 +109,8 @@ function declaresName(node, name) {
   );
 }
 
-function isShadowed(identifier) {
-  const ancestors = [identifier.parent];
+function isShadowed(identifier: TypeScript.Identifier): boolean {
+  const ancestors: (TypeScript.Node | undefined)[] = [identifier.parent];
   for (const node of ancestors) {
     if (node !== undefined && !ts.isSourceFile(node)) {
       ancestors.push(node.parent);
@@ -167,7 +119,10 @@ function isShadowed(identifier) {
   return ancestors.some((node) => node !== undefined && declaresName(node, identifier.text));
 }
 
-export function isFromPackage(identifier, packages) {
+export function isFromPackage(
+  identifier: TypeScript.Identifier | undefined,
+  packages: readonly string[],
+): boolean {
   const source = identifier === undefined ? undefined : importOf(identifier)?.source;
   return (
     source !== undefined &&
@@ -175,13 +130,16 @@ export function isFromPackage(identifier, packages) {
   );
 }
 
-function localDeclaration(identifier) {
+function localDeclaration(identifier: TypeScript.Identifier): TypeScript.Node | undefined {
   return isShadowed(identifier)
     ? undefined
     : topLevelDeclaration(identifier.getSourceFile(), identifier.text);
 }
 
-function checkedDeclaration(checker, identifier) {
+function checkedDeclaration(
+  checker: TypeScript.TypeChecker,
+  identifier: TypeScript.Node,
+): TypeScript.Declaration | undefined {
   const symbol = checker.getSymbolAtLocation(identifier);
   const target =
     symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
@@ -195,12 +153,15 @@ function checkedDeclaration(checker, identifier) {
   );
 }
 
-export function declarationOf(identifier, checker) {
+export function declarationOf(
+  identifier: TypeScript.Identifier,
+  checker: TypeScript.TypeChecker | undefined,
+): TypeScript.Node | undefined {
   const checked = checker === undefined ? undefined : checkedDeclaration(checker, identifier);
   return checked ?? localDeclaration(identifier);
 }
 
-function isWrapper(node) {
+function isWrapper(node: TypeScript.Node): node is Wrapper {
   return (
     ts.isParenthesizedExpression(node) ||
     ts.isAsExpression(node) ||
@@ -209,14 +170,21 @@ function isWrapper(node) {
   );
 }
 
-function aliasTarget(identifier, checker) {
+function aliasTarget(
+  identifier: TypeScript.Identifier,
+  checker: TypeScript.TypeChecker | undefined,
+): TypeScript.Expression | undefined {
   const declaration = declarationOf(identifier, checker);
   return declaration !== undefined && ts.isVariableDeclaration(declaration)
     ? declaration.initializer
     : undefined;
 }
 
-function nextExpression(node, checker, depth) {
+function nextExpression(
+  node: TypeScript.Node,
+  checker: TypeScript.TypeChecker | undefined,
+  depth: number,
+): TypeScript.Node | undefined {
   if (isWrapper(node)) {
     return node.expression;
   }
@@ -225,8 +193,11 @@ function nextExpression(node, checker, depth) {
     : undefined;
 }
 
-export function resolvedExpression(node, checker) {
-  const chain = node === undefined ? [] : [node];
+export function resolvedExpression(
+  node: TypeScript.Node | undefined,
+  checker: TypeScript.TypeChecker | undefined,
+): TypeScript.Node | undefined {
+  const chain: TypeScript.Node[] = node === undefined ? [] : [node];
   for (const current of chain) {
     const next = nextExpression(current, checker, chain.length);
     if (next !== undefined) {
@@ -237,18 +208,18 @@ export function resolvedExpression(node, checker) {
   return last === undefined || ts.isIdentifier(last) ? undefined : last;
 }
 
-export function decoratorsOf(node) {
+export function decoratorsOf(node: TypeScript.Node): readonly TypeScript.Decorator[] {
   return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
-function exportedName(identifier) {
+function exportedName(identifier: TypeScript.Node): string | undefined {
   const imported = ts.isIdentifier(identifier) ? importOf(identifier)?.imported : undefined;
   return imported === undefined || imported === '*' || imported === 'default'
     ? nameOf(identifier)
     : imported;
 }
 
-export function decoratorCall(decorator) {
+export function decoratorCall(decorator: TypeScript.Decorator): DecoratorCall {
   const { expression } = decorator;
   const callee = ts.isCallExpression(expression) ? expression.expression : expression;
   const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : exportedName(callee);
