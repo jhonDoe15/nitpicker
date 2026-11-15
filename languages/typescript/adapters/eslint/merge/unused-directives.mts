@@ -22,10 +22,16 @@ function lintsFile(scope: Scope, file: string) {
 }
 
 function scopeOf(globs: unknown): Scope {
-  return { include: textsOf(fieldOf(globs, 'include')), exclude: textsOf(fieldOf(globs, 'exclude')) };
+  return {
+    include: textsOf(fieldOf(globs, 'include')),
+    exclude: textsOf(fieldOf(globs, 'exclude')),
+  };
 }
 
-function lintScopes(analyzers: readonly unknown[] | undefined, reports: Reports): Map<string, Scope> {
+function lintScopes(
+  analyzers: readonly unknown[] | undefined,
+  reports: Reports,
+): Map<string, Scope> {
   return new Map(
     (analyzers ?? []).flatMap((analyzer) => {
       const name = textOf(fieldOf(analyzer, 'name'));
