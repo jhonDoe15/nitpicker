@@ -72,9 +72,15 @@ export type StrictOptions = {
   readonly security: SecurityFacts;
   readonly frameworkDefaultExports: readonly string[];
   readonly detachedWorkRunners: readonly string[];
-  readonly databaseWrites: { readonly orms: readonly string[]; readonly opensTransactions: boolean };
+  readonly databaseWrites: {
+    readonly orms: readonly string[];
+    readonly opensTransactions: boolean;
+  };
   readonly routeAuth: { readonly entries: readonly string[] };
-  readonly softDeleteFilters: { readonly orms: readonly string[]; readonly filters: readonly string[] };
+  readonly softDeleteFilters: {
+    readonly orms: readonly string[];
+    readonly filters: readonly string[];
+  };
 };
 
 export type PresetLayout = Layout & {
