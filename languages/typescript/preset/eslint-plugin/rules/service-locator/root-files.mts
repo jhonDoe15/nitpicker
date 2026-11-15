@@ -1,5 +1,11 @@
 import path from 'node:path';
-import { compositionRootRegExp } from '../boundaries/composition-root-files.mjs';
+import type { JSONSchema } from '@typescript-eslint/utils';
+import { compositionRootRegExp } from '../boundaries/composition-root-files.mts';
+
+export type RootFileOptions = {
+  readonly compositionRootPattern?: string;
+  readonly entryPoints?: readonly string[];
+};
 
 const ENTRY_STEMS = [
   'main',
@@ -19,7 +25,7 @@ const ENTRY_STEMS = [
 const ENTRY_FILE = new RegExp(`(?:^|/)(?:${ENTRY_STEMS.join('|')})\\.[cm]?[jt]sx?$`, 'u');
 const DOMAIN_DIRECTORY = /(?:^|\/)domain\//u;
 
-export const rootFileOptionsSchema = [
+export const rootFileOptionsSchema: JSONSchema.JSONSchema4[] = [
   {
     type: 'object',
     properties: {
@@ -30,21 +36,23 @@ export const rootFileOptionsSchema = [
   },
 ];
 
-function rootPattern(userPattern) {
+function rootPattern(userPattern: string | undefined): RegExp {
   try {
     return compositionRootRegExp(userPattern);
   } catch (error) {
     throw new Error(
-      `nitpicker/no-service-locator: the "compositionRootPattern" option ${JSON.stringify(userPattern)} is not a valid regular expression (${error.message}). Fix the pattern in the rule options.`,
+      `nitpicker/no-service-locator: the "compositionRootPattern" option ${JSON.stringify(userPattern)} is not a valid regular expression (${error instanceof Error ? error.message : String(error)}). Fix the pattern in the rule options.`,
       { cause: error },
     );
   }
 }
 
-export function rootFileMatcher(options) {
+export function rootFileMatcher(
+  options: RootFileOptions | undefined,
+): (fileName: string) => boolean {
   const entryPoints = options?.entryPoints ?? [];
   const pattern = rootPattern(options?.compositionRootPattern);
-  return (fileName) => {
+  return (fileName: string): boolean => {
     const normalized = fileName.replaceAll('\\', '/');
     return (
       pattern.test(normalized) ||

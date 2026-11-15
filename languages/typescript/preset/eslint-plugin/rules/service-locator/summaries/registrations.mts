@@ -1,6 +1,6 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { chainOf, depthFirst } from '../../../../../../../shared/traversal.mjs';
-import { syntaxChildren } from '../../../../syntax/children.mjs';
+import type TypeScript from 'typescript';
+import { chainOf, depthFirst } from '../../typed/node-views.mts';
+import { ts } from '../../typed/typescript-views.mts';
 import {
   isFactoryHolderName,
   isFactoryHolderSymbol,
@@ -8,33 +8,59 @@ import {
   isRegistrationName,
   isRegistrationProperty,
   isRegistrationSymbol,
-} from '../container-apis.mjs';
-import { memberNameNode } from '../lookup-sites.mjs';
-import { functionsOf, functionsOfSymbol, unwrapExpression } from './function-shapes.mjs';
+} from '../container-apis.mts';
+import { memberNameNode } from '../lookup-sites.mts';
+import {
+  functionsOf,
+  functionsOfSymbol,
+  includesNode,
+  parentNode,
+  syntaxChildren,
+  unwrapExpression,
+  type ResolvedFunction,
+} from './function-shapes.mts';
 
-const PASSING_OPERATORS = new Set([
+export type RegistrationContext = {
+  readonly program: TypeScript.Program;
+  readonly checker: TypeScript.TypeChecker;
+  readonly memo: Map<string, ReadonlySet<TypeScript.Node>>;
+};
+type RegistrationKeyOwner =
+  | TypeScript.PropertyAssignment
+  | TypeScript.ShorthandPropertyAssignment
+  | TypeScript.MethodDeclaration;
+
+const PASSING_OPERATORS = new Set<TypeScript.SyntaxKind>([
   ts.SyntaxKind.QuestionQuestionToken,
   ts.SyntaxKind.BarBarToken,
   ts.SyntaxKind.CommaToken,
 ]);
 
-function propertyKey(name) {
+function propertyKey(name: TypeScript.Node): string | undefined {
   return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : undefined;
 }
 
-function calleeName(call) {
+function calleeName(
+  call: TypeScript.CallExpression,
+): TypeScript.Identifier | TypeScript.MemberName | TypeScript.StringLiteralLike | undefined {
   const callee = unwrapExpression(call.expression);
   return ts.isIdentifier(callee) ? callee : memberNameNode(callee);
 }
 
-function symbolAt(checker, name) {
+function symbolAt(
+  checker: TypeScript.TypeChecker,
+  name: TypeScript.Node,
+): TypeScript.Symbol | undefined {
   const symbol = checker.getSymbolAtLocation(name);
   return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
     ? checker.getAliasedSymbol(symbol)
     : symbol;
 }
 
-function isRegistrationCall(checker, call) {
+function isRegistrationCall(
+  checker: TypeScript.TypeChecker,
+  call: TypeScript.CallExpression,
+): boolean {
   const name = calleeName(call);
   return (
     name !== undefined &&
@@ -43,7 +69,10 @@ function isRegistrationCall(checker, call) {
   );
 }
 
-function isFactoryHolderArgument(checker, literal) {
+function isFactoryHolderArgument(
+  checker: TypeScript.TypeChecker,
+  literal: TypeScript.ObjectLiteralExpression,
+): boolean {
   const call = literal.parent;
   if (!(ts.isCallExpression(call) && call.arguments.includes(literal))) {
     return false;
@@ -56,7 +85,10 @@ function isFactoryHolderArgument(checker, literal) {
   );
 }
 
-function isRegistrationKey(checker, property) {
+function isRegistrationKey(
+  checker: TypeScript.TypeChecker,
+  property: RegistrationKeyOwner,
+): boolean {
   const key = propertyKey(property.name);
   return (
     ts.isObjectLiteralExpression(property.parent) &&
@@ -65,20 +97,24 @@ function isRegistrationKey(checker, property) {
   );
 }
 
-function isRegistrationPoint(checker, holder, child) {
+function isRegistrationPoint(
+  checker: TypeScript.TypeChecker,
+  holder: TypeScript.Node,
+  child: TypeScript.Node,
+): boolean {
   if (ts.isPropertyAssignment(holder)) {
     return holder.initializer === child && isRegistrationKey(checker, holder);
   }
   return (
     ts.isCallExpression(holder) &&
-    holder.arguments.includes(child) &&
+    includesNode(holder.arguments, child) &&
     isRegistrationCall(checker, holder)
   );
 }
 
-function passesThrough(holder, child) {
+function passesThrough(holder: TypeScript.Node, child: TypeScript.Node): boolean {
   if (ts.isCallExpression(holder) || ts.isNewExpression(holder)) {
-    return holder.arguments?.includes(child) === true;
+    return includesNode(holder.arguments, child);
   }
   if (ts.isConditionalExpression(holder)) {
     return holder.condition !== child;
@@ -89,25 +125,29 @@ function passesThrough(holder, child) {
   return unwrapExpression(holder) !== holder;
 }
 
-function passingParent(child) {
-  const holder = child.parent;
+function passingParent(child: TypeScript.Node): TypeScript.Node | undefined {
+  const holder = parentNode(child);
   return holder !== undefined && passesThrough(holder, child) ? holder : undefined;
 }
 
-function climbsToRegistration(checker, start) {
-  return chainOf(start, passingParent).some(
-    (child) => child.parent !== undefined && isRegistrationPoint(checker, child.parent, child),
-  );
+function climbsToRegistration(checker: TypeScript.TypeChecker, start: TypeScript.Node): boolean {
+  return chainOf<TypeScript.Node>(start, passingParent).some((child) => {
+    const holder = parentNode(child);
+    return holder !== undefined && isRegistrationPoint(checker, holder, child);
+  });
 }
 
-function isRegisteredLiteral(checker, fn) {
+function isRegisteredLiteral(checker: TypeScript.TypeChecker, fn: TypeScript.Node): boolean {
   if (ts.isMethodDeclaration(fn) && ts.isObjectLiteralExpression(fn.parent)) {
     return isRegistrationKey(checker, fn);
   }
   return climbsToRegistration(checker, fn);
 }
 
-function registeredExpressions(checker, node) {
+function registeredExpressions(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.Node[] {
   if (ts.isPropertyAssignment(node) && isRegistrationKey(checker, node)) {
     return [node.initializer];
   }
@@ -117,7 +157,10 @@ function registeredExpressions(checker, node) {
   return ts.isCallExpression(node) && isRegistrationCall(checker, node) ? [...node.arguments] : [];
 }
 
-function functionsReferencedBy(checker, expression) {
+function functionsReferencedBy(
+  checker: TypeScript.TypeChecker,
+  expression: TypeScript.Node,
+): ResolvedFunction[] {
   if (ts.isShorthandPropertyAssignment(expression)) {
     return functionsOfSymbol(
       checker,
@@ -131,8 +174,11 @@ function functionsReferencedBy(checker, expression) {
     : [];
 }
 
-function referencedFunctions(checker, expression) {
-  const found = [];
+function referencedFunctions(
+  checker: TypeScript.TypeChecker,
+  expression: TypeScript.Node,
+): ResolvedFunction[] {
+  const found: ResolvedFunction[] = [];
   const pending = [expression];
   for (const current of pending) {
     found.push(...functionsReferencedBy(checker, current));
@@ -142,16 +188,16 @@ function referencedFunctions(checker, expression) {
   return found;
 }
 
-function collectRegistered(context) {
+function collectRegistered(context: RegistrationContext): ReadonlySet<TypeScript.Node> {
   const { program, checker } = context;
   const sources = program
     .getSourceFiles()
     .filter(
       (source) => !(source.isDeclarationFile || program.isSourceFileFromExternalLibrary(source)),
     );
-  return new Set(
+  return new Set<TypeScript.Node>(
     sources.flatMap((source) =>
-      [...depthFirst(source, syntaxChildren)].flatMap((node) =>
+      [...depthFirst<TypeScript.Node>(source, syntaxChildren)].flatMap((node) =>
         registeredExpressions(checker, node).flatMap((expression) =>
           referencedFunctions(checker, expression),
         ),
@@ -160,21 +206,24 @@ function collectRegistered(context) {
   );
 }
 
-function registeredFunctions(context) {
-  if (!context.memo.has('registered')) {
-    context.memo.set('registered', collectRegistered(context));
+function registeredFunctions(context: RegistrationContext): ReadonlySet<TypeScript.Node> {
+  const cached = context.memo.get('registered');
+  if (cached !== undefined) {
+    return cached;
   }
-  return context.memo.get('registered');
+  const found = collectRegistered(context);
+  context.memo.set('registered', found);
+  return found;
 }
 
-function registeredSite(context, ancestor) {
+function registeredSite(context: RegistrationContext, ancestor: TypeScript.Node): boolean {
   return (
     (ts.isFunctionLike(ancestor) || ts.isClassLike(ancestor)) &&
     (isRegisteredLiteral(context.checker, ancestor) || registeredFunctions(context).has(ancestor))
   );
 }
 
-export function isInRegistration(context, node) {
+export function isInRegistration(context: RegistrationContext, node: TypeScript.Node): boolean {
   const { parent } = node;
   const start = ts.isCallExpression(parent) && parent.expression === node ? parent : node;
   return (

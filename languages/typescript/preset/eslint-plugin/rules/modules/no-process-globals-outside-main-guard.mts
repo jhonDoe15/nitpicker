@@ -1,31 +1,36 @@
-import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, depthFirst, isNode, objectChildren } from '../typed/node-views.mts';
+
 const PROCESS_MEMBERS = new Set(['argv', 'exit', 'exitCode']);
 
-function isEntryPoint(node) {
+function isEntryPoint(node: TSESTree.Node): boolean {
   return (
-    node?.type === 'MetaProperty' ||
-    (node?.type === 'MemberExpression' &&
-      node.object.type === 'Identifier' &&
+    node.type === AST_NODE_TYPES.MetaProperty ||
+    (node.type === AST_NODE_TYPES.MemberExpression &&
+      node.object.type === AST_NODE_TYPES.Identifier &&
       node.object.name === 'require' &&
-      node.property.type === 'Identifier' &&
+      node.property.type === AST_NODE_TYPES.Identifier &&
       node.property.name === 'main')
   );
 }
 
-export function mentionsEntryPoint(node) {
+export function mentionsEntryPoint(node: TSESTree.Node): boolean {
   for (const current of depthFirst(node, objectChildren)) {
-    if (isEntryPoint(current)) return true;
+    if (isNode(current) && isEntryPoint(current)) {
+      return true;
+    }
   }
   return false;
 }
 
-function insideMainGuard(node) {
+function insideMainGuard(node: TSESTree.MemberExpression): boolean {
   for (const current of [node, ...ancestorsOf(node)]) {
     const parent = current.parent;
-    if (!parent) continue;
+    if (!parent) {
+      continue;
+    }
     if (
-      parent.type === 'IfStatement' &&
+      parent.type === AST_NODE_TYPES.IfStatement &&
       (current === parent.test || current === parent.consequent) &&
       mentionsEntryPoint(parent.test)
     ) {
@@ -35,7 +40,7 @@ function insideMainGuard(node) {
   return false;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'processGlobalOutsideGuard'> = {
   meta: {
     type: 'problem',
     schema: [],
@@ -46,12 +51,12 @@ export const rule = {
   },
   create(context) {
     return {
-      MemberExpression(node) {
+      MemberExpression(node: TSESTree.MemberExpression) {
         if (
           node.computed ||
-          node.object.type !== 'Identifier' ||
+          node.object.type !== AST_NODE_TYPES.Identifier ||
           node.object.name !== 'process' ||
-          node.property.type !== 'Identifier' ||
+          node.property.type !== AST_NODE_TYPES.Identifier ||
           !PROCESS_MEMBERS.has(node.property.name) ||
           insideMainGuard(node)
         ) {
