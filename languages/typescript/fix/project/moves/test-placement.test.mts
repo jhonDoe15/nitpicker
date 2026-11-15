@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
 import {
   noExternalExecutablesInUnitTestsRecipe,
   noTestHelpersInSourceRecipe,
@@ -48,12 +49,16 @@ describe('test placement recipes', () => {
         'src/lib/real.ts':
           "import { helper } from './test-utils.js';\nexport const real = helper;\n",
       };
-      const result = projects.fix(files, {
-        recipe: noTestHelpersInSourceRecipe,
-        rule,
-        changed: ['src/lib/test-utils.ts'],
-      });
-      expect(result.tree['src/lib/test-utils.ts']).toBe(files['src/lib/test-utils.ts']);
+      const result = fixLeavingFileUnchanged(
+        projects,
+        files,
+        {
+          recipe: noTestHelpersInSourceRecipe,
+          rule,
+          changed: ['src/lib/test-utils.ts'],
+        },
+        'src/lib/test-utils.ts',
+      );
       expect(result.notes).toMatchInlineSnapshot(`
         [
           "--fix left src/lib/test-utils.ts:1 no-test-helpers-in-source: src/lib/real.ts is production code that imports it",

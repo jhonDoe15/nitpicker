@@ -10,6 +10,7 @@ import {
   git,
   readReport,
   runNitpicker,
+  runSnapshot,
   useCleanProjects,
   viewFindings,
 } from './test-support/clean-project.mts';
@@ -77,21 +78,6 @@ describe('the strict-clean fixture project', () => {
 
   function createProject(): string {
     return createFixtureProject({ fixtureRoot, name: 'strict-clean' });
-  }
-
-  function runSnapshot(root: string, extraArguments: string[] = []) {
-    const result = runNitpicker(root, [
-      '--all',
-      '--output',
-      path.join(root, 'reports/snapshot'),
-      ...extraArguments,
-    ]);
-    return {
-      ...result,
-      summary: readReport(root, 'reports/snapshot/summary.json'),
-      toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
-      findings: readReport(root, 'reports/snapshot/findings.json'),
-    };
   }
 
   it(
