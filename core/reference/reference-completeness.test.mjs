@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import {
   reactRuleIds,
