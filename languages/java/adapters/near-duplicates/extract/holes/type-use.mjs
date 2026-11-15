@@ -67,7 +67,7 @@ function contextProblem(node) {
   return declares ? undefined : CONTEXT;
 }
 
-function holeIds(typeHoles) {
+export function holeIds(typeHoles) {
   return new Set(typeHoles.flatMap(({ occurrences }) => occurrences.map(({ a }) => a.id)));
 }
 
@@ -97,7 +97,7 @@ function taintKind(declaration, ids) {
   return ids.has(type.id) || type.type === 'array_type' ? DIRECT : 'container';
 }
 
-function taintedNames(method, ids) {
+export function taintedNames(method, ids) {
   const tainted = new Map();
   for (const declaration of descendants(method).filter(({ type }) => DECLARED_BY.has(type))) {
     const kind = taintKind(declaration, ids);

@@ -140,6 +140,9 @@ function checkFinding(finding, recipe) {
 export function checkFix(fix, recipe, settings) {
   const { finding, edits } = fix ?? {};
   checkFinding(finding, recipe);
+  for (const other of fix.alsoFixes ?? []) {
+    checkFinding(other, recipe);
+  }
   if (!Array.isArray(edits) || edits.length === 0) {
     fail(`a fix for ${finding.path}:${finding.line} has no edits`);
   }

@@ -40,17 +40,29 @@ export function descendants(root) {
   return found;
 }
 
-export function lostComments(sides) {
+export function droppedComments(sides) {
   const [kept, dropped] = sides.map(({ root, from, to }) =>
-    descendants(root)
-      .filter(
-        ({ type, startIndex, endIndex }) =>
-          COMMENTS.has(type) && startIndex >= from && endIndex <= to,
-      )
-      .map((node) => squashed(node)),
+    descendants(root).filter(
+      ({ type, startIndex, endIndex }) =>
+        COMMENTS.has(type) && startIndex >= from && endIndex <= to,
+    ),
   );
-  const known = new Set(kept);
-  return dropped.some((text) => !known.has(text));
+  const known = new Set(kept.map((node) => squashed(node)));
+  return dropped.filter((node) => !known.has(squashed(node)));
+}
+
+export function lostComments(sides) {
+  return droppedComments(sides).length > 0;
+}
+
+export function suppressions(node) {
+  const modifiers = node.children.find(({ type }) => type === 'modifiers');
+  return (modifiers?.children ?? [])
+    .filter(
+      (part) =>
+        part.type === 'annotation' && part.childForFieldName('name').text === 'SuppressWarnings',
+    )
+    .map((part) => part.text);
 }
 
 export function squashed(node) {
