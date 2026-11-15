@@ -1,3 +1,4 @@
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -8,7 +9,9 @@ import type { LintResult } from './plan/oxlint-shapes.mts';
 import { rejectedRuleIds } from './oxlint-translation.mts';
 import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mts';
 
-const PLUGIN = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
+const PLUGIN = checkoutModuleUrl(
+  new URL('../../preset/eslint-plugin/index.mjs', import.meta.url),
+).href;
 
 vi.mock('node:os', async (importOriginal) => ({
   ...(await importOriginal()),

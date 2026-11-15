@@ -1,10 +1,11 @@
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../eslint/typed/engine.mts';
-import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
+import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mts';
 import { normalizeEslintResults } from '../eslint/normalize.mts';
 import { lintWithOxlint } from './oxlint-runner.mts';
 import type { LintResult } from './plan/oxlint-shapes.mts';
@@ -12,7 +13,7 @@ import { oxlintOptions } from './test-support/oxlint-runs.mts';
 
 const RULE = 'nitpicker/no-unused-dom-environment';
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../preset/eslint-plugin/index.mjs'))};
+import { nitpickerRules } from ${JSON.stringify(checkoutModuleUrl(new URL('../../preset/eslint-plugin/index.mjs', import.meta.url)).href)};
 
 export default [
   {

@@ -34,8 +34,8 @@ const OWNED_ENGINE_FILES = [
   'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mts',
   'languages/typescript/adapters/oxlint/native/owned-native-rules.mts',
   'languages/typescript/adapters/oxlint/oxlint-diagnostics.mts',
-  'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mts',
+  'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mts',
 ];
 
 function presetUrl(file: string) {

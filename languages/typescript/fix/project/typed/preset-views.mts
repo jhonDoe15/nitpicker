@@ -1,5 +1,5 @@
-import { helperName as untypedHelperName } from '../../../preset/eslint-plugin/test-placement/no-test-helpers-in-source.mjs';
-import { testAreaGlobsFor as untypedTestAreaGlobsFor } from '../../../preset/eslint-config/strict-tests.mjs';
+import { helperName as untypedHelperName } from '../../../preset/eslint-plugin/test-placement/no-test-helpers-in-source.mts';
+import { testAreaGlobsFor as untypedTestAreaGlobsFor } from '../../../preset/eslint-config/strict-tests.mts';
 import {
   existingRoots as untypedExistingRoots,
   globMatcher as untypedGlobMatcher,
@@ -9,7 +9,7 @@ import {
   fileNameParts as untypedFileNameParts,
   fileNameRuleOptions as untypedFileNameRuleOptions,
 } from '../../../conventions/file-name-casing.mjs';
-import { nearestManifest as untypedNearestManifest } from '../../../preset/eslint-plugin/rules/dependencies/package-manifest.mjs';
+import { nearestManifest as untypedNearestManifest } from '../../../preset/eslint-plugin/rules/dependencies/package-manifest.mts';
 import type { FixHeadPolicy, FixLayout } from './project-types.mts';
 
 type GlobMatcher = { test(name: string): boolean };
