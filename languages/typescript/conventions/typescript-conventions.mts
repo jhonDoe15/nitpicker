@@ -1,6 +1,6 @@
 import type { ConventionDefinition } from '../../../shared/values/config-types.mts';
 import { FILE_NAME_CONVENTION as UNTYPED_FILE_NAME_CONVENTION } from './file-name-casing.mjs';
-import { ASSERTION_HELPERS_CONVENTION } from './measures/assertion-helpers.mts';
+import { ASSERTION_HELPERS_CONVENTION } from './measures/assertion-functions.mts';
 import { DATA_CONVENTIONS } from './measures/data-conventions.mts';
 import { DETACHED_WORK_RUNNERS_CONVENTION } from './measures/detached-work-runners.mts';
 import { JSX_CONVENTIONS as UNTYPED_JSX_CONVENTIONS } from './measures/jsx-conventions.mjs';
