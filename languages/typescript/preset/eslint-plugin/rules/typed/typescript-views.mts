@@ -11,3 +11,7 @@ export function variableNames(statement: TypeScript.VariableStatement): string[]
     .filter(ts.isIdentifier)
     .map(({ text }) => text);
 }
+
+export function parentOf(node: TypeScript.Node): TypeScript.Node | undefined {
+  return node.parent;
+}
