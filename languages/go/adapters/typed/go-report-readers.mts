@@ -1,9 +1,9 @@
-import { diagnosticFindings as untypedDiagnosticFindings } from '../build/diagnostics.mjs';
-import { vetFindings as untypedVetFindings } from '../build/go-vet.mjs';
-import { unreachableFindings as untypedUnreachableFindings } from '../dead-code/go-deadcode.mjs';
-import { tidyFindings as untypedTidyFindings } from '../dead-code/go-mod-tidy.mjs';
-import { raceUnavailable as untypedRaceUnavailable } from '../race/race-run.mjs';
-import { withoutGatedForeignKeys as untypedWithoutGatedForeignKeys } from '../lint/foreign-keys/key-gate.mjs';
+import { diagnosticFindings as untypedDiagnosticFindings } from '../build/diagnostics.mts';
+import { vetFindings as untypedVetFindings } from '../build/go-vet.mts';
+import { unreachableFindings as untypedUnreachableFindings } from '../dead-code/go-deadcode.mts';
+import { tidyFindings as untypedTidyFindings } from '../dead-code/go-mod-tidy.mts';
+import { raceUnavailable as untypedRaceUnavailable } from '../race/race-run.mts';
+import { withoutGatedForeignKeys as untypedWithoutGatedForeignKeys } from '../lint/foreign-keys/key-gate.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { isRow } from './row-readers.mts';
