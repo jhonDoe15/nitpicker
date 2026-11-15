@@ -3,7 +3,7 @@ import path from 'node:path';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
 import { parseJsonc as untypedParseJsonc } from '../../../shared/jsonc/jsonc.mjs';
 import { selectTypeScriptApi } from '../../../languages/typescript/typescript-api/api-selection.mjs';
-import { isTypeScriptApi } from '../../../shared/values/typescript-guard.mts';
+import { isTypeScriptApi } from '../../../shared/values/boundaries/typescript-guard.mts';
 import { parseJson, textOf } from '../../../shared/values/readers.mts';
 import { globMatcher } from '../types/typed-views.mts';
 
