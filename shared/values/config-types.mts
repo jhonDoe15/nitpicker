@@ -64,7 +64,7 @@ type ConventionBase = {
   readonly scope?: string;
 };
 
-export type NamesConvention = ConventionBase & {
+type NamesConvention = ConventionBase & {
   readonly kind: string;
   readonly namesMeaning?: string;
   readonly options?: undefined;
