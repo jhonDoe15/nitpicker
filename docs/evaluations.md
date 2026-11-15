@@ -299,7 +299,7 @@ a time and give each runner its own `npm_config_cache`: parallel installs into o
 ## Fix plans: measured effect
 
 Fix plans (`fix-plans.json`, see the usage guide) are meant to save an agent the search for the code,
-the context and the allowed form. One measured run checked whether they do.
+the context and the allowed form. Two measurements checked whether they do.
 
 **Sample.** The TypeScript `strict-clean` fixture, plus one commit that adds a receipt feature: a
 23-statement function with magic numbers and `let`, two printers that are near-duplicates, and tests
@@ -335,8 +335,37 @@ million tokens, nearly all of it polling a gate run it had started in the backgr
   test-file suggestions beside the source although the project keeps its tests in `test/`. Plans are
   now grouped per function and point at the test file that already imports the code.
 
-So the claim that plans save tokens is not shown yet. A sample where finding the code is harder,
-such as a larger project or findings that span files, is the next measurement.
+**Second measurement, a harder sample.** A project with eight features (catalog, cart, money,
+pricing, shipping, customers, invoices and checkout), feature `index` barrels, and tests kept in
+`test/<feature>/` folders that reach the code through the composition root. One commit adds
+shipping costs, loyalty discounts and invoices: 152 findings across eight files, among them a
+near-duplicate across two features, functions over the statement and parameter limits, and mutants
+and branches whose tests sit in a test file named after another module. The task and the checks
+were the same as above, with a hidden test over 300 orders. In the runs with plans, the summary
+printed one line for each plan that adds to its finding: the test file for the mutants and branches
+of each function, and the function to extract from the near-duplicate with what each copy passes.
+
+| Agent         | Setup                     | Runs | Turns | Gate runs | Tokens per run (mean) | Range               |
+| ------------- | ------------------------- | ---: | ----- | --------- | --------------------: | ------------------- |
+| Claude Sonnet | Without plans             |    4 | 9-11  | 2-4       |               560,000 | 510,000-636,000     |
+| Claude Sonnet | Plan lines in the summary |    4 | 9-15  | 3-5       |               733,000 | 496,000-931,000     |
+| Claude Haiku  | Without plans             |    4 | 17-31 | 3-4       |             1,890,000 | 1,362,000-2,757,000 |
+| Claude Haiku  | Plan lines in the summary |    4 | 15-23 | 3         |             1,680,000 | 1,086,000-2,182,000 |
+
+Every run reached green with the output unchanged, and no agent opened `fix-plans.json`. The smaller
+agent was included to see whether plans help an agent that needs more turns. With Sonnet the runs
+with plan lines cost more on average, and with Haiku about 11% less, but in both the difference is
+smaller than the spread between runs of one setup (one Haiku run without plans took 31 turns).
+Agents read all the changed files at once, rewrote them in a few large edits, and put the new tests
+in files of their own choosing, so the plan lines had little left to save.
+
+**What changed.** Plans did not reliably lower the cost on either sample or with either agent, so
+nitpicker does not claim they do, and the summary keeps one count line instead of the plan lines.
+The plans stay in `fix-plans.json` for tools and for agents that look up one finding, since the file holds what the
+messages do not: why a recipe declined, the copies and arguments of a near-duplicate, and the test
+file. That lookup is now more accurate: a test that reaches the code through other modules (such as
+a test of the composition root) counts, a test that calls the function wins a tie, and a new test
+file goes into the existing test folder named like the feature.
 
 ## Shortcut detectors
 

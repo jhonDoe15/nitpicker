@@ -81,6 +81,13 @@ export function suggestedPlace(paths, { roleOf = DEFAULT_ROLES, files = [] } = {
   if (roles.every(({ kind }) => kind === 'shared')) {
     return { folder: common, kind: 'shared', reason: 'both copies are already in shared code' };
   }
+  if (paths[0] !== paths[1] && new Set(paths.map(folderOf)).size === 1) {
+    return {
+      folder: common,
+      kind: 'common',
+      reason: 'the copies are in one folder, so the function stays beside them',
+    };
+  }
   const shared = nearestShared(common, { files: [...files, ...paths], roleOf });
   if (shared === undefined) {
     return {

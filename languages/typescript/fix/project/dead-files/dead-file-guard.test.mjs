@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { guardDeletions } from './dead-file-guard.mjs';
 
 const projects = useFixtureProjects();
