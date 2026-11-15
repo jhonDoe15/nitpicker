@@ -5,14 +5,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { useProjectFixtures } from '../../../../core/diff/git/test-support/projects/project-fixtures.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
+import { useProjectFixtures } from '../../../../core/diff/git/test-support/projects/project-fixtures.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
 } from '../../../typescript/preset/head-policy.mjs';
-import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mts';
 import { declaresSpring, hasFeatureFolders, javaHeadFacts } from './head-facts.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy, withHeadPolicy } from '../java-runner.mjs';
 

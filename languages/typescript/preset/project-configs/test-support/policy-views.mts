@@ -1,4 +1,4 @@
-import { validateConfig as untypedValidateConfig } from '../../../../../core/configuration/validate.mjs';
+import { validateConfig as untypedValidateConfig } from '../../../../../core/configuration/validate.mts';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,

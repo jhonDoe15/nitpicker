@@ -5,8 +5,8 @@ import {
   requirementName,
 } from './python-dependencies.mjs';
 import { readPythonDependencies } from './typed/dependency-views.mts';
-import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

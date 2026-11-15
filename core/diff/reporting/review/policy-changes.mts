@@ -1,6 +1,6 @@
-import { printable } from '../format/text.mjs';
-import { POLICY_FINDING_ID, isPolicyFinding } from './policy-findings.mjs';
-import { policyKindGuidance } from './policy-guidance.mjs';
+import { printable } from '../format/text.mts';
+import { POLICY_FINDING_ID, isPolicyFinding } from './policy-findings.mts';
+import { policyKindGuidance } from './policy-guidance.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
@@ -13,14 +13,16 @@ type Emphasize = (text: string) => string;
 type PolicyReport = { readonly summary?: unknown; readonly newFindings: readonly ReportEntry[] };
 
 const printed: (value: unknown) => string = printable;
-const isPolicyEntry: (finding: ReportEntry) => boolean = isPolicyFinding;
-const guidanceFor: (kind: unknown) => string = policyKindGuidance;
 const POLICY_ID: string = POLICY_FINDING_ID;
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted):';
 const GUIDANCE_INDENT = 2;
+
+function guidanceFor(kind: unknown): string {
+  return policyKindGuidance(typeof kind === 'string' ? kind : undefined);
+}
 
 function indentedLine(change: unknown): string {
   const { text, indent } =
@@ -63,7 +65,7 @@ function acceptanceLine(digest: unknown): string {
 }
 
 export function consolePolicySummary(report: PolicyReport): Readonly<Record<string, unknown>> {
-  const findings = report.newFindings.filter(isPolicyEntry);
+  const findings = report.newFindings.filter(isPolicyFinding);
   const summary = fieldsOf(report.summary);
   const changes = listOf(summary['policyChanges']);
   if (findings.length === 0) {

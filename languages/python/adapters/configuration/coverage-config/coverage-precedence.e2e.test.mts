@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { COVERAGE_REPORT, test as runTests } from '../../test-runs/test-step.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 

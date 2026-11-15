@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { ENUM_PREDICATE_RULE, readEnums, withProjectEnumPredicates } from './enum-predicates.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
