@@ -1,6 +1,5 @@
 import type TypeScript from 'typescript';
-import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
-import { childrenOf } from '../syntax.mts';
+import { childrenOf, typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import type { LineSpan, Run, RunRegion, UnitNode } from '../typed/extract-types.mts';
 import { statementWindows } from '../typed/typed-views.mts';
 

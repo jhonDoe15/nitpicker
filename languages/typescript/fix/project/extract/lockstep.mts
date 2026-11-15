@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { childrenOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   eachSide,
@@ -12,7 +12,7 @@ import {
 import { bindPair } from './typed/typed-views.mts';
 import { addHole } from './holes.mts';
 import { isInRegion, isLocalSymbol } from './scope.mts';
-import { childrenOf, roleOf, symbolAt } from './syntax.mts';
+import { roleOf, symbolAt } from './syntax.mts';
 import { NOT_A_TYPE, typePairStep } from './type-holes/types.mts';
 
 const ts = typescriptApi();

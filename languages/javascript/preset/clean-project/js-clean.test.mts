@@ -10,6 +10,7 @@ import {
   git,
   readReport,
   runNitpicker,
+  runSnapshot as snapshotRun,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -202,18 +203,8 @@ describe('the js-clean fixture project', () => {
   }
 
   function runSnapshot(root: string, extraArguments: string[] = []) {
-    const result = runNitpicker(root, [
-      '--all',
-      '--output',
-      path.join(root, 'reports/snapshot'),
-      ...extraArguments,
-    ]);
-    return {
-      ...result,
-      summary: readReport(root, 'reports/snapshot/summary.json'),
-      toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
-      findings: listOf(readReport(root, 'reports/snapshot/findings.json')).map(fieldsOf),
-    };
+    const result = snapshotRun(root, extraArguments);
+    return { ...result, findings: listOf(result.findings).map(fieldsOf) };
   }
 
   it(

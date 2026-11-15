@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
 import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
@@ -24,6 +24,7 @@ import { planOf } from '../plan/oxlint-shapes.mts';
 import { nativeRuleIndex, PARITY_BRIDGED_RULES, translatePlan } from '../oxlint-translation.mts';
 import { createProject } from '../test-support/oxlint-project.mts';
 import { oxlintOptions } from '../test-support/oxlint-runs.mts';
+import { rootsRemovedAfterAll } from '../../test-support/temporary-roots.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const NATIVE = 'oxc/no-accumulating-spread';
@@ -136,11 +137,7 @@ const EXPECTED = [
   [DOMAIN, 3, 41, 'domainReduceObject'],
 ];
 
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots) rmSync(root, { recursive: true, force: true });
-});
+const roots = rootsRemovedAfterAll();
 
 function project(
   files: Readonly<Record<string, string>>,
