@@ -1,3 +1,6 @@
+import { listOf } from '../../../../shared/values/readers.mts';
+import type { DependencyEntry } from '../typed/dependency-types.mts';
+
 const DEV_WORDS = [
   'dev',
   'devel',
@@ -26,11 +29,11 @@ const EGG_NAME = /[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)/u;
 const EDITABLE = /^-e(?:\s+|(?=\S))/u;
 const URL_START = /^[a-z][a-z0-9+.-]*:\/\//iu;
 
-export function normalizeRequirementName(name) {
+export function normalizeRequirementName(name: string): string {
   return name.toLowerCase().replaceAll(/[-_.]+/gu, '-');
 }
 
-export function requirementName(line) {
+export function requirementName(line: string): string | undefined {
   const text = line
     .replace(/\s+#.*$/u, '')
     .trim()
@@ -48,22 +51,22 @@ export function requirementName(line) {
   return REQUIREMENT_NAME.exec(text)?.[1];
 }
 
-export function isDevelopmentGroup(name) {
+export function isDevelopmentGroup(name: unknown): boolean {
   return DEV_NAME.test(String(name).toLowerCase());
 }
 
-export function dependencyEntry(name, group, file) {
+export function dependencyEntry(name: string, group: string, file: string): DependencyEntry {
   return { name, normalized: normalizeRequirementName(name), group, file };
 }
 
-export function requirementEntries(list, group, file) {
-  return (Array.isArray(list) ? list : [])
-    .filter((line) => typeof line === 'string')
+export function requirementEntries(list: unknown, group: string, file: string): DependencyEntry[] {
+  return listOf(list)
+    .filter((line): line is string => typeof line === 'string')
     .map(requirementName)
     .filter((name) => name !== undefined)
     .map((name) => dependencyEntry(name, group, file));
 }
 
-export function groupOf(name, fallback) {
+export function groupOf(name: unknown, fallback: string): string {
   return isDevelopmentGroup(name) ? 'dev' : fallback;
 }

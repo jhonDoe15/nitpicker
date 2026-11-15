@@ -1,4 +1,4 @@
-import { RULES_TOOL } from '../rules/rule-hints.mjs';
+import { RULES_TOOL } from '../rules/rule-hints.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 import { allowedOf, describedBy } from './hint-text.mts';
 import { counterpartsOf, RULE_HINTS, ruleEntry } from './typed/hint-views.mts';

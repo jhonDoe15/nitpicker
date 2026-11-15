@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mts';
 import { isStableRuffRule, ruffSelection } from './typed/ruff-select.mts';
 import { installedRuffRules } from './test-support/installed-ruff-rules.mts';
 

@@ -1,23 +1,26 @@
-import { readProjectFile } from '../project-files.mjs';
-import { groupOf, requirementEntries } from './requirement-names.mjs';
+import { readProjectFile } from '../project-files.mts';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import type { DependencyEntry, DependencySource } from '../typed/dependency-types.mts';
+import { groupOf, requirementEntries } from './requirement-names.mts';
 
 const SETUP_PY = 'setup.py';
-const PAIRS = { '[': ']', '{': '}', '(': ')' };
+const escapeRegExp: (value: string) => string = untypedEscape;
+const PAIRS: Record<string, string> = { '[': ']', '{': '}', '(': ')' };
 const CLOSERS = Object.values(PAIRS);
 const STRING = /(["'])((?:(?!\1).)+)\1/gu;
 const EXTRA = /(["'])([^"']+)\1\s*:\s*(?=\[)/gu;
 
-function quoteAfter(quote, character) {
+function quoteAfter(quote: string | undefined, character: string): string | undefined {
   if (quote !== undefined) {
     return character === quote ? undefined : quote;
   }
   return character === '"' || character === "'" ? character : undefined;
 }
 
-function structuralCharacters(text, start) {
-  const marks = [];
-  let quote;
-  for (const [offset, character] of [...text.slice(start)].entries()) {
+function structuralCharacters(text: string, start: number): [number, string][] {
+  const marks: [number, string][] = [];
+  let quote: string | undefined;
+  for (const [offset, character] of Array.from(text.slice(start)).entries()) {
     const quoted = quote !== undefined;
     quote = quoteAfter(quote, character);
     if (!quoted && quote === undefined) {
@@ -27,7 +30,7 @@ function structuralCharacters(text, start) {
   return marks;
 }
 
-function closing(text, start) {
+function closing(text: string, start: number): number {
   let depth = 0;
   for (const [index, character] of structuralCharacters(text, start)) {
     depth += character in PAIRS ? 1 : 0;
@@ -39,8 +42,8 @@ function closing(text, start) {
   return -1;
 }
 
-function literalAfter(source, key) {
-  const match = new RegExp(`\\b${key}\\s*=\\s*[\\[{(]`, 'u').exec(source);
+function literalAfter(source: string, key: string): string | undefined {
+  const match = new RegExp(`\\b${escapeRegExp(key)}\\s*=\\s*[\\[{(]`, 'u').exec(source);
   if (match === null) {
     return undefined;
   }
@@ -49,11 +52,11 @@ function literalAfter(source, key) {
   return end === -1 ? undefined : source.slice(start, end + 1);
 }
 
-function stringsOf(literal) {
-  return [...literal.matchAll(STRING)].map((match) => match[2]);
+function stringsOf(literal: string): string[] {
+  return [...literal.matchAll(STRING)].map((match) => match[2] ?? '');
 }
 
-function extraEntries(literal) {
+function extraEntries(literal: string): DependencyEntry[] {
   return [...literal.matchAll(EXTRA)].flatMap((match) => {
     const start = match.index + match[0].length;
     const end = closing(literal, start);
@@ -65,9 +68,9 @@ function extraEntries(literal) {
   });
 }
 
-function withoutComment(line) {
-  let quote;
-  for (const [index, character] of [...line].entries()) {
+function withoutComment(line: string): string {
+  let quote: string | undefined;
+  for (const [index, character] of Array.from(line).entries()) {
     if (quote !== undefined) {
       quote = character === quote ? undefined : quote;
     } else if (character === '"' || character === "'") {
@@ -79,13 +82,12 @@ function withoutComment(line) {
   return line;
 }
 
-function listEntries(source, key, group) {
+function listEntries(source: string, key: string, group: string): DependencyEntry[] {
   const literal = literalAfter(source, key);
   return literal === undefined ? [] : requirementEntries(stringsOf(literal), group, SETUP_PY);
 }
 
-/** The requirements setup.py spells out as literals; a list built by code is not read. */
-export function readSetupPy(projectRoot) {
+export function readSetupPy(projectRoot: string): DependencySource | undefined {
   const text = readProjectFile(projectRoot, SETUP_PY);
   if (text === undefined) {
     return undefined;
