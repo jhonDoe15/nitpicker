@@ -10,8 +10,7 @@ import {
   fileNameRuleOptions as untypedFileNameRuleOptions,
 } from '../../../conventions/file-name-casing.mjs';
 import { nearestManifest as untypedNearestManifest } from '../../../preset/eslint-plugin/rules/dependencies/package-manifest.mjs';
-import { moveToDependencies as untypedMoveToDependencies } from '../manifest/manifest-move.mjs';
-import type { FixHeadPolicy, FixLayout, ProjectEdit } from './project-types.mts';
+import type { FixHeadPolicy, FixLayout } from './project-types.mts';
 
 type GlobMatcher = { test(name: string): boolean };
 
@@ -42,15 +41,10 @@ const nearestManifest: (
   directory: string,
 ) => { readonly kind: string; readonly file: string } | undefined = untypedNearestManifest;
 
-const moveToDependencies: (
-  name: string,
-  text: string,
-  packageName: string,
-) => readonly ProjectEdit[] | undefined = untypedMoveToDependencies;
+export { moveToDependencies } from '../manifest/manifest-move.mts';
 
 export {
   existingRoots,
-  moveToDependencies,
   nearestManifest,
   fileNameComplies,
   fileNameParts,
