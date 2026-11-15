@@ -162,7 +162,7 @@ function settleTask(
 function missingDependency(dependencyName: string, task: AnalyzerTask): Outcome {
   return {
     name: dependencyName,
-    error: `Analyzer dependency ${dependencyName} is missing for ${task.name}`,
+    error: `${task.name} skipped: ${dependencyName} failed (see above)`,
     missing: true,
   };
 }

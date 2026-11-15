@@ -4,7 +4,7 @@ import {
 } from '../../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { withWaitedLock } from '../../../tooling/file-lock.mts';
-import type { SharedWorktree } from '../quick/head-run.mts';
+import type { SharedWorktree } from './run-types.mts';
 
 type PreparedRoots = {
   readonly baseProjectRoot: string;

@@ -2,7 +2,10 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import {
+  exactText,
+  maskedDiagnostics,
+} from '../diff/reporting/test-support/output-expectations.mts';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
@@ -121,6 +124,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         renamedPaths: 0,
         elapsedMs: anyNumber,
         mode: 'full',
+        generatedAt: anyString,
+        workingTree: anyString,
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,
@@ -273,5 +278,198 @@ Quality gate summary
 Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
+  });
+  it('reports every finding in --all mode without a baseline', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/first.ts': findingLine(finding({ identity: 'first-finding' })),
+      'src/main/second.ts': findingLine(
+        finding({ identity: 'second-finding', rule: 'other-rule' }),
+      ),
+    });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: repository.root,
+      snapshotAnalyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
+      [
+        '',
+        'Quality snapshot summary',
+        '✖ 2 enforceable findings',
+        '  fake-quality-analyzer/fixture-rule: Fixture finding',
+        '    src/main/first.ts:1:4',
+        '  fake-quality-analyzer/other-rule: Fixture finding',
+        '    src/main/second.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 2 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
+        '',
+      ].join('\n'),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('returns a tool error for a crashing --all analyzer', () => {
+    const repository = createRepository({
+      'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--output', makeOutputRoot()],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+        runTasks: undefined,
+      }),
+    ).toBe(2);
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
+      [
+        '',
+        'Quality snapshot summary',
+        'No enforceable findings, but the run is incomplete:',
+        '✖ 1 tool error',
+        `  fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
+        'By analyzer:',
+        '  1 analyzer ran clean',
+        'Full diagnostics: <path>',
+        '',
+      ].join('\n'),
+    );
+  });
+  it('supports --all analyzer selection and rule drill-down', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/existing.ts': findingLine(finding({ rule: 'match-me' })),
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: [
+          '--all',
+          '--analyzer',
+          'fake-quality-analyzer',
+          '--rule',
+          'match-me',
+          '--output',
+          makeOutputRoot(),
+        ],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      }),
+    ).toBe(1);
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
+      [
+        '',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        '  fake-quality-analyzer/match-me: Fixture finding',
+        '    src/main/existing.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
+        '',
+        'Findings matching --rule match-me:',
+        '',
+        '  Matching:',
+        'fake-quality-analyzer/match-me src/main/existing.ts:1 Fixture finding',
+        '',
+      ].join('\n'),
+    );
+    const unknown = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--analyzer', 'unknown'],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: unknown.stdout,
+        stderr: unknown.stderr,
+      }),
+    ).toBe(2);
+    expect(unknown.stderrText).toEqual(
+      'nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n',
+    );
+  });
+  it('runs the packaged prettier preset against a consumer snapshot', () => {
+    const repository = createRepository({
+      'src/main/example.ts': 'export const example=1\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['--all', '--analyzer', 'prettier-format', '--output', makeOutputRoot()],
+      currentProjectRoot: repository.root,
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(1);
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
+      [
+        '',
+        'Quality snapshot summary',
+        '✖ 3 enforceable findings',
+        '  prettier-format/prettier/prettier: These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+        '    package-lock.json:1',
+        '    package.json:1',
+        '    src/main/example.ts:1',
+        'By analyzer:',
+        '  prettier-format: 3 enforceable, 0 descriptive',
+        'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
+        'Full diagnostics: <path>',
+        '',
+      ].join('\n'),
+    );
+    expect(output.stderrText).toBe('');
+  });
+  it('keeps staged and unstaged checkout state intact in --all mode', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/staged.ts': 'export const staged = false;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/staged.ts': 'export const staged = true;\n',
+    });
+    fixtureGit(repository.root, ['add', 'src/main/staged.ts']);
+    writeFiles(repository.root, {
+      'src/main/staged.ts': 'export const staged = 2;\n',
+      'src/main/untracked.ts': findingLine(finding({ identity: 'untracked-all' })),
+    });
+    const beforeStatus = fixtureGit(repository.root, ['status', '--porcelain=v1']);
+    const beforeIndex = fixtureGit(repository.root, ['ls-files', '--stage']);
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['--all', '--output', makeOutputRoot()],
+      currentProjectRoot: repository.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode).toBe(1);
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
+      [
+        '',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        '  fake-quality-analyzer/fixture-rule: Fixture finding',
+        '    src/main/untracked.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
+        '',
+      ].join('\n'),
+    );
+    expect(fixtureGit(repository.root, ['status', '--porcelain=v1'])).toBe(beforeStatus);
+    expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
   });
 });

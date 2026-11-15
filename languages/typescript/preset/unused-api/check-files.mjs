@@ -18,6 +18,8 @@ export const DEAD_CODE_CHECK_FILES = [
   'languages/typescript/preset/unused-api/test-only/test-only-exports.mjs',
   'languages/typescript/preset/unused-api/workspace/packages.mjs',
   'languages/typescript/preset/unused-api/workspace/pnpm-workspace.mjs',
+  'languages/typescript/adapters/quality-areas/hashing/whole-file-hash.mjs',
+  'shared/paths/script-stem.mjs',
   'languages/typescript/adapters/quality-areas/runners/unused-api.mjs',
   'languages/typescript/adapters/quality-areas/knip/knip-layers.mjs',
   'languages/typescript/adapters/quality-areas/knip/knip-run.mjs',
