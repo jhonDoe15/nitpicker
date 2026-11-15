@@ -1,6 +1,6 @@
 import { describeRuleFinding as untypedDescribe, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { identitySubject } from '../rules/hints/effects/identity.mts';
-import { createIdentities } from './identities.mts';
+import { createIdentities } from './typed/type-check-views.mts';
 import { withRegexDefects as untypedWithRegexDefects } from '../rules/regexes/regex-defects.mjs';
 import { parseJson } from '../../../shared/values/readers.mts';
 import type { IngestedFinding, RulesReportEntry } from './typed/ingest-types.mts';

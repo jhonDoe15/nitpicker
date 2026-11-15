@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { createSnapshot } from '../../../../../core/fix/engine/edits/snapshot.mjs';
 import { runMypy, resolveTypeChecker } from '../../../adapters/python-types.mjs';
-import { ingestMypy } from '../../../ingest/type-check.mts';
+import { ingestMypy } from '../../../ingest/type-check.mjs';
 
 const RULE = 'unused-ignore';
 
