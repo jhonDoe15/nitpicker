@@ -85,7 +85,9 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('maps the comment, unknown, guard and module-load rules to JSDoc for JavaScript files only', () => {
-    const moduleEffects: ConfigEntry = { rules: { 'nitpicker/report-module-load-effects': 'error' } };
+    const moduleEffects: ConfigEntry = {
+      rules: { 'nitpicker/report-module-load-effects': 'error' },
+    };
     const mapped = applyJavascriptDialect([...strict, moduleEffects], javascript);
     const settings = Object.entries(JSDOC_RULE_OPTIONS).map(([rule, options]) => ({
       rule,
