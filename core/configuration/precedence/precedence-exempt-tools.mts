@@ -1,4 +1,6 @@
-import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mts';
+
+type Exemption = { readonly presets: readonly string[]; readonly reason: string };
 
 const KOTLIN = 'kotlin';
 const PYTHON = 'python';
@@ -11,7 +13,7 @@ const OWN_ANALYZER =
 const GO_PINNED_LINTER =
   'runs from the linter program nitpicker pins with its own checks enabled; the project\'s golangci-lint selection would switch checks off, so only the formatter options and the staticcheck checks are read (see "gofumpt", "goimports" and "staticcheck")';
 
-const PRECEDENCE_EXEMPT_TOOLS = new Map([
+const PRECEDENCE_EXEMPT_TOOLS = new Map<string, Exemption>([
   [
     'oxlint',
     {
@@ -217,13 +219,13 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   ],
   ...GO_LINT_TOOLS.filter(
     (tool) => !['vet', 'staticcheck', 'go-rules', 'deadcode', 'revive', 'gosec'].includes(tool),
-  ).map((tool) => [tool, { presets: ['go'], reason: GO_PINNED_LINTER }]),
+  ).map((tool): [string, Exemption] => [tool, { presets: ['go'], reason: GO_PINNED_LINTER }]),
 ]);
 
-export function precedenceExemption(tool) {
+export function precedenceExemption(tool: string): Exemption | undefined {
   return PRECEDENCE_EXEMPT_TOOLS.get(tool);
 }
 
-export function precedenceExemptions() {
+export function precedenceExemptions(): [string, Exemption][] {
   return [...PRECEDENCE_EXEMPT_TOOLS];
 }

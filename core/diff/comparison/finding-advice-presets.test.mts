@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
-import { applyRuleHints as applyRuleHintsJs } from '../../../languages/python/rules/rule-hints.mjs';
+import { applyRuleHints } from '../../../languages/python/rules/rule-hints.mts';
 import { withRuleMessage as withRuleMessageJs } from '../../../languages/java/messages/rule-messages.mjs';
 import { ingestErrorProne as ingestErrorProneJs } from '../../../languages/java/ingest/errorprone/errorprone.mjs';
 import { withKotlinRuleMessage as withKotlinRuleMessageJs } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
@@ -15,7 +15,6 @@ type Fields = Readonly<Record<string, unknown>>;
 type Builder = (path: string) => Fields;
 type Sample = readonly [string, string, Builder, string, string, string];
 
-const applyRuleHints: (findings: readonly Fields[]) => Fields[] = applyRuleHintsJs;
 const withRuleMessage: (finding: Fields) => Fields = withRuleMessageJs;
 const withKotlinRuleMessage: (finding: Fields) => Fields = withKotlinRuleMessageJs;
 const ingestErrorProne: (text: string) => { readonly findings: readonly Fields[] } =
@@ -64,7 +63,14 @@ const fileLines: Builder = (path) =>
 
 const python: Builder = (path) =>
   applyRuleHints([
-    { tool: 'ruff', rule: 'T201', path, message: '`print` found', classification: 'enforceable' },
+    {
+      tool: 'ruff',
+      rule: 'T201',
+      path,
+      identity: 'id',
+      message: '`print` found',
+      classification: 'enforceable',
+    },
   ])[0] ?? {};
 
 const java: Builder = (path) =>

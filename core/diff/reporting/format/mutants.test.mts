@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ingestPit as untypedIngestPit } from '../../../../languages/java/ingest/pit.mjs';
-import { ingestMutmut as untypedIngestMutmut } from '../../../../languages/python/ingest/mutmut.mjs';
+import { ingestMutmut } from '../../../../languages/python/ingest/mutmut.mts';
 import { normalizeMutation } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import type { Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
@@ -15,7 +15,6 @@ const ingestPit: (
   xml: string,
   options: { readonly resolvePath: () => string },
 ) => { readonly findings: Finding[] } = untypedIngestPit;
-const ingestMutmut: (run: unknown) => { readonly findings: Finding[] } = untypedIngestMutmut;
 
 const recordedMutmutRun = parseJson(
   readFileSync(
@@ -29,7 +28,7 @@ const WAY_OUT =
 const PIT_WAY_OUT =
   'Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
-function enforceable(findings: readonly Finding[]): Finding[] {
+function enforceable<T extends { readonly classification: string }>(findings: readonly T[]): T[] {
   return findings.filter(({ classification }) => classification === 'enforceable');
 }
 

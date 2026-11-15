@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
-import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mts';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mts';
 import { validateConfig } from './validate.mts';
