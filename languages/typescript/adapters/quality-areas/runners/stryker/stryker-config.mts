@@ -30,8 +30,8 @@ export function strykerRunConfig(
   }: {
     readonly snapshot: 'base' | 'head';
     readonly targets: readonly string[] | undefined;
-    readonly tsconfigFile?: string;
-    readonly vitestConfigFile?: string;
+    readonly tsconfigFile?: string | undefined;
+    readonly vitestConfigFile?: string | undefined;
   },
 ): StrykerConfig {
   return {

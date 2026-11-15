@@ -150,7 +150,8 @@ function packageResult(resolver, specifier, containingFile) {
   return source === undefined ? { kind: 'package', name } : { kind: 'package', name, path: source };
 }
 
-export function resolveModuleSpecifier(written, containingFile, { aliases = [] } = {}) {
+export function resolveModuleSpecifier(written, containingFile, options = {}) {
+  const aliases = options.aliases ?? [];
   const specifier = aliasedSpecifier(aliases, written);
   const resolver = resolverFor(path.dirname(containingFile));
   const isPattern = resolver.pathPatterns.some((matches) => matches(specifier));
@@ -168,10 +169,10 @@ function followedFilesOf(file, specifiersOf, aliases) {
     .filter((target) => target !== undefined);
 }
 
-export function* reachableModules(entries, specifiersOf, { maxDepth, maxFiles, aliases = [] }) {
-  const entryFiles = [entries].flat();
-  const visited = new Set(entryFiles);
-  const queue = entryFiles.map((file) => ({ file, depth: 0 }));
+export function* reachableModules(entries, specifiersOf, limits) {
+  const { maxDepth, maxFiles, aliases } = limits;
+  const queue = [entries].flat().map((file) => ({ file, depth: 0 }));
+  const visited = new Set(queue.map(({ file }) => file));
   for (const { file, depth, from } of queue) {
     if (depth > 0) yield { file, depth, from };
     const followed = new Set(followedFilesOf(file, specifiersOf, aliases));

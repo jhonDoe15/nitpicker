@@ -1,0 +1,173 @@
+def context = project.ext.nitpickerPitContext
+def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
+
+project.ext.nitpickerPitConfigurations = { pinned ->
+    configurations {
+        nitpickerPit { canBeConsumed = false }
+        nitpickerPitJunit5 { canBeConsumed = false }
+        nitpickerPitTestng { canBeConsumed = false }
+    }
+    dependencies {
+        nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
+        nitpickerPitJunit5("org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}") {
+            // The JUnit Platform comes from the project (see nitpickerPit): a copy pinned
+            // here would clash with the project's Jupiter version.
+            exclude group: 'org.junit.platform'
+            exclude group: 'org.junit.jupiter'
+            exclude group: 'org.opentest4j'
+            exclude group: 'org.apiguardian'
+        }
+        // PIT refuses a TestNG project without its TestNG plugin; TestNG itself comes from the project.
+        nitpickerPitTestng "org.pitest:pitest-testng-plugin:${pinned.pitestTestng}"
+    }
+}
+
+project.ext.nitpickerSkippedByBuild = { Task task ->
+    !task.enabled || (task.state.skipped && task.state.skipMessage == 'SKIPPED')
+}
+
+project.ext.nitpickerPitTestClasses = { Test source, Object excluded ->
+    source.testClassesDirs.files.findAll { it.exists() }.collectMany { dir ->
+        def classes = fileTree(dir).matching { include '**/*.class' }
+        if (excluded != null) {
+            classes = classes.matching { exclude excluded }
+        }
+        if (!source.includes.isEmpty()) {
+            classes = classes.matching { include source.includes }
+        }
+        if (!source.excludes.isEmpty()) {
+            classes = classes.matching { exclude source.excludes }
+        }
+        classes.files.collect {
+            dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+        }
+    }.unique()
+}
+
+project.ext.nitpickerRegisterPit = { Map spec ->
+    def source = spec.source
+    tasks.register(spec.name, JavaExec) {
+        group = 'nitpicker'
+        dependsOn spec.dependsOn
+        dependsOn source.testClassesDirs
+        mustRunAfter source
+        classpath = configurations.nitpickerPit
+        mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+        def pitOutput = new ByteArrayOutputStream()
+        def pitTask = it
+        def execOperations = project.services.get(org.gradle.process.ExecOperations)
+        ignoreExitValue = true
+        standardOutput = pitOutput
+        errorOutput = pitOutput
+        doLast {
+            def exitValue = executionResult.get().exitValue
+            def output = pitOutput.toString('UTF-8')
+            if (exitValue != 0) {
+                def retry = project.ext.nitpickerPitRetry(pitTask, execOperations, spec.reportDir().asFile, output)
+                if (retry != null) {
+                    exitValue = retry.exitValue
+                    output = retry.output
+                }
+            }
+            if (exitValue != 0) {
+                def lines = output.readLines().findAll { it.trim() }
+                new File(spec.reportDir().asFile, 'failure.txt').text =
+                    "PIT failed with exit code ${exitValue}${spec.failureSuffix()}: ${lines.takeRight(40).join('\n')}"
+            }
+        }
+        doFirst {
+            def pitDir = spec.reportDir()
+            def classDirs = spec.classDirs().findAll { it.exists() }
+            // A target is the first package holding classes on each path. PIT refuses any filter
+            // that matches its own org.pitest classes, as `org.*` does, so such a package lists its
+            // classes by name and its subpackages separately.
+            def classNames = { File dir, String prefix ->
+                (dir.listFiles() ?: []).findAll { it.isFile() && it.name.endsWith('.class') }
+                    .collect { "${prefix}${it.name.replaceAll(/\.class$/, '')}".toString() }
+            }
+            def packageTargets
+            packageTargets = { File dir, String prefix ->
+                def subpackages = { (dir.listFiles() ?: []).findAll { it.isDirectory() }
+                    .collectMany { packageTargets(it, "${prefix}${it.name}.".toString()) } }
+                def classes = classNames(dir, prefix)
+                classes.isEmpty() ? subpackages()
+                    : 'org.pitest.'.startsWith(prefix) ? classes + subpackages()
+                    : ["${prefix}*".toString()]
+            }
+            def targets = spec.scopedTargets() ?:
+                classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
+            // Tests are named class by class: a package glob would also hand the main classes
+            // that share a package with the tests to the test engine.
+            def testRuntimeFiles = source.classpath.files
+            def tests = spec.tests()
+            // PIT's JUnit 5 plugin needs the launcher next to the project's engine; Gradle itself
+            // supplies one to `test`, so a project may not declare it. Take the engine's version.
+            def runtimeJars = testRuntimeFiles*.name
+            def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
+            def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
+            if (engine != null) {
+                classpath += configurations.nitpickerPitJunit5
+            }
+            if (engine != null && !runtimeJars.any { it.startsWith('junit-platform-launcher-') }) {
+                classpath += project.configurations.detachedConfiguration(
+                    project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
+            }
+            if (runtimeJars.any { it ==~ /testng-\d.*\.jar/ }) {
+                classpath += configurations.nitpickerPitTestng
+            }
+            project.delete(pitDir)
+            pitDir.asFile.mkdirs()
+            def pitClasspath = (testRuntimeFiles + classDirs)
+                .findAll { it.exists() }.collect { it.absolutePath }.unique()
+            args(['--reportDir', pitDir.asFile.absolutePath,
+                  '--targetClasses', targets.join(','),
+                  '--targetTests', tests.join(','),
+                  '--sourceDirs', spec.sourceDirs().findAll { it.exists() }.join(','),
+                  '--classPath', pitClasspath.join(','),
+                  '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
+                  '--outputFormats', 'XML',
+                  '--timestampedReports', 'false',
+                  '--failWhenNoMutations', 'false',
+                  '--verbose', 'false'] +
+                context.settings('pit', ['--threads', '2', '--mutators', context.mutators.join(',')]))
+            def historyFile = project.layout.buildDirectory
+                .file("nitpicker-pit-history/${source.name}.history").get().asFile
+            if (context.historyRecorded) {
+                args '--historyOutputLocation', historyFile.absolutePath
+            }
+            def baseRoot = context.historyRoot == null ? null : new File(context.historyRoot.toString()).canonicalFile
+            def sameDrive = historyFile.toPath().root == context.analysisRoot.toPath().root
+            def recorded = baseRoot == null || !sameDrive ? null
+                : new File(baseRoot, context.relativeToRoot(historyFile)).canonicalFile
+            if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+                args '--historyInputLocation', recorded.absolutePath
+            }
+            def testJvmArgs = (source.jvmArgs ?: []) +
+                source.systemProperties.collect { key, value ->
+                    (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +
+                [source.minHeapSize ? "-Xms${source.minHeapSize}" : null,
+                 source.maxHeapSize ? "-Xmx${source.maxHeapSize}" : null].findAll { it != null }*.toString() +
+                source.jvmArgumentProviders.findAll { it.getClass().name != jacocoArgumentProvider }
+                    .collectMany { provider -> provider.asArguments().collect { it.toString() } }
+            if (!testJvmArgs.isEmpty()) {
+                def argumentFile = new File(pitDir.asFile, 'jvm-arguments')
+                argumentFile.text = testJvmArgs.collect { argument ->
+                    '"' + argument.replace('\\', '\\\\').replace('"', '\\"')
+                        .replace('\n', '\\n').replace('\r', '\\r') + '"\n'
+                }.join('')
+                def quote = argumentFile.absolutePath.contains('"') ? "'" : '"'
+                args '--argLine', "${quote}@${argumentFile.absolutePath}${quote}".toString()
+            }
+            if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
+                if (!source.options.includeTags.isEmpty()) {
+                    args '--includedGroups', source.options.includeTags.toList().sort().join(',')
+                }
+                if (!source.options.excludeTags.isEmpty()) {
+                    args '--excludedGroups', source.options.excludeTags.toList().sort().join(',')
+                }
+            }
+        }
+        onlyIf { spec.enabled() }
+    }
+}

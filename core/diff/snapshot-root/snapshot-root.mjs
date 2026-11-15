@@ -1,22 +1,23 @@
+import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { escapeRegExp } from '../../../shared/paths/glob.mjs';
 import { withMessage } from '../../../shared/messages/advice/finding-advice.mjs';
-
-function escaped(text) {
-  return text.replaceAll(/[\\^$.*+?()[\]{}|]/gu, String.raw`\$&`);
-}
 
 export function withoutSnapshotRoot(text, snapshotRoot) {
   if (snapshotRoot === undefined || typeof text !== 'string') {
     return text;
   }
   const { projectRoot, snapshot } = snapshotRoot;
-  const spellings = [...new Set([projectRoot, projectRoot.split(path.sep).join('/')])];
-  const root = new RegExp(
-    `(?:${spellings.map(escaped).join('|')})(?:[\\\\/]|(?![\\w-]|\\.\\w))`,
+  const roots = existsSync(projectRoot) ? [projectRoot, realpathSync(projectRoot)] : [projectRoot];
+  const spellings = [
+    ...new Set(roots.flatMap((root) => [root, root.split(path.sep).join('/')])),
+  ].sort((left, right) => right.length - left.length);
+  const pattern = new RegExp(
+    `(?:${spellings.map(escapeRegExp).join('|')})(?:[\\\\/]|(?![\\w-]|\\.\\w))`,
     'gu',
   );
-  return text.replaceAll(root, (match) => (/[\\/]$/u.test(match) ? '' : snapshot));
+  return text.replaceAll(pattern, (match) => (/[\\/]$/u.test(match) ? '' : snapshot));
 }
 
 function namedFinding(finding, snapshotRoot) {

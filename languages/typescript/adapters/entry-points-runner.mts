@@ -15,6 +15,7 @@ import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/to
 import { type Layout, readLayout } from './typed/head-policy.mts';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 type EntryPointOptions = {
   readonly projectRoot: string;
@@ -25,6 +26,7 @@ type EntryPointOptions = {
 
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
+const policyModulePath: (file: string) => string = checkoutModulePath;
 
 if (isInvokedModule(import.meta.url)) {
   process.exitCode = await writeAdapterFindings(
@@ -50,7 +52,7 @@ async function loadPolicyModules(policyRoot: string) {
     policyRoot,
     'languages/typescript/preset/entry-points/analyze.mjs',
   );
-  return importEntryPointAnalyzer(pathToFileURL(entryPointsModule).href);
+  return importEntryPointAnalyzer(pathToFileURL(policyModulePath(entryPointsModule)).href);
 }
 
 function graphLoader(
