@@ -111,7 +111,7 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   aliases, each class once; `class Client(Client)` resolves its base through the import, as Python
   binds the name only after the class body, and classes in an unresolvable cycle are measured from
   their parents outside it) with Java's thresholds, from the classes report of
-  `structure_metrics.py` and `class_metrics.py` (`size/python-size.mjs`). Generated files
+  `structure_metrics.py` and `class_metrics.py` (`size/python-size.mts`). Generated files
   (`libraries/generated-files.mjs`) are left out of every size and structure limit, as Java's
   generated sources are: `*_pb2.py`, `*_pb2_grpc.py` and their `.pyi`; a file whose leading
   comments or module docstring carry the header a known generator writes (protoc, gRPC Python,
@@ -131,7 +131,7 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production code, as pytest does not collect it. A `python_files` pattern that matches every
   file (`*.py`) is left out: the files under the `testpaths` folders are the tests then, so the
   production modules keep their checks.
-- **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
+- **Import structure.** From the import scan (`imports/python-import-rules.mts`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
   importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
   belong to the features of a reported [`feature-cycle`](feature-folders.md), and that no import

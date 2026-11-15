@@ -1,0 +1,199 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
+import { createFakeProjects } from '../test-support/fake-project.mts';
+import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
+import { checkRules, contractFaces, pythonSources, RULES_REPORT } from './python-ast-rules.mjs';
+import { failureOf } from '../test-support/runs/failure-of.mts';
+
+const fakes = createFakeProjects();
+
+function optionsOf(reportRoot: string): unknown {
+  return parseJson(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'));
+}
+
+afterEach(() => {
+  fakes.cleanup();
+});
+
+describe('the Python files the rules look at', () => {
+  it('are the ones ruff would lint, as project-relative paths', () => {
+    const root = fakes.project({
+      'src/demo/__init__.py': '',
+      'src/demo/a.py': '',
+      'tests/test_a.py': '',
+      'notes.txt': '',
+    });
+    const { context } = fakes.contextFor(root);
+
+    expect(pythonSources(context)).toEqual([
+      'src/demo/__init__.py',
+      'src/demo/a.py',
+      'tests/test_a.py',
+    ]);
+  });
+
+  it('ignore anything ruff lists that is not a Python source or not in the project', () => {
+    const root = fakes.project({
+      'sources.txt': 'src/demo/a.py\nnotebook.ipynb\n../outside.py\n',
+    });
+    const { context } = fakes.contextFor(root);
+
+    expect(pythonSources(context)).toEqual(['src/demo/a.py']);
+  });
+});
+
+describe('running the rules script', () => {
+  it('hands it the file list and the report path, isolated from the project', () => {
+    const logFile = path.join(fakes.temporaryRoot(), 'calls.jsonl');
+    process.env['FAKE_PYTHON_LOG'] = logFile;
+    const root = fakes.project({ 'src/demo/a.py': '', 'rules.json': '[{"rule":"x"}]' });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    try {
+      checkRules(context);
+    } finally {
+      Reflect.deleteProperty(process.env, 'FAKE_PYTHON_LOG');
+    }
+
+    const [call] = fakes
+      .calls(logFile)
+      .filter(({ tool, args }) => tool === 'python' && listOf(args)[0] === '-I');
+    expect(call?.['args']).toEqual([
+      '-I',
+      expect.stringMatching(/rules\/nitpicker_rules\.py$/),
+      path.join(reportRoot, 'python-files.txt'),
+      path.join(reportRoot, RULES_REPORT),
+      path.join(reportRoot, 'rule-options.json'),
+    ]);
+    expect(optionsOf(reportRoot)).toEqual({
+      sourceRoots: fieldOf(fieldOf(context, 'project'), 'sourceRoots'),
+      testRunner: fieldOf(fieldOf(context, 'project'), 'testRunner'),
+      pythonFiles: ['test_*.py', '*_test.py'],
+      pythonClasses: ['Test'],
+      pythonFunctions: ['test'],
+      norecursedirs: DEFAULT_NORECURSEDIRS,
+      testpaths: [],
+      deselected: [],
+      ignored: [],
+      ignoredGlobs: [],
+      keywords: [],
+      marks: [],
+      xfailStrict: false,
+      minimumPython: [3, 8],
+      testFiles: [],
+      designFiles: ['src/demo/a.py'],
+      distributions: [],
+      entryFiles: [],
+      entryModules: [],
+      boundaryRoots: ['pydantic', 'pydantic_settings'],
+      modules: { 'src/demo/a.py': 'demo.a' },
+      published: false,
+      entryPoints: [],
+      contractFaces: {},
+    });
+    expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
+    expect(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).toBe('[{"rule":"x"}]');
+  });
+
+  it('hands it the production modules and the package facts', () => {
+    const root = fakes.project({
+      'pyproject.toml':
+        '[project]\nname = "shop"\n[project.scripts]\nshop = "shop.cli:main"\n[build-system]\nbuild-backend = "hatchling.build"\n',
+      'src/shop/__init__.py': '',
+      'src/shop/cli.py': '',
+      'tests/test_cli.py': '',
+      'testing/helpers.py': '',
+      'src/shop/cart_test.py': '',
+      'src/shop/testing/fakes.py': '',
+    });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    const options = optionsOf(reportRoot);
+    expect({
+      modules: fieldOf(options, 'modules'),
+      testFiles: fieldOf(options, 'testFiles'),
+      entryModules: fieldOf(options, 'entryModules'),
+      published: fieldOf(options, 'published'),
+      entryPoints: fieldOf(options, 'entryPoints'),
+    }).toEqual({
+      modules: {
+        'src/shop/__init__.py': 'shop',
+        'src/shop/cli.py': 'shop.cli',
+        'src/shop/testing/fakes.py': 'shop.testing.fakes',
+      },
+      testFiles: ['src/shop/cart_test.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      entryModules: ['shop.cli'],
+      published: true,
+      entryPoints: ['shop.cli:main'],
+    });
+  });
+
+  it('fails with the rules-failed rule when python fails', () => {
+    const root = fakes.project({ 'fail.json': JSON.stringify({ python: 'no interpreter' }) });
+    const { context } = fakes.contextFor(root);
+
+    const failure = failureOf(() => {
+      checkRules(context);
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe('rules-failed');
+    expect(textOf(fieldOf(failure, 'message')).includes('no interpreter')).toBe(true);
+  });
+
+  it('tells it which imports are the validation boundary, from the declared libraries', () => {
+    const root = fakes.project({ 'requirements.txt': 'marshmallow\nmsgspec\n' });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(fieldOf(optionsOf(reportRoot), 'boundaryRoots')).toEqual([
+      'msgspec',
+      'marshmallow',
+      'marshmallow_dataclass',
+    ]);
+  });
+
+  it('defaults the boundary to pydantic when no library is declared', () => {
+    const root = fakes.project();
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(fieldOf(optionsOf(reportRoot), 'boundaryRoots')).toEqual([
+      'pydantic',
+      'pydantic_settings',
+    ]);
+  });
+});
+
+describe('the public faces of the features the contract rule reads', () => {
+  const sources = [
+    'app/features/orders/__init__.py',
+    'app/features/orders/service.py',
+    'app/features/orders/_store.py',
+    'app/features/orders/web/views.py',
+    'app/features/helpers.py',
+    'app/shared/db.py',
+    'app/billing/ledger.py',
+  ];
+
+  it('are the __init__.py and the public modules directly in each feature folder', () => {
+    expect(contractFaces(sources, {})).toEqual({
+      'app/features/orders/__init__.py': 'app/features/orders',
+      'app/features/orders/service.py': 'app/features/orders',
+    });
+  });
+
+  it('follow the configured feature and shared roots', () => {
+    const layout = { featureRoots: ['app'], sharedRoots: ['app/shared'] };
+
+    expect(contractFaces(sources, layout)).toEqual({
+      'app/billing/ledger.py': 'app/billing',
+      'app/features/helpers.py': 'app/features',
+    });
+  });
+});
