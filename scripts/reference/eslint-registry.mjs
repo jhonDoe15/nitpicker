@@ -37,11 +37,16 @@ function idProblems(rules) {
  * The plugin's rules, found from its folders: each module that exports `rule` is the rule named
  * after its file, which must be kebab-case. Sorted by id; two modules with one name are an error.
  */
+function emittedFrom(sources) {
+  return (file) => file.endsWith('.mjs') && sources.has(`${file.slice(0, -'.mjs'.length)}.mts`);
+}
+
 export function eslintPluginRules(repositoryRoot) {
   const root = path.join(repositoryRoot, PLUGIN);
+  const isEmitted = emittedFrom(new Set(registryFiles(root, '.mts', SKIPPED_FOLDERS)));
   const rules = MODULE_EXTENSIONS.flatMap((extension) =>
     registryFiles(root, extension, SKIPPED_FOLDERS)
-      .filter((file) => !SKIPPED_FILES.has(path.posix.basename(file)))
+      .filter((file) => !SKIPPED_FILES.has(path.posix.basename(file)) && !isEmitted(file))
       .filter((file) => RULE_EXPORT.test(readRegistryFile(root, file)))
       .map((file) => ({ id: path.posix.basename(file, extension), file: `./${file}` })),
   ).toSorted(byId);
