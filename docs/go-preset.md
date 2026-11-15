@@ -61,7 +61,7 @@ The analyzer runs as a `nitpicker` subcommand, the way the repository-hygiene an
 instead of a separate runner script (`languages/go/adapters/go-runner.mts`). The consumer project
 is not edited and nothing is added to its `go.mod`.
 
-**Tools.** The pinned versions live in one map (`languages/go/adapters/execution/go-tools.mjs`):
+**Tools.** The pinned versions live in one map (`languages/go/adapters/execution/go-tools.mts`):
 gofumpt v0.12.0, and goimports and deadcode from golang.org/x/tools v0.52.0 (BSD-3-Clause). Each is built once per version
 into the nitpicker cache folder (`$XDG_CACHE_HOME/nitpicker`, else `~/.cache/nitpicker`) with
 `go install <module>@<version>`, from a neutral working folder with `GOWORK=off`, so a vendored or
