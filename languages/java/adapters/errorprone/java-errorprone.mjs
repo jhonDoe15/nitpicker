@@ -8,7 +8,8 @@ import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
 import { isClosedByUsing } from './reactive/closed-supplier.mjs';
-import { sourceReader } from './lombok/source-text.mjs';
+import { compiledSources, sourceReader } from './lombok/source-text.mjs';
+import { withoutFluentCalls } from './fluent/fluent-returns.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
 const SENTENCE_END = /[.?!:]$/u;
@@ -29,6 +30,7 @@ export function readErrorProneFindings({
   roots,
   lintedRoots,
   manifest = {},
+  modules,
   javaStyle,
 }) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
@@ -38,10 +40,15 @@ export function readErrorProneFindings({
   const testRoots = manifest.testSourceRoots ?? [];
   const outside = new Set();
   const { diagnostics, crashes } = splitCrashes(JSON.parse(readFileSync(reportPath, 'utf8')));
-  const { findings } = ingestErrorProne(withoutExemptCode(diagnostics, sourceReader(reportRoot)), {
-    resolvePath: (file) => lintedPath(file, { roots, lintedRoots, outside }),
-    guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
-  });
+  const readSource = sourceReader(reportRoot);
+  const exempted = withoutExemptCode(diagnostics, readSource);
+  const { findings } = ingestErrorProne(
+    withoutFluentReturns(exempted, projectReportRoots(reportRoot, modules), readSource),
+    {
+      resolvePath: (file) => lintedPath(file, { roots, lintedRoots, outside }),
+      guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
+    },
+  );
   return [
     ...findings
       .filter((finding) => !isFormatterOwned(finding, javaStyle))
@@ -128,6 +135,20 @@ function withoutExemptCode(diagnostics, readSource) {
         !isClosedByUsing(diagnostic, textOf(diagnostic.file)),
     ),
   );
+}
+
+function projectReportRoots(reportRoot, modules) {
+  const others = (Array.isArray(modules) ? modules : []).map((module) => module.reportRoot);
+  return [...new Set([reportRoot, ...others.filter((root) => typeof root === 'string')])];
+}
+
+function withoutFluentReturns(json, reportRoots, readSource) {
+  const diagnostics = JSON.parse(json);
+  if (!Array.isArray(diagnostics)) {
+    return json;
+  }
+  const sources = [...new Set(reportRoots.flatMap((root) => compiledSources(root)))];
+  return JSON.stringify(withoutFluentCalls(diagnostics, { sources, readSource }));
 }
 
 function withExceptionRoute(finding, testRoots) {

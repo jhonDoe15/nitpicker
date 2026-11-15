@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import path from 'node:path';
-import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mts';
 import { runHistoryCheck } from '../runner.mjs';
 import {
   amplifiedHistory,
@@ -10,7 +10,7 @@ import {
   shortShaOf,
   SOURCE_FILES,
   useHistoryRepositories,
-} from '../../../core/diff/git/test-support/history-repository.mjs';
+} from '../../../core/diff/git/test-support/history-repository.mts';
 
 const { historyRepository, temporaryRoot } = useHistoryRepositories();
 const ENABLED = { history: { coChange: true } };

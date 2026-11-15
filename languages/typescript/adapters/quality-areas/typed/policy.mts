@@ -4,11 +4,16 @@ import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shar
 import {
   layoutKnipProductionConfig as untypedLayoutKnipProductionConfig,
   withEntryExports as untypedWithEntryExports,
-} from '../../../preset/unused-api/test-only/production-config.mjs';
+} from '../../../preset/unused-api/test-only/production-config.mts';
 import {
   needsProductionRun as untypedNeedsProductionRun,
   testOnlyExportFindings as untypedTestOnlyExportFindings,
-} from '../../../preset/unused-api/test-only/test-only-exports.mjs';
+} from '../../../preset/unused-api/test-only/test-only-exports.mts';
+import type { PackagesInfo } from '../../../preset/unused-api/workspace/workspace-types.mts';
+import type {
+  KnipConfig,
+  KnipReport,
+} from '../../../preset/unused-api/test-only/typed/knip-types.mts';
 import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
 import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mjs';
 
@@ -21,7 +26,7 @@ export const testConsoleFindings: (
   },
 ) => Finding[] = untypedTestConsoleFindings;
 
-export type KnipConfig = Readonly<Record<string, unknown>>;
+export type { KnipConfig };
 
 export type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
 
@@ -32,19 +37,20 @@ export const layoutKnipProductionConfig: (config: KnipConfig, layout: Layout) =>
 
 export const withEntryExports: (config: KnipConfig) => KnipConfig = untypedWithEntryExports;
 
-export const needsProductionRun: (packagesInfo: unknown, projectRoot: string) => boolean =
+export const needsProductionRun: (packagesInfo: PackagesInfo, projectRoot: string) => boolean =
   untypedNeedsProductionRun;
 
-export const loadPackages: (projectRoot: string, layout: Layout) => unknown = untypedLoadPackages;
+export const loadPackages: (projectRoot: string, layout: Layout) => PackagesInfo =
+  untypedLoadPackages;
 
 export const testOnlyExportFindings: (run: {
-  readonly normal: unknown;
-  readonly production: unknown;
-  readonly entryExportsRun: () => unknown;
-  readonly packagesInfo: unknown;
+  readonly normal: KnipReport;
+  readonly production: KnipReport;
+  readonly entryExportsRun: () => KnipReport;
+  readonly packagesInfo: PackagesInfo;
   readonly context: {
     readonly layout: Layout;
-    readonly entryPatterns: unknown;
+    readonly entryPatterns: readonly string[];
     readonly projectRoot: string;
     readonly analyzerName: string;
     readonly isExcepted: IsExcepted;

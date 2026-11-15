@@ -30,12 +30,15 @@ export function diffAgainstBase({ baselineRoot, projectRoot }: DiffRoots, format
 function scopedSourceFiles(
   projectRoot: string,
   mutationScope: readonly string[],
-  layout: Layout,
+  layout: Pick<Layout, 'isSourceFile'>,
 ): string[] {
   return scopedProjectFiles(projectRoot, mutationScope).filter((file) => layout.isSourceFile(file));
 }
 
-export function mutationTargets(options: QualityAreaOptions, layout: Layout): string[] | undefined {
+export function mutationTargets(
+  options: QualityAreaOptions,
+  layout: Pick<Layout, 'isSourceFile'>,
+): string[] | undefined {
   if (options.snapshot === 'base') {
     return [];
   }

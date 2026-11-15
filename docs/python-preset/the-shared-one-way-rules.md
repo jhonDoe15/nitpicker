@@ -195,7 +195,7 @@ Details that are decisions rather than the table:
   Imperative mappings (`registry.map_imperatively`, `@registry.mapped`) and entities that come from
   a call the rule cannot type (`return db.get(Order, order_id)`) are not seen.
 - `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
-  `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
+  `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mts`),
   because ruff has no setting for it. Ruff already allows strings and bytes.
 - `S602`, `S604` and `S605` with a command that is a plain string literal are dropped too (ruff
   marks them "seems safe"): a fixed command cannot be injected. A command built from a variable or
@@ -671,7 +671,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment
   (`is_relative_to`, `relative_to`, `startswith`, `commonpath`) in an `if`, or in a `try` whose
   handler exits; for values converted with `int`, `uuid.UUID`, `secure_filename` or `basename`,
-  or reduced to `.name`; and for parameters annotated `Literal`.
+  or reduced to `.name`; for parameters annotated `Literal`; and for the entries of
+  `os.listdir`, `os.scandir` and `os.walk` (also inside `sorted(...)`) joined onto the directory
+  that was listed, which is the same rule the TypeScript preset applies to `readdir` entries.
 - `handwritten-boundary-guard` reports `isinstance` on a value that came from `json`, `yaml` or
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
@@ -702,7 +704,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
   formats). The minimum length, the number of allowed uses and those lists are defined once in
   [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs);
-  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
+  `literal-exemptions.test.mts` fails when `literals.py` drifts from it. The message ends with the
   `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a class (nested ones too) whose last name word is `util`,
   `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
@@ -1549,7 +1551,7 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
   finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
   `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script
-  lists its sites (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mjs` drops
+  lists its sites (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mts` drops
   them, but only while the owning finding survives `python.exceptions`: an exception for
   `clock-now` on a path brings `DTZ005` back there.
 - `LOG`: create loggers with `logging.getLogger(__name__)` (not `logging.Logger(...)`, `__file__`

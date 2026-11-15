@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-unfiltered-soft-delete-read.mjs';
 
 const ORMS = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize', 'mikro'];

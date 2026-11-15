@@ -1,4 +1,4 @@
-import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-stale-retry-after-conflict.mjs';
 
 const HEAD = [

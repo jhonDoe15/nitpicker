@@ -1,5 +1,7 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
@@ -29,7 +31,9 @@ type Plan = {
 const readTsconfig: (configFile: string) => { readonly options: Settings } = parsedTsconfig;
 const DECORATOR_METADATA_RULES = ['@typescript-eslint/consistent-type-imports'];
 const DECORATOR = /(?:^|[\s(,])@[A-Za-z_$]/mu;
-const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
+const wrapperConfigPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url)),
+);
 
 if (isInvokedModule(import.meta.url)) {
   const [projectRoot = '', ...patterns] = process.argv.slice(2);

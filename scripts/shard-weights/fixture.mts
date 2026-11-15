@@ -1,7 +1,8 @@
 import { type SpawnSyncReturns, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mts';
 import { containedPath } from '../../core/fix/common/contained-path.mjs';
 import { type Fields, fieldsOf } from '../json/fields.mts';
 import {
@@ -57,9 +58,7 @@ export function shellWith(environment: NodeJS.ProcessEnv): Shell {
 }
 
 function write(root: string, relative: string, contents: string): void {
-  const target = containedPath(root, relative);
-  mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, contents);
+  writeFiles(root, { [relative]: contents });
 }
 
 function readManifest(): Fields {

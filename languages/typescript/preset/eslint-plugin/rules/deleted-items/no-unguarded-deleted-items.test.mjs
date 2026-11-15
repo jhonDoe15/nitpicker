@@ -1,4 +1,4 @@
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { rule } from './no-unguarded-deleted-items.mjs';
 
 const TYPES = [
