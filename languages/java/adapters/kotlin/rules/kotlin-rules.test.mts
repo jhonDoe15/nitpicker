@@ -1,0 +1,310 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
+import {
+  exceptionHint,
+  withAllowedForm,
+  withKotlinRuleMessage,
+} from './test-support/kotlin-finding-views.mts';
+import type { RuleFinding } from './test-support/kotlin-finding-views.mts';
+import type { KotlinRuleCase } from './test-support/kotlin-guard-cases.mts';
+import {
+  compilerWarningRule,
+  DISABLED_DETEKT_RULES,
+  isBannedSuppression,
+  isUnusedCodeSuppression,
+  ONE_WAY_RULE_IDS,
+  ONE_WAY_RULES,
+  SUPPRESSION_RULE,
+} from './kotlin-rules.mjs';
+import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mts';
+import { fileURLToPath } from 'node:url';
+import { repeatedStringLiterals as untypedRepeatedStringLiterals } from '../scan/literals/repeated-strings.mjs';
+import { scanKotlinSource } from '../scan/typed/typed-scan.mts';
+
+type Section = Record<string, string | undefined>;
+type Ruleset = { settings: Section; rules: Record<string, Section> };
+
+const repeatedStringLiterals: (scanned: unknown) => { rule: string; message: string }[] =
+  untypedRepeatedStringLiterals;
+
+function bannedMessage(testCase: KotlinRuleCase) {
+  return assigned(expectedMessage(testCase, 'banned'), 'banned message');
+}
+
+const detektFinding = (rule: string, message: string): RuleFinding => ({
+  tool: 'detekt',
+  rule,
+  path: 'src/main/kotlin/demo/A.kt',
+  identity: 'id',
+  message,
+  classification: 'enforceable',
+});
+
+describe('one-way rule messages', () => {
+  const detektCases = kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE);
+
+  it.each(detektCases.map((testCase) => [testCase.id, testCase]))(
+    '%s names the allowed form and the exception route',
+    (_id, testCase) => {
+      const { message } = withKotlinRuleMessage(
+        detektFinding(testCase.rule, bannedMessage(testCase)),
+      );
+
+      const wording = {
+        id: testCase.id,
+        namesAllowedForm: message.toLowerCase().includes(testCase.allowedForm.toLowerCase()),
+        namesExceptionRoute: message.endsWith(
+          exceptionHint(testCase.rule, 'src/main/kotlin/demo/A.kt'),
+        ),
+        keepsDetektText: message.startsWith(bannedMessage(testCase).replace(/\.$/, '')),
+      };
+
+      expect(wording).toEqual({
+        id: testCase.id,
+        namesAllowedForm: true,
+        namesExceptionRoute: true,
+        keepsDetektText: true,
+      });
+    },
+  );
+
+  it('has a banned and an allowed fixture for every rule and for the inline suppression', () => {
+    expect([...new Set(kotlinRuleCases.map(({ rule }) => rule))].toSorted()).toEqual(
+      [...ONE_WAY_RULE_IDS, SUPPRESSION_RULE].toSorted(),
+    );
+    expect(kotlinRuleCases).not.toHaveLength(0);
+    expect(kotlinRuleCases.map((testCase) => testCase.banned === testCase.allowed)).toEqual(
+      kotlinRuleCases.map(() => false),
+    );
+    expect(new Set(kotlinRuleCases.map(({ id }) => id)).size).toBe(kotlinRuleCases.length);
+  });
+
+  it('keeps a message that ends without a period readable', () => {
+    const { message } = withAllowedForm(
+      detektFinding('detekt.style.UnnecessaryLet', 'let expression can be omitted'),
+    );
+
+    expect(message).toBe(
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`.',
+    );
+  });
+
+  it('tells the allowed form of each rule that has one as a field the message ends with', () => {
+    const told = ONE_WAY_RULES.filter(({ allowed }) => allowed !== undefined).map((rule) =>
+      withAllowedForm(detektFinding(rule.id, 'Found it.')),
+    );
+
+    expect(told.length).toBeGreaterThan(5);
+    expect(
+      told.filter(
+        (finding) => !finding.message.endsWith(assigned(finding.allowedForm, 'allowedForm')),
+      ),
+    ).toEqual([]);
+  });
+
+  it('gives a rule whose detekt message names the allowed form no second one', () => {
+    const finding = detektFinding(
+      'detekt.style.UseDataClass',
+      'The class A defines no functionality and only holds data. Consider converting it to a data class.',
+    );
+
+    expect(withAllowedForm(finding)).toBe(finding);
+  });
+
+  it('tells a test to use assertFailsWith for a broad catch', () => {
+    const file = 'src/main/kotlin/demo/A.kt';
+    const { message } = withKotlinRuleMessage(
+      detektFinding(
+        'detekt.exceptions.TooGenericExceptionCaught',
+        'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled.',
+      ),
+    );
+
+    expect(message).toBe(
+      `The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use \`assertFailsWith\`. ${exceptionHint('detekt.exceptions.TooGenericExceptionCaught', file)}`,
+    );
+  });
+
+  it('leaves other detekt rules and other tools without an allowed form', () => {
+    const other = detektFinding('detekt.style.MagicNumber', 'magic');
+    const sameRuleOtherTool = {
+      ...detektFinding(assigned(ONE_WAY_RULES[0], 'first rule').id, 'x'),
+      tool: 'ktlint',
+    };
+
+    expect(withAllowedForm(other)).toBe(other);
+    expect(withAllowedForm(sameRuleOtherTool)).toBe(sameRuleOtherTool);
+  });
+
+  it('lists each rule once under the id detekt reports', () => {
+    expect(ONE_WAY_RULE_IDS).not.toHaveLength(0);
+    expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
+    expect(
+      ONE_WAY_RULE_IDS.filter(
+        (id) =>
+          !/^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/.test(id),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('repeated string message', () => {
+  it('names the constant form and ends with the exception sentence of its rule', () => {
+    const scanned = scanKotlinSource('val a = "pending"\nval b = "pending"\nval c = "pending"\n');
+    const reported = assigned(repeatedStringLiterals(scanned)[0], 'repeated string');
+    const path = 'src/main/kotlin/demo/A.kt';
+    const shaped = withKotlinRuleMessage({
+      tool: 'kotlin-source',
+      rule: reported.rule,
+      path,
+      message: reported.message,
+      classification: 'enforceable',
+    });
+
+    expect(shaped.message).toBe(
+      [
+        'The string "pending" is repeated three times or more in the file.',
+        'Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
+        exceptionHint('kotlin-source/RepeatedStringLiteral', path),
+      ].join(' '),
+    );
+  });
+});
+
+describe('nitpicker-detekt.yml', () => {
+  function parseRulesets(text: string) {
+    const rulesets: Record<string, Ruleset> = {};
+    let ruleset: Ruleset = { settings: {}, rules: {} };
+    let rule: Section = {};
+    for (const [, indent, key, value] of text
+      .split('\n')
+      .map((line) => /^( *)([\w-]+):(?: ([^\n]*))?$/.exec(line) ?? [])
+      .filter((match) => match.length > 0)) {
+      if (indent === undefined || key === undefined) {
+        continue;
+      }
+      if (indent === '') {
+        ruleset = { settings: {}, rules: {} };
+        rulesets[key] = ruleset;
+      } else if (indent.length === 2 && /^[A-Z]/.test(key)) {
+        rule = {};
+        ruleset.rules[key] = rule;
+      } else {
+        (indent.length === 2 ? ruleset.settings : rule)[key] = value;
+      }
+    }
+    return rulesets;
+  }
+
+  const rulesets = parseRulesets(
+    readFileSync(
+      path.join(
+        fileURLToPath(new URL('../../', import.meta.url)),
+        '../detekt/nitpicker-detekt.yml',
+      ),
+      'utf8',
+    ),
+  );
+
+  const configured = Object.entries(rulesets).flatMap(([ruleset, { rules }]) =>
+    Object.entries(rules).map(([name, rule]) => ({ id: `detekt.${ruleset}.${name}`, rule })),
+  );
+  const isDisabled = ({ id }: { id: string }) => DISABLED_DETEKT_RULES.includes(id);
+
+  it('configures exactly the rules of ONE_WAY_RULES, besides the rules it turns off', () => {
+    const ids = configured.filter((entry) => !isDisabled(entry)).map(({ id }) => id);
+
+    expect(ids.toSorted()).toEqual(ONE_WAY_RULE_IDS.toSorted());
+  });
+
+  it('turns off the rules that nitpicker reports from its own scan, whatever the project sets', () => {
+    expect(configured.filter(isDisabled).map(({ id, rule }) => [id, rule])).toEqual(
+      DISABLED_DETEKT_RULES.map((id) => [id, { active: 'false' }]),
+    );
+    expect(ONE_WAY_RULE_IDS).not.toContain('detekt.complexity.StringLiteralDuplication');
+  });
+
+  it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
+    const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
+    const pinnedSettings = Object.values(rulesets).map(({ settings }) => settings);
+    const ruleSettings = Object.values(rulesets).flatMap(({ rules }) =>
+      Object.values(rules)
+        .filter(({ active }) => active !== 'false')
+        .map(({ active, excludes, ignoreAnnotated, includes, severity }) => ({
+          active,
+          excludes,
+          ignoreAnnotated,
+          includes,
+          severity,
+        })),
+    );
+
+    expect(pinnedSettings).not.toHaveLength(0);
+    expect(ruleSettings).not.toHaveLength(0);
+    expect(pinnedSettings).toEqual(pinnedSettings.map(() => pinned));
+    expect(ruleSettings).toEqual(ruleSettings.map(() => ({ ...pinned, severity: 'warning' })));
+  });
+});
+
+describe('isBannedSuppression', () => {
+  it.each([
+    'UnsafeCallOnNullableType',
+    'MagicNumber',
+    'LongMethod',
+    'detekt',
+    'detekt.UnsafeCallOnNullableType',
+    'detekt:UnsafeCallOnNullableType',
+    'detekt.style.MagicNumber',
+    'detekt:potential-bugs:UnsafeCallOnNullableType',
+    'detekt.all',
+    'detekt:ALL',
+    'style',
+    'naming',
+    'potential-bugs',
+    'all',
+    'ALL',
+    'All',
+    'ktlint',
+    'ktlint:standard:indent',
+    'ktlint.standard.indent',
+    'UNCHECKED_CAST',
+    'DEPRECATION',
+    'TYPEALIAS_EXPANSION_DEPRECATION',
+    'style:UnusedParameter',
+    'style.UnusedParameter',
+    'potential-bugs:UnsafeCallOnNullableType',
+    'complexity.LongMethod',
+    'empty-blocks.EmptyFunctionBlock',
+  ])('bans %s', (token) => {
+    expect(isBannedSuppression(token)).toBe(true);
+  });
+
+  it.each(['unchecked', 'unchecked_cast', 'rawtypes', 'allowed', 'detector', 'ktlinter', ''])(
+    'allows the compiler diagnostic or unrelated token %s',
+    (token) => {
+      expect(isBannedSuppression(token)).toBe(false);
+    },
+  );
+});
+
+describe('isUnusedCodeSuppression', () => {
+  it.each(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE'])('names %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(true);
+  });
+
+  it.each(['unchecked', 'UnusedParameter', 'Unused', ''])('does not name %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(false);
+  });
+});
+
+describe('compilerWarningRule', () => {
+  it('names the kotlinc rule a compiler warning suppression hides', () => {
+    expect(
+      ['UNCHECKED_CAST', 'DEPRECATION', 'TYPEALIAS_EXPANSION_DEPRECATION', 'unused'].map(
+        compilerWarningRule,
+      ),
+    ).toEqual(['kotlinc/unchecked', 'kotlinc/deprecation', 'kotlinc/deprecation', undefined]);
+  });
+});
