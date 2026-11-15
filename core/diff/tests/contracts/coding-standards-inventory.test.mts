@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import {
-  collectArchitectureSignals as collectArchitectureSignalsJs,
-  collectSignals as collectSignalsJs,
-} from '../../../../languages/typescript/preset/coding-standards/check.mjs';
+  collectArchitectureSignals,
+  collectSignals,
+} from '../../../../languages/typescript/preset/coding-standards/check.mts';
 import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
   resolveHeadPolicy as resolveHeadPolicyJs,
@@ -16,17 +16,7 @@ import { compareFindings } from '../../comparison/test-support/typed-compare.mts
 import { type AnalyzerRequest, runAnalyzers } from '../../execution/run-analyzers.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 
-type Signal = {
-  readonly file: string;
-  readonly rule: string;
-  readonly source: string;
-  readonly message: string;
-};
-
 const configuredAnalyzers: () => { readonly name: string }[] = configuredAnalyzersJs;
-const collectSignals: (root: string, policyRoot: string) => Promise<Signal[]> = collectSignalsJs;
-const collectArchitectureSignals: (root: string, layout: undefined) => Signal[] =
-  collectArchitectureSignalsJs;
 const resolveHeadPolicy: (config: object, projectRoot: undefined) => object = resolveHeadPolicyJs;
 const withHeadPolicyFile: <T>(policy: object, run: (policyFile: string) => T) => T =
   withHeadPolicyFileJs;
@@ -51,7 +41,7 @@ it('compares both sides using the head coding inventory when that inventory entr
 
   const legacySignals = [
     ...(await collectSignals(baseProjectRoot, PACKAGE_ROOT)),
-    ...collectArchitectureSignals(baseProjectRoot, undefined),
+    ...collectArchitectureSignals(baseProjectRoot),
   ];
   expect(legacySignals).toEqual([
     {

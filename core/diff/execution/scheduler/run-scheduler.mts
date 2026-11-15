@@ -33,7 +33,7 @@ const SCHEDULER_GRACE_MS = 60 * 1000;
 const TASK_STOP_GRACE_MS = 5 * 1000;
 
 const schedulerPath = fileURLToPath(
-  checkoutModuleUrl(new URL('../analyzer-scheduler.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('../analyzer-scheduler.mts', import.meta.url)),
 );
 
 function schedulerDeadline(tasks: readonly { readonly timeoutMs?: unknown }[]): number {

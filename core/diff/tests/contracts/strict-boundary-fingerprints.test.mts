@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../languages/typescript/adapters/static-checks-runner.mts';
-import { cruiseStrict as cruiseStrictJs } from '../../../../languages/typescript/preset/architecture/test-support/strict-cruise.mjs';
+import { cruiseStrict as cruiseStrictJs } from '../../../../languages/typescript/preset/architecture/test-support/strict-cruise.mts';
 import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import { fieldAt } from '../../../../scripts/json/fields.mts';

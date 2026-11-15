@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mts';
 import { compareFindings } from '../comparison/test-support/typed-compare.mts';
 import { withEditedLineReason as withEditedLineReasonJs } from '../comparison/positions/touched-lines.mjs';
 import {

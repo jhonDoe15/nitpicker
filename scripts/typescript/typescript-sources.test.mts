@@ -86,6 +86,9 @@ describe('module URLs during the conversion', () => {
         "const plain = new URL('./worker.mjs', import.meta.url);",
         "const helped = checkoutModuleUrl(new URL('./worker.mjs', import.meta.url));",
         "const kept = new URL('./kept.mjs', import.meta.url);",
+        'const wrapped = checkoutModuleUrl(',
+        "  new URL('./worker.mjs', import.meta.url),",
+        ');',
         '',
       ].join('\n'),
       'core/worker.mts': 'export {};\n',
@@ -157,7 +160,7 @@ const NODE_BUILD = {
   'scripts/reference/gen-rules.mjs': [
     "import { registry } from './registry.mjs';",
     "import { entries } from '../../languages/go/reference/entries.mjs';",
-    "const generate = await import('../../core/reference/generate.mjs');",
+    "const generate = await import('../../core/reference/generate.mts');",
     '',
   ].join('\n'),
   'scripts/reference/registry.mjs': "import { text } from '../../shared/text.mjs';\n",

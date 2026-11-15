@@ -122,12 +122,10 @@ export function propertiesOf(sourceCode, object) {
   );
 }
 
-export function mergedProperties(sourceCode, argumentsList, pick = (property) => property) {
-  const merged = new Map();
-  for (const argument of argumentsList) {
-    for (const [key, property] of propertiesOf(sourceCode, objectOf(sourceCode, argument))) {
-      merged.set(key, pick(property));
-    }
-  }
-  return merged;
+export function mergedProperties(sourceCode, argumentsList) {
+  return new Map(
+    argumentsList.flatMap((argument) => [
+      ...propertiesOf(sourceCode, objectOf(sourceCode, argument)),
+    ]),
+  );
 }

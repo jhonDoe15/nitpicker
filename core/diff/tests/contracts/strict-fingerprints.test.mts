@@ -3,37 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
-import { failureMessageCases as baseCasesJs } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
-import { lintFixture as lintFixtureJs } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
+import { allFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mts';
+import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mts';
 import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
-import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { fieldAt } from '../../../../scripts/json/fields.mts';
-import { testHonestyFailureMessageCases as honestyCasesJs } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mjs';
 
-type FailureCase = {
-  readonly name: string;
-  readonly config: unknown;
-  readonly filename: string;
-  readonly banned: string;
-};
-
-function isFailureCase(value: unknown): value is FailureCase {
-  return (
-    typeof fieldOf(value, 'name') === 'string' &&
-    typeof fieldOf(value, 'filename') === 'string' &&
-    typeof fieldOf(value, 'banned') === 'string'
-  );
-}
-
-const baseCases: readonly FailureCase[] = listOf(baseCasesJs).filter(isFailureCase);
-const honestyCases: readonly FailureCase[] = listOf(honestyCasesJs).filter(isFailureCase);
-const lintFixture: (request: {
-  readonly config: unknown;
-  readonly filename: string;
-  readonly code: string;
-}) => unknown[] = lintFixtureJs;
 const temporaryRoots: string[] = [];
-const failureMessageCases = [...baseCases, ...honestyCases];
+const failureMessageCases = await allFailureMessageCases();
 
 afterAll(() => {
   for (const root of temporaryRoots) {
@@ -50,15 +27,15 @@ function findingsFor(
     config,
     filename,
     code,
-  }: { readonly config: unknown; readonly filename: string; readonly code: string },
-  relativePath = projectRelative(filename),
+  }: { readonly config: unknown; readonly filename?: string; readonly code: string },
+  relativePath = projectRelative(textOf(filename)),
 ) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-strict-fingerprint-'));
   temporaryRoots.push(root);
   const absolutePath = path.join(root, relativePath);
   mkdirSync(path.dirname(absolutePath), { recursive: true });
   writeFileSync(absolutePath, code);
-  const messages = lintFixture({ config, filename, code });
+  const messages = lintFixture({ config, filename: textOf(filename), code });
   return normalizeEslintResults({
     value: [{ filePath: absolutePath, messages }],
     projectRoot: root,

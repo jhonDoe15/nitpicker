@@ -13,7 +13,7 @@ import { writeFiles } from '../../../git/test-support/fixture-files.mts';
 export const IN_PROCESS_TASKS = { runTasks: runTasksInProcess };
 
 const fakeAnalyzerPath = fileURLToPath(
-  checkoutModuleUrl(new URL('../../../execution/test-support/fake-analyzer.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('../../../execution/test-support/fake-analyzer.mts', import.meta.url)),
 );
 
 const COMPARISON_BASE_REF = 'comparison-base';
