@@ -2,10 +2,17 @@ import { readJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees
 
 const JAVA_FILE = /\.java$/u;
 const NOT_MAIN_SOURCE_SET = /(?:^|\/)src\/(?!main\/)[^/]+\//u;
+const GENERATED =
+  /(?:^|\/)(?:(?:build|target|out)\/|generated-(?:test-)?sources\/|generated\/(?:java|kotlin|sources)\/)/u;
 const RULE = 'near-duplicate';
 
 function eligible({ path: name }, isExcepted) {
-  return JAVA_FILE.test(name) && !NOT_MAIN_SOURCE_SET.test(name) && !isExcepted(RULE, name);
+  return (
+    JAVA_FILE.test(name) &&
+    !NOT_MAIN_SOURCE_SET.test(name) &&
+    !GENERATED.test(name) &&
+    !isExcepted(RULE, name)
+  );
 }
 
 export function extractionRecipe({ id, mode }) {
@@ -13,8 +20,9 @@ export function extractionRecipe({ id, mode }) {
     id,
     rules: [{ tool: 'structure', rule: RULE }],
     presets: ['java'],
-    scope: 'file',
+    scope: mode === 'whole' ? 'project' : 'file',
     safety: 'review',
+    accepts: (name) => mode === 'whole' && JAVA_FILE.test(name),
     plan({ files, projectRoot, inputs = {} }) {
       const isExcepted = inputs.isExcepted ?? (() => false);
       const texts = Object.fromEntries(
@@ -22,16 +30,7 @@ export function extractionRecipe({ id, mode }) {
           .filter((file) => eligible(file, isExcepted))
           .map(({ path: name, text }) => [name, text]),
       );
-      const found = readJavaExtractions(projectRoot, texts, mode);
-      return {
-        fixes: Object.entries(found).flatMap(([name, { fixes }]) =>
-          fixes.map(({ finding, edits }) => ({
-            finding,
-            edits: edits.map((edit) => ({ type: 'replace', path: name, ...edit })),
-          })),
-        ),
-        notes: Object.values(found).flatMap(({ notes }) => notes),
-      };
+      return readJavaExtractions(projectRoot, texts, mode);
     },
   };
 }
