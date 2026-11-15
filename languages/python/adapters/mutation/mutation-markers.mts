@@ -1,8 +1,22 @@
-import { hashIdentity } from '../../../../shared/ingest/common.mjs';
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { readProjectFile } from '../../libraries/project-files.mjs';
-import { listProductionModules } from '../analysis/python-sources.mjs';
-import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
+import { hashIdentity as untypedHash } from '../../../../shared/ingest/common.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { readProjectFile } from '../../libraries/project-files.mts';
+import { listProductionModules } from '../analysis/python-sources.mts';
+import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
+import type { Fields } from '../../../../shared/values/readers.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+
+type Ignored = {
+  readonly file: string;
+  readonly identity: string;
+  readonly line?: number;
+  readonly message: string;
+};
+type Options = { readonly file: string; readonly section: string; readonly options: Fields };
+
+const hashIdentity: (prefix: string, parts: string[]) => string = untypedHash;
+const escapeRegExp: (value: string) => string = untypedEscape;
 
 const MUTMUT_TOOL = 'mutmut';
 const MUTANT_IGNORED_RULE = 'mutant-ignored';
@@ -11,7 +25,7 @@ const NOT_A_ROUTE =
   'Remove it and test the code. Ignore comments and patterns are not an exception route.';
 const PYPROJECT = 'pyproject.toml';
 
-function ignoredFinding({ file, identity, line, message }) {
+function ignoredFinding({ file, identity, line, message }: Ignored): IngestedFinding {
   return {
     tool: MUTMUT_TOOL,
     rule: MUTANT_IGNORED_RULE,
@@ -23,8 +37,8 @@ function ignoredFinding({ file, identity, line, message }) {
   };
 }
 
-function pragmaFindings(projectRoot, file) {
-  const occurrences = new Map();
+function pragmaFindings(projectRoot: string, file: string): IngestedFinding[] {
+  const occurrences = new Map<string, number>();
   return (readProjectFile(projectRoot, file) ?? '').split(/\r?\n/u).flatMap((text, index) => {
     const match = NO_MUTATE.exec(text);
     if (match === null) {
@@ -45,7 +59,7 @@ function pragmaFindings(projectRoot, file) {
   });
 }
 
-function fnmatch(pattern) {
+function fnmatch(pattern: string): RegExp {
   const source = Array.from(pattern)
     .map((character) => {
       if (character === '*') {
@@ -60,17 +74,17 @@ function fnmatch(pattern) {
   return new RegExp(`^${source}$`, 'u');
 }
 
-function listOf(value) {
+function listOf(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map(String);
   }
-  return String(value ?? '')
+  return textOf(value ?? '')
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter(Boolean);
 }
 
-function readOptions(projectRoot) {
+function readOptions(projectRoot: string): Options | undefined {
   const config = readMutmutConfig(projectRoot);
   return config === undefined
     ? undefined
@@ -81,23 +95,27 @@ function readOptions(projectRoot) {
       };
 }
 
-export function mutmutDoNotMutate(projectRoot) {
+export function mutmutDoNotMutate(
+  projectRoot: string,
+):
+  | { file: string; patterns: string[]; matches: (file: string, pattern: string) => boolean }
+  | undefined {
   const config = readOptions(projectRoot);
   return config === undefined
     ? undefined
     : {
         file: config.file,
-        patterns: listOf(config.options.do_not_mutate),
-        matches: (file, pattern) => fnmatch(pattern).test(file),
+        patterns: listOf(config.options['do_not_mutate']),
+        matches: (file: string, pattern: string) => fnmatch(pattern).test(file),
       };
 }
 
-function isTrue(value) {
-  return value === true || /^(?:true|1|yes|on)$/iu.test(String(value ?? ''));
+function isTrue(value: unknown): boolean {
+  return value === true || /^(?:true|1|yes|on)$/iu.test(textOf(value ?? ''));
 }
 
-function configFindings(config, files) {
-  const patterns = listOf(config.options.do_not_mutate);
+function configFindings(config: Options, files: readonly string[]): IngestedFinding[] {
+  const patterns = listOf(config.options['do_not_mutate']);
   const hidden = files.flatMap((file) => {
     const pattern = patterns.find((candidate) => fnmatch(candidate).test(file));
     return pattern === undefined
@@ -110,7 +128,7 @@ function configFindings(config, files) {
           }),
         ];
   });
-  const coveredOnly = isTrue(config.options.mutate_only_covered_lines)
+  const coveredOnly = isTrue(config.options['mutate_only_covered_lines'])
     ? [
         ignoredFinding({
           file: config.file,
@@ -122,14 +140,13 @@ function configFindings(config, files) {
   return [...hidden, ...coveredOnly];
 }
 
-/**
- * What hides production code from mutmut: `# pragma: no mutate` comments, and the project's own
- * [tool.mutmut] (or setup.cfg [mutmut]) do_not_mutate patterns and mutate_only_covered_lines.
- * Each is an enforceable mutant-ignored finding, the way the TypeScript preset reports a Stryker
- * disable comment. Read before nitpicker writes its own [tool.mutmut], so only the project's
- * settings count.
- */
-export function mutationMarkerFindings({ projectRoot, project }) {
+export function mutationMarkerFindings({
+  projectRoot,
+  project,
+}: {
+  readonly projectRoot: string;
+  readonly project: { readonly sourceRoots: readonly string[] };
+}): IngestedFinding[] {
   const files = listProductionModules(projectRoot, project.sourceRoots).map(({ file }) => file);
   const config = readOptions(projectRoot);
   return [

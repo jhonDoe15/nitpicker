@@ -1,15 +1,15 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { ingestMutmut, SUPPORTED_MUTMUT } from '../../ingest/mutmut.mjs';
+import { ingestMutmut, SUPPORTED_MUTMUT } from '../../ingest/mutmut.mts';
 import {
   collectRunData,
   MUTANTS_DIRECTORY,
   NO_COVERAGE_EXIT_CODE,
-} from './python-mutation-data.mjs';
-import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
-import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
-import { probeVersion, run } from '../execution/python-process.mjs';
-import { mutationMarkerFindings } from './mutation-markers.mjs';
+} from './python-mutation-data.mts';
+import { seedMutantsFromBase } from './python-mutation-reuse.mts';
+import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mts';
+import { probeVersion, run } from '../execution/python-process.mts';
+import { mutationMarkerFindings } from './mutation-markers.mts';
 import {
   DISABLE_HINT,
   missingPytest,
@@ -17,13 +17,17 @@ import {
   noTestsCollected,
   runnerSkip,
   skippedFinding,
-} from './test-run/python-mutation-runner.mjs';
+} from './test-run/python-mutation-runner.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import type { SpawnResult } from '../execution/typed/process-types.mts';
+import type { ToolContext } from '../typed/context/tool-context-types.mts';
+import { messageOf } from '../../../../shared/values/readers.mts';
 import {
   everyModuleFails,
   failedOnProjectTests,
   failingTestModules,
   pythonVersionSkip,
-} from './test-run/mutation-scope.mjs';
+} from './test-run/mutation-scope.mts';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
 export const MUTMUT_VERSION_PROBE = [
@@ -39,11 +43,11 @@ const COPY_HINT =
   'If the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.';
 const SUPPORTED_MAJOR = /^3\./u;
 
-function failure(message) {
+function failure(message: string): Error & { rule: string } {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
 }
 
-function finishedRun({ status, stdout, stderr }) {
+function finishedRun({ status, stdout, stderr }: SpawnResult): boolean {
   const output = `${stdout}${stderr}`;
   return (
     status === 0 ||
@@ -51,7 +55,7 @@ function finishedRun({ status, stdout, stderr }) {
   );
 }
 
-function checkInstallation(context) {
+function checkInstallation(context: ToolContext): void {
   const version = probeVersion(context, MUTMUT_VERSION_PROBE);
   if (version === 'missing') {
     throw failure(
@@ -69,7 +73,7 @@ function checkInstallation(context) {
   }
 }
 
-function runMutmut(context, ignored = []) {
+function runMutmut(context: ToolContext, ignored: readonly string[] = []): SpawnResult {
   return run(context, ['mutmut', 'run'], {
     accepted: finishedRun,
     rule: MUTATION_FAILED_RULE,
@@ -78,15 +82,16 @@ function runMutmut(context, ignored = []) {
   });
 }
 
-function withCopyHint(error) {
-  return error.message.includes(STATS_FAILURE) ? failure(`${error.message}\n${COPY_HINT}`) : error;
+function withCopyHint(error: unknown): unknown {
+  const message = messageOf(error);
+  return message.includes(STATS_FAILURE) ? failure(`${message}\n${COPY_HINT}`) : error;
 }
 
-function runPassingTests(context) {
+function runPassingTests(context: ToolContext): { result: SpawnResult; ignored: string[] } {
   try {
     return { result: runMutmut(context), ignored: [] };
   } catch (error) {
-    if (!failedOnProjectTests(error.message)) {
+    if (!failedOnProjectTests(messageOf(error))) {
       throw withCopyHint(error);
     }
     const ignored = failingTestModules(context);
@@ -101,7 +106,7 @@ function runPassingTests(context) {
   }
 }
 
-function mutantRunData(context) {
+function mutantRunData(context: ToolContext): { findings: IngestedFinding[] } {
   const mutants = path.join(context.projectRoot, MUTANTS_DIRECTORY);
   rmSync(mutants, { recursive: true, force: true });
   writeMutmutConfig({ context, fail: failure });
@@ -121,14 +126,17 @@ function mutantRunData(context) {
   return { findings: ingestMutmut(data).findings };
 }
 
-function skippedOnWindows() {
+function skippedOnWindows(): IngestedFinding {
   return skippedFinding(
     'windows',
     'mutmut needs POSIX fork and does not run on native Windows. Run nitpicker inside WSL to enable it.',
   );
 }
 
-export function mutationFindings(context, platform = process.platform) {
+export function mutationFindings(
+  context: ToolContext,
+  platform: string = process.platform,
+): IngestedFinding[] {
   if (platform === 'win32') {
     return [skippedOnWindows()];
   }

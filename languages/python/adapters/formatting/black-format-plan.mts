@@ -1,11 +1,14 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
-import { EMPTY_FILE, followed, shellCommand } from './format-options.mjs';
+import { globToRegExpSource as untypedGlobSource } from '../../../../shared/paths/glob.mjs';
+import { EMPTY_FILE, followed, shellCommand } from './format-options.mts';
+import type { BlackConfig, BlackPlanInput, FormatPlan, Wins } from './format-types.mts';
+
+const globRegExpSource: (glob: string) => string = untypedGlobSource;
 
 const EMPTY_CONFIG = 'nitpicker-black.toml';
 
-function emptyConfig(reportRoot) {
+function emptyConfig(reportRoot: string | undefined): string {
   if (reportRoot === undefined) {
     return EMPTY_FILE;
   }
@@ -14,7 +17,7 @@ function emptyConfig(reportRoot) {
   return file;
 }
 
-function targetFlags({ project, optedIn, targetVersion }) {
+function targetFlags({ project, optedIn, targetVersion }: BlackPlanInput): string[] {
   const own = project?.scope.targetVersions;
   const declared = own !== undefined || (optedIn && project.scope.requiresPython);
   if (declared && optedIn) {
@@ -23,32 +26,38 @@ function targetFlags({ project, optedIn, targetVersion }) {
   return [own ?? targetVersion].flat().flatMap((version) => ['--target-version', version]);
 }
 
-function projectScopeFlags({ scope }) {
+function projectScopeFlags({ scope }: BlackConfig): string[] {
   return [
     ...(scope.exclude === undefined ? [] : ['--exclude', scope.exclude]),
     ...(scope.forceExclude === undefined ? [] : ['--force-exclude', scope.forceExclude]),
   ];
 }
 
-function nitpickerPattern(glob) {
-  return `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`;
+function nitpickerPattern(glob: string): string {
+  return `^/${globRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`;
 }
 
-function extendFlags(project, patterns) {
+function extendFlags(project: BlackConfig | undefined, patterns: readonly string[]): string[] {
   const pieces = [
     project?.scope.extendExclude,
     patterns.length === 0 ? undefined : patterns.join('|'),
-  ].filter((piece) => piece !== undefined);
+  ].filter((piece): piece is string => piece !== undefined);
   if (pieces.length === 0) {
     return [];
   }
   return [
     '--extend-exclude',
-    pieces.length === 1 ? pieces[0] : pieces.map((piece) => `(?:${piece})`).join('|'),
+    pieces.length === 1 ? (pieces[0] ?? '') : pieces.map((piece) => `(?:${piece})`).join('|'),
   ];
 }
 
-function styleFlags({ conventions, wins }) {
+function styleFlags({
+  conventions,
+  wins,
+}: {
+  readonly conventions: BlackPlanInput['conventions'];
+  readonly wins: Wins;
+}): string[] {
   return [
     ...(wins('lineLength') ? [] : ['--line-length', followed(conventions, 'lineLength')]),
     ...(!wins('quotes') && followed(conventions, 'quotes') === 'single'
@@ -57,7 +66,7 @@ function styleFlags({ conventions, wins }) {
   ];
 }
 
-export function blackPlan(settings) {
+export function blackPlan(settings: BlackPlanInput): FormatPlan {
   const { project, optedIn, reportRoot, policyRoot, exclude } = settings;
   const flags = [
     ...styleFlags(settings),
@@ -66,7 +75,7 @@ export function blackPlan(settings) {
   ];
   const run = optedIn ? project.file : emptyConfig(reportRoot);
   const shown = optedIn ? path.relative(policyRoot, project.file) : EMPTY_FILE;
-  function command(file, extend) {
+  function command(file: string, extend: readonly string[]): string[] {
     return ['black', '--config', file, ...flags, ...extendFlags(project, extend)];
   }
   return {

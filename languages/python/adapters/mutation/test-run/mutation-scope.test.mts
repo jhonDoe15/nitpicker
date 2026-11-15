@@ -6,8 +6,8 @@ import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
 import { parseCall } from '../../test-support/typed/json-views.mts';
 import { createToolContext, type ToolContext } from '../../test-support/typed/tool-context.mts';
 import { listOf, textOf } from '../../../../../shared/values/readers.mts';
-import { failedOnProjectTests } from './mutation-scope.mjs';
-import { mutationFindings as untypedFindings } from '../python-mutation.mjs';
+import { failedOnProjectTests } from './mutation-scope.mts';
+import { mutationFindings as untypedFindings } from '../python-mutation.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 

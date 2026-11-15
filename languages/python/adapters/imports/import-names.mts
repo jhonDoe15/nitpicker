@@ -1,7 +1,9 @@
 import { readdirSync } from 'node:fs';
-import { attempt } from '../project-tools/project-tool-layers.mjs';
-import { readProjectFile, toml } from '../../libraries/project-files.mjs';
-import { normalizeRequirementName } from '../../libraries/python-dependencies.mjs';
+import { attempt } from '../project-tools/project-tool-layers.mts';
+import { readProjectFile, toml } from '../../libraries/project-files.mts';
+import { normalizeRequirementName } from '../../libraries/python-dependencies.mts';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import type { DeclaredNames } from './typed/import-scan-types.mts';
 
 const ROOT_TOOL_FILES = new Set([
   'setup.py',
@@ -27,7 +29,7 @@ const TEST_DATA_FOLDERS = new Set([
   'snapshots',
 ]);
 const DECLARED_FORMS = ['*', '*-py', 'py*', 'py-*', 'python-*', '*-python'];
-const DISTRIBUTION_PREFIXES = [
+const DISTRIBUTION_PREFIXES: readonly (readonly [RegExp, readonly string[]])[] = [
   [/^PIL$/u, ['pillow']],
   [/^cv2$/u, ['opencv-']],
   [/^sklearn$/u, ['scikit-learn']],
@@ -54,34 +56,40 @@ const COMPILED_BACKENDS =
   /^(?:meson-python|scikit-build|scikit-build-core|maturin|setuptools-rust|pybind11|nanobind|cython|cffi)$/u;
 const COMPILED_BUILD_FILES = ['meson.build', 'CMakeLists.txt', 'Cargo.toml'];
 
-export function isCheckedFile({ file, kind }) {
+export function isCheckedFile({
+  file,
+  kind,
+}: {
+  readonly file: string;
+  readonly kind?: string;
+}): boolean {
   const parts = file.split('/');
-  const name = parts.at(-1);
+  const name = parts.at(-1) ?? '';
   if (kind === 'test') {
     return (
       COLLECTED_TEST.test(name) && !parts.slice(0, -1).some((part) => TEST_DATA_FOLDERS.has(part))
     );
   }
-  return !TOOL_FILES.has(name) && !(parts.length === 1 && ROOT_TOOL_FILES.has(name));
+  return !(TOOL_FILES.has(name) || (parts.length === 1 && ROOT_TOOL_FILES.has(name)));
 }
 
-function buildRequirements(projectRoot) {
+function buildRequirements(projectRoot: string): string[] {
   const text = readProjectFile(projectRoot, 'pyproject.toml');
   const parsed = text === undefined ? {} : (attempt(() => toml().parse(text)).value ?? {});
-  return (parsed['build-system']?.requires ?? [])
+  return listOf(fieldOf(fieldOf(parsed, 'build-system'), 'requires'))
     .map((requirement) => /^[A-Za-z0-9][A-Za-z0-9._-]*/u.exec(String(requirement))?.[0])
-    .filter((name) => name !== undefined)
+    .filter((name): name is string => name !== undefined)
     .map((name) => normalizeRequirementName(name));
 }
 
-export function declaredNames(projectRoot, declared) {
+export function declaredNames(projectRoot: string, declared: DeclaredNames): Set<string> {
   return new Set([
     ...declared.dependencies.map(({ normalized }) => normalized),
     ...buildRequirements(projectRoot),
   ]);
 }
 
-export function isDeclared(names, top) {
+export function isDeclared(names: ReadonlySet<string>, top: string): boolean {
   const name = normalizeRequirementName(top);
   if (DECLARED_FORMS.some((form) => names.has(form.replace('*', name)))) {
     return true;
@@ -96,11 +104,11 @@ export function isDeclared(names, top) {
   );
 }
 
-export function isGeneratedModule(name) {
+export function isGeneratedModule(name: string): boolean {
   return GENERATED_MODULE.test(name);
 }
 
-export function buildsExtensions(projectRoot) {
+export function buildsExtensions(projectRoot: string): boolean {
   const rootFiles = new Set(readdirSync(projectRoot));
   return (
     buildRequirements(projectRoot).some((name) => COMPILED_BACKENDS.test(name)) ||
