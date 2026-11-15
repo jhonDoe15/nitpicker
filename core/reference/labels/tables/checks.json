@@ -38,6 +38,7 @@
   "repository-hygiene/committed-build-output": ["maintainability"],
   "repository-hygiene/committed-env-file": ["security"],
   "repository-hygiene/committed-private-key": ["security"],
+  "repository-hygiene/field-limit-mismatch": ["bug", "persistence"],
   "repository-hygiene/foreign-key-index": ["performance", "persistence"],
   "repository-hygiene/large-file": ["maintainability"],
   "repository-hygiene/migration-hardcoded-name": ["maintainability", "persistence"],

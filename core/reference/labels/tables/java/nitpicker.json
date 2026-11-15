@@ -42,8 +42,12 @@
   "palantir-java-format/format": ["style"],
   "pmd/CommentedOutCode": ["simplification"],
   "pmd/CopiedConstantInTest": ["tests", "maintainability"],
+  "pmd/HandSplitHttpHeader": ["bug"],
+  "pmd/HttpValueCase": ["bug"],
   "pmd/InlineSuppression": ["maintainability"],
   "pmd/IoCallInLoop": ["performance"],
+  "pmd/MaxValueOverflow": ["bug"],
+  "pmd/NullMapValue": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UntestedRoundTrip": ["tests"],
   "spotbugs/InlineSuppression": ["maintainability"],
@@ -58,5 +62,6 @@
   "spring/risky-startup-flags": ["maintainability", "spring"],
   "spring/unbound-property": ["bug", "spring"],
   "spring/unsafe-diagnostics": ["security", "spring", "persistence"],
+  "spring/untrimmed-request-text": ["bug", "spring"],
   "test-runtime/test-not-run": ["tests"]
 }
