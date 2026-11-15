@@ -1,9 +1,10 @@
-import { existsSync, globSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type * as Vite from 'vite';
-import { configDefaults, defineConfig, type TestProjectConfiguration } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
+import type { TestProjectConfiguration, ViteUserConfig } from 'vitest/config';
 
 function isVite(module: unknown): module is typeof Vite {
   return typeof module === 'object' && module !== null && 'loadConfigFromFile' in module;
@@ -35,15 +36,12 @@ const exclude: string[] = policy.exclude ?? [];
 const testSupportDirectories = policy.layout?.colocatedTests === true ? ['test-support'] : [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];
-
 function testFiles(root: string) {
   return [`${root}/**/*.test.${codeExtensions}`, `${root}/**/*.spec.${codeExtensions}`];
 }
-
 const PROJECT_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
   ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
 );
-
 const unpinned = process.env['NITPICKER_INTERNAL_UNPINNED_MOCKS'] === '1';
 const perProjectPins = { retry: 0, allowOnly: false, ...(unpinned ? {} : { restoreMocks: true }) };
 const MINIMUM_TIMEOUT = 10_000;
@@ -60,7 +58,6 @@ const globalPins = {
   bail: 0,
   passWithNoTests: false,
   dangerouslyIgnoreUnhandledErrors: false,
-  testNamePattern: undefined,
   update: 'none' as const,
 };
 
@@ -95,15 +92,15 @@ function pinnedInline(entry: InlineProject, extended: Timeouts = {}): InlineProj
   };
 }
 
-function directoryConfig(directory: string) {
-  const files = new Set(readdirSync(directory));
-  const name = PROJECT_CONFIG_NAMES.find((candidate) => files.has(candidate));
-  return name === undefined ? undefined : path.join(directory, name);
+function configIn(directory: string) {
+  return PROJECT_CONFIG_NAMES.map((name) => path.join(directory, name)).find((file) =>
+    existsSync(file),
+  );
 }
 
 async function projectAt(projectPath: string): Promise<InlineProject> {
   const isFile = statSync(projectPath).isFile();
-  const configFile = isFile ? projectPath : directoryConfig(projectPath);
+  const configFile = isFile ? projectPath : configIn(projectPath);
   const root = isFile ? path.dirname(projectPath) : projectPath;
   if (configFile === undefined) {
     return pinnedInline({ root });
@@ -116,11 +113,7 @@ function isProjectMatch(match: string) {
   return statSync(match).isDirectory() || PROJECT_CONFIG_FILE.test(path.basename(match));
 }
 
-function isNegatedBy(negated: readonly string[], match: string) {
-  return negated.some((pattern) => path.matchesGlob(path.relative(process.cwd(), match), pattern));
-}
-
-function projectPaths(patterns: readonly string[]) {
+function projectPaths(patterns: readonly string[], root: string) {
   const negated = patterns
     .filter((pattern) => pattern.startsWith('!'))
     .map((pattern) => pattern.slice(1));
@@ -128,31 +121,33 @@ function projectPaths(patterns: readonly string[]) {
     .filter((pattern) => !pattern.startsWith('!'))
     .flatMap((pattern) =>
       GLOB_CHARACTERS.test(pattern)
-        ? globSync(pattern, { exclude: (entry) => entry.includes('node_modules') })
-            .map((match) => path.resolve(match))
+        ? globSync(pattern, { cwd: root, exclude: (name) => name.includes('node_modules') })
+            .map((match) => path.resolve(root, match))
             .filter(isProjectMatch)
-        : [path.resolve(pattern)],
+        : [path.resolve(root, pattern)],
     )
-    .filter((match) => !isNegatedBy(negated, match));
+    .filter(
+      (match) => !negated.some((pattern) => path.matchesGlob(path.relative(root, match), pattern)),
+    );
 }
 
-function pinnedProjects(entries: readonly TestProjectConfiguration[]): TestProjectConfiguration[] {
+function pinnedProjects(
+  entries: readonly TestProjectConfiguration[],
+  root: string,
+): TestProjectConfiguration[] {
   const paths = entries
     .filter((entry) => typeof entry === 'string')
-    .map((entry) => entry.replace('<rootDir>', process.cwd()));
+    .map((entry) => entry.replace('<rootDir>', root));
   return [
-    ...[...new Set(projectPaths(paths))].map(projectAt),
+    ...[...new Set(projectPaths(paths, root))].map(projectAt),
     ...entries.flatMap((entry): TestProjectConfiguration[] => {
       if (typeof entry === 'string') {
         return [];
       }
-      if (entry instanceof Promise) {
-        return [entry.then(pinnedInline)];
-      }
       if (typeof entry === 'function') {
         return [async (environment) => pinnedInline(await entry(environment))];
       }
-      return [pinnedInline(entry)];
+      return [entry instanceof Promise ? entry.then(pinnedInline) : pinnedInline(entry)];
     }),
   ];
 }
@@ -186,7 +181,6 @@ const configWithoutProjectConfig = {
       pinnedInline({
         test: {
           name: 'quality-unit',
-          root: '.',
           include: sourceRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
         },
@@ -194,7 +188,6 @@ const configWithoutProjectConfig = {
       pinnedInline({
         test: {
           name: 'quality-integration',
-          root: '.',
           include: testRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
         },
@@ -203,24 +196,30 @@ const configWithoutProjectConfig = {
     coverage,
   },
 };
+function definesOwnTests(test: object = {}) {
+  return ['projects', 'workspace', 'include'].some((key) => Reflect.get(test, key) !== undefined);
+}
 
-async function layeredOnProjectConfig(projectConfigFile: string) {
+async function layeredOnProjectConfig(projectConfigFile: string, root: string) {
   const loaded = await loadConfigFromFile(projectConfigFile);
   const project = loaded?.config ?? {};
+  const {
+    testNamePattern: _pattern,
+    dir: _dir,
+    outputFile: _output,
+    ...ownTest
+  } = project.test ?? {};
   return {
     ...project,
     plugins: [...(project.plugins ?? []), stripCoverageIgnoreHints],
     test: {
-      ...project.test,
-      projects: project.test?.projects && pinnedProjects(project.test.projects),
-      include: [
-        ...(project.test?.include ?? []),
-        ...[...sourceRoots, ...testRoots].flatMap(testFiles),
-      ],
+      ...ownTest,
+      ...(project.test?.projects && { projects: pinnedProjects(project.test.projects, root) }),
+      ...(definesOwnTests(project.test)
+        ? {}
+        : { include: [...sourceRoots, ...testRoots].flatMap(testFiles) }),
       exclude: [...(project.test?.exclude ?? []), ...nitpickerExclude],
-      dir: undefined,
       reporters: [],
-      outputFile: undefined,
       maxWorkers: 4,
       ...globalPins,
       ...perProjectPins,
@@ -248,13 +247,7 @@ function timeoutLimits() {
 }
 
 function setupFilesOf(value: unknown): string[] {
-  if (typeof value === 'string') {
-    return [value];
-  }
-  if (Array.isArray(value)) {
-    return value.filter((entry: unknown): entry is string => typeof entry === 'string');
-  }
-  return [];
+  return [value].flat().filter((entry): entry is string => typeof entry === 'string');
 }
 
 function timeoutSettings<T extends object>(test: T) {
@@ -272,29 +265,35 @@ function timeoutSettings<T extends object>(test: T) {
   };
 }
 
-export default defineConfig(async () => {
-  const projectConfigFile = PROJECT_CONFIG_NAMES.find((name) => existsSync(name));
+export async function layeredConfig(root = process.cwd()): Promise<ViteUserConfig> {
+  const projectRoot = path.resolve(root);
+  const projectConfigFile = configIn(projectRoot);
   const config =
     projectConfigFile === undefined
       ? configWithoutProjectConfig
-      : await layeredOnProjectConfig(projectConfigFile);
-  if (process.env.NITPICKER_TEST_TIMEOUT_SETUP === undefined) {
+      : await layeredOnProjectConfig(projectConfigFile, projectRoot);
+  if (!process.env['NITPICKER_TEST_TIMEOUT_SETUP']) {
     return config;
   }
-  const projects =
-    config.test.projects === undefined
-      ? undefined
-      : await Promise.all(
-          config.test.projects.map(async (entry) => {
-            const project = await entry;
-            if (typeof project !== 'object') {
-              throw new Error('Nitpicker timeout scopes require inline Vitest projects.');
-            }
-            return { ...project, test: timeoutSettings(project.test ?? {}) };
-          }),
-        );
-  return {
-    ...config,
-    test: { ...timeoutSettings(config.test), ...(projects === undefined ? {} : { projects }) },
-  };
+  const projects = await Promise.all(
+    (config.test.projects ?? []).map(async (entry) => {
+      const project = await entry;
+      if (typeof project !== 'object') {
+        throw new Error('Nitpicker timeout scopes require inline Vitest projects.');
+      }
+      return { ...project, test: timeoutSettings(project.test ?? {}) };
+    }),
+  );
+  const withProjects = config.test.projects === undefined ? {} : { projects };
+  return { ...config, test: { ...timeoutSettings(config.test), ...withProjects } };
+}
+
+export default defineConfig({
+  plugins: [
+    {
+      name: 'nitpicker-quality-config',
+      enforce: 'pre',
+      config: async (u) => layeredConfig(u.root),
+    },
+  ],
 });

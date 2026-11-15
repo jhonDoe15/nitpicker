@@ -130,11 +130,9 @@ describe('quality-area analyzer catalog', () => {
     const qualityConfigPath =
       '../../../../../languages/typescript/preset/defaults/vitest.quality.config.ts';
     const loaded: unknown = await import(qualityConfigPath);
-    const factory = fieldAt(loaded, 'default');
+    const factory = fieldAt(loaded, 'layeredConfig');
     const config: unknown =
-      typeof factory === 'function'
-        ? await Reflect.apply(factory, undefined, [{ command: 'serve', mode: 'test' }])
-        : undefined;
+      typeof factory === 'function' ? await Reflect.apply(factory, undefined, []) : undefined;
     expect(fieldAt(config, 'test', 'maxWorkers')).toBe(4);
   });
   it('plans three balanced CI shards with heavy dependency chains separated', () => {
