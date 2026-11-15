@@ -6,7 +6,7 @@ import type { AnalysisResult } from '../model/run-types.mts';
 import { LOOKUP_ENTRY, LOOKUP_FILE, lookupVariants } from './lookup.mts';
 import type { Variant } from './lookup.mts';
 
-const RESOLVER = '../execution/report/analyzer-metadata.mts#resolveAnalyzerMetadata';
+const RESOLVER = '../execution/report/analyzer-metadata.mts#resolvedAnalyzerMetadata';
 const SEEDED = [
   'seed-omit-resolution',
   'seed-read-before-resolution',
@@ -58,8 +58,8 @@ describe(`coupling to ${LOOKUP_ENTRY} in ${LOOKUP_FILE}`, () => {
       [],
       [
         `${RESOLVER}:throws => return { kind: unresolved, error: error:${RESOLVER}#1 }`,
-        `${RESOLVER}:resolved > cache.read:miss => return { kind: miss }`,
-        `${RESOLVER}:resolved > cache.read:hit => return { kind: hit, report: cache.read#2 }`,
+        `${RESOLVER}:resolved > cache.read:miss => return { kind: miss, metadata: undefined }`,
+        `${RESOLVER}:resolved > cache.read:hit => return { kind: hit, report: cache.read#2, metadata: undefined }`,
       ],
     ]);
   });
@@ -78,14 +78,7 @@ describe(`coupling to ${LOOKUP_ENTRY} in ${LOOKUP_FILE}`, () => {
       lookupVariants('export function lookUpCachedReport() {}\n');
     }
 
-    const edit = [
-      '  try {',
-      '    resolveAnalyzerMetadata(analyzer, resolveContext);',
-      '  } catch (error) {',
-      "    return { kind: 'unresolved', error };",
-      '  }',
-      '',
-    ].join('\n');
+    const edit = '    const metadata = resolvedAnalyzerMetadata(analyzer, resolveContext);\n';
     const hint = `${LOOKUP_FILE} changed, so update the seeded edits in evals/flow-model/real/lookup.mts`;
     const message = `flow-model: seeded edit ${JSON.stringify(edit)} does not match exactly once; ${hint}`;
 
@@ -110,7 +103,7 @@ describe(`coupling to ${LOOKUP_ENTRY} in ${LOOKUP_FILE}`, () => {
       1,
       'resolve-before-read|cache.read|analyzer',
       'definite',
-      'const report = cache.read(analyzer);',
+      'const report = cache.read(analyzer, metadata);',
     ]);
   });
 

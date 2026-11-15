@@ -28,25 +28,32 @@ function isJava(facts) {
   return languageOf(facts.copies[0].path) === 'java';
 }
 
+const TYPE_NOTE =
+  'the copies differ in a type, and a type parameter cannot stand for it after new, in a cast or an instanceof';
+const EXPRESSION_NOTE =
+  'a differing expression needs its type written to become a Supplier: a declared local, a return or an if condition';
+const WHOLE_CLASSES_NOTE =
+  'the copies are in different classes, and only anonymous classes of one class can be extracted together';
+
 function parameterNote(facts) {
   const { parameters = [] } = facts;
   if (parameters.some(({ kind }) => kind === 'type')) {
-    return 'the copies differ in a type, which a parameter of the extracted function cannot carry';
+    return TYPE_NOTE;
   }
-  return isJava(facts) && parameters.some(({ deferred }) => deferred)
-    ? 'a differing expression cannot be passed in Java, because the parameter needs its type written'
-    : undefined;
+  return isJava(facts) && parameters.some(({ deferred }) => deferred) ? EXPRESSION_NOTE : undefined;
 }
 
-function factsNote(facts) {
+function factsNote(facts, recipe) {
   if (isJava(facts) && new Set(facts.copies.map(({ symbol }) => classOf(symbol))).size > 1) {
-    return 'the copies are in different classes';
+    return recipe === RECIPES.java.whole
+      ? WHOLE_CLASSES_NOTE
+      : 'the copies are in different classes';
   }
   return parameterNote(facts);
 }
 
 function recipeNote(recipe) {
-  return (facts) => (recipeFor(facts) === recipe ? factsNote(facts) : undefined);
+  return (facts) => (recipeFor(facts) === recipe ? factsNote(facts, recipe) : undefined);
 }
 
 const RECIPE_DECLINES = Object.freeze(
