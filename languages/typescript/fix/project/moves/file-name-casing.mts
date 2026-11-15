@@ -1,26 +1,20 @@
 import path from 'node:path';
-import {
-  fileNameComplies,
-  fileNameParts,
-  fileNameRuleOptions,
-} from '../../../conventions/file-name-casing.mjs';
-import { planFileMove } from '../edits/file-move.mjs';
-import { declined } from '../edits/text-edits.mjs';
-import { inCasing } from '../model/names.mjs';
-import { isCodeFile, layoutOf } from '../model/project-model.mjs';
-import { lintRecipe } from '../plan/lint-recipe.mjs';
+import { lintRecipe, type PlanRequest } from '../plan/lint-recipe.mts';
+import { fileNameComplies, fileNameParts, fileNameRuleOptions } from '../typed/preset-views.mts';
+import type { FixContext, Planned } from '../typed/project-types.mts';
+import { declined, inCasing, isCodeFile, layoutOf, planFileMove } from '../typed/project-views.mts';
 
 const CASING = /^File name "[^"]+" is not ([\w-]+),/u;
 
-function scopeOf(context) {
+function scopeOf(context: FixContext): (name: string) => boolean {
   const layout = layoutOf(context.inputs);
-  return (name) =>
+  return (name: string) =>
     isCodeFile(name) &&
     (layout.isSourceFile(name) || layout.isTestFile(name)) &&
     !layout.isExcluded(name);
 }
 
-function renamedPath(name, casing) {
+function renamedPath(name: string, casing: string): string | undefined {
   const { base, name: file } = fileNameParts(name);
   const newBase = inCasing(base, casing);
   return newBase === undefined || newBase === ''
@@ -28,7 +22,7 @@ function renamedPath(name, casing) {
     : path.posix.join(path.posix.dirname(name), newBase + file.slice(base.length));
 }
 
-function planMessage({ context, project, name, message }) {
+function planMessage({ context, project, name, message }: PlanRequest): Planned {
   const [, casing] = CASING.exec(message.message) ?? [];
   const to = casing === undefined ? undefined : renamedPath(name, casing);
   if (to === undefined || !fileNameComplies(to, casing, project.read(name))) {

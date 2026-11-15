@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { lintRule } from '../model/lint-rule.mjs';
-import { withProject } from '../model/project-model.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { fileNameCasingRecipe as recipe } from './file-name-casing.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { remainingFindings } from '../test-support/remaining-findings.mts';
+import { fileNameCasingRecipe as recipe } from './file-name-casing.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/file-name-casing';
-
-function remaining(result, name) {
-  const context = {
-    projectRoot: result.projectRoot,
-    files: [{ path: name }],
-    read: (file) => result.tree[file],
-  };
-  return withProject(context, (project) =>
-    lintRule(project, name, { ruleId: 'file-name-casing', options: [{ casing: 'kebab-case' }] }),
-  );
-}
+const LINT = { ruleId: 'file-name-casing', options: [{ casing: 'kebab-case' }] };
 
 describe('fileNameCasingRecipe', () => {
   it('is a review recipe of project scope for both presets', () => {
@@ -53,7 +42,7 @@ describe('fileNameCasingRecipe', () => {
       export const t = user;
       "
     `);
-    expect(remaining(result, 'src/user-service.ts')).toEqual([]);
+    expect(remainingFindings(result, 'src/user-service.ts', LINT)).toEqual([]);
   });
 
   it('moves a file that nothing imports with a plain move', () => {

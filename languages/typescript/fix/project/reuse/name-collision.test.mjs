@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { exportedNameCollisionRecipe as recipe } from './name-collision.mjs';
 import { reuseFindingsFor } from './reuse-findings.mjs';
 

@@ -1,35 +1,39 @@
+import { lintRecipe, type PlanRequest } from '../plan/lint-recipe.mts';
+import {
+  exportsName,
+  inCasing,
+  productionScope,
+  renameEdits,
+  symbolReferenceProblem,
+  verifyEdits,
+} from '../typed/project-views.mts';
 import {
   isReactProject,
-  readDependencyNames,
-} from '../../../preset/eslint-config/scope-support.mjs';
-import {
   namingConvention,
+  readDependencyNames,
   usesRouteHandlerFramework,
-} from '../../../preset/eslint-config/policy/production-policy.mjs';
-import { renameEdits } from '../edits/symbol-rename.mjs';
-import { verifyEdits } from '../edits/verify-edits.mjs';
-import { exportsName, symbolReferenceProblem } from '../edits/declines.mjs';
-import { lintRecipe } from '../plan/lint-recipe.mjs';
-import { inCasing } from '../model/names.mjs';
-import { productionScope } from '../model/project-model.mjs';
+} from '../typed/policy-views.mts';
+import type { FixContext, Planned } from '../typed/project-types.mts';
 
 const MESSAGE = /name `([^`]+)` must match one of the following formats: ([^\n]+)$/u;
 const UNDERSCORES = /^_*/u;
 
-function expectedName(message) {
+function expectedName(
+  message: string,
+): { readonly name: string; readonly expected: string } | undefined {
   const [, name, formats] = MESSAGE.exec(message) ?? [];
-  if (name === undefined) {
+  if (name === undefined || formats === undefined) {
     return undefined;
   }
-  const [format] = formats.split(', ');
-  const [prefix] = UNDERSCORES.exec(name);
+  const [format = ''] = formats.split(', ');
+  const [prefix = ''] = UNDERSCORES.exec(name) ?? [];
   const converted = inCasing(name.slice(prefix.length), format);
   return converted === undefined || converted === ''
     ? undefined
     : { name, expected: prefix + converted };
 }
 
-function optionsFor(context) {
+function optionsFor(context: FixContext): readonly unknown[] {
   const { projectRoot, inputs = {} } = context;
   const layout = inputs.layout;
   return namingConvention({
@@ -42,7 +46,7 @@ function optionsFor(context) {
   }).slice(1);
 }
 
-function planMessage({ context, project, name, message }) {
+function planMessage({ context, project, name, message }: PlanRequest): Planned | undefined {
   const wanted = expectedName(message.message);
   if (message.messageId !== 'doesNotMatchFormat' || wanted === undefined) {
     return undefined;
