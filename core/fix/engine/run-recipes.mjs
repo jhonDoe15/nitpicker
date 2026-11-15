@@ -83,7 +83,8 @@ function findingText({ recipe, fix }) {
 }
 
 function findingTexts({ recipe, fix }) {
-  return [fix.finding, ...(fix.alsoFixes ?? [])].map((finding) => textOf(recipe, finding));
+  const texts = [fix.finding, ...(fix.alsoFixes ?? [])].map((finding) => textOf(recipe, finding));
+  return [...new Set(texts)];
 }
 
 function leftNote(entry) {

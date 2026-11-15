@@ -37,12 +37,23 @@ export function readerFor(root, sources, parse) {
       ? [file.slice(0, file.length - tail.length)]
       : [];
   });
+  const planned = new Map(
+    sources.map(({ file, text }) => [
+      `${PACKAGE.exec(text)?.[1] ?? ''}.${file
+        .split('/')
+        .at(-1)
+        .replace(/\.java$/u, '')}`.replace(/^\./u, ''),
+      text,
+    ]),
+  );
   return {
     open(qualified) {
       const relative = `${qualified.replaceAll('.', '/')}.java`;
-      const text = prefixes
-        .map((prefix) => readRealInside(root, `${prefix}${relative}`, 'utf8'))
-        .find((found) => found !== undefined);
+      const text =
+        planned.get(qualified) ??
+        prefixes
+          .map((prefix) => readRealInside(root, `${prefix}${relative}`, 'utf8'))
+          .find((found) => found !== undefined);
       const tree = text === undefined ? undefined : parse(text);
       return tree ? { rootNode: tree.rootNode, release: () => tree.delete() } : undefined;
     },
@@ -90,7 +101,7 @@ function constructorsOf(classNode) {
   }));
 }
 
-function importsOf(root) {
+export function importsOf(root) {
   return root.namedChildren
     .filter(({ type }) => type === 'import_declaration')
     .map(({ text }) => IMPORT.exec(text))

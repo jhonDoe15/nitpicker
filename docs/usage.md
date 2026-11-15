@@ -1985,13 +1985,14 @@ nothing else:
   `git apply <output>/fix.patch` run there gives the tree a real `--fix` gives.
 - `fixes.json`: `{ "fixes": [...] }`, one entry per fix with its `finding` (`tool`, `rule`, `path`,
   `line`) and `recipe` for a recipe, or its `tool` for a fixer that rewrites whole files, plus its
-  `safety` (`safe` or `review`) and the `files` it touches.
+  `safety` (`safe` or `review`) and the `files` it touches. A fix that repairs several findings at
+  once (the Java extraction of all the copies of two files) lists the others in `alsoFindings`.
 
 `fix.patch` holds file changes only. A fix that untracks a path (the `untrack-committed-files`
 recipe) changes the git index, which a patch cannot hold: `fixes.json` lists it, and a real `--fix`
 run untracks the path. A dry run leaves the index as it was.
 
-It prints one line per fix, at most 20 of them: `fixes.json` has the rest. The same cap holds for
+It prints one line per fixed finding, at most 20 of them: `fixes.json` has the rest. The same cap holds for
 the "Fixed files", "Fixed findings" and "Fix notes" lists of a `--fix` run; when one is cut, the
 full lists are in `fix.log` in the output folder. The comparison that follows runs on the unfixed tree, so the exit
 code is the one of a run without `--fix`. `--dry-run` only works with `--fix`. A plain `--fix` run

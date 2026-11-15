@@ -5,6 +5,7 @@ import { indentUnit } from '../java-extract.mjs';
 import { nameCollisions, suppressions } from '../syntax.mjs';
 import { crossExtraction } from './cross-extract.mjs';
 import { codeOf, headerOf, importsFor, meaningProblem, packageOf } from './names/imports.mjs';
+import { inheritedProblem } from './names/inherited.mjs';
 import { importEditing } from './names/qualified.mjs';
 import {
   classNameFor,
@@ -19,6 +20,7 @@ const NO_NAME = 'the class names of the copies share no word to name a shared cl
 const INTERFACES = 'the copies need two different interfaces of the same name';
 const SUPPRESSIONS = 'the copies carry different @SuppressWarnings annotations';
 const PACKAGES = 'the copies are in different packages';
+const CLASSES = 'the pairs of the two files are in different classes';
 
 function ownerName(method) {
   return method.parent.parent.childForFieldName('name').text;
@@ -32,23 +34,36 @@ function suppressionProblem({ pairs }) {
   return differ(pairs[0].map((method) => method.parent.parent)) || pairs.some(differ);
 }
 
+function inOneClassEach({ pairs }) {
+  return pairs[0].every(
+    (_method, side) => new Set(pairs.map((pair) => pair[side].parent.parent.startIndex)).size === 1,
+  );
+}
+
+function nameProblem(group, scan, name) {
+  const [first, second] = group.sources;
+  const folder = path.posix.dirname(first.file) === '.' ? '' : path.posix.dirname(first.file);
+  const pack = packageOf(first.rootNode);
+  const used = [first, second].some(({ rootNode }) => nameCollisions(rootNode).has(name));
+  const disk = used
+    ? `the name ${name} is used in a copy`
+    : diskProblem({ scan, folders: scan.everySet(folder, pack), name });
+  return disk === undefined ? { name, folder, folders: packageFolders(folder, pack) } : disk;
+}
+
 function groupProblem(group, scan) {
   const [first, second] = group.sources;
   if (packageOf(first.rootNode) !== packageOf(second.rootNode)) {
     return PACKAGES;
   }
+  if (!inOneClassEach(group)) {
+    return CLASSES;
+  }
   if (suppressionProblem(group)) {
     return SUPPRESSIONS;
   }
   const name = classNameFor(group.methods.map(ownerName));
-  if (name === undefined) {
-    return NO_NAME;
-  }
-  const folder = path.posix.dirname(first.file) === '.' ? '' : path.posix.dirname(first.file);
-  const folders = packageFolders(folder, packageOf(first.rootNode));
-  const used = [first, second].some(({ rootNode }) => nameCollisions(rootNode).has(name));
-  const disk = used ? `the name ${name} is used in a copy` : diskProblem({ scan, folders, name });
-  return disk === undefined ? { name, folder, folders } : disk;
+  return name === undefined ? NO_NAME : nameProblem(group, scan, name);
 }
 
 function mergedInterfaces(extractions) {
@@ -166,14 +181,13 @@ function groupOutcomes(group, context) {
   if (extracted.kept.length === 0) {
     return notes;
   }
-  const meaning = meaningProblem({
-    sources: group.sources,
-    texts: extracted.kept.flatMap(({ member, interfaces }) => [
-      member,
-      ...interfaces.map(({ text }) => text),
-    ]),
-    siblings: folderTypes(scan, found.folders),
-  });
+  const texts = extracted.kept.flatMap(({ member, interfaces }) => [
+    member,
+    ...interfaces.map(({ text }) => text),
+  ]);
+  const meaning =
+    meaningProblem({ sources: group.sources, texts, siblings: folderTypes(scan, found.folders) }) ??
+    inheritedProblem({ methods: group.pairs.flat(), texts, typeSources });
   const done = meaning === undefined ? fixesOf(group, found, extracted) : { declined: meaning };
   return done.declined === undefined
     ? [...done.outcomes, ...notes]
