@@ -32,31 +32,31 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   mutants left out by rule and the 14 that stay, listed one by one).
   `languages/java/adapters/reporting/kotlin-generated-filter.test.mjs` reads the mutation facts of a
   report directory: a good report, the empty report of a module without Kotlin files, a missing
-  one and unusable ones. `languages/java/adapters/kotlin/report-names/kotlin-report-contract.test.mjs`
+  one and unusable ones. `languages/java/adapters/kotlin/report-names/kotlin-report-contract.test.mts`
   fails when the no-Kotlin-files branch of a build tool lacks one of the three reports.
-- `languages/java/adapters/kotlin-e2e/mutation/kotlin-mutation-facts.e2e.test.mjs` (with `npm run test:kotlin`):
+- `languages/java/adapters/kotlin-e2e/mutation/kotlin-mutation-facts.e2e.test.mts` (with `npm run test:kotlin`):
   the facts program on a source file with every construct the rules use, and on the measurement
   project, whose facts must equal the committed `kotlin-measurement-facts.json`
   (`ingest/kotlin-mutants/test-support/`).
-- `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
+- `languages/java/adapters/kotlin/kotlin-tools.test.mts`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).
-- `languages/java/adapters/kotlin/kotlin-metrics.test.mjs`: structure findings, the JaCoCo method selection
+- `languages/java/adapters/kotlin/kotlin-metrics.test.mts`: structure findings, the JaCoCo method selection
   (facade, accessor, lambda, `$default`, nested function) and the CRAP score and ratchet on recorded
   data; `java-coupling.test.mjs` (Kotlin classes, file modules, stability direction) and the CLI tests
   with the fake `gradle` (structure ratchet, a clone found by jscpd).
 - `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
-- `languages/java/adapters/kotlin/rules/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
-  `kotlin/rules/test-support/kotlin-rule-cases.mjs` gets its message from the recorded detekt text and must name the
+- `languages/java/adapters/kotlin/rules/kotlin-rules.test.mts`, `kotlin-suppressions.test.mts`: every case of
+  `kotlin/rules/test-support/kotlin-rule-cases.mts` gets its message from the recorded detekt text and must name the
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
-- `languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mjs` (its Java twin is
+- `languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mts` (its Java twin is
   `java-e2e/red-base/java-red-base.e2e.test.mjs`, under `NITPICKER_JAVA_E2E=1`): a base whose tests
   fail and a head that repairs them. See "A base whose tests fail" in `usage.md`.
   `red-base/tests-failed.test.mjs` covers the rerun with a fake Gradle.
-- `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+- `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mts`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle, an Android SDK (`ANDROID_HOME` or
   `ANDROID_SDK_ROOT`, set on GitHub's Ubuntu runners) and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
@@ -74,7 +74,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   a one-way rule off, lower its severity or exclude paths, and a config with the `formatting` and
   `compose` rulesets still runs; a `.kts` script in the source directory does not crash detekt;
   `runBlocking` behind a wildcard import is caught; an exception lifts one rule for one path; Kotlin test sources
-  (`kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs`) are linted: a legacy broad catch in a test stays baselined when its line
+  (`kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mts`) are linted: a legacy broad catch in a test stays baselined when its line
   moves, a new `!!`, `lateinit`, `runBlocking` and misindented line in a test are checked against the
   rules detekt excludes for tests, an inline suppression in a test file is reported, and an exception lifts the
   broad-catch ban for a test path; a new
@@ -86,24 +86,24 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   stability-direction violation between Kotlin packages, new and baselined. These cases share one
   head commit and one diff, and the project forces another Kotlin version onto the compiler
   configuration. It needs network access to Maven Central for the Kotlin compiler as well.
-- `languages/java/adapters/kotlin/scan/**/*.test.mjs`: each source check on its banned forms and on
+- `languages/java/adapters/kotlin/scan/**/*.test.mts`: each source check on its banned forms and on
   the correct code next to them (aliases, comments, strings, framework annotations), the
   position-keeping scanner, the composition root and the framework allowances.
-  `kotlin/rules/kotlin-messages.test.mjs`: every enforceable Kotlin finding ends with the shared
+  `kotlin/rules/kotlin-messages.test.mts`: every enforceable Kotlin finding ends with the shared
   exception sentence for the rule it prints, the config accepts that rule, and no Kotlin message
-  file writes a route of its own except the suppression scan. `kotlin-compiler.test.mjs` and
-  `kotlin-class-limits.test.mjs`: the kotlinc lint reader and the class limits.
-- `languages/java/adapters/kotlin/review-rules/spring/spring-findings.test.mjs`: the Spring rules on facts
+  file writes a route of its own except the suppression scan. `kotlin-compiler.test.mts` and
+  `kotlin-class-limits.test.mts`: the kotlinc lint reader and the class limits.
+- `languages/java/adapters/kotlin/review-rules/spring/spring-findings.test.mts`: the Spring rules on facts
   recorded from `languages/java/adapters/fixtures/kotlin-spring-project` (`kotlin-spring-facts.json`): every
   banned form in `bad/` is reported, nothing in `good/`, every ported rule has a banned case, the ids exist
   in `spring-ruleset.xml` and accept an exception, finality only with the all-open options, and a
-  repository declared in Java. `kotlin-e2e/kotlin-spring-rules.e2e.test.mjs` runs the same project through
+  repository declared in Java. `kotlin-e2e/kotlin-spring-rules.e2e.test.mts` runs the same project through
   real Gradle, checks that the findings equal those of the recorded facts (so the recording stays
   current and the all-open options reach the manifest), and lifts one rule with an exception.
-- `languages/java/adapters/kotlin-e2e/guards/*.e2e.test.mjs`: real Gradle on the source
+- `languages/java/adapters/kotlin-e2e/guards/*.e2e.test.mts`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
-- `languages/java/adapters/kotlin-e2e/maven/*.e2e.test.mjs`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
+- `languages/java/adapters/kotlin-e2e/maven/*.e2e.test.mts`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
   `npm run test:kotlin`; `NITPICKER_MAVEN` overrides the `mvn` on the PATH). They run on the fixture
   `languages/java/maven/fixtures/kotlin-single` (the same sources as the Gradle fixture, with a
   `kotlin-maven-plugin` POM that generates `Api.kt` into `target/generated-sources`) and repeat the
@@ -114,10 +114,10 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   `kotlin/maven-failure`, and every one-way rule case. One test runs the Gradle and the Maven
   fixture on the same sources and asserts the findings are equal. Another runs the reactor
   `fixtures/kotlin-multi-module` (two Kotlin modules and a Java-only one) with a slow-test
-  threshold of -1, and one runs the Kotlin Spring project of `kotlin-spring-rules.e2e.test.mjs` on
-  Maven and expects the same findings as on Gradle. `kotlin-maven-build-config.e2e.test.mjs` covers what the build declares: a formatter named
+  threshold of -1, and one runs the Kotlin Spring project of `kotlin-spring-rules.e2e.test.mts` on
+  Maven and expects the same findings as on Gradle. `kotlin-maven-build-config.e2e.test.mts` covers what the build declares: a formatter named
   by a Spotless step next to a Java formatter, a Java test that calls a Kotlin test helper, and a
-  folder the build does not compile. `kotlin-maven-test-frameworks.e2e.test.mjs` runs the Kotest,
+  folder the build does not compile. `kotlin-maven-test-frameworks.e2e.test.mts` runs the Kotest,
   JUnit 4 and TestNG fixtures (`fixtures/kotlin-kotest`, `kotlin-junit4`, `kotlin-testng`) for
   coverage, mutants, slow tests and ArchUnit rules, and the lint file binds the ktlint and detekt
   Maven plugins to the build to show that nitpicker skips them. The one-way rule cases are split into

@@ -16,12 +16,13 @@ export function countFindings(findings) {
 
 export function recipeRuns(events) {
   const runs = new Map();
-  for (const { recipe, files, finding } of events.filter((event) => event.recipe !== undefined)) {
+  for (const event of events.filter(({ recipe }) => recipe !== undefined)) {
+    const { recipe, files, finding, alsoFindings = [] } = event;
     const run = runs.get(recipe) ?? { id: recipe, files: new Set(), findings: [] };
     for (const name of files) {
       run.files.add(name);
     }
-    run.findings.push(finding);
+    run.findings.push(finding, ...alsoFindings);
     runs.set(recipe, run);
   }
   return [...runs.values()];

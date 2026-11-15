@@ -1,0 +1,409 @@
+import {
+  nestedCheckout as untypedNestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+import { useTempProjects } from '../rules/test-support/temp-projects.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
+import { describe, expect, it } from 'vitest';
+import { type Allowed, withFrameworkAllowances } from './typed/typed-allowances.mts';
+import {
+  KOTLIN_SOURCE_RULES as UNTYPED_KOTLIN_SOURCE_RULES,
+  readKotlinSourceFindings as untypedReadKotlinSourceFindings,
+} from './kotlin-scan.mjs';
+
+type SourceFinding = Allowed & {
+  identity: string;
+  classification: string;
+};
+
+type Manifest = {
+  kotlinSourceRoots: string[];
+  kotlinTestSourceRoots: string[];
+};
+
+type FilesByPath = Record<string, string>;
+
+const readKotlinSourceFindings: (projectRoot: string, manifest: Manifest) => SourceFinding[] =
+  untypedReadKotlinSourceFindings;
+const KOTLIN_SOURCE_RULES: string[] = UNTYPED_KOTLIN_SOURCE_RULES;
+const nestedCheckout: (directory: string, files: FilesByPath) => FilesByPath =
+  untypedNestedCheckout;
+const { gitCheckout: untypedGitCheckout } = useGitCheckouts();
+
+const { projectWith } = useTempProjects('nitpicker-kotlin-scan-');
+
+function gitCheckout(files: FilesByPath, ignored: string[]): string {
+  return textOf(Reflect.apply(untypedGitCheckout, undefined, [files, ignored]));
+}
+
+function matching(pattern: RegExp): unknown {
+  return expect.stringMatching(pattern);
+}
+
+const manifest = {
+  kotlinSourceRoots: ['src/main/kotlin', 'src/main/missing'],
+  kotlinTestSourceRoots: ['src/test/kotlin'],
+};
+
+describe('readKotlinSourceFindings', () => {
+  it('reports each rule with the tool name, a line and a line-free identity numbered per file', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/State.kt': 'package demo\n\nvar a = 0\nvar a = 0\n',
+    });
+
+    expect(readKotlinSourceFindings(root, manifest)).toEqual([
+      {
+        tool: 'kotlin-source',
+        rule: 'MutableModuleState',
+        path: 'src/main/kotlin/demo/State.kt',
+        identity: matching(/^MutableModuleState:[0-9a-f]+$/),
+        message: matching(/^Keep state in an instance/),
+        classification: 'enforceable',
+        location: { line: 3 },
+      },
+      {
+        tool: 'kotlin-source',
+        rule: 'MutableModuleState',
+        path: 'src/main/kotlin/demo/State.kt',
+        identity: matching(/^MutableModuleState:[0-9a-f]+#2$/),
+        message: matching(/^Keep state in an instance/),
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
+  });
+
+  it('reads the enums and property types of every main file for the security checks', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/Sort.kt':
+        'package demo\n\nenum class Sort(val sql: String) { NAME("name") }\n',
+      'src/main/kotlin/demo/Users.kt': [
+        'package demo',
+        '',
+        'class Users(private val jdbc: JdbcTemplate) {',
+        `    fun sorted(sort: Sort) = jdbc.query("SELECT * FROM users ORDER BY \${sort.sql}", mapper)`,
+        '    fun named(name: String) = jdbc.query("SELECT * FROM users WHERE name = \'$name\'", mapper)',
+        '    fun etag(body: String) = DigestUtils.md5Hex(body)',
+        '}',
+        '',
+      ].join('\n'),
+    });
+
+    expect(
+      readKotlinSourceFindings(root, manifest).map(({ rule, location, message }) => [
+        rule,
+        location.line,
+        message.slice(0, 20),
+      ]),
+    ).toEqual([
+      ['SqlStringBuilding', 5, 'Pass values as bind '],
+      ['WeakHash', 6, 'Hash with `MessageDi'],
+    ]);
+  });
+
+  it('keeps the identity when lines move', () => {
+    const before = projectWith({ 'src/main/kotlin/A.kt': 'var a = 0\n' });
+    const after = projectWith({ 'src/main/kotlin/A.kt': '\n\nval b = 1\nvar a = 0\n' });
+
+    expect(readKotlinSourceFindings(after, manifest)[0]?.identity).toBe(
+      readKotlinSourceFindings(before, manifest)[0]?.identity,
+    );
+  });
+
+  it('runs the production rules on main sources and the test-class rule on test sources', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/Fixture.kt':
+        'package demo\n\nimport io.mockk.mockk\n\nclass OrderTest\n',
+      'src/test/kotlin/demo/OrderTest.kt':
+        'package demo\n\nvar shared = 0\n\nclass OrderTest {\n    fun setUp() {}\n}\n',
+    });
+
+    expect(
+      readKotlinSourceFindings(root, manifest).map(({ path: file, rule }) => `${file} ${rule}`),
+    ).toEqual([
+      'src/main/kotlin/demo/Fixture.kt TestHelperInSource',
+      'src/test/kotlin/demo/OrderTest.kt TestClassWithoutTestCases',
+    ]);
+  });
+
+  it('reports a standard stream in a main source that is not the entry point, and not in a test', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/Report.kt': 'package demo\n\nfun show() = System.out.append("x")\n',
+      'src/main/kotlin/demo/App.kt': 'package demo\n\nfun main() = show(System.out)\n',
+      'src/test/kotlin/demo/ReportTest.kt': 'package demo\n\nval saved = System.out\n',
+    });
+
+    expect(
+      readKotlinSourceFindings(root, manifest).map(({ path: file, rule }) => `${file} ${rule}`),
+    ).toEqual(['src/main/kotlin/demo/Report.kt StandardStreamOutsideEntryPoint']);
+  });
+
+  it('flags the cast operator in main and test sources and keeps the identity when lines move', () => {
+    const root = projectWith({
+      'src/main/kotlin/demo/Parse.kt': 'package demo\n\nfun id(value: Any) = value as Long\n',
+      'src/test/kotlin/demo/ParseTest.kt': 'package demo\n\nval id = loaded() as Long\n',
+    });
+    const moved = projectWith({
+      'src/main/kotlin/demo/Parse.kt': 'package demo\n\n\n\nfun id(value: Any) = value as Long\n',
+    });
+
+    const found = readKotlinSourceFindings(root, manifest);
+
+    expect(found.map(({ path: file, rule }) => `${file} ${rule}`)).toEqual([
+      'src/main/kotlin/demo/Parse.kt UnsafeCastOperator',
+      'src/test/kotlin/demo/ParseTest.kt UnsafeCastOperator',
+    ]);
+    expect(readKotlinSourceFindings(moved, manifest)[0]?.identity).toBe(found[0]?.identity);
+  });
+
+  it('skips a file whose header says it is generated, and files that are not Kotlin', () => {
+    const root = projectWith({
+      'src/main/kotlin/Gen.kt': '// @generated by protoc\npackage demo\n\nvar a = 0\n',
+      'src/main/kotlin/notes.txt': 'var a = 0\n',
+    });
+
+    expect(readKotlinSourceFindings(root, manifest)).toEqual([]);
+  });
+
+  it('names every rule it reports in KOTLIN_SOURCE_RULES', () => {
+    expect(KOTLIN_SOURCE_RULES.toSorted()).toEqual(
+      [
+        'BacktrackingRegex',
+        'BooleanFlagParameter',
+        'CachedDeferredKeepsFailure',
+        'CatchOnlyLogsOrReturnsDefault',
+        'ChildCoroutineOutlivesResource',
+        'CleanupSkippedOnFailure',
+        'CommentedOutCode',
+        'CompatibilityShim',
+        'ConfigurationReadOutsideCompositionRoot',
+        'CredentialLiteral',
+        'DefaultTimeZone',
+        'DetachedTestCase',
+        'FutureWithoutException',
+        'GeneratedOnHandWrittenCode',
+        'GenericFileName',
+        'GenericPackageName',
+        'GenericTypeName',
+        'HandSplitHttpHeader',
+        'HardcodedSecret',
+        'HttpValueCase',
+        'HttpWithoutTimeout',
+        'JvmSyntheticOnHandWrittenCode',
+        'LegacyCalendarApi',
+        'LinearLookupInLoop',
+        'ListUsedAsSet',
+        'LogExceptionFirst',
+        'LogFormatArguments',
+        'LogStringConcatenation',
+        'MutableModuleState',
+        'MutationIgnoreMarker',
+        'NullMapValue',
+        'OperandSlip',
+        'ParameterMutation',
+        'PendingFuturesNotFailedOnClose',
+        'PlainTextRegex',
+        'ProcessWaitWithoutTimeout',
+        'ReactorBlockWithoutTimeout',
+        'RedundantStreamStep',
+        'RegexPartDefect',
+        'RepeatedStringLiteral',
+        'SecretInLog',
+        'ShellCommand',
+        'SimplerBooleanLogic',
+        'SortForExtreme',
+        'SqlStringBuilding',
+        'StandardStreamOutsideEntryPoint',
+        'SuspendFunInFinallySection',
+        'TestClassWithoutTestCases',
+        'TestHelperInSource',
+        'TimeUnitMismatch',
+        'TimerNotStoppedOnClose',
+        'TlsVerificationOff',
+        'TriStateBoolean',
+        'UnboundedCollectionProperty',
+        'UnboundedFanOut',
+        'UnboundedQueryArray',
+        'UnboundedReactiveFanOut',
+        'UnboundedWait',
+        'UnclosedInlineResource',
+        'UnhandledRootCoroutine',
+        'UnorderedQuery',
+        'UnquotedRegexValue',
+        'UnsafeCastOperator',
+        'UnsafeDeserialization',
+        'UriCreateDynamic',
+        'WeakHash',
+      ].map((rule) => `kotlin-source/${rule}`),
+    );
+  });
+});
+
+describe('withFrameworkAllowances', () => {
+  const environment = (file: string) => ({
+    tool: 'detekt',
+    rule: 'detekt.style.ForbiddenMethodCall',
+    path: file,
+    message:
+      'The method `java.lang.System.getenv` has been forbidden: Read it in the composition root.',
+    location: { line: 3 },
+  });
+  const spread = (file: string, line: number) => ({
+    tool: 'detekt',
+    rule: 'detekt.performance.SpreadOperator',
+    path: file,
+    message:
+      'Used in this way a spread operator causes a full copy of the array to be created before calling a method.',
+    location: { line },
+  });
+  const root = () =>
+    projectWith({
+      'src/main/kotlin/App.kt':
+        'package demo\n\nfun main(args: Array<String>) {\n    runApplication<Shop>(*args)\n    call(*args)\n}\n',
+      'src/main/kotlin/Service.kt': 'package demo\n\nfun home() = System.getenv("HOME")\n',
+    });
+
+  it('lets the composition root read the environment and nothing else', () => {
+    const project = root();
+    const kept = withFrameworkAllowances(
+      [
+        environment('src/main/kotlin/App.kt'),
+        environment('src/main/kotlin/Service.kt'),
+        environment('src/main/kotlin/Gone.kt'),
+      ],
+      { projectRoot: project },
+    );
+
+    expect(kept.map(({ path: file }) => file)).toEqual([
+      'src/main/kotlin/Service.kt',
+      'src/main/kotlin/Gone.kt',
+    ]);
+  });
+
+  it('lets a static main in an object read the environment', () => {
+    const project = projectWith({
+      'src/main/kotlin/Cli.kt':
+        'package demo\n\nobject Cli {\n    @JvmStatic\n    fun main(args: Array<String>) = run(System.getenv("HOME"))\n}\n',
+    });
+
+    expect(
+      withFrameworkAllowances([environment('src/main/kotlin/Cli.kt')], { projectRoot: project }),
+    ).toEqual([]);
+  });
+
+  it('lets a framework configuration file read the environment', () => {
+    const project = projectWith({
+      'src/main/kotlin/Wiring.kt':
+        'package demo\n\nimport dagger.Module\nimport dagger.Provides\n\n@Module\nobject Wiring {\n    @Provides\n    fun region(): String = System.getenv("REGION")\n}\n',
+      'src/main/kotlin/Shop.kt':
+        'package demo\n\nimport com.google.inject.AbstractModule\n\nclass Shop : AbstractModule()\n',
+    });
+
+    expect(
+      withFrameworkAllowances(
+        [environment('src/main/kotlin/Wiring.kt'), environment('src/main/kotlin/Shop.kt')],
+        { projectRoot: project },
+      ),
+    ).toEqual([]);
+  });
+
+  it('lets a Spring project spread the arguments into runApplication only', () => {
+    const project = root();
+    const findings = [spread('src/main/kotlin/App.kt', 4), spread('src/main/kotlin/App.kt', 5)];
+
+    expect(
+      withFrameworkAllowances(findings, { projectRoot: project, spring: true }).map(
+        ({ location }) => location.line,
+      ),
+    ).toEqual([5]);
+    expect(withFrameworkAllowances(findings, { projectRoot: project })).toEqual(findings);
+  });
+
+  it('keeps the forbidden-API calls to main sources', () => {
+    const forbidden = (rule: string, kind: string, name: string, file: string) => ({
+      tool: 'detekt',
+      rule: `detekt.style.${rule}`,
+      path: file,
+      message: `The ${kind} \`${name}\` has been forbidden: reason.`,
+      location: { line: 1 },
+    });
+    const test = 'src/test/kotlin/demo/ShopTest.kt';
+    const findings = [
+      forbidden('ForbiddenMethodCall', 'method', 'java.lang.Thread.sleep', test),
+      forbidden('ForbiddenMethodCall', 'method', 'java.time.Instant.now()', test),
+      forbidden('ForbiddenImport', 'import', 'java.util.Date', test),
+      forbidden('ForbiddenMethodCall', 'method', 'kotlinx.coroutines.runBlocking', test),
+      forbidden('ForbiddenMethodCall', 'method', 'kotlin.io.println', test),
+      forbidden('ForbiddenMethodCall', 'method', 'com.acme.Legacy.call', test),
+      forbidden('ForbiddenMethodCall', 'method', 'java.lang.Thread.sleep', 'src/main/kotlin/A.kt'),
+    ];
+
+    const kept = withFrameworkAllowances(findings, {
+      projectRoot: root(),
+      testRoots: ['src/test/kotlin'],
+    });
+
+    expect(kept).toEqual(findings.slice(3));
+  });
+
+  it('keeps one finding for a Thread.sleep in a suspend function and drops the repeat of the forbidden call', () => {
+    const at = (rule: string, message: string, line: number) => ({
+      tool: 'detekt',
+      rule,
+      path: 'src/main/kotlin/demo/Shop.kt',
+      message,
+      location: { line },
+    });
+    const sleep = at(
+      'detekt.coroutines.SleepInsteadOfDelay',
+      'This use of Thread.sleep() inside a suspend function should be replaced by delay().',
+      4,
+    );
+    const forbidden = (line: number) =>
+      at(
+        'detekt.style.ForbiddenMethodCall',
+        'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code.',
+        line,
+      );
+
+    expect(
+      withFrameworkAllowances([sleep, forbidden(4), forbidden(9)], { projectRoot: root() }),
+    ).toEqual([sleep, forbidden(9)]);
+  });
+
+  it('keeps the dispatcher injection to main sources', () => {
+    const dispatcher = (file: string) => ({
+      tool: 'detekt',
+      rule: 'detekt.coroutines.InjectDispatcher',
+      path: file,
+      message: 'Dispatcher IO is used without dependency injection.',
+      location: { line: 1 },
+    });
+    const findings = [
+      dispatcher('src/test/kotlin/demo/ShopTest.kt'),
+      dispatcher('src/main/kotlin/Shop.kt'),
+    ];
+
+    expect(
+      withFrameworkAllowances(findings, { projectRoot: root(), testRoots: ['src/test/kotlin'] }),
+    ).toEqual(findings.slice(1));
+  });
+});
+
+describe('readKotlinSourceFindings in a Git checkout', () => {
+  it('reads the files of the checkout, not ignored folders or nested checkouts', () => {
+    const state = 'package demo\n\nvar a = 0\n';
+    const root = gitCheckout(
+      {
+        'src/main/kotlin/demo/State.kt': state,
+        'src/main/kotlin/gen/Gen.kt': state,
+        ...nestedCheckout('src/main/kotlin/agent', { 'Other.kt': state }),
+      },
+      ['src/main/kotlin/gen/'],
+    );
+
+    expect(readKotlinSourceFindings(root, manifest).map(({ path: file }) => file)).toEqual([
+      'src/main/kotlin/demo/State.kt',
+    ]);
+  });
+});

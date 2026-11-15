@@ -2005,13 +2005,14 @@ nothing else:
   `git apply <output>/fix.patch` run there gives the tree a real `--fix` gives.
 - `fixes.json`: `{ "fixes": [...] }`, one entry per fix with its `finding` (`tool`, `rule`, `path`,
   `line`) and `recipe` for a recipe, or its `tool` for a fixer that rewrites whole files, plus its
-  `safety` (`safe` or `review`) and the `files` it touches.
+  `safety` (`safe` or `review`) and the `files` it touches. A fix that repairs several findings at
+  once (the Java extraction of all the copies of two files) lists the others in `alsoFindings`.
 
 `fix.patch` holds file changes only. A fix that untracks a path (the `untrack-committed-files`
 recipe) changes the git index, which a patch cannot hold: `fixes.json` lists it, and a real `--fix`
 run untracks the path. A dry run leaves the index as it was.
 
-It prints one line per fix, at most 20 of them: `fixes.json` has the rest. The same cap holds for
+It prints one line per fixed finding, at most 20 of them: `fixes.json` has the rest. The same cap holds for
 the "Fixed files", "Fixed findings" and "Fix notes" lists of a `--fix` run; when one is cut, the
 full lists are in `fix.log` in the output folder. The comparison that follows runs on the unfixed tree, so the exit
 code is the one of a run without `--fix`. `--dry-run` only works with `--fix`. A plain `--fix` run
@@ -2069,7 +2070,7 @@ runs only when `--fix --rule` names one of its rules.
 
 | Preset       | Rule                                                                                                                                                                                                                                                                                                                    | Recipe                                                                                                               | What it does                                                                                                                                                                          |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| java         | `structure/near-duplicate` (copies in one class)                                                                                                                                                                                                                                                                        | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                                                                    |
+| java         | `structure/near-duplicate` (copies in one class, or in two files of one folder)                                                                                                                                                                                                                                         | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                                                                    |
 | java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review)                                                                                  |
 | typescript   | `structure/near-duplicate` (copies in one file)                                                                                                                                                                                                                                                                         | `typescript-extract-near-duplicate`                                                                                  | extracts the shared function of a proved copy and calls it from both copies                                                                                                           |
 | typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review)                                                                                |
@@ -2100,7 +2101,8 @@ runs only when `--fix --rule` names one of its rules.
 | python       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `python-restating-docstring`                                                                                         | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass`                                        |
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
-whose copies sit in one file (TypeScript, JavaScript) or in one class (Java). The first copy becomes
+whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
+folder (Java, see below). The first copy becomes
 the shared function: a module-level function after the first copy, or a private method (static when
 it reads no instance state). Both bodies become one call, and each signature stays. Differing
 literals become parameters named after what they flow into. Any other differing value is passed as
@@ -2111,23 +2113,33 @@ when its type is written where it flows: a declared local, a `return` or an `if`
 differing type becomes a type parameter (`<T>`, then `<U>` and so on) of the shared function. The
 TypeScript recipe passes the types at each call (`shared<string>(items)`); Java infers them. Java
 extracts the methods of two anonymous classes of one class into a private static method of the
-enclosing class. A recipe leaves the
+enclosing class. A constructor that differs (`new URL(text)` against `new URI(text)`) becomes a method
+reference (`URL::new`) of a small functional interface that declares the exceptions the constructor throws,
+and a catch clause that differs keeps its place and takes the exception class as a parameter. For two
+files of one Java package the shared method goes into a new package-private class beside them, named
+after the words their class names share, and the second copy's own comments stay above its call.
+TypeScript and JavaScript copies in two files are left alone, because the import each file needs
+depends on the module system and the path rules of the project. A recipe leaves the
 finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
 variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
-JavaScript), the helper name is taken, the copies differ in exceptions or the comments one of
-them holds, the copies differ in a type that a type parameter cannot stand for (a type after `new`,
-in a cast, in an `instanceof` or in a class literal, a type that names a generic class or a
-primitive, or code that calls a method on a value of that type or passes it to a call, in Java; any
-type that the compiler rejects as a type parameter in TypeScript), a differing Java
-expression reads a local of the copied code, sits in a `final` local, a loop condition, a `try`
-block, a lambda or a nested class, or a method that throws, or has no declared type where it flows
-(a hole that appears with two declared types gets one parameter for each), an anonymous class reads instance state of
-the enclosing class, declares more than methods, or sits in a generic method or next to a local type, a copy takes part in more than one pair, a string or template literal spans lines
-(TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
-`final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
-name that a superclass may declare, a call with a static and an instance overload), or the copies
-differ in a way a parameter cannot carry. A pair in two files, or in two classes other than anonymous
-classes of one class, is not looked at. The
+JavaScript), the helper name is taken, the copies differ in exceptions, the copies differ in a type
+that a type parameter cannot stand for (a type in a cast, in an `instanceof` or in a class literal,
+a type that names a generic class or a primitive, or code that calls a method on a value of that
+type or passes it to a call, in Java; any type that the compiler rejects as a type parameter in
+TypeScript), a differing Java expression reads a local of the copied code, sits in a `final` local,
+a loop condition, a `try` block, a lambda or a nested class, or a method that throws, or has no
+declared type where it flows (a hole that appears with two declared types gets one parameter for
+each), an anonymous class reads instance state of the enclosing class, declares more than methods,
+or sits in a generic method or next to a local type, a copy takes part in more than one pair, a
+string or template literal spans lines (TypeScript, JavaScript), a differing literal sits where Java
+needs a constant (a `case` label, a `final` local, a sum that is narrowed), Java cannot tell whether
+the code needs instance state (a name that a superclass may declare, a call with a static and an
+instance overload), or the copies differ in a way a parameter cannot carry, or a pair in two Java
+files uses state of its class that the new class cannot reach or has no free class name. A pair in
+two Java files of one folder and one package is extracted into a new package-private class. A pair
+in two TypeScript files, in two Java folders, in two packages, in generated sources (`build/`,
+`target/`, `out/`, `generated-sources/`), or in two classes other than anonymous classes of one
+class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
 whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
@@ -2381,13 +2393,15 @@ under the nearest rule. Which rules have a check, and why the others do not, is 
 
 Most of what is left after formatting needs judgment: a function that is too long, a mutant that
 survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
-can rewrite these, but an agent still spends most of its work finding the code, its context and the
-form the rule allows. A comparison run writes that down in `fix-plans.json`, beside
+can rewrite these. A comparison run writes down the code, its context and the form the rule allows
+in `fix-plans.json`, beside
 `new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The surviving
 mutants, the mutants no test runs and the uncovered branches of one function share one plan (see
 `findings` below), so a function with twenty mutants gets one plan, not twenty. The rule
 reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
-on) keeps its message and its help link and gets no plan.
+on) keeps its message and its help link and gets no plan. Plans are for tools and for looking up
+one finding: in two measurements with two agents, they did not reliably lower what an agent spent
+to reach green (see [evaluations](evaluations.md#fix-plans-measured-effect)).
 
 A plan changes no file, and nitpicker calls no language model for it: it is built from the finding,
 the project files and the allowed form of the rule. The schema is
@@ -2413,8 +2427,12 @@ the project files and the allowed form of the rule. The schema is
   passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
   import edge or cycle for an architecture rule. The test file is one beside the source, else an
   existing test that imports the file (or a module that re-exports it, such as a feature `index`),
-  else a new path that follows where the project keeps its tests (for example a top-level `test/`
-  folder).
+  else the nearest TypeScript or JavaScript test that reaches it through other modules (such as a
+  test of the composition root; a module that re-exports names passes on only those names, and a
+  helper under a test folder ends the chain), else a new path that follows where the project keeps
+  its tests (for example a top-level `test/` folder, in its folder named like the first folder of
+  the source path that has one). Of several tests, one that calls the function wins, then one that
+  shares the most folder names with the source, then the first by path.
 - `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
 - `doneWhen`: the finding that stops being reported.
 

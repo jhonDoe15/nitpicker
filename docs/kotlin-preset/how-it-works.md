@@ -21,5 +21,5 @@ formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
 properties; the style texts (the `.editorconfig` files to mirror, the ktlint defaults, the detekt
 convention layer) are generated on the Nitpicker side into one JSON file in a temporary folder, whose
 path is the property `nitpicker.kotlin.styleFile`, and only written out by the init script
-(`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, in `npm run test:kotlin`, runs its two small tasks
+(`kotlin-e2e/style/kotlin-style-files.e2e.test.mts`, in `npm run test:kotlin`, runs its two small tasks
 against a stand-in Kotlin plugin).
