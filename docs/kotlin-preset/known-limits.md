@@ -30,15 +30,29 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
     Kotlin source set, with the compile classpath of the `main` and `test` compilations of the JVM targets;
     the kotlinc lint, compiling the common and JVM sources together as a Multiplatform build does; the tests of
     the target (`jvmTest`), their JaCoCo coverage of the JVM compilation's classes and CRAP, where a failing
-    `jvmTest` is handled as on a JVM module. With several JVM targets, the lint, tests, coverage and CRAP cover
-    the first one only; detekt uses the classpath of all of them. A quick run skips the tests, coverage and CRAP.
-  - What does not run: mutation testing (PIT) on a Multiplatform project (its task is written for the Java
-    source sets of a JVM module and is not shared yet); the tests, coverage and CRAP of any non-JVM target;
-    detekt, the lint, the tests, coverage and CRAP of an Android project, an Android target or a project with no
-    JVM target (their variants need the Android SDK, which the end-to-end tests here cannot install); the
-    `.java` files of an Android module and of a Multiplatform JVM target that uses `withJava()`. Sources of
-    other targets (`iosMain`, `jsMain`, `androidMain`) are read with the JVM classpath, so a call that resolves
-    only on their platform stays unresolved and detekt's rules report less there.
+    `jvmTest` is handled as on a JVM module; and PIT, which mutates the JVM compilation's classes (the
+    `commonMain` and `jvmMain` code compiled for the target) and runs `jvmTest` against them, with each surviving
+    mutant reported on the `.kt` file that holds the mutated line. With several JVM targets, the lint, tests,
+    coverage, CRAP and PIT cover the first one only; detekt uses the classpath of all of them. A quick run skips
+    the tests, coverage, CRAP and PIT, and `mutation: off` skips PIT.
+  - What does not run, and why:
+    - The tests, coverage, CRAP and mutation testing of any non-JVM target (`js`, `wasmJs`, `linuxX64`, `iosArm64`
+      and so on). Their test tasks need Node.js or a Kotlin/Native toolchain that Gradle downloads, several of them
+      run only on a matching host (iOS and macOS targets on macOS), and JaCoCo and PIT instrument JVM bytecode only.
+      Nitpicker does not run them, so a failing `jsTest` is not reported by it: keep running the project's own
+      `allTests` or `check` in CI. Coverage, CRAP and mutation findings come from the JVM target alone, so code
+      that only a non-JVM source set (`jsMain`, `nativeMain`) holds has none. The `kotlin/build-note` finding
+      names the targets whose tests did not run, and says when PIT or the tests did not run on the JVM target (a quick run, `mutation: off`, failing tests, no tests).
+    - detekt, the kotlinc lint, the tests, coverage, CRAP and PIT of an Android project, an Android target or a
+      project with no JVM target. An Android variant's compile classpath, its unit-test task and its classes come
+      from the Android Gradle plugin and need the Android SDK to resolve, so nitpicker cannot wire them the way it
+      wires a JVM target, and the end-to-end tests here have no SDK to check such code against. Their sources are
+      still read by the steps that need sources only. The note names the Android variants.
+    - The `.java` files of an Android module and of a Multiplatform JVM target that uses `withJava()`: PMD,
+      Checkstyle and Error Prone need the compiled classes and classpath of the Java compilation, which an
+      Android build gets from the same variant wiring.
+    - Sources of other targets (`iosMain`, `jsMain`, `androidMain`) are read with the JVM classpath, so a call that
+      resolves only on their platform stays unresolved and detekt's rules report less there.
   - A Multiplatform build cannot apply the `java` plugin (the Kotlin Gradle plugin rejects it), so a
     `withJava()` project is read as a Multiplatform one, Kotlin sources included. The end-to-end tests build a
     Multiplatform project with a JVM target and one with `withJava()`; the Android end-to-end test needs an

@@ -58,6 +58,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/pit/pit-process.gradle',
   'languages/java/gradle/affected/affected-projects.gradle',
   'languages/java/gradle/pit/pit-retry.gradle',
+  'languages/java/gradle/pit/pit-task.gradle',
   'languages/java/gradle/kotlin/kotlin-detekt.gradle',
   'languages/java/gradle/kotlin/kotlin-format.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',

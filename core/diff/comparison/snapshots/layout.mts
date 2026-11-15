@@ -2,7 +2,7 @@ import path from 'node:path';
 import {
   isStrictRule,
   mustMeetOnEditedLines,
-} from '../../../../languages/typescript/preset/strict-rules.mjs';
+} from '../../../../languages/typescript/preset/strict-rules.mts';
 import { readRepositoryChanges } from '../../git/patches/changes.mjs';
 import {
   resolveBaseProjectPath,

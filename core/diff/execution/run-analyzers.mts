@@ -1,13 +1,12 @@
 import { analyzerName as nameOf } from '../reporting/report-model.mts';
-import { type Invocation, validateAnalyzer, validateInvocation } from './validation/analyzers.mts';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { type PreparedTask, type TaskContext, prepareTask } from './preparation/prepare-task.mts';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
-import { recoverAnalyzerVersion, resolveAnalyzerMetadata } from './report/analyzer-metadata.mts';
+import type { AnalyzerMetadata, MetadataMap } from './report/analyzer-metadata.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
@@ -19,6 +18,7 @@ export type AnalyzerRun = {
   readonly timings: Map<string, number | undefined>;
   readonly toolErrors: ReportEntry[];
   readonly skipped: Map<string, unknown>;
+  readonly metadata: MetadataMap;
 };
 
 export type AnalyzerRequest = {
@@ -36,23 +36,9 @@ export type AnalyzerRequest = {
   readonly runTasks: unknown;
 };
 
-type TaskContext = Omit<AnalyzerRequest, 'analyzers' | 'headPolicyFile' | 'runTasks'>;
-
-type PreparedTask = {
-  readonly name: string;
-  readonly dependencies: readonly string[];
-  readonly toleratedDependencyErrors: readonly string[];
-  readonly concurrencyWeight: number;
-  readonly concurrencyGroup: string | undefined;
-  readonly executionPriority: number;
-  readonly timeoutMs: number;
-  readonly configuredTimeout: boolean;
-  readonly reportedTools: readonly string[];
-  readonly acceptedExitCodes: readonly number[];
-  readonly invocation: Invocation;
+type ScheduledRun = Omit<AnalyzerRun, 'reports' | 'metadata'> & {
+  readonly reports: Map<string, unknown>;
 };
-
-type ScheduledRun = Omit<AnalyzerRun, 'reports'> & { readonly reports: Map<string, unknown> };
 
 const reportsNamed: (
   reports: Map<string, unknown>,
@@ -63,8 +49,6 @@ const errorsNamed: (
   snapshotRoot: object | undefined,
 ) => ReportEntry[] = namedToolErrors;
 const errorText: (error: unknown) => string = describeError;
-
-const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
 function isRunTasks(value: unknown): value is RunTasks {
   return typeof value === 'function';
@@ -88,7 +72,7 @@ export function runAnalyzers({
     throw new TypeError('liveProjectRoot is required');
   }
 
-  const { tasks, toolErrors } = prepareTasks(analyzers, {
+  const { tasks, toolErrors, metadata } = prepareTasks(analyzers, {
     projectRoot,
     policyRoot,
     toolRoot,
@@ -105,11 +89,15 @@ export function runAnalyzers({
     headPolicyFile,
     snapshot,
   });
-  return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
+  return namedRun({ ...scheduled, metadata }, toolErrors, {
+    projectRoot,
+    liveProjectRoot,
+    snapshot,
+  });
 }
 
 function namedRun(
-  scheduled: ScheduledRun,
+  scheduled: ScheduledRun & { readonly metadata: MetadataMap },
   toolErrors: readonly ReportEntry[],
   {
     projectRoot,
@@ -123,6 +111,7 @@ function namedRun(
     timings: scheduled.timings,
     toolErrors: errorsNamed([...toolErrors, ...scheduled.toolErrors], snapshotRoot),
     skipped: scheduled.skipped,
+    metadata: scheduled.metadata,
   };
 }
 
@@ -182,25 +171,31 @@ function scheduleTasks(
 function prepareTasks(
   analyzers: readonly unknown[],
   context: TaskContext,
-): { readonly tasks: PreparedTask[]; readonly toolErrors: ReportEntry[] } {
+): {
+  readonly tasks: PreparedTask[];
+  readonly toolErrors: ReportEntry[];
+  readonly metadata: MetadataMap;
+} {
+  const metadata = new Map<unknown, AnalyzerMetadata>();
   const toolErrors: ReportEntry[] = [];
   const tasks: PreparedTask[] = [];
 
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
-    try {
-      tasks.push(createTask(analyzer, context));
-    } catch (error) {
-      recoverAnalyzerVersion(analyzer);
-      toolErrors.push({
-        tool: name,
-        snapshot: context.snapshot,
-        message: errorText(error),
-      });
+    const preparation = prepareTask(analyzer, context, metadata.get(analyzer));
+    metadata.set(analyzer, preparation.metadata);
+    if (preparation.kind === 'ready') {
+      tasks.push(preparation.task);
+      continue;
     }
+    toolErrors.push({
+      tool: name,
+      snapshot: context.snapshot,
+      message: errorText(preparation.error),
+    });
   }
 
-  return { tasks, toolErrors };
+  return { tasks, toolErrors, metadata };
 }
 
 export function analyzerRunOptions({
@@ -214,49 +209,5 @@ export function analyzerRunOptions({
     runTasks,
     logRoot:
       outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), logDirectory),
-  };
-}
-
-function logLocation(
-  logRoot: unknown,
-  liveProjectRoot: string,
-): { readonly logRoot?: string; readonly logLabel?: string } {
-  if (typeof logRoot !== 'string') {
-    return {};
-  }
-  const relative = path.relative(liveProjectRoot, logRoot);
-  const inside = relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-  return { logRoot, logLabel: inside ? relative.split(path.sep).join('/') : logRoot };
-}
-
-function createTask(analyzer: unknown, context: TaskContext): PreparedTask {
-  const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
-  resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
-  validateAnalyzer(analyzer);
-  const invocation = analyzer.createInvocation({
-    projectRoot,
-    policyRoot: analyzer['policyFromPackage'] === true ? PACKAGE_ROOT : policyRoot,
-    projectPolicyRoot: policyRoot,
-    toolRoot,
-    snapshot,
-    baselineRoot: context.baselineRoot,
-    baselineMovesFile: context.baselineMovesFile,
-    liveProjectRoot,
-    ...(context.mutationScope === undefined ? {} : { mutationScope: context.mutationScope }),
-    ...logLocation(context.logRoot, liveProjectRoot),
-  });
-  validateInvocation(analyzer.name, invocation);
-  return {
-    name: analyzer.name,
-    dependencies: analyzer.dependencies ?? [],
-    toleratedDependencyErrors: analyzer.toleratedDependencyErrors ?? [],
-    concurrencyWeight: analyzer.concurrencyWeight ?? 1,
-    concurrencyGroup: analyzer.concurrencyGroup,
-    executionPriority: analyzer.executionPriority ?? 0,
-    timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
-    configuredTimeout: analyzer['configuredTimeout'] === true,
-    reportedTools: analyzer.reportedTools ?? [],
-    acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
-    invocation,
   };
 }
