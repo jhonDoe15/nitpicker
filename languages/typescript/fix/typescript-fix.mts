@@ -5,19 +5,18 @@ import {
 } from '../preset/head-policy.mjs';
 import { resolveLayoutFor as untypedResolveLayoutFor } from '../preset/layout.mjs';
 import {
-  changedFiles as untypedChangedFiles,
-  collectFixFiles as untypedCollectFixFiles,
-  readBytes as untypedReadBytes,
-  rewrittenPaths as untypedRewrittenPaths,
-  splitByEncoding as untypedSplitByEncoding,
-} from '../../../core/fix/common/fix-files.mjs';
-import {
-  linkNote as untypedLinkNote,
-  undecodableNote as untypedUndecodableNote,
-} from '../../../core/fix/common/fix-notes.mjs';
-import { runRecipes as untypedRunRecipes } from '../../../core/fix/engine/run-recipes.mjs';
-import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
-import { sharedInputs as untypedSharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
+  changedFiles,
+  collectFixFiles,
+  linkNote,
+  readBytes,
+  rewrittenPaths,
+  runRecipes,
+  SHARED_RECIPES,
+  sharedInputs,
+  splitByEncoding,
+  undecodableNote,
+} from '../../../core/fix/typed/fix-views.mts';
+import type { Bytes, RecipeResult } from '../../../core/fix/typed/fix-views.mts';
 import type {
   FixFile,
   FixOutcome,
@@ -38,9 +37,6 @@ type PolicySettings = Omit<KnipFixSettings, 'headPolicy' | 'layout'> & {
   readonly layout: Layout;
   readonly eslintSettings: unknown;
 };
-type Bytes = ReadonlyMap<string, Buffer>;
-type RecipeResult = FixStep & { readonly files: readonly FixFile[] };
-type SharedInputs = { readonly inputs: object; readonly toolErrors: readonly unknown[] };
 type StepInput = {
   readonly decodable: readonly FixFile[];
   readonly targets: Targets;
@@ -60,53 +56,8 @@ const withHeadPolicyFile: (
   run: (policyFile: string) => FixOutcome,
 ) => FixOutcome = untypedWithHeadPolicyFile;
 const resolveLayoutFor: (policy: HeadPolicy) => Layout = untypedResolveLayoutFor;
-const collectFixFiles: (options: {
-  readonly repositoryRoot: string;
-  readonly projectRoot: string;
-  readonly baseRef: unknown;
-  readonly scope: unknown;
-  readonly allFiles: boolean;
-  readonly accepts: (name: string) => boolean;
-}) => {
-  readonly comparison: { readonly mergeBaseSha: string | undefined };
-  readonly files: readonly FixFile[];
-  readonly links: readonly string[];
-} = untypedCollectFixFiles;
-const readBytes: (projectRoot: string, files: readonly FixFile[]) => Bytes = untypedReadBytes;
-const changedFiles: (
-  projectRoot: string,
-  files: readonly FixFile[],
-  before: Bytes,
-) => readonly FixFile[] = untypedChangedFiles;
-const rewrittenPaths: (
-  projectRoot: string,
-  files: readonly FixFile[],
-  before: Bytes,
-) => readonly string[] = untypedRewrittenPaths;
-const splitByEncoding: (
-  projectRoot: string,
-  files: readonly FixFile[],
-) => { readonly files: readonly FixFile[]; readonly undecodable: readonly string[] } =
-  untypedSplitByEncoding;
-const linkNote: (paths: readonly string[]) => string[] = untypedLinkNote;
-const undecodableNote: (paths: readonly string[]) => string[] = untypedUndecodableNote;
 const typescriptRecipes: readonly unknown[] = TYPESCRIPT_RECIPES;
 const sharedRecipes: readonly unknown[] = SHARED_RECIPES;
-const runRecipes: (options: {
-  readonly projectRoot: string;
-  readonly files: readonly FixFile[];
-  readonly recipes: readonly unknown[];
-  readonly writer: FixSettings['writer'];
-  readonly preset: string;
-  readonly selectedRules: readonly string[];
-  readonly accepts: (name: string) => boolean;
-  readonly inputs: object;
-}) => RecipeResult = untypedRunRecipes;
-const sharedInputs: (options: {
-  readonly projectRoot: string;
-  readonly headPolicy: object | undefined;
-  readonly selectedRules: readonly string[];
-}) => SharedInputs = untypedSharedInputs;
 function isManifest(name: string): boolean {
   return /(?:^|\/)package\.json$/u.test(name);
 }

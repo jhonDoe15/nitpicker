@@ -17,7 +17,7 @@ import {
 import {
   pythonImportedFiles as untypedPythonImportedFiles,
   pythonProductionReach as untypedPythonProductionReach,
-} from '../../../languages/python/adapters/analysis/reach/python-reach.mjs';
+} from '../../../languages/python/adapters/analysis/reach/python-reach.mts';
 import {
   canonicalRule as untypedCanonicalRule,
   normalizeFunctionName as untypedNormalizeFunctionName,
@@ -27,17 +27,17 @@ import { projectFilePaths as untypedProjectFilePaths } from '../../../shared/pro
 import { GRADLE_PRESETS as UNTYPED_GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readBuildSources as untypedReadBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
 import { jvmProductionReach as untypedJvmProductionReach } from '../../../languages/java/builds/reach/source-reach.mjs';
-import { readPythonSelection as untypedReadPythonSelection } from '../../../languages/python/adapters/configuration/pytest/test-selection.mjs';
-import { detectSourceRoots as untypedDetectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
+import { readPythonSelection as untypedReadPythonSelection } from '../../../languages/python/adapters/configuration/pytest/test-selection.mts';
+import { detectSourceRoots as untypedDetectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
 import {
   checksJavascript as untypedChecksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,
 } from '../../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
 import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mjs';
-import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mjs';
+import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mts';
 import { isMarkedGenerated as untypedIsMarkedGenerated } from '../../../languages/typescript/preset/layout/generated-files.mjs';
-import { isGeneratedGo as untypedIsGeneratedGo } from '../../../languages/go/adapters/structure/go-generated.mjs';
+import { isGeneratedGo as untypedIsGeneratedGo } from '../../../languages/go/adapters/structure/go-generated.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import type { BuildSource, LayoutConfig, PolicyConfig } from './policy-types.mts';
 

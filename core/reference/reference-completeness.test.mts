@@ -17,9 +17,9 @@ import {
 import {
   RUFF_IGNORE as UNTYPED_RUFF_IGNORE,
   RUFF_SELECT as UNTYPED_RUFF_SELECT,
-} from '../../languages/python/adapters/configuration/python-rule-ids.mjs';
-import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mjs';
+} from '../../languages/python/adapters/configuration/python-rule-ids.mts';
+import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mts';
+import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mts';
 import { RULES as UNTYPED_RULES } from '../../shared/policy.mjs';
 import {
   CODING_STANDARDS_RULES as UNTYPED_CODING_STANDARDS_RULES,

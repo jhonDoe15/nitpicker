@@ -48,9 +48,9 @@ import { testsConfigChanges as untypedTestsConfigChanges } from '../build-files/
 import { typescriptConfigChanges as untypedTypescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
 import { jscpdConfigChanges as untypedJscpdConfigChanges } from '../../tooling/jscpd/changes/config-changes.mts';
 import { appliedJscpdConfig as untypedAppliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
-import { readImportLinterConfig as untypedReadImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
-import { attempt as untypedAttempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
-import { readPytestRetries as untypedReadPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mjs';
+import { readImportLinterConfig as untypedReadImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mts';
+import { attempt as untypedAttempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mts';
+import { readPytestRetries as untypedReadPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mts';
 import {
   directorySource as untypedDirectorySource,
   readDeclaredBuild as untypedReadDeclaredBuild,
@@ -59,7 +59,7 @@ import {
   testRetryDeclarations as untypedTestRetryDeclarations,
   testRetryValues as untypedTestRetryValues,
 } from '../../../languages/java/adapters/tool-config/declared/test-retries-declared.mjs';
-import { GOLANGCI_FILES as UNTYPED_GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
+import { GOLANGCI_FILES as UNTYPED_GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mts';
 import type {
   AppliedValues,
   FileChange,

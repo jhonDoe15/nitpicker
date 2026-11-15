@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createPythonAnalyzers } from '../../../languages/python/adapters/python-analyzer.mjs';
+import { createPythonAnalyzers } from '../../../languages/python/adapters/python-analyzer.mts';
 import { KOTLIN_FORMATTERS } from '../../../languages/java/adapters/style/jvm-formatters.mjs';
-import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { PRESET_TOOLS } from '../../../shared/exceptions/rule-tools.mjs';
 import { SUPPORTED_PRESETS } from '../validate.mts';
 import { toolSettingKeysOf } from '../tool-settings.mts';
-import { precedenceExemption, precedenceExemptions } from './precedence-exempt-tools.mjs';
+import { precedenceExemption, precedenceExemptions } from './precedence-exempt-tools.mts';
 
-const EXTERNAL_TOOLS = {
+const EXTERNAL_TOOLS: Readonly<Record<string, readonly string[]>> = {
   typescript: ['oxlint', 'eslint', 'prettier', 'knip', 'dependency-cruiser', 'stryker', 'vitest'],
   javascript: ['oxlint', 'eslint', 'prettier', 'knip', 'dependency-cruiser', 'stryker', 'vitest'],
   java: JAVA_TOOLS,
@@ -18,11 +18,13 @@ const EXTERNAL_TOOLS = {
   go: [...GO_LINT_TOOLS, 'gofumpt', 'goimports'],
 };
 
-function nativeTools(preset) {
-  return [...new Set([...EXTERNAL_TOOLS[preset], ...PRESET_TOOLS[preset]])];
+const NATIVE_TOOLS: Readonly<Record<string, readonly string[]>> = PRESET_TOOLS;
+
+function nativeTools(preset: string) {
+  return [...new Set([...(EXTERNAL_TOOLS[preset] ?? []), ...(NATIVE_TOOLS[preset] ?? [])])];
 }
 
-function isExemptIn(tool, preset) {
+function isExemptIn(tool: string, preset: string) {
   return precedenceExemption(tool)?.presets.includes(preset) === true;
 }
 

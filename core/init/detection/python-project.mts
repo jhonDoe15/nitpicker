@@ -1,11 +1,11 @@
 import { hasProjectFile } from '../support/inside-project.mts';
-import { detectEnvironment } from '../../../languages/python/adapters/execution/python-environment.mjs';
+import { detectEnvironment } from '../../../languages/python/adapters/execution/python-environment.mts';
 import {
   detectFormatter,
   detectTypeCheckers,
   readProjectHints,
-} from '../../../languages/python/adapters/execution/python-project.mjs';
-import { detectTestRunner } from '../../../languages/python/adapters/execution/python-test-runner.mjs';
+} from '../../../languages/python/adapters/execution/python-project.mts';
+import { detectTestRunner } from '../../../languages/python/adapters/execution/python-test-runner.mts';
 import type { InitProject } from '../init-types.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
