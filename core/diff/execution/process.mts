@@ -54,7 +54,7 @@ const timeoutKey: string = ANALYZER_TIMEOUT_KEY;
 const timeoutVariable: string = ANALYZER_TIMEOUT_VARIABLE;
 const configFile: string = CONFIG_FILE_NAME;
 
-const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
+const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
 
 export const FORCE_KILL_DELAY_MS = 1_000;
 
