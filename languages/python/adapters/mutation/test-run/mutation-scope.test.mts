@@ -8,8 +8,8 @@ import { createToolContext, type ToolContext } from '../../test-support/typed/to
 import { listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { failedOnProjectTests } from './mutation-scope.mjs';
 import { mutationFindings as untypedFindings } from '../python-mutation.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();
 

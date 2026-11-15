@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mts';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';

@@ -4,7 +4,7 @@ import {
   createRunnerProjects as untypedCreateRunnerProjects,
   rulesOf as untypedRulesOf,
   runArea as untypedRunArea,
-} from '../../../../adapters/test-runners/test-support/runner-project.mjs';
+} from '../../../../adapters/test-runners/test-support/runner-project.mts';
 
 export type ProjectFiles = Record<string, string | object>;
 

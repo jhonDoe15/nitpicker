@@ -12,7 +12,7 @@ import {
 } from '../../python-tools.mjs';
 import { mutationFindings as untypedMutation } from '../../mutation/python-mutation.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
-import { callUntyped as call } from '../../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { isFinding } from '../report/finding-guards.mts';
 import type { IngestedFinding } from '../report/report-types.mts';
 import type { RunnerPolicy, ToolFailure } from './runner-types.mts';

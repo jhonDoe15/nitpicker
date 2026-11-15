@@ -52,7 +52,7 @@ import {
 } from '../../size/python-size.mts';
 import { pythonPersistence as untypedPersistence } from '../../persistence/python-persistence.mts';
 import { designFindings as untypedDesign } from '../../analysis/design/python-design.mts';
-import { callUntyped as call } from '../../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { isFinding } from './finding-guards.mts';
 import { readPythonCrapFindings as untypedCrap } from '../../mutation/python-crap.mts';
 import type {

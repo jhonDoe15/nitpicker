@@ -19,7 +19,7 @@ import {
   targetOrigin,
   wrapperDeclaration,
 } from '../typed/wrapper-views.mts';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { keptImport } from '../imports/retarget.mts';
 
 const ts = typescriptApi();
 
@@ -58,13 +58,7 @@ function importerEdits(
   const kept = element.parent.elements.filter((candidate) => candidate !== element);
   const declaration = { path: importer, start: node.getStart(), end: node.end };
   const uses = renamed.edits.filter((edit) => edit.path === importer && !inside(edit, declaration));
-  const head = fieldOf(clause, 'isTypeOnly') === true ? 'import type ' : 'import ';
-  const parts = [
-    ...(clause.name === undefined ? [] : [clause.name.text]),
-    ...(kept.length === 0 ? [] : [`{ ${kept.map((each) => each.getText()).join(', ')} }`]),
-  ];
-  const from = node.moduleSpecifier.getText();
-  const rebuilt = parts.length === 0 ? '' : `${head}${parts.join(', ')} from ${from};`;
+  const rebuilt = keptImport(node, clause, kept);
   const added = `import { ${origin.imported} } from '${importSpecifier(project, importer, origin.module)}';`;
   const text =
     origin.module === importer ? rebuilt : `${rebuilt}${rebuilt === '' ? '' : '\n'}${added}`;

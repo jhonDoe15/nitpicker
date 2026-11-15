@@ -1,10 +1,9 @@
 import type TypeScript from 'typescript';
 import { ts as untypedTs } from '../../typescript-api/typescript-api.mjs';
 import { chainOf as untypedChainOf } from '../../../../shared/traversal.mjs';
+import { isTypeScriptApi } from '../../../../shared/values/boundaries/typescript-guard.mts';
 
-export function isTypeScriptApi(value: unknown): value is typeof TypeScript {
-  return typeof value === 'object' && value !== null && 'createSourceFile' in value;
-}
+export { isTypeScriptApi };
 
 export function typescriptApi(): typeof TypeScript {
   const api: unknown = untypedTs;
@@ -19,3 +18,11 @@ export function parentOf(node: TypeScript.Node): TypeScript.Node | undefined {
 }
 
 export const chainOf: <T>(start: T, next: (current: T) => T | undefined) => T[] = untypedChainOf;
+
+export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
+  const children: TypeScript.Node[] = [];
+  typescriptApi().forEachChild(node, (child) => {
+    children.push(child);
+  });
+  return children;
+}
