@@ -26,7 +26,7 @@ export function countFindings(findings: readonly AnalyzedFinding[]): Counts {
 
 export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
   const runs = new Map<string, RecipeRun>();
-  for (const { recipe, files, finding } of events) {
+  for (const { recipe, files, finding, alsoFindings = [] } of events) {
     if (recipe === undefined) {
       continue;
     }
@@ -37,6 +37,7 @@ export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
     if (finding !== undefined) {
       run.findings.push(finding);
     }
+    run.findings.push(...alsoFindings);
     runs.set(recipe, run);
   }
   return [...runs.values()];

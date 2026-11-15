@@ -33,6 +33,35 @@ describe('recipeRuns', () => {
   });
 });
 
+describe('recipeRuns and the findings of one fix', () => {
+  it('counts the other findings of a fix as findings of the run', () => {
+    const runs = recipeRuns([
+      {
+        recipe: 'one',
+        files: ['a'],
+        finding: finding('t', 'r', 'a'),
+        alsoFindings: [finding('t', 'r', 'a')],
+      },
+    ]);
+    expect(runs.map(({ findings }) => findings.length)).toEqual([2]);
+  });
+
+  it('flags a fix of two findings when only one of them is gone', () => {
+    const run = recipeRuns([
+      {
+        recipe: 'one',
+        files: ['a'],
+        finding: finding('t', 'r', 'a'),
+        alsoFindings: [finding('t', 'r', 'a')],
+      },
+    ]);
+    const before = countFindings([finding('t', 'r', 'a'), finding('t', 'r', 'a')]);
+    const after = countFindings([finding('t', 'r', 'a')]);
+    const reasons = judgeFindings({ runs: run, before, after, breaking: never });
+    expect(reasons.get('one')).toEqual(['t/r is still reported in a']);
+  });
+});
+
 describe('judgeFindings', () => {
   const fixed = run('fix', ['a'], [finding('t', 'r', 'a')]);
 

@@ -1,4 +1,5 @@
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import type { PlannedFix } from '../typed/fix-types.mts';
 import { MODE_MASK, currentOf } from './restore.mts';
 import {
   applyFixes,
@@ -70,6 +71,12 @@ function noteIndex(journal: Journal, name: string) {
   }
 }
 
+type JournalFinding = NonNullable<PlannedFix['finding']>;
+
+function findingKey({ tool, rule, path: name, line }: JournalFinding) {
+  return `${tool}\0${rule}\0${name}\0${String(line)}`;
+}
+
 function noteOriginals(journal: Journal, entries: readonly JournalEntry[]) {
   const edits = entries.flatMap(({ fix }) => fix.edits);
   for (const name of edits.flatMap(namesOf)) {
@@ -92,11 +99,31 @@ function noteFixed(journal: Journal, entries: readonly JournalEntry[]) {
   }
 }
 
+function alsoFindingsOf({ finding, alsoFixes = [] }: JournalEntry['fix']): JournalFinding[] {
+  const seen = new Set(finding === undefined ? [] : [findingKey(finding)]);
+  const found: JournalFinding[] = [];
+  for (const other of alsoFixes) {
+    if (!seen.has(findingKey(other))) {
+      seen.add(findingKey(other));
+      found.push(other);
+    }
+  }
+  return found;
+}
+
 function eventOf(entry: JournalEntry, tool: string | undefined): JournalEvent {
   const files = [...new Set(entry.fix.edits.flatMap(namesOf))];
-  return entry.recipe === undefined
-    ? { tool, safety: 'safe', files }
-    : { recipe: entry.recipe, safety: entry.safety, finding: entry.fix.finding, files };
+  if (entry.recipe === undefined) {
+    return { tool, safety: 'safe', files };
+  }
+  const also = alsoFindingsOf(entry.fix);
+  return {
+    recipe: entry.recipe,
+    safety: entry.safety,
+    finding: entry.fix.finding,
+    ...(also.length === 0 ? {} : { alsoFindings: also }),
+    files,
+  };
 }
 
 function saveAll(journal: Journal) {

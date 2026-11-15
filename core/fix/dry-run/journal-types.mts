@@ -27,6 +27,7 @@ export type JournalEntry = {
   readonly fix: {
     readonly edits: readonly JournalEdit[];
     readonly finding?: PlannedFix['finding'];
+    readonly alsoFixes?: readonly NonNullable<PlannedFix['finding']>[];
   };
 } & (
   | { readonly recipe: string; readonly safety: string }

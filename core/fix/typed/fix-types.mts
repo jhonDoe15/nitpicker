@@ -42,6 +42,7 @@ export type PlannedFix = {
   readonly tool?: string | undefined;
   readonly safety: string;
   readonly finding?: PlannedFinding | undefined;
+  readonly alsoFindings?: readonly PlannedFinding[];
   readonly files: readonly string[];
 };
 
