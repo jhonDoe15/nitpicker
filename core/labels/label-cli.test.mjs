@@ -104,15 +104,13 @@ describe('runs focused with --label', () => {
     expect(focused.exitCode).toBe(0);
     expect(focused.stdoutText).toBe(
       [
-        'Nitpicker quality snapshot',
-        'Status: clean',
-        'Enforceable findings: 0',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
-        HIDDEN,
         '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
+        'Quality snapshot summary',
+        '✓ No enforceable findings',
+        'By analyzer:',
+        '  1 analyzer ran clean',
+        HIDDEN,
+        `Full diagnostics: ${path.join(repository.root, outputRoot, 'report.txt')}`,
         '',
       ].join('\n'),
     );
