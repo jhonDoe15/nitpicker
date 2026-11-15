@@ -2,13 +2,13 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import { usesJpa } from './spring-config-files.mjs';
 import {

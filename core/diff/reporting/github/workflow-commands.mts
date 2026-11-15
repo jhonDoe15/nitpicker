@@ -1,4 +1,4 @@
-import { singleLine } from '../format/text.mjs';
+import { singleLine } from '../format/text.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 

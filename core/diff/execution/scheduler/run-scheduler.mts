@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mjs';
+import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mts';
 import { spawnSyncWithOutputFile } from '../../../tooling/output-file/output-file.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';

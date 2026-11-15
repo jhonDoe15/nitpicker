@@ -1,4 +1,4 @@
-import { callUntyped as call } from '../../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   detectEnvironment as untypedDetect,

@@ -1,4 +1,5 @@
 import { editDistance } from '../../../../../shared/messages/closest-match.mjs';
+import { prefixesOf } from '../../../../../shared/paths/prefixes.mjs';
 import { relaxKey } from '../spring-config-parser.mjs';
 
 const OPEN_TYPE = /^(?:java\.util\.Properties|java\.lang\.Object)$|[<[]/u;
@@ -15,11 +16,6 @@ const LONG_SEGMENT = 10;
 const CLOSEST_SHARE = 3;
 const CLOSEST_MINIMUM = 3;
 const MIN_SHARED_START = 3;
-
-function parentsOf(key) {
-  const segments = key.split('.');
-  return segments.slice(1).map((_, index) => segments.slice(0, index + 1).join('.'));
-}
 
 function opensSuffixes(type) {
   return typeof type !== 'string' || type === '' || OPEN_TYPE.test(type);
@@ -64,9 +60,12 @@ export function knownKeys({ metadata, classes, references }) {
     index.claimed.add(relaxKey(name));
   }
   index.nodes = new Set(
-    [...index.exact, ...index.owned, ...index.claimed].flatMap((key) => [key, ...parentsOf(key)]),
+    [...index.exact, ...index.owned, ...index.claimed].flatMap((key) => [
+      key,
+      ...prefixesOf(key, '.'),
+    ]),
   );
-  for (const retired of [...index.removed.keys()].flatMap(parentsOf)) {
+  for (const retired of [...index.removed.keys()].flatMap((key) => prefixesOf(key, '.'))) {
     if (retired.includes('.') && !index.nodes.has(retired)) {
       index.owned.add(retired);
     }
@@ -86,13 +85,13 @@ function matchesDynamic(key) {
 function isBound(index, key) {
   return (
     index.nodes.has(key) ||
-    [key, ...parentsOf(key)].some((prefix) => index.open.has(prefix)) ||
+    [key, ...prefixesOf(key, '.')].some((prefix) => index.open.has(prefix)) ||
     matchesDynamic(key)
   );
 }
 
 function ownedPrefix(index, key) {
-  const deepest = parentsOf(key)
+  const deepest = prefixesOf(key, '.')
     .filter((prefix) => index.nodes.has(prefix) || index.owned.has(prefix))
     .at(-1);
   return index.owned.has(deepest) ? deepest : undefined;

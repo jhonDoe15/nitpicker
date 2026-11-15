@@ -1,0 +1,193 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { runAnalyzers } from '../execution/run-analyzers.mts';
+import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mts';
+import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
+import { withoutSnapshotRoot } from './snapshot-root.mjs';
+
+const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');
+const SOURCE = path.join(WORKTREE, 'services', 'Handler.java');
+const LIVE = path.join(path.sep, 'work', 'shop');
+
+const analyzer = {
+  name: 'java',
+  version: '1',
+  configurationHash: 'hash',
+  exclusions: [],
+  createInvocation: () => ({ command: 'java', args: [] }),
+};
+
+const NO_OPTIONS = {
+  baselineRoot: undefined,
+  baselineMovesFile: undefined,
+  headPolicyFile: undefined,
+  mutationScope: undefined,
+  logRoot: undefined,
+};
+
+function runWith(projectRoot: string, schedule: () => unknown) {
+  return runAnalyzers({
+    ...NO_OPTIONS,
+    analyzers: [analyzer],
+    projectRoot,
+    policyRoot: projectRoot,
+    toolRoot: projectRoot,
+    liveProjectRoot: LIVE,
+    snapshot: 'head',
+    runTasks: schedule,
+  });
+}
+
+const failing = () => ({
+  reports: [
+    [
+      'java',
+      {
+        findings: [
+          { classification: 'tool-error', message: `missing ${SOURCE}` },
+          { classification: 'enforceable', message: `kept ${SOURCE}` },
+        ],
+      },
+    ],
+  ],
+  errors: [{ name: 'java', message: `Java preset failed in ${WORKTREE}: ${SOURCE}:44: error` }],
+  timings: [],
+});
+
+describe('withoutSnapshotRoot', () => {
+  const snapshotRoot = { projectRoot: WORKTREE, snapshot: 'head' };
+
+  it('makes paths under the snapshot project-relative and names the root itself by its snapshot', () => {
+    expect(withoutSnapshotRoot(`failed in ${WORKTREE}: ${SOURCE}:44`, snapshotRoot)).toBe(
+      `failed in head: ${path.join('services', 'Handler.java')}:44`,
+    );
+  });
+
+  it('also replaces the forward-slash spelling and a root that ends a sentence', () => {
+    const slashed = WORKTREE.split(path.sep).join('/');
+
+    expect(withoutSnapshotRoot(`${slashed}/A.java in ${WORKTREE}.`, snapshotRoot)).toBe(
+      'A.java in head.',
+    );
+  });
+
+  it('also names the real path of a snapshot root reached through a symbolic link', () => {
+    const temporary = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-snapshot-root-')));
+    const real = path.join(temporary, 'real', 'head');
+    mkdirSync(real, { recursive: true });
+    symlinkSync(path.join(temporary, 'real'), path.join(temporary, 'link'));
+    const linked = { projectRoot: path.join(temporary, 'link', 'head'), snapshot: 'head' };
+
+    try {
+      expect(withoutSnapshotRoot(`Tests fail in ${real}; see ${real}/A.java`, linked)).toBe(
+        'Tests fail in head; see A.java',
+      );
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a longer sibling path alone', () => {
+    const sibling = `${WORKTREE}-old${path.sep}A.java ${WORKTREE}.bak`;
+
+    expect(withoutSnapshotRoot(sibling, snapshotRoot)).toBe(sibling);
+  });
+});
+
+describe('runAnalyzers tool errors', () => {
+  it('never names the temporary snapshot directory', () => {
+    const run = runWith(WORKTREE, failing);
+
+    expect(run.toolErrors.map(({ message }) => message)).toEqual([
+      `Java preset failed in head: ${path.join('services', 'Handler.java')}:44: error`,
+    ]);
+    expect(
+      (run.reports.get('java')?.findings ?? []).map((finding) => fieldOf(finding, 'message')),
+    ).toEqual([`missing ${path.join('services', 'Handler.java')}`, `kept ${SOURCE}`]);
+  });
+
+  it('keeps the paths of a run on the live project', () => {
+    const run = runWith(LIVE, () => ({
+      reports: [],
+      errors: [{ name: 'java', message: `failed in ${LIVE}` }],
+      timings: [],
+    }));
+
+    expect(run.toolErrors.map(({ message }) => message)).toEqual([`failed in ${LIVE}`]);
+  });
+});
+
+describe('runAnalyzers log folder', () => {
+  function invocationContext(logRoot: string | undefined): unknown {
+    const seen: unknown[] = [];
+    runAnalyzers({
+      ...NO_OPTIONS,
+      analyzers: [
+        {
+          ...analyzer,
+          createInvocation: (context: unknown) => {
+            seen.push(context);
+            return analyzer.createInvocation();
+          },
+        },
+      ],
+      projectRoot: WORKTREE,
+      policyRoot: WORKTREE,
+      toolRoot: WORKTREE,
+      liveProjectRoot: LIVE,
+      snapshot: 'head',
+      logRoot,
+      runTasks: () => ({ reports: [], errors: [], timings: [] }),
+    });
+    return seen[0];
+  }
+
+  it('names a log folder inside the live project by its relative path', () => {
+    const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', LOG_DIRECTORY);
+
+    const logLabel = fieldOf(invocationContext(logRoot), 'logLabel');
+
+    expect(logLabel).toBe(`reports/quality/diff/${LOG_DIRECTORY}`);
+  });
+
+  it('names a log folder outside the live project by its full path, and none when there is none', () => {
+    const logRoot = path.join(path.sep, 'tmp', 'out', LOG_DIRECTORY);
+
+    const outside = invocationContext(logRoot);
+
+    expect([fieldOf(outside, 'logRoot'), fieldOf(outside, 'logLabel')]).toEqual([logRoot, logRoot]);
+    expect('logRoot' in fieldsOf(invocationContext(undefined))).toBe(false);
+  });
+});
+
+describe('clearing the log folder', () => {
+  it('removes only the build logs a run wrote, and the folder once it is empty', () => {
+    const output = mkdtempSync(path.join(tmpdir(), 'nitpicker-logs-clear-'));
+    const logs = path.join(output, LOG_DIRECTORY);
+    mkdirSync(logs);
+    for (const name of ['java-head-gradle.log', 'kotlin-base-gradle.log', 'server.log']) {
+      writeFileSync(path.join(logs, name), 'x');
+    }
+    try {
+      clearDiffReports(output);
+      expect(readdirSync(logs)).toEqual(['server.log']);
+      rmSync(path.join(logs, 'server.log'));
+      writeFileSync(path.join(logs, 'java-head-gradle.log'), 'x');
+      clearDiffReports(output);
+      expect(existsSync(logs)).toBe(false);
+    } finally {
+      rmSync(output, { recursive: true, force: true });
+    }
+  });
+});

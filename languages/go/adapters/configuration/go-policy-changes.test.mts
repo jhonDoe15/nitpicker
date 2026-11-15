@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges } from '../../../../core/policy-changes/describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from '../../../../core/policy-changes/policy-scope.mjs';
+import { describePolicyChanges } from '../../../../core/policy-changes/describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from '../../../../core/policy-changes/policy-scope.mts';
+import type { PolicyConfig } from '../../../../core/policy-changes/types/policy-types.mts';
 
-function changes(baseConfig: object, headConfig: object): unknown {
+function changes(baseConfig: PolicyConfig, headConfig: PolicyConfig): unknown {
   return describePolicyChanges(
     baseConfig,
     headConfig,

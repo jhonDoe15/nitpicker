@@ -1,12 +1,12 @@
 import {
   fixtureGit as untypedFixtureGit,
   useGitFixtures as untypedUseGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles as untypedWriteFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles as untypedWriteFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import {
   fixReport as untypedFixReport,
   useFixProject as untypedUseFixProject,
-} from '../../../../core/fix/test-support/fix-project.mjs';
+} from '../../../../core/fix/test-support/fix-project.mts';
 import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { FixOptions } from '../../../../core/fix/run-fix.mts';

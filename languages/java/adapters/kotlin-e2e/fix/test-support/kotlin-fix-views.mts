@@ -1,21 +1,22 @@
+import type { ExitCode } from '../../../../../../core/cli-context.mts';
 import type { Finding } from '../../../../../../shared/values/findings.mts';
 import {
-  fixReport as untypedFixReport,
-  useFixProject as untypedUseFixProject,
-} from '../../../../../../core/fix/test-support/fix-project.mjs';
+  fixReport,
+  useFixProject as useCoreFixProject,
+} from '../../../../../../core/fix/test-support/fix-project.mts';
+import { findingsOf } from '../../../kotlin/rules/test-support/findings-list.mts';
 
 type FileMap = Readonly<Record<string, string>>;
 
-type FixInput = {
+export type FixRequest = {
   readonly committed: FileMap;
   readonly changed: FileMap;
   readonly cliArguments?: string[];
-  readonly prepare: ((root: string) => void) | undefined;
-  readonly realAnalyzers: boolean;
+  readonly realAnalyzers?: true;
 };
 
 export type FixResult = {
-  readonly exitCode: number;
+  readonly exitCode: ExitCode;
   readonly stdout: string;
   readonly stderr: string;
   read(name: string): string;
@@ -24,22 +25,18 @@ export type FixResult = {
   toolErrors(): Finding[];
 };
 
-export type FixRequest = Omit<FixInput, 'prepare' | 'realAnalyzers'> & {
-  readonly realAnalyzers?: true;
-};
-
-export const fixReport: (stdout: string) => string = untypedFixReport;
+export { fixReport };
 
 export function useFixProject(): { fix: (input: FixRequest) => FixResult } {
-  const { fix } = untypedUseFixProject();
-  const typedFix: (input: FixInput) => FixResult = fix;
+  const { fix } = useCoreFixProject();
   return {
     fix(input) {
-      return typedFix({
-        prepare: undefined,
-        ...input,
-        realAnalyzers: input.realAnalyzers === true,
-      });
+      const result = fix(input);
+      return {
+        ...result,
+        newFindings: () => findingsOf(result.newFindings()),
+        toolErrors: () => findingsOf(result.toolErrors()),
+      };
     },
   };
 }
