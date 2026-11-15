@@ -7,6 +7,7 @@ import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-
 import { byText } from '../../../../../shared/text-order/by-text.mjs';
 import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
+import { fieldOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-multiplatform-project');
 const PRICES = 'shared/src/commonMain/kotlin/demo/shared/Prices.kt';
@@ -159,7 +160,10 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
           ({ tool, rule, identity }) =>
             tool === 'pit' && rule === 'mutation-summary' && identity.endsWith('@:shared'),
         )
-        .map(({ metric }) => [metric.name, metric.value > 0])
+        .map(({ metric }) => [
+          textOf(fieldOf(metric, 'name')),
+          numberOr(fieldOf(metric, 'value'), 0) > 0,
+        ])
         .toSorted(byText),
     ).toEqual([
       ['GeneratedCode', true],
