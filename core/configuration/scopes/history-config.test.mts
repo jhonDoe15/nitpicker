@@ -11,7 +11,7 @@ import { fieldOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
-const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../cli.mts', import.meta.url)));
+const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../cli.mjs', import.meta.url)));
 const PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
 
 describe('history config', () => {

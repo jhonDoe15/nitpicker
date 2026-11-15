@@ -24,7 +24,7 @@ const PARTNER_NOTICE =
   'Files you changed in src/billing usually change together with src/invoicing (8 of 12 commits, 67%), ' +
   'which this change leaves alone. Check that they need no matching edit; ' +
   'if they usually do, see the co-change finding for the knowledge both share.';
-const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mts', import.meta.url)));
+const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
 const repositories = {};
 
 function repositoryWithChange(config, change) {

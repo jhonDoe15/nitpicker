@@ -176,7 +176,7 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
       [
         '--experimental-loader',
         loaderPath,
-        fileURLToPath(checkoutModuleUrl(new URL('./aggregate-shards.mts', import.meta.url))),
+        fileURLToPath(checkoutModuleUrl(new URL('./aggregate-shards.mjs', import.meta.url))),
         '--help',
       ],
       { encoding: 'utf8', timeout: 60_000 },

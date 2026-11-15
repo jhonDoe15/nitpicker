@@ -160,7 +160,7 @@ const NODE_BUILD = {
   'scripts/reference/gen-rules.mjs': [
     "import { registry } from './registry.mjs';",
     "import { entries } from '../../languages/go/reference/entries.mjs';",
-    "const generate = await import('../../core/reference/generate.mts');",
+    "const generate = await import('../../core/reference/generate.mjs');",
     '',
   ].join('\n'),
   'scripts/reference/registry.mjs': "import { text } from '../../shared/text.mjs';\n",
