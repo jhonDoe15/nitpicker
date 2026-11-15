@@ -1,8 +1,10 @@
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
+import type { ModuleBindings } from '../../analysis/subprocess-calls.mts';
 import {
   describeSubprocess,
   perTestVisitors,
   subprocessBindings,
-} from '../../analysis/test-code-analysis.mjs';
+} from '../../analysis/test-code-analysis.mts';
 
 const NODE_COMMANDS = new Set([
   'node',
@@ -16,7 +18,7 @@ const NODE_COMMANDS = new Set([
   'ts-node',
 ]);
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'nodeProcessPerTest'> = {
   meta: {
     type: 'problem',
     schema: [],
@@ -26,13 +28,15 @@ export const rule = {
     },
   },
   create(context) {
-    let bindings = { named: new Map(), namespaces: new Set() };
+    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
         bindings = subprocessBindings(node);
       },
       ...perTestVisitors(context, (node) => {
-        if (node.type !== 'CallExpression') return undefined;
+        if (node.type !== AST_NODE_TYPES.CallExpression) {
+          return undefined;
+        }
         const described = describeSubprocess(context, node, bindings);
         return NODE_COMMANDS.has(described?.command ?? '')
           ? { messageId: 'nodeProcessPerTest' }

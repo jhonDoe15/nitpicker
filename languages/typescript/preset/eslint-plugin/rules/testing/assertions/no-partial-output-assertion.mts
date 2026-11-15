@@ -1,5 +1,8 @@
-import { chainOf } from '../../analysis/ancestry.mjs';
-import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mts';
+import { chainOf } from '../../typed/node-views.mts';
+
+type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
 
 const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual', 'toMatch']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
@@ -9,53 +12,54 @@ const PARTIAL_ASYMMETRIC_MATCHERS = new Set([
   'arrayContaining',
 ]);
 
-function matcherChain(callee) {
-  return chainOf(callee.object, (link) =>
-    link.type === 'MemberExpression' ? link.object : undefined,
+function matcherChain(callee: TSESTree.MemberExpression): TSESTree.Node[] {
+  return chainOf<TSESTree.Node>(callee.object, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
   );
 }
 
-function isNegatedExpectation(callee) {
+function isNegatedExpectation(callee: TSESTree.MemberExpression): boolean {
   return matcherChain(callee).some(
-    (link) => link.type === 'MemberExpression' && memberName(link) === 'not',
+    (link) => link.type === AST_NODE_TYPES.MemberExpression && memberName(link) === 'not',
   );
 }
 
-function startsFromExpect(callee) {
+function startsFromExpect(callee: TSESTree.MemberExpression): boolean {
   const root = matcherChain(callee).at(-1);
   return root !== undefined && isExpectCall(root);
 }
 
-function isTextArgument(node) {
+function isTextArgument(node: TSESTree.Node | undefined): boolean {
   return (
-    (node?.type === 'Literal' && typeof node.value === 'string') || node?.type === 'TemplateLiteral'
+    (node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
+    node?.type === AST_NODE_TYPES.TemplateLiteral
   );
 }
 
-function isAnchoredPattern(node) {
-  const pattern = node.regex?.pattern;
-  return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
+function isAnchoredPattern(node: TSESTree.RegExpLiteral): boolean {
+  const { pattern } = node.regex;
+  return pattern.startsWith('^') && pattern.endsWith('$') && !pattern.endsWith('\\$');
 }
 
-function isFragmentMatch(node) {
+function isFragmentMatch(node: TSESTree.CallExpression): boolean {
   const argument = node.arguments[0];
-  if (argument?.type === 'Literal' && argument.regex !== undefined) {
+  if (argument?.type === AST_NODE_TYPES.Literal && 'regex' in argument) {
     return !isAnchoredPattern(argument);
   }
   return isTextArgument(argument);
 }
 
-function isPositiveExpectation(callee) {
+function isPositiveExpectation(callee: TSESTree.MemberExpression): boolean {
   return startsFromExpect(callee) && !isNegatedExpectation(callee);
 }
 
-function isPartialAssertion(node) {
+function isPartialAssertion(node: TSESTree.CallExpression): node is MemberCall {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression') {
+  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
     return false;
   }
   const matcher = memberName(callee);
-  if (!PARTIAL_MATCHERS.has(matcher)) {
+  if (matcher === undefined || !PARTIAL_MATCHERS.has(matcher)) {
     return false;
   }
   if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) {
@@ -67,32 +71,34 @@ function isPartialAssertion(node) {
   return isPositiveExpectation(callee);
 }
 
-function isPartialAsymmetricMatcher(node) {
+function isPartialAsymmetricMatcher(node: TSESTree.Node): boolean {
+  const name = node.type === AST_NODE_TYPES.CallExpression ? memberName(node.callee) : undefined;
   return (
-    node.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    node.callee.object.type === 'Identifier' &&
+    node.type === AST_NODE_TYPES.CallExpression &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression &&
+    node.callee.object.type === AST_NODE_TYPES.Identifier &&
     node.callee.object.name === 'expect' &&
-    PARTIAL_ASYMMETRIC_MATCHERS.has(memberName(node.callee))
+    name !== undefined &&
+    PARTIAL_ASYMMETRIC_MATCHERS.has(name)
   );
 }
 
-function expectedValueParts(node) {
-  if (node.type === 'ObjectExpression') {
+function expectedValueParts(node: TSESTree.Node): TSESTree.Node[] {
+  if (node.type === AST_NODE_TYPES.ObjectExpression) {
     return node.properties.map((property) =>
-      property.type === 'Property' ? property.value : property,
+      property.type === AST_NODE_TYPES.Property ? property.value : property,
     );
   }
-  if (node.type === 'ArrayExpression') {
+  if (node.type === AST_NODE_TYPES.ArrayExpression) {
     return node.elements.filter((element) => element !== null);
   }
-  if (node.type === 'SpreadElement') {
+  if (node.type === AST_NODE_TYPES.SpreadElement) {
     return [node.argument];
   }
   return [];
 }
 
-function containsPartialMatcher(expected) {
+function containsPartialMatcher(expected: TSESTree.Node): boolean {
   const pending = [expected];
   for (const node of pending) {
     if (isPartialAsymmetricMatcher(node)) {
@@ -103,19 +109,23 @@ function containsPartialMatcher(expected) {
   return false;
 }
 
-function isPartialMatcherAssertion(node) {
+function isPartialMatcherAssertion(node: TSESTree.CallExpression): node is MemberCall {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) {
+  if (callee.type !== AST_NODE_TYPES.MemberExpression || !isPositiveExpectation(callee)) {
     return false;
   }
   const matcher = memberName(callee);
   if (matcher === 'toMatchObject') {
     return true;
   }
-  return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
+  return (
+    matcher !== undefined &&
+    WHOLE_VALUE_MATCHERS.has(matcher) &&
+    node.arguments.some(containsPartialMatcher)
+  );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'partialOutput' | 'partialMatcher'> = {
   meta: {
     type: 'problem',
     docs: {

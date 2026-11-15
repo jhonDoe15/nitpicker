@@ -1,20 +1,24 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { readLayout } from '../../../../head-policy.mjs';
-import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
+import { mockedModuleSource } from '../../analysis/test-code-analysis.mts';
+import { readLayout } from '../../typed/policy-views.mts';
 
 const layout = readLayout();
 
 const EXPLICIT_INFRASTRUCTURE_SEAM = /(?:^|[/.-])(?:fixtures?|infrastructure|seams?)(?:[/.-]|$)/;
 
-function isRuntimeImport(node) {
+function isRuntimeImport(node: TSESTree.ImportDeclaration): boolean {
   return (
     node.importKind !== 'type' &&
     (node.specifiers.length === 0 ||
-      node.specifiers.some((specifier) => specifier.importKind !== 'type'))
+      node.specifiers.some(
+        (specifier) =>
+          specifier.type !== AST_NODE_TYPES.ImportSpecifier || specifier.importKind !== 'type',
+      ))
   );
 }
 
-function isProductionModule(filename, source) {
+function isProductionModule(filename: string, source: string): boolean {
   if (!source.startsWith('.')) {
     return layout.sourceRootOf(source) !== undefined;
   }
@@ -26,7 +30,7 @@ function isProductionModule(filename, source) {
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'mockedSubject'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -39,8 +43,8 @@ export const rule = {
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
-    const productionImports = new Set();
-    const mocks = [];
+    const productionImports = new Set<string>();
+    const mocks: { readonly node: TSESTree.CallExpression; readonly source: string }[] = [];
 
     return {
       ImportDeclaration(node) {

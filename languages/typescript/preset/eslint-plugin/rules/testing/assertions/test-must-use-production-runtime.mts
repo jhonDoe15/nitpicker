@@ -1,11 +1,38 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { readLayout } from '../../../../head-policy.mjs';
 import {
-  reachableModules,
-  resolveModuleSpecifier,
+  reachableModules as untypedReachableModules,
+  resolveModuleSpecifier as untypedResolveModuleSpecifier,
 } from '../../../../modules/module-resolution.mjs';
-import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
-import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
+import {
+  moduleReferencesOf as untypedModuleReferencesOf,
+  statementSources as untypedStatementSources,
+} from '../../../../modules/module-sources.mjs';
+import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mts';
+import { readLayout } from '../../typed/policy-views.mts';
+
+type Options = readonly [{ readonly exemptPattern?: string }?];
+type Context = Readonly<TSESLint.RuleContext<'missingRuntime', Options>>;
+type ModuleReference = {
+  readonly source: string;
+  readonly runtime: boolean;
+  readonly reexport: boolean;
+};
+type ReachStep =
+  | { readonly file: string; readonly truncated?: undefined }
+  | { readonly truncated: boolean; readonly file?: undefined };
+
+const reachableModules: (
+  entries: string,
+  specifiersOf: (file: string) => readonly string[],
+  limits: { readonly maxDepth: number; readonly maxFiles: number },
+) => Iterable<ReachStep> = untypedReachableModules;
+const resolveModuleSpecifier: (
+  written: string,
+  containingFile: string,
+) => { readonly kind: string; readonly path?: string | undefined } = untypedResolveModuleSpecifier;
+const moduleReferencesOf: (file: string) => ModuleReference[] = untypedModuleReferencesOf;
+const statementSources: (statement: TSESTree.Node) => string[] = untypedStatementSources;
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -20,28 +47,28 @@ const relativeModule = /^\.{1,2}\//u;
 const MAX_REEXPORT_DEPTH = 3;
 const MAX_REEXPORTED_FILES = 50;
 
-function resolveModule(fromFile, source) {
+function resolveModule(fromFile: string, source: string): string | undefined {
   const resolved = resolveModuleSpecifier(source, fromFile);
   return resolved.kind === 'file' ? resolved.path : undefined;
 }
 
-function reexportSources(file) {
+function reexportSources(file: string): string[] {
   return moduleReferencesOf(file)
     .filter(({ reexport }) => reexport)
     .map(({ source }) => source);
 }
 
-function helperFiles(helper) {
+function helperFiles(helper: string): string[] {
   const reexported = [
     ...reachableModules(helper, reexportSources, {
       maxDepth: MAX_REEXPORT_DEPTH,
       maxFiles: MAX_REEXPORTED_FILES,
     }),
   ];
-  return [helper, ...reexported.map(({ file }) => file).filter(Boolean)];
+  return [helper, ...reexported.map(({ file }) => file).filter((file) => file !== undefined)];
 }
 
-function helperReaches(testFile, source) {
+function helperReaches(testFile: string, source: string): boolean {
   const helper = resolveModule(testFile, source);
   return (
     helper !== undefined &&
@@ -53,17 +80,20 @@ function helperReaches(testFile, source) {
   );
 }
 
-function isRuntimeImport(node) {
+function isRuntimeImport(node: TSESTree.ImportDeclaration): boolean {
   if (node.importKind === 'type') {
     return false;
   }
   if (node.specifiers.length === 0) {
     return true;
   }
-  return node.specifiers.some((specifier) => specifier.importKind !== 'type');
+  return node.specifiers.some(
+    (specifier) =>
+      specifier.type !== AST_NODE_TYPES.ImportSpecifier || specifier.importKind !== 'type',
+  );
 }
 
-function isProductionModule(filename, source) {
+function isProductionModule(filename: string, source: string): boolean {
   const sourceRoot = layout.sourceRoots.find(
     (root) => source.includes(`/${root}/`) || source.startsWith(`${root}/`),
   );
@@ -85,25 +115,25 @@ function isProductionModule(filename, source) {
   );
 }
 
-function reachesProduction(filename, source) {
+function reachesProduction(filename: string, source: string): boolean {
   if (isProductionModule(filename, source)) {
     return true;
   }
   return helperReaches(filename, source);
 }
 
-function isProductionRequire(filename, node) {
+function isProductionRequire(filename: string, node: TSESTree.CallExpression): boolean {
   const [argument] = node.arguments;
   return (
-    node.callee.type === 'Identifier' &&
+    node.callee.type === AST_NODE_TYPES.Identifier &&
     node.callee.name === 'require' &&
-    argument?.type === 'Literal' &&
+    argument?.type === AST_NODE_TYPES.Literal &&
     typeof argument.value === 'string' &&
     reachesProduction(filename, argument.value)
   );
 }
 
-function isExemptTest(context, filename) {
+function isExemptTest(context: Context, filename: string): boolean {
   const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
   const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
   return (
@@ -117,7 +147,7 @@ function isExemptTest(context, filename) {
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'missingRuntime', Options> = {
   meta: {
     type: 'problem',
     docs: {
@@ -143,7 +173,7 @@ export const rule = {
       return {};
     }
 
-    let program;
+    let program: TSESTree.Program | undefined;
     let hasProductionRuntime = false;
 
     return {
@@ -151,17 +181,13 @@ export const rule = {
         program = node;
       },
       ImportDeclaration(node) {
-        if (
-          isRuntimeImport(node) &&
-          typeof node.source.value === 'string' &&
-          reachesProduction(filename, node.source.value)
-        ) {
+        if (isRuntimeImport(node) && reachesProduction(filename, node.source.value)) {
           hasProductionRuntime = true;
         }
       },
       ImportExpression(node) {
         if (
-          node.source.type === 'Literal' &&
+          node.source.type === AST_NODE_TYPES.Literal &&
           typeof node.source.value === 'string' &&
           reachesProduction(filename, node.source.value)
         ) {
@@ -174,7 +200,7 @@ export const rule = {
         }
       },
       'Program:exit'() {
-        if (!hasProductionRuntime) {
+        if (!hasProductionRuntime && program !== undefined) {
           context.report({ node: program, messageId: 'missingRuntime' });
         }
       },

@@ -1,21 +1,22 @@
-import { readLayout } from '../../../../head-policy.mjs';
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { pauseFix } from '../../../fixes/processes/container-pause-fix.mjs';
-import { fixable } from '../../../fixes/support/descriptors.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { readLayout } from '../../typed/policy-views.mts';
+import { ancestorsOf } from '../../typed/node-views.mts';
+import { pauseFix } from '../../../fixes/processes/container-pause-fix.mts';
+import { fixable } from '../../../fixes/support/descriptors.mts';
 
 const { isTestFixture } = readLayout();
 
-function isInsideGuardedTry(node) {
+function isInsideGuardedTry(node: TSESTree.Node): boolean {
   const ancestors = ancestorsOf(node);
   return ancestors.some(
     (current, index) =>
-      current.type === 'TryStatement' &&
-      current.finalizer &&
+      current.type === AST_NODE_TYPES.TryStatement &&
+      current.finalizer !== null &&
       ancestors.slice(0, index).includes(current.block),
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'unguardedPause'> = {
   meta: {
     type: 'problem',
     fixable: 'code',
@@ -26,18 +27,23 @@ export const rule = {
     },
   },
   create(context) {
-    if (isTestFixture(context.filename, 'container-teardown.ts')) return {};
+    if (isTestFixture(context.filename, 'container-teardown.ts')) {
+      return {};
+    }
     return {
       CallExpression(node) {
         const callee = node.callee;
         if (
           node.arguments.length !== 0 ||
-          callee.type !== 'MemberExpression' ||
+          callee.type !== AST_NODE_TYPES.MemberExpression ||
           callee.computed ||
           callee.property.name !== 'pause'
-        )
+        ) {
           return;
-        if (isInsideGuardedTry(node)) return;
+        }
+        if (isInsideGuardedTry(node)) {
+          return;
+        }
         context.report(
           fixable({ node, messageId: 'unguardedPause' }, pauseFix(context.sourceCode, node)),
         );
