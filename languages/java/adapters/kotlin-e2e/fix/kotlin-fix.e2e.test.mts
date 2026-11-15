@@ -121,6 +121,25 @@ Fix notes:
   };
 }
 
+const SOURCE_RECIPES = {
+  before:
+    'package demo\n\nclass Rules {\n    fun validate(count: Int) {\n        if (count < 0) throw IllegalArgumentException("negative")\n        var total = count\n        println(total)\n    }\n}\n',
+  after:
+    'package demo\n\nclass Rules {\n    fun validate(count: Int) {\n        require(!(count < 0)) { "negative" }\n        val total = count\n        println(total)\n    }\n}\n',
+};
+
+function sourceRecipeRepository(build) {
+  return {
+    committed: {
+      ...build,
+      'nitpicker.config.json': '{ "preset": "kotlin", "kotlin": { "formatter": "ktlint" } }\n',
+      '.editorconfig': 'root = true\n[*.kt]\nindent_size = 4\n',
+      [`${SOURCES}/Seed.kt`]: FORMATTED,
+    },
+    changed: { [`${SOURCES}/Rules.kt`]: SOURCE_RECIPES.before },
+  };
+}
+
 describe.skipIf(!enabled)('nitpicker --fix for Kotlin', () => {
   it.each<Formatter>(['ktlint', 'ktfmt'])(
     'formats the changed files of a Gradle project with %s, so the gate finds no format finding in them',
@@ -149,5 +168,19 @@ describe.skipIf(!enabled)('nitpicker --fix for Kotlin', () => {
     const result = fix(repository({ build: MAVEN_BUILD, formatter: 'ktlint' }));
 
     expect(outcomeOf(result), result.stdout + result.stderr).toEqual(expectedOutcome('ktlint'));
+  });
+  it.each([
+    ['Gradle', GRADLE_BUILD, true],
+    ['Maven', MAVEN_BUILD, false],
+  ])('rewrites the source of a %s project with the Kotlin recipes', (_, build, realAnalyzers) => {
+    const result = fix({
+      ...sourceRecipeRepository(build),
+      ...(realAnalyzers && { realAnalyzers }),
+    });
+
+    expect(result.read(`${SOURCES}/Rules.kt`), result.stdout + result.stderr).toBe(
+      SOURCE_RECIPES.after,
+    );
+    expect(result.toolErrors()).toEqual([]);
   });
 });

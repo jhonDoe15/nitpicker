@@ -14,7 +14,7 @@ import {
   REPORT_VARIABLE,
   ROOT_VARIABLE,
   RUNNER_VARIABLE,
-} from '../../preset/test-console/console-report.mjs';
+} from '../../preset/test-console/console-report.mts';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mts';
 import { consoleProducerPath, startTestConsole } from './test-console-run.mts';
 
