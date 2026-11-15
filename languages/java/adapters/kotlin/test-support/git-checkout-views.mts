@@ -1,7 +1,7 @@
 import {
   nestedCheckout as untypedNestedCheckout,
   useGitCheckouts as untypedUseGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../../core/diff/git/test-support/git-checkout.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 
 type Files = Record<string, string>;

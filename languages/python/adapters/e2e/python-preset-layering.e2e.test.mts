@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mts';
 import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mts';
 import {
   commitBranch,

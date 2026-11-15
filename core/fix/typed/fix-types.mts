@@ -39,9 +39,9 @@ type PlannedFinding = {
 
 export type PlannedFix = {
   readonly recipe?: string;
-  readonly tool?: string;
+  readonly tool?: string | undefined;
   readonly safety: string;
-  readonly finding?: PlannedFinding;
+  readonly finding?: PlannedFinding | undefined;
   readonly alsoFindings?: readonly PlannedFinding[];
   readonly files: readonly string[];
 };
@@ -76,3 +76,34 @@ export type FixSettings = {
   readonly writer: FixWriter;
   readonly recipes: unknown;
 };
+
+export type RuleRef = { readonly tool: string; readonly rule: string };
+
+export type RuleMatcher = RuleRef & {
+  readonly pattern?: string;
+  readonly findingTools?: readonly string[];
+  readonly fixableIn?: readonly string[];
+};
+
+export type PresetRule = RuleRef & {
+  readonly presets: readonly string[];
+  readonly safety?: string;
+};
+
+export type RecipeListing = {
+  readonly id?: string;
+  readonly presets: readonly string[];
+  readonly rules: readonly RuleRef[];
+  readonly safety: string;
+};
+
+export type FixStatusSources = {
+  readonly recipes: readonly RecipeListing[];
+  readonly formatters: readonly PresetRule[];
+  readonly selected?: readonly PresetRule[];
+  readonly plans: readonly PresetRule[];
+};
+
+export function concatenated(...lists: readonly (readonly unknown[])[]): unknown[] {
+  return lists.flat();
+}

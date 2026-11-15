@@ -1,3 +1,4 @@
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import type { Finding, StructureFunction } from './typed/structure-types.mts';
 
 const BODY_LINE = 5;
@@ -46,9 +47,13 @@ export function coverageOf(...names: readonly string[]): string {
   });
 }
 
-export function enforceable(result: { json: (name: string) => readonly Finding[] }): Finding[] {
-  return result
-    .json('new-findings.json')
+function isFinding(value: unknown): value is Finding {
+  return typeof fieldOf(value, 'tool') === 'string' && typeof fieldOf(value, 'rule') === 'string';
+}
+
+export function enforceable(result: { json: (name: string) => unknown }): Finding[] {
+  return listOf(result.json('new-findings.json'))
+    .filter(isFinding)
     .filter(({ classification }: Finding) => classification === 'enforceable')
     .map(({ tool, rule, symbol, message }: Finding) => ({ tool, rule, symbol, message }));
 }
