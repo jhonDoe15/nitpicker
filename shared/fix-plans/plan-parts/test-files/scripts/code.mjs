@@ -11,3 +11,11 @@ function kept(part) {
 export function withoutComments(text) {
   return text.replaceAll(COMMENT_OR_STRING, kept);
 }
+
+function blanked(part) {
+  return part.startsWith('/*') || /^["'`]/u.test(part) ? ' ' : kept(part);
+}
+
+export function codeOnly(text) {
+  return text.replaceAll(COMMENT_OR_STRING, blanked);
+}
