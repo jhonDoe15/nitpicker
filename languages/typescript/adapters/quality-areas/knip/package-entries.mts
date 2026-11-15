@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { listOf } from '../../../../../scripts/json/fields.mts';
-import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, stringsIn } from '../../../../../shared/values/readers.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { KnipConfig } from '../typed/policy.mts';
 import {
@@ -31,21 +31,6 @@ const ENTRY_FIELDS = ['main', 'module', 'types', 'typings', 'bin', 'exports'];
 const OUTPUT_FILE = /\.(?:d\.)?[cm]?[jt]sx?$/u;
 const SOURCE_EXTENSIONS = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const SKIPPED_FOLDERS = new Set(['node_modules', '.git']);
-
-function pathsIn(value: unknown): string[] {
-  const found: string[] = [];
-  const pending: unknown[] = [value];
-  for (const item of pending) {
-    if (typeof item === 'string') {
-      found.push(item);
-    } else if (Array.isArray(item)) {
-      pending.push(...listOf(item));
-    } else if (typeof item === 'object' && item !== null) {
-      pending.push(...Object.values(fieldsOf(item)));
-    }
-  }
-  return found;
-}
 
 function readManifest(directory: string): unknown {
   const file = path.join(directory, 'package.json');
@@ -131,7 +116,7 @@ export function publishedSourceEntries(
 ): string[] {
   const manifest = readManifest(projectRoot);
   const mappings = configuredMappings(projectRoot);
-  const entries = ENTRY_FIELDS.flatMap((field) => pathsIn(fieldOf(manifest, field)));
+  const entries = ENTRY_FIELDS.flatMap((field) => stringsIn(fieldOf(manifest, field)));
   const patterns = entries.flatMap((entry) => sourcePattern(entry, { sourceRoots, mappings }));
   return [...new Set(patterns)].toSorted(compareText);
 }
