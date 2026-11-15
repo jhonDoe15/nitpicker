@@ -34,7 +34,8 @@ or `&&`/`||` operand that the guards before it in the same function decide fails
 proves it always true (a redundant check) or always false (dead code). The guards are enclosing
 `if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
 of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
-lambda captures, forgets what was known.
+lambda captures, forgets what was known. `x == true` under `if (x == true)`, or in the arm of a
+conditional that tests it, is reported too: it is always `true` there.
 
 `duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
 bodies have the same canonical tree (locals declared in the arm may have other names) fail, except

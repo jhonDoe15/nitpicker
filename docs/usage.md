@@ -1497,6 +1497,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
 | `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
+| `field-limit-mismatch`     | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern that admits more than the column holds; or an OpenAPI or JSON Schema bound (`maxLength`, `minLength`, `maximum`, `pattern`) that differs from the validation of the same field |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,
@@ -1540,6 +1541,25 @@ manifests name a database driver names only MySQL or MariaDB drivers (`mysql2`,
 service of a monorepo goes by its own driver; a migration written for MySQL (backquoted names or
 `ENGINE=`) and a Liquibase change limited by `dbms` to other databases are skipped too. The fix is a migration that creates the index; a table known to stay small
 takes an exception for its migration.
+
+`field-limit-mismatch` reads the bounded string columns (`VARCHAR(n)` and `CHAR(n)` in SQL schema files, Flyway
+and Liquibase XML migrations, in file order per folder so a later `ALTER` wins; Alembic `String(n)`; JPA
+`@Column(length = n)`; Prisma `@db.VarChar(n)`; TypeORM, MikroORM and Sequelize `length`; Drizzle `varchar`
+and `char`; SQLAlchemy, Django and SQLModel; GORM `size:n`), the validation of the same field (Bean Validation
+`@Size`, `@Length`, `@Pattern`, `@Digits` and `@Max`, a Spring `Validator` that compares a length with a number,
+class-validator, zod, valibot, yup and Joi, pydantic `Field`, `constr` and `StringConstraints`, Go `validate` and
+`binding` tags) and the OpenAPI or JSON Schema properties. A pattern counts as a length bound when it is
+anchored at both ends. Fields are matched by the entity, table or schema name (without `Dto`, `Request`,
+`Fields`, `Create`, `Update` and the like, singular) and the field name, and a field with no match is never
+reported. The column is reported as unbounded only when an entity or DTO of that name appears in a file that
+handles a write request (`@PostMapping`, `@RequestBody`, `@Body()`, `router.post`, `request.json`,
+`c.ShouldBindJSON`, ...) outside the test folders, which approximates "written from request input", and a
+bound that names a constant is not resolved, so such a field is left alone. A column wider than its validation
+is never reported. A generated DTO (the project builds with openapi-generator, oapi-codegen,
+datamodel-code-generator, openapi-typescript and the like) uses the spec as its validation. Only a field whose
+limits changed is new in a comparison, because the identity holds the column width and the bounds. The fix is
+the missing bound (`@Size(max = 30)`, `.max(30)`, `Field(max_length=30)`, `validate:"max=30"`) or one limit
+changed to match the others; a field limited by a gateway or a custom validator takes an exception.
 
 A build output folder is fine when what runs from the checkout points into it: a GitHub Action's
 `action.yml` (`runs.main`, `pre`, `post`), or the `main`, `module`, `types`, `bin`, `exports` or

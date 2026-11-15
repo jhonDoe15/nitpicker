@@ -63,12 +63,14 @@ import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-lo
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mjs';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mjs';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
+import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mjs';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mjs';
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mjs';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mjs';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
@@ -96,8 +98,6 @@ import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
-import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -166,12 +166,14 @@ export const partRules = {
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
   'no-production-console': ruleNoProductionConsole,
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
@@ -199,6 +201,4 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
-  'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
 };
