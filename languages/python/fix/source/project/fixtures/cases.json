@@ -1,0 +1,84 @@
+{
+  "wrapper": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str, strict: bool = False) -> str:\n    return path if strict else path.strip()\n\n\ndef load(path: str, strict: bool = False) -> str:\n    \"\"\"Load a path.\"\"\"\n    return _load(path, strict)\n\n\ndef main() -> str:\n    return load(\"a\")\n",
+    "app/use.py": "from app.api import load\n\n\ndef run() -> str:\n    return load(\"x\", True)\n",
+    "app/other.py": "import app.api as api\n\n\ndef run() -> str:\n    return api.load(\"y\")\n"
+  },
+  "wrapper-elsewhere": {
+    "app/__init__.py": "",
+    "app/core.py": "def load(path: str) -> str:\n    return path\n",
+    "app/api.py": "from app.core import load as _core\n\n\ndef load(path: str) -> str:\n    return _core(path)\n\n\ndef main() -> str:\n    return load(\"a\")\n"
+  },
+  "wrapper-value": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n\n\nHANDLERS = [load]\n"
+  },
+  "wrapper-named-by-string": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n\n\ndef main() -> str:\n    return load(\"a\")\n",
+    "app/names.py": "EXPORTS = [\"load\"]\n"
+  },
+  "wrapper-uncalled": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n"
+  },
+  "wrapper-reexport": {
+    "app/__init__.py": "from app.api import load\n",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n\n\ndef main() -> str:\n    return load(\"a\")\n"
+  },
+  "option": {
+    "app/__init__.py": "",
+    "app/view.py": "def render(text: str, width: int = 80, indent: int = 4) -> str:\n    return text.ljust(width) + \" \" * indent\n\n\ndef build(name: str, debug: bool = False) -> str:\n    return name\n",
+    "app/main.py": "from app.view import build, render\n\n\ndef run() -> str:\n    return render(\"a\", 10) + build(\"x\")\n"
+  },
+  "option-declined": {
+    "app/__init__.py": "",
+    "app/view.py": "DEFAULTS = [1]\n\n\ndef items(count: int, values: list[int] = DEFAULTS) -> int:\n    return count + len(values)\n\n\ndef scale(value: int, factor: int = 2) -> int:\n    factor = factor + 1\n    return value * factor\n\n\ndef shown(value: int, label: str = \"x\") -> int:\n    return value\n",
+    "app/main.py": "from app.view import items, scale, shown\n\n\ndef run() -> int:\n    return items(1) + scale(2) + shown(3, \"y\")\n"
+  },
+  "ignores": {
+    "app/typed.py": "import os  # type: ignore\nA: int = 1  # type: ignore[assignment]  # keep this\nB = [os]  # noqa  # type: ignore[misc]\nC: int = \"s\"  # type: ignore[assignment, arg-type]\n# type: ignore\nD = 1  # type: ignore  because\n"
+  },
+  "option-posonly": {
+    "app/__init__.py": "",
+    "app/view.py": "def f(a: int = 1, /, b: int = 2) -> int:\n    return a + b\n",
+    "app/main.py": "from app.view import f\n\n\ndef run() -> int:\n    return f(5)\n"
+  },
+  "option-lambda": {
+    "app/__init__.py": "",
+    "app/view.py": "def f(a: int, b=lambda x, y: 0, c: int = 1) -> int:\n    return a\n",
+    "app/main.py": "from app.view import f\n\n\ndef run() -> int:\n    return f(1, None)\n"
+  },
+  "option-power": {
+    "app/__init__.py": "",
+    "app/view.py": "def f(n: int, p: int = -2) -> int:\n    return n * p ** 2\n",
+    "app/main.py": "from app.view import f\n\n\ndef run() -> int:\n    return f(3)\n"
+  },
+  "option-comment": {
+    "app/__init__.py": "",
+    "app/view.py": "def f(\n    a: int,\n    b: int = 1,  # width\n) -> int:\n    return a\n",
+    "app/main.py": "from app.view import f\n\n\ndef run() -> int:\n    return f(1)\n"
+  },
+  "option-several": {
+    "app/__init__.py": "",
+    "app/view.py": "def f(x: int, a: int = 1, b: int = 2) -> int:\n    return x\n",
+    "app/main.py": "from app.view import f\n\n\ndef run() -> int:\n    return f(1)\n"
+  },
+  "wrapper-entry-string": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n\n\ndef main() -> str:\n    return load(\"a\")\n",
+    "app/names.py": "ENTRY = \"app.api:load\"\n"
+  },
+  "wrapper-toml": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n",
+    "app/main.py": "from app.api import load\n\n\ndef run() -> str:\n    return load(\"a\")\n",
+    "pyproject.toml": "[project.scripts]\ntool = \"app.api:load\"\n"
+  },
+  "wrapper-comment": {
+    "app/__init__.py": "",
+    "app/api.py": "def _load(path: str) -> str:\n    return path\n\n\n# Kept for old callers.\n# Remove later.\ndef load(path: str) -> str:\n    return _load(path)\n\n\ndef other() -> int:\n    return 1\n",
+    "app/main.py": "from app.api import load\n\n\ndef run() -> str:\n    return load(\"a\")\n"
+  }
+}

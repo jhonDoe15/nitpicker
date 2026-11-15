@@ -290,19 +290,19 @@ describe('declineReason', () => {
       'a type that differs',
       sameFile('a.ts', ['f', 'g'], { parameters: [{ kind: 'type', values: ['A', 'B'] }] }),
       'typescript-extract-near-duplicate',
-      'the copies differ in a type, which a parameter of the extracted function cannot carry',
+      'the copies differ in a type, and a type parameter cannot stand for it after new, in a cast or an instanceof',
     ],
     [
       'an expression that differs in Java',
       sameFile('A.java', ['A.f', 'A.g'], { parameters: [{ kind: 'value', deferred: true }] }),
       'java-extract-near-duplicate',
-      'a differing expression cannot be passed in Java, because the parameter needs its type written',
+      'a differing expression needs its type written to become a Supplier: a declared local, a return or an if condition',
     ],
     [
       'two classes',
       sameFile('A.java', ['A.f', 'B.g']),
       'java-extract-near-duplicate',
-      'the copies are in different classes',
+      'the copies are in different classes, and only anonymous classes of one class can be extracted together',
     ],
     [
       'a language without a recipe',

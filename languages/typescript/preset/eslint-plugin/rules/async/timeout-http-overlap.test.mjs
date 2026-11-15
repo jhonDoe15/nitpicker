@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { productionPolicyConfigFor } from '../../../eslint-config/policy/production-policy.mjs';
-import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../../layout.mjs';
 import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
 import { rule } from './timeout-abandons-operation.mjs';
