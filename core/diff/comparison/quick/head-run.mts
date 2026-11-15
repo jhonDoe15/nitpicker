@@ -1,6 +1,5 @@
 import { runGit } from '../../git/repository/command.mjs';
 import { createFindingsCache, runBaseWithCache } from '../../cache/findings-cache.mts';
-import type { CacheStore } from '../../cache/cache-stores.mts';
 import { cachedLine } from '../../execution/progress.mts';
 import {
   type AnalyzerRun,
@@ -9,28 +8,9 @@ import {
 } from '../../execution/run-analyzers.mts';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 import { scopeToTouchedFiles } from './scope.mts';
-
-export type RunSettings = {
-  readonly repositoryRoot: string;
-  readonly projectRelativePath: string;
-  readonly headProjectRoot: string;
-  readonly analyzers: readonly ProfiledAnalyzer[];
-  readonly quick?: unknown;
-  readonly cacheStore?: CacheStore | undefined;
-  readonly configOverrides: unknown;
-  readonly headPolicy: unknown;
-  readonly progress?: { readonly write: (text: string) => unknown } | undefined;
-  readonly scope?: unknown;
-  readonly outputRoot: string;
-  readonly runTasks?: unknown;
-};
-
-export type SnapshotRoots = {
-  readonly baseProjectRoot: string;
-  readonly headSnapshotRoot: string;
-};
+import { unlessSkipped } from '../snapshots/skips.mts';
+import type { RunSettings, SkipPlan, SnapshotRoots } from '../snapshots/run-types.mts';
 
 export type CachedRunRequest = {
   readonly settings: RunSettings;
@@ -50,6 +30,7 @@ type HeadContext = {
   readonly roots: SnapshotRoots;
   readonly layout: { readonly touchedPaths: ReadonlySet<string> };
   readonly headPolicyFile: unknown;
+  readonly skipPlan: SkipPlan;
 };
 
 const gitOutput: (repositoryRoot: string, args: readonly string[]) => unknown = runGit;
@@ -116,19 +97,21 @@ function runQuickHead(
 
 export function runHeadAnalyzers(context: HeadContext, baselineMovesFile: unknown): unknown {
   const { settings, roots, headPolicyFile } = context;
-  return runQuickHead(context, (analyzers) =>
-    runAnalyzers({
-      analyzers,
-      projectRoot: roots.headSnapshotRoot,
-      policyRoot: roots.headSnapshotRoot,
-      toolRoot,
-      liveProjectRoot: settings.headProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      baselineRoot: roots.baseProjectRoot,
-      baselineMovesFile,
-      mutationScope: fieldOf(settings.scope, 'paths'),
-      ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
-    }),
+  return runQuickHead(context, (scoped) =>
+    unlessSkipped(scoped, context.skipPlan, (analyzers) =>
+      runAnalyzers({
+        analyzers,
+        projectRoot: roots.headSnapshotRoot,
+        policyRoot: roots.headSnapshotRoot,
+        toolRoot,
+        liveProjectRoot: settings.headProjectRoot,
+        headPolicyFile,
+        snapshot: 'head',
+        baselineRoot: roots.baseProjectRoot,
+        baselineMovesFile,
+        mutationScope: fieldOf(settings.scope, 'paths'),
+        ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
+      }),
+    ),
   );
 }

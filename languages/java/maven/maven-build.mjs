@@ -29,9 +29,12 @@ import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { effectsOptions } from '../adapters/effects/effects-options.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { mavenScope } from './reactor/maven-scope.mjs';
+import { reactorRootFor } from './reactor/reactor-root.mjs';
 import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
+const REPORT_CLOCK_SKEW_MS = 2000;
 export const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -65,6 +68,7 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  selection = [],
   reruns = TEST_RERUNS_OFF,
 }) {
   runMaven({
@@ -74,6 +78,7 @@ export function buildAndTest({
     timeoutMs,
     args: [
       '--quiet',
+      ...selection,
       ...buildGoals({ quick, pinned, modules }),
       ...dependencyListArguments(work),
       '-Dmaven.test.failure.ignore=true',
@@ -108,11 +113,12 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
-  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs });
-  const modules = readReactor(projectRoot, effectivePom).filter(
-    (module) => module.packaging !== 'pom',
-  );
+function readModules({ projectRoot, mavenRoot, maven, work, spawn, timeoutMs, changedFiles }) {
+  const effectivePom = readEffectivePom({ projectRoot: mavenRoot, maven, work, spawn, timeoutMs });
+  const reactor = readReactor(mavenRoot, effectivePom);
+  const built = reactor.filter((module) => module.packaging !== 'pom');
+  const scope = mavenScope({ modules: reactor, projectRoot, mavenRoot, changedFiles });
+  const modules = scope.reported.filter((module) => module.packaging !== 'pom');
   if (modules.length === 0) {
     throw new Error(
       `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
@@ -124,7 +130,7 @@ function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
   for (const module of modules) {
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
-  return { modules, effectivePom };
+  return { modules, built, scope, effectivePom };
 }
 
 function buildOrSkipTests(run, { work, modules, policy, reruns }) {
@@ -179,15 +185,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
   ];
 }
 
-function resolveRunTools(run, { modules, analyzed, policy, kotlin }) {
-  return resolveTools({
-    ...run,
-    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
-    extraTools: extraTools({ modules, analyzed, policy, pinned: run.pinned, kotlin }),
-  });
-}
-
-function assertMavenPreset(policy) {
+function requireMavenPreset(policy) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
       `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
@@ -195,15 +193,45 @@ function assertMavenPreset(policy) {
   }
 }
 
+function prepare(run, { policy, environment, work, reruns }) {
+  const { pinned, quick } = run;
+  const { modules, built, scope, effectivePom } = readModules({
+    ...run,
+    work,
+    changedFiles: policy.changedFiles,
+  });
+  const kotlin = kotlinSetup({ ...run, policy, modules: built, effectivePom, work, environment });
+  const since = Date.now() - REPORT_CLOCK_SKEW_MS;
+  const mavenRoot = { projectRoot: run.mavenRoot };
+  const timedOut = buildOrSkipTests(
+    { ...run, ...mavenRoot, selection: scope.selection },
+    { work, modules: built, policy, reruns },
+  );
+  const analyzed = modules.map((module) => ({
+    module,
+    classpaths: readClasspaths(work, module),
+  }));
+  const tools = resolveTools({
+    ...run,
+    ...mavenRoot,
+    launcherVersions: quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
+  });
+  return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
+}
+
 export function runMavenPreset(
   projectRoot,
   { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
 ) {
-  assertMavenPreset(policy);
-  const pinned = readPinnedTools();
+  requireMavenPreset(policy);
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
+  const other = policy.snapshot === 'base' ? policy.policyRoot : policy.baselineRoot;
+  const mavenRoot = reactorRootFor(projectRoot, other);
+  const pinned = readPinnedTools();
   const run = {
     projectRoot,
+    mavenRoot,
     maven,
     spawn,
     timeoutMs,
@@ -212,34 +240,29 @@ export function runMavenPreset(
     mutationOff: policy.mutationOff === true,
   };
   try {
-    const { modules, effectivePom } = readModules({ ...run, work });
-    const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
-    const since = Date.now() - 2000;
-    const reruns = testRerunArguments(configs?.tests?.arguments);
-    const timedOut = buildOrSkipTests(run, { work, modules, policy, reruns });
-    const analyzed = modules.map((module) => ({
-      module,
-      classpaths: readClasspaths(work, module),
-    }));
-    const tools = resolveRunTools(run, { modules, analyzed, policy, kotlin });
+    const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {
+      policy,
+      environment,
+      work,
+      reruns: testRerunArguments(configs?.tests?.arguments),
+    });
     const testsFailures = analyzeAll({
       ...run,
+      ...prepared,
       testsSkipped: timedOut.length > 0,
       pitDeadline,
-      analyzed,
-      tools,
       configs,
-      since,
       policy,
       kotlin,
       work,
       effectsOptions: effectsOptions(projectRoot),
-      project: guardProject(projectRoot, policy, modules),
+      project: guardProject(projectRoot, policy, built),
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),
       testsFailures: [...testsFailures, ...timedOut],
       formatAdvice: kotlin.options?.advice,
+      notAffected: scope.notAffected,
     };
   } finally {
     rmSync(work, { recursive: true, force: true });

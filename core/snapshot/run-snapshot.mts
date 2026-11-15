@@ -10,6 +10,7 @@ import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
+import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 
 type Finding = ReportEntry;
@@ -63,6 +64,7 @@ const withPolicyFile: (
 ) => SnapshotRun = withHeadPolicyFile;
 const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
   withSharedUnusedDirectives;
+const withoutOverlaps: (run: SnapshotRun) => SnapshotRun = withoutCrossToolOverlaps;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
 function sortKey(value: unknown): string {
@@ -81,22 +83,24 @@ type HeadRunRequest = {
 };
 
 function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
-  return reconcileDirectives(
-    withPolicyFile(headPolicy, (headPolicyFile) =>
-      runAnalyzers({
-        analyzers,
-        ...roots,
-        headPolicyFile,
-        snapshot: 'head',
-        mutationScope: fieldOf(scope, 'paths'),
-        baselineRoot: execution['baselineRoot'],
-        baselineMovesFile: execution['baselineMovesFile'],
-        logRoot: execution['logRoot'],
-        runTasks: execution['runTasks'],
-        ...execution,
-      }),
+  return withoutOverlaps(
+    reconcileDirectives(
+      withPolicyFile(headPolicy, (headPolicyFile) =>
+        runAnalyzers({
+          analyzers,
+          ...roots,
+          headPolicyFile,
+          snapshot: 'head',
+          mutationScope: fieldOf(scope, 'paths'),
+          baselineRoot: execution['baselineRoot'],
+          baselineMovesFile: execution['baselineMovesFile'],
+          logRoot: execution['logRoot'],
+          runTasks: execution['runTasks'],
+          ...execution,
+        }),
+      ),
+      analyzers,
     ),
-    analyzers,
   );
 }
 

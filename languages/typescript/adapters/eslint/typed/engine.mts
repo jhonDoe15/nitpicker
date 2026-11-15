@@ -28,6 +28,7 @@ export type EslintMessage = {
   readonly column?: unknown;
   readonly endLine?: unknown;
   readonly endColumn?: unknown;
+  readonly chainUses?: number;
 };
 
 type EslintResult = { readonly filePath?: unknown; readonly messages?: unknown };

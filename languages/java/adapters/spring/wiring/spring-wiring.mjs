@@ -63,7 +63,7 @@ function uses(code, qualified) {
   return [...code.matchAll(pattern)].map((match) => ({ simple, offset: match.index }));
 }
 
-function lineOf(code, offset) {
+export function lineOf(code, offset) {
   return code.slice(0, offset).split('\n').length;
 }
 

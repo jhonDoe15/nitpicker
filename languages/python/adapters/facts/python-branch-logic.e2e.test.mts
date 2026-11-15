@@ -49,6 +49,46 @@ describe.skipIf(!pythonE2eEnabled)('decided-condition over Python functions', ()
     ]);
   });
 
+  it('reports bool() of the value an if or a conditional already tested', () => {
+    const text = [
+      'def flag(x, fallback):',
+      '    if x:',
+      '        return bool(x)',
+      '    return bool(x) if fallback else False',
+      '',
+      '',
+      'def kept(x):',
+      '    if x is not None:',
+      '        return bool(x)',
+      '    return bool(x)',
+      '',
+    ].join('\n');
+
+    expect(decided(text)).toEqual([
+      '4: `bool(x)` is always false here: line 2 returns when `x` is true',
+      '3: `bool(x)` is always true here: it is inside the `if (x)` on line 2',
+    ]);
+  });
+
+  it('reports bool() of an attribute or after an and that the test decides', () => {
+    const text = [
+      'def attr(o):',
+      '    if o.x:',
+      '        return bool(o.x)',
+      '    return False',
+      '',
+      '',
+      'def chain(x):',
+      '    return x and bool(x)',
+      '',
+    ].join('\n');
+
+    expect(decided(text)).toEqual([
+      '3: `bool(o.x)` is always true here: it is inside the `if (o.x)` on line 2',
+      '8: `bool(x)` is always true here: it is only reached when `x` is true',
+    ]);
+  });
+
   it('forgets a guard after the name is assigned or a call may change a module name', () => {
     const text = [
       'LIMIT = 3',
