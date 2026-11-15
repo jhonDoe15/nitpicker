@@ -4,7 +4,7 @@ import { afterEach, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { applyFindingPolicy } from '../../../../../shared/findings/finding-policy.mjs';
-import { kotlinRuleCases } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
+import { kotlinRuleCases } from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
 import {
   kotlinFindings,
   projectWithKotlinReports,
@@ -92,7 +92,7 @@ it('keeps a detekt run that wrote no report apart from a clean one', () => {
 
 it('fails the build step when detekt, type resolution included, ends with an error instead of findings', () => {
   const init = readFileSync(
-    path.resolve(import.meta.dirname, '../../../gradle/nitpicker.init.gradle'),
+    path.resolve(import.meta.dirname, '../../../gradle/kotlin/kotlin-detekt.gradle'),
     'utf8',
   );
 

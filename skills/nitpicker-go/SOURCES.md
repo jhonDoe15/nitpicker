@@ -167,7 +167,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
   project's own `GOFLAGS=-race`). `atomic` costs a little speed and keeps the arithmetic exact.
 - **CRAP from the same profile.** The cyclomatic complexity comes from the metrics program (each
   `if`, loop, case and `&&`/`||`), and the coverage is the lower of the statement and branch outcome
-  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mjs`). A
+  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mts`). A
   function's statements and branch points are picked by position (inside its braces, outside its
   literals), not by name, since a file can hold several `init` functions.
 - **A crashed test binary measures nothing.** A test binary that panics, times out or calls

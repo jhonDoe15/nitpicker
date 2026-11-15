@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-route-without-auth.mjs';
 
 const common = "import { Controller, Get, Post } from '@nestjs/common';\n";

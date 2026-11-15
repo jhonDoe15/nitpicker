@@ -1,6 +1,7 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
+import type { KnipReport } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
+import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
 import {
   type KnipConfig,
@@ -15,8 +16,8 @@ import { failure, runProgramAnalysis } from './program/program-analysis.mts';
 
 type KnipRuns = {
   readonly config: KnipConfig;
-  readonly normal: unknown;
-  readonly knip: (config: KnipConfig) => unknown;
+  readonly normal: KnipReport;
+  readonly knip: (config: KnipConfig) => KnipReport;
 };
 
 const ANALYZER = 'languages/typescript/preset/unused-api/analyze.mjs';
@@ -48,7 +49,7 @@ function testOnlyFindings(
     packagesInfo,
     context: {
       layout,
-      entryPatterns: fieldOf(productionConfig, 'entry'),
+      entryPatterns: textsOf(fieldOf(productionConfig, 'entry')),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       isExcepted: exceptionMatcher(readHeadPolicy().exceptions),

@@ -53,7 +53,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   that succeeded, so a failing test still fails the run when the build ignores test failures
   (`ignoreFailures = true`) or retries in some other way. A test case that failed an attempt and
   passed a later one is listed as failing, as `failed, then passed on a rerun` with a hint to fix
-  the flaky test. Maven is below.
+  the flaky test. With `tools.tests.precedence` listing `"project"`, the `maxRetries` the build sets
+  is kept (see [Test retries](../usage.md#test-retries-in-the-python-java-and-kotlin-presets)) and a
+  test that passed on such a retry is not listed. Maven is below.
 - **Spring AOT.** With the GraalVM native plugin, Spring Boot adds the `aot` and `aotTest` source
   sets, whose sources `processAot` and `processTestAot` generate, and puts the `aotTest` output on
   the `test` classpath, so `test` would run `processTestAot` (a Spring context start per test

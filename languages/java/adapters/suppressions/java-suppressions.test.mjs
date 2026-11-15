@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
 import {

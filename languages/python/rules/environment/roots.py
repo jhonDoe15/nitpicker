@@ -83,10 +83,41 @@ def is_named_root(context):
     return is_config_name(stem) or bool(ROOT_DIRECTORIES.intersection(parts))
 
 
-def is_composition_root(context):
+def is_name_check(test):
+    if not (isinstance(test, ast.Compare) and len(test.comparators) == 1):
+        return False
+    if not isinstance(test.ops[0], ast.Eq):
+        return False
+    sides = [test.left, test.comparators[0]]
+    names = [side for side in sides if isinstance(side, ast.Name)]
+    texts = [side for side in sides if isinstance(side, ast.Constant)]
+    return (
+        len(names) == 1
+        and names[0].id == "__name__"
+        and len(texts) == 1
+        and texts[0].value == "__main__"
+    )
+
+
+def is_main_guard(node):
+    test = node.test
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
+        return any(is_name_check(value) for value in test.values)
+    return is_name_check(test)
+
+
+def has_main_guard(tree):
+    return any(isinstance(node, ast.If) and is_main_guard(node) for node in tree.body)
+
+
+def is_declared_root(context):
     return (
         is_listed_entry(context)
         or is_named_root(context)
         or is_migration_environment(context.path)
         or defines_factory(context.tree)
     )
+
+
+def is_composition_root(context):
+    return is_declared_root(context) or has_main_guard(context.tree)

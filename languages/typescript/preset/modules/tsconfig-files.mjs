@@ -31,6 +31,21 @@ export function parsedTsconfig(configFile) {
   );
 }
 
+export function projectRootFiles(projectDirectory, configName) {
+  const typescript = typescriptCompiler();
+  const configFile = path.join(projectDirectory, configName);
+  return typescript
+    .parseJsonConfigFileContent(
+      readJsonc(configFile) ?? {},
+      typescript.sys,
+      projectDirectory,
+      undefined,
+      configFile,
+    )
+    .fileNames.map((file) => `./${path.relative(projectDirectory, file).split(path.sep).join('/')}`)
+    .filter((file) => !file.startsWith('./..'));
+}
+
 function referencedConfigFile(projectDirectory, reference) {
   const target = path.resolve(projectDirectory, reference.path);
   return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
@@ -61,7 +76,8 @@ function referencedConfigs(projectRoot, config) {
   );
 }
 
-export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
+export function projectTsconfigs(projectRoot, files, hiddenFile) {
+  const isHidden = hiddenFile ?? (() => false);
   const found = new Set(
     files.filter(
       (file) => PROJECT_CONFIG.test(file) && !DEPENDENCY_FOLDER.test(file) && !isHidden(file),

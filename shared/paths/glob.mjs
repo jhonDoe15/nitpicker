@@ -210,6 +210,11 @@ function compiledOnce(compile) {
 
 export const globMatcher = compiledOnce((glob) => ({ test: compileGlob(glob) }));
 
+export function globsMatcher(globs = []) {
+  const matchers = globs.map(globMatcher);
+  return (file) => matchers.some((matcher) => matcher.test(file));
+}
+
 export function escapeRegExp(value) {
   return value.replace(/[$()*+.?[\\\]^{|}]/g, String.raw`\$&`);
 }

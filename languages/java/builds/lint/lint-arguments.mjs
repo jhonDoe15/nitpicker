@@ -4,8 +4,9 @@ import { readZipOrFailure } from '../zip-entries.mjs';
 import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
 
 const VERSIONED_MODULE_INFO = /^META-INF\/versions\/\d+\/module-info\.class$/u;
+const MAIN_CATEGORIES = '-Xlint:rawtypes,unchecked,deprecation,removal,cast';
+export const TEST_CATEGORIES = '-Xlint:rawtypes,unchecked,removal,cast';
 const LINT_FLAGS = [
-  '-Xlint:rawtypes,unchecked,deprecation,removal,cast',
   '-Xmaxwarns',
   '100000',
   '-Xmaxerrs',
@@ -56,6 +57,7 @@ export function lombokPath(plan) {
 export function lintArguments(plan, { classes, modular }) {
   const lombok = lombokPath(plan);
   return [
+    plan.lintCategories ?? MAIN_CATEGORIES,
     ...LINT_FLAGS,
     '-encoding',
     plan.compiler.encoding ?? 'UTF-8',

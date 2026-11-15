@@ -1,5 +1,5 @@
-import { typedIoProject } from '../../../test-support/typed-io-project.mjs';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typedIoProject } from '../../../test-support/projects/typed-io-project.mts';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-lookup-per-element.mjs';
 
 const RX =

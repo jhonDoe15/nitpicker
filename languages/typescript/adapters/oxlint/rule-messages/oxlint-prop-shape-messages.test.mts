@@ -1,0 +1,150 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { firstOf } from '../../eslint/test-support/finding-comparison.mts';
+import { lintWithOxlint } from '../oxlint-runner.mts';
+import type { LintResult } from '../plan/oxlint-shapes.mts';
+import { residualRecorder, oxlintOptions } from '../test-support/oxlint-runs.mts';
+
+const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
+
+function ruleUrl(path: string) {
+  return JSON.stringify(`${RULES_URL}/${path}`);
+}
+
+const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+import { rule as singularAndPlural } from ${ruleUrl('api-shape/no-singular-and-plural-prop.mjs')};
+import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
+import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
+import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
+import { rule as forwardingWrapper } from ${ruleUrl('api-shape/no-forwarding-wrapper.mjs')};
+import { rule as timeoutAbandons } from ${ruleUrl('async/timeout-abandons-operation.mjs')};
+
+const nitpicker = {
+  rules: {
+    'no-singular-and-plural-prop': singularAndPlural,
+    'no-runtime-exclusive-props-check': exclusiveProps,
+    'exhaustive-union-predicate': unionPredicate,
+    'hover-test-needs-keyboard': hoverNeedsKeyboard,
+    'no-forwarding-wrapper': forwardingWrapper,
+    'timeout-abandons-operation': timeoutAbandons,
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { nitpicker },
+    rules: {
+      'nitpicker/no-singular-and-plural-prop': 'error',
+      'nitpicker/no-runtime-exclusive-props-check': 'error',
+      'nitpicker/exhaustive-union-predicate': 'error',
+      'nitpicker/hover-test-needs-keyboard': 'error',
+      'nitpicker/no-forwarding-wrapper': 'error',
+      'nitpicker/timeout-abandons-operation': 'error',
+    },
+  },
+];
+`;
+
+const SOURCES = {
+  'src/race.ts': [
+    'export const run = () =>',
+    '  Promise.race([sendPayment(), new Promise((_, reject) => setTimeout(reject, 10))]);',
+  ].join('\n'),
+  'src/Panel.tsx': [
+    'export type PanelProps = { field?: string; fields?: string[] };',
+    'export function Panel({ icon, image }: { icon?: string; image?: string }) {',
+    '  if (icon && image) { throw new Error("both"); }',
+    '  return <div />;',
+    '}',
+  ].join('\n'),
+  'src/Tip.test.tsx': [
+    "import { render } from '@testing-library/react';",
+    "import userEvent from '@testing-library/user-event';",
+    "it('shows', async () => { render(null); await userEvent.hover(document.body); });",
+  ].join('\n'),
+};
+
+const RACE_MESSAGE =
+  '`Promise.race` with a `new Promise` around `setTimeout` does not stop `sendPayment`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.';
+
+const EXPECTED = {
+  'src/race.ts': [['nitpicker/timeout-abandons-operation', RACE_MESSAGE]],
+  'src/Panel.tsx': [
+    [
+      'nitpicker/no-singular-and-plural-prop',
+      `Optional \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
+    ],
+    [
+      'nitpicker/no-runtime-exclusive-props-check',
+      `Props \`icon\`, \`image\` are checked together at runtime. Make the props a discriminated union (\`{ icon: Icon; image?: never } | { image: string; icon?: never }\`) so the compiler rejects the combination.`,
+    ],
+  ],
+  'src/Tip.test.tsx': [
+    [
+      'nitpicker/hover-test-needs-keyboard',
+      `Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (\`await user.tab()\`) and asserts the same state.`,
+    ],
+  ],
+};
+
+let root: string | undefined;
+let outcome: { root: string; results: LintResult[]; residualRules: unknown };
+
+async function lintProject() {
+  const recorder = residualRecorder();
+  const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
+  root = projectRoot;
+  const files = {
+    'policy.mjs': POLICY,
+    ...SOURCES,
+  };
+  for (const [relativePath, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+    writeFileSync(path.join(root, relativePath), text);
+  }
+  const environment = {
+    ...process.env,
+    NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
+    NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
+  };
+  const results = await lintWithOxlint({
+    options: oxlintOptions(root, ['src/**/*.{ts,tsx}']),
+    projectConfigPath: undefined,
+    environment,
+    runEslintCli: recorder.runEslintCli,
+  });
+  outcome = { root: projectRoot, results, residualRules: recorder.runs.at(-1)?.rules };
+  return outcome;
+}
+
+beforeAll(async () => {
+  await lintProject();
+});
+
+afterAll(() => {
+  if (root !== undefined) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+describe('nitpicker rule messages through the oxlint engine', () => {
+  it.each(Object.entries(EXPECTED))('keeps the full message text in %s', (file, expected) => {
+    const { results } = outcome;
+    const messages = firstOf(
+      results.filter((entry) => entry.filePath === path.join(outcome.root, file)),
+    ).messages.map(({ ruleId, message }) => [ruleId, message]);
+
+    expect(messages).toEqual(expected);
+  });
+
+  it('hands only the type-aware rules to the ESLint residual pass, where their messages are kept', () => {
+    expect(outcome.residualRules).toEqual([
+      'nitpicker/exhaustive-union-predicate',
+      'nitpicker/no-forwarding-wrapper',
+    ]);
+  });
+});

@@ -36,6 +36,7 @@ export type Peers = {
   readonly requirements?: string;
   readonly absent?: readonly string[];
   readonly outdated?: readonly string[];
+  readonly blockers?: readonly string[];
 };
 
 export type WorkflowContext = {

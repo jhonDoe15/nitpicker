@@ -48,5 +48,5 @@ classpath and its `test` task, and adds no test library to the project.
   `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
   on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
   `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;
-  `adapters/kotlin-e2e/kotest.e2e.test.mjs` runs a Kotest project with `archunit-junit5` rules
+  `adapters/kotlin-e2e/kotest.e2e.test.mts` runs a Kotest project with `archunit-junit5` rules
   under the Kotlin preset.

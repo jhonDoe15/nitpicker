@@ -28,7 +28,7 @@ type JsonRun = {
   readonly cwd: string;
   readonly env: Environment | undefined;
   readonly context: string;
-  readonly timeoutMs: number;
+  readonly timeoutMs: number | undefined;
   readonly acceptedStatuses?: readonly Status[];
 };
 
