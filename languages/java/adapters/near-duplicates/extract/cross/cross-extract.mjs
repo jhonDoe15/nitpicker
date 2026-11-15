@@ -4,7 +4,7 @@ import { analysedPair, indentUnit, movedComments, shapedPlan } from '../java-ext
 import { nameCollisions } from '../syntax.mjs';
 import { NO_SHAPE, bodyEdit, extrasFor, helperText } from '../render.mjs';
 import { fieldInfo } from './fields.mjs';
-import { nestedTypes } from './imports.mjs';
+import { nestedTypes } from './names/imports.mjs';
 import { lockNodes, lockProblem, stateProblem, topLevelProblem } from './state.mjs';
 
 const NESTED = 'a copy uses a type nested in its class, which the shared class cannot name';

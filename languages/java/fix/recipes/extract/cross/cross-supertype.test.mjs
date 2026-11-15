@@ -18,7 +18,7 @@ function both(overrides) {
 describe('javaExtractNearDuplicateRecipe with a differing type that has a common supertype', () => {
   it('passes the value as java.util.Date when it is only checked and formatted', () => {
     const { fixes, after } = plan(both({}));
-    expect(fixes.length).toBe(2);
+    expect([fixes.length, fixes[0].alsoFixes.length]).toEqual([1, 1]);
     expect(after[`${FOLDER}/SqlAdapters.java`]).toMatchInlineSnapshot(`
       "package demo;
 
@@ -116,5 +116,57 @@ describe('javaExtractNearDuplicateRecipe with a differing type that has a common
       found.length > 0,
       reason === undefined || found.includes(reason),
     ]).toEqual([1, true, true]);
+  });
+});
+
+const FUNCTION = 'java.util.function.Function<java.text.DateFormat, String>';
+const SUPPLIER = 'java.util.function.Supplier<String>';
+
+function reasons(use, second = use) {
+  const files = filesOf({ write: true, use }, { write: true, use: second });
+  const { fixes, notes } = recipe.plan({ files, projectRoot: '/nonexistent' });
+  return [fixes.length, notes.map((note) => note.split('near-duplicate: ').at(-1))];
+}
+
+function inLambda(statement, type = 'java.sql.Date') {
+  const text = `{ ${statement.replace('TYPE', type)} return format.format(value); }`;
+  return `((${SUPPLIER}) () -> ${text}).get()`;
+}
+
+describe('javaExtractNearDuplicateRecipe bounds a differing date type', () => {
+  it('bounds a value that is only formatted', () => {
+    expect(reasons('format.format(value)')).toEqual([1, []]);
+  });
+
+  it.each([
+    ['a lambda parameter', `((${FUNCTION}) format -> format.format(value)).apply(format)`],
+    [
+      'a pattern',
+      'new Object() instanceof java.text.DateFormat format ? format.format(value) : ""',
+    ],
+  ])('keeps the copies when %s hides the formatter field', (_name, use) => {
+    expect(reasons(use)).toEqual([1, [COVER]]);
+  });
+
+  it('keeps the copies when a call has another name than format', () => {
+    expect(reasons('format.equals(value) ? "same" : "other"')).toEqual([1, [COVER]]);
+  });
+
+  it('keeps the copies when format takes more than the value', () => {
+    const use =
+      'format.format(value, new StringBuffer(), new java.text.FieldPosition(0)).toString()';
+    expect(reasons(use)).toEqual([1, [COVER]]);
+  });
+
+  it('keeps the copies when the method declares a var', () => {
+    expect(reasons(inLambda('var unused = 1;'))).toEqual([1, [COVER]]);
+    expect(reasons(inLambda('String unused = "";'))).toEqual([1, []]);
+  });
+
+  it('keeps the copies when a local has the differing type', () => {
+    const [first, second] = ['java.sql.Date', 'Time'].map((type) =>
+      inLambda('TYPE copy = null;', type),
+    );
+    expect(reasons(first, second)).toEqual([1, [COVER]]);
   });
 });

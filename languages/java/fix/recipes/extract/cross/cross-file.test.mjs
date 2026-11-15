@@ -123,11 +123,9 @@ describe('javaExtractNearDuplicateRecipe across two files of one package', () =>
 
   it('puts several shared methods of the two files into the same class', () => {
     const { fixes, notes, after } = plan(filesOf({ label: true }, { label: true }));
-    expect([fixes.length, notes]).toEqual([2, []]);
-    expect(fixes.map((fix) => fix.edits.some(({ type }) => type === 'write'))).toEqual([
-      true,
-      false,
-    ]);
+    expect([fixes.length, notes]).toEqual([1, []]);
+    expect(fixes[0].alsoFixes.length).toBe(1);
+    expect(fixes[0].edits.filter(({ type }) => type === 'write').length).toBe(1);
     expect(after[`${FOLDER}/SqlAdapters.java`]).toMatchInlineSnapshot(`
       "package demo;
 

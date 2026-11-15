@@ -74,9 +74,16 @@ function movedNames(names, applied) {
   return names.map((name) => moves.get(name) ?? name);
 }
 
+function textOf(recipe, finding) {
+  return `${finding.path}:${finding.line} ${ruleName(finding)} (${recipe})`;
+}
+
 function findingText({ recipe, fix }) {
-  const { path: name, line } = fix.finding;
-  return `${name}:${line} ${ruleName(fix.finding)} (${recipe})`;
+  return textOf(recipe, fix.finding);
+}
+
+function findingTexts({ recipe, fix }) {
+  return [fix.finding, ...(fix.alsoFixes ?? [])].map((finding) => textOf(recipe, finding));
 }
 
 function leftNote(entry) {
@@ -153,7 +160,7 @@ export function runRecipes({
   const leftovers = run.active.length === 0 ? [] : settle(run);
   const { state } = run;
   return {
-    fixedFindings: state.fixed.filter(({ fix }) => fix.stays === undefined).map(findingText),
+    fixedFindings: state.fixed.filter(({ fix }) => fix.stays === undefined).flatMap(findingTexts),
     files: files.map((file, index) =>
       state.names[index] === file.path ? file : { ...file, path: state.names[index] },
     ),

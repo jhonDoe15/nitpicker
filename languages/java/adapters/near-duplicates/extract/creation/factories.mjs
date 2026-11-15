@@ -4,14 +4,28 @@ import { field, namedChildren, squashed } from '../syntax.mjs';
 import { argumentTypes, declaredTypes, importsOf } from './arg-types.mjs';
 import { boundsOf } from './result/bounds.mjs';
 import { interfaceName, interfaceText, nameClash } from './result/interface-names.mjs';
-import { catchProblem, catchText, isUnchecked, siteOf } from './catches.mjs';
+import {
+  catchProblem,
+  catchText,
+  isNotException,
+  isUnchecked,
+  siteOf,
+} from './exceptions/catches.mjs';
+import { thrownBy } from './exceptions/constructors.mjs';
 
 const INNER = 'a constructor of a differing type is a member class that needs its outer instance';
 const ARGUMENTS =
   'the arguments of a constructor of a differing type have no type the shared code can write';
 const SIGNATURES = 'the copies pass arguments of different types to a constructor';
-const RESULT =
-  'a constructor of a differing type is used where its type matters: only a return, an assignment or a declared local may take it';
+const RESULT = [
+  'a constructor of a differing type is used where its type matters:',
+  'only a return, an assignment or a declared local may take it',
+].join(' ');
+const NOT_EXCEPTION = 'a differing catch type is not an Exception';
+const UNKNOWN_THROWS =
+  'the checked exceptions of a constructor of a differing type cannot be told from the source';
+const UNCOVERED =
+  'a constructor of a differing type throws a checked exception the catch clause does not cover';
 const NAMES = 'the shared code has no free names for its extra parameters';
 
 function freshNames(stems, taken) {
@@ -102,7 +116,7 @@ function innerProblem(methods, creations) {
   return used.some((text) => inner.some((names) => names.has(text))) ? INNER : undefined;
 }
 
-function analysed({ methods, typeHoles, readType }) {
+function analysed({ methods, typeHoles, typeSources }) {
   const creations = creationsOf(typeHoles);
   const envs = methods.map((method) => ({
     declared: declaredTypes(method),
@@ -111,13 +125,18 @@ function analysed({ methods, typeHoles, readType }) {
   const found = groupsOf(creations, envs);
   const sites = typeHoles
     .filter(({ usage }) => usage === 'exception')
-    .flatMap((hole) => hole.occurrences.map(({ a }) => ({ hole, ...siteOf(a) })));
+    .flatMap((hole) =>
+      hole.occurrences.map((occurrence) => ({ hole, occurrence, ...siteOf(occurrence.a) })),
+    );
   const ids = new Set(creations.map(({ occurrence }) => occurrence.a.id));
   const problem =
     found.declined ??
+    (sites.some(({ hole }) => isNotException(hole)) ? NOT_EXCEPTION : undefined) ??
     creations.map(({ occurrence }) => resultProblem(occurrence.a.parent)).find(Boolean) ??
     innerProblem(methods, creations) ??
-    sites.map((site) => catchProblem(site, ids, readType)).find((reason) => reason !== undefined);
+    sites
+      .map((site) => catchProblem(site, ids, typeSources))
+      .find((reason) => reason !== undefined);
   return problem === undefined ? { groups: found.groups, sites } : { declined: problem };
 }
 
@@ -205,9 +224,39 @@ function tiesOf(groups, sites) {
     .map((site) => (site === undefined || isUnchecked(site.hole) ? undefined : site));
 }
 
+function simpleName(node) {
+  return node.text.replaceAll(/\s+/gu, '').split('.').at(-1);
+}
+
+function uncovered(creation, caught, typeSources) {
+  const thrown = thrownBy(creation, typeSources);
+  if (thrown === undefined) {
+    return UNKNOWN_THROWS;
+  }
+  const name = simpleName(caught);
+  return thrown.every((found) => found === name || name === 'Exception') ? undefined : UNCOVERED;
+}
+
+function throwsProblem(groups, ties, typeSources) {
+  return groups
+    .flatMap((group, index) =>
+      ties[index] === undefined
+        ? []
+        : group.occurrences.flatMap(({ a, b }) => [
+            uncovered(a.parent, ties[index].occurrence.a, typeSources),
+            uncovered(b.parent, ties[index].occurrence.b, typeSources),
+          ]),
+    )
+    .find(Boolean);
+}
+
 function built(request, { groups, sites }, bounds) {
   const { typeHoles, taken, visibility } = request;
   const ties = tiesOf(groups, sites);
+  const unprovable = throwsProblem(groups, ties, request.typeSources);
+  if (unprovable !== undefined) {
+    return { declined: unprovable };
+  }
   const used = new Set([...taken, ...typeHoles.map(({ name }) => name)]);
   const exceptions = exceptionNames(ties.filter((tie) => tie === undefined).length, used);
   const names = namesFor(groups, sites, taken);

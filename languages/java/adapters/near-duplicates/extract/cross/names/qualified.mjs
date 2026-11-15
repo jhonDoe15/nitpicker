@@ -1,4 +1,4 @@
-import { IMPORT, IMPORT_NODE, NOISE, nestedTypes, unusedImports } from '../imports.mjs';
+import { IMPORT, IMPORT_NODE, NOISE, nestedTypes, unusedImports } from './imports.mjs';
 
 function blank(match) {
   return match.replace(/[^\n]/gu, ' ');
@@ -16,11 +16,33 @@ function overlaps(use, spans) {
   return spans.some(({ start, end }) => use.start < end && use.end > start);
 }
 
-function qualifiedUses(text, name, skip) {
-  const word = new RegExp(`(?<![\\w$.])((?:[a-z_][\\w$]*\\.)+)${name}(?![\\w$])`, 'gu');
-  return [...masked(text, skip).matchAll(word)]
-    .filter(([, prefix]) => !/^(?:this|super)\./u.test(prefix))
-    .map((match) => ({ start: match.index, end: match.index + match[0].length, prefix: match[1] }));
+function qualifiedTypes(root, name) {
+  const word = new RegExp(`^((?:[a-z_][\\w$]*\\.)+)${name}$`, 'u');
+  return root
+    .descendantsOfType('scoped_type_identifier')
+    .map((node) => ({ node, found: word.exec(node.text.replaceAll(/\s+/gu, '')) }))
+    .filter(({ found }) => found !== null && !found[1].startsWith('this.'))
+    .map(({ node, found }) => ({
+      start: node.startIndex,
+      end: node.endIndex,
+      prefix: found[1],
+      text: found[0],
+    }));
+}
+
+function textUses(text, known) {
+  if (known.length === 0) {
+    return [];
+  }
+  const texts = [...new Set(known.map((use) => use.text))].toSorted((a, b) => b.length - a.length);
+  const alternatives = texts.map((item) => item.replaceAll('.', '\\.').replaceAll('$', '\\$'));
+  const word = new RegExp(`(?<![\\w$.])(?:${alternatives.join('|')})(?![\\w$])`, 'gu');
+  const uses = [...masked(text, []).matchAll(word)];
+  return uses.map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    prefix: known.find((use) => use.text === match[0]).prefix,
+  }));
 }
 
 function simplified(text, uses, name) {
@@ -49,17 +71,15 @@ function newImportBlock({ root, text }, removed, lines) {
   return { start, end, text: kept.join('\n') };
 }
 
-function qualifiedPlan({ root, text }, edits, removed) {
-  const spans = root.children
-    .filter(({ type }) => type === IMPORT_NODE || type === 'package_declaration')
-    .map((node) => ({ start: node.startIndex, end: node.endIndex }));
+function qualifiedPlan({ root }, edits, removed) {
   const clash = nestedTypes(root);
   const topLevel = root.children
     .filter(({ type }) => type.endsWith('_declaration') && type !== IMPORT_NODE)
     .map((node) => node.childForFieldName('name')?.text);
   return removed.flatMap(({ found: { last } }) => {
-    const outside = qualifiedUses(text, last, spans).filter((use) => !overlaps(use, edits));
-    const inside = edits.flatMap((edit) => qualifiedUses(edit.text, last, []));
+    const known = qualifiedTypes(root, last);
+    const outside = known.filter((use) => !overlaps(use, edits));
+    const inside = edits.flatMap((edit) => textUses(edit.text, known));
     const prefixes = new Set([...outside, ...inside].map(({ prefix }) => prefix));
     if (prefixes.size === 0) {
       return [];
@@ -75,7 +95,7 @@ function clashReason(name) {
 
 export function importEditing(root, text, edits) {
   const removed = unusedImports(root, edits);
-  const plans = qualifiedPlan({ root, text }, edits, removed);
+  const plans = qualifiedPlan({ root }, edits, removed);
   const unclear = plans.find(({ single }) => !single);
   if (unclear !== undefined) {
     return { declined: clashReason(unclear.last) };
@@ -92,7 +112,7 @@ export function importEditing(root, text, edits) {
     plans.reduce(
       (current, { last }) => ({
         ...current,
-        text: simplified(current.text, qualifiedUses(current.text, last, []), last),
+        text: simplified(current.text, textUses(current.text, qualifiedTypes(root, last)), last),
       }),
       edit,
     ),

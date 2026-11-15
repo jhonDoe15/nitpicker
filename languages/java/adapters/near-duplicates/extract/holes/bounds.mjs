@@ -1,7 +1,7 @@
 import { DECLARED } from '../creation/occurrences.mjs';
-import { declaredTypes, importsOf, qualified } from '../creation/arg-types.mjs';
+import { importsOf, qualified } from '../creation/arg-types.mjs';
 import { fieldInfo } from '../cross/fields.mjs';
-import { nestedTypes } from '../cross/imports.mjs';
+import { nestedTypes } from '../cross/names/imports.mjs';
 import { descendants, field, roleOf, squashed } from '../syntax.mjs';
 import { holeIds, taintedNames } from './type-use.mjs';
 
@@ -18,13 +18,43 @@ function isParameterType(node) {
   return node.parent.type === 'formal_parameter' && field(node.parent, 'type')?.id === node.id;
 }
 
+const NAMED_DECLARATIONS = new Set([
+  'variable_declarator',
+  'formal_parameter',
+  'catch_formal_parameter',
+  'enhanced_for_statement',
+  'resource',
+  'instanceof_expression',
+]);
+
+function bindsName(node, name) {
+  if (NAMED_DECLARATIONS.has(node.type)) {
+    return field(node, 'name')?.text === name;
+  }
+  if (node.type === 'lambda_expression') {
+    const parameters = field(node, 'parameters');
+    return parameters.type === 'identifier'
+      ? parameters.text === name
+      : parameters.type === 'inferred_parameters' &&
+          parameters.namedChildren.some((child) => child.text === name);
+  }
+  if (node.type === 'type_pattern' || node.type === 'record_pattern_component') {
+    return node.namedChildren.at(-1)?.text === name;
+  }
+  return false;
+}
+
 function formatsDates(method, receiver) {
   if (receiver?.type !== 'identifier') {
     return false;
   }
-  const type =
-    declaredTypes(method).get(receiver.text) ?? fieldInfo(method).get(receiver.text)?.type;
-  return type !== undefined && FORMATTERS.has(qualified(type, importsOf(method.tree.rootNode)));
+  const declared = descendants(method).some((node) => bindsName(node, receiver.text));
+  const type = fieldInfo(method).get(receiver.text)?.type;
+  return (
+    !declared &&
+    type !== undefined &&
+    FORMATTERS.has(qualified(type, importsOf(method.tree.rootNode)))
+  );
 }
 
 function isNullCheck(node) {
@@ -59,7 +89,6 @@ function usesOnly(method, hole) {
   );
   return (
     !hasInferred &&
-    [...tainted.values()].every((kind) => kind === 'direct') &&
     descendants(field(method, 'body'))
       .filter(
         (node) =>

@@ -84,7 +84,7 @@ function extractionsOf(
   try {
     return javaExtractions(
       trees.map(({ tree, file, text }) => ({ rootNode: tree.rootNode, file, text })),
-      options,
+      { ...options, parse: (text: string) => parser.parse(text) },
     );
   } finally {
     for (const { tree } of trees) {

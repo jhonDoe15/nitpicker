@@ -2,7 +2,8 @@ import { readJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees
 
 const JAVA_FILE = /\.java$/u;
 const NOT_MAIN_SOURCE_SET = /(?:^|\/)src\/(?!main\/)[^/]+\//u;
-const GENERATED = /(?:^|\/)(?:build|generated|target)\//u;
+const GENERATED =
+  /(?:^|\/)(?:(?:build|target|out)\/|generated-(?:test-)?sources\/|generated\/(?:java|kotlin|sources)\/)/u;
 const RULE = 'near-duplicate';
 
 function eligible({ path: name }, isExcepted) {

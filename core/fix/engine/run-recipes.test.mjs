@@ -84,6 +84,23 @@ describe('runRecipes', () => {
       notes: [],
     });
   });
+  it('lists the other findings a single fix also repairs', () => {
+    const root = project({ 'a.txt': 'quiet\n' });
+    const also = { ...RULE, path: 'a.txt', line: 7 };
+    const both = recipe({
+      plan: (context) => ({
+        fixes: wordFixes('quiet', 'LOUD', context).fixes.map((fix) => ({
+          ...fix,
+          alsoFixes: [also],
+        })),
+      }),
+    });
+
+    expect(run(root, [both]).fixedFindings).toEqual([
+      'a.txt:1 demo/shout (demo)',
+      'a.txt:7 demo/shout (demo)',
+    ]);
+  });
   it('runs a review recipe only when one of its rules is selected, and then only those fixes', () => {
     const root = project({ 'a.txt': 'quiet\n' });
     const review = recipe({ safety: 'review', plan: shout.plan });

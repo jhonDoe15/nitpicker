@@ -1,8 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
+import { packageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mjs';
+import { urlAndUri } from '../test-support/creation-sources.mjs';
 import { filesOf } from '../test-support/cross-sources.mjs';
 
 const FOLDER = 'src/main/java/demo';
@@ -86,10 +88,20 @@ describe('javaExtractNearDuplicateRecipe across two files and the package around
     ]);
   });
 
-  it.each(['build/generated/demo', 'target/demo', 'app/generated/demo'])(
-    'leaves sources under %s alone',
+  it.each([
+    'build/generated/demo',
+    'target/demo',
+    'target/generated-sources/demo',
+    'app/build/generated/source/demo',
+  ])('leaves sources under %s alone', (folder) => {
+    expect(outcome(moved(filesOf(), folder))).toEqual({ fixes: [], reasons: [] });
+  });
+
+  it.each(['app/generated/demo', 'generated/demo'])(
+    'extracts copies in the package folder %s',
     (folder) => {
-      expect(outcome(moved(filesOf(), folder))).toEqual({ fixes: [], reasons: [] });
+      const { fixes, reasons } = outcome(moved(filesOf(), folder));
+      expect([fixes.length, reasons]).toEqual([1, []]);
     },
   );
 
@@ -97,5 +109,35 @@ describe('javaExtractNearDuplicateRecipe across two files and the package around
     expect(outcome(filesOf({}, { suppress: '@SuppressWarnings("rawtypes")' })).reasons).toEqual([
       'the copies carry different @SuppressWarnings annotations',
     ]);
+  });
+});
+
+function linked(text, name) {
+  const root = projectWith({ 'src/main/java/demo/.keep': '' });
+  const outside = projectWith({ 'Outside.java': text });
+  symlinkSync(path.join(outside, 'Outside.java'), path.join(root, FOLDER, name));
+  return root;
+}
+
+describe('javaExtractNearDuplicateRecipe reads only files inside the project', () => {
+  it('ignores a linked file outside the project that mentions the class name', () => {
+    const root = linked('package demo;\n\nclass Other { SqlAdapters used; }\n', 'Other.java');
+    expect(outcome(filesOf(), root).reasons).toEqual([]);
+  });
+
+  it('does not read a constructor from a linked file outside the project', () => {
+    const wrap =
+      'package demo;\n\nclass Wrap extends java.io.IOException {\n    Wrap(Exception e) {}\n}\n';
+    const text = urlAndUri({
+      url: { handler: 'throw new Wrap(e);' },
+      uri: { handler: 'throw new Wrap(e);' },
+    });
+    const files = [{ path: `${FOLDER}/Adapters.java`, text }];
+    expect(outcome(files, linked(wrap, 'Wrap.java')).fixes).toEqual([]);
+  });
+
+  it('scans a package once and hands the same listing back', () => {
+    const scan = packageScanner(projectWith({ 'src/main/java/demo/Other.java': 'class Other {}' }));
+    expect(scan([FOLDER])).toBe(scan([FOLDER]));
   });
 });

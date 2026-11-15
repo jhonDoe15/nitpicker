@@ -2101,20 +2101,24 @@ TypeScript and JavaScript copies in two files are left alone, because the import
 depends on the module system and the path rules of the project. A recipe leaves the
 finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
 variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
-JavaScript), the helper name is taken, the copies differ in exceptions, the copies differ in a type that a type parameter cannot stand for (a type
-in a cast, in an `instanceof` or in a class literal, a type that names a generic class or a
-primitive, or code that calls a method on a value of that type or passes it to a call, in Java; any
-type that the compiler rejects as a type parameter in TypeScript), a differing Java
-expression reads a local of the copied code, sits in a `final` local, a loop condition, a `try`
-block, a lambda or a nested class, or a method that throws, or has no declared type where it flows
-(a hole that appears with two declared types gets one parameter for each), an anonymous class reads instance state of
-the enclosing class, declares more than methods, or sits in a generic method or next to a local type, a copy takes part in more than one pair, a string or template literal spans lines
-(TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
-`final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
-name that a superclass may declare, a call with a static and an instance overload), or the copies
-differ in a way a parameter cannot carry, or a pair in two Java files uses state of its class that the new class cannot
-reach or has no free class name. A pair in two Java files of one folder and one package is extracted into a new package-private class. A pair in two TypeScript files, in two Java folders, in two packages, in
-generated sources (`build`, `generated` or `target`), or in two classes other than anonymous classes of one class, is not looked at. The
+JavaScript), the helper name is taken, the copies differ in exceptions, the copies differ in a type
+that a type parameter cannot stand for (a type in a cast, in an `instanceof` or in a class literal,
+a type that names a generic class or a primitive, or code that calls a method on a value of that
+type or passes it to a call, in Java; any type that the compiler rejects as a type parameter in
+TypeScript), a differing Java expression reads a local of the copied code, sits in a `final` local,
+a loop condition, a `try` block, a lambda or a nested class, or a method that throws, or has no
+declared type where it flows (a hole that appears with two declared types gets one parameter for
+each), an anonymous class reads instance state of the enclosing class, declares more than methods,
+or sits in a generic method or next to a local type, a copy takes part in more than one pair, a
+string or template literal spans lines (TypeScript, JavaScript), a differing literal sits where Java
+needs a constant (a `case` label, a `final` local, a sum that is narrowed), Java cannot tell whether
+the code needs instance state (a name that a superclass may declare, a call with a static and an
+instance overload), or the copies differ in a way a parameter cannot carry, or a pair in two Java
+files uses state of its class that the new class cannot reach or has no free class name. A pair in
+two Java files of one folder and one package is extracted into a new package-private class. A pair
+in two TypeScript files, in two Java folders, in two packages, in generated sources (`build/`,
+`target/`, `out/`, `generated-sources/`), or in two classes other than anonymous classes of one
+class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
 whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,

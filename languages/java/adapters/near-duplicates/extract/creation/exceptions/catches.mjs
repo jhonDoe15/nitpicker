@@ -1,6 +1,6 @@
-import { indentOf } from '../../../../../../shared/fix/recipes/extract/text.mjs';
-import { descendants, field, roleOf } from '../syntax.mjs';
-import { importsOf, qualified } from './arg-types.mjs';
+import { indentOf } from '../../../../../../../shared/fix/recipes/extract/text.mjs';
+import { descendants, field, roleOf } from '../../syntax.mjs';
+import { importsOf, qualified } from '../arg-types.mjs';
 import { isSingleConstructor } from './constructors.mjs';
 
 const FORBIDDEN = new Set([
@@ -44,8 +44,10 @@ const UNCHECKED = new Set([
 ]);
 const UNSUPPORTED =
   'a catch clause of a differing exception type needs a try that is only a constructor call';
-const EXCEPTION_USE =
-  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object whose class has one constructor of that size';
+const EXCEPTION_USE = [
+  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method',
+  'or an argument of a new object whose class has one constructor of that size',
+].join(' ');
 
 export function siteOf(node) {
   const clause = node.parent.parent.parent;
@@ -64,7 +66,7 @@ function isLastCatch({ clause, tryNode }) {
   return tryNode.children.filter(({ type }) => type === 'catch_clause').at(-1).id === clause.id;
 }
 
-function isAllowedUse(node, readType) {
+function isAllowedUse(node, typeSources) {
   const { parent } = node;
   const receiver = parent.type === 'method_invocation' && field(parent, 'object')?.id === node.id;
   if (receiver) {
@@ -73,7 +75,7 @@ function isAllowedUse(node, readType) {
   return (
     parent.type === 'argument_list' &&
     parent.parent.type === 'object_creation_expression' &&
-    isSingleConstructor(parent.parent, readType)
+    isSingleConstructor(parent.parent, typeSources)
   );
 }
 
@@ -86,19 +88,19 @@ function bodyProblem({ body }, creationIds) {
   return unsafe ? UNSUPPORTED : undefined;
 }
 
-function handlerProblem({ handler, name }, readType) {
+function handlerProblem({ handler, name }, typeSources) {
   const uses = descendants(handler).filter(
     (node) => node.type === 'identifier' && node.text === name && roleOf(node) === 'reference',
   );
-  return uses.every((node) => isAllowedUse(node, readType)) ? undefined : EXCEPTION_USE;
+  return uses.every((node) => isAllowedUse(node, typeSources)) ? undefined : EXCEPTION_USE;
 }
 
-export function catchProblem(sites, creationIds, readType) {
+export function catchProblem(sites, creationIds, typeSources) {
   if (sites.tryNode?.type !== 'try_statement') {
     return UNSUPPORTED;
   }
   return isLastCatch(sites)
-    ? (bodyProblem(sites, creationIds) ?? handlerProblem(sites, readType))
+    ? (bodyProblem(sites, creationIds) ?? handlerProblem(sites, typeSources))
     : UNSUPPORTED;
 }
 
@@ -128,4 +130,13 @@ function isUncheckedType(node) {
 
 export function isUnchecked(hole) {
   return hole.occurrences.every(({ a, b }) => isUncheckedType(a) && isUncheckedType(b));
+}
+
+function isErrorName(node) {
+  const name = node.text.replaceAll(/\s+/gu, '').split('.').at(-1);
+  return name === 'Throwable' || name.endsWith('Error');
+}
+
+export function isNotException(hole) {
+  return hole.occurrences.some(({ a, b }) => isErrorName(a) || isErrorName(b));
 }
