@@ -16,14 +16,11 @@ import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import { analyzerNameOf as nameOf } from '../../../shared/values/analyzers.mts';
 
 export type FindingsCache = {
-  readonly read: (
-    analyzer: unknown,
-    resolved: AnalyzerMetadata | undefined,
-  ) => AnalyzerReport | undefined;
+  readonly read: (analyzer: unknown, resolved?: AnalyzerMetadata) => AnalyzerReport | undefined;
   readonly write: (
     analyzer: unknown,
     report: AnalyzerReport,
-    resolved: AnalyzerMetadata | undefined,
+    resolved?: AnalyzerMetadata,
   ) => boolean;
 };
 
@@ -130,15 +127,11 @@ export function createFindingsCache({
     });
   }
   return {
-    read(analyzer: unknown, resolved: AnalyzerMetadata | undefined): AnalyzerReport | undefined {
+    read(analyzer: unknown, resolved?: AnalyzerMetadata): AnalyzerReport | undefined {
       const outcome = attempt(() => readReport(backend, keyFor(analyzer, resolved), analyzer));
       return outcome.kind === 'done' ? outcome.value : undefined;
     },
-    write(
-      analyzer: unknown,
-      report: AnalyzerReport,
-      resolved: AnalyzerMetadata | undefined,
-    ): boolean {
+    write(analyzer: unknown, report: AnalyzerReport, resolved?: AnalyzerMetadata): boolean {
       const outcome = attempt(() => {
         const key = keyFor(analyzer, resolved);
         return backend.put(key, `${JSON.stringify(cacheEntry(key, report))}\n`);

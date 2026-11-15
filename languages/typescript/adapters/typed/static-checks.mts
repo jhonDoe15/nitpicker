@@ -6,7 +6,7 @@ import { withTypeScriptHint } from '../hints/tool-failure-hint.mts';
 import {
   prepareSnapshotDependencies as prepareUntypedSnapshotDependencies,
   removeSnapshotDependencies as removeUntypedSnapshotDependencies,
-} from '../static-checks/dependencies.mjs';
+} from '../static-checks/dependencies.mts';
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mjs';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mjs';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findingsOf, source } from '../../test-support/reuse-project.mjs';
+import { findingsOf, source } from '../../test-support/reuse-project.mts';
 
 function slips(files) {
   return findingsOf(files)

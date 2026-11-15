@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../../core/diff/git/test-support/git-checkout.mts';
 import { resolveLayoutFor } from '../../layout.mjs';
 import { loadPackages as untypedLoadPackages } from './packages.mjs';
 import type { PackagesInfo } from './workspace-types.mts';

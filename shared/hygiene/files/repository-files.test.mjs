@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { trackedFiles } from '../tracked-files.mjs';
 import { LARGE_FILE_BYTES } from '../../project-rules/hygiene-rules.mjs';
 import { withoutExcepted } from '../rules.mjs';

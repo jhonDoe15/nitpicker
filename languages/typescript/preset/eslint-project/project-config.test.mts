@@ -1,7 +1,7 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mjs';
+import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
@@ -20,13 +20,6 @@ type EslintSettings = {
 type HeadPolicy = { tools: { eslint: EslintSettings } };
 type Files = Record<string, string>;
 
-const conventionStyle: (
-  preset: string | undefined,
-  context: { config: Record<string, unknown>; projectRoot: string },
-) => {
-  unused?: unknown;
-  summary?: (conventions: unknown) => string[];
-} = untypedConventionStyle;
 const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot?: string) => HeadPolicy =
   untypedResolveHeadPolicy;
 const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =

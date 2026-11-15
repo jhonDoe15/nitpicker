@@ -3,12 +3,12 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
 import { PRESETS } from '../../../shared/reference/entry.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
-import { applyDisable, readConfigFile } from '../../configuration/config.mjs';
+import { applyDisable, readConfigFile } from '../../configuration/config.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import {
   type Entry,
   type EntryIndex,

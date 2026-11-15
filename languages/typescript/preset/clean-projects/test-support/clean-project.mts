@@ -21,11 +21,11 @@ import {
   parseJson,
   textOf,
 } from '../../../../../shared/values/readers.mts';
-import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import {
   copyGitTemplate as untypedCopyGitTemplate,
   createGitTemplate as untypedCreateGitTemplate,
-} from '../../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const withDefaultAnalyzerParallelism: <Result>(run: () => Result) => Result =
   untypedWithDefaultAnalyzerParallelism;
@@ -128,6 +128,28 @@ export function runNitpicker(
 
 export function readReport(root: string, ...segments: string[]): unknown {
   return parseJson(readFileSync(containedPath(root, path.join(...segments)), 'utf8'));
+}
+
+export function runSnapshot(
+  root: string,
+  extraArguments: readonly string[] = [],
+): ReturnType<typeof runNitpicker> & {
+  readonly summary: unknown;
+  readonly toolErrors: unknown;
+  readonly findings: unknown;
+} {
+  const result = runNitpicker(root, [
+    '--all',
+    '--output',
+    path.join(root, 'reports/snapshot'),
+    ...extraArguments,
+  ]);
+  return {
+    ...result,
+    summary: readReport(root, 'reports/snapshot/summary.json'),
+    toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
+    findings: readReport(root, 'reports/snapshot/findings.json'),
+  };
 }
 
 export type FindingView = {

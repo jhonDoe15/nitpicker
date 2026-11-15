@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { kotlinProjects } from '../adapters/kotlin/test-support/kotlin-project.mjs';
+import { kotlinProjects } from '../adapters/kotlin/test-support/kotlin-project.mts';
 import { kotlinStyle } from './kotlin-style.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 

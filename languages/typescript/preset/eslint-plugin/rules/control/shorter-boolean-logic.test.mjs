@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './shorter-boolean-logic.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-shorter-logic-')));

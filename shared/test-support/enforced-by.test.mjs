@@ -9,7 +9,7 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
 const GO_REGISTERED_FACT_RULES_ONLY = {
-  file: 'languages/go/adapters/facts/go-fact-findings.mjs',
+  file: 'languages/go/adapters/facts/go-fact-findings.mts',
   evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
 };
 const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
@@ -33,12 +33,12 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   go: {
     ...GO_FACT_RULES_NOT_RUN,
     'type-only-production-dependency': {
-      file: 'languages/go/adapters/test-runtime/go-test-runtime.mjs',
+      file: 'languages/go/adapters/test-runtime/go-test-runtime.mts',
       evidence: /kind: EDGE_KINDS\.RUNTIME/u,
     },
     'domain-imports-framework-context': {
-      file: 'languages/go/adapters/domain/go-domain-libraries.mjs',
-      evidence: /const WHOLE_PACKAGE_RULES = \[\n {2}\[RULE_IDS\.domainImportsClient/u,
+      file: 'languages/go/adapters/domain/go-domain-libraries.mts',
+      evidence: /const WHOLE_PACKAGE_RULES[^=]*= \[\n {2}\[RULE_IDS\.domainImportsClient/u,
     },
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',

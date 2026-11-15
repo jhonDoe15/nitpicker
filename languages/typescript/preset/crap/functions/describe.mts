@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { childrenOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { FunctionDescriptor, Span } from '../crap-types.mts';
 import {
   cyclomaticComplexity,
@@ -13,7 +13,6 @@ import {
   propertyName,
   type Naming,
 } from './names.mts';
-import { childrenOf } from './own-nodes.mts';
 
 const ts = typescriptApi();
 

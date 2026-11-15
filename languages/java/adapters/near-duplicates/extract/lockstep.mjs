@@ -12,6 +12,7 @@ import {
   roleOf,
   squashed,
 } from './syntax.mjs';
+import { fieldStep } from './cross/fields.mjs';
 import { deferredValue } from './holes/deferred.mjs';
 import { typeStep } from './holes/type-holes.mjs';
 
@@ -25,7 +26,11 @@ const NARROWING_PARENTS = new Set([
 const SHAPE = 'the copies are shaped differently';
 
 function isTypeNode(node) {
-  return node.type.endsWith('_type') || node.type === 'type_identifier';
+  return (
+    node.type.endsWith('_type') ||
+    node.type === 'type_identifier' ||
+    node.type === 'scoped_type_identifier'
+  );
 }
 
 function declaredTypeOf(parameter) {
@@ -182,7 +187,7 @@ function identifierStep(pair, context, state) {
   if (locals[0]) {
     return bindPair(state, x.text, y.text) ? undefined : 'the copies rename a local inconsistently';
   }
-  return x.text === y.text ? undefined : addHole(state, context, [x, y]);
+  return x.text === y.text ? fieldStep([x, y], context, state) : addHole(state, context, [x, y]);
 }
 
 function childrenStep(pair, state) {
@@ -266,6 +271,9 @@ function flowName(node) {
 }
 
 function stemOf(hole) {
+  if (hole.stem !== undefined) {
+    return hole.stem;
+  }
   const stem = flowName(hole.occurrences[0].a);
   return hole.kind === 'deferred' ? `${stem ?? 'value'}Supplier` : stem;
 }

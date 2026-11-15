@@ -142,7 +142,7 @@ files have planning weights of 160, 40 and 150 seconds, respectively. These are 
 estimates for deterministic assignment until isolated CI module timings are collected; they
 are not measurements of the new shards.
 
-The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, nine cases) was
+The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mts`, nine cases) was
 gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
 tasks against a stand-in Kotlin plugin, so it now sits under `kotlin-e2e/`, is gated on the Kotlin
 flag and runs in the Kotlin suite with a planning weight of 120 seconds (about 64 to 85 seconds
@@ -189,7 +189,7 @@ into one uv environment and runs the test step nine times, which took about 30 s
 The rule reference adds three files with planning weights. `java-e2e/tool-text/tool-text.e2e.test.mjs`
 (120 seconds) resolves the pinned PMD, Error Prone, NullAway and detekt jars and compares their rule
 text with the committed snapshots, and `errorprone/error-prone-report.e2e.test.mjs` (30 seconds)
-compiles and runs `ErrorProneReport.java` once. `ruff/ruff-snapshot.e2e.test.mjs` (one second)
+compiles and runs `ErrorProneReport.java` once. `ruff/ruff-snapshot.e2e.test.mts` (one second)
 only asks the installed ruff for its rule list.
 
 The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
