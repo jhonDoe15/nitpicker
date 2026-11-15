@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runFake } from '../test-support/fake-tools/run-fake.mjs';
+import { runFake } from '../test-support/fake-tools/run-fake.mts';
 
 const [tool, ...args] = process.argv.slice(2);
 const { status, stdout, stderr } = runFake({ tool, args, cwd: process.cwd(), env: process.env });

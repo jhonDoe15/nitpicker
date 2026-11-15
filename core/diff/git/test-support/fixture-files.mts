@@ -4,7 +4,10 @@ import { parseJson } from '../../../../shared/values/readers.mts';
 
 export type FileMap = Readonly<Record<string, string>>;
 
-export function writeFiles(root: string, files: FileMap): void {
+export function writeFiles(
+  root: string,
+  files: Readonly<Record<string, string | Uint8Array>>,
+): void {
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(root, relativePath);
     mkdirSync(path.dirname(filePath), { recursive: true });

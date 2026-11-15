@@ -1,6 +1,6 @@
 import { textOf } from '../../../shared/values/readers.mts';
 import { pinnedToolTextVersion } from '../../../languages/java/reference/tool-text/tool-text.mjs';
-import { readRuffSnapshot } from '../../../languages/python/reference/ruff-entries.mjs';
+import { readRuffSnapshot } from '../../../languages/python/reference/ruff-entries.mts';
 
 const ruffSnapshot: () => { readonly version: unknown } = readRuffSnapshot;
 

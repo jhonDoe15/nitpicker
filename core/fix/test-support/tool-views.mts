@@ -1,7 +1,7 @@
 import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mjs';
-import { fakeGoFormat as untypedFakeGoFormat } from '../../../languages/go/fix/test-support/fake-go-format.mjs';
+import { fakeGoFormat as untypedFakeGoFormat } from '../../../languages/go/fix/test-support/fake-go-format.mts';
 import { fakeJvmTools as untypedFakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakePythonTools as untypedFakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mjs';
+import { fakePythonTools as untypedFakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mts';
 import { recipeSpecs } from './engine-views.mts';
 import type { PlanContext, RecipeSpec } from './engine-views.mts';
 import type { CliRunInput } from '../../command/test-support/fixture-types.mts';
@@ -9,7 +9,7 @@ import type { FixInvocation } from '../typed/fix-types.mts';
 
 export type FixCliInput = CliRunInput & { readonly fixRecipes?: unknown };
 
-type ToolCall = { readonly operation: string; readonly args: readonly string[] };
+type ToolCall = { readonly operation?: string | undefined; readonly args: readonly string[] };
 
 export type ToolSet = {
   readonly executeFixCommand: (invocation: FixInvocation) => unknown;
@@ -17,7 +17,7 @@ export type ToolSet = {
 
 export type FakeTools = ToolSet & {
   readonly calls: readonly unknown[];
-  readonly operations: () => string[];
+  readonly operations: () => readonly (string | undefined)[];
 };
 
 export type PythonTools = FakeTools & {

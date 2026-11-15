@@ -10,7 +10,7 @@ import type { PresetRun } from '../test-support/fixture-types.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
-import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mts';
 
 const jscpdVersion: () => string = readJscpdVersion;
 

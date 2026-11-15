@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { localRunScript } from '../script-edits.mjs';
-import { applyRecipes } from '../test-support/apply-recipes.mjs';
+import { applyRecipes } from '../test-support/apply-recipes.mts';
 import { projectScriptRecipes } from './project-recipes.mjs';
 
 const CASES = JSON.parse(

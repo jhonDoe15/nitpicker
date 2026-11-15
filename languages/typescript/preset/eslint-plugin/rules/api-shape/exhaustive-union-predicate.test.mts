@@ -1,0 +1,202 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { typedCaseProject } from '../../test-support/projects/typed-ts-project.mts';
+import { rule } from './exhaustive-union-predicate.mjs';
+
+type Errors = ReturnType<typeof partial>;
+
+const { tester, typed } = typedCaseProject<Errors>({
+  prefix: 'nitpicker-union-predicate-',
+  lib: ['ES2022'],
+  prepare(root) {
+    mkdirSync(path.join(root, 'node_modules/ext-lib'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'node_modules/ext-lib/index.d.ts'),
+      [
+        "export type LibKind = 'a' | 'b' | 'c';",
+        'export declare function libKind(): LibKind;',
+        "export declare const lib: { kind: 'a' | 'b' | 'c'; named: LibKind };",
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(
+      path.join(root, 'node_modules/ext-lib/package.json'),
+      JSON.stringify({ name: 'ext-lib', version: '1.0.0', types: 'index.d.ts' }),
+    );
+    writeFileSync(path.join(root, 'src/kinds.ts'), "export type SharedKind = 'x' | 'y' | 'z';\n");
+  },
+});
+
+const kind = "type Kind = 'a' | 'b' | 'c' | 'd';\n";
+const event = "type Event = { type: 'a' } | { type: 'b' } | { type: 'c' };\n";
+const lib = "import { lib, libKind } from 'ext-lib';\nimport type { LibKind } from 'ext-lib';\n";
+
+function partial(union: string) {
+  return [{ messageId: 'partialUnionTest', data: { union } }];
+}
+
+tester.run('exhaustive-union-predicate', rule, {
+  valid: [
+    `${kind}export const f = (k: Kind) => k === 'a' || k === 'b' || k === 'c' || k === 'd';`,
+    `${kind}export const f = (k: Kind) => k !== 'a' && k !== 'b' && k !== 'c' && k !== 'd';`,
+    `${kind}export const f = (k: Kind, j: Kind) => k === 'a' || j === 'b';`,
+    `${kind}export const f = (k: Kind, other: Kind) => k === 'a' || k === other;`,
+    `${kind}export const f = (k: Kind, flag: boolean) => k === 'a' || k === 'b' || flag;`,
+    `${kind}export const f = (k: Kind) => k === 'a';`,
+    `${kind}export const f = (k: Kind) => k !== 'a' || k !== 'b';`,
+    `${kind}export const f = (k: Kind) => k === 'a' && k === 'b';`,
+    `${kind}export const f = (k: Kind) => k == 'a' || k == 'b';`,
+    `${kind}export const f = (k: Kind) => { switch (k) { case 'a': case 'b': return true; case 'c': case 'd': return false; } };`,
+    `${kind}export const f = (k: Kind) => ({ a: true, b: true, c: false, d: false })[k];`,
+    `${kind}declare function get(): Kind;\nexport const f = () => get() === 'a' || get() === 'b';`,
+    "export const f = (s: string) => s === 'a' || s === 'b';",
+    "export const f = (k: 'a' | 'b') => k === 'a' || k === 'b';",
+    "type Two = 'a' | 'b'; export const f = (k: Two) => k === 'a' || k === 'b';",
+    'export const f = (k: boolean) => k === true || k === false;',
+    `${event}export const f = (e: Event) => e.type === 'a' || e.type === 'b';`,
+    `${event}export const f = (e: Event | undefined) => e?.type === 'a' || e?.type === 'b';`,
+    `${event}export const f = (e: Event) => e.type !== 'a' && e.type !== 'b';`,
+    `${lib}export const f = (k: LibKind) => k === 'a' || k === 'b';`,
+    `${lib}export const f = () => { const k = libKind(); return k === 'a' || k === 'b'; };`,
+    `${lib}export const f = () => lib.kind === 'a' || lib.kind === 'b';`,
+    `${lib}export const f = () => lib.named === 'a' || lib.named === 'b';`,
+    `${lib}export const f = () => { const kind = lib.kind; return kind === 'a' || kind === 'b'; };`,
+    `${lib}export const f = () => { const { kind } = lib; return kind === 'a' || kind === 'b'; };`,
+    `${lib}export const f = ({ kind }: { kind: LibKind }) => kind === 'a' || kind === 'b';`,
+    `${lib}export const f = ({ kind }: typeof lib) => kind === 'a' || kind === 'b';`,
+    `${lib}export const f = (k: LibKind) => { if (k === 'c') { return false; } return k === 'a' || k === 'b'; };`,
+    "type Mode = 'a' | 'b' | 'c'; export const f = (m: Mode) => { const x = `${m}` === 'a' || `${m}` === 'b'; return x; };",
+    "export const f = (k: 'a' | 'b' | 'c') => 'a' === 'a' || 'b' === 'b';",
+    `${kind}export function isEarly(k: Kind): k is 'a' | 'b' { return k === 'a' || k === 'b'; }`,
+    `${kind}export const isEarly = (k: Kind): k is 'a' | 'b' => k === 'a' || k === 'b';`,
+    `${kind}export const isEarly = (k: Kind): k is 'c' | 'd' => k !== 'a' && k !== 'b';`,
+    `${kind}export function assertEarly(k: Kind): asserts k is 'a' | 'b' { if (k !== 'a' && k !== 'b') { throw new Error('x'); } }`,
+    `${kind}export function f(k: Kind) { if (k === 'a' || k === 'b') { return 1; } return 2; }`,
+    `${kind}export function f(k: Kind) { return k === 'a' ? 1 : k === 'b' || k === 'c' ? 2 : 3; }`,
+    `${kind}export function f(k: Kind) { while (k === 'a' || k === 'b') { k = next(); } return k; }\ndeclare function next(): Kind;`,
+    `${kind}export function f(k: Kind) { for (; k !== 'a' && k !== 'b'; ) { k = next(); } return k; }\ndeclare function next(): Kind;`,
+    `${kind}export const f = (k: Kind, run: (v: boolean) => void) => run(k === 'a' || k === 'b');`,
+    `${kind}export const f = (k: Kind) => ['a', 'b', 'c', 'd'].includes(k);`,
+    `${kind}export const f = (k: Kind) => ['a', 'b'].includes(k) || k === 'c' || k === 'd';`,
+    `${kind}export const f = (k: Kind, more: Kind[]) => ['a', 'b', ...more].includes(k);`,
+    `${kind}export const f = (k: Kind, other: Kind) => ['a', other].includes(k);`,
+    `${kind}export const f = (k: Kind) => ['a', 'b'].includes(k, 1);`,
+    `${kind}export const f = (k: Kind) => new Map([['a', 1]]).has(k);`,
+    `${kind}export function f(k: Kind) { if (['a', 'b'].includes(k)) { return 1; } return 2; }`,
+    `${kind}const OPEN: readonly Kind[] = ['a', 'b'];\nexport const f = (k: Kind) => OPEN.includes(k);`,
+    `${lib}export const f = (k: LibKind) => ['a', 'b'].includes(k);`,
+    `${event}export const f = (e: Event) => ['a', 'b'].includes(e.type);`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': return true; default: return 1; } }`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': return true; case 'b': return false; default: return false; } }`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': return true; default: return true; } }`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': log(); return true; default: return false; } }\ndeclare function log(): void;`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': case 'c': case 'd': return true; default: return false; } }`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': return true; default: } return false; }`,
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'c': return true; default: case 'b': return false; } }`,
+    `${kind}export function isEarly(k: Kind): k is 'a' | 'b' { switch (k) { case 'a': case 'b': return true; default: return false; } }`,
+    `${lib}export function f(k: LibKind) { switch (k) { case 'a': case 'b': return true; default: return false; } }`,
+    "export function f(s: string) { switch (s) { case 'a': case 'b': return true; default: return false; } }",
+    `${kind}export function f(k: Kind) { switch (k) { case 'a': return true; default: return false; } }`,
+  ].map((code) => typed(code)),
+  invalid: [
+    typed(`${kind}export const f = (k: Kind) => k === 'a' || k === 'b';`, partial('`Kind`')),
+    typed(
+      `${kind}export function f(k: Kind) { return k === 'a' || k === 'b' || k === 'c'; }`,
+      partial('`Kind`'),
+    ),
+    typed(`${kind}export const f = (k: Kind) => k !== 'a' && k !== 'b';`, partial('`Kind`')),
+    typed(
+      `${kind}export function f(k: Kind) { const done = k === 'a' || k === 'b'; return done; }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { if (k === 'd') { return false; } return k === 'a' || k === 'b'; }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind, on: boolean) => on && !(k === 'a' || k === 'b');`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { let done = false; done = k === 'a' || k === 'b'; return done; }`,
+      partial('`Kind`'),
+    ),
+    typed(`${kind}export const f = (k: Kind) => 'a' === k || 'b' === k;`, partial('`Kind`')),
+    typed(
+      `${kind}export const f = (k: Kind) => (k === 'a' || k === 'b') || k === 'c';`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind | undefined) => k === 'a' || k === 'b';`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}type Props = { kind?: Kind };\nexport const f = (p: Props) => p.kind === 'a' || p.kind === 'b';`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = ({ kind: k }: { kind: Kind }) => k === 'a' || k === 'b';`,
+      partial('`Kind`'),
+    ),
+    typed("export const f = (k: 'a' | 'b' | 'c') => k === 'a' || k === 'b';", partial('the union')),
+    typed(
+      'type Level = 1 | 2 | 3 | 4; export const f = (l: Level) => l === 1 || l === 2;',
+      partial('`Level`'),
+    ),
+    typed(
+      "import type { SharedKind } from './kinds';\nexport const f = (k: SharedKind) => k === 'x' || k === 'y';",
+      partial('`SharedKind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind): boolean { return k === 'a' || k === 'b'; }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind, j: Kind) => k === 'a' || k === 'b' ? j !== 'c' && j !== 'd' : false;`,
+      partial('`Kind`'),
+    ),
+    typed(`${kind}export const f = (k: Kind) => ['a', 'b'].includes(k);`, partial('`Kind`')),
+    typed(`${kind}export const f = (k: Kind) => !['a', 'b'].includes(k);`, partial('`Kind`')),
+    typed(
+      `${kind}export const f = (k: Kind) => (['a', 'b'] as const satisfies readonly Kind[]).includes(k);`,
+      partial('`Kind`'),
+    ),
+    typed(`${kind}export const f = (k: Kind) => new Set(['a', 'b']).has(k);`, partial('`Kind`')),
+    typed(
+      `${kind}export const f = (k: Kind) => new Set<Kind>(['a', 'b']).has(k);`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind) => ['a', 'b'].includes(k) || k === 'c';`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind) => !['a', 'b'].includes(k) && k !== 'c';`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}type Props = { kind: Kind };\nexport const f = (p: Props) => ['a', 'b'].includes(p.kind);`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': return true; default: return false; } }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { switch (k) { case 'a': { return false; } case 'b': { return false; } default: { return true; } } }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { switch (k) { case 'a': case 'b': return true; case 'c': default: return false; } }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export function f(k: Kind) { switch (k) { case 'a': return true; default: return false; case 'b': return true; } }`,
+      partial('`Kind`'),
+    ),
+    typed(
+      `${kind}export const f = (k: Kind) => { switch (k) { case 'a': return true; case 'b': return true; default: return false; } };`,
+      partial('`Kind`'),
+    ),
+  ],
+});

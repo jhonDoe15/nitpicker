@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
-import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
+import { runPython } from '../../../../languages/python/adapters/python-runner.mts';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
 import { progressEvent } from '../graph/outcomes.mts';
@@ -40,9 +40,8 @@ const javaRunnerPath = path.resolve(
   import.meta.dirname,
   '../../../../languages/java/adapters/java-runner.mjs',
 );
-const pythonRunnerPath = path.resolve(
-  import.meta.dirname,
-  '../../../../languages/python/adapters/python-runner.mjs',
+const pythonRunnerPath = checkoutModulePath(
+  path.resolve(import.meta.dirname, '../../../../languages/python/adapters/python-runner.mjs'),
 );
 
 const cliPath = sourcePath(path.resolve(import.meta.dirname, '../../../cli.mjs'));

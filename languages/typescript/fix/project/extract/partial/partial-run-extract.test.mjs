@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { reuseFindingsFor } from '../../reuse/reuse-findings.mjs';
-import { useFixtureProjects } from '../../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../../test-support/fixture-project.mts';
 import { forcedPartialRecipe, spansOf } from '../test-support/forced.mjs';
 import {
   headerCopy,
