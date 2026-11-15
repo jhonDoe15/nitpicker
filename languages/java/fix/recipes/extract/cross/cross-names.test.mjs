@@ -62,11 +62,15 @@ describe('javaExtractNearDuplicateRecipe resolves the names of two files', () =>
       false,
       true,
     ]);
-    if (javacAvailable()) {
-      const config = 'package demo;\n\nclass Config {\n    int Date;\n}\n';
-      const result = compileFilesStatus({ 'Adapter.java': BASE, 'Config.java': config, ...after });
-      expect([result.status, result.stderr.replace(/Picked up.*\n/u, '')]).toEqual([0, '']);
-    }
+  });
+
+  it.runIf(javacAvailable())('compiles a field access that looks like a qualified type', () => {
+    const extra = '    int viaConfig(Config cfg) { return cfg.Date; }\n';
+    const { fixes, files } = plan(filesOf({ extra }, {}));
+    const config = 'package demo;\n\nclass Config {\n    int Date;\n}\n';
+    const after = appliedFiles(files, fixes);
+    const result = compileFilesStatus({ 'Adapter.java': BASE, 'Config.java': config, ...after });
+    expect([result.status, result.stderr.replace(/Picked up.*\n/u, '')]).toEqual([0, '']);
   });
 
   it('declines two creators that would share a name and differ in their types', () => {

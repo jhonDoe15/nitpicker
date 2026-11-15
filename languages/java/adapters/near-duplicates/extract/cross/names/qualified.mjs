@@ -1,3 +1,4 @@
+import { escapeRegExp } from '../../../../../../../shared/paths/glob.mjs';
 import { IMPORT, IMPORT_NODE, NOISE, nestedTypes, unusedImports } from './imports.mjs';
 
 function blank(match) {
@@ -35,13 +36,14 @@ function textUses(text, known) {
     return [];
   }
   const texts = [...new Set(known.map((use) => use.text))].toSorted((a, b) => b.length - a.length);
-  const alternatives = texts.map((item) => item.replaceAll('.', '\\.').replaceAll('$', '\\$'));
-  const word = new RegExp(`(?<![\\w$.])(?:${alternatives.join('|')})(?![\\w$])`, 'gu');
+  const alternatives = texts.map(escapeRegExp).join('|');
+  const prefixes = new Map(known.map((use) => [use.text, use.prefix]));
+  const word = new RegExp(`(?<![\\w$.])(?:${alternatives})(?![\\w$])`, 'gu');
   const uses = [...masked(text, []).matchAll(word)];
   return uses.map((match) => ({
     start: match.index,
     end: match.index + match[0].length,
-    prefix: known.find((use) => use.text === match[0]).prefix,
+    prefix: prefixes.get(match[0]),
   }));
 }
 

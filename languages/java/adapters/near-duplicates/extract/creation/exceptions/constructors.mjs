@@ -43,8 +43,8 @@ export function readerFor(root, sources, parse) {
       const text = prefixes
         .map((prefix) => readRealInside(root, `${prefix}${relative}`, 'utf8'))
         .find((found) => found !== undefined);
-      const tree = text === undefined ? null : parse(text);
-      return tree === null ? undefined : { rootNode: tree.rootNode, release: () => tree.delete() };
+      const tree = text === undefined ? undefined : parse(text);
+      return tree ? { rootNode: tree.rootNode, release: () => tree.delete() } : undefined;
     },
   };
 }
@@ -237,7 +237,7 @@ function classInfo(creation, types) {
   );
 }
 
-export function infoOfCreation(creation, types = noTypes()) {
+function infoOfCreation(creation, types = noTypes()) {
   return classInfo(creation, types)?.info;
 }
 
