@@ -128,7 +128,7 @@ const SOURCE_RECIPES = {
     'package demo\n\nclass Rules {\n    fun validate(count: Int) {\n        require(!(count < 0)) { "negative" }\n        val total = count\n        println(total)\n    }\n}\n',
 };
 
-function sourceRecipeRepository(build) {
+function sourceRecipeRepository(build: Readonly<Record<string, string>>): FixRequest {
   return {
     committed: {
       ...build,

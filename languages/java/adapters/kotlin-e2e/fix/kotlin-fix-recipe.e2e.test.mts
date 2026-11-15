@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../../core/fix/test-support/fix-project.mjs';
+import { fixReport, useFixProject } from './test-support/kotlin-fix-views.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const { fix } = useFixProject();
 
 const SOURCES = 'src/main/kotlin/demo';
