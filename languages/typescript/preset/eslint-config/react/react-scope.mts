@@ -1,7 +1,7 @@
 import type { Linter } from 'eslint';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { codeExtensions } from '../../layout.mjs';
 import {
   defaultStylingApproach,

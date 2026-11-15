@@ -1,6 +1,13 @@
-import { readHeadPolicy } from '../../head-policy.mjs';
-import { validationBehavior } from '../../libraries/project-libraries.mjs';
-import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+import { readHeadPolicy as untypedReadHeadPolicy } from '../../head-policy.mjs';
+import { validationBehavior as untypedValidationBehavior } from '../../libraries/project-libraries.mjs';
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
+import type { StrictOptions } from '../typed/config-types.mts';
+
+type ReactScope = Pick<StrictOptions, 'react'>;
+
+const readHeadPolicy: () => { readonly libraries: unknown } = untypedReadHeadPolicy;
+const validationBehavior: (libraries: unknown) => { readonly name: string } =
+  untypedValidationBehavior;
 
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
 
@@ -14,7 +21,7 @@ const jsonStringifyArgument =
 const reactNullHost =
   'CallExpression:matches([callee.name=/^(useRef|createContext)$/], [callee.property.name=/^(useRef|createContext)$/])';
 
-function nullMessageFor({ react }) {
+function nullMessageFor({ react }: ReactScope): string {
   const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
   return `Use \`undefined\` for an absent value, and an optional field or parameter (\`value?: T\`) where it may be missing. \`null\` is only for strict comparison with a library value and as a value in the data passed to \`JSON.stringify\` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
 }
@@ -30,11 +37,14 @@ export const typeAssertionSelectors = [
   },
 ];
 
-function except(allowed) {
+function except(allowed: readonly string[]): string {
   return allowed.map((selector) => `:not(${selector})`).join('');
 }
 
-export function nullSelectorsFor({ react = false } = {}) {
+export function nullSelectorsFor({ react }: ReactScope = {}): {
+  selector: string;
+  message: string;
+}[] {
   const allowedNullLiterals = [
     strictEqualityOperand,
     jsonStringifyArgument,

@@ -8,13 +8,13 @@ import { filesStartedByCommand } from './command-files.mjs';
 import { filesStartedBySource } from './source-starts.mjs';
 import { startedFiles } from './started-files.mjs';
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function projectWith(files) {
+function projectWith(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-started-files-'));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {

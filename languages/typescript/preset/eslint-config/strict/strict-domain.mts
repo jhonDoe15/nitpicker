@@ -1,9 +1,9 @@
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mts';
 import { codeExtensions, builtInExcludedGlobs } from '../../layout.mjs';
 
-export function domainGlobsFor(sourceRoots) {
+export function domainGlobsFor(sourceRoots: readonly string[]): string[] {
   return sourceRoots.map((root) => `${root}/main/features/*/domain/**/*.${codeExtensions}`);
 }
 

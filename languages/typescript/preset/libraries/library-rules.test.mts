@@ -1,5 +1,5 @@
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
-import { unknownInDomainRule as untypedUnknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
+import { unknownInDomainRule as untypedUnknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mts';
 import { createTester } from './test-support/rule-tester.mts';
 
 const tester = createTester();

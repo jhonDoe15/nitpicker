@@ -1,18 +1,50 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { ESLint } from 'eslint';
+import { ESLint, type Linter } from 'eslint';
 import { pathToFileURL } from 'node:url';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
-import { UNSAFE_ANY_RULES, untypedJavascriptConfig } from './untyped-javascript.mjs';
-import { resolveHeadPolicy } from '../../head-policy.mjs';
-import { resolveLayout } from '../../layout.mjs';
+import { oxlintOptions } from '../../../adapters/oxlint/test-support/oxlint-runs.mts';
+import {
+  UNSAFE_ANY_RULES,
+  untypedJavascriptConfig,
+  type JavascriptLayout,
+} from './untyped-javascript.mts';
+import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../head-policy.mjs';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+
+const resolveLayout: () => JavascriptLayout = untypedResolveLayout;
+const resolveHeadPolicy: (config: object, projectRoot: string) => unknown =
+  untypedResolveHeadPolicy;
+
+function isConfigList(value: unknown): value is Linter.Config[] {
+  return Array.isArray(value);
+}
+
+function configEntries(value: unknown): Linter.Config[] {
+  if (!isConfigList(value)) {
+    throw new TypeError('The default policy does not export a config list.');
+  }
+  return value;
+}
+
+const UNCHECKED_LAYOUT: JavascriptLayout = { javascript: false, isExcluded: () => false };
+
+function firstEntry(entries: readonly Linter.Config[]): Linter.Config {
+  const [entry] = entries;
+  if (entry === undefined) {
+    throw new Error('The config has no entry.');
+  }
+  return entry;
+}
 
 const PATTERNS = ['src/**/*.{ts,mjs}'];
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -20,7 +52,7 @@ afterAll(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { untypedJavascriptConfig } from ${JSON.stringify(import.meta.resolve('./untyped-javascript.mjs'))};
+import { untypedJavascriptConfig } from ${JSON.stringify(checkoutModuleUrl(new URL('./untyped-javascript.mjs', import.meta.url)).href)};
 import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mjs'))};
 
 const parserOptions = { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname };
@@ -42,7 +74,7 @@ const UNTYPED = [
 ].join('\n');
 const TYPED = 'export const read = (value: { name: string }): string => value.name;\n';
 
-function tsconfig(options) {
+function tsconfig(options: Readonly<Record<string, unknown>>): string {
   return JSON.stringify({
     compilerOptions: {
       noEmit: true,
@@ -58,7 +90,7 @@ function tsconfig(options) {
   });
 }
 
-function project(options) {
+function project(options: Readonly<Record<string, unknown>>): string {
   const root = createProject('nitpicker-untyped-js-', {
     'policy.mjs': POLICY,
     'tsconfig.json': tsconfig(options),
@@ -70,26 +102,27 @@ function project(options) {
   return root;
 }
 
-function located(root, results) {
+function located(root: string, results: unknown): string[] {
   return normalizeEslintResults({ value: results, projectRoot: root, analyzerName: 'eslint-lint' })
     .filter(({ rule }) => UNSAFE_ANY_RULES.includes(rule))
     .map(({ path: file }) => file);
 }
 
-async function eslintFiles(root) {
+async function eslintFiles(root: string): Promise<string[]> {
   const eslint = new ESLint({ cwd: root, overrideConfigFile: path.join(root, 'policy.mjs') });
   return located(root, await eslint.lintFiles(PATTERNS));
 }
 
-async function oxlintFiles(root) {
+async function oxlintFiles(root: string): Promise<string[]> {
   const results = await lintWithOxlint({
-    options: { projectRoot: root, patterns: PATTERNS },
+    options: oxlintOptions(root, PATTERNS),
+    projectConfigPath: undefined,
     environment: {
       ...process.env,
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
     },
-    runEslintCli: () => [],
+    runEslintCli: () => Promise.resolve([]),
   });
   return located(root, results);
 }
@@ -161,15 +194,22 @@ describe('unsafe-any rules on JavaScript in a TypeScript project', () => {
       writeFileSync(policyFile, JSON.stringify(resolveHeadPolicy({}, root)));
       vi.stubEnv('NITPICKER_POLICY', policyFile);
       vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', root);
-      const configUrl = pathToFileURL(
-        path.resolve(import.meta.dirname, '../../defaults/eslint.config.mjs'),
+      const configUrl = checkoutModuleUrl(
+        pathToFileURL(path.resolve(import.meta.dirname, '../../defaults/eslint.config.mjs')),
       );
       configUrl.search = `checkJs=${String(checkJs)}`;
-      const { default: entries } = await import(configUrl.href);
-      const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: entries });
-      const config = await eslint.calculateConfigForFile(path.join(root, 'src/untyped.mjs'));
+      const loaded: unknown = await import(configUrl.href);
+      const eslint = new ESLint({
+        cwd: root,
+        overrideConfigFile: true,
+        overrideConfig: configEntries(fieldOf(loaded, 'default')),
+      });
+      const config: unknown = await eslint.calculateConfigForFile(
+        path.join(root, 'src/untyped.mjs'),
+      );
+      const rule = fieldOf(fieldOf(config, 'rules'), '@typescript-eslint/no-unsafe-member-access');
 
-      expect(config.rules['@typescript-eslint/no-unsafe-member-access'][0]).toBe(checkJs ? 2 : 0);
+      expect(listOf(rule)[0]).toBe(checkJs ? 2 : 0);
     },
   );
 });
@@ -178,24 +218,30 @@ describe('untypedJavascriptConfig', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'nitpicker-untyped-config-'));
   roots.push(dir);
 
-  function config(options, layout = {}) {
+  function config(
+    options: Readonly<Record<string, unknown>>,
+    layout: JavascriptLayout = UNCHECKED_LAYOUT,
+  ): Linter.Config[] {
     writeFileSync(path.join(dir, 'tsconfig.json'), tsconfig(options));
     return untypedJavascriptConfig({ tsconfigFile: path.join(dir, 'tsconfig.json'), layout });
   }
 
   it('turns the seven rules off for JavaScript files without checkJs', () => {
-    const [entry] = config({});
+    const entry = firstEntry(config({}));
 
-    expect(Object.keys(entry.rules).sort()).toEqual([...UNSAFE_ANY_RULES].sort());
-    expect(new Set(Object.values(entry.rules))).toEqual(new Set(['off']));
+    expect(Object.keys(entry.rules ?? {}).sort()).toEqual([...UNSAFE_ANY_RULES].sort());
+    expect(new Set(Object.values(entry.rules ?? {}))).toEqual(new Set(['off']));
     expect(entry.files).toEqual(['**/*.{js,mjs,cjs,jsx}']);
   });
 
   it('adds nothing with checkJs, in the JavaScript preset, or when the tsconfig is missing', () => {
     expect(config({ checkJs: true })).toEqual([]);
-    expect(config({}, { javascript: true })).toEqual([]);
+    expect(config({}, { ...UNCHECKED_LAYOUT, javascript: true })).toEqual([]);
     expect(
-      untypedJavascriptConfig({ tsconfigFile: path.join(dir, 'missing.json'), layout: {} }),
+      untypedJavascriptConfig({
+        tsconfigFile: path.join(dir, 'missing.json'),
+        layout: UNCHECKED_LAYOUT,
+      }),
     ).toHaveLength(1);
   });
 
@@ -210,11 +256,13 @@ describe('untypedJavascriptConfig', () => {
       path.join(root, 'config/app.json'),
       '{ "compilerOptions": { "checkJs": true }, "include": ["../src"] }',
     );
-    const [entry] = untypedJavascriptConfig({
-      tsconfigFile: path.join(root, 'config/solution.json'),
-      projectRoot: root,
-      layout: { ...resolveLayout(), typescriptProject: 'config/solution.json' },
-    });
+    const entry = firstEntry(
+      untypedJavascriptConfig({
+        tsconfigFile: path.join(root, 'config/solution.json'),
+        projectRoot: root,
+        layout: { ...resolveLayout(), typescriptProject: 'config/solution.json' },
+      }),
+    );
 
     expect(entry.ignores).toEqual(['src/untyped.mjs']);
   });
@@ -226,10 +274,12 @@ describe('untypedJavascriptConfig', () => {
       '{ "compilerOptions": { "checkJs": true }, "include": ["src/typed.ts"] }',
     );
     writeFileSync(path.join(root, 'src/typed.ts'), "import './untyped.mjs';\n");
-    const [entry] = untypedJavascriptConfig({
-      tsconfigFile: path.join(root, 'tsconfig.json'),
-      layout: resolveLayout(),
-    });
+    const entry = firstEntry(
+      untypedJavascriptConfig({
+        tsconfigFile: path.join(root, 'tsconfig.json'),
+        layout: resolveLayout(),
+      }),
+    );
 
     expect(entry.ignores).toEqual(['src/untyped.mjs']);
   });
@@ -240,10 +290,12 @@ describe('untypedJavascriptConfig', () => {
       path.join(root, 'tsconfig.json'),
       '{ "compilerOptions": { "checkJs": true }, "include": ["src/typed.ts"] }',
     );
-    const [entry] = untypedJavascriptConfig({
-      tsconfigFile: path.join(root, 'tsconfig.json'),
-      layout: resolveLayout(),
-    });
+    const entry = firstEntry(
+      untypedJavascriptConfig({
+        tsconfigFile: path.join(root, 'tsconfig.json'),
+        layout: resolveLayout(),
+      }),
+    );
 
     expect(entry.ignores).toBeUndefined();
   });

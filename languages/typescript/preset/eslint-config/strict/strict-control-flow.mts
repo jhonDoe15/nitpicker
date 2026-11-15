@@ -1,4 +1,5 @@
-import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+import type { Linter } from 'eslint';
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
 
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';
 const promiseChainMessage = `Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work.${SYNTAX_EXCEPTION_HINT}`;
@@ -54,13 +55,16 @@ export const controlFlowSelectors = [
 
 export const testControlFlowSelectors = [...testLoopSelectors, ...forEachSelectors];
 
-export const promiseChainRule = {
+export const promiseChainRule: Linter.RulesRecord = {
   'nitpicker/no-promise-chain': ['error', ...promiseChainSelectors],
 };
 
-export const controlFlowRules = { eqeqeq: ['error', 'always'], ...promiseChainRule };
+export const controlFlowRules: Linter.RulesRecord = {
+  eqeqeq: ['error', 'always'],
+  ...promiseChainRule,
+};
 
-export const controlFlowTypedRules = {
+export const controlFlowTypedRules: Linter.RulesRecord = {
   '@typescript-eslint/no-floating-promises': 'error',
   '@typescript-eslint/prefer-find': 'error',
   '@typescript-eslint/prefer-includes': 'error',

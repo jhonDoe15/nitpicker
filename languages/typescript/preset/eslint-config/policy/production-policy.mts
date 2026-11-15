@@ -1,14 +1,34 @@
+import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { regexpRules } from '../regexp/regexp-rules.mjs';
-import { domainGlobsFor } from '../strict/strict-domain.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { regexpRules } from '../regexp/regexp-rules.mts';
+import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
   SECURITY_RULES,
   httpClientOptions,
   securityRules,
   securitySupportGlobs,
-} from './security-facts.mjs';
+  type SecurityFacts,
+} from './security-facts.mts';
+
+export type PolicyOptions = {
+  readonly react?: unknown;
+  readonly routeHandlers?: unknown;
+  readonly security?: Partial<SecurityFacts> | undefined;
+};
+
+export type PolicyLayout = {
+  readonly sourceGlobs: readonly string[];
+  readonly testGlobs: readonly string[];
+  readonly sourceTestDirectoryGlobs: readonly string[];
+  readonly sourceRoots: readonly string[];
+  readonly entryPoints?: readonly string[] | undefined;
+};
+
+type ProductionScope = { readonly react: boolean; readonly routeHandlers: boolean };
+
+type RuleEntries = Record<string, Linter.RuleEntry>;
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
@@ -30,15 +50,18 @@ const SUPPORT_OFF_RULES = [
   'nitpicker/require-client-timeout',
 ];
 
-const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
+const CAMEL_CASE = 'camelCase';
+const PASCAL_CASE = 'PascalCase';
+const UPPER_CASE = 'UPPER_CASE';
+const DESTRUCTURED_FORMATS = [CAMEL_CASE, PASCAL_CASE, UPPER_CASE, 'snake_case'];
 
-function withReactFormat(formats, react) {
-  return react ? [...formats, 'PascalCase'] : formats;
+function withReactFormat(formats: readonly string[], react: boolean): readonly string[] {
+  return react ? [...formats, PASCAL_CASE] : formats;
 }
 
 const ROUTE_HANDLER_FRAMEWORKS = new Set(['next', '@sveltejs/kit', 'astro', '@solidjs/start']);
 
-export function usesRouteHandlerFramework(dependencyNames) {
+export function usesRouteHandlerFramework(dependencyNames: readonly string[]): boolean {
   return dependencyNames.some((name) => ROUTE_HANDLER_FRAMEWORKS.has(name));
 }
 
@@ -46,18 +69,21 @@ const routeHandlerNames = {
   selector: 'function',
   modifiers: ['exported'],
   filter: { regex: '^(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$', match: true },
-  format: ['UPPER_CASE'],
+  format: [UPPER_CASE],
 };
 
-export function namingConvention({ react, routeHandlers }) {
+export function namingConvention({
+  react,
+  routeHandlers,
+}: ProductionScope): ['error', ...object[]] {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',
     ...(routeHandlers ? [routeHandlerNames] : []),
-    { selector: 'typeLike', format: ['PascalCase'] },
+    { selector: 'typeLike', format: [PASCAL_CASE] },
     {
       selector: 'function',
-      format: withReactFormat(['camelCase'], react),
+      format: withReactFormat([CAMEL_CASE], react),
       leadingUnderscore: underscores,
     },
     {
@@ -67,14 +93,14 @@ export function namingConvention({ react, routeHandlers }) {
     },
     {
       selector: 'variable',
-      format: withReactFormat(['camelCase', 'UPPER_CASE'], react),
+      format: withReactFormat([CAMEL_CASE, UPPER_CASE], react),
       leadingUnderscore: underscores,
     },
-    { selector: 'parameter', format: ['camelCase'], leadingUnderscore: underscores },
+    { selector: 'parameter', format: [CAMEL_CASE], leadingUnderscore: underscores },
   ];
 }
 
-function productionRules({ react, routeHandlers }) {
+function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries {
   return {
     curly: ['error', 'all'],
     'no-eval': 'error',
@@ -106,7 +132,13 @@ function productionRules({ react, routeHandlers }) {
   };
 }
 
-function productionGuardRules({ react, security }) {
+function productionGuardRules({
+  react,
+  security,
+}: {
+  readonly react: boolean;
+  readonly security: Partial<SecurityFacts> | undefined;
+}): RuleEntries {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
       'error',
@@ -140,14 +172,17 @@ function productionGuardRules({ react, security }) {
   };
 }
 
-export function configFileGlobsFor(layout) {
+export function configFileGlobsFor(layout: Pick<PolicyLayout, 'sourceRoots'>): string[] {
   return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
 }
 
-export function productionLayoutConfigFor(layout, options = {}) {
+export function productionLayoutConfigFor(
+  layout: PolicyLayout,
+  options: PolicyOptions = {},
+): Linter.Config[] {
   return [
     {
-      files: layout.sourceGlobs,
+      files: [...layout.sourceGlobs],
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
@@ -161,7 +196,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
   ];
 }
 
-function securitySupportOff() {
+function securitySupportOff(): Linter.Config {
   return {
     files: securitySupportGlobs(),
     plugins: { nitpicker: nitpickerRules },
@@ -169,9 +204,12 @@ function securitySupportOff() {
   };
 }
 
-export function productionPolicyConfigFor(layout, options = {}) {
+export function productionPolicyConfigFor(
+  layout: PolicyLayout,
+  options: PolicyOptions = {},
+): Linter.Config[] {
   const production = {
-    files: layout.sourceGlobs,
+    files: [...layout.sourceGlobs],
     ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
   };
   return [
@@ -189,7 +227,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
     },
     securitySupportOff(),
     {
-      files: layout.sourceGlobs,
+      files: [...layout.sourceGlobs],
       ignores: [...production.ignores, JAVASCRIPT_FILES],
       plugins: { '@typescript-eslint': tseslint.plugin },
       rules: {
@@ -200,7 +238,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       },
     },
     {
-      files: layout.sourceGlobs,
+      files: [...layout.sourceGlobs],
       ignores: [...production.ignores, ...domainGlobsFor(layout.sourceRoots)],
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-module-level-mutable-state': 'error' },
