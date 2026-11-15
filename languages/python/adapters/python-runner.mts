@@ -248,4 +248,5 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 
-runAdapterMain(import.meta.filename, 'Python', main);
+const entry = { moduleFile: import.meta.filename, adapter: 'Python', main };
+process.exitCode = runAdapterMain(entry, process) ?? process.exitCode;
