@@ -86,14 +86,14 @@ describe('strict test rules', () => {
   ])(
     'treat the files %s runs as test files, not helper scripts',
     (runner: string, testFile: string, helper: string) => {
-    const layout = resolveLayout({}, [], { testFiles: defaultTestFiles(runner) });
-    const config = [
-      { languageOptions: { parser: tseslint.parser } },
-      ...strictTestConfigFor(layout),
-    ];
+      const layout = resolveLayout({}, [], { testFiles: defaultTestFiles(runner) });
+      const config = [
+        { languageOptions: { parser: tseslint.parser } },
+        ...strictTestConfigFor(layout),
+      ];
 
-    expect(messages(moduleLevelArgv, testFile, config)).toEqual([]);
-    expect(messages(moduleLevelArgv, helper, config)).toHaveLength(1);
+      expect(messages(moduleLevelArgv, testFile, config)).toEqual([]);
+      expect(messages(moduleLevelArgv, helper, config)).toHaveLength(1);
     },
   );
 

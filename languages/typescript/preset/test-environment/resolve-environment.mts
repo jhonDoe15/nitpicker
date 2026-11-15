@@ -108,13 +108,19 @@ function loadJestEnvironments(request: LoadRequest): Environments {
       Reflect.apply(untypedEnvironmentsFromJestConfig, undefined, [config, projectRoot]),
     );
   }
-  const configFile = textOf(Reflect.apply(untypedJestConfigFile, undefined, [projectRoot, command]));
+  const configFile = textOf(
+    Reflect.apply(untypedJestConfigFile, undefined, [projectRoot, command]),
+  );
   return unreadable(projectRoot, path.resolve(projectRoot, configFile), (configPath) =>
     noticeFor(configPath, failureOf(read)),
   );
 }
 
-function loadMochaEnvironments({ projectRoot, liveProjectRoot, command }: LoadRequest): Environments {
+function loadMochaEnvironments({
+  projectRoot,
+  liveProjectRoot,
+  command,
+}: LoadRequest): Environments {
   const loaded = loadedProjectMocha({ projectRoot, liveProjectRoot, tokens: command.arguments_ });
   return globalDomEnvironments(projectRoot, mochaSetupEntries(loaded));
 }
@@ -123,7 +129,11 @@ function loadNodeEnvironments({ projectRoot, command }: LoadRequest): Environmen
   return globalDomEnvironments(projectRoot, nodeSetupEntries(command));
 }
 
-function loadViteEnvironments({ projectRoot, liveProjectRoot, timeoutMs }: LoadRequest): Environments {
+function loadViteEnvironments({
+  projectRoot,
+  liveProjectRoot,
+  timeoutMs,
+}: LoadRequest): Environments {
   const configFile = projectConfigFile(projectRoot);
   if (configFile === undefined) {
     return { ...UNKNOWN, environment: DEFAULT_ENVIRONMENT };

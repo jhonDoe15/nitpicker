@@ -2,9 +2,9 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { runnerInstallation } from './runner-tools.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { runnerInstallation } from './runner-installation.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 

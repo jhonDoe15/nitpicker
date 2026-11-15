@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { runnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
-import { testingLibraryHintsFor } from './react-rules.mjs';
+import { runnerVocabulary } from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
+import { testingLibraryHintsFor } from '../react-rules.mjs';
 
 describe('the Testing Library hints', () => {
   it.each([

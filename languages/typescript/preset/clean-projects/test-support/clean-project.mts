@@ -186,8 +186,7 @@ export function viewFindings(report: unknown): FindingView[] {
 
 export function metricValue(findings: unknown, tool: string, identity: string): unknown {
   const found = listOf(findings).find(
-    (finding) =>
-      fieldOf(finding, 'tool') === tool && fieldOf(finding, 'identity') === identity,
+    (finding) => fieldOf(finding, 'tool') === tool && fieldOf(finding, 'identity') === identity,
   );
   return fieldOf(fieldOf(found, 'metric'), 'value');
 }

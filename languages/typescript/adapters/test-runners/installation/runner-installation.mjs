@@ -1,5 +1,5 @@
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { RUNNER_PACKAGES } from '../../preset/test-runner/runners.mjs';
+import { resolveTool } from '../../../../../core/tooling/tool-resolution.mjs';
+import { RUNNER_PACKAGES } from '../../../preset/test-runner/runners.mjs';
 
 export function runnerInstallation(runner, liveProjectRoot) {
   const packageName = RUNNER_PACKAGES[runner];
