@@ -11,27 +11,12 @@ import type { FileMap } from '../../../git/test-support/fixture-files.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   dependencyPreparationMode,
-  prepareSnapshotDependencies as prepareSnapshotDependenciesJs,
-  removeSnapshotDependencies as removeSnapshotDependenciesJs,
-} from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
-import { installFakeManagers as installFakeManagersJs } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
+  prepareSnapshotDependencies,
+  removeSnapshotDependencies,
+} from '../../../../../languages/typescript/adapters/static-checks/dependencies.mts';
+import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mts';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
-
-type Dependencies = {
-  readonly kind: string;
-  readonly dependencyPath?: string;
-  readonly memberPaths?: readonly string[];
-};
-
-const prepareSnapshotDependencies: (request: {
-  readonly projectRoot: string;
-  readonly liveProjectRoot: string;
-  readonly toolRoot: string;
-}) => Dependencies = prepareSnapshotDependenciesJs;
-const removeSnapshotDependencies: (dependencies: Dependencies) => void =
-  removeSnapshotDependenciesJs;
-const installFakeManagers: (directory: string) => string = installFakeManagersJs;
 
 const { temporaryDirectory, createRepository } = useStaticCheckFixtures();
 
@@ -183,7 +168,7 @@ describe('dependency preparation for every package manager', () => {
       const dependencies = prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot });
 
       const snapshotModules = path.join(projectRoot, 'packages/app/node_modules');
-      expect(dependencies.memberPaths).toEqual([snapshotModules]);
+      expect(dependencies?.memberPaths).toEqual([snapshotModules]);
       expect(readlinkSync(path.join(snapshotModules, 'lib'))).toBe(
         path.join(projectRoot, 'packages/lib'),
       );

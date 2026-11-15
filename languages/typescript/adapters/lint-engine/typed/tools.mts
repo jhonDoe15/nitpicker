@@ -8,13 +8,8 @@ import {
 
 export type LintEngineOptions = Pick<
   EslintOptions,
-  | 'projectRoot'
-  | 'liveProjectRoot'
-  | 'configRelativePath'
-  | 'environment'
-  | 'patterns'
-  | 'timeoutMs'
-> & { readonly eslintCliPath?: string | undefined };
+  'projectRoot' | 'liveProjectRoot' | 'configRelativePath' | 'environment' | 'patterns'
+> & { readonly timeoutMs: number | undefined; readonly eslintCliPath?: string | undefined };
 
 export type RunEslintCli = (
   patterns: readonly string[],
