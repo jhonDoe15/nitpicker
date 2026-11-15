@@ -5,6 +5,7 @@ import { readLayout } from '../../../head-policy.mjs';
 import { isBrowserEndToEndTest } from '../analysis/test-code-analysis.mjs';
 import { moduleMocks } from '../runner-apis/module-mocks.mjs';
 import { runnerApisOf } from '../runner-apis/runner-apis.mjs';
+import { awaited } from '../effects/lazy-relations.mjs';
 
 const layout = readLayout();
 const REACT_PACKAGE = 'react';
@@ -47,10 +48,6 @@ function reachesTestHelper(source, filename) {
     }
   }
   return false;
-}
-
-function awaited(node) {
-  return node?.type === 'AwaitExpression' ? node.argument : node;
 }
 
 function topLevelCalls(statement) {

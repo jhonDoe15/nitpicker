@@ -217,15 +217,15 @@ tester.run('react-test-no-implementation-details', rule, {
     .concat(
       (
         [
-        ["import { mock } from 'node:test'; mock.method(React, 'useState');", 'useState'],
-        ["it('a', (t) => { t.mock.method(React, 'useEffect'); });", 'useEffect'],
-        ["import sinon from 'sinon'; sinon.stub(React, 'useState');", 'useState'],
-        ["import * as sinon from 'sinon'; sinon.spy(React, 'useRef');", 'useRef'],
-        [
-          "const box = sinon.createSandbox(); box.replace(React, 'useMemo', (f) => f());",
-          'useMemo',
-        ],
-        ["import td from 'testdouble'; td.replace(React, 'useContext');", 'useContext'],
+          ["import { mock } from 'node:test'; mock.method(React, 'useState');", 'useState'],
+          ["it('a', (t) => { t.mock.method(React, 'useEffect'); });", 'useEffect'],
+          ["import sinon from 'sinon'; sinon.stub(React, 'useState');", 'useState'],
+          ["import * as sinon from 'sinon'; sinon.spy(React, 'useRef');", 'useRef'],
+          [
+            "const box = sinon.createSandbox(); box.replace(React, 'useMemo', (f) => f());",
+            'useMemo',
+          ],
+          ["import td from 'testdouble'; td.replace(React, 'useContext');", 'useContext'],
         ] satisfies [string, string][]
       ).map(([code, hook]) => ({
         filename: testFilename,
@@ -236,18 +236,18 @@ tester.run('react-test-no-implementation-details', rule, {
     .concat(
       (
         [
-        [
-          "import { mock } from 'node:test'; mock.module('react', { namedExports: { useState: () => [1] } });",
-          'useState',
-        ],
-        [
-          "const proxyquire = require('proxyquire').noCallThru(); const { Panel } = proxyquire('../panel', { react: { useId: () => 'id' } });",
-          'useId',
-        ],
-        [
-          "import esmock from 'esmock'; const { Panel } = await esmock('../panel.js', { 'react-dom': { useFormStatus: () => ({}) } });",
-          'useFormStatus',
-        ],
+          [
+            "import { mock } from 'node:test'; mock.module('react', { namedExports: { useState: () => [1] } });",
+            'useState',
+          ],
+          [
+            "const proxyquire = require('proxyquire').noCallThru(); const { Panel } = proxyquire('../panel', { react: { useId: () => 'id' } });",
+            'useId',
+          ],
+          [
+            "import esmock from 'esmock'; const { Panel } = await esmock('../panel.js', { 'react-dom': { useFormStatus: () => ({}) } });",
+            'useFormStatus',
+          ],
         ] satisfies [string, string][]
       ).map(([code, name]) => ({
         filename: plainTestFilename,

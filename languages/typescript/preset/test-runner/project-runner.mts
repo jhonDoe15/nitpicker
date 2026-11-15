@@ -44,7 +44,12 @@ const testRunnerFor: (
 const runnerCommand: (command: unknown, runner: string) => RunnerCommand | undefined =
   untypedRunnerCommand;
 
-const NO_COMMAND: RunnerCommand = { environment: {}, nodeArguments: [], arguments_: [], precedingCommands: [] };
+const NO_COMMAND: RunnerCommand = {
+  environment: {},
+  nodeArguments: [],
+  arguments_: [],
+  precedingCommands: [],
+};
 
 function detectionRoot({ projectRoot, runnerProjectRoot }: ProjectRunnerOptions): string {
   return runnerProjectRoot ?? projectRoot;

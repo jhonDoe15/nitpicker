@@ -288,12 +288,12 @@ describe('coverage on a node:test project', () => {
 
       expect(findings.filter(({ rule }) => rule === 'tests-failed')).toEqual([]);
       expect(
-      fieldAt(
-        findings.find(({ identity }) => identity === 'test-count'),
-        'metric',
-        'value',
-      ),
-    ).toBe(4);
+        fieldAt(
+          findings.find(({ identity }) => identity === 'test-count'),
+          'metric',
+          'value',
+        ),
+      ).toBe(4);
     },
   );
 

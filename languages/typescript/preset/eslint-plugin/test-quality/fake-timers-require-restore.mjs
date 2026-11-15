@@ -152,6 +152,10 @@ function reportUnrestored(context, unrestored, usesUserEvent) {
   }
 }
 
+function checkedStubsFor(options) {
+  return new Set([...(options.globals ? [STUB_GLOBAL] : []), ...(options.envs ? [STUB_ENV] : [])]);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -180,11 +184,7 @@ export const rule = {
     },
   },
   create(context) {
-    const options = context.options[0] ?? {};
-    const checkedStubs = new Set([
-      ...(options.globals ? [STUB_GLOBAL] : []),
-      ...(options.envs ? [STUB_ENV] : []),
-    ]);
+    const checkedStubs = checkedStubsFor(context.options[0] ?? {});
     const apis = createRunnerApis();
     const visitors = runnerApiVisitors(apis);
     const calls = [];

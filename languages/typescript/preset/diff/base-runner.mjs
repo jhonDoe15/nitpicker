@@ -1,4 +1,4 @@
-import { runnerInstallation } from '../../adapters/test-runners/runner-tools.mjs';
+import { runnerInstallation } from '../../adapters/test-runners/installation/runner-installation.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
 import { runnerDetection } from '../test-runner/detect-runner.mjs';
 import { recordedTestRunner } from '../test-runner/vocabulary/runner-vocabulary.mjs';
