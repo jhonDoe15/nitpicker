@@ -85,6 +85,8 @@ describe('effect rules report', () => {
       'stale-retry',
       'session.commit()|retry loop',
       '`session.commit()` is retried after a `StaleDataError` in a retry loop that never reads the row again, so every attempt sends the same object with the old version and fails the same way, or, after a rollback, the change is lost',
+    ],
+    [
       'write-outside-transaction',
       'place|audit_session.add()|session.begin()',
       "`place` writes with `audit_session.add()` inside `session.begin()` through a session, connection or database alias that is not the block's: the write is not part of the transaction and commits or rolls back on its own",
