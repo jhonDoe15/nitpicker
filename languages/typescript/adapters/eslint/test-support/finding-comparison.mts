@@ -1,5 +1,5 @@
 import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { isStrictRule as untypedIsStrictRule } from '../../../preset/strict-rules.mjs';
+import { isStrictRule as untypedIsStrictRule } from '../../../preset/strict-rules.mts';
 import type { EslintFinding } from '../typed/engine.mts';
 
 type Ranges = readonly (readonly [number, number])[];

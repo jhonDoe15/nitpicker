@@ -49,7 +49,7 @@ function mypyReportsDeprecations(context) {
   );
 }
 
-function runMypy(context) {
+export function runMypy(context) {
   const config = writeMypyConfig(context);
   return run(
     context,

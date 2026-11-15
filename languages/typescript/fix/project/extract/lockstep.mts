@@ -12,7 +12,8 @@ import {
 import { bindPair } from './typed/typed-views.mts';
 import { addHole } from './holes.mts';
 import { isInRegion, isLocalSymbol } from './scope.mts';
-import { childrenOf, normalizedText, roleOf, symbolAt } from './syntax.mts';
+import { childrenOf, roleOf, symbolAt } from './syntax.mts';
+import { NOT_A_TYPE, typePairStep } from './type-holes/types.mts';
 
 const ts = typescriptApi();
 
@@ -89,12 +90,12 @@ function leafStep(env: AlignEnv, x: TypeScript.Node, y: TypeScript.Node): string
 }
 
 function step(env: AlignEnv, x: TypeScript.Node, y: TypeScript.Node): string | undefined {
+  const typed = typePairStep(env, x, y);
+  if (typed !== NOT_A_TYPE) {
+    return typed;
+  }
   if (x.kind !== y.kind) {
     return addHole(env, x, y);
-  }
-  if (ts.isTypeNode(x)) {
-    const same = normalizedText(x, env.sourceFile) === normalizedText(y, env.sourceFile);
-    return same ? undefined : 'the copies use different types';
   }
   if (ts.isIdentifier(x) && ts.isIdentifier(y)) {
     return identifierStep(env, x, y);
@@ -117,6 +118,7 @@ export function alignRegions(pairs: readonly Both<TypeScript.Node>[], shared: Sh
     backward: new Map(),
     holes: new Map(),
     inputs: new Map(),
+    typeSites: new Set(),
     pending: [...pairs],
   };
   for (const [x, y] of env.pending) {
@@ -125,5 +127,9 @@ export function alignRegions(pairs: readonly Both<TypeScript.Node>[], shared: Sh
       return { declined: problem };
     }
   }
-  return { holes: [...env.holes.values()], inputs: [...env.inputs.values()] };
+  return {
+    holes: [...env.holes.values()],
+    inputs: [...env.inputs.values()],
+    typeSites: env.typeSites.size,
+  };
 }

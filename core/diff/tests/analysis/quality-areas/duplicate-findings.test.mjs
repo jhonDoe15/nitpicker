@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDuplicates } from '../../../../../languages/typescript/preset/duplicates/normalize.mjs';
+import { normalizeDuplicates } from '../../../../../languages/typescript/preset/duplicates/normalize.mts';
 
 describe('duplicate findings in the quality-area analyzers', () => {
   it('reports a helper copied between test files but not repeated expected data', () => {

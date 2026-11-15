@@ -1,7 +1,7 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
-import { strictPresetConfig as untypedStrictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
+import { strictPresetConfig as untypedStrictPresetConfig } from '../../typescript/preset/eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,

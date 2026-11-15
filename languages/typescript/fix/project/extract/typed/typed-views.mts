@@ -1,5 +1,9 @@
 import type TypeScript from 'typescript';
-import { bindPair as untypedBindPair } from '../../../../../../shared/fix/recipes/extract/bijection.mjs';
+import {
+  bindPair as untypedBindPair,
+  recordTypeHole as untypedRecordTypeHole,
+  typePairProblem as untypedTypePairProblem,
+} from '../../../../../../shared/fix/recipes/extract/bijection.mjs';
 import {
   partialCandidates as untypedPartialCandidates,
   wholeCandidates as untypedWholeCandidates,
@@ -7,7 +11,7 @@ import {
 import {
   declineNote as untypedDeclineNote,
   helperNameFor as untypedHelperNameFor,
-  namedHoles as untypedNamedHoles,
+  nameHoles as untypedNameHoles,
 } from '../../../../../../shared/fix/recipes/extract/names.mjs';
 import {
   collected as untypedCollected,
@@ -21,7 +25,14 @@ import {
 import { statementWindows as untypedStatementWindows } from '../../../../../../shared/fix/recipes/extract/windows.mjs';
 import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import type { Planned, ProjectFix, ReplaceEdit } from '../../typed/project-types.mts';
-import type { AlignEnv, Candidate, Candidates, PartialCandidate } from './extract-types.mts';
+import type {
+  AlignEnv,
+  Both,
+  Candidate,
+  Candidates,
+  Hole,
+  PartialCandidate,
+} from './extract-types.mts';
 
 type Outcome =
   | { readonly note: string; readonly fix?: undefined }
@@ -43,14 +54,29 @@ const declineNote: (
   reason: string,
 ) => string = untypedDeclineNote;
 
-const namedHoles: <
-  Hole extends { readonly occurrences: readonly [{ readonly a: Node }, ...unknown[]] },
-  Node,
->(
-  holes: readonly Hole[],
+const nameHoles: <H extends object>(
+  holes: readonly H[],
   taken: Iterable<string>,
-  stemOf: (node: Node) => string | undefined,
-) => (Hole & { readonly name: string })[] | undefined = untypedNamedHoles;
+  stemOf: (hole: H) => string | undefined,
+) => (H & { readonly name: string })[] | undefined = untypedNameHoles;
+
+const recordTypeHole: (
+  holes: Map<string, Hole>,
+  pair: [TypeScript.Node, TypeScript.Node],
+  texts: readonly string[],
+) => void = untypedRecordTypeHole;
+
+const typePairProblem: (
+  sites: Set<string>,
+  pair: Both<TypeScript.Node>,
+  walk: {
+    readonly textOf: (node: TypeScript.Node) => string;
+    readonly expand: (
+      pair: Both<TypeScript.Node>,
+      pending: Both<TypeScript.Node>[],
+    ) => string | undefined;
+  },
+) => string | undefined = untypedTypePairProblem;
 
 const helperNameFor: (label: string, taken: ReadonlySet<string>) => string | undefined =
   untypedHelperNameFor;
@@ -82,11 +108,13 @@ export {
   dedentedToLeast,
   helperNameFor,
   indentedBy,
-  namedHoles,
+  nameHoles,
   nearDuplicateMatches,
   outcomeOf,
   partialCandidates,
+  recordTypeHole,
   statementWindows,
+  typePairProblem,
   wholeCandidates,
   withLineEndingOf,
 };

@@ -145,6 +145,7 @@ function alignment(sides: Both<RunSide>, env: ExtractEnv): Aligned {
   const pairs = paired(sides[0].statements, sides[1].statements);
   return alignRegions(pairs, {
     ...env,
+    typeHoles: false,
     units: eachSide(sides, ({ unit }) => unit),
     regions: eachSide(sides, ({ region }) => region),
     written: eachSide(sides, ({ written }) => written),

@@ -17,7 +17,7 @@ type Occurrence = { readonly a: TypeScript.Node; readonly b: TypeScript.Node };
 
 export type Hole = {
   readonly key: string;
-  readonly kind: 'literal' | 'parameter' | 'thunk';
+  readonly kind: 'literal' | 'parameter' | 'thunk' | 'type';
   readonly occurrences: [Occurrence, ...Occurrence[]];
 };
 
@@ -39,6 +39,7 @@ export type ExtractEnv = {
 };
 
 export type SharedEnv = ExtractEnv & {
+  readonly typeHoles: boolean;
   readonly units: Both<UnitNode>;
   readonly regions: Both<Region>;
   readonly written: Both<SymbolSet>;
@@ -50,6 +51,7 @@ export type AlignEnv = SharedEnv & {
   readonly backward: Map<TypeScript.Symbol | undefined, TypeScript.Symbol | undefined>;
   readonly holes: Map<string, Hole>;
   readonly inputs: Map<TypeScript.Symbol | undefined, InputPair>;
+  readonly typeSites: Set<string>;
   readonly pending: Both<TypeScript.Node>[];
 };
 
@@ -70,6 +72,7 @@ export type Aligned =
       readonly declined?: undefined;
       readonly holes: Hole[];
       readonly inputs: InputPair[];
+      readonly typeSites: number;
     };
 
 export function eachSide<T, R>(pair: Both<T>, visit: (item: T, side: Side) => R): Both<R> {

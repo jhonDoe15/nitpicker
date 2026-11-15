@@ -138,7 +138,7 @@ describe('layered dependency-cruiser config', () => {
   it('keeps every option nitpicker sets in its config or on the command line', async () => {
     vi.stubEnv(TYPESCRIPT_CONFIG_ENVIRONMENT, path.join(PACKAGE_ROOT, 'package.json'));
     const { default: policy } =
-      await import('../../../preset/dependency-graph/dependency-cruiser.config.mjs');
+      await import('../../../preset/dependency-graph/dependency-cruiser.config.mts');
     const graphSource = readFileSync(
       path.join(import.meta.dirname, '../project-dependency-graph.mts'),
       'utf8',

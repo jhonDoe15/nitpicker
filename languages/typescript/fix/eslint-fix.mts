@@ -7,7 +7,7 @@ import {
 } from '../adapters/lint-engine/project-layer.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
 import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mts';
@@ -25,6 +25,8 @@ import {
   type Bytes,
   type Layout,
 } from './typed/fix-views.mts';
+
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 type EslintSettings = Pick<
   FixSettings,
@@ -93,10 +95,14 @@ function runEslint(settings: EslintSettings, files: readonly FixFile[], linked: 
     acceptedStatuses: [0, 1],
     environment: {
       ...policyEnvironment,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
+      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: checkoutModulePath(
+        path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
+      ),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
-      [EXTRA_POLICY_VARIABLE]: path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
+      [EXTRA_POLICY_VARIABLE]: checkoutModulePath(
+        path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
+      ),
       [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
         liveProjectRoot: projectRoot,
         addsRules: true,

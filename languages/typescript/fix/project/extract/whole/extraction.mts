@@ -7,9 +7,11 @@ import {
   holeParameterText,
   identifierTexts,
   nameHoles,
+  nameTypeHoles,
   replacedText,
   symbolTypeString,
   topLevelStatement,
+  typeArgumentText,
 } from '../render.mts';
 import { templateProblem } from '../scope.mts';
 import { descendants, isTypeScriptFile, normalizedText } from '../syntax.mts';
@@ -20,6 +22,7 @@ import {
   type Aligned,
   type Both,
   type ExtractEnv,
+  type Hole,
   type NamedHole,
   type Region,
   type UnitNode,
@@ -48,6 +51,7 @@ function alignment(units: Both<UnitNode>, env: ExtractEnv): Aligned {
   const writes = eachSide(units, (unit) => writesOf(unit, env.checker));
   return alignRegions(pairs, {
     ...env,
+    typeHoles: true,
     units,
     regions,
     written: eachSide(writes, (list) => new Set(list.map(({ symbol }) => symbol))),
@@ -63,8 +67,15 @@ function alignment(units: Both<UnitNode>, env: ExtractEnv): Aligned {
   });
 }
 
-function parameterTypeTexts(units: Both<UnitNode>, env: ExtractEnv): (string | undefined)[] {
+function parameterTypeTexts(
+  units: Both<UnitNode>,
+  env: ExtractEnv,
+  typeHoles: readonly NamedHole[],
+): (string | undefined)[] {
   return paired(units[0].parameters, units[1].parameters).map(([parameter, other]) => {
+    if (parameter.type !== undefined && other.type !== undefined) {
+      return typeText(parameter.type, typeHoles, env.sourceFile);
+    }
     const texts = [parameter, other].map((own) =>
       own.type === undefined
         ? symbolTypeString(env.checker, env.checker.getSymbolAtLocation(own.name))
@@ -72,6 +83,19 @@ function parameterTypeTexts(units: Both<UnitNode>, env: ExtractEnv): (string | u
     );
     return texts[0] === texts[1] ? (parameter.type?.getText() ?? texts[0]) : undefined;
   });
+}
+
+function typeText(
+  node: TypeScript.Node,
+  typeHoles: readonly NamedHole[],
+  sourceFile: TypeScript.SourceFile,
+): string {
+  const range = { start: node.getStart(sourceFile), end: node.end };
+  return replacedText(range, typeHoles, sourceFile);
+}
+
+function typeParameterList(typeHoles: readonly NamedHole[]): string {
+  return typeHoles.length === 0 ? '' : `<${typeHoles.map((hole) => hole.name).join(', ')}>`;
 }
 
 function hasValueReturn(unit: UnitNode): boolean {
@@ -91,11 +115,12 @@ type Plan = {
   readonly units: Both<UnitNode>;
   readonly name: string;
   readonly holes: readonly NamedHole[];
+  readonly typeHoles: readonly NamedHole[];
 };
 
-function helperDeclaration({ units, name, holes }: Plan, env: ExtractEnv): string {
+function helperDeclaration({ units, name, holes, typeHoles }: Plan, env: ExtractEnv): string {
   const typed = isTypeScriptFile(env.path);
-  const types = typed ? parameterTypeTexts(units, env) : [];
+  const types = typed ? parameterTypeTexts(units, env, typeHoles) : [];
   const own = units[0].parameters.map(
     (parameter, index) =>
       `${identifierText(parameter.name)}${types[index] === undefined ? '' : `: ${types[index]}`}`,
@@ -103,17 +128,22 @@ function helperDeclaration({ units, name, holes }: Plan, env: ExtractEnv): strin
   const extra = holes.map((hole) => holeParameterText(hole, env.checker, { typed }));
   const body = bodyOf(units[0]);
   const range = { start: body.getStart(env.sourceFile), end: body.end };
-  const text = replacedText(range, holes, env.sourceFile);
+  const text = replacedText(range, [...holes, ...typeHoles], env.sourceFile);
   const block = ts.isBlock(body) ? dedentedToLeast(text) : `{\n  return ${text};\n}`;
   const returns =
-    typed && units[0].type !== undefined ? `: ${units[0].type.getText(env.sourceFile)}` : '';
-  return `${isAsync(units[0]) ? 'async ' : ''}function ${name}(${[...own, ...extra].join(', ')})${returns} ${block}`;
+    typed && units[0].type !== undefined
+      ? `: ${typeText(units[0].type, typeHoles, env.sourceFile)}`
+      : '';
+  const head = `${name}${typeParameterList(typeHoles)}(${[...own, ...extra].join(', ')})`;
+  return `${isAsync(units[0]) ? 'async ' : ''}function ${head}${returns} ${block}`;
 }
 
-function callText({ units, name, holes }: Plan, side: 0 | 1, env: ExtractEnv): string {
+function callText({ units, name, holes, typeHoles }: Plan, side: 0 | 1, env: ExtractEnv): string {
   const own = units[side].parameters.map((parameter) => parameter.name.getText(env.sourceFile));
   const extra = holes.map((hole) => holeArgumentText(hole, side, env.sourceFile));
-  return `${name}(${[...own, ...extra].join(', ')})`;
+  const typeArguments = typeHoles.map((hole) => typeArgumentText(hole, side, env.sourceFile));
+  const generic = typeArguments.length === 0 ? '' : `<${typeArguments.join(', ')}>`;
+  return `${name}${generic}(${[...own, ...extra].join(', ')})`;
 }
 
 function bodyReplacement(
@@ -152,7 +182,7 @@ function editsFor(plan: Plan, env: ExtractEnv): ReplaceEdit[] {
 
 function unitProblems(units: Both<UnitNode>, env: ExtractEnv): string | undefined {
   return (
-    unitProblem(units, env.sourceFile) ??
+    unitProblem(units) ??
     (lostComments(units, env.sourceFile)
       ? 'the second copy has comments the shared function would drop'
       : undefined)
@@ -160,10 +190,11 @@ function unitProblems(units: Both<UnitNode>, env: ExtractEnv): string | undefine
 }
 
 function holeCountProblem(
-  aligned: { readonly holes: readonly unknown[] },
+  aligned: { readonly holes: readonly Hole[]; readonly typeSites: number },
   engineHoles: number,
 ): string | undefined {
-  return aligned.holes.length === engineHoles
+  const values = aligned.holes.filter(({ kind }) => kind !== 'type').length;
+  return values + aligned.typeSites === engineHoles
     ? undefined
     : 'the differing values do not match the ones the rule found';
 }
@@ -193,11 +224,15 @@ export function wholeExtraction(input: WholeInput, env: ExtractEnv): Planned<Rep
   }
   const taken = new Set([...identifierTexts(env.sourceFile), ...env.claimed]);
   const name = helperNameFor(input.label, taken);
-  const holes =
-    name === undefined ? undefined : nameHoles(aligned.holes, new Set([...taken, name]));
-  if (name === undefined || holes === undefined) {
+  const values = aligned.holes.filter(({ kind }) => kind !== 'type');
+  const holes = name === undefined ? undefined : nameHoles(values, new Set([...taken, name]));
+  const typeHoles = nameTypeHoles(
+    aligned.holes.filter(({ kind }) => kind === 'type'),
+    taken,
+  );
+  if (name === undefined || holes === undefined || typeHoles === undefined) {
     return { declined: 'the name of the shared function would collide' };
   }
   env.claim(name);
-  return { edits: editsFor({ units: input.units, name, holes }, env) };
+  return { edits: editsFor({ units: input.units, name, holes, typeHoles }, env) };
 }

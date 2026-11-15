@@ -7,7 +7,6 @@ import {
   type Region,
   type UnitNode,
 } from '../typed/extract-types.mts';
-import { normalizedText } from '../syntax.mts';
 
 const ts = typescriptApi();
 
@@ -48,25 +47,20 @@ function kindProblem([a, b]: Both<UnitNode>): string | undefined {
     : undefined;
 }
 
-function signatureProblem(
-  [a, b]: Both<UnitNode>,
-  sourceFile: TypeScript.SourceFile,
-): string | undefined {
+function signatureProblem([a, b]: Both<UnitNode>): string | undefined {
   if (isAsync(a) !== isAsync(b) || a.parameters.length !== b.parameters.length) {
     return 'the copies differ in async or in their parameters';
   }
-  const returns = [a, b].map(({ type }) => type && normalizedText(type, sourceFile));
-  return returns[0] === returns[1] ? undefined : 'the copies declare different return types';
+  return (a.type === undefined) === (b.type === undefined)
+    ? undefined
+    : 'the copies declare different return types';
 }
 
-export function unitProblem(
-  units: Both<UnitNode>,
-  sourceFile: TypeScript.SourceFile,
-): string | undefined {
+export function unitProblem(units: Both<UnitNode>): string | undefined {
   const parameters = units.flatMap((unit) => [...unit.parameters]);
   return (
     kindProblem(units) ??
-    signatureProblem(units, sourceFile) ??
+    signatureProblem(units) ??
     parameters.map(parameterProblem).find((found) => found !== undefined)
   );
 }

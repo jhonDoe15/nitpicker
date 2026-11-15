@@ -135,7 +135,7 @@ function publishAnalyzer(
     skipped.push(`${name} (analysis failed)`);
     return;
   }
-  if (cache.write(analyzer, report)) {
+  if (cache.write(analyzer, report, run.metadata.get(analyzer))) {
     published.push(name);
     return;
   }
