@@ -17,7 +17,7 @@ const COMPOSITION_TYPES = new Set<string>([
   AST_NODE_TYPES.TemplateLiteral,
   AST_NODE_TYPES.CallExpression,
 ]);
-const EXAMPLE = 'SELECT * FROM users WHERE id = ${id}';
+const EXAMPLE = `SELECT * FROM users WHERE id = \${id}`;
 const TAGGED_TEMPLATES = new Map([
   ['@prisma/client', `\`prisma.$queryRaw\`${EXAMPLE}\`\` (Prisma)`],
   ['drizzle-orm', `\`sql\`${EXAMPLE}\`\` from drizzle-orm`],
@@ -27,8 +27,7 @@ const TAGGED_TEMPLATES = new Map([
   ['@databases/pg', `\`sql\`${EXAMPLE}\`\` from @databases/pg`],
   ['sql-template-strings', `\`SQL\`${EXAMPLE}\`\` from sql-template-strings`],
 ]);
-const ANY_TAGGED_TEMPLATE =
-  'a tagged template where the driver has one (`sql`... ${id}`` in drizzle-orm, kysely or postgres, `prisma.$queryRaw`...``), or ';
+const ANY_TAGGED_TEMPLATE = `a tagged template where the driver has one (\`sql\`... \${id}\`\` in drizzle-orm, kysely or postgres, \`prisma.$queryRaw\`...\`\`), or `;
 
 export const SQL_LIBRARIES = [...TAGGED_TEMPLATES.keys()];
 
@@ -119,8 +118,7 @@ export const rule: TSESLint.RuleModule<'sqlBuilt', Options> = {
       },
     ],
     messages: {
-      sqlBuilt:
-        'SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query("SELECT * FROM users WHERE id = $1", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where("user.id = :id", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => "?").join(",")`, rows as `rows.map(() => "(?, ?)").join(", ")`, `$${i + 1}`, and optional filters as `conditions.push("name = ?")` joined with `" AND "`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: "name" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: "users" | "orders"`). An exception fits only when the value is trusted and cannot be written that way.',
+      sqlBuilt: `SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: \`pool.query("SELECT * FROM users WHERE id = $1", [id])\` (pg), \`?\` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), \`:name\` (sequelize, typeorm \`.where("user.id = :id", { id })\`). Placeholder lists are built from placeholders alone: \`ids.map(() => "?").join(",")\`, rows as \`rows.map(() => "(?, ?)").join(", ")\`, \`$\${i + 1}\`, and optional filters as \`conditions.push("name = ?")\` joined with \`" AND "\`. A table or column name comes from a fixed lookup (\`const COLUMNS = { name: "name" } as const; COLUMNS[key]\`) or a value typed as a union of literal names (\`table: "users" | "orders"\`). An exception fits only when the value is trusted and cannot be written that way.`,
     },
   },
   create(context) {

@@ -4,7 +4,7 @@ import {
   conjunctionVerdict as untypedConjunctionVerdict,
   disjunctionVerdict as untypedDisjunctionVerdict,
   numberSamples as untypedNumberSamples,
-  RELATIONS as untypedRelations,
+  isRelation as untypedIsRelation,
 } from '../../../../../../shared/logic/comparisons/constant-verdicts.mjs';
 import { isStable } from './operand-terms.mts';
 
@@ -26,7 +26,7 @@ type Combine = (
   second: Comparison,
 ) => UntypedVerdict;
 
-const RELATIONS: ReadonlyMap<string, unknown> = untypedRelations;
+const isRelation: (operator: string) => boolean = untypedIsRelation;
 const numberSamples: (first: number, second: number) => Sample[] = untypedNumberSamples;
 const conjunctionVerdict: Combine = untypedConjunctionVerdict;
 const disjunctionVerdict: Combine = untypedDisjunctionVerdict;
@@ -109,8 +109,7 @@ export function constantComparison(term: Term): ConstantComparison | undefined {
   if (comparison === undefined || !isStable(comparison.subject)) {
     return undefined;
   }
-  const isRelation = RELATIONS.has(comparison.operator);
-  if (isRelation && comparison.constant.kind !== 'number') {
+  if (isRelation(comparison.operator) && comparison.constant.kind !== 'number') {
     return undefined;
   }
   return { ...comparison, subjectKey: key(comparison.subject) };

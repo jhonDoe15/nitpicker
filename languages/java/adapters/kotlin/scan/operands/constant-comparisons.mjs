@@ -2,7 +2,7 @@ import {
   conjunctionVerdict,
   disjunctionVerdict,
   numberSamples,
-  RELATIONS,
+  isRelation,
 } from '../../../../../../shared/logic/comparisons/constant-verdicts.mjs';
 import { isStable, nodeKey, nodeText, unwrapped } from './operand-terms.mjs';
 
@@ -73,7 +73,7 @@ export function constantComparison(forest, node) {
   if (comparison === undefined || !isStable(forest, comparison.subject)) {
     return undefined;
   }
-  if (RELATIONS.has(comparison.operator) && comparison.constant.kind !== 'number') {
+  if (isRelation(comparison.operator) && comparison.constant.kind !== 'number') {
     return undefined;
   }
   return {
