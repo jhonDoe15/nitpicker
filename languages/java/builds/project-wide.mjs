@@ -8,6 +8,7 @@ import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
+import { readMaxValueFindings } from '../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { readJvmReuse } from '../adapters/reuse/jvm-reuse-facts.mjs';
 import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
 import { readFeatureGraph } from '../adapters/features/feature-findings.mjs';
@@ -221,6 +222,7 @@ export function projectWideReport(projectRoot, { projects, mergedRoot, manifest,
     ...reuse.findings,
     ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
     ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
+    ...readMaxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };
