@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { parseAnalyzerReport, parseFinding } from './test-support/parsed-findings.mts';
 import { sampleFindings } from './test-support/sample-findings.mts';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../shared/report-output/metric-groups.mjs';
+
+const compactMetricFindings: (findings: readonly unknown[]) => readonly unknown[] =
+  untypedCompactMetricFindings;
 
 const schema: unknown = parseJson(
   readFileSync(new URL('../../../spec/findings.schema.json', import.meta.url), 'utf8'),
@@ -30,6 +34,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'not',
   'if',
   'then',
+  'else',
 ]);
 
 const VALID_FINDING = {
@@ -102,12 +107,12 @@ function checkCombinators(value: unknown, node: unknown, errors: string[], at: s
     errors.push(`${at} matches a forbidden schema`);
   }
   const condition = fieldOf(node, 'if');
-  const consequence = fieldOf(node, 'then');
-  if (
-    condition !== undefined &&
-    validate(value, condition, [], at).length === 0 &&
-    consequence !== undefined
-  ) {
+  if (condition === undefined) {
+    return;
+  }
+  const branch = validate(value, condition, [], at).length === 0 ? 'then' : 'else';
+  const consequence = fieldOf(node, branch);
+  if (consequence !== undefined) {
     validate(value, consequence, errors, at);
   }
 }
@@ -195,11 +200,12 @@ function checkObject(
       validate(value[key], child, errors, `${at}.${key}`);
     }
   }
-  if (fieldOf(node, 'additionalProperties') === false) {
-    for (const key of Object.keys(value)) {
-      if (!(key in properties)) {
-        errors.push(`${at}.${key} is not allowed`);
-      }
+  const additional = fieldOf(node, 'additionalProperties');
+  for (const key of Object.keys(value).filter((name) => !(name in properties))) {
+    if (additional === false) {
+      errors.push(`${at}.${key} is not allowed`);
+    } else if (additional !== undefined) {
+      validate(value[key], additional, errors, `${at}.${key}`);
     }
   }
 }
@@ -217,6 +223,30 @@ describe('spec/findings.schema.json', () => {
       new Set(['enforceable', 'descriptive']),
     );
     expect(validate({ findings })).toEqual([]);
+  });
+
+  it('accepts the normalizer findings with their metrics grouped, which read back unchanged', () => {
+    const findings = sampleFindings();
+    const groups = compactMetricFindings(findings);
+
+    expect(groups.length).toBeLessThan(findings.length);
+    expect(validate({ findings: groups })).toEqual([]);
+    expect(parseAnalyzerReport({ findings: groups }, 'fixture')).toEqual(
+      parseAnalyzerReport({ findings }, 'fixture'),
+    );
+  });
+
+  it('rejects a metric group with a message or a metric that is not a number', () => {
+    const [group] = compactMetricFindings(sampleFindings()).filter((entry) =>
+      isRecord(fieldOf(entry, 'metrics')),
+    );
+
+    expect(validate({ findings: [{ ...fieldsOf(group), message: 'm' }] })).toEqual([
+      '$.findings[0].message is not allowed',
+    ]);
+    expect(validate({ findings: [{ ...fieldsOf(group), metrics: { lines: '1' } }] })).toEqual([
+      '$.findings[0].metrics.lines must be number',
+    ]);
   });
 
   it('accepts what the reference parser accepts, including tool-error findings', () => {
