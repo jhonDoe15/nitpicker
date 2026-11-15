@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { followedHelpers as untypedFollowedHelpers } from '../../../../shared/conventions/detect.mjs';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { descendants, parsedSource } from '../typed/measure-views.mts';
 
@@ -19,6 +20,10 @@ const TEST_MODIFIERS = new Set([
   'runIf',
   'skipIf',
 ]);
+const followedHelpers: (
+  counts: Readonly<Record<string, number>>,
+  definition: { readonly minFiles: number },
+) => string[] = untypedFollowedHelpers;
 const DEFAULT_ASSERTION_FUNCTIONS = ['expect', 'assert', 'expectTypeOf', 'assertType'];
 
 export const ASSERTION_HELPERS_CONVENTION = {
@@ -39,17 +44,6 @@ export function assertionFunctionNames(conventions: object = {}): string[] {
     ...DEFAULT_ASSERTION_FUNCTIONS,
     ...textsOf(fieldOf(conventions, ASSERTION_HELPERS_CONVENTION.id)),
   ];
-}
-
-function followedHelpers(
-  counts: Readonly<Record<string, number>>,
-  { minFiles }: { readonly minFiles: number },
-): string[] {
-  return Object.keys(counts)
-    .filter((key) => key.startsWith('use:'))
-    .map((key) => key.slice('use:'.length))
-    .filter((name) => (counts[`use:${name}`] ?? 0) >= minFiles)
-    .filter((name) => (counts[`def:${name}`] ?? 0) > 0);
 }
 
 function rootName(ts: Ts, expression: Node): string | undefined {
