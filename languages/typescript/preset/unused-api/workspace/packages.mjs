@@ -98,7 +98,9 @@ export function loadPackages(projectRoot, layout) {
   const directories = [
     ...new Set([projectRoot, ...(root === undefined ? [] : [root]), ...members]),
   ];
-  const packages = directories.map((directory) => packageEntry(directory)).filter(Boolean);
+  const packages = directories
+    .map((directory) => packageEntry(directory))
+    .filter((entry) => entry !== undefined);
   const longestFirst = packages.toSorted((left, right) => right.dir.length - left.dir.length);
   return { packages, packageOf: packageLookup(longestFirst) };
 }

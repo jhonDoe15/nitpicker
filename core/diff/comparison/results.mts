@@ -12,6 +12,7 @@ import {
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
+import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
@@ -73,6 +74,7 @@ export type DiffReport = {
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly outcomes: readonly ScopedOutcome[];
+  readonly metadata?: MetadataMap;
   readonly notes: ReportEntry[];
   readonly toolErrors: ReportEntry[];
   readonly hidden?: number;
@@ -134,6 +136,7 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
     outcomes: labeled.outcomes,
     notes: notes.findings,
     toolErrors,
+    metadata: mergeMetadata(baseRun.metadata, headRun.metadata),
     hidden: labeled.hidden,
     labelsOf,
   });
@@ -238,7 +241,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(analyzers, configOverrides),
+      policyHash: hashOf(analyzers, configOverrides, context.metadata),
       configOverrides,
       policyChanges,
       policyLoosenings,
