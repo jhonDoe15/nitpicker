@@ -1,6 +1,6 @@
-import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
-import { rule as noFloatEqualityInTests } from './no-float-equality-in-tests.mjs';
-import { rule as noSwitchedOffTests } from './no-switched-off-tests.mjs';
+import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mts';
+import { rule as noFloatEqualityInTests } from './no-float-equality-in-tests.mts';
+import { rule as noSwitchedOffTests } from './no-switched-off-tests.mts';
 import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();

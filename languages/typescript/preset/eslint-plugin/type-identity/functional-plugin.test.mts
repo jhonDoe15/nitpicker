@@ -5,7 +5,7 @@ import { ESLint } from 'eslint';
 import ts from 'typescript';
 import tseslint from 'typescript-eslint';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { functionalPlugin } from './functional-plugin.mjs';
+import { functionalPlugin } from './functional-plugin.mts';
 
 const fixtures = {
   'a-nested.ts':

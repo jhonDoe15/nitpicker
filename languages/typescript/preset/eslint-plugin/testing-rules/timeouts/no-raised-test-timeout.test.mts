@@ -1,12 +1,12 @@
-import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
-import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mts';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mts';
+import { typescriptRuleTester, ruleModule } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 
 const testFile = '/repo/tests/repository.test.ts';
 const lines = (...parts: string[]) => parts.join('\n');
-ruleTester.run('no-raised-test-timeout', withoutFixes(noRaisedTestTimeout), {
+ruleTester.run('no-raised-test-timeout', withoutFixes(ruleModule(noRaisedTestTimeout)), {
   valid: [
     {
       filename: testFile,
