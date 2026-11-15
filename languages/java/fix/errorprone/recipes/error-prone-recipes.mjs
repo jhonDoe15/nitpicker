@@ -4,33 +4,33 @@ import { REVIEW_CHECKS, ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks
 
 const PRESETS = ['java', 'kotlin'];
 
+function editOf(text, name, { hunk, line }) {
+  const edit = hunkEdit(text, hunk);
+  return edit === undefined
+    ? undefined
+    : {
+        line: line ?? edit.line,
+        edit: { type: 'replace', path: name, start: edit.start, end: edit.end, text: edit.text },
+      };
+}
+
 function fixesOf(entries, files, { names, ruleFor }) {
   const texts = new Map(files.map(({ path: name, text }) => [name, text]));
   return [...entries].flatMap(([name, hunks]) => {
     const text = texts.get(name);
-    return text === undefined
-      ? []
-      : hunks
-          .filter(({ label }) => names.has(label))
-          .flatMap(({ label, hunk }) => {
-            const edit = hunkEdit(text, hunk);
-            return edit === undefined
-              ? []
-              : [
-                  {
-                    finding: { ...ruleFor(label), path: name, line: edit.line },
-                    edits: [
-                      {
-                        type: 'replace',
-                        path: name,
-                        start: edit.start,
-                        end: edit.end,
-                        text: edit.text,
-                      },
-                    ],
-                  },
-                ];
-          });
+    const found = new Map();
+    for (const entry of text === undefined ? [] : hunks.filter(({ label }) => names.has(label))) {
+      const placed = editOf(text, name, entry);
+      const key = `${entry.label}:${placed?.line}`;
+      if (placed !== undefined) {
+        const same = found.get(key);
+        found.set(key, {
+          finding: { ...ruleFor(entry.label), path: name, line: placed.line },
+          edits: [...(same?.edits ?? []), placed.edit],
+        });
+      }
+    }
+    return [...found.values()];
   });
 }
 

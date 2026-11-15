@@ -30,7 +30,7 @@ const SAMPLE = [
 const text = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
 const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-const STATIC_IMPORT = /^\s*(?:import|export)\s(?:[^'"]*?\sfrom\s)?['"]([^'"]+)['"]/gmu;
+const STATIC_IMPORT = /^\s*(?:import|export)\s(?!type\s)(?:[^'"]*?\sfrom\s)?['"]([^'"]+)['"]/gmu;
 
 function packagesImportedFrom(entry) {
   const visit = (file, seen) => {
