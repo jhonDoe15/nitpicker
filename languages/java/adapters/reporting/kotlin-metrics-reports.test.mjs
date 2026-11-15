@@ -7,7 +7,7 @@ import {
   klass as reviewClass,
   routeOf,
   wait as reviewWait,
-} from '../kotlin/review-rules/test-support/facts.mjs';
+} from '../kotlin/review-rules/test-support/facts.mts';
 import {
   readJavaFindings,
   rootReports,
