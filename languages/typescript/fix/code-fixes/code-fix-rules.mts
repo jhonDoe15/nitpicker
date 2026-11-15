@@ -1,7 +1,15 @@
-import { REVIEW, SAFE } from '../../../../core/fix/engine/safety.mjs';
+import type TypeScript from 'typescript';
+import {
+  REVIEW as untypedReview,
+  SAFE as untypedSafe,
+} from '../../../../core/fix/engine/safety.mjs';
+import type { CodeFix, SourceText } from './typed/code-fix-views.mts';
+
+const REVIEW: string = untypedReview;
+const SAFE: string = untypedSafe;
 const CODE_FIX_TOOL = 'typescript-typecheck';
 
-export const codeFixes = Object.freeze([
+export const codeFixes: readonly CodeFix[] = Object.freeze([
   { id: 'missing-import', safety: REVIEW, codes: [2304, 2552, 2686], fixName: 'import' },
   {
     id: 'unused-declaration',
@@ -34,11 +42,11 @@ export const codeFixes = Object.freeze([
   },
 ]);
 
-export function codeName(code) {
-  return `${CODE_FIX_TOOL}/TS${code}`;
+export function codeName(code: number): string {
+  return `${CODE_FIX_TOOL}/TS${String(code)}`;
 }
 
-export function selectedCodeFixes(selectedRules) {
+export function selectedCodeFixes(selectedRules: readonly string[]): CodeFix[] {
   const selected = new Set(selectedRules);
   return codeFixes.filter((fix) =>
     selected.size === 0
@@ -47,17 +55,20 @@ export function selectedCodeFixes(selectedRules) {
   );
 }
 
-export function candidateFiles(fixes, files) {
+export function candidateFiles(
+  fixes: readonly CodeFix[],
+  files: readonly SourceText[],
+): SourceText[] {
   return files.filter(({ text }) =>
     fixes.some(({ needs }) => needs === undefined || needs.test(text)),
   );
 }
 
-export function fixesForCode(fixes, code) {
+export function fixesForCode(fixes: readonly CodeFix[], code: number): CodeFix[] {
   return fixes.filter((fix) => fix.codes.includes(code));
 }
 
-export function acceptsAction(fix, action) {
+export function acceptsAction(fix: CodeFix, action: TypeScript.CodeFixAction): boolean {
   return (
     action.fixName === fix.fixName &&
     (fix.description === undefined || fix.description.test(action.description))
