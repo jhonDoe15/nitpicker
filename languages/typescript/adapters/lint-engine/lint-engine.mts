@@ -1,11 +1,12 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { toolBinaryPath } from '../typed/tooling.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import { readHeadPolicy } from '../typed/head-policy.mts';
 import {
   LINT_CONFIG,
   TEST_ENVIRONMENTS_VARIABLE,
-} from '../../preset/test-environment/resolve-environment.mjs';
+} from '../../preset/test-environment/resolve-environment.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';
@@ -103,7 +104,7 @@ async function runEslintCli(
     [
       invocation.eslintCliPath,
       '--config',
-      path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs'),
+      fileURLToPath(checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url))),
       '--format',
       'json',
       '--no-color',

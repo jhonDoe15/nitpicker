@@ -1,0 +1,339 @@
+import vm from 'node:vm';
+import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../../../shared/values/readers.mts';
+import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
+import { useFixtureProjects } from '../../test-support/fixture-project.mts';
+import { remainingNearDuplicates as remaining } from '../test-support/near-duplicates-left.mts';
+import {
+  arrow,
+  asyncCopy,
+  boxed,
+  copy,
+  dates,
+  loader,
+  pair,
+  twoMethods,
+  typed,
+} from '../test-support/sources.mts';
+import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mts';
+
+type Aligners = {
+  alignTop: (selection: string[], limit: number) => string;
+  alignBottom: (selection: string[], limit: number) => string;
+};
+
+const ts = typescriptApi();
+const projects = useFixtureProjects();
+
+function fix(files: Record<string, string>) {
+  return projects.fix(files, { recipe, rule: 'structure/near-duplicate' });
+}
+
+function fixedSources(...sources: string[]) {
+  return fix({ 'src/a.ts': sources.join('\n') }).tree['src/a.ts'];
+}
+
+function isAligners(value: unknown): value is Aligners {
+  return typeof fieldOf(value, 'alignTop') === 'function';
+}
+
+function run(source: string): Aligners {
+  const { outputText } = ts.transpileModule(source.replaceAll('export ', ''), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  });
+  const loaded: unknown = vm.runInNewContext(`${outputText}\n({ alignTop, alignBottom })`);
+  if (!isAligners(loaded)) {
+    throw new TypeError('The transpiled source does not load');
+  }
+  return loaded;
+}
+
+describe('nearDuplicateExtractRecipe', () => {
+  it('is a safe recipe of project scope for the near-duplicate rule', () => {
+    expect([recipe.safety, recipe.scope, recipe.rules]).toEqual([
+      'safe',
+      'project',
+      [{ tool: 'structure', rule: 'near-duplicate' }],
+    ]);
+  });
+
+  it('extracts a shared function after the first copy and calls it from both', () => {
+    const result = fix({ 'src/align.ts': pair() });
+    expect(result.tree['src/align.ts']).toMatchInlineSnapshot(`
+      "export function alignTop(selection: string[], limit: number): string {
+        return sharedAlignTop(selection, limit, 'top:');
+      }
+
+      function sharedAlignTop(selection: string[], limit: number, value: string): string {
+        const selected = selection.filter((element) => element.length < limit);
+        const label = selected.map((element) => element.trim()).join(',');
+        const output = (label.length > 0 ? value : 'none:') + label + selected.length;
+        return output.padEnd(limit, '-');
+      }
+
+      export function alignBottom(selection: string[], limit: number): string {
+        return sharedAlignTop(selection, limit, 'bottom:');
+      }
+      "
+    `);
+    expect(remaining(result)).toEqual([]);
+  });
+
+  it('keeps the line endings of a file that uses CRLF', () => {
+    const result = fix({ 'src/align.ts': pair().replaceAll('\n', '\r\n') });
+    const text = result.tree['src/align.ts'] ?? '';
+    expect([text.includes('sharedAlignTop('), text.replaceAll('\r\n', '').includes('\n')]).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  it('writes no types for a JavaScript file', () => {
+    const javascript = `${copy('alignTop', { typed: false })}\n${copy('alignBottom', { typed: false, prefix: 'bottom:' })}`;
+    expect(fix({ 'src/align.js': javascript }).tree['src/align.js']).toMatchInlineSnapshot(`
+      "export function alignTop(selection, limit) {
+        return sharedAlignTop(selection, limit, 'top:');
+      }
+
+      function sharedAlignTop(selection, limit, value) {
+        const selected = selection.filter((element) => element.length < limit);
+        const label = selected.map((element) => element.trim()).join(',');
+        const output = (label.length > 0 ? value : 'none:') + label + selected.length;
+        return output.padEnd(limit, '-');
+      }
+
+      export function alignBottom(selection, limit) {
+        return sharedAlignTop(selection, limit, 'bottom:');
+      }
+      "
+    `);
+  });
+
+  it('extracts copies that differ only in the names of locals', () => {
+    const renamed = copy('alignBottom')
+      .replaceAll('selected', 'chosen')
+      .replaceAll('selection', 'input');
+    const result = fix({ 'src/a.ts': `${copy('alignTop')}\n${renamed}` });
+    expect(result.tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export function alignTop(selection: string[], limit: number): string {
+        return sharedAlignTop(selection, limit);
+      }
+
+      function sharedAlignTop(selection: string[], limit: number): string {
+        const selected = selection.filter((element) => element.length < limit);
+        const label = selected.map((element) => element.trim()).join(',');
+        const output = (label.length > 0 ? 'top:' : 'none:') + label + selected.length;
+        return output.padEnd(limit, '-');
+      }
+
+      export function alignBottom(input: string[], limit: number): string {
+        return sharedAlignTop(input, limit);
+      }
+      "
+    `);
+    expect(remaining(result)).toEqual([]);
+  });
+
+  it('keeps async and returns the promise of the shared function', () => {
+    const source = `${asyncCopy('alignTop', 'top:')}\n${asyncCopy('alignBottom', 'bottom:')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export async function alignTop(selection: string[], limit: number): Promise<string> {
+        return sharedAlignTop(selection, limit, 'top:');
+      }
+
+      async function sharedAlignTop(selection: string[], limit: number, value: string): Promise<string> {
+        const selected = selection.filter((element) => element.length < limit);
+        const label = await Promise.resolve(selected.join(','));
+        const output = (label.length > 0 ? value : 'none:') + label + selected.length;
+        return output.padEnd(limit, '-');
+      }
+
+      export async function alignBottom(selection: string[], limit: number): Promise<string> {
+        return sharedAlignTop(selection, limit, 'bottom:');
+      }
+      "
+    `);
+  });
+
+  it('extracts arrow functions with expression bodies', () => {
+    const source = `${arrow('byWeight', 'weight')}\n${arrow('byHeight', 'weight')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export const byWeight = (rows: { tags: string[]; weight: number }[], floor: number) =>
+        sharedByWeight(rows, floor);
+
+      function sharedByWeight(rows: { tags: string[]; weight: number }[], floor: number) {
+        return rows.filter((row) => row.weight > floor).map((row) => row.tags.join('-')).sort().slice(0, floor);
+      }
+
+      export const byHeight = (rows: { tags: string[]; weight: number }[], floor: number) =>
+        sharedByWeight(rows, floor);
+      "
+    `);
+  });
+
+  it('extracts from methods that use no instance state', () => {
+    expect(fix({ 'src/a.ts': twoMethods() }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export class Aligner {
+        top(selection: string[], limit: number): string {
+          return sharedTop(selection, limit, 'top:');
+        }
+
+        bottom(selection: string[], limit: number): string {
+          return sharedTop(selection, limit, 'bottom:');
+        }
+      }
+
+      function sharedTop(selection: string[], limit: number, value: string): string {
+        const selected = selection.filter((element) => element.length < limit);
+        const label = selected.map((element) => element.trim()).join(',');
+        const output = (label.length > 0 ? value : 'none:') + label + selected.length;
+        return output.padEnd(limit, '-');
+      }
+      "
+    `);
+  });
+
+  it('passes a differing function as a thunk that is called where it was used', () => {
+    const declarations =
+      'declare function fetchUser(id: string): string;\ndeclare function fetchGroup(id: string): string;\n';
+    const source = `${declarations}${loader('loadUsers', 'fetchUser')}\n${loader('loadGroups', 'fetchGroup')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "declare function fetchUser(id: string): string;
+      declare function fetchGroup(id: string): string;
+      export function loadUsers(ids: string[], limit: number): string[] {
+        return sharedLoadUsers(ids, limit, () => fetchUser);
+      }
+
+      function sharedLoadUsers(ids: string[], limit: number, fetchUserValue: () => (id: string) => string): string[] {
+        const found = ids.filter((id) => id.length < limit);
+        const names = found.map((id) => fetchUserValue()(id));
+        const total = names.length + found.length;
+        return total > limit ? names.slice(0, limit) : names;
+      }
+
+      export function loadGroups(ids: string[], limit: number): string[] {
+        return sharedLoadUsers(ids, limit, () => fetchGroup);
+      }
+      "
+    `);
+  });
+
+  it('passes a literal inside the arguments of a constructor call', () => {
+    const source = `${dates('morning', 'T06:00')}\n${dates('evening', 'T18:00')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export function morning(ids: string[], limit: number): Date[] {
+        return sharedMorning(ids, limit, 'T06:00');
+      }
+
+      function sharedMorning(ids: string[], limit: number, value: string): Date[] {
+        const found = ids.filter((id) => id.length < limit);
+        const dates = found.map((id) => new Date(id + value));
+        const total = dates.length + found.length;
+        return total > limit ? dates.slice(0, limit) : dates;
+      }
+
+      export function evening(ids: string[], limit: number): Date[] {
+        return sharedMorning(ids, limit, 'T18:00');
+      }
+      "
+    `);
+  });
+
+  it('turns a differing element type into a type parameter the callers pass', () => {
+    const fixed = fixedSources(typed('topStrings', 'string'), typed('topNumbers', 'number'));
+    expect(fixed).toMatchInlineSnapshot(`
+      "export function topStrings(items: string[], limit: number): string[] {
+        return sharedTopStrings<string>(items, limit);
+      }
+
+      function sharedTopStrings<T>(items: T[], limit: number): T[] {
+        const picked: T[] = [];
+        for (const item of items) {
+          if (picked.length < limit) {
+            picked.push(item);
+          }
+        }
+        picked.reverse();
+        return picked;
+      }
+
+      export function topNumbers(items: number[], limit: number): number[] {
+        return sharedTopStrings<number>(items, limit);
+      }
+      "
+    `);
+  });
+
+  it('names one type parameter for each differing pair of types', () => {
+    const fixed = fixedSources(
+      boxed('first', 'string', 'number'),
+      boxed('second', 'number', 'string'),
+    );
+    expect(fixed).toMatchInlineSnapshot(`
+      "export function first(rows: Map<string, number>, limit: number): Promise<number[]> {
+        return sharedFirst<number, string>(rows, limit);
+      }
+
+      function sharedFirst<T, U>(rows: Map<U, T>, limit: number): Promise<T[]> {
+        const kept: T[] = [];
+        for (const row of rows.values()) {
+          if (kept.length < limit) {
+            kept.push(row);
+          }
+        }
+        kept.reverse();
+        return Promise.resolve(kept);
+      }
+
+      export function second(rows: Map<number, string>, limit: number): Promise<string[]> {
+        return sharedFirst<string, number>(rows, limit);
+      }
+      "
+    `);
+  });
+
+  it('skips a type parameter name the file already uses', () => {
+    const types = [typed('topStrings', 'string'), typed('topNumbers', 'number')];
+    expect(fixedSources(...types, 'type T = string;\n')).toMatchInlineSnapshot(`
+      "export function topStrings(items: string[], limit: number): string[] {
+        return sharedTopStrings<string>(items, limit);
+      }
+
+      function sharedTopStrings<U>(items: U[], limit: number): U[] {
+        const picked: U[] = [];
+        for (const item of items) {
+          if (picked.length < limit) {
+            picked.push(item);
+          }
+        }
+        picked.reverse();
+        return picked;
+      }
+
+      export function topNumbers(items: number[], limit: number): number[] {
+        return sharedTopStrings<number>(items, limit);
+      }
+
+      type T = string;
+      "
+    `);
+  });
+
+  it('leaves no finding behind after a type parameter extraction', () => {
+    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}`;
+    expect(remaining(fix({ 'src/a.ts': source }))).toEqual([]);
+  });
+
+  it.each<[string[], number]>([
+    [['a', 'bcd', 'efghij'], 4],
+    [[], 6],
+    [['  x '], 8],
+  ])('returns what the copies returned for %j with limit %i', (selection, limit) => {
+    const before = run(pair());
+    const after = run(fix({ 'src/a.ts': pair() }).tree['src/a.ts'] ?? '');
+    expect([after.alignTop(selection, limit), after.alignBottom(selection, limit)]).toEqual([
+      before.alignTop(selection, limit),
+      before.alignBottom(selection, limit),
+    ]);
+  });
+});

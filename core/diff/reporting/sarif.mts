@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import { sarifRunProfile } from '../../quick/report-formats.mjs';
+import { sarifRunProfile } from '../../quick/report-formats.mts';
 import { referenceLinks } from '../../../shared/reference/store.mjs';
 import { noteText as textOfNote } from './format/notes.mts';
 import { heldFindingsOf as heldFindings } from './report-model.mts';

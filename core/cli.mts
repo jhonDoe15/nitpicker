@@ -13,14 +13,14 @@ import {
   describeConfigOverrides,
   describeDisableCascade,
   loadConfig,
-} from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
+} from './configuration/config.mts';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
 import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
-import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mts';
@@ -39,7 +39,7 @@ import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { runInitCommand } from './init/run-init.mts';
-import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
@@ -61,8 +61,8 @@ import type {
   RunSetup,
   Subcommand,
 } from './cli-context.mts';
-import type { NitpickerConfig } from './configuration/config-types.mts';
-import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
+import type { NitpickerConfig } from '../shared/values/config-types.mts';
+import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {

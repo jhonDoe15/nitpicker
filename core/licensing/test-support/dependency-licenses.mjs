@@ -9,27 +9,29 @@ import {
 } from './license-rule.mjs';
 import { jarLicenseViolations } from './pom-licenses.mjs';
 
+const APACHE = 'Apache-2.0';
+
 export const JAVA_TOOL_LICENSES = {
   pmd: 'BSD-style',
-  forbiddenapis: 'Apache-2.0',
+  forbiddenapis: APACHE,
   spotbugs: 'LGPL-2.1',
   findSecBugs: 'LGPL-3.0',
-  googleJavaFormat: 'Apache-2.0',
-  palantirJavaFormat: 'Apache-2.0',
+  googleJavaFormat: APACHE,
+  palantirJavaFormat: APACHE,
   jacoco: 'EPL-2.0',
   checkstyle: 'LGPL-2.1',
   lizard: 'MIT',
-  pitest: 'Apache-2.0',
-  pitestJunit5: 'Apache-2.0',
-  pitestTestng: 'Apache-2.0',
-  archunit: 'Apache-2.0',
+  pitest: APACHE,
+  pitestJunit5: APACHE,
+  pitestTestng: APACHE,
+  archunit: APACHE,
   asm: 'BSD-3-Clause',
-  detekt: 'Apache-2.0',
-  detektKotlin: 'Apache-2.0',
+  detekt: APACHE,
+  detektKotlin: APACHE,
   ktlint: 'MIT',
-  ktfmt: 'Apache-2.0',
-  kotlinCompiler: 'Apache-2.0',
-  errorProne: 'Apache-2.0',
+  ktfmt: APACHE,
+  kotlinCompiler: APACHE,
+  errorProne: APACHE,
   nullAway: 'MIT',
 };
 

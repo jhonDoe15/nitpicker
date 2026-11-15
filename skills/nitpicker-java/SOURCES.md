@@ -61,26 +61,110 @@ already covers it, and its edit overlaps the Error Prone one, so the second is s
 
 `java-extract-near-duplicate` is a review recipe for `structure/near-duplicate`: it runs only with `--fix --rule`, because nothing compiles the result. It parses each main
 source file with the tree-sitter grammar of the rule, finds the pairs with the engine and filters of
-the rule, and works on a `same` or `parameterizable` pair of methods in one class. The first copy
+the rule, and works on a `same` or `parameterizable` pair of methods in one class, or in two files
+of one folder (see below). The first copy
 becomes a private method placed after it, static when the body reads no instance state, and both
-bodies become one call. Signatures, `throws` clauses and annotations stay.
+bodies become one call. Signatures, `throws` clauses and annotations stay. A `@SuppressWarnings`
+annotation of the first copy moves to the new method. Imports that only the moved code used are
+removed from the files that lose them.
 
-- A differing literal becomes a parameter named after what it flows into. A differing call or any other expression is not passed: a `Supplier`
-  would need the static type of the expression, which the text does not give, so the finding stays.
+- A differing literal becomes a parameter named after what it flows into. A differing call or name read
+  becomes a `Supplier` parameter named `<name>Supplier` (`IntSupplier`, `LongSupplier`,
+  `DoubleSupplier` or `BooleanSupplier` for `int`, `long`, `double` and `boolean`), and the helper calls it
+  where the expression stood, so its timing and its count do not change. The type comes from where
+  the expression flows: the declared type of a non-`final` local it initializes, the return type when
+  it is returned, or `boolean` in an `if` condition. Anywhere else (an argument, an operand, a loop
+  condition), in a `final` local, in a `try` block (a lambda cannot throw the checked exceptions the
+  `catch` expects), in a method that has `throws`, inside a lambda or a nested class (a `return`
+  there belongs to that code), a hole used with two declared types gets one `Supplier` for each type, on a `byte`, `short`, `char` or `float`, or when it reads a local of the copied code or
+  a parameter the method writes, the finding stays. A lambda, an assignment, an increment or an
+  anonymous class inside the expression keeps it too.
+- A differing type becomes a type parameter (`<T>`, `<U>`, ...) of the helper, which stays callable with the
+  signatures of both copies: the callers infer it. The type must be a plain class name, alone or as the
+  argument of a generic type or an array, and sit in a parameter, return or local declaration or in a type
+  argument. A type may be qualified (`java.sql.Date` against `Time`). The finding stays for a primitive,
+  for a generic class that differs in its own name, for a type in a cast, in an `instanceof`, in a class
+  literal or in a `throws`, and when the body calls a method on a value of the type, passes it to a call, or reads it
+  through a lambda: without the compiler the recipe cannot tell that the call still means the same for a
+  type parameter. A collection of the type may be iterated, sized, and filled with `add`, `put` and
+  the like, and its elements may be returned, assigned or compared with `==`.
+- A type that differs after `new` (`new URL(text)` against `new URI(text)`) becomes a constructor
+  parameter: a method reference (`URL::new`) of a nested functional interface that the recipe
+  writes (`StringCreator<T, E extends Exception>`, named after the argument types, with a `create`
+  method that `throws E`). The helper calls `creator.create(text)` where the copy called the
+  constructor, so the arguments are evaluated at the same place, once. `E` is inferred at each call
+  from the constructor, so a checked exception of the constructor reaches the same callers as before,
+  and the helper declares it. The arguments must have a type the recipe can write: a literal, a local
+  or a parameter with a declared type, or a call of a few JDK getters (`Date.getTime`,
+  `String.length`, `trim`). The constructor must be returned, assigned or declared into a local that is
+  not `var`: as a receiver or an argument its type would change the overload a call picks. The interface
+  is private in the enclosing class for copies in one class, and package-private in the shared class for
+  copies in two files. The finding stays when its name is taken.
+- A catch clause whose exception type differs (`MalformedURLException` against `URISyntaxException`) keeps
+  its place in the helper, which takes the class (`Class<E> failure`) and catches `Exception`: an
+  exception that is not a `failure` is rethrown as it was, the others reach the original handler as `E`.
+  The recipe does this only when the `try` block holds nothing that can throw another checked exception
+  (no call, `new` or `throw` besides the differing constructors), the clause is the last one of the
+  `try`, and the handler uses the exception only for `Throwable` methods or as an argument of a `new`:
+  the argument then has the type `E` instead of the exception, so the class of that `new` must have
+  exactly one constructor with that many parameters (read from the class in the same file or in the
+  project sources, or one of a few JDK exception classes). Otherwise another overload could be
+  picked, and the finding stays. A catch type that is a well-known unchecked exception is not tied to
+  the creator: the creator gets its own exception parameter, and an exception the clause does not
+  handle is rethrown as it was. A catch type of `Throwable` or an `Error` is left alone, and so is a
+  tied catch whose constructor throws a checked exception the catch type does not name (`Exception`
+  covers any). The class of a constructor is found like Java finds it: the enclosing classes and the
+  top-level types of the file, then the single imports, the package and the imports on demand; a name
+  that stays unsure leaves the finding. When javac rejects the result, `--fix` rolls it back.
+- A constructor that is returned or stored as a declared type (`CharSequence` for `StringBuilder` and
+  `StringBuffer`) bounds the type parameter by that type. A parameterized or array type there is left
+  alone.
+- A differing type with a common supertype that the recipe knows (`java.sql.Date`, `Time` and
+  `Timestamp` extend `java.util.Date`) becomes a parameter of the supertype, when the value is only
+  compared with `null` or passed to `format` of a `DateFormat`. The overload that `format` picks is the
+  same for both types.
+- A copy that matches the other only after the rule rewrote its code (an early `return` against an
+  `else`) is extracted when the recipe can line up the copies as written.
+- In two files, a capitalized name of the shared code must mean the same type in both files: the
+  same single import, a class of the package, or the same imports on demand. The name of the new class
+  must be free in the package folder of every language folder of the source set (`src/main/java`,
+  `src/main/kotlin` and `src/main/groovy`, or the `src/test` folders for a test source set; any other
+  layout has the one folder), and sources under `build`, `target`, `out`, `generated-sources` and
+  `generated/java` folders are not touched (a package folder named `generated` is extracted).
+- A comment that only the second copy has moves above the call in the second copy.
 - A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
   that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to
   `byte`, `short` or `char`, an `int` literal that could narrow to them, a method with type parameters or varargs, copies with different
-  `throws`, a copy that is the only static one, copies in an interface, an enum, a record or an
-  anonymous class, a name the file already uses, and a copy in more than one pair are left alone.
+  `throws`, a copy that is the only static one, copies in an interface, an enum or a record, a name the file already uses, and a copy in more than one pair are left alone.
 - The helper is static only when the code provably uses no instance state. A capitalized name that
   a superclass or interface may declare, or a call whose name a static and an instance method (or a
   supertype) could both match, is ambiguous, and the finding stays.
 - A file that uses CRLF keeps CRLF in the inserted text.
-- Type holes are not turned into type parameters: `new URL(text)` against `new URI(text)` cannot be
-  written with a type parameter, and a changed signature would change callers.
-- Pairs in two classes or two files are not looked at. On gson, the URL and URI adapters are
-  anonymous classes and the SqlDate and SqlTime adapters are in two files, so the recipe changes
-  nothing there.
+- The methods of two anonymous classes of one class are extracted into a private static method of the
+  enclosing class, placed after the member that holds the first anonymous class. The enclosing class must
+  be a top-level or static class, the anonymous classes may declare only methods, and the shared code
+  must read no instance state of the class (the helper is static). The enclosing class must be
+  a class, not an enum, record or interface, and the anonymous classes must not sit in a generic method or
+  next to a local class. The rule only reports anonymous classes declared as fields, so the method-local
+  shape is never offered to the recipe.
+- Two methods in two files of one folder (one package) become a static method of a new package-private
+  final class with a private constructor, in that folder, named after the words the two class names
+  share (`SqlDateTypeAdapter` and `SqlTimeTypeAdapter` give `SqlTypeAdapters`). It matches the fix
+  plan, which puts the function beside copies that sit in one folder. The new file starts with the
+  header comment, the package line and the imports the code needs, and carries the
+  `@SuppressWarnings` of the first class. Both copies call `SharedClass.sharedName(...)`. All the pairs of
+  the same two files go into the same class. The state of a class is passed in: `this` as the lock of a
+  `synchronized` block becomes an `Object` parameter, and a `final` instance field both copies read (the
+  same name and type) becomes a parameter of its type. The recipe leaves the finding when the copies
+  use any other `this`, a non-`final` field, a static member or a method of the class, a type nested in
+  the class, two packages, a class that has type parameters or is not top-level, or when the class
+  name is taken: the file exists, or another file of the package uses the name. Copies in two
+  folders are left alone, and so is a pair in two named classes of one file.
+- On gson, the three pairs of copies are extracted this way: the `read` methods of the URL and URI
+  adapters, the `read` methods of the SqlDate and SqlTime adapters, and their `write` methods, whose
+  shared type is bounded by `java.util.Date` because the code only compares the value with `null` or
+  passes it to `format` of a `DateFormat`. The two `write` copies and the two `read` copies of the Sql
+  adapters are one fix, so the new class carries all of their shared methods at once.
 
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
