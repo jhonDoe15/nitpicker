@@ -11,7 +11,7 @@ import {
   readLayout,
   typecheckEngine,
 } from '../typed/head-policy.mts';
-import { policyTestRunner } from '../../preset/test-runner/project-runner.mjs';
+import { policyTestRunner } from '../../preset/test-runner/policy-runner.mjs';
 import {
   isUntypedRunnerGlobal,
   missingRunnerTypes,

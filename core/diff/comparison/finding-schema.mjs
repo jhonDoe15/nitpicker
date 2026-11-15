@@ -11,6 +11,7 @@ import {
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
 import { adviceProblems } from '../../../shared/messages/advice/finding-advice.mjs';
+import { expandMetricFindings } from '../../../shared/report-output/metric-groups.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -22,7 +23,7 @@ export function parseAnalyzerReport(value, analyzerName) {
   }
 
   return {
-    findings: value.findings.map((finding, index) =>
+    findings: expandMetricFindings(value.findings).map((finding, index) =>
       parseFinding(finding, `${analyzerName} findings[${String(index)}]`),
     ),
     ...parseModuleImports(value.moduleImports, `${analyzerName} moduleImports`),

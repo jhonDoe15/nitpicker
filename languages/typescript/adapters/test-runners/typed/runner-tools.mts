@@ -8,7 +8,7 @@ import type {
 } from './runner-types.mts';
 import type { TimeoutPolicy } from './timeouts.mts';
 import { withoutOptions as untypedWithoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { projectTestRunner as untypedProjectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
+import { projectTestRunner as untypedProjectTestRunner } from '../../../preset/test-runner/project-runner.mts';
 import { projectTestRetry as untypedProjectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
 import { vitestRetryArguments as untypedVitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
 import {
@@ -20,7 +20,7 @@ import { readTestReport as readTestReportJson } from '../../quality-areas/report
 import {
   consoleEntry as untypedConsoleEntry,
   writeReportFile as untypedWriteReportFile,
-} from '../../../preset/test-console/console-report.mjs';
+} from '../../../preset/test-console/console-report.mts';
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 
 type OptionSets = {

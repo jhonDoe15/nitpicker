@@ -1,0 +1,459 @@
+import { describe, expect, it } from 'vitest';
+import { findingFor } from './test-support/finding-for.mts';
+import { compareFindings, firstOf, isStrictRule } from './test-support/finding-comparison.mts';
+import type { EslintFinding } from './typed/engine.mts';
+
+const COUNT_ANCHOR: unknown = expect.stringMatching(/^count:Reported text\.:text:/u);
+
+function compare(base: readonly EslintFinding[], head: readonly EslintFinding[]) {
+  return compareFindings({
+    baseFindings: base,
+    headFindings: head,
+    touchedCode: undefined,
+    unknownOnBase: undefined,
+  });
+}
+
+const returnTypeFinding = (code: string) => findingFor({ code, reported: ': Item[]' });
+
+describe('a finding anchored on a whole function is about its signature', () => {
+  const before = [
+    'export function discounted(items: readonly Item[]): Item[] {',
+    '  const first = items[0];',
+    '  return items.filter((item) => item !== first);',
+    '}',
+    '',
+  ].join('\n');
+
+  it('stays baselined when only the function body changes', () => {
+    const after = before.replace(
+      '  return',
+      '  const rate = 2;\n  if (rate > 1) {\n    return [];\n  }\n  return',
+    );
+
+    const result = compare(returnTypeFinding(before), returnTypeFinding(after));
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+
+  it('stays baselined when lines are added above the function', () => {
+    const result = compare(
+      returnTypeFinding(before),
+      returnTypeFinding(`export const rate = 1;\n\n${before}`),
+    );
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+
+  it('changes the identity when the signature changes', () => {
+    const after = before.replace('items: readonly Item[]', 'items: readonly Item[], rate: number');
+
+    expect(firstOf(returnTypeFinding(after)).identity).not.toBe(
+      firstOf(returnTypeFinding(before)).identity,
+    );
+  });
+
+  it('keeps a body-anchored finding tied to the text it reports', () => {
+    const call = (argument: string) => `export function run() {\n  console.log(${argument});\n}\n`;
+    const find = (code: string) =>
+      findingFor({ code, reported: code.slice(code.indexOf('console'), code.indexOf(';')) });
+
+    expect(firstOf(find(call('1'))).identity).toBe(firstOf(find(call('1'))).identity);
+    expect(firstOf(find(call('2'))).identity).not.toBe(firstOf(find(call('1'))).identity);
+  });
+
+  it('keeps a declaration without a body tied to its whole text', () => {
+    const find = (code: string) => findingFor({ code, reported: code.trim() });
+
+    const result = compare(
+      find('declare function load(id: string): Item;\n'),
+      find('declare function load(id: number): Item;\n'),
+    );
+
+    expect(result.newFindings).toHaveLength(1);
+  });
+});
+
+describe('a finding that spans the whole file is about the file', () => {
+  const wholeFileFinding = (code: string) =>
+    findingFor({ code, reported: code.trimStart(), ruleId: 'nitpicker/no-unknown-main-folder' });
+
+  it('stays baselined when the file had one statement and lines are added above it', () => {
+    const before = 'export const a = 1;\n';
+    const result = compare(
+      wholeFileFinding(before),
+      wholeFileFinding(`\n\n\nexport const unrelatedValue = 1;\n\n${before}`),
+    );
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+
+  it('anchors on the program', () => {
+    expect(firstOf(wholeFileFinding('export const a = 1;\n')).identity).toBe(
+      'message:Reported text.|node:Program|syntax:program|occurrence:1',
+    );
+  });
+});
+
+describe('a finding in an edited function stays baselined while the function has no more of them', () => {
+  const SILENT = 'nitpicker/no-silent-catch';
+  const originalHandler = "\n    return '';\n  ";
+  const rewrittenHandler = "\n    const fallback = '';\n    return fallback;\n  ";
+  const baselinedSilentCatch = [
+    {
+      tool: 'eslint-strict',
+      rule: SILENT,
+      path: 'src/legacy.ts',
+      identity:
+        'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
+      message:
+        'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      location: { line: 4, column: 5 },
+      classification: 'enforceable',
+      symbol: 'load',
+      anchor: { key: COUNT_ANCHOR },
+      ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
+      heldAtBase: 1,
+    },
+  ];
+
+  function load(handler: string, extra = '') {
+    return [
+      'export function load(read: () => string): string {',
+      '  try {',
+      '    return read();',
+      `  } catch {${handler}}`,
+      '}',
+      extra,
+    ].join('\n');
+  }
+
+  const silentCatches = (code: string) =>
+    findingFor({
+      code,
+      reported: [...code.matchAll(/catch \{[^}]*\}/g)].map(([reported]) => reported),
+      ruleId: SILENT,
+    });
+
+  function compareWithTouched(
+    before: string,
+    after: string,
+    touchedLines: readonly (readonly [number, number])[],
+    inserted: readonly (readonly [number, number])[] = [],
+  ) {
+    return compareFindings({
+      baseFindings: silentCatches(before),
+      headFindings: silentCatches(after),
+      touchedCode: {
+        changedLines: new Map([
+          ['src/legacy.ts', { added: false, ranges: touchedLines, inserted }],
+        ]),
+        isStrictRule,
+      },
+      unknownOnBase: undefined,
+    });
+  }
+
+  it('keeps a rewritten catch body baselined when its first line is untouched', () => {
+    const result = compareWithTouched(load(originalHandler), load(rewrittenHandler), [[5, 6]]);
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings).toEqual(baselinedSilentCatch);
+  });
+
+  it('keeps a catch whose own line the change edited baselined', () => {
+    const result = compareWithTouched(load(originalHandler), load(rewrittenHandler), [[4, 6]]);
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings).toEqual(baselinedSilentCatch);
+  });
+
+  it('fails a catch on a line the change added', () => {
+    const result = compareWithTouched(
+      load(originalHandler),
+      load(rewrittenHandler),
+      [[4, 6]],
+      [[4, 6]],
+    );
+
+    expect(result.newFindings).toHaveLength(1);
+  });
+
+  it('fails a second silent catch in the same function', () => {
+    const twice = load(originalHandler).replace(
+      '  try {',
+      `  try {\n    read();\n  } catch {${originalHandler}}\n  try {`,
+    );
+
+    const result = compareWithTouched(load(originalHandler), twice, []);
+
+    expect(result.newFindings).toHaveLength(1);
+  });
+
+  it('fails a silent catch in another function', () => {
+    const other = load(rewrittenHandler, '').replace('function load', 'function fetchValue');
+
+    const result = compareWithTouched(
+      load(originalHandler),
+      `${load(rewrittenHandler)}\n${other}`,
+      [[5, 6]],
+    );
+
+    expect(result.newFindings).toEqual([
+      {
+        tool: 'eslint-strict',
+        rule: 'nitpicker/no-silent-catch',
+        path: 'src/legacy.ts',
+        identity:
+          'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
+        message:
+          'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        location: { line: 13, column: 5 },
+        classification: 'enforceable',
+        symbol: 'fetchValue',
+        anchor: { key: COUNT_ANCHOR },
+        ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
+      },
+    ]);
+  });
+
+  it('keeps a lint finding of a non-strict rule baselined when its code is edited', () => {
+    const find = (argument: string) =>
+      findingFor({
+        code: `export function run(a: string) {\n  return a.concat(${argument});\n}\n`,
+        reported: `a.concat(${argument})`,
+        ruleId: '@typescript-eslint/prefer-includes',
+      });
+
+    const result = compare(find('"1"'), find('"22"'));
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings).toHaveLength(1);
+  });
+});
+
+describe('a new throw in a legacy function', () => {
+  const NO_THROW = 'nitpicker/no-throw';
+  const NO_THROW_MESSAGE = 'Return a discriminated-union failure result instead of throwing.';
+  const NO_THROW_ROUTE =
+    'If this is intended, add {"rule":"nitpicker/no-throw","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+  const oneThrow = [
+    'export function parse(text: string): string {',
+    "  if (text === '') {",
+    "    throw new Error('empty');",
+    '  }',
+    '  return text;',
+    '}',
+  ].join('\n');
+  const twoThrows = oneThrow.replace(
+    '  return text;',
+    "  if (text === ' ') {\n    throw new Error('blank');\n  }\n  return text;",
+  );
+  const withoutThrow = oneThrow.replace("    throw new Error('empty');", '    return text;');
+
+  const throws = (code: string) =>
+    findingFor({
+      code,
+      reported: [...code.matchAll(/throw new Error\('[a-z]+'\);/g)].map(([reported]) => reported),
+      ruleId: NO_THROW,
+      messageId: 'noThrow',
+      message: NO_THROW_MESSAGE,
+    });
+
+  const compareWithInserted = (
+    before: readonly EslintFinding[],
+    after: readonly EslintFinding[],
+    inserted: readonly (readonly [number, number])[],
+  ) =>
+    compareFindings({
+      baseFindings: before,
+      headFindings: after,
+      touchedCode: {
+        changedLines: new Map([['src/legacy.ts', { added: false, ranges: inserted, inserted }]]),
+        isStrictRule,
+      },
+      unknownOnBase: undefined,
+    });
+
+  it('carries advice for the count ratchet of the rule', () => {
+    expect(firstOf(throws(oneThrow)).ratchet).toEqual({
+      key: 'count:noThrow',
+      value: 1,
+      existingCodeOnly: true,
+      growthAdvice:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.',
+      growthAllowedForm:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+    });
+  });
+
+  it('says the count may not grow when the base already had a throw', () => {
+    const result = compareWithInserted(throws(oneThrow), throws(twoThrows), [[5, 7]]);
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${NO_THROW_MESSAGE} Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds. ${NO_THROW_ROUTE}`,
+    ]);
+  });
+
+  it('keeps the throws of a renamed legacy function baselined', () => {
+    const renamed = twoThrows.replace('function parse', 'function read');
+    const result = compareWithInserted(throws(twoThrows), throws(renamed), [[1, 1]]);
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['read', 2],
+      ['read', 2],
+    ]);
+  });
+
+  it('keeps the plain message when the base function had no throw', () => {
+    const result = compareWithInserted(throws(withoutThrow), throws(oneThrow), [[3, 3]]);
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${NO_THROW_MESSAGE} ${NO_THROW_ROUTE}`,
+    ]);
+  });
+});
+
+describe('a complexity finding fails only when the number rises', () => {
+  const complexity = (amount: number) =>
+    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions.`;
+  const COMPLEXITY_ROUTE =
+    'If this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+
+  const arrow = (body: string) =>
+    `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
+  const named = (body: string) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
+
+  const cases: readonly (readonly [string, (body: string) => string, string])[] = [
+    ['an arrow function, reported at its arrow', arrow, '=>'],
+    ['a named function, reported at its name', named, 'total'],
+  ];
+
+  function find(
+    build: (body: string) => string,
+    reported: string,
+    amount: number,
+    body = '  return 1;',
+  ) {
+    return findingFor({
+      code: build(body),
+      reported,
+      ruleId: 'nitpicker/cognitive-complexity',
+      messageId: 'tooComplex',
+      message: complexity(amount),
+    });
+  }
+
+  it.each(cases)(
+    'keeps %s baselined when the body is edited and the number is the same',
+    (_name, build, reported) => {
+      const result = compare(
+        find(build, reported, 16),
+        find(build, reported, 16, '  const a = 1;\n  return a;'),
+      );
+
+      expect(result.newFindings).toEqual([]);
+      expect(result.resolvedFindings).toEqual([]);
+    },
+  );
+
+  it.each(cases)('fails %s when the number rises and says from what', (_name, build, reported) => {
+    const result = compare(find(build, reported, 16), find(build, reported, 60));
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'total cognitive complexity grew from 16 to 60. Put new code in a new function. If this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it.each(cases)('holds %s when the number falls but is still over', (_name, build, reported) => {
+    const result = compare(find(build, reported, 16), find(build, reported, 12));
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
+      { rule: 'nitpicker/cognitive-complexity', heldAtBase: 16 },
+    ]);
+  });
+
+  it.each(cases)('keeps %s baselined after a rename', (_name, build, reported) => {
+    const rename = (body: string) => build(body).replace('total', 'sum');
+    const renamed = find(rename, reported === 'total' ? 'sum' : reported, 16);
+    const result = compareFindings({
+      baseFindings: find(build, reported, 16),
+      headFindings: renamed,
+      touchedCode: {
+        changedLines: new Map([
+          ['src/legacy.ts', { added: false, ranges: [[1, 1]], inserted: [] }],
+        ]),
+        isStrictRule,
+      },
+      unknownOnBase: undefined,
+    });
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['sum', 16],
+    ]);
+  });
+
+  it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
+    const rename = (body: string) => build(body).replace('total', 'sum');
+    const grown = find(rename, reported === 'total' ? 'sum' : reported, 60, '  return 2;');
+    const result = compare(find(build, reported, 16), grown);
+
+    expect(result.newFindings.map(({ rule }) => rule)).toEqual(['nitpicker/cognitive-complexity']);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['total']);
+  });
+
+  it.each(cases)('fails %s that is over the limit for the first time', (_name, build, reported) => {
+    const result = compare([], find(build, reported, 16));
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${complexity(16)} ${COMPLEXITY_ROUTE}`,
+    ]);
+  });
+});
+
+describe('findings of one rule in one function', () => {
+  const IO = 'nitpicker/no-io-in-loop';
+  const service = (calls: readonly string[], above = '') =>
+    [
+      'export const service = {',
+      '  sync: async (ids: string[]) => {',
+      `    ${above}for (const id of ids) {`,
+      ...calls.map((call) => `      await ${call}(id);`),
+      '    }',
+      '  },',
+      '};',
+      '',
+    ].join('\n');
+  const loopFindings = (calls: readonly string[], above?: string) =>
+    findingFor({ code: service(calls, above), reported: calls, ruleId: IO, messageId: 'io' });
+
+  it('name the object-literal member they sit in', () => {
+    expect(loopFindings(['load']).map(({ symbol }) => symbol)).toEqual(['service.sync']);
+  });
+
+  it('keep their own baseline when lines move and another finding goes away', () => {
+    const base = loopFindings(['load', 'save']);
+
+    expect(compare(base, loopFindings(['load', 'save'], 'ids.sort();\n    ')).newFindings).toEqual(
+      [],
+    );
+    expect(compare(base, loopFindings(['save'])).newFindings).toEqual([]);
+  });
+
+  it('fail a second finding with the same reported text', () => {
+    expect(
+      compare(loopFindings(['load']), loopFindings(['load', 'load'])).newFindings,
+    ).toHaveLength(1);
+  });
+});

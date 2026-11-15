@@ -3,7 +3,8 @@ export const FIX_PLANS_FILE_NAME = 'fix-plans.json';
 function planLine(plan) {
   const { target } = plan;
   const where = `${target.path}:${String(target.startLine)}`;
-  return `${plan.finding.tool}/${plan.finding.rule} ${where} ${plan.kind}`;
+  const covers = plan.findings === undefined ? '' : ` (${String(plan.findings.length)} findings)`;
+  return `${plan.finding.tool}/${plan.finding.rule} ${where} ${plan.kind}${covers}`;
 }
 
 export function planSection(plans) {

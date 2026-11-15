@@ -1,5 +1,5 @@
 import { rule as noWaitFor } from '../../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 const waitFor = "import { waitFor } from '@testing-library/react';";

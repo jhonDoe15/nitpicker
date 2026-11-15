@@ -7,17 +7,18 @@ import {
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
-import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
-import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
-import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
-import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
+import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mts';
+import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
+import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
+import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
 import { applyRunProfile } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import type { ScopeInputs } from '../../policy-changes/types/policy-types.mts';
 
 type Warn = (message: string) => unknown;
 
@@ -34,7 +35,7 @@ type BaseSnapshot = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
   readonly liveProjectRoot?: string | undefined;
-  readonly moves: unknown;
+  readonly moves: ScopeInputs['moves'];
   readonly analyzers: readonly Analyzer[];
 };
 
@@ -128,12 +129,12 @@ function configuredBaseSetup({
   return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn);
     const compared = baseConfig ?? {};
-    const scope: unknown = readPolicyScope({
+    const scope = readPolicyScope({
       baseConfig: compared,
       headConfig,
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
-      liveProjectRoot,
+      liveProjectRoot: liveProjectRoot ?? headSnapshotRoot,
       moves,
       replacedOptions: undefined,
     });

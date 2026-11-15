@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
-import { useProjects, withPeers } from '../test-support/projects.mjs';
+import { useProjects, withPeers } from '../test-support/projects.mts';
 import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
 import { planPeers } from './peer-plan.mts';
 import { javascriptApiPin } from '../test-support/typescript-pin.mjs';

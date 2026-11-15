@@ -18,7 +18,7 @@ import {
   strictCompilerOptions,
 } from './project-configs/typescript/typescript-project-options.mjs';
 import { readHeadPolicy } from './head-policy.mjs';
-import { policyTestRunner } from './test-runner/project-runner.mjs';
+import { policyTestRunner } from './test-runner/policy-runner.mjs';
 import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mjs';
 import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';

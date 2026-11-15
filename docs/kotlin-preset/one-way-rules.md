@@ -8,7 +8,7 @@ no separate build to ship), turned on and configured. Every message names the al
 form (in detekt's text, or in a sentence the gate appends when detekt's text does not name it) and
 ends with the exception route, which the gate appends to all of them. The `inline-suppression`
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
-`languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
+`languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mts`.
 
 | Spot              | Banned                                                                                                                                                                 | Allowed                                                                                                                                                                                                                         | Rule (detekt)                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |

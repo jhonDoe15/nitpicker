@@ -1,7 +1,7 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import { evaluateBaselineExpansions as untypedBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
-import { evaluateCoupling as untypedCoupling } from '../../../preset/coupling/evaluate-coupling.mjs';
+import { evaluateCoupling as untypedCoupling } from '../../../preset/coupling/evaluate-coupling.mts';
 import { evaluateTestRuntime as untypedTestRuntime } from '../../../../../shared/rules/test-runtime/evaluate.mjs';
 import { evaluateStructure as untypedStructure } from '../../../../../shared/rules/structure.mjs';
 

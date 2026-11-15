@@ -1,0 +1,431 @@
+import { ESLint, type Linter } from 'eslint';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { defaultResolvedLayout } from '../../layout.mjs';
+import { reactRuleIds, reactTestRuleIds, restrictedBrowserGlobals } from './react-rules.mjs';
+import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mts';
+import { failureMessagesFor } from '../typed/lint-fixture.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+import { usePresetConfig } from '../../test-support/preset-config-import.mts';
+import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
+
+const { linterConfigFor } = usePresetConfig('project');
+const { projectWith } = useTemporaryProjects('nitpicker-react-preset-');
+const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
+const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>
+  selector.startsWith('ClassDeclaration'),
+)?.message;
+const defaultsDirectory = path.resolve(
+  fileURLToPath(new URL('../', import.meta.url)),
+  '../defaults',
+);
+
+function classMessages(config: readonly object[], file: string, superclass: string) {
+  return failureMessagesFor({
+    config,
+    filename: file,
+    code: `export class Panel extends ${superclass} { render() { return 1; } }`,
+  });
+}
+
+describe('class components in the strict syntax rules', () => {
+  it.each(['Component', 'PureComponent', 'React.Component', 'React.PureComponent'])(
+    'leaves a class extending %s to the React rule in a React project',
+    (superclass) => {
+      const files = [
+        'src/main/ui/panel.tsx',
+        'src/main/features/x/adapters/panel.tsx',
+        'src/main/features/x/domain/panel.tsx',
+      ];
+      const banned = files.map((file) =>
+        classMessages(reactConfig, file, superclass).filter(
+          (message) => message === classBanMessage,
+        ),
+      );
+      expect(banned).toEqual(files.map(() => []));
+    },
+  );
+
+  it.each(['Component', 'PureComponent', 'React.Component', 'React.PureComponent'])(
+    'still bans a class extending %s without React',
+    (superclass) => {
+      const messages = classMessages(strictSyntaxConfig, 'src/main/ui/panel.tsx', superclass);
+
+      expect(messages).toEqual([classBanMessage]);
+    },
+  );
+
+  it.each(['Base', 'ComponentBase', 'MyComponent', 'React.Base'])(
+    'bans a class extending %s whether or not React is on',
+    (superclass) => {
+      const configs = [strictSyntaxConfig, reactConfig];
+      expect(
+        configs.map((config) => classMessages(config, 'src/main/ui/panel.tsx', superclass)),
+      ).toEqual(configs.map(() => [classBanMessage]));
+    },
+  );
+
+  it('keeps allowing Error subclasses', () => {
+    const configs = [strictSyntaxConfig, reactConfig];
+    expect(
+      configs.map((config) => classMessages(config, 'src/main/ui/panel.tsx', 'Error')),
+    ).toEqual(configs.map(() => []));
+  });
+});
+
+describe('null in a React project', () => {
+  const nullMessage = 'Use `undefined` for an absent value';
+  const nullMessages = (config: readonly object[], code: string) =>
+    failureMessagesFor({ config, filename: 'src/main/ui/panel.tsx', code }).filter((message) =>
+      message.includes(nullMessage),
+    );
+
+  it.each([
+    'export const ref = useRef<HTMLDivElement>(null);',
+    'export const ref = React.useRef(null);',
+    'export const Theme = createContext<Theme | null>(null);',
+    'export const Theme = React.createContext<Theme | null>(null);',
+    'export const ref = useRef<number | null>(null);',
+  ])('allows %s only with the React scope on', (code) => {
+    expect(nullMessages(reactConfig, code)).toEqual([]);
+    expect(nullMessages(strictSyntaxConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    'export const value = null;',
+    'export const state = useState(null);',
+    'export const state = useState<string | null>(undefined);',
+    'export function read(): string | null { return undefined; }',
+    'export const ref = useRef(load(null));',
+    'export const ref = useRef<number>(undefined) ?? null;',
+    'export const ref = notUseRef(null);',
+  ])('still bans %s', (code) => {
+    expect(nullMessages(reactConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it('names the allowed React form in the message', () => {
+    const [message] = nullMessages(reactConfig, 'export const value = null;');
+
+    expect(message).toBe(
+      'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. ' +
+        '`null` is only for strict comparison with a library value and as a value in the data passed to `JSON.stringify` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing, and the `useRef` and `createContext` argument.' +
+        ' An exception fits only when a framework or library requires it.',
+    );
+  });
+});
+
+async function presetConfigFor({
+  manifest,
+  policy,
+}: {
+  manifest: object;
+  policy?: object;
+}): Promise<Linter.Config[]> {
+  const root = projectWith({ 'package.json': JSON.stringify(manifest) });
+  return linterConfigFor({ root, policy });
+}
+
+async function ruleSettingOf(eslint: ESLint, file: string, rule: string): Promise<unknown> {
+  return fieldOf(fieldOf(await eslint.calculateConfigForFile(file), 'rules'), rule);
+}
+
+function ruleIdsOf(config: readonly Linter.Config[]) {
+  return new Set(config.flatMap((entry) => Object.keys(entry.rules ?? {})));
+}
+
+function pluginNamesOf(config: readonly Linter.Config[]) {
+  return new Set(config.flatMap((entry) => Object.keys(entry.plugins ?? {})));
+}
+
+function sourceRestrictedSyntax(config: readonly Linter.Config[]) {
+  return config
+    .flatMap((entry) => listOf(entry.rules?.['no-restricted-syntax']).slice(1))
+    .map((entry) => textOf(fieldOf(entry, 'selector')))
+    .filter((selector) => selector.startsWith('ClassDeclaration'));
+}
+
+const reactManifest = { dependencies: { react: '19.0.0' } };
+const reactPrefixes = [
+  'react-hooks/',
+  'react-x/',
+  'jsx-a11y/',
+  'testing-library/',
+  'nitpicker/react-',
+];
+const reactPlugins = ['react-hooks', 'react-x', 'jsx-a11y', 'testing-library'];
+
+describe('the preset config', () => {
+  it('has no React rule, plugin or class exemption in a project without react', async () => {
+    const config = await presetConfigFor({ manifest: { dependencies: { preact: '10.0.0' } } });
+    const reactRules = [...ruleIdsOf(config)].filter((id) =>
+      reactPrefixes.some((prefix) => id.startsWith(prefix)),
+    );
+
+    expect(reactRules).toEqual([]);
+    expect(reactPlugins.filter((name) => pluginNamesOf(config).has(name))).toEqual([]);
+    expect(
+      sourceRestrictedSyntax(config).every((selector) => !selector.includes('Component')),
+    ).toBe(true);
+    expect(sourceRestrictedSyntax(config)).not.toHaveLength(0);
+  });
+
+  it('turns the React scope on when package.json lists react', async () => {
+    const config = await presetConfigFor({ manifest: reactManifest });
+
+    expect([...reactRuleIds, ...reactTestRuleIds]).not.toHaveLength(0);
+    expect(
+      [...reactRuleIds, ...reactTestRuleIds].filter((id) => !ruleIdsOf(config).has(id)),
+    ).toEqual([]);
+    expect(reactPlugins.filter((name) => !pluginNamesOf(config).has(name))).toEqual([]);
+    expect(sourceRestrictedSyntax(config).every((selector) => selector.includes('Component'))).toBe(
+      true,
+    );
+  });
+
+  it('follows the config override over package.json in both directions', async () => {
+    const off = await presetConfigFor({
+      manifest: reactManifest,
+      policy: { react: { enabled: false } },
+    });
+    const on = await presetConfigFor({ manifest: {}, policy: { react: { enabled: true } } });
+
+    expect(ruleIdsOf(off).has('react-hooks/rules-of-hooks')).toBe(false);
+    expect(ruleIdsOf(on).has('react-hooks/rules-of-hooks')).toBe(true);
+  });
+
+  it('measures base and head with the React major of the head policy, not of the linted tree', async () => {
+    const react18Tree = { dependencies: { react: '18.3.1' } };
+    const head19 = await presetConfigFor({
+      manifest: react18Tree,
+      policy: { react: { major: 19 } },
+    });
+    const head18 = await presetConfigFor({
+      manifest: reactManifest,
+      policy: { react: { major: 18 } },
+    });
+
+    expect(ruleIdsOf(head19).has('react-x/no-forward-ref')).toBe(true);
+    expect(ruleIdsOf(head18).has('react-x/no-forward-ref')).toBe(false);
+    const versions = head19.flatMap(
+      (entry) => fieldOf(fieldOf(entry.settings, 'react-x'), 'version') ?? [],
+    );
+    expect(new Set(versions)).toEqual(new Set(['19.0.0']));
+  });
+
+  it('allows a default export only in the framework files the head policy detected', async () => {
+    const config = await presetConfigFor({
+      manifest: reactManifest,
+      policy: { frameworks: { defaultExports: ['{app,src/app}/**/page.tsx'], entryPoints: [] } },
+    });
+    const eslint = new ESLint({
+      cwd: defaultsDirectory,
+      overrideConfigFile: true,
+      overrideConfig: config,
+    });
+    const severity = async (file: string) =>
+      listOf(await ruleSettingOf(eslint, file, 'nitpicker/no-default-export'))[0];
+
+    expect(await severity('src/app/settings/page.tsx')).toBe(0);
+    expect(await severity('src/app/settings/panel.tsx')).toBe(2);
+    expect(await severity('src/main/features/x/adapters/page.tsx')).toBe(2);
+  });
+
+  it('lets a setup file call cleanup when Testing Library does not unmount on its own', async () => {
+    const severityWith = async (autoCleanup: boolean) => {
+      const config = await presetConfigFor({
+        manifest: reactManifest,
+        policy: { react: { enabled: true, autoCleanup } },
+      });
+      const eslint = new ESLint({
+        cwd: defaultsDirectory,
+        overrideConfigFile: true,
+        overrideConfig: config,
+      });
+      return listOf(
+        await ruleSettingOf(eslint, 'test/setup.test.tsx', 'testing-library/no-manual-cleanup'),
+      )[0];
+    };
+
+    expect(await severityWith(false)).toBe(0);
+    expect(await severityWith(true)).toBe(2);
+  });
+
+  it('gives JSX files browser globals unless the project is a React Native app', async () => {
+    const globalsOf = async (manifest: object) => {
+      const eslint = new ESLint({
+        cwd: defaultsDirectory,
+        overrideConfigFile: true,
+        overrideConfig: await presetConfigFor({ manifest }),
+      });
+      return fieldOf(
+        fieldOf(await eslint.calculateConfigForFile('src/main/ui/legacy.jsx'), 'languageOptions'),
+        'globals',
+      );
+    };
+    const native = { dependencies: { react: '19.0.0', 'react-native': '0.81.0' } };
+
+    expect(Object.hasOwn(fieldsOf(await globalsOf(reactManifest)), 'document')).toBe(true);
+    expect(Object.hasOwn(fieldsOf(await globalsOf(native)), 'document')).toBe(false);
+  });
+
+  it('restricts the confusing browser globals wherever it enables browser globals', async () => {
+    const restrictedOf = async (manifest: object, file: string) => {
+      const eslint = new ESLint({
+        cwd: defaultsDirectory,
+        overrideConfigFile: true,
+        overrideConfig: await presetConfigFor({ manifest }),
+      });
+      const setting = await ruleSettingOf(eslint, file, 'no-restricted-globals');
+      return listOf(setting)
+        .slice(1)
+        .map((entry) => textOf(fieldOf(entry, 'name')));
+    };
+    const native = { dependencies: { react: '19.0.0', 'react-native': '0.81.0' } };
+    const pickerNames = await restrictedOf(reactManifest, 'src/main/ui/picker.jsx');
+
+    expect(pickerNames).toEqual(
+      restrictedBrowserGlobals.slice(1).map((entry) => textOf(fieldOf(entry, 'name'))),
+    );
+    expect(pickerNames).toHaveLength(58);
+    expect(
+      fieldOf(
+        restrictedBrowserGlobals.find((entry) => fieldOf(entry, 'name') === 'event'),
+        'message',
+      ),
+    ).toBe(
+      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it.',
+    );
+    expect(await restrictedOf(reactManifest, 'test/picker.test.tsx')).toEqual(pickerNames);
+    expect(await restrictedOf(native, 'src/main/ui/picker.jsx')).toEqual([]);
+    expect(
+      await restrictedOf(reactManifest, 'src/main/features/billing/domain/total.ts'),
+    ).not.toContain('name');
+  });
+
+  it('hands the configured styling approach to the styling rule', async () => {
+    const config = await presetConfigFor({
+      manifest: reactManifest,
+      policy: { react: { styling: 'css-in-js' } },
+    });
+    const styling = config
+      .map((entry) => entry.rules?.['nitpicker/react-single-styling-approach'])
+      .find((setting) => setting !== undefined);
+
+    expect(styling).toEqual(['error', { approach: 'css-in-js' }]);
+  });
+
+  it('lifts a React rule only for the configured paths', async () => {
+    const config = await presetConfigFor({
+      manifest: reactManifest,
+      policy: {
+        exceptions: [
+          { rule: 'react-x/no-array-index-key', paths: ['src/legacy/**'], reason: 'Static lists' },
+        ],
+      },
+    });
+    const eslint = new ESLint({
+      cwd: defaultsDirectory,
+      overrideConfigFile: true,
+      overrideConfig: config,
+    });
+
+    const legacy = await ruleSettingOf(eslint, 'src/legacy/list.tsx', 'react-x/no-array-index-key');
+    const fresh = await ruleSettingOf(eslint, 'src/fresh/list.tsx', 'react-x/no-array-index-key');
+
+    expect(listOf(legacy)[0]).toBe(0);
+    expect(listOf(fresh)[0]).toBe(2);
+  });
+
+  it('skips an exception that names a React rule when the project is not a React project', async () => {
+    const config = await presetConfigFor({
+      manifest: {},
+      policy: {
+        exceptions: [
+          { rule: 'react-x/no-array-index-key', paths: ['src/**'], reason: 'Static lists' },
+          { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
+          { rule: 'jsx-a11y/alt-text', paths: ['src/**'], reason: 'Legacy markup' },
+        ],
+      },
+    });
+
+    expect(ruleIdsOf(config).has('react-x/no-array-index-key')).toBe(false);
+  });
+
+  it.each([[{}], [reactManifest]])(
+    'still rejects an exception that names an unknown rule for the manifest %j',
+    async (manifest) => {
+      await expect(
+        presetConfigFor({
+          manifest,
+          policy: {
+            exceptions: [{ rule: 'react-hooks/exhaustive-dep', paths: ['src/**'], reason: 'Typo' }],
+          },
+        }),
+      ).rejects.toThrow('unknown rules: react-hooks/exhaustive-dep');
+    },
+  );
+
+  it('infers CSS-in-JS styling from the manifest unless the config sets it', async () => {
+    const manifest = { dependencies: { react: '19.0.0', 'styled-components': '6.0.0' } };
+    const stylingOf = (config: readonly Linter.Config[]) =>
+      config
+        .map((entry) => entry.rules?.['nitpicker/react-single-styling-approach'])
+        .find((setting) => setting !== undefined);
+
+    expect(stylingOf(await presetConfigFor({ manifest }))).toEqual([
+      'error',
+      { approach: 'css-in-js' },
+    ]);
+    expect(
+      stylingOf(await presetConfigFor({ manifest, policy: { react: { styling: 'class-names' } } })),
+    ).toEqual(['error', { approach: 'class-names' }]);
+  });
+
+  it('lifts a Testing Library rule only for the configured test paths', async () => {
+    const config = await presetConfigFor({
+      manifest: reactManifest,
+      policy: {
+        exceptions: [
+          {
+            rule: 'testing-library/no-test-id-queries',
+            paths: ['test/legacy/**'],
+            reason: 'Third-party widget without roles',
+          },
+        ],
+      },
+    });
+    const eslint = new ESLint({
+      cwd: defaultsDirectory,
+      overrideConfigFile: true,
+      overrideConfig: config,
+    });
+
+    const legacy = await ruleSettingOf(
+      eslint,
+      'test/legacy/widget.test.tsx',
+      'testing-library/no-test-id-queries',
+    );
+    const fresh = await ruleSettingOf(
+      eslint,
+      'test/fresh/widget.test.tsx',
+      'testing-library/no-test-id-queries',
+    );
+
+    expect(listOf(legacy)[0]).toBe(0);
+    expect(listOf(fresh)[0]).toBe(2);
+  });
+
+  it('skips an exception that names a Testing Library rule when the project is not a React project', async () => {
+    const config = await presetConfigFor({
+      manifest: {},
+      policy: {
+        exceptions: [
+          { rule: 'testing-library/no-node-access', paths: ['test/**'], reason: 'Widgets' },
+        ],
+      },
+    });
+
+    expect(ruleIdsOf(config).has('testing-library/no-node-access')).toBe(false);
+  });
+});

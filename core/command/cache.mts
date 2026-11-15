@@ -1,10 +1,10 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
-import { publishHeadPolicy } from '../conventions/resolve.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
+import { publishHeadPolicy } from '../conventions/resolve.mts';
 import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
-import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
+import { describeConfigOverrides, loadConfig } from '../configuration/config.mts';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 import {
@@ -24,7 +24,7 @@ import {
 } from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';
-import type { NitpickerConfig } from '../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 
 const HELP = '--help';
 
