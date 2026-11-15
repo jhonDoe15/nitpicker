@@ -2,20 +2,31 @@ import { realpathSync } from 'node:fs';
 
 const ADAPTER_FAILURE_EXIT = 2;
 
+export type AdapterProcess = {
+  readonly argv: readonly string[];
+  readonly stderr: { write(text: string): unknown };
+};
+
+export type AdapterEntry = {
+  readonly moduleFile: string;
+  readonly adapter: string;
+  readonly main: (runnerArguments: readonly string[]) => void;
+};
+
 export function runAdapterMain(
-  moduleFile: string,
-  adapter: string,
-  main: (runnerArguments: readonly string[]) => void,
-): void {
-  const invoked = process.argv[1];
+  { moduleFile, adapter, main }: AdapterEntry,
+  { argv, stderr }: AdapterProcess,
+): number | undefined {
+  const invoked = argv[1];
   if (invoked === undefined || realpathSync(invoked) !== moduleFile) {
-    return;
+    return undefined;
   }
   try {
-    main(process.argv.slice(2));
+    main(argv.slice(2));
+    return undefined;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${adapter} differential adapter failed: ${reason}\n`);
-    process.exitCode = ADAPTER_FAILURE_EXIT;
+    stderr.write(`${adapter} differential adapter failed: ${reason}\n`);
+    return ADAPTER_FAILURE_EXIT;
   }
 }

@@ -222,4 +222,5 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(runJava(runnerArguments))}\n`);
 }
 
-runAdapterMain(import.meta.filename, 'Java', main);
+const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };
+process.exitCode = runAdapterMain(entry, process) ?? process.exitCode;
