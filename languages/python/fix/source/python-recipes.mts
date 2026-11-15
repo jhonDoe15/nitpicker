@@ -1,11 +1,24 @@
-import { defineRecipes } from '../../../../core/fix/engine/recipes.mjs';
+import type {
+  Decline,
+  ScriptRecipe,
+  PlanContext,
+  PlanEdit,
+  ScriptPlanned,
+  ScriptResult,
+  PlanFile,
+} from '../typed/fix-types.mts';
+import type { ScriptSettings } from '../typed/script-types.mts';
+import { defineRecipes } from '../typed/core-views.mts';
 import { REVIEW, SAFE } from '../../../../core/fix/engine/safety.mjs';
-import { scriptEdits } from './script-edits.mjs';
+import { scriptEdits } from './script-edits.mts';
 
 const RULES_TOOL = 'python-rules';
 const PRESET = 'python';
 
-const TABLE = [
+type Entry = { id: string; tool: string; rule: string; safety: string };
+type EditsOf = (files: readonly PlanFile[], context?: { projectRoot: string }) => ScriptResult;
+
+const TABLE: Entry[] = [
   { id: 'python-exc-info', tool: RULES_TOOL, rule: 'catch-log-without-exception', safety: SAFE },
   { id: 'python-falsy-default', tool: RULES_TOOL, rule: 'falsy-default', safety: REVIEW },
   { id: 'python-frozen-dataclass', tool: RULES_TOOL, rule: 'frozen-dataclass', safety: REVIEW },
@@ -27,18 +40,18 @@ const TABLE = [
   { id: 'python-mutmut-pragma', tool: 'mutmut', rule: 'mutant-ignored', safety: REVIEW },
 ];
 
-export function declineNote({ rule, path: name, line, reason }) {
+export function declineNote({ rule, path: name, line, reason }: Decline): string {
   return `--fix left ${name}:${String(line)} ${rule} as is: ${reason}`;
 }
 
-function occupied(edit, read) {
-  return edit.type === 'move' && read(edit.to) !== undefined;
+function occupied(edit: PlanEdit, read: (name: string) => string | undefined): boolean {
+  return edit.type === 'move' && read(edit.to ?? '') !== undefined;
 }
 
 const PROJECT_READS = new Set(['frozen-dataclass']);
 
-function planFor({ tool, rule }, editsOf) {
-  return function plan({ files, read, projectRoot }) {
+function planFor({ tool, rule }: Entry, editsOf: EditsOf): (context: PlanContext) => ScriptPlanned {
+  return function plan({ files, read, projectRoot }: PlanContext): ScriptPlanned {
     const found = editsOf(files, PROJECT_READS.has(rule) ? { projectRoot } : undefined);
     const fixes = found.fixes.filter(
       ({ finding }) => finding.tool === tool && finding.rule === rule,
@@ -57,7 +70,7 @@ function planFor({ tool, rule }, editsOf) {
   };
 }
 
-export function scriptRecipes({ runScript, optionsFor }) {
+export function scriptRecipes({ runScript, optionsFor }: ScriptSettings): readonly ScriptRecipe[] {
   const editsOf = scriptEdits({
     runScript,
     optionsFor,

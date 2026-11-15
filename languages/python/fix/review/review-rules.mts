@@ -31,16 +31,16 @@ export const REVIEW_CODES = Object.freeze([
   'TRY400',
 ]);
 
-const KNOWN = new Set(REVIEW_CODES);
+const KNOWN = new Set<string>(REVIEW_CODES);
 const PREFIX = 'ruff/';
 
-export function selectedRuffCodes(selectedRules = []) {
+export function selectedRuffCodes(selectedRules: readonly string[] = []): string[] {
   return selectedRules
     .filter((name) => name.startsWith(PREFIX))
     .map((name) => name.slice(PREFIX.length));
 }
 
-export function reviewCodesSelected(selectedRules = []) {
+export function reviewCodesSelected(selectedRules: readonly string[] = []): string[] {
   return [...new Set(selectedRuffCodes(selectedRules).filter((code) => KNOWN.has(code)))].toSorted(
     (left, right) => left.localeCompare(right),
   );

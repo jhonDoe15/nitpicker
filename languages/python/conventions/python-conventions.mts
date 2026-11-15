@@ -1,6 +1,6 @@
 import { COLUMNS } from '../../../shared/conventions/settings.mjs';
-import { lineLength } from './python-line-length.mjs';
-import { indentationWidth, stringQuotes } from './python-measures.mjs';
+import { lineLength } from './python-line-length.mts';
+import { indentationWidth, stringQuotes } from './python-measures.mts';
 
 const PYTHON_FILES = ['**/*.py'];
 

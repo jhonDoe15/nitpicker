@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mts';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { fix } = useFixProject();
 
 const PROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';

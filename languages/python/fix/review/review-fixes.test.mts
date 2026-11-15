@@ -13,7 +13,7 @@ import {
 } from '../test-support/git-fixtures.mts';
 import type { GitRepository } from '../test-support/git-fixtures.mts';
 import { reviewCodesSelected } from '../typed/fix-views.mts';
-import { REVIEW_CODES } from './review-rules.mjs';
+import { REVIEW_CODES } from './review-rules.mts';
 
 const { createGitRepository } = useGitFixtures();
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../../ruff/nitpicker-ruff.toml');

@@ -10,7 +10,12 @@ const GROUP_CLOSER = /^\s*[)\]}]/;
 const INNER_SKIP = /[([{,]\s*$|^\s*#/;
 const TRIPLE_QUOTE = /"""|'''/g;
 
-function withoutBlockStrings(lines) {
+const joinLengths: (
+  lines: string[],
+  groups: { opener: RegExp; closer: RegExp; skip: RegExp },
+) => number[] = groupJoinLengths;
+
+function withoutBlockStrings(lines: string[]): string[] {
   let open = false;
   return lines.map((line) => {
     const quotes = (line.match(TRIPLE_QUOTE) ?? []).length;
@@ -20,7 +25,7 @@ function withoutBlockStrings(lines) {
   });
 }
 
-export function lineLength(text) {
+export function lineLength(text: string): string | undefined {
   const raw = text.split(/\r?\n/);
   if (raw.some((line) => line.startsWith('\t'))) {
     return undefined;
@@ -28,7 +33,7 @@ export function lineLength(text) {
   const lines = withoutBlockStrings(raw);
   const lengths = lines.filter((line) => !UNBREAKABLE_LINE.test(line)).map((line) => line.length);
   const longest = lengths.reduce((most, length) => Math.max(most, length), 0);
-  const joins = groupJoinLengths(lines, {
+  const joins = joinLengths(lines, {
     opener: GROUP_OPENER,
     closer: GROUP_CLOSER,
     skip: INNER_SKIP,
