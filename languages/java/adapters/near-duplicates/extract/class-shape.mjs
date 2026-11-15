@@ -25,7 +25,7 @@ export function hasModifier(node, word) {
   return modifiers !== undefined && modifiers.text.split(/\s+/u).includes(word);
 }
 
-function throwsOf(method) {
+export function throwsOf(method) {
   const clause = codeParts(method).find((child) => child.type === 'throws');
   return clause === undefined ? '' : squashed(clause);
 }
@@ -158,11 +158,15 @@ export function classProblem(methods, anonymous = false) {
   return checks.find(([failed]) => failed)?.[1];
 }
 
-export function methodProblem(methods, anonymous = false) {
+export function parametersProblem(methods) {
   const [a, b] = methods;
   const unplain =
     !methods.every(hasPlainParameters) || parametersOf(a).length !== parametersOf(b).length;
-  return classProblem(methods, anonymous) ?? (unplain ? VARARGS : undefined);
+  return unplain ? VARARGS : undefined;
+}
+
+export function methodProblem(methods, anonymous = false) {
+  return classProblem(methods, anonymous) ?? parametersProblem(methods);
 }
 
 function declaredFields(classBody, isStatic) {
@@ -182,7 +186,7 @@ function memberNames(classBody, kind, isStatic) {
   return new Set(members.map((member) => field(member, 'name').text));
 }
 
-function namesOf(method) {
+export function namesOf(method) {
   const anonymous = isAnonymous(method);
   const owner = anonymous ? enclosingClass(method) : method.parent.parent;
   const classBody = anonymous ? owner.childForFieldName('body') : method.parent;
@@ -246,11 +250,11 @@ function stateOf(node, names) {
   return node.type === 'identifier' ? readsName(node, names) : NONE;
 }
 
-function isInside(node, spans) {
+export function isInside(node, spans) {
   return spans.some((span) => node.startIndex >= span.startIndex && node.endIndex <= span.endIndex);
 }
 
-function instanceStateOf(method, holeNodes, roots = [field(method, 'body')]) {
+export function instanceStateOf(method, holeNodes, roots = [field(method, 'body')]) {
   const names = namesOf(method);
   const states = roots
     .flatMap((root) => descendants(root))

@@ -2,8 +2,8 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { goFactFindings } from '../facts/go-fact-findings.mjs';
-import { goFacts } from '../facts/go-facts.mjs';
+import { goFactFindings } from '../facts/go-fact-findings.mts';
+import { goFacts } from '../facts/go-facts.mts';
 import { goUnitFacts } from './go-unit-facts.mjs';
 
 const GUARDED = [

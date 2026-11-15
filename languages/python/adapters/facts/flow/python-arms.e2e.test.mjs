@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
-import { createFactsProjects } from '../test-support/facts-projects.mjs';
+import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mts';
+import { createFactsProjects } from '../test-support/facts-projects.mts';
 
 const { factsOf, cleanup } = createFactsProjects();
 

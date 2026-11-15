@@ -1,8 +1,8 @@
 import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import {
   checksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,

@@ -58,7 +58,7 @@ Part of the [Python preset guide](../python-preset.md).
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
-- `languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+- `languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mts`: gated behind `NITPICKER_PYTHON_E2E=1`
   too. A base whose test fails and a head that repairs it passes with a note; a new violation or an
   edited untested legacy function still fails next to the red base.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
@@ -86,40 +86,40 @@ Part of the [Python preset guide](../python-preset.md).
   a lowered `unitTestSeconds` and two tests that log a warning or print to standard error fails
   `slow-test`, `sleep-in-test` and `test-console-output`, and passes once `python.exceptions`,
   `testConsole.allow` and top-level exceptions lift them.
-- Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
+- Slice 2: `languages/python/rules/rule-hints.test.mts` (always on) checks that every rule has a
   banned and an allowed fixture directory and that its message names the allowed form and the
-  exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,
-  `python-ast-rules.test.mjs` and `python-exceptions.test.mjs` cover the ingesters, the two new
+  exception route; `type-check.test.mts`, `rules-report.test.mts`, `python-types.test.mts`,
+  `python-ast-rules.test.mts` and `python-exceptions.test.mts` cover the ingesters, the two new
   steps and the exception filter with the fake toolchain.
-- `languages/python/rules/rule-cases.e2e.test.mjs`, `nitpicker-rules.e2e.test.mjs` and
+- `languages/python/rules/rule-cases.e2e.test.mts`, `nitpicker-rules.e2e.test.mts` and
   `rules/e2e/<group>/*.e2e.test.mjs` (`boundary`, `environment`, `honesty` and `smells`, each case a code
   snippet and the findings it must produce): gated behind `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
   (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy,
   pyright and basedpyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
-  nested classes, comment forms), and `swallowing.e2e.test.mjs` does the same for `swallowed-exception` and `blind-suppress`. The preset e2e test also gates type errors with mypy and pyright,
+  nested classes, comment forms), and `swallowing.e2e.test.mts` does the same for `swallowed-exception` and `blind-suppress`. The preset e2e test also gates type errors with mypy and pyright,
   the one-way rules and `exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
-- `languages/python/ruff/ruff-rules.e2e.test.mjs` and `ruff-groups.e2e.test.mjs`: gated behind
+- `languages/python/ruff/ruff-rules.e2e.test.mts` and `ruff-groups.e2e.test.mts`: gated behind
   `NITPICKER_PYTHON_E2E=1` and part of `npm run test:python` (the ruff from the `PATH`, or
   `NITPICKER_RUFF`). Every stable `RUF` rule, and every stable rule of the listed groups, of the
   installed ruff must be selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the
-  test until someone reviews it. `adapters/configuration/python-ruff-config.e2e.test.mjs` (the
+  test until someone reviews it. `adapters/configuration/python-ruff-config.e2e.test.mts` (the
   generated ruff config keeps the group selectors and the rules the installed ruff knows) and
-  `adapters/formatting/format-scope.e2e.test.mjs` (the formatters run isolated from the project
+  `adapters/formatting/format-scope.e2e.test.mts` (the formatters run isolated from the project
   config) run in the same suite.
-- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+- `core/pack-contents.test.mts` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
-- Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
+- Slice 5 unit tests: `python-sources.test.mts` (module naming, exclusions), `python-coupling.test.mts`
   (import resolution, packages, stability direction, type-only edges, the scan step with a fake
   interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms, and files with a 1100-branch `elif` chain or a 2500-term expression, which the iterative scan still reads),
-  `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
-  (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
+  `python-duplicates.test.mts` (real jscpd on small projects), `python-import-linter.test.mts`
+  (config detection, the run, failures), `ingest/import-linter.test.mts` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
   `core/command/python/python-cli-*.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
   interpreter prints. The e2e file has a layered `shop` project (a copy fails as a duplicate; a
   domain package importing the web package fails as `stability-direction` and as two broken
   import-linter chains; `importLinter: false` skips the contracts; a clean change passes) and needs
   `import-linter` from PyPI.
-- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+- `core/pack-contents.test.mts` checks that the Python files, including the ruff config and the
   import scan, are in the npm package.
