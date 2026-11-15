@@ -7,7 +7,7 @@ import ts from 'typescript';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import architectureConfig from '../../preset/defaults/dependency-cruiser.config.mjs';
-import { strictSyntaxConfigFor } from '../../preset/eslint-config/strict.mjs';
+import { strictSyntaxConfigFor } from '../../preset/eslint-config/strict.mts';
 import { resolveLayout } from '../../preset/layout.mjs';
 import { staticChecks } from '../../preset/quality-checks.mjs';
 import {

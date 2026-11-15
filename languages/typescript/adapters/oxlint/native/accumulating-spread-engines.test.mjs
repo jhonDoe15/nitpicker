@@ -7,7 +7,10 @@ import { createFindingsCache } from '../../../../../core/diff/cache/findings-cac
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import {
+  checkoutModulePath,
+  checkoutModuleUrl,
+} from '../../../../../shared/paths/checkout-module.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { hashFiles } from '../../../preset/checks/hash.mjs';
@@ -32,7 +35,9 @@ const OWNED_ENGINE_FILES = [
 ];
 
 function presetUrl(file) {
-  return JSON.stringify(import.meta.resolve(`../../../preset/${file}`));
+  return JSON.stringify(
+    checkoutModuleUrl(new URL(import.meta.resolve(`../../../preset/${file}`))).href,
+  );
 }
 
 function policy({ javascript }) {

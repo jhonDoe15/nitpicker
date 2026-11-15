@@ -1,16 +1,26 @@
 import { indentOf } from '../../../../../shared/fix/recipes/extract/text.mjs';
+import { supplierOf } from './holes/deferred.mjs';
 import { codeParts, field, parametersOf } from './syntax.mjs';
 
 const STEP = '    ';
 
+function useOf(hole) {
+  return hole.kind === 'deferred' ? `${hole.name}.${supplierOf(hole).accessor}()` : hole.name;
+}
+
 export function replacedText(body, holes) {
   const base = body.startIndex;
   const replacements = holes.flatMap((hole) =>
-    hole.occurrences.map(({ a }) => ({
-      start: a.startIndex - base,
-      end: a.endIndex - base,
-      text: hole.name,
-    })),
+    hole.occurrences
+      .filter(
+        ({ a }) =>
+          a.startIndex >= body.startIndex && a.endIndex <= body.startIndex + body.text.length,
+      )
+      .map(({ a }) => ({
+        start: a.startIndex - base,
+        end: a.endIndex - base,
+        text: useOf(hole),
+      })),
   );
   return replacements
     .toSorted((left, right) => right.start - left.start)
@@ -25,19 +35,49 @@ export function throwsText(method) {
   return clause === undefined ? '' : ` ${clause.text.replaceAll(/\s+/gu, ' ')}`;
 }
 
-export function helperText({ method, holes, name, isStatic }) {
+function holeParameter(hole, replaced) {
+  if (hole.kind !== 'deferred') {
+    return `${hole.type} ${hole.name}`;
+  }
+  const typeText = hole.typeNode === undefined ? hole.type : squashedText(replaced(hole.typeNode));
+  return `${supplierOf(hole, typeText).type} ${hole.name}`;
+}
+
+function squashedText(text) {
+  return text.replaceAll(/\s+/gu, ' ');
+}
+
+function outdented(text, width) {
+  const margin = ' '.repeat(width);
+  return text
+    .split('\n')
+    .map((line, index) => (index > 0 && line.startsWith(margin) ? line.slice(width) : line))
+    .join('\n');
+}
+
+export function helperText({ method, holes, typeHoles, name, isStatic, outdent = 0 }) {
+  const all = [...holes, ...typeHoles];
+  function replaced(node) {
+    return replacedText(node, all);
+  }
   const parameters = [
-    ...parametersOf(method).map((parameter) => parameter.text.replaceAll(/\s+/gu, ' ')),
-    ...holes.map((hole) => `${hole.type} ${hole.name}`),
+    ...parametersOf(method).map((parameter) => squashedText(replaced(parameter))),
+    ...holes.map((hole) => holeParameter(hole, replaced)),
   ];
-  const type = field(method, 'type').text;
-  const head = `private ${isStatic ? 'static ' : ''}${type} ${name}(${parameters.join(', ')})`;
-  return `${head}${throwsText(method)} ${replacedText(field(method, 'body'), holes)}`;
+  const generic =
+    typeHoles.length === 0 ? '' : `<${typeHoles.map((hole) => hole.name).join(', ')}> `;
+  const type = replaced(field(method, 'type'));
+  const modifiers = `private ${isStatic ? 'static ' : ''}${generic}`;
+  const head = `${modifiers}${type} ${name}(${parameters.join(', ')})`;
+  return `${head}${throwsText(method)} ${outdented(replaced(field(method, 'body')), outdent)}`;
 }
 
 function argumentsOf(method, side, holes) {
   const own = parametersOf(method).map((parameter) => field(parameter, 'name').text);
-  const extra = holes.map((hole) => hole.occurrences[0][side === 0 ? 'a' : 'b'].text);
+  const extra = holes.map((hole) => {
+    const { text } = hole.occurrences[0][side === 0 ? 'a' : 'b'];
+    return hole.kind === 'deferred' ? `() -> ${text}` : text;
+  });
   return [...own, ...extra].join(', ');
 }
 

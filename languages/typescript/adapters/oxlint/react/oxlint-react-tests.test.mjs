@@ -2,10 +2,16 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const preset = path.join(packageRoot, 'languages/typescript/preset');
+
+function presetModule(file) {
+  return JSON.stringify(checkoutModulePath(`${preset}/${file}`));
+}
+
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-react-tests-')));
 const checkedRules = new Set([
   'nitpicker/react-test-no-implementation-details',
@@ -20,9 +26,9 @@ afterAll(() => {
 
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
-  `import { nitpickerRules } from ${JSON.stringify(`${preset}/eslint-plugin/index.mjs`)};`,
-  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react/react-scope.mjs`)};`,
-  `import { resolveLayout } from ${JSON.stringify(`${preset}/layout.mjs`)};`,
+  `import { nitpickerRules } from ${presetModule('eslint-plugin/index.mjs')};`,
+  `import { reactScopeConfigFor } from ${presetModule('eslint-config/react/react-scope.mjs')};`,
+  `import { resolveLayout } from ${presetModule('layout.mjs')};`,
   'export default [',
   "  { files: ['**/*.{ts,tsx}'], languageOptions: { parser: tseslint.parser } },",
   '  ...(await reactScopeConfigFor(resolveLayout())),',

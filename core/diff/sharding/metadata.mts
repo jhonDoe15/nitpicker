@@ -4,12 +4,17 @@ import { runGit } from '../git/repository/command.mjs';
 import path from 'node:path';
 import { withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { readJson } from './read-shards.mts';
+import {
+  type AnalyzerMetadata,
+  type MetadataMap,
+  metadataValue,
+} from '../execution/report/analyzer-metadata.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 
 type ResolvableAnalyzer = {
   readonly name: string;
-  version?: unknown;
-  configurationHash?: unknown;
+  readonly version?: unknown;
+  readonly configurationHash?: unknown;
   readonly resolveVersion?: (projectRoot: string) => unknown;
   readonly resolveConfigurationHash?: (projectRoot: string) => unknown;
 };
@@ -20,11 +25,19 @@ type ResolutionError = {
   readonly message: string;
 };
 
+type Ledger = Map<unknown, AnalyzerMetadata>;
+
+export type ShardMetadata = {
+  readonly errors: ResolutionError[];
+  readonly metadata: MetadataMap;
+};
+
 type FailedAnalyzer = {
   readonly analyzer: ResolvableAnalyzer;
   readonly index: number;
   readonly error: unknown;
   readonly errors: ResolutionError[];
+  readonly ledger: Ledger;
 };
 
 type HeadRoot = {
@@ -54,14 +67,14 @@ const inWorktree: (
 
 function resolveEachAnalyzer(
   analyzers: readonly ResolvableAnalyzer[],
-  errors: ResolutionError[],
+  { errors, ledger }: { readonly errors: ResolutionError[]; readonly ledger: Ledger },
   resolve: (analyzer: ResolvableAnalyzer) => void,
 ): void {
   for (const [index, analyzer] of analyzers.entries()) {
     try {
       resolve(analyzer);
     } catch (error) {
-      recordAnalyzerResolutionError({ analyzer, index, error, errors });
+      recordAnalyzerResolutionError({ analyzer, index, error, errors, ledger });
     }
   }
 }
@@ -69,14 +82,15 @@ function resolveEachAnalyzer(
 function resolveAnalyzerVersions(
   analyzers: readonly ResolvableAnalyzer[],
   liveProjectRoot: string | undefined,
-  errors: ResolutionError[],
+  tracking: { readonly errors: ResolutionError[]; readonly ledger: Ledger },
 ): void {
   if (liveProjectRoot === undefined) {
     return;
   }
-  resolveEachAnalyzer(analyzers, errors, (analyzer) => {
+  resolveEachAnalyzer(analyzers, tracking, (analyzer) => {
     if (typeof analyzer.resolveVersion === 'function') {
-      analyzer.version = analyzer.resolveVersion(liveProjectRoot);
+      const version = analyzer.resolveVersion(liveProjectRoot);
+      tracking.ledger.set(analyzer, { ...tracking.ledger.get(analyzer), version });
     }
   });
 }
@@ -84,19 +98,27 @@ function resolveAnalyzerVersions(
 function resolveAnalyzerConfigurationHashes(
   analyzers: readonly ResolvableAnalyzer[],
   configurationRoot: string,
-  errors: ResolutionError[],
+  tracking: { readonly errors: ResolutionError[]; readonly ledger: Ledger },
 ): void {
-  resolveEachAnalyzer(analyzers, errors, (analyzer) => {
+  resolveEachAnalyzer(analyzers, tracking, (analyzer) => {
     const resolveConfigurationHash = analyzer.resolveConfigurationHash;
     if (typeof resolveConfigurationHash === 'function') {
-      analyzer.configurationHash = resolveConfigurationHash(configurationRoot);
+      const configurationHash = resolveConfigurationHash(configurationRoot);
+      tracking.ledger.set(analyzer, { ...tracking.ledger.get(analyzer), configurationHash });
     }
   });
 }
 
-function recordAnalyzerResolutionError({ analyzer, index, error, errors }: FailedAnalyzer): void {
-  if (analyzer.version === 'unresolved') {
-    analyzer.version = 'unknown';
+function recordAnalyzerResolutionError({
+  analyzer,
+  index,
+  error,
+  errors,
+  ledger,
+}: FailedAnalyzer): void {
+  const resolved = ledger.get(analyzer);
+  if (metadataValue(analyzer, 'version', resolved) === 'unresolved') {
+    ledger.set(analyzer, { ...resolved, version: 'unknown' });
   }
   const tool = nameOf(analyzer, index);
   if (!errors.some((resolutionError) => resolutionError.tool === tool)) {
@@ -137,13 +159,13 @@ function withHeadProjectRoot(
 function recordConfigurationErrors(
   analyzers: readonly ResolvableAnalyzer[],
   error: unknown,
-  errors: ResolutionError[],
+  { errors, ledger }: { readonly errors: ResolutionError[]; readonly ledger: Ledger },
 ): void {
   const configured = [...analyzers.entries()].filter(
     ([, analyzer]) => typeof analyzer.resolveConfigurationHash === 'function',
   );
   for (const [index, analyzer] of configured) {
-    recordAnalyzerResolutionError({ analyzer, index, error, errors });
+    recordAnalyzerResolutionError({ analyzer, index, error, errors, ledger });
   }
 }
 
@@ -153,26 +175,39 @@ export function resolveMetadata({
   policyRoot,
   inputRoot,
   warn,
-}: MetadataRequest): ResolutionError[] {
+}: MetadataRequest): ShardMetadata {
   const errors: ResolutionError[] = [];
-  resolveAnalyzerVersions(analyzers, liveProjectRoot, errors);
+  const ledger: Ledger = new Map();
+  const tracking = { errors, ledger };
+  resolveAnalyzerVersions(analyzers, liveProjectRoot, tracking);
   if (policyRoot !== undefined) {
-    resolveAnalyzerConfigurationHashes(analyzers, policyRoot, errors);
-    return errors;
+    resolveAnalyzerConfigurationHashes(analyzers, policyRoot, tracking);
+    return { errors, metadata: ledger };
   }
   if (
     liveProjectRoot === undefined ||
     !analyzers.some((analyzer) => typeof analyzer.resolveConfigurationHash === 'function')
   ) {
-    return errors;
+    return { errors, metadata: ledger };
   }
   try {
     const headSha = fieldOf(readJson(path.join(inputRoot, '0'), 'summary.json', 0), 'headSha');
     withHeadProjectRoot({ liveProjectRoot, headSha, warn }, (headProjectRoot) => {
-      resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, errors);
+      resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, tracking);
     });
   } catch (error) {
-    recordConfigurationErrors(analyzers, error, errors);
+    recordConfigurationErrors(analyzers, error, tracking);
   }
-  return errors;
+  return { errors, metadata: ledger };
+}
+
+export function resolvedExpectations(
+  analyzers: readonly ResolvableAnalyzer[],
+  metadata: MetadataMap,
+): { name: string; version: unknown; configurationHash: unknown }[] {
+  return analyzers.map((analyzer) => ({
+    name: analyzer.name,
+    version: metadataValue(analyzer, 'version', metadata.get(analyzer)),
+    configurationHash: metadataValue(analyzer, 'configurationHash', metadata.get(analyzer)),
+  }));
 }
