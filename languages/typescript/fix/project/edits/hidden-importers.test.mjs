@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fileNameCasingRecipe as recipe } from '../moves/file-name-casing.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { fileNameCasingRecipe as recipe } from '../moves/file-name-casing.mts';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { resolveLayoutFor } from '../../../preset/layout.mjs';
 
 const projects = useFixtureProjects();

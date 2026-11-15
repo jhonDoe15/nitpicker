@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { noDevDependencyInProductionRecipe as recipe } from './dev-dependency.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { noDevDependencyInProductionRecipe as recipe } from './dev-dependency.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/no-dev-dependency-in-production';
 const SOURCE = "import pad from 'left-pad';\nexport const x = pad('a', 3);\n";
 
-function manifest(sections, indent = 2) {
+function manifest(sections: Record<string, unknown>, indent = 2): string {
   return `${JSON.stringify({ name: 'app', version: '1.0.0', main: 'dist/index.js', ...sections }, null, indent)}\n`;
 }
 
@@ -60,7 +60,7 @@ describe('noDevDependencyInProductionRecipe', () => {
       },
       { recipe, rule: RULE },
     );
-    expect(result.tree['package.json'].match(/left-pad/gu)).toHaveLength(1);
+    expect(result.tree['package.json']?.match(/left-pad/gu)).toHaveLength(1);
   });
 
   it('leaves a bundled application alone', () => {

@@ -1,23 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { withProject } from '../model/project-model.mjs';
-import { lintRule } from '../model/lint-rule.mjs';
-import { defaultExportSelectors } from '../../../preset/eslint-config/strict/strict-declarations.mjs';
-import { noDefaultExportRecipe as recipe } from './no-default-export.mjs';
+import { type FixedProject, useFixtureProjects } from '../test-support/fixture-project.mts';
+import { remainingFindings } from '../test-support/remaining-findings.mts';
+import { defaultExportSelectors } from '../typed/policy-views.mts';
+import { noDefaultExportRecipe as recipe } from './no-default-export.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/no-default-export';
+const LINT = { ruleId: 'no-default-export', options: defaultExportSelectors };
 
-function fix(files, changed) {
+function fix(files: Record<string, string>, changed?: string[]): FixedProject {
   return projects.fix(files, { recipe, rule: RULE, changed });
-}
-
-function remaining(result, name) {
-  const read = (file) => result.tree[file];
-  const context = { projectRoot: result.projectRoot, files: [{ path: name }], read };
-  return withProject(context, (project) =>
-    lintRule(project, name, { ruleId: 'no-default-export', options: defaultExportSelectors }),
-  );
 }
 
 describe('noDefaultExportRecipe', () => {
@@ -64,7 +56,7 @@ describe('noDefaultExportRecipe', () => {
       export const c = ns.greet('c');
       "
     `);
-    expect(remaining(result, 'src/greet.ts')).toEqual([]);
+    expect(remainingFindings(result, 'src/greet.ts', LINT)).toEqual([]);
     expect(result.fixedFindings).toEqual([
       'src/greet.ts:1 eslint/nitpicker/no-default-export (typescript-no-default-export)',
     ]);

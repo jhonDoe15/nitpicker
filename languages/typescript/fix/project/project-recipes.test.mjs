@@ -1,5 +1,7 @@
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { PROJECT_RECIPES } from './project-recipes.mjs';
 
 const require = createRequire(import.meta.url);
@@ -70,7 +72,7 @@ function traits({ id, rules, presets, safety, scope }) {
 
 function loaded(recipe) {
   const [module, exportName] = MODULES[recipe.id];
-  return require(module)[exportName];
+  return require(checkoutModulePath(fileURLToPath(new URL(module, import.meta.url))))[exportName];
 }
 
 describe('PROJECT_RECIPES', () => {
