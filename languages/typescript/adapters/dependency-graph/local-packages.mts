@@ -4,6 +4,7 @@ import path from 'node:path';
 import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/worktree.mjs';
 import { containedPath } from './package-managers/contained-path.mts';
 import { manifestDirectories } from './package-managers/members.mts';
+import { isStrictlyInside } from '../../../../shared/paths/strictly-inside.mjs';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
@@ -29,11 +30,6 @@ function repositoryRoot(directory: string): string | undefined {
     timeout: GIT_TIMEOUT_MS,
   });
   return result.status === 0 ? realpathSync(result.stdout.trim()) : undefined;
-}
-
-function isInside(parent: string, candidate: string): boolean {
-  const relative = path.relative(parent, candidate);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 function parsedManifest(file: string): unknown {
@@ -85,7 +81,7 @@ function livePath(target: string, source: MirrorSource): string {
 }
 
 function copyFromLive(target: string, source: MirrorSource): boolean {
-  if (existsSync(target) || !isInside(source.scratchRoot, target)) {
+  if (existsSync(target) || !isStrictlyInside(source.scratchRoot, target)) {
     return false;
   }
   const copy = containedPath(source.scratchRoot, path.relative(source.scratchRoot, target));
