@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it, vi } from 'vitest';
 import { layeredPrettierOptions, measureOf } from '../typed/convention-views.mts';
-import { dataConventionOptions, dataFileKind, DATA_CONVENTIONS } from './data-conventions.mjs';
+import { dataConventionOptions, dataFileKind, DATA_CONVENTIONS } from './data-conventions.mts';
 
 const json = '{"name":"demo","scripts":{"build":"tsc","test":"vitest"},"files":["dist",{"a":1}]}';
 const yaml = `name: ci
