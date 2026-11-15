@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
-import { useProjectFixtures } from '../../../../../core/diff/git/test-support/projects/project-fixtures.mjs';
+} from '../../../../../core/diff/git/test-support/git-checkout.mts';
+import { useProjectFixtures } from '../../../../../core/diff/git/test-support/projects/project-fixtures.mts';
 import { resolveLayout } from '../../layout.mjs';
 import type { StructurePolicy } from '../typed/structure-types.mts';
 import { javascriptFileFindings } from './javascript-files.mts';

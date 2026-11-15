@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
 import { namingConventionRecipe as recipe } from './naming-convention.mts';
 
 const projects = useFixtureProjects();
@@ -38,8 +39,12 @@ describe('namingConventionRecipe', () => {
       'src/user.ts': 'export function get_user() {}\n',
       'src/lazy.ts': 'export const load = (name: string) => import("./" + name + ".js");\n',
     };
-    const result = projects.fix(files, { recipe, rule: RULE, changed: ['src/user.ts'] });
-    expect(result.tree['src/user.ts']).toBe(files['src/user.ts']);
+    const result = fixLeavingFileUnchanged(
+      projects,
+      files,
+      { recipe, rule: RULE, changed: ['src/user.ts'] },
+      'src/user.ts',
+    );
     expect(result.notes).toMatchInlineSnapshot(`
       [
         "--fix left src/user.ts:1 naming-convention: src/lazy.ts loads the module in a way that names its exports at run time",

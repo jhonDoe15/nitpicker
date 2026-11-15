@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { detectPackageManager as detectManager } from '../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mjs';
+import { detectPackageManager as detectManager } from '../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mts';
 import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mjs';
 import { ancestorDirectories } from '../../../shared/filesystem.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';

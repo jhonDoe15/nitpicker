@@ -25,13 +25,13 @@ import type {
   FixStep,
 } from '../../../core/fix/typed/fix-types.mts';
 import { TYPESCRIPT_RECIPES } from './recipes/typescript-recipes.mjs';
-import { fixTargets as untypedFixTargets } from './fix-targets.mjs';
+import { fixTargets } from './fix-targets.mts';
 import { type KnipFixSettings, knipFixStep } from './dead-code/knip-fix-step.mts';
-import { codeFixStep as untypedCodeFixStep } from './code-fixes/code-fix-step.mjs';
-import { eslintFixStep as untypedEslintFixStep } from './eslint-fix.mjs';
-import { prettierFixStep as untypedPrettierFixStep } from './prettier-fix.mjs';
+import { codeFixStep } from './code-fixes/code-fix-step.mts';
+import { eslintFixStep } from './eslint-fix.mts';
+import { prettierFixStep } from './prettier-fix.mts';
+import type { Layout } from './typed/fix-views.mts';
 
-type Layout = { readonly isExcluded: (name: string) => boolean };
 type HeadPolicy = { readonly tools?: { readonly eslint?: unknown; readonly knip?: unknown } };
 type PolicySettings = Omit<KnipFixSettings, 'headPolicy' | 'layout'> & {
   readonly headPolicy: HeadPolicy;
@@ -60,7 +60,6 @@ const withHeadPolicyFile: (
   run: (policyFile: string) => FixOutcome,
 ) => FixOutcome = untypedWithHeadPolicyFile;
 const resolveLayoutFor: (policy: HeadPolicy) => Layout = untypedResolveLayoutFor;
-const fixTargets: (layout: Layout) => Targets = untypedFixTargets;
 const collectFixFiles: (options: {
   readonly repositoryRoot: string;
   readonly projectRoot: string;
@@ -108,15 +107,6 @@ const sharedInputs: (options: {
   readonly headPolicy: object | undefined;
   readonly selectedRules: readonly string[];
 }) => SharedInputs = untypedSharedInputs;
-const codeFixStep: (settings: object, files: readonly FixFile[]) => FixStep = untypedCodeFixStep;
-const eslintFixStep: (settings: object, files: readonly FixFile[]) => FixStep =
-  untypedEslintFixStep;
-const prettierFixStep: (
-  settings: object,
-  files: readonly FixFile[],
-  mergeBaseSha: string | undefined,
-) => FixStep = untypedPrettierFixStep;
-
 function isManifest(name: string): boolean {
   return /(?:^|\/)package\.json$/u.test(name);
 }

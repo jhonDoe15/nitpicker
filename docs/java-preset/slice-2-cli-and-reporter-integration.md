@@ -122,7 +122,7 @@ Part of the [Java preset guide](../java-preset.md).
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
-- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
+- **Tests.** `core/command/java/java-cli.test.mts` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   and with a fake `mvn` plus a fake JDK (`core/command/java/test-support/`), so it runs without Java:
   pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
   missing binary, `--all`, the same cases for both builds. The Gradle fake runs in the test process: `runFakeGradle({ args, cwd })`
@@ -134,6 +134,6 @@ Part of the [Java preset guide](../java-preset.md).
   `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
   runs on the Gradle build; the process wiring does not depend on the build). The Maven preset takes the same
   `spawn` option: `runMavenPreset` passes it to `runMaven`, `runJava` and the direct `jar`, `jdeps` and `java -version`
-  calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mjs`) answers the fake `mvn`
+  calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mts`) answers the fake `mvn`
   and the fake `java`, `jdeps` and `jar` (by program name, wherever they are found) in process, so no process
   starts for them. The real Gradle and Maven runs stay behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.

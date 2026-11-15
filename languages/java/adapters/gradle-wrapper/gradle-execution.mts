@@ -1,5 +1,6 @@
 import { type ChildProcess, type SpawnOptions, spawn, spawnSync } from 'node:child_process';
 import type { Readable } from 'node:stream';
+import { messageOf } from '../../../../shared/values/readers.mts';
 
 type GradleChild = ChildProcess & { readonly stdout: Readable; readonly stderr: Readable };
 type ExitStatus = ChildProcess['exitCode'];
@@ -33,10 +34,6 @@ function codeOf(error: unknown): string | undefined {
   return error instanceof Error && 'code' in error && typeof error.code === 'string'
     ? error.code
     : undefined;
-}
-
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function signalGroup(

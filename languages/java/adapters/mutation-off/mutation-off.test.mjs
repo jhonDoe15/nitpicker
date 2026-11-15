@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyDisable, describeDisableCascade } from '../../../../core/configuration/config.mjs';
+import { applyDisable, describeDisableCascade } from '../../../../core/configuration/config.mts';
 import { parseRunnerArguments } from '../../../../core/tooling/runner-arguments.mjs';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { readOptions } from '../options/java-read-options.mts';

@@ -150,7 +150,7 @@ The root `Dockerfile` has one target per image variant (`typescript`, `jvm`, `py
 [Container images](usage.md#container-images)). It installs the package from source with
 `npm ci --omit=dev`, so the images must be built from the same commit as the tag, and base images are
 pinned to exact versions. Bump them together, and keep Node, Bun, the JDK, Gradle, Python, uv and
-Poetry equal to the versions CI uses (`core/container-image.test.mjs` fails when they drift, and when
+Poetry equal to the versions CI uses (`core/container-image.test.mts` fails when they drift, and when
 the `container` workflow's matrix misses a variant). The images are `linux/amd64` only; arm64 is
 tracked in [#562](https://github.com/jhonDoe15/nitpicker/issues/562).
 

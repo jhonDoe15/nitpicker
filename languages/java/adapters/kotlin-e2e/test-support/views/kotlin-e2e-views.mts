@@ -2,11 +2,11 @@ import type { Finding } from '../../../../../../shared/values/findings.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../../typed/java-values.mts';
 import { findingsOf } from '../../../kotlin/rules/test-support/findings-list.mts';
-import { resolveProjectHeadPolicy as untypedResolveProjectHeadPolicy } from '../../../../../../core/conventions/project-head-policy.mjs';
+import { resolveProjectHeadPolicy as untypedResolveProjectHeadPolicy } from '../../../../../../core/conventions/project-head-policy.mts';
 import {
   copyFixtureRepository as untypedCopyFixtureRepository,
   runInitThenAll as untypedRunInitThenAll,
-} from '../../../../../../core/init/test-support/init-then-all.mjs';
+} from '../../../../../../core/init/test-support/init-then-all.mts';
 import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
 import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mjs';

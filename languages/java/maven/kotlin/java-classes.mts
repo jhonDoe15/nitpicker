@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { messageOf } from '../../adapters/gradle-wrapper/gradle-execution.mts';
+import { messageOf } from '../../../../shared/values/readers.mts';
 
 const CONSTANT_SIZES = new Map([
   [3, 4],
