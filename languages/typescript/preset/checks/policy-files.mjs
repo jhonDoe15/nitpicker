@@ -167,6 +167,7 @@ export const POLICY_FILES = [
   'languages/typescript/conventions/measures/assertion-functions.mjs',
   'languages/typescript/conventions/measures/detached-work-runners.mjs',
   'languages/typescript/conventions/typed/measure-views.mjs',
+  'shared/conventions/detect.mjs',
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
