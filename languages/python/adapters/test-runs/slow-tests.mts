@@ -1,13 +1,37 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
-  slowTestBudget,
-  slowTestFindings,
+  slowTestBudget as untypedBudget,
+  slowTestFindings as untypedFindings,
 } from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { insideProject, readProjectFile } from '../../libraries/project-files.mjs';
-import { listOtherModules } from '../analysis/python-sources.mjs';
-import { JUNIT_REPORT, RERUN_REPORT, readJunit } from './junit-results.mjs';
-import { classHeader, functionBlocks, mentions, withoutParamCalls } from './python-blocks.mjs';
+import { insideProject, readProjectFile } from '../../libraries/project-files.mts';
+import { listOtherModules } from '../analysis/python-sources.mts';
+import { JUNIT_REPORT, RERUN_REPORT, readJunit } from './junit-results.mts';
+import { classHeader, functionBlocks, mentions, withoutParamCalls } from './python-blocks.mts';
+import { messageOf } from '../../../../shared/values/readers.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import type {
+  Budget,
+  Collected,
+  FunctionBlock,
+  JunitTestCase,
+  Measured,
+  SlowOptions,
+} from './typed/run-types.mts';
+
+type Attempt<Value> =
+  | { readonly value: Value; readonly notice?: undefined }
+  | { readonly notice: IngestedFinding; readonly value?: undefined };
+
+const slowTestBudget: (limits: unknown) => Budget = untypedBudget;
+const slowTestFindings: (request: {
+  tool: string;
+  language: string;
+  advice: string;
+  test: { path: string; name: string; identity: string; seconds: number; line?: number };
+  integration: boolean;
+  limits: unknown;
+}) => IngestedFinding[] = untypedFindings;
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
@@ -17,15 +41,15 @@ const NOT_TIMED =
   'The test run wrote no timing report, so slow tests were not checked ' +
   '(a project that disables the JUnit report is not timed)';
 
-function readText(root, file) {
+function readText(root: string | undefined, file: string): string | undefined {
   return root === undefined || file === '' ? undefined : readProjectFile(root, file);
 }
 
-function exists(root, file) {
+function exists(root: string, file: string): boolean {
   return existsSync(insideProject(root, file));
 }
 
-function collectedFrom(projectRoot, testCase) {
+function collectedFrom(projectRoot: string, testCase: JunitTestCase): Collected {
   const parts = testCase.qualifiedClass.split('.').filter(Boolean);
   const size = parts.findLastIndex((_, index) =>
     exists(projectRoot, `${parts.slice(0, index + 1).join('/')}.py`),
@@ -38,7 +62,7 @@ function collectedFrom(projectRoot, testCase) {
       };
 }
 
-function isIntegration(testCase, block) {
+function isIntegration(testCase: JunitTestCase, block: FunctionBlock | undefined): boolean {
   const folders = path.posix.dirname(testCase.file).split('/');
   const marked =
     testCase.marks === undefined
@@ -47,7 +71,11 @@ function isIntegration(testCase, block) {
   return marked || folders.some((folder) => INTEGRATION_FOLDERS.has(folder));
 }
 
-function headBlock(text, testCase, owner) {
+function headBlock(
+  text: string | undefined,
+  testCase: JunitTestCase,
+  owner: string,
+): FunctionBlock | undefined {
   const blocks = text === undefined ? [] : functionBlocks(text);
   const index = (testCase.line ?? 0) - 1;
   const atLine = blocks.filter(({ first, definition }) => index >= first && index <= definition);
@@ -58,7 +86,7 @@ function headBlock(text, testCase, owner) {
   );
 }
 
-function hasBlock(text, block) {
+function hasBlock(text: string | undefined, block: FunctionBlock): boolean {
   return (
     text !== undefined &&
     functionBlocks(text, block.name).some(
@@ -67,45 +95,51 @@ function hasBlock(text, block) {
   );
 }
 
-function baseTestFiles(baselineRoot) {
+function baseTestFiles(baselineRoot: string): string[] {
   return listOtherModules(baselineRoot, [], [])
     .filter(({ kind }) => kind === 'test')
     .map(({ file }) => file);
 }
 
-function sameList(left, right) {
+function sameList(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((entry, index) => entry === right[index]);
 }
 
-function changeReader({ baselineRoot, projectRoot }) {
-  let movedAway;
-  function baseHas(file, matches) {
+function changeReader({
+  baselineRoot,
+  projectRoot,
+}: {
+  readonly baselineRoot: string;
+  readonly projectRoot: string;
+}): (run: Measured) => boolean {
+  let movedAway: string[] | undefined;
+  function baseHas(file: string, matches: (text: string | undefined) => boolean): boolean {
     if (matches(readText(baselineRoot, file))) {
       return true;
     }
     movedAway ??= baseTestFiles(baselineRoot).filter((other) => !exists(projectRoot, other));
     return movedAway.some((other) => other !== file && matches(readText(baselineRoot, other)));
   }
-  function classKept({ file, className }) {
+  function classKept({ file, className }: Collected): boolean {
     const header = classHeader(readText(projectRoot, file) ?? '', className);
     return baseHas(file, (text) => text !== undefined && classHeader(text, className) === header);
   }
-  function namesKept({ file }, name) {
+  function namesKept({ file }: Collected, name: string): boolean {
     const head = mentions(readText(projectRoot, file) ?? '', name);
     return baseHas(file, (text) => text !== undefined && sameList(mentions(text, name), head));
   }
   return ({ testCase, block, collected }) => {
     const named = block?.name === testCase.functionName;
-    const inherited = named && block.owner !== collected.className;
+    const inherited = block !== undefined && named && block.owner !== collected.className;
     return (
       (block !== undefined && !baseHas(testCase.file, (text) => hasBlock(text, block))) ||
       ((inherited || !named) && collected.className !== '' && !classKept(collected)) ||
-      (!named && !namesKept(collected, testCase.functionName))
+      !(named || namesKept(collected, testCase.functionName ?? ''))
     );
   };
 }
 
-function measured(projectRoot, budget) {
+function measured(projectRoot: string, budget: Budget): (testCase: JunitTestCase) => Measured {
   return (testCase) => {
     const collected = collectedFrom(projectRoot, testCase);
     const block = headBlock(readText(projectRoot, testCase.file), testCase, collected.className);
@@ -115,12 +149,12 @@ function measured(projectRoot, budget) {
   };
 }
 
-function keyOf({ testCase, collected }) {
-  return `${collected.file}::${collected.className}::${testCase.functionName}`;
+function keyOf({ testCase, collected }: Measured): string {
+  return `${collected.file}::${collected.className}::${testCase.functionName ?? ''}`;
 }
 
-function slowestRuns(runs) {
-  const byTest = new Map();
+function slowestRuns(runs: readonly Measured[]): Measured[] {
+  const byTest = new Map<string, Measured>();
   for (const run of runs) {
     if ((byTest.get(keyOf(run))?.testCase.seconds ?? -1) < run.testCase.seconds) {
       byTest.set(keyOf(run), run);
@@ -129,7 +163,7 @@ function slowestRuns(runs) {
   return [...byTest.values()];
 }
 
-function notice(file, message) {
+function notice(file: string, message: string): IngestedFinding {
   return {
     tool: SLOW_TEST_TOOL,
     rule: 'slow-test-not-timed',
@@ -140,12 +174,12 @@ function notice(file, message) {
   };
 }
 
-function unreadable(file, error) {
-  const reason = error instanceof Error ? error.message : String(error);
+function unreadable(file: string, error: unknown): IngestedFinding {
+  const reason = messageOf(error);
   return notice(file, `${file} is not checked for slow tests: reading its tests failed, ${reason}`);
 }
 
-function safely(testCase, step) {
+function safely<Value>(testCase: { readonly file: string }, step: () => Value): Attempt<Value> {
   try {
     return { value: step() };
   } catch (error) {
@@ -153,7 +187,10 @@ function safely(testCase, step) {
   }
 }
 
-export function slowCandidates(options) {
+export function slowCandidates(options: SlowOptions): {
+  runs: Measured[];
+  notices: IngestedFinding[];
+} {
   const { reportRoot, projectRoot, limits, baselineRoot } = options;
   const budget = slowTestBudget(limits);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
@@ -168,9 +205,9 @@ export function slowCandidates(options) {
       ...safely(testCase, () => measured(projectRoot, budget)(testCase)),
     }));
   const over = slowestRuns(
-    tried
-      .filter(({ value }) => value !== undefined && value.testCase.seconds > value.limit)
-      .map(({ value }) => value),
+    tried.flatMap(({ value }) =>
+      value !== undefined && value.testCase.seconds > value.limit ? [value] : [],
+    ),
   );
   const checked = over.map((run) => ({ run, ...safely(run.testCase, () => isChanged(run)) }));
   return {
@@ -181,15 +218,15 @@ export function slowCandidates(options) {
   };
 }
 
-function retimes(reportRoot) {
+function retimes(reportRoot: string): Map<string, number> {
   return new Map(
     readJunit(reportRoot, RERUN_REPORT)
       .filter(({ outcome }) => outcome === 'passed')
-      .map(({ id, seconds }) => [id, seconds]),
+      .map(({ id, seconds }): [string, number] => [id, seconds]),
   );
 }
 
-function slowTestFinding(run, options) {
+function slowTestFinding(run: Measured, options: SlowOptions): IngestedFinding[] {
   const { testCase, collected, block, integration } = run;
   return slowTestFindings({
     tool: SLOW_TEST_TOOL,
@@ -207,15 +244,15 @@ function slowTestFinding(run, options) {
   });
 }
 
-function untimed({ reportRoot, testsRan }) {
+function untimed({ reportRoot, testsRan }: SlowOptions): IngestedFinding[] {
   const missing = !existsSync(path.join(reportRoot, JUNIT_REPORT));
   return missing && testsRan === true ? [notice('.', NOT_TIMED)] : [];
 }
 
-function findingsOf(options) {
+function findingsOf(options: SlowOptions): IngestedFinding[] {
   const { runs, notices } = slowCandidates(options);
   const times = retimes(options.reportRoot);
-  function retimed(run) {
+  function retimed(run: Measured): Measured {
     return {
       ...run,
       testCase: { ...run.testCase, seconds: times.get(run.testCase.id) ?? run.testCase.seconds },
@@ -228,14 +265,14 @@ function findingsOf(options) {
   ];
 }
 
-export function readSlowTestFindings(options) {
+export function readSlowTestFindings(options: SlowOptions): IngestedFinding[] {
   if (options.snapshot === 'base') {
     return [];
   }
   try {
     return findingsOf(options);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = messageOf(error);
     return [notice('.', `Slow tests were not checked: reading the test report failed, ${reason}`)];
   }
 }

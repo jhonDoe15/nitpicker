@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { test } from '../../test-runs/test-step.mjs';
+import { test } from '../../test-runs/test-step.mts';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import {
   type ConsoleEntry as Entry,
@@ -46,8 +46,7 @@ export function createConsoleProjects(): ConsoleProjects {
       settings: { environment: 'path', testRunner: 'pytest', sourceRoots: ['src'] },
       reportRoot,
     });
-    const outcome: Record<string, unknown> = {};
-    test(context, outcome);
+    const outcome = test(context);
     const { report } = readConsoleReport(reportRoot);
     return { root, report: { ...report, entries: sortedEntries(report.entries) }, outcome };
   }

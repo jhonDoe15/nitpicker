@@ -1,10 +1,22 @@
 import {
-  ignoredConfigNotice,
-  missingProjectConfig,
-  precedenceLayers,
+  ignoredConfigNotice as untypedNotice,
+  missingProjectConfig as untypedMissing,
+  precedenceLayers as untypedLayers,
 } from '../../../../../shared/conventions/tool-precedence.mjs';
-import { toolLayers } from '../../project-tools/project-tool-layers.mjs';
-import { readPytestOptions, shellWords } from '../pytest-pins.mjs';
+import { toolLayers } from '../../project-tools/project-tool-layers.mts';
+import { readPytestOptions, shellWords } from '../pytest-pins.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
+import type { NitpickerConfig } from '../../../../../shared/values/config-types.mts';
+import type { ToolContext } from '../../project-tools/typed/tool-types.mts';
+
+type Retries = Readonly<Record<string, number>>;
+
+const ignoredConfigNotice: (ignored: string, tool: string) => string = untypedNotice;
+const missingProjectConfig: (tool: string, looked: string) => string = untypedMissing;
+const precedenceLayers: (precedence: string[] | undefined) => {
+  usesProject: boolean;
+  nitpickerFirst: boolean;
+} = untypedLayers;
 
 const TESTS_TOOL = 'tests';
 export const CONFIG_RETRIES_ENVIRONMENT = 'NITPICKER_CONFIG_RETRIES';
@@ -24,8 +36,8 @@ const LOOKED =
   '(pytest.ini, pyproject.toml, tox.ini or setup.cfg), ' +
   'or --reruns, --reruns-delay, --retries or --retry-delay in its addopts';
 
-function checked(key, raw, file) {
-  const value = typeof raw === 'number' ? raw : Number(String(raw).trim());
+function checked(key: string, raw: unknown, file: string | undefined): number {
+  const value = typeof raw === 'number' ? raw : Number(textOf(raw).trim());
   const count = COUNT_KEYS.includes(key);
   const limit = count ? MAX_COUNT : MAX_DELAY_SECONDS;
   const valid =
@@ -34,28 +46,31 @@ function checked(key, raw, file) {
     const expected = count
       ? `a whole number from 0 to ${String(MAX_COUNT)}`
       : `a number of seconds from 0 to ${String(MAX_DELAY_SECONDS)}`;
-    throw new Error(`${key} in ${file} is ${JSON.stringify(raw)}: it must be ${expected}`);
+    throw new Error(`${key} in ${textOf(file)} is ${JSON.stringify(raw)}: it must be ${expected}`);
   }
   return value;
 }
 
-function fromAddopts(options) {
-  const raw = options.addopts ?? [];
-  const words = Array.isArray(raw) ? raw.map(String) : shellWords(String(raw));
+function fromAddopts(options: Readonly<Record<string, unknown>>): [string, string][] {
+  const raw = options['addopts'] ?? [];
+  const words = Array.isArray(raw) ? raw.map(textOf) : shellWords(textOf(raw));
   return words.flatMap((word, index) => {
-    const [name, attached] = word.split('=');
+    const [name = '', attached] = word.split('=');
     const key = ADDOPTS_FLAGS.get(name);
     const value = attached ?? words[index + 1];
     return key === undefined || value === undefined ? [] : [[key, value]];
   });
 }
 
-export function readPytestRetries(projectRoot) {
+export function readPytestRetries(projectRoot: string): {
+  file: string | undefined;
+  values: Retries;
+} {
   const { file, options } = readPytestOptions(projectRoot);
-  const found = [
+  const found: [string, unknown][] = [
     ...[...COUNT_KEYS, ...DELAY_KEYS]
       .filter((key) => options[key] !== undefined)
-      .map((key) => [key, options[key]]),
+      .map((key): [string, unknown] => [key, options[key]]),
     ...fromAddopts(options),
   ];
   return {
@@ -64,7 +79,7 @@ export function readPytestRetries(projectRoot) {
   };
 }
 
-export function projectRetries(context) {
+export function projectRetries(context: ToolContext): Retries | undefined {
   const layers = toolLayers(context, TESTS_TOOL);
   if (!layers.appliesProject) {
     return undefined;
@@ -76,12 +91,18 @@ export function projectRetries(context) {
   return values;
 }
 
-export function retriesNotices({ config, projectRoot }) {
+export function retriesNotices({
+  config,
+  projectRoot,
+}: {
+  readonly config: NitpickerConfig;
+  readonly projectRoot: string;
+}): string[] {
   const layers = precedenceLayers(config.tools?.[TESTS_TOOL]?.precedence);
   if (layers.usesProject || layers.nitpickerFirst) {
     return [];
   }
   const { file, values } = readPytestRetries(projectRoot);
-  const key = COUNT_KEYS.find((candidate) => values[candidate] > 0);
-  return key === undefined ? [] : [ignoredConfigNotice(`${key} in ${file}`, TESTS_TOOL)];
+  const key = COUNT_KEYS.find((candidate) => (values[candidate] ?? 0) > 0);
+  return key === undefined ? [] : [ignoredConfigNotice(`${key} in ${textOf(file)}`, TESTS_TOOL)];
 }
