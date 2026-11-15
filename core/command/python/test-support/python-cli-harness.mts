@@ -13,7 +13,7 @@ import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mt
 import {
   installFakeToolchain,
   spawnFakeTools,
-} from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
+} from '../../../../languages/python/adapters/test-support/fake-toolchain.mts';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mts';
 

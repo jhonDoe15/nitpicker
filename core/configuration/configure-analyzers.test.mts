@@ -82,7 +82,7 @@ describe('configureAnalyzers', () => {
     const parts = [PYTHON_ANALYZER_NAME, MUTATION_ANALYZER_NAME];
     expect(configured.map((analyzer) => analyzer.createInvocation(context).args)).toEqual(
       parts.map((part): unknown[] => [
-        expect.stringMatching(/python-runner\.mjs$/),
+        expect.stringMatching(/python-runner\.m[jt]s$/),
         '--part',
         part,
         '--project-root',
