@@ -1,13 +1,4 @@
-import {
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -18,21 +9,17 @@ import {
 } from './build-once.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
 const ABSENT_PROCESS_ID = 2_147_483_646;
-const temporaryRoots: string[] = [];
+const { temporaryRoot } = useGitFixtures();
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
 });
 
 function sharedDirectory() {
-  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-build-once-'));
-  temporaryRoots.push(directory);
-  return directory;
+  return temporaryRoot('nitpicker-build-once-');
 }
 
 function countingBuild(text: string) {
