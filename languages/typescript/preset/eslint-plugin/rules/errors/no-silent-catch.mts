@@ -1,11 +1,14 @@
-function returnsFailureResult(node) {
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+
+function returnsFailureResult(node: TSESTree.CatchClause): boolean {
   return node.body.body.some(
     (statement) =>
-      statement.type === 'ReturnStatement' && statement.argument?.type === 'ObjectExpression',
+      statement.type === AST_NODE_TYPES.ReturnStatement &&
+      statement.argument?.type === AST_NODE_TYPES.ObjectExpression,
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'silent'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -25,7 +28,7 @@ export const rule = {
       'CatchClause:exit'(node) {
         const variables = sourceCode.getDeclaredVariables(node);
         const hasReference = variables.some((variable) => variable.references.length > 0);
-        if (!hasReference && !returnsFailureResult(node)) {
+        if (!(hasReference || returnsFailureResult(node))) {
           context.report({ node, messageId: 'silent' });
         }
       },

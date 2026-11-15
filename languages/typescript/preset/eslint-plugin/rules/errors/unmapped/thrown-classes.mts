@@ -1,26 +1,51 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { classDeclarationOf, isProjectDeclaration } from './nest-classes.mjs';
+import type TypeScript from 'typescript';
+import { ts } from '../../typed/typescript-views.mts';
+import { classDeclarationOf, isProjectDeclaration } from './nest-classes.mts';
+
+type BodiedFunction = TypeScript.SignatureDeclaration & { readonly body: TypeScript.Node };
+type WalkItem = {
+  readonly declaration: BodiedFunction;
+  readonly path: readonly string[];
+  readonly depth: number;
+};
+type Walk = {
+  readonly checker: TypeScript.TypeChecker;
+  readonly thrown: Map<TypeScript.ClassLikeDeclaration, readonly string[]>;
+  readonly seen: Set<BodiedFunction>;
+  readonly pending: WalkItem[];
+};
 
 const MAX_DEPTH = 4;
 const MAX_FUNCTIONS = 200;
 
-function functionLabel(declaration) {
+export function isBodiedFunction(node: TypeScript.Node): node is BodiedFunction {
+  return (
+    !ts.isJSDocSignature(node) &&
+    ts.isFunctionLike(node) &&
+    'body' in node &&
+    node.body !== undefined
+  );
+}
+
+function functionLabel(declaration: BodiedFunction): string {
   const name = declaration.name?.getText() ?? 'anonymous function';
   const owner = ts.isClassLike(declaration.parent) ? declaration.parent.name?.text : undefined;
   return owner === undefined ? name : `${owner}.${name}`;
 }
 
-function calledFunction(checker, call) {
+function calledFunction(
+  checker: TypeScript.TypeChecker,
+  call: TypeScript.CallExpression | TypeScript.NewExpression,
+): BodiedFunction | undefined {
   const declaration = checker.getResolvedSignature(call)?.declaration;
-  const hasBody =
-    declaration !== undefined &&
-    !ts.isJSDocSignature(declaration) &&
-    ts.isFunctionLike(declaration) &&
-    declaration.body !== undefined;
-  return hasBody && isProjectDeclaration(declaration) ? declaration : undefined;
+  return declaration !== undefined &&
+    isBodiedFunction(declaration) &&
+    isProjectDeclaration(declaration)
+    ? declaration
+    : undefined;
 }
 
-function isStoredFunction(node) {
+function isStoredFunction(node: TypeScript.Node): boolean {
   if (ts.isFunctionDeclaration(node) || ts.isClassLike(node)) {
     return true;
   }
@@ -30,7 +55,7 @@ function isStoredFunction(node) {
   );
 }
 
-function isCaughtReceiver(node) {
+function isCaughtReceiver(node: TypeScript.Node): boolean {
   const { parent } = node;
   return (
     ts.isPropertyAccessExpression(parent) &&
@@ -41,31 +66,44 @@ function isCaughtReceiver(node) {
   );
 }
 
-function childrenOf(node) {
+function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
   if (ts.isTryStatement(node) && node.catchClause !== undefined) {
     return [node.catchClause, node.finallyBlock].filter((child) => child !== undefined);
   }
-  const children = [];
+  const children: TypeScript.Node[] = [];
   node.forEachChild((child) => {
-    if (!isStoredFunction(child) && !isCaughtReceiver(child)) {
+    if (!(isStoredFunction(child) || isCaughtReceiver(child))) {
       children.push(child);
     }
   });
   return children;
 }
 
-function thrownClass(checker, node) {
-  if (!ts.isThrowStatement(node) || node.expression === undefined) {
+function withoutParentheses(node: TypeScript.Expression): TypeScript.Expression {
+  const chain = [node];
+  for (const current of chain) {
+    if (ts.isParenthesizedExpression(current)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1) ?? node;
+}
+
+function thrownClass(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.ClassLikeDeclaration | undefined {
+  if (!ts.isThrowStatement(node)) {
     return undefined;
   }
-  const expression = ts.skipParentheses(node.expression);
+  const expression = withoutParentheses(node.expression);
   const declaration = ts.isNewExpression(expression)
     ? classDeclarationOf(checker, expression)
     : undefined;
   return declaration !== undefined && isProjectDeclaration(declaration) ? declaration : undefined;
 }
 
-function visitBody(walk, item) {
+function visitBody(walk: Walk, item: WalkItem): void {
   const nodes = [item.declaration.body];
   for (const node of nodes) {
     const thrown = thrownClass(walk.checker, node);
@@ -83,8 +121,11 @@ function visitBody(walk, item) {
   }
 }
 
-export function thrownClasses(checker, handler) {
-  const walk = {
+export function thrownClasses(
+  checker: TypeScript.TypeChecker,
+  handler: BodiedFunction,
+): ReadonlyMap<TypeScript.ClassLikeDeclaration, readonly string[]> {
+  const walk: Walk = {
     checker,
     thrown: new Map(),
     seen: new Set([handler]),
@@ -99,6 +140,6 @@ export function thrownClasses(checker, handler) {
   return walk.thrown;
 }
 
-export function pathText(path) {
+export function pathText(path: readonly string[]): string {
   return path.length === 0 ? '' : ` (through ${path.map((step) => `\`${step}\``).join(', ')})`;
 }

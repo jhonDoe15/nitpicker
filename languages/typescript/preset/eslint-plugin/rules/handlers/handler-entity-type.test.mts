@@ -1,4 +1,4 @@
-import { rule } from './handler-entity-type.mjs';
+import { rule } from './handler-entity-type.mts';
 import { typedProject, writeCustomPrismaClient } from '../contracts/test-support/typed-project.mts';
 
 const { write, tester, folder } = typedProject('nitpicker-handler-entity-');

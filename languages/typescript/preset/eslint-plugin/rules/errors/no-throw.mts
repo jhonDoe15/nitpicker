@@ -1,4 +1,6 @@
-export const rule = {
+import type { TSESLint } from '@typescript-eslint/utils';
+
+export const rule: TSESLint.RuleModule<'noThrow'> = {
   meta: {
     type: 'problem',
     docs: {
