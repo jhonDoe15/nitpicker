@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { toml } from '../../libraries/project-files.mts';
 import path from 'node:path';
 import { fieldOf, fieldsOf, listOf, messageOf } from '../../../../shared/values/readers.mts';
 import { isTable, type TomlTable } from '../configuration/project-files.mts';
@@ -16,18 +16,9 @@ import type {
 const RUFF_FILES = ['.ruff.toml', 'ruff.toml', 'pyproject.toml'];
 const PYPROJECT = 'pyproject.toml';
 
-function tomlParse(text: string): unknown {
-  const toml: unknown = createRequire(import.meta.url)('smol-toml');
-  const parse = fieldOf(toml, 'parse');
-  if (typeof parse !== 'function') {
-    throw new TypeError('smol-toml has no parse function');
-  }
-  return Reflect.apply(parse, toml, [text]);
-}
-
 function parseToml(file: string): unknown {
   try {
-    return tomlParse(readFileSync(file, 'utf8'));
+    return toml().parse(readFileSync(file, 'utf8'));
   } catch (error) {
     throw Object.assign(
       new Error(`${file} is not valid TOML: ${messageOf(error)}`, { cause: error }),

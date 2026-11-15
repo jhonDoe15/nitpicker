@@ -133,54 +133,71 @@ function existsInProject(
   return missing === parts.length - 1 && project.buildsExtensions;
 }
 
-function resolverOf({
-  projectRoot,
-  imports,
-  scan,
-  declared,
-}: UnresolvedRequest): (file: string, statement: ImportStatement, name: string) => boolean {
-  const known = new Set([
-    ...(scan.stdlib ?? []),
-    ...ALWAYS_PRESENT,
-    ...Object.keys(scan.modules ?? {}),
-    ...(scan.importable ?? []),
-    ...projectNames(imports),
-  ]);
-  const environmentInstalled = Object.keys(scan.modules ?? {}).length > 0;
-  const names = declaredNames(projectRoot, declared);
-  const stdlib = new Set(scan.stdlib ?? []);
+type ResolverState = {
+  readonly environmentInstalled: boolean;
+  readonly known: ReadonlySet<string>;
+  readonly names: ReturnType<typeof declaredNames>;
+  readonly stdlib: ReadonlySet<string>;
+  readonly packages: ReturnType<typeof packageDirectories>;
+  readonly rewired: ReturnType<typeof rewiredPackages>;
+  readonly project: Parameters<typeof existsInProject>[0];
+};
+
+function resolverState({ projectRoot, imports, scan, declared }: UnresolvedRequest): ResolverState {
   const files = createModuleFiles(projectRoot);
-  const packages = packageDirectories(imports, files);
-  const rewired = rewiredPackages(imports, files);
-  const project = { files, buildsExtensions: buildsExtensions(projectRoot) };
-  function isKnownTop(file: string, top: string): boolean {
-    return (
-      !environmentInstalled ||
-      known.has(top) ||
-      isDeclared(names, top) ||
-      besideImporter(files, file, top)
-    );
+  return {
+    known: new Set([
+      ...(scan.stdlib ?? []),
+      ...ALWAYS_PRESENT,
+      ...Object.keys(scan.modules ?? {}),
+      ...(scan.importable ?? []),
+      ...projectNames(imports),
+    ]),
+    environmentInstalled: Object.keys(scan.modules ?? {}).length > 0,
+    names: declaredNames(projectRoot, declared),
+    stdlib: new Set(scan.stdlib ?? []),
+    packages: packageDirectories(imports, files),
+    rewired: rewiredPackages(imports, files),
+    project: { files, buildsExtensions: buildsExtensions(projectRoot) },
+  };
+}
+
+function isKnownTop(state: ResolverState, file: string, top: string): boolean {
+  return (
+    !state.environmentInstalled ||
+    state.known.has(top) ||
+    isDeclared(state.names, top) ||
+    besideImporter(state.project.files, file, top)
+  );
+}
+
+function absoluteExists(state: ResolverState, file: string, name: string): boolean {
+  const [top = '', ...rest] = name.split('.');
+  if (!isKnownTop(state, file, top)) {
+    return false;
   }
-  function absolute(file: string, name: string): boolean {
-    const [top = '', ...rest] = name.split('.');
-    if (!isKnownTop(file, top)) {
-      return false;
-    }
-    const directories = packages.get(top);
-    return (
-      directories === undefined ||
-      stdlib.has(top) ||
-      rewired.has(top) ||
-      [...directories].some((directory) => existsInProject(project, directory, rest))
-    );
-  }
-  function relative(
-    file: string,
-    { level, module }: { readonly level: number; readonly module: string | JsonNull },
-  ): boolean {
-    const start = relativeStart(file, level);
-    return start === undefined || existsInProject(project, start, (module ?? '').split('.'));
-  }
+  const directories = state.packages.get(top);
+  return (
+    directories === undefined ||
+    state.stdlib.has(top) ||
+    state.rewired.has(top) ||
+    [...directories].some((directory) => existsInProject(state.project, directory, rest))
+  );
+}
+
+function relativeExists(
+  state: ResolverState,
+  file: string,
+  { level, module }: { readonly level: number; readonly module: string | JsonNull },
+): boolean {
+  const start = relativeStart(file, level);
+  return start === undefined || existsInProject(state.project, start, (module ?? '').split('.'));
+}
+
+function resolverOf(
+  request: UnresolvedRequest,
+): (file: string, statement: ImportStatement, name: string) => boolean {
+  const state = resolverState(request);
   const answers = new Map<string, boolean>();
   return (file, statement, name) => {
     const key = `${String(statement.level)}|${path.posix.dirname(file)}|${name}`;
@@ -188,7 +205,10 @@ function resolverOf({
     if (known !== undefined) {
       return known;
     }
-    const answer = statement.level === 0 ? absolute(file, name) : relative(file, statement);
+    const answer =
+      statement.level === 0
+        ? absoluteExists(state, file, name)
+        : relativeExists(state, file, statement);
     answers.set(key, answer);
     return answer;
   };

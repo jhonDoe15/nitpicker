@@ -1,4 +1,5 @@
 import type { SpawnSyncReturns } from 'node:child_process';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
 import type { Launcher } from '../../typed/environment/launcher-types.mts';
 
 type SpawnError = { readonly code?: string; readonly message?: string };
@@ -21,8 +22,6 @@ export type SpawnFunction = (
   args: readonly string[],
   options: SpawnOptions,
 ) => SpawnResult;
-
-export type Environment = Readonly<Record<string, string | undefined>>;
 
 export type ProcessContext = {
   readonly launcher: Launcher;

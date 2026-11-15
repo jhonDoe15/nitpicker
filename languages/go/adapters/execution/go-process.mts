@@ -61,14 +61,13 @@ export function run(
   {
     accepted = [0],
     rule,
-    timeoutMs = toolTimeoutMs(context),
     ...options
   }: RunOptions & {
     accepted?: typeof ANY_STATUS | readonly number[];
     rule: string;
-    timeoutMs?: number;
   },
 ): ProcessResult {
+  const timeoutMs = toolTimeoutMs(context);
   const result = execute(context, command, { timeout: timeoutMs, ...options });
   if (result.error !== undefined || !accepts(accepted, result.status)) {
     throw failure({ command, result, rule, timeoutMs });

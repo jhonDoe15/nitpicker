@@ -1,5 +1,6 @@
 import type { Launcher } from '../../../typed/environment/launcher-types.mts';
-import type { Environment, SpawnFunction } from '../../typed/process-types.mts';
+import type { Environment } from '../../../../../../shared/processes/environment.mts';
+import type { SpawnFunction } from '../../typed/process-types.mts';
 
 export type InstallKind = 'uv' | 'poetry' | 'pipenv' | 'pdm' | 'hatch' | 'conda' | 'python';
 

@@ -41,3 +41,7 @@ export function messageOf(error: unknown): string {
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+export function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
