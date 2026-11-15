@@ -9,6 +9,7 @@ import {
 } from '../static-checks/dependencies.mts';
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mjs';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mjs';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
 
 export type SnapshotDependencyRequest = {
   readonly projectRoot: string;
@@ -30,6 +31,9 @@ export const sharedReachPath: (
 
 export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
   untypedExistingRoots;
+
+const compactMetricFindings: (findings: readonly Finding[]) => readonly unknown[] =
+  untypedCompactMetricFindings;
 
 export const prepareSnapshotDependencies: (options: SnapshotDependencyRequest) => unknown =
   prepareUntypedSnapshotDependencies;
@@ -62,7 +66,9 @@ export async function writeAdapterReport(
 ): Promise<number> {
   try {
     const report = await reportOf();
-    output.stdout.write(`${JSON.stringify(report)}\n`);
+    output.stdout.write(
+      `${JSON.stringify({ ...report, findings: compactMetricFindings(report.findings) })}\n`,
+    );
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);
