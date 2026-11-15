@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { runFormat } from './format/maven-format.mts';

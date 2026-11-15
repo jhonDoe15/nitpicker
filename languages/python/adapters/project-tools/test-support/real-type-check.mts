@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { typeFindings } from '../../python-reports.mts';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import { readTypesReport } from '../../typed/report/report-views.mts';

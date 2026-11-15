@@ -5,7 +5,10 @@ import { oxlintBinary, spawnJsonAsync, tsgolintBinary } from '../oxlint-process.
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import type { StageConfig } from '../stage/oxlint-stage.mts';
 
-export type LintTiming = { readonly environment: Environment; readonly timeoutMs: number };
+export type LintTiming = {
+  readonly environment: Environment;
+  readonly timeoutMs: number | undefined;
+};
 
 export type StageRun = LintTiming & { readonly stage: string; readonly naming: Naming };
 

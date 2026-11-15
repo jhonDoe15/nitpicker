@@ -7,7 +7,7 @@ import { runJavaDiff as typedRunJavaDiff } from '../../java-diff.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
-import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 
 export const kotlinE2eEnabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 

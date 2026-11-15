@@ -11,10 +11,10 @@
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",
       "scripts/test-shards/repository-timeouts.mts",
-      "core/fix/prettier-base-runner.mjs",
+      "core/fix/prettier-base-runner.mts",
       "languages/python/adapters/python-runner.mts",
       "languages/typescript/adapters/entry-points-runner.mts",
-      "languages/typescript/adapters/eslint-wrapper.config.mjs",
+      "languages/typescript/adapters/eslint-wrapper.config.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
@@ -31,7 +31,7 @@
       "core/diff/sharding/aggregate-shards.mts",
       "core/diff/execution/analyzer-scheduler.mts",
       "core/reference/generate.mts",
-      "core/diff/execution/test-support/fake-analyzer.mjs",
+      "core/diff/execution/test-support/fake-analyzer.mts",
       "languages/java/adapters/java-runner.mts",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mts",
@@ -80,9 +80,9 @@
     {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": [
-        "core/cli-bin.test.mjs",
-        "core/diff/execution/analyzer-process.test.mjs",
-        "core/diff/sharding/aggregate-cli.test.mjs"
+        "core/cli-bin.test.mts",
+        "core/diff/execution/analyzer-process.test.mts",
+        "core/diff/sharding/aggregate-cli.test.mts"
       ],
       "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
@@ -96,26 +96,26 @@
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
-      "paths": ["core/installed.test.mjs"],
+      "paths": ["core/installed.test.mts"],
       "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout, and removing each installed tree takes long enough to need its own hook timeout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
-      "paths": ["languages/typescript/adapters/layout-exclude.test.mjs"],
+      "paths": ["languages/typescript/adapters/layout-exclude.test.mts"],
       "reason": "The shared hook runs ten real analyzers (eslint, prettier, tsc, dependency-cruiser, jscpd and others) side by side over one fixture project, as they run for a user; that takes about eight seconds on an idle four-CPU machine, too close to the ten-second hook limit for a shared CI runner."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
-        "languages/typescript/adapters/oxlint/react/oxlint-react.test.mjs",
-        "languages/typescript/adapters/oxlint/react/oxlint-react-tests.test.mjs"
+        "languages/typescript/adapters/oxlint/react/oxlint-react.test.mts",
+        "languages/typescript/adapters/oxlint/react/oxlint-react-tests.test.mts"
       ],
       "reason": "The shared hook plans the ESLint config, then runs oxlint with the nitpicker JS plugins over one fixture project, as the eslint-lint analyzer does for a user; each step is a separate process that loads the full rule set, which takes about seven seconds on an idle machine, too close to the ten-second hook limit for a shared CI runner. The tests only read the shared result."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
-        "languages/javascript/preset/clean-project/js-clean.test.mjs",
+        "languages/javascript/preset/clean-project/js-clean.test.mts",
         "languages/typescript/preset/clean-projects/react-project.test.mts",
         "languages/typescript/preset/clean-projects/strict-clean.test.mts"
       ],

@@ -21,7 +21,7 @@ const MINIMUM_QUOTE = 12;
 const CLAUSE_BREAK = /[.:;] | \(/u;
 const EDGE_PUNCTUATION = /^[\s.:;,(]+|[\s.:;,(]+$/gu;
 const MESSAGES_BUILT_ELSEWHERE = [
-  'core/configuration/project-checks/project-root.mjs',
+  'core/configuration/project-checks/project-root.mts',
   'core/diff/execution/process.mts',
   'core/diff/execution/report/analyzer-report.mts',
   'core/diff/sharding/aggregate-shards.mts',
