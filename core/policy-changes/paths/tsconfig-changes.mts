@@ -28,7 +28,27 @@ export function tsconfigChanges(scope: PolicyScope): ChangePart {
       ...toggled
         .filter(({ loosens }) => loosens)
         .map(({ text, kind, files }) => ({ text, kind, files })),
+      ...javascriptScopeChanges(scope),
     ],
     changed: toggled.filter(({ loosens }) => !loosens).map(({ text }) => text),
   };
+}
+
+function javascriptScopeChanges(scope: PolicyScope): ChangePart['loosened'] {
+  if (scope.checkedJavascript === undefined) {
+    return [];
+  }
+  const { base, head } = scope.checkedJavascript;
+  const files = scope.code
+    .filter((file) => base.has(scope.basePathOf(file)) && !head.has(file))
+    .toSorted();
+  return files.length === 0
+    ? []
+    : [
+        {
+          text: `JavaScript type-aware checks no longer cover: ${files.join(', ')}`,
+          kind: 'checked-js-scope',
+          files,
+        },
+      ];
 }

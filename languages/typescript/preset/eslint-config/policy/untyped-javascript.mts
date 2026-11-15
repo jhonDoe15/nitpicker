@@ -123,12 +123,9 @@ function checkedFiles(
   const configs = configFiles(projectRoot, tsconfigFile, layout)
     .map((file) => configCoverage(file, typescript))
     .toSorted((left, right) => right.directory.length - left.directory.length);
-  return files
-    .filter(
-      (file) =>
-        configs.find((config) => config.files.has(path.resolve(projectRoot, file)))?.checked,
-    )
-    .map((file) => file.replace(GLOB_CHARACTER, '\\$&'));
+  return files.filter(
+    (file) => configs.find((config) => config.files.has(path.resolve(projectRoot, file)))?.checked,
+  );
 }
 
 type JavascriptOptions = {
@@ -136,6 +133,14 @@ type JavascriptOptions = {
   readonly layout: JavascriptLayout;
   readonly projectRoot: string;
 };
+
+export function checkedJavascriptFiles(projectRoot: string, layout: JavascriptLayout): string[] {
+  if (layout.javascript || typeof layout.projectCodeFiles !== 'function') {
+    return [];
+  }
+  const tsconfigFile = path.join(projectRoot, layout.typescriptProject ?? 'tsconfig.json');
+  return checkedFiles({ projectRoot, tsconfigFile, layout }, layout.projectCodeFiles);
+}
 
 export function untypedJavascriptConfig({
   tsconfigFile,
@@ -147,7 +152,9 @@ export function untypedJavascriptConfig({
   }
   const ignores =
     typeof layout.projectCodeFiles === 'function'
-      ? checkedFiles({ projectRoot, tsconfigFile, layout }, layout.projectCodeFiles)
+      ? checkedFiles({ projectRoot, tsconfigFile, layout }, layout.projectCodeFiles).map((file) =>
+          file.replace(GLOB_CHARACTER, '\\$&'),
+        )
       : undefined;
   if (ignores === undefined && checksJavascript(tsconfigFile)) {
     return [];
