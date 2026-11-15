@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directories:
+      - '/languages/**/fixtures/**'
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'
+  - package-ecosystem: gradle
+    directories:
+      - '/languages/**/fixtures/**'
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'
+  - package-ecosystem: npm
+    directories:
+      - '/languages/**/fixtures/**'
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'
+  - package-ecosystem: pip
+    directories:
+      - '/languages/**/fixtures/**'
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'
+  - package-ecosystem: gomod
+    directories:
+      - '/languages/**/fixtures/**'
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: '*'

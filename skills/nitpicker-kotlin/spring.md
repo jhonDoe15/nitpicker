@@ -95,6 +95,10 @@ Web:
 - Security: end with `authorize(anyRequest, authenticated)`; `csrf { disable() }` only in a
   stateless chain; no `"*"` origin with credentials; no `@CrossOrigin`, configure CORS once;
   `PasswordEncoderFactories.createDelegatingPasswordEncoder()`; no user passwords in source.
+- Text from a search or filter field is trimmed before it reaches a repository finder (`findBy...StartingWith`,
+  `Containing`, `Like`, `IgnoreCase`, `Equals`) or a query parameter: `lastName.strip()` in the handler, or one
+  `StringTrimmerEditor` registered in an `@InitBinder` of a `@ControllerAdvice` for every controller, since a
+  padded `" Davis"` finds nothing (`spring/untrimmed-request-text`).
 
 `application*.properties` and `application*.yml` (`spring/<rule>`; test profiles, including the ones
 your tests activate with `@ActiveProfiles`, and local or dev ones where noted, are exempt):
@@ -144,6 +148,9 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
 - Index every foreign key in the Flyway or Liquibase migration that adds it:
   `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
   PostgreSQL does not create one (`foreign-key-index`).
+- Give every field that is written from a request a validation bound at or below its column width
+  (`@Size(max = 30)` for a `VARCHAR(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
   the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
   (`JpaMultipleCollectionFetch`).

@@ -8,6 +8,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- The unsafe-any checks (`no-unsafe-member-access`, `no-unsafe-assignment`, `no-unsafe-call`,
+  `no-unsafe-argument`, `no-unsafe-return`, `restrict-template-expressions` and
+  `restrict-plus-operands`) run on TypeScript files and JavaScript files covered by a project
+  tsconfig with `checkJs: true`, including inherited options and referenced projects. Untyped
+  JavaScript in a TypeScript project is still reported by `javascript-in-typescript-project`.
+  Narrowing tsconfig coverage so existing JavaScript loses those checks is reported as a policy
+  loosening. The JavaScript preset keeps its own type-checked policy.
 - A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
   configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
   engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files

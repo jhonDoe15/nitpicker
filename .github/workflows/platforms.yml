@@ -107,7 +107,8 @@ jobs:
       # The Python sample builds its own environment with uv from its development dependencies.
       - run: pip install -c .github/python-e2e-constraints.txt uv
       - run: npm ci
-      # Each sample's reports folder (report.txt, findings.json, tool-errors.json) goes into the artifact too.
+      # Each sample's reports folder (report.txt, findings.json, tool-errors.json, and the coverage report each
+      # TypeScript run read, under coverage-evidence/) goes into the artifact too.
       - name: Sample projects
         run: >-
           node scripts/platforms/smoke.mts typescript gradle maven python

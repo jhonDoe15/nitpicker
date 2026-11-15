@@ -35,7 +35,8 @@ proves it always true (a redundant check) or always false (dead code). The guard
 `if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
 of a `when` without a subject, `require`, `check`, `requireNotNull` and `assert` calls, the arms of `when (subject)` over literals, the left side of `&&` and `||`, the bounds of a `for` over `until`,
 `..` or `downTo`, the branches of an `if` expression, facts about `val` names a lambda captures, `==` or `equals` on a string, and a `val` or `var` set to a literal until it is written again; a write, or a call on a `var` a
-lambda captures, forgets what was known. Sizes, `length`, `count()`, `indexOf` results, the absolute
+lambda captures, forgets what was known. `x == true` under `if (x == true)`, or in the arm of a
+conditional that tests it, is reported too: it is always `true` there. Sizes, `length`, `count()`, `indexOf` results, the absolute
 value of a `Double` and `Math.random()` are known by the declared type of the name they are read
 from (a size is never negative, `isEmpty()` is a size of 0, `indexOf` is at least -1), and a
 same-file getter that only returns a field gives the same value until something may change it. A
