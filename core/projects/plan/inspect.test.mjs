@@ -58,7 +58,7 @@ describe('inspectRepository', () => {
       {
         p: 'svc',
         preset: 'java',
-        overlay: { preset: 'java', declared: false, inherits: '..' },
+        overlay: { preset: 'java', inherits: '..' },
         sharedFiles: [],
         repoPath: 'svc',
       },

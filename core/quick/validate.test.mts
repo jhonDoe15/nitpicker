@@ -63,7 +63,7 @@ describe('--quick and --staged arguments', () => {
     const flagged = text.split('\n').filter((line) => /--(?:quick|staged)\b/u.test(line));
 
     expect(flagged.map((line) => line.trim().split(/\s{2,}/u)[0])).toEqual([
-      '[--rule <substring>]... [--project <path>]... [--details] [--json] [--quick]',
+      '[--rule <substring>]... [--project <path>]... [--jobs <n>] [--details] [--json] [--quick]',
       '[--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
       '--quick',
       '--staged',
