@@ -31,12 +31,7 @@ type NoticeContext = { readonly mergeBaseSha: string; readonly touchedPaths: rea
 
 type BaseSnapshot = SnapshotRoots & {
   readonly liveProjectRoot: string;
-  readonly moves:
-    | {
-        readonly files?: ReadonlyMap<string, string>;
-        readonly directories?: ReadonlyMap<string, string>;
-      }
-    | undefined;
+  readonly moves: SnapshotLayout['moves'] | undefined;
   readonly analyzers: RunSettings['analyzers'];
 };
 
