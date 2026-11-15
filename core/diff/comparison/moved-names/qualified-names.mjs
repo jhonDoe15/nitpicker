@@ -5,6 +5,7 @@ const DESCRIPTOR_PREFIX = /^[BCDFIJSZ]*L/u;
 const PYTHON_PACKAGE = '__init__';
 const KOTLIN_FACADE = 'Kt';
 const AMBIGUOUS = Symbol('ambiguous');
+const PLACEHOLDER = '_';
 
 export function qualifiedNameMoves(renames) {
   const moves = new Map();
@@ -45,6 +46,19 @@ function namePairs(oldPath, newPath, { withFacades = true } = {}) {
   return withFacades && oldExtension === 'kt'
     ? [...pairs, ...pairs.map(([left, right]) => [left + KOTLIN_FACADE, right + KOTLIN_FACADE])]
     : pairs;
+}
+
+export function directoryNamePairs(oldDirectory, newDirectory) {
+  const from = [...oldDirectory.split('/'), PLACEHOLDER];
+  const to = [...newDirectory.split('/'), PLACEHOLDER];
+  return Array.from({ length: from.length - 1 }, (_, index) =>
+    pairAt(from, to, from.length - index),
+  )
+    .filter((pair) => pair !== undefined && pair[0] !== pair[1])
+    .map(([left, right]) => [
+      left.slice(0, -PLACEHOLDER.length - 1),
+      right.slice(0, -PLACEHOLDER.length - 1),
+    ]);
 }
 
 function nameSegments(filePath, extension) {

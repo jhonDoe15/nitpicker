@@ -22,3 +22,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A project exception a FastAPI route can raise maps to a status: derive it from `HTTPException`
   or register `@app.exception_handler(OrderNotFound)` (`unmapped-exception`).
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
+- Text from a search or filter field (a FastAPI `str` parameter, `request.args`, `request.GET`) is stripped before
+  it reaches a lookup: `name = name.strip()`, or a pydantic request model whose base sets
+  `ConfigDict(str_strip_whitespace=True)`; a padded `" Davis"` finds nothing (`untrimmed-request-text`).

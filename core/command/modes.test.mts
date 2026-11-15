@@ -2,7 +2,10 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import {
+  exactText,
+  maskedDiagnostics,
+} from '../diff/reporting/test-support/output-expectations.mts';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
@@ -11,11 +14,9 @@ import { linkSentence } from './test-support/report-readers.mts';
 import type { FixtureRepository } from './test-support/fixture-types.mts';
 import { fieldOf, listOf, parseJson } from '../../shared/values/readers.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
-import { docsUrl as docsPageUrl } from '../../shared/messages/docs-url.mjs';
 const anyString: unknown = expect.any(String);
 const anyNumber: unknown = expect.any(Number);
 const baseFromLocalBranch: unknown = expect.stringMatching(/^Base: main \(local-branch\)\n/u);
-const docsUrl: (page: string) => string | undefined = docsPageUrl;
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -123,6 +124,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         renamedPaths: 0,
         elapsedMs: anyNumber,
         mode: 'full',
+        generatedAt: anyString,
+        workingTree: anyString,
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,
@@ -296,20 +299,18 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toEqual(
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 2',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
         '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=2 enforceable=2 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'fake-quality-analyzer/fixture-rule src/main/first.ts:1 Fixture finding',
-        'fake-quality-analyzer/other-rule src/main/second.ts:1 Fixture finding',
+        'Quality snapshot summary',
+        '✖ 2 enforceable findings',
+        '  fake-quality-analyzer/fixture-rule: Fixture finding',
+        '    src/main/first.ts:1:4',
+        '  fake-quality-analyzer/other-rule: Fixture finding',
+        '    src/main/second.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 2 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );
@@ -331,19 +332,16 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         runTasks: undefined,
       }),
     ).toBe(2);
-    expect(output.stdoutText).toEqual(
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: tool-error',
-        'Enforceable findings: 0',
-        'Descriptive findings: 0',
-        'Tool errors: 1',
         '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
-        '',
-        'Tool errors:',
-        `fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
+        'Quality snapshot summary',
+        'No enforceable findings, but the run is incomplete:',
+        '✖ 1 tool error',
+        `  fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
+        'By analyzer:',
+        '  1 analyzer ran clean',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );
@@ -371,19 +369,16 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         stderr: output.stderr,
       }),
     ).toBe(1);
-    expect(output.stdoutText).toEqual(
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 1',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
         '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'fake-quality-analyzer/match-me src/main/existing.ts:1 Fixture finding',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        '  fake-quality-analyzer/match-me: Fixture finding',
+        '    src/main/existing.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
         '',
         'Findings matching --rule match-me:',
         '',
@@ -419,24 +414,19 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       stderr: output.stderr,
     });
     expect(exitCode, output.stdoutText + output.stderrText).toBe(1);
-    expect(output.stdoutText).toEqual(
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 3',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
+        '',
+        'Quality snapshot summary',
+        '✖ 3 enforceable findings',
+        '  prettier-format/prettier/prettier: These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+        '    package-lock.json:1',
+        '    package.json:1',
+        '    src/main/example.ts:1',
+        'By analyzer:',
+        '  prettier-format: 3 enforceable, 0 descriptive',
         'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
-        '',
-        'Per-tool counts:',
-        'prettier-format: total=3 enforceable=3 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'prettier-format/prettier/prettier package-lock.json:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-        'prettier-format/prettier/prettier package.json:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-        'prettier-format/prettier/prettier src/main/example.ts:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-        '',
-        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );
@@ -466,19 +456,16 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       stderr: output.stderr,
     });
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toEqual(
+    expect(maskedDiagnostics(output.stdoutText)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 1',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
         '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'fake-quality-analyzer/fixture-rule src/main/untracked.ts:1 Fixture finding',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        '  fake-quality-analyzer/fixture-rule: Fixture finding',
+        '    src/main/untracked.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );

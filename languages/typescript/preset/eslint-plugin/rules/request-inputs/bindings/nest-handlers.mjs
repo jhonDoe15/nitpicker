@@ -62,7 +62,7 @@ function isMultipart(method) {
   );
 }
 
-function transportOf(parameter, multipart) {
+export function transportOf(parameter, multipart) {
   for (const decorator of decoratorsOf(parameter)) {
     const call = decoratorCall(decorator);
     const fromNest = call.base !== undefined && isFromPackage(call.base, NEST);

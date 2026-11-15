@@ -1,12 +1,10 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import {
   packageEntryFiles,
   productionReach,
   pythonProductionReach,
   resolveLayoutFor,
-  checksJavascript,
   detectSourceRoots,
   GRADLE_PRESETS,
   isGeneratedGo,
@@ -17,7 +15,6 @@ import {
   pathInside,
   presetToDeclare,
   projectFilePaths,
-  projectTsconfigs,
   readBuildSources,
   readPythonSelection,
 } from './types/typed-views.mts';
@@ -39,6 +36,7 @@ import {
   PYTHON,
   usesLayout,
 } from './scope/scope-files.mts';
+import { typescriptScope } from './scope/typescript-scope.mts';
 import { readToolConfigs } from './build-files/tool-config-files.mts';
 import { importedAmong } from './imported-files.mts';
 
@@ -87,24 +85,6 @@ function computedOnce<Result>(compute: () => Result): () => Result {
   };
 }
 
-function isTypescriptPreset(config: PolicyConfig): boolean {
-  return usesLayout(config) && config.preset !== 'javascript';
-}
-
-function tsconfigsOf(
-  projectRoot: string,
-  files: readonly string[],
-  config: PolicyConfig,
-): ReadonlyMap<string, boolean> {
-  const hidden = resolveLayoutFor(config);
-  return new Map(
-    projectTsconfigs(projectRoot, files, hidden.isExcluded).map((file) => [
-      file,
-      checksJavascript(path.join(projectRoot, file)),
-    ]),
-  );
-}
-
 export function createPolicyScope({
   files,
   baseFiles = files,
@@ -114,6 +94,7 @@ export function createPolicyScope({
   moves,
   presetRequired,
   tsconfigs,
+  checkedJavascript,
   buildSources,
   toolConfigs = [],
   reach = () => new Map(),
@@ -138,6 +119,7 @@ export function createPolicyScope({
     existsInBase: (file) => baseFileSet.has(file),
     presetRequired: presetRequired === true,
     tsconfigs,
+    checkedJavascript,
     buildSources,
     toolConfigs,
     productionReach: computedOnce(reach),
@@ -272,12 +254,10 @@ export function readPolicyScope({
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) === undefined ? undefined : true,
-    tsconfigs: isTypescriptPreset(headConfig)
-      ? {
-          base: tsconfigsOf(baseProjectRoot, baseFiles, baseConfig),
-          head: tsconfigsOf(headProjectRoot, files, headConfig),
-        }
-      : undefined,
+    ...typescriptScope(
+      { root: baseProjectRoot, files: baseFiles, config: baseConfig },
+      { root: headProjectRoot, files, config: headConfig },
+    ),
     buildSources: { base: buildSourcesOf(headConfig, base), head: headSources },
     toolConfigs: readToolConfigs(
       { config: baseConfig, root: baseProjectRoot, files: baseFiles, liveRoot: liveProjectRoot },

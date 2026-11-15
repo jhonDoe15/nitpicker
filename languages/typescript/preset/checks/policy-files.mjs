@@ -1,7 +1,9 @@
 import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
 import { IO_POLICY_FILES } from '../eslint-plugin/rules/support/io-policy-files.mjs';
+import { REQUEST_TEXT_POLICY_FILES } from '../eslint-plugin/rules/request-text/request-text-policy-files.mjs';
 import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/collection-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
+import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/origins/http-policy-files.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
@@ -12,7 +14,9 @@ export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
+  ...REQUEST_TEXT_POLICY_FILES,
   ...IO_POLICY_FILES,
+  ...HTTP_VALUE_POLICY_FILES,
   ...LIFECYCLE_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',

@@ -14,6 +14,7 @@ import { nitpickerCodeFingerprint } from './code-fingerprint.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import { analyzerNameOf as nameOf } from '../../../shared/values/analyzers.mts';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../shared/report-output/metric-groups.mjs';
 
 export type FindingsCache = {
   readonly read: (analyzer: unknown, resolved?: AnalyzerMetadata) => AnalyzerReport | undefined;
@@ -93,7 +94,11 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
-function cacheEntry(key: string, { findings, moduleImports }: AnalyzerReport): object {
+const compactMetricFindings: (findings: readonly unknown[]) => readonly unknown[] =
+  untypedCompactMetricFindings;
+
+function cacheEntry(key: string, { findings: parsed, moduleImports }: AnalyzerReport): object {
+  const findings = compactMetricFindings(parsed);
   return moduleImports === undefined ? { key, findings } : { key, findings, moduleImports };
 }
 
