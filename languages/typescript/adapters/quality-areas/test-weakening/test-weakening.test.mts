@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { defaultResolvedLayout as layout } from '../../../preset/layout.mjs';
 import { normalizeMutation } from '../reporting/tests.mts';
 import { strykerRunConfig } from '../runners/stryker/stryker-config.mts';

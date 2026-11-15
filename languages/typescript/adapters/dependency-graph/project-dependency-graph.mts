@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import {
   buildOnce as untypedBuildOnce,
   TransientBuildError,
-} from '../../../../core/tooling/build-once/build-once.mjs';
+} from '../../../../core/tooling/build-once/build-once.mts';
 import {
   linkPolicyFile,
   spawnSyncWithOutputFile,

@@ -1,10 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { minimumNodeVersion, versionDifference } from '../../tooling/node-version/node-version.mts';
 import { repositoryRootOf } from '../detection/repository.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-
-const MINIMUM_RANGE = /^>=\s*(?<version>\d+(?:\.\d+){0,2})$/u;
 
 export function requiredNodeRange(packageRoot: string = PACKAGE_ROOT): string {
   const manifest: unknown = JSON.parse(
@@ -13,24 +12,15 @@ export function requiredNodeRange(packageRoot: string = PACKAGE_ROOT): string {
   return textOf(fieldOf(fieldOf(manifest, 'engines'), 'node'));
 }
 
-function numbers(version: string): number[] {
-  return version.replace(/^v/u, '').split('.').map(Number);
-}
-
 export function assertSupportedNode(
   nodeVersion: string,
   range: string = requiredNodeRange(),
 ): void {
-  const minimum = MINIMUM_RANGE.exec(range.trim())?.groups?.['version'];
+  const minimum = minimumNodeVersion(range);
   if (minimum === undefined) {
     return;
   }
-  const actual = numbers(nodeVersion);
-  const difference =
-    numbers(minimum)
-      .map((part, index) => (actual[index] ?? 0) - part)
-      .find((delta) => delta !== 0) ?? 0;
-  if (difference < 0) {
+  if (versionDifference(nodeVersion, minimum) < 0) {
     throw new Error(
       `nitpicker needs Node.js ${minimum} or newer (engines "${range}" in its package.json), and this is Node.js ${nodeVersion}. Install a newer Node.js and run nitpicker init again.`,
     );

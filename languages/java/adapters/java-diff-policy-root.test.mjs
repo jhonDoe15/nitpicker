@@ -2,8 +2,8 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { commit, fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
+import { commit, fixtureGit } from '../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { runJavaDiff } from './java-diff.mjs';
 import { fakeGradleRun } from './test-support/in-process-gradle.mjs';
 

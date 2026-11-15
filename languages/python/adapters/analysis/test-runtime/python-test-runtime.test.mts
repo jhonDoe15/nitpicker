@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mjs';
-import { validateConfig } from '../../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mts';
 import { applyPythonExceptions } from '../../configuration/python-exceptions.mts';
 import { applyRuleHints } from '../../../rules/rule-hints.mjs';
 import {
@@ -53,7 +53,7 @@ import {
   typeOnly,
 } from './test-support/runtime-data.mts';
 import { recordingRun } from '../../test-support/runs/recording-run.mts';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();
 

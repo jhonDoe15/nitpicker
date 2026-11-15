@@ -6,8 +6,8 @@ import {
   designFindings,
   readDesignFacts,
 } from './python-design.mts';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { failureOf } from '../../test-support/runs/failure-of.mts';
 
 const { temporaryRoot } = useGitFixtures();
