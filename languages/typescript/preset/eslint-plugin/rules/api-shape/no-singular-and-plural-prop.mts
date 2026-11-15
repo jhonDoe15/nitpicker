@@ -1,25 +1,44 @@
-import { componentVisitor, declaratorOf } from '../react-props/react-components.mjs';
-import { exportedFunctions, parameterOf } from './plural-inputs/exported-functions.mjs';
-import { pluralPairs } from './plural-inputs/plural-pairs.mjs';
-import { schemaEntryInputs } from './plural-inputs/schema-entries.mjs';
-import { memberInputSets, typedInput } from './plural-inputs/type-members.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import {
+  componentVisitor,
+  declaratorOf,
+  type ComponentFrame,
+} from '../react-props/react-components.mts';
+import type { SourceCode } from '../typed/node-views.mts';
+import { exportedFunctions, parameterOf } from './plural-inputs/exported-functions.mts';
+import { pluralPairs, type PluralPair } from './plural-inputs/plural-pairs.mts';
+import { schemaEntryInputs } from './plural-inputs/schema-entries.mts';
+import {
+  memberInputSets,
+  typedInput,
+  type Declarations,
+  type Declared,
+  type InputSet,
+} from './plural-inputs/type-members.mts';
+
+type FunctionNode = ComponentFrame['node'];
+type ExportedFunction = ReturnType<typeof exportedFunctions>[number];
 
 const INPUT_TYPE_NAME =
   /(?:Props|Options|Opts|Params|Parameters|Args|Arguments|Input|Request|Config|Settings)$/u;
 
-function propsTypeOf(fn) {
+function propsTypeOf(fn: FunctionNode): TSESTree.TypeNode | undefined {
   const [parameter] = fn.params;
-  const annotation = parameter?.typeAnnotation?.typeAnnotation;
+  const annotation =
+    parameter !== undefined && 'typeAnnotation' in parameter
+      ? parameter.typeAnnotation?.typeAnnotation
+      : undefined;
   if (annotation !== undefined) {
     return annotation;
   }
   const declared = declaratorOf(fn)?.id.typeAnnotation?.typeAnnotation;
-  const typeArguments = declared?.typeArguments ?? declared?.typeParameters;
-  return typeArguments?.params[0];
+  return declared?.type === AST_NODE_TYPES.TSTypeReference
+    ? declared.typeArguments?.params[0]
+    : undefined;
 }
 
-function optionalParameters(fn, sourceCode) {
-  const inputs = new Map();
+function optionalParameters(fn: ExportedFunction, sourceCode: SourceCode): InputSet {
+  const inputs: InputSet = new Map();
   for (const parameter of fn.params.map(parameterOf)) {
     if (parameter.name !== undefined && parameter.optional && parameter.annotation !== undefined) {
       inputs.set(parameter.name, typedInput(parameter.annotation, parameter.node, sourceCode));
@@ -28,25 +47,32 @@ function optionalParameters(fn, sourceCode) {
   return inputs;
 }
 
-function parameterTypes(fn) {
+function parameterTypes(fn: ExportedFunction): TSESTree.TypeNode[] {
   return fn.params.flatMap((parameter) => {
     const { annotation } = parameterOf(parameter);
     return annotation === undefined ? [] : [annotation];
   });
 }
 
-function isExported(declaration) {
-  return declaration.parent.type === 'ExportNamedDeclaration';
+function isExported(
+  declaration: TSESTree.TSTypeAliasDeclaration | TSESTree.TSInterfaceDeclaration,
+): boolean {
+  return declaration.parent.type === AST_NODE_TYPES.ExportNamedDeclaration;
 }
 
-function reportPairs(context, inputSets) {
-  const pairs = new Map(inputSets.flatMap(pluralPairs).map((pair) => [pair.node, pair]));
+function reportPairs(
+  context: Readonly<TSESLint.RuleContext<'singularAndPlural', []>>,
+  inputSets: readonly InputSet[],
+): void {
+  const pairs = new Map(
+    inputSets.flatMap(pluralPairs).map((pair): [TSESTree.Node, PluralPair] => [pair.node, pair]),
+  );
   for (const { singular, plural, node } of pairs.values()) {
     context.report({ node, messageId: 'singularAndPlural', data: { singular, plural } });
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'singularAndPlural'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -61,9 +87,9 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const declarations = new Map();
-    const typeCandidates = [];
-    const inputSets = [];
+    const declarations: Declarations = new Map();
+    const typeCandidates: Declared[] = [];
+    const inputSets: InputSet[] = [];
 
     return {
       ...componentVisitor(({ node }) => {
