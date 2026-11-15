@@ -44,10 +44,10 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
   with `--base`, sharding or `--defer-exit`, and takes `--fix` only with `--rule`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary.
-- `--label <label>` (repeatable) focuses the run on one kind of finding, such as `performance`,
-  `bug`, `simplification` or `maintainability` (`npx nitpicker --help` lists them): it runs only the
-  checks that can report it and lists only those findings. Its exit 0 is not a pass: the summary
-  says `Only findings labeled ...`, and you run the gate without `--label` before you finish.
+- To focus on one kind of finding, add `--label <label>` (repeatable; `performance`, `bug`,
+  `simplification`, `maintainability` and more, `npx nitpicker --help` lists them): it runs only the
+  checks that can report it and lists only those findings. A focused run is never a pass either: the
+  summary says `Only findings labeled ...`; finish without `--label`.
 - `npx nitpicker show` prints the summary of the last run again without running anything. Add
   `--rule <substring>`, `--path <file or folder>` or `--details` to read one rule, one folder or the
   full messages instead of running again. It names the run it shows and warns when the working tree

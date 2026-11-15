@@ -24,11 +24,11 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 ## Finish with the gate
 
 `--analyzer <name>` runs one analyzer only, which is faster still. A run narrowed with `--quick` or
-`--analyzer` is never a pass: finish with the full run below, without them.
-
-To focus on one kind of finding, add `--label <label>` (`performance`, `bug`, `simplification`,
-`maintainability` and more; `npx nitpicker --help` lists them): it runs only the checks that can
-report it and lists only those findings. A focused run is never a pass.
+`--analyzer` is never a pass: finish with the full run below, without them. To focus on one kind of
+finding, add `--label <label>` (repeatable; `performance`, `bug`, `simplification`,
+`maintainability` and more, `npx nitpicker --help` lists them): it runs only the checks that can
+report it and lists only those findings. A focused run is never a pass either: the summary says
+`Only findings labeled ...`; finish without `--label`.
 
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
