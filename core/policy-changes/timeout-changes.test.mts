@@ -1,0 +1,170 @@
+import { describe, expect, it } from 'vitest';
+import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mts';
+import { timeoutChanges } from './timeout-changes.mts';
+import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from './policy-scope.mts';
+import type { PolicyConfig } from './types/policy-types.mts';
+
+const LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
+const config = (timeouts: Record<string, unknown>): PolicyConfig => ({
+  tools: { tests: { timeouts } },
+});
+const project = (limits = {}, include = ['test/jvm/**']) => ({
+  language: 'java',
+  include,
+  ...limits,
+});
+const ceilings = (value: number) => ({
+  testDeclarationCeilingMs: value,
+  hookDeclarationCeilingMs: value,
+});
+
+function loosenedTexts(base: PolicyConfig, head: PolicyConfig) {
+  const { loosened } = timeoutChanges(base, head);
+  expect(
+    loosened.filter(({ kind }) => !hasSpecificGuidance(kind ?? '')).map(({ text }) => text),
+  ).toEqual([]);
+  return loosened.map(({ text }) => text);
+}
+
+function policyFields(base: PolicyConfig, head: PolicyConfig) {
+  const scope = createPolicyScope({
+    files: [],
+    baseRoots: rootSets(base, '.'),
+    headRoots: rootSets(head, '.'),
+    headConfig: head,
+  });
+  return policyChangeFields(base, head, scope);
+}
+
+describe('timeout policy changes', () => {
+  it('compares effective tiers and allows equivalent moves and lower ceilings', () => {
+    const base = config({ defaults: ceilings(20_000) });
+    const moved = config({
+      languages: Object.fromEntries(
+        ['typescript', 'javascript', 'java', 'kotlin', 'python'].map((language) => [
+          language,
+          ceilings(20_000),
+        ]),
+      ),
+    });
+    expect(timeoutChanges(base, moved)).toEqual({ loosened: [], changed: [] });
+    expect(timeoutChanges(base, config({ defaults: ceilings(15_000) })).loosened).toEqual([]);
+  });
+
+  it('does not mistake a shadowed language scalar increase for an effective loosening', () => {
+    const base = config({ languages: { java: ceilings(12_000) }, defaults: ceilings(20_000) });
+    const head = config({ languages: { java: ceilings(18_000) }, defaults: ceilings(20_000) });
+    expect(timeoutChanges(base, head)).toEqual({ loosened: [], changed: [] });
+  });
+
+  it('detects deleting a stricter repo or project override', () => {
+    const base = config({ languages: { java: ceilings(20_000) }, defaults: ceilings(5_000) });
+    const head = config({ languages: { java: ceilings(20_000) } });
+    expect(loosenedTexts(base, head)).toEqual(
+      LANGUAGES.flatMap((language) => [
+        `test timeout ${language} testDeclarationCeilingMs raised from 5000 to ${String(language === 'java' ? 20000 : 10000)}`,
+        `test timeout ${language} hookDeclarationCeilingMs raised from 5000 to ${String(language === 'java' ? 20000 : 10000)}`,
+      ]),
+    );
+    const strictProject = config({ projects: { jvm: project(ceilings(5_000)) } });
+    expect(loosenedTexts(strictProject, {})).toEqual([
+      'test timeout project jvm testDeclarationCeilingMs raised from 5000 to 10000',
+      'test timeout project jvm hookDeclarationCeilingMs raised from 5000 to 10000',
+    ]);
+  });
+
+  it('allows equivalent project rename and detects expanded future membership', () => {
+    const base = config({ projects: { jvm: project(ceilings(20_000)) } });
+    expect(
+      timeoutChanges(base, config({ projects: { renamed: project(ceilings(20_000)) } })),
+    ).toEqual({ loosened: [], changed: [] });
+    const widened = config({
+      projects: { jvm: project(ceilings(20_000), ['test/jvm/**', 'test/new/**']) },
+    });
+    expect(loosenedTexts(base, widened)).toEqual([
+      'test timeout project jvm membership added: ["test/new/**"] (java)',
+      'test timeout project jvm testDeclarationCeilingMs raised from 10000 to 20000',
+      'test timeout project jvm hookDeclarationCeilingMs raised from 10000 to 20000',
+    ]);
+  });
+
+  it.each([
+    ['detects', 5_000, true],
+    ['allows', 20_000, false],
+  ])('%s shrinking a suite with a %i ms ceiling', (_outcome, value, detected) => {
+    const includes = ['test/jvm/**', 'test/new/**'];
+    const base = config({ projects: { jvm: project(ceilings(value), includes) } });
+    const head = config({ projects: { jvm: project(ceilings(value)) } });
+    expect(loosenedTexts(base, head).length > 0).toBe(detected);
+  });
+
+  it('reviews real execution increases and transitions to native hook deadlines', () => {
+    const base = config({ defaults: { testTimeoutMs: 30_000, hookTimeoutMs: 30_000 } });
+    const head = config({ defaults: { testTimeoutMs: 40_000 } });
+    const result = loosenedTexts(base, head);
+    expect(result).toEqual(
+      LANGUAGES.flatMap((language) => [
+        `test timeout ${language} testTimeoutMs raised from 30000 to 40000`,
+        `test timeout ${language} hookTimeoutMs changed from 30000 to native`,
+      ]),
+    );
+  });
+
+  it('fails closed on invalid policy without mutating the ordinary approval mechanism', () => {
+    const head = config({ defaults: { testTimeoutMs: -1 } });
+    const fields = policyFields({}, head);
+    expect(fields.policyLoosenings).toEqual([
+      'test timeout policy cannot be compared safely: nitpicker.config.json: "tools.tests.timeouts.defaults.testTimeoutMs" must be a positive integer in milliseconds',
+    ]);
+    expect(fields.policyDigest).toMatch(/^[a-f0-9]{12}$/u);
+  });
+
+  it('rejects an ambiguous duplicate project even when its effective tiers are equal', () => {
+    const base = config({ projects: { jvm: project() } });
+    const head = config({ projects: { jvm: project(), duplicate: project() } });
+    expect(loosenedTexts(base, head)).toEqual([
+      'test timeout policy cannot be compared safely: timeout project jvm shares a selector with another project',
+    ]);
+  });
+
+  it('places effective timeout increases in the existing digest and skips scalar duplicates', () => {
+    const head = config({ languages: { java: { testDeclarationCeilingMs: 20_000 } } });
+    const first = policyFields({}, head);
+    expect(first.policyChanges).toEqual([
+      'test timeout java testDeclarationCeilingMs raised from 10000 to 20000',
+    ]);
+    expect(first.policyDigest).toMatch(/^[a-f0-9]{12}$/u);
+    expect(
+      policyFields({}, config({ languages: { java: { testDeclarationCeilingMs: 25_000 } } }))
+        .policyDigest,
+    ).not.toBe(first.policyDigest);
+  });
+});
+
+describe('analyzer timeouts', () => {
+  function changes(base: PolicyConfig, head: PolicyConfig) {
+    const files = ['src/a.ts'];
+    return describePolicyChanges(
+      base,
+      head,
+      createPolicyScope({
+        files,
+        baseFiles: files,
+        baseRoots: rootSets(base, '.'),
+        headRoots: rootSets(head, '.'),
+        headConfig: head,
+      }),
+    );
+  }
+
+  it('lists no analyzer timeout change, raised, lowered, added or removed', () => {
+    const none = { loosened: [], changed: [] };
+
+    expect(changes({}, { analyzerTimeoutMinutes: { java: 60 } })).toEqual(none);
+    expect(
+      changes({ analyzerTimeoutMinutes: { java: 60 } }, { analyzerTimeoutMinutes: { java: 5 } }),
+    ).toEqual(none);
+    expect(changes({ analyzerTimeoutMinutes: { java: 60 } }, {})).toEqual(none);
+  });
+});

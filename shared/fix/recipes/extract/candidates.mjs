@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { RULE_IDS } from '../../../policy.mjs';
 import { declineNote } from './names.mjs';
 
@@ -9,11 +10,24 @@ function reportedFinding({ pair: [here] }) {
   return { tool: TOOL, rule: RULE_IDS.nearDuplicate, path: here.file, line: here.start };
 }
 
-function wholeProblem({ finding, pair }) {
-  if (pair[0].file !== pair[1].file) {
+function filesProblem([first, second], crossFile) {
+  if (first.file === second.file) {
+    return undefined;
+  }
+  if (!crossFile) {
     return 'the copies are in different files';
   }
-  if (finding.proof !== undefined || finding.rewritten) {
+  return path.posix.dirname(first.file) === path.posix.dirname(second.file)
+    ? undefined
+    : 'the copies are in different folders';
+}
+
+function wholeProblem({ finding, pair }, options) {
+  const files = filesProblem(pair, options.crossFile);
+  if (files !== undefined) {
+    return files;
+  }
+  if (finding.proof !== undefined || (finding.rewritten && !options.textProof)) {
     return 'the copies match only after their code is rewritten';
   }
   return undefined;
@@ -24,11 +38,13 @@ function unitKey({ file, name }) {
 }
 
 function byPosition({ pair }) {
-  return pair.toSorted((left, right) => left.start - right.start);
+  return pair.toSorted(
+    (left, right) => left.file.localeCompare(right.file) || left.start - right.start,
+  );
 }
 
 function overlapping([first, second]) {
-  return second.start <= first.end;
+  return first.file === second.file && second.start <= first.end;
 }
 
 function sharedUnits(matches) {
@@ -41,11 +57,11 @@ function sharedUnits(matches) {
   return new Set([...counts].filter(([, count]) => count > 1).map(([name]) => name));
 }
 
-function candidateOf(match, crowded) {
+function candidateOf(match, crowded, options) {
   const reported = reportedFinding(match);
   const sorted = byPosition(match);
   const reason =
-    wholeProblem(match) ??
+    wholeProblem(match, options) ??
     (sorted.some((unit) => crowded.has(unitKey(unit))) ? CROWDED : undefined) ??
     (overlapping(sorted) ? 'one copy contains the other' : undefined);
   return reason === undefined
@@ -53,18 +69,18 @@ function candidateOf(match, crowded) {
     : { note: declineNote(reported, reason) };
 }
 
-function partitionedCandidates(matches, verdicts) {
+function partitionedCandidates(matches, verdicts, options = {}) {
   const chosen = matches.filter(({ finding }) => verdicts.has(finding.verdict));
   const crowded = sharedUnits(chosen);
-  const outcomes = chosen.map((match) => candidateOf(match, crowded));
+  const outcomes = chosen.map((match) => candidateOf(match, crowded, options));
   return {
     candidates: outcomes.flatMap(({ candidate }) => (candidate === undefined ? [] : [candidate])),
     notes: outcomes.flatMap(({ note }) => (note === undefined ? [] : [note])),
   };
 }
 
-export function wholeCandidates(matches) {
-  return partitionedCandidates(matches, WHOLE_VERDICTS);
+export function wholeCandidates(matches, options = {}) {
+  return partitionedCandidates(matches, WHOLE_VERDICTS, options);
 }
 
 export function partialCandidates(matches) {

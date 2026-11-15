@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
-import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import {
   applyLayout as untypedApplyLayout,

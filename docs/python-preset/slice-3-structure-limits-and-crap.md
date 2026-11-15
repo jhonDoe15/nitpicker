@@ -104,7 +104,7 @@ Part of the [Python preset guide](../python-preset.md).
   line of the statement that holds it, which is the line coverage.py reports for it). The CRAP step reads
   them from `structure.json`; a failing
   structure step is the only failure, `structure-failed`, and CRAP then has nothing to score.
-- **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
+- **Coverage join.** `languages/python/ingest/crap.mts` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
   and joins each function to the entry with the same qualified name (`A.m`, `A.m.inner`, the
   names coverage.py reports) whose lines (`executed_lines`, `missing_lines`, `excluded_lines`) lie
@@ -136,8 +136,8 @@ Part of the [Python preset guide](../python-preset.md).
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
   files and `shared/policy.mjs` are in the Python analyzer's configuration hash.
 - **Tests.** `ingest/crap.test.mjs` (the join, on structure entries and a coverage.py report),
-  `python-structure.test.mjs`, `python-crap.test.mjs`, `python-sources.test.mjs` (all with the fake
-  toolchain) and `metrics/structure-metrics.test.mjs` (the script itself, on the real `python3`:
+  `python-structure.test.mts`, `python-crap.test.mts`, `python-sources.test.mts` (all with the fake
+  toolchain) and `metrics/structure-metrics.test.mts` (the script itself, on the real `python3`:
   the limit metrics, the nesting of `elif` chains and `match`, and each kind of decision point); `core/command/python/python-cli-*.test.mjs` drives the CLI
   in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
   function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the

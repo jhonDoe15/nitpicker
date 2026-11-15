@@ -1,7 +1,7 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit, useGitFixtures } from '../../core/diff/git/test-support/git-repository.mts';
 import { committedSizes, trackedFiles } from './tracked-files.mjs';
 
 const { createGitRepository } = useGitFixtures();

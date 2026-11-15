@@ -3,7 +3,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
 import type { CacheStore } from './cache-stores.mts';

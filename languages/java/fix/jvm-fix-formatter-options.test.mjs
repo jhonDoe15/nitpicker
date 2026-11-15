@@ -1,8 +1,8 @@
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
