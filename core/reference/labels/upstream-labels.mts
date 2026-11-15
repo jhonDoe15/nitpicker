@@ -1,5 +1,5 @@
 import { readToolText } from '../../../languages/java/reference/tool-text/tool-text.mjs';
-import { readRuffSnapshot } from '../../../languages/python/reference/ruff-entries.mjs';
+import { readRuffSnapshot } from '../../../languages/python/reference/ruff-entries.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 const RULES = 'rules';
