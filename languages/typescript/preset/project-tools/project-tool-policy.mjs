@@ -8,6 +8,7 @@ import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { parsedJsonc } from '../../../../shared/jsonc/jsonc.mjs';
 import { loadInChild, loaderScript } from '../project-configs/config-module.mjs';
 import {
@@ -24,7 +25,9 @@ import {
   projectConfigSources,
 } from './project-config-files.mjs';
 
-const LOADER = pathToFileURL(path.join(import.meta.dirname, 'config-loader.mjs')).href;
+const LOADER = pathToFileURL(
+  checkoutModulePath(path.join(import.meta.dirname, 'config-loader.mjs')),
+).href;
 const LOADER_SCRIPT = loaderScript(
   `const { loadToolConfig } = await import(${JSON.stringify(LOADER)});`,
   'report({ value: await loadToolConfig(process.argv[1], process.argv[2]) });',

@@ -1,9 +1,9 @@
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { resolveProjectHeadPolicy } from '../../conventions/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../../conventions/project-head-policy.mts';
 import { requestedAnalyzers } from './analyzers.mts';
 import { withProjectTestFiles } from '../../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { ConfiguredCli } from './run-context.mts';
 
 type ConfiguredProject = {

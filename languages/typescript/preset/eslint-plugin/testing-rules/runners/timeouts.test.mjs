@@ -1,5 +1,5 @@
 import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 const filename = '/repo/tests/slow/slow.test.ts';

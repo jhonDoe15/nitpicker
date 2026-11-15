@@ -1,6 +1,6 @@
 import { rule as noInternalMocks } from '../../rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as noMockingSubjectUnderTest } from '../../rules/testing/assertions/no-mocking-subject-under-test.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 const filename = '/repo/src/main/feature/__tests__/feature.test.ts';

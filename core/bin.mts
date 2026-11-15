@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runSupported } from './tooling/node-version/run-supported.mjs';
+import { runSupported } from './tooling/node-version/run-supported.mts';
 import { numberOr } from '../shared/values/readers.mts';
 
 const exitCode: unknown = await runSupported(process.stderr, () => import('./cli.mts'));

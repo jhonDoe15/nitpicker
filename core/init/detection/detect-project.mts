@@ -11,12 +11,13 @@ import {
 import {
   emptySourcesMessage,
   sourcesElsewhere,
-} from '../../../languages/typescript/preset/notices/empty-sources.mjs';
+} from '../../../languages/typescript/preset/notices/empty-sources.mts';
 import { existingConfig } from '../files/config-file.mts';
 import { type Detected, describeJvmProject } from './jvm-project.mts';
 import { describeNodeProject } from './node-project.mts';
 import { describePythonProject } from './python-project.mts';
 import type { InitProject } from '../init-types.mts';
+import type { Layout } from '../../../languages/typescript/adapters/typed/head-policy.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 
 type DetectionConfig = {
@@ -33,8 +34,8 @@ function defaultRoots(): string[] {
   return stringList(shippedRoots) ?? [];
 }
 
-const layoutOf: (policy: object) => object = resolveLayoutFor;
-const elsewhereOf: (projectRoot: string, layout: object) => string = sourcesElsewhere;
+const layoutOf: (policy: object) => Layout = resolveLayoutFor;
+const elsewhereOf: (projectRoot: string, layout: Layout) => string = sourcesElsewhere;
 const emptyMessage: (config: object, projectRoot: string, policy: object) => string | undefined =
   emptySourcesMessage;
 

@@ -1,0 +1,224 @@
+import path from 'node:path';
+import {
+  BUILD_DECLARED_TOOLS,
+  GRADLE_PRESETS,
+  PROJECT_TOOL_CONFIGS,
+  styleToolsOf,
+} from '../../languages/java/adapters/gradle-presets.mjs';
+import { configError, DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../shared/config.mjs';
+import { isPlainObject } from './views/config-views.mts';
+import { textOf, textsOf } from '../../shared/values/readers.mts';
+import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
+import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
+import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
+
+type EngineSetting = {
+  readonly key: string;
+  readonly values: readonly string[];
+  readonly meaning: string;
+};
+
+type ToolSettingKeys = ReadonlyMap<string, readonly string[]>;
+
+const TOOL_SETTING_KEYS: ToolSettingKeys = new Map([
+  ['prettier', ['precedence']],
+  ['jscpd', ['precedence']],
+  ['stryker', ['precedence']],
+  ['knip', ['precedence']],
+  ['dependency-cruiser', ['precedence']],
+  ['eslint', ['engine', 'precedence']],
+  ['typescript', ['engine', 'project', 'precedence']],
+  ['tests', ['runner', 'timeouts', 'precedence']],
+]);
+const ENGINES = new Map<string, EngineSetting>([
+  [
+    'eslint',
+    {
+      key: 'engine',
+      values: ['oxlint', 'eslint'],
+      meaning: '"oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint',
+    },
+  ],
+  [
+    'typescript',
+    {
+      key: 'engine',
+      values: ['native', 'project'],
+      meaning:
+        '"native" type checks with TypeScript 7 (the default); "project" uses the project\'s own TypeScript',
+    },
+  ],
+  [
+    'tests',
+    {
+      key: 'runner',
+      values: TEST_RUNNERS,
+      meaning:
+        "It names the runner that runs the project's tests; without it nitpicker follows the project's test scripts, runner config files, test-file imports and runner dependencies, and stops when they name several runners",
+    },
+  ],
+]);
+const PRECEDENCE_KEYS = ['precedence'];
+const NITPICKER_FIRST_REJECTED = new Map([
+  [
+    'ktlint',
+    "ktlint reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
+  ],
+  [
+    'ktfmt',
+    "ktfmt reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
+  ],
+  [
+    'black',
+    "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
+  ],
+]);
+export const ORDERED_PRECEDENCE_TOOLS = [
+  'prettier',
+  'jscpd',
+  'stryker',
+  'knip',
+  'dependency-cruiser',
+  'eslint',
+  'typescript',
+  'tests',
+];
+export const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
+
+export function toolSettingKeysOf(preset: string | undefined): ToolSettingKeys {
+  const isGradle = preset !== undefined && GRADLE_PRESETS.includes(preset);
+  if (isGradle || preset === 'python' || preset === 'go') {
+    const names = [
+      ...(isGradle ? [...PROJECT_TOOL_CONFIGS.keys(), ...BUILD_DECLARED_TOOLS] : []),
+      ...styleToolsOf(preset),
+    ];
+    return new Map([...names, 'jscpd'].map((tool) => [tool, PRECEDENCE_KEYS]));
+  }
+  return TOOL_SETTING_KEYS;
+}
+
+export function validateTools(tools: unknown, preset: string | undefined): void {
+  const toolSettingKeys = toolSettingKeysOf(preset);
+  if (!isPlainObject(tools)) {
+    throw configError('"tools" must be an object keyed by tool name');
+  }
+  for (const [name, settings] of Object.entries(tools)) {
+    validateToolSettings(name, settings, toolSettingKeys);
+  }
+}
+
+function validateToolSettings(
+  name: string,
+  settings: unknown,
+  toolSettingKeys: ToolSettingKeys,
+): void {
+  const allowedKeys = toolSettingKeys.get(name);
+  if (allowedKeys === undefined) {
+    throw configError(
+      `"tools" names unknown tool "${name}"${suggestionOrAllowed(name, [...toolSettingKeys.keys()], 'Supported tools with this preset')}`,
+    );
+  }
+  if (!isPlainObject(settings)) {
+    throw configError(`"tools.${name}" must be an object`);
+  }
+  const unknown = Object.keys(settings).filter((key) => !allowedKeys.includes(key));
+  if (unknown.length > 0) {
+    throw configError(
+      `"tools.${name}" has unknown key "${unknown[0] ?? ''}"${suggestionOrAllowed(unknown[0] ?? '', allowedKeys)}`,
+    );
+  }
+  if (ENGINES.has(name)) {
+    validateEngineSettings(name, settings);
+    if (settings['precedence'] === undefined) {
+      return;
+    }
+  }
+  validatePrecedence(settings['precedence'], name);
+  validatePrecedenceOrder(settings['precedence'], name);
+}
+
+export function engineOf(tool: string): EngineSetting | undefined {
+  return ENGINES.get(tool);
+}
+
+export function nitpickerFirstReason(tool: string): string | undefined {
+  return NITPICKER_FIRST_REJECTED.get(tool);
+}
+
+function validateEngineSettings(name: string, settings: Record<string, unknown>): void {
+  validateEngine(name, settings[ENGINES.get(name)?.key ?? '']);
+  if (name === 'tests' && settings['timeouts'] !== undefined) {
+    validateTestTimeouts(settings['timeouts']);
+  }
+  if (name === 'tests' && settings['precedence'] !== undefined) {
+    validatePrecedence(settings['precedence'], name);
+  }
+  if (name === 'typescript') {
+    validateTypeScriptProject(settings['project']);
+    validateTypeScriptPrecedence(settings);
+  }
+}
+
+function validatePrecedenceOrder(precedence: unknown, name: string): void {
+  const layers = textsOf(precedence);
+  if (NITPICKER_FIRST_REJECTED.has(name) && layers[0] === 'nitpicker' && layers.length > 1) {
+    throw configError(
+      `"tools.${name}.precedence" must list "project" first: ${NITPICKER_FIRST_REJECTED.get(name) ?? ''}`,
+    );
+  }
+}
+
+function validateEngine(name: string, engine: unknown): void {
+  const { key, values, meaning } = ENGINES.get(name) ?? { key: '', values: [], meaning: '' };
+  if (engine !== undefined && !values.includes(textOf(engine))) {
+    throw configError(`"tools.${name}.${key}" must be ${choiceList(values)}. ${meaning}`);
+  }
+}
+
+function choiceList(values: readonly string[]): string {
+  const quoted = values.map((value) => `"${value}"`);
+  return `${quoted.slice(0, -1).join(', ')} or ${quoted.at(-1) ?? ''}`;
+}
+
+function validatePrecedence(precedence: unknown, name: string): void {
+  const isValid =
+    Array.isArray(precedence) &&
+    precedence.length > 0 &&
+    textsOf(precedence).every((layer) => PRECEDENCE_LAYERS.includes(layer)) &&
+    new Set(precedence).size === precedence.length;
+  if (!isValid) {
+    throw configError(
+      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once${ORDERED_PRECEDENCE_TOOLS.includes(name) ? ', highest first' : ''}`,
+    );
+  }
+}
+
+function validateTypeScriptPrecedence(settings: Record<string, unknown>): void {
+  if (settings['precedence'] === undefined) {
+    return;
+  }
+  validatePrecedence(settings['precedence'], 'typescript');
+  if (settings['project'] !== undefined) {
+    throw configError(
+      '"tools.typescript.precedence" cannot be combined with "tools.typescript.project": the selected config already keeps its own compiler options and nitpicker adds no strict flags to it',
+    );
+  }
+}
+
+function validateTypeScriptProject(project: unknown): void {
+  if (project === undefined) {
+    return;
+  }
+  const normalized = typeof project === 'string' ? project.replaceAll('\\', '/') : '';
+  if (
+    normalized.trim().length === 0 ||
+    normalized.includes('\0') ||
+    path.posix.isAbsolute(normalized) ||
+    DRIVE_LETTER.test(normalized) ||
+    PARENT_SEGMENT.test(normalized) ||
+    GLOB_CHARACTER.test(normalized) ||
+    !normalized.endsWith('.json')
+  ) {
+    throw configError('"tools.typescript.project" must name a JSON config file inside the project');
+  }
+}

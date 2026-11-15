@@ -1,0 +1,199 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { cruiseWithConfig, outputText } from './test-support/strict-cruise.mts';
+import { outsideRootsRule } from './test-support/outside-roots-view.mts';
+import config from './fixtures/dependency-cruiser.fixture.config.mjs';
+import productionConfig from '../defaults/dependency-cruiser.config.mjs';
+
+const TEST_PATHS = [
+  '^(?:test|tests|__tests__|e2e)/',
+  '(?:^|/)(?:src)/.*/__tests__/',
+  '(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
+];
+const PRODUCTION_SOURCE = { path: '(?:^|/)(?:src)/', pathNot: TEST_PATHS };
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+
+function cruiseFixture(name: string) {
+  const fixture = path.join(projectRoot, 'languages/typescript/preset/architecture/fixtures', name);
+  return cruiseWithConfig(config, {
+    baseDir: fixture,
+    paths: ['src', 'tests'].filter((entry) => existsSync(path.join(fixture, entry))),
+    outputType: 'err-long',
+  });
+}
+
+describe('dependency architecture rules', () => {
+  it('runs the fixtures against every rule of the shipped dependency-cruiser config', () => {
+    expect(productionConfig.forbidden.length).toBeGreaterThan(0);
+    expect(config.forbidden).toEqual([
+      {
+        name: 'no-production-to-test',
+        severity: 'error',
+        from: PRODUCTION_SOURCE,
+        to: { path: TEST_PATHS },
+      },
+      {
+        name: 'no-production-cycles',
+        severity: 'error',
+        from: PRODUCTION_SOURCE,
+        to: { circular: true },
+      },
+      {
+        name: 'no-import-outside-roots',
+        severity: 'error',
+        comment: outsideRootsRule(PRODUCTION_SOURCE, []).comment,
+        from: PRODUCTION_SOURCE,
+        to: {
+          dependencyTypesNot: [
+            'core',
+            'npm',
+            'npm-dev',
+            'npm-optional',
+            'npm-peer',
+            'npm-bundled',
+            'npm-no-pkg',
+            'npm-unknown',
+            'unknown',
+            'undetermined',
+          ],
+          pathNot: '^(?:src|test|tests|__tests__|e2e)/|(?:^|/)node_modules/|\\.json$',
+        },
+      },
+      {
+        name: 'feature-internals-only-through-index',
+        severity: 'error',
+        comment:
+          'Import a feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.',
+        from: { path: '(?:^|/)(?:src)/', pathNot: '(?:^|/)(?:src)/main/features/' },
+        to: { path: '(?:^|/)(?:src)/main/features/[^/]+/(?!index\\.[cm]?[jt]sx?$)' },
+      },
+      {
+        name: 'features-do-not-import-other-feature-internals',
+        severity: 'error',
+        comment:
+          'Import another feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.',
+        from: { path: '(?:^|/)(?:src)/main/features/([^/]+)/' },
+        to: {
+          path: '(?:^|/)(?:src)/main/features/[^/]+/(?!index\\.[cm]?[jt]sx?$)',
+          pathNot: '(?:^|/)(?:src)/main/features/$1/',
+        },
+      },
+      {
+        name: 'shared-does-not-import-features',
+        severity: 'error',
+        comment:
+          'Shared code does not import features. Move the dependency into the feature, or pass it in as a parameter from the composition root.',
+        from: { path: '(?:^|/)(?:src)/main/shared/' },
+        to: { path: '(?:^|/)(?:src)/main/features' },
+      },
+      {
+        name: 'features-do-not-import-composition-root',
+        severity: 'error',
+        comment:
+          'Features do not import the composition root. Accept the dependency as a parameter; only the composition root wires features together.',
+        from: { path: '(?:^|/)(?:src)/main/features' },
+        to: { path: '(?:^|/)(?:src)/main/composition-root(?:\\.[cm]?[jt]sx?$|/)' },
+      },
+      {
+        name: 'domain-does-not-import-adapters',
+        severity: 'error',
+        comment:
+          'domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: { path: '(?:^|/)(?:src)/main/features/[^/]+/adapters/' },
+      },
+      {
+        name: 'domain-does-not-import-node-io',
+        severity: 'error',
+        comment:
+          'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: {
+          dependencyTypes: ['core'],
+          pathNot:
+            '^(?:node:)?(?:path|url|util|assert|buffer|events|string_decoder|punycode|querystring)(?:/(?:posix|win32|strict|types))?$',
+        },
+      },
+      {
+        name: 'domain-does-not-import-network-or-database-clients',
+        severity: 'error',
+        comment:
+          'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: {
+          path: '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
+        },
+      },
+      {
+        name: 'domain-does-not-import-the-logger',
+        severity: 'error',
+        comment:
+          'domain/ may not import the logger. Return a result describing what happened and let adapters/ log it. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: {
+          path: [
+            '(?:^|(?:^|/)node_modules/)(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+            '(?:^|/)(?:logger|logging|log)(?:/index)?\\.[cm]?[jt]sx?$',
+            '(?:^|/)(?:logger|logging)/',
+          ],
+        },
+      },
+      {
+        name: 'domain-does-not-import-module-state',
+        severity: 'error',
+        comment:
+          'domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: { path: ['(?:^|/)state/', '(?:^|/)[^/]*[.-](?:state|store)\\.[cm]?[jt]sx?$'] },
+      },
+      {
+        name: 'domain-does-not-import-id-libraries',
+        severity: 'error',
+        comment:
+          'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: {
+          path: '(?:^|(?:^|/)node_modules/)(?:uuid|nanoid|cuid|@paralleldrive/cuid2|ulid|@faker-js/faker|faker)(?:/|$)',
+        },
+      },
+      {
+        name: 'domain-does-not-reach-io-through-shared',
+        severity: 'error',
+        comment:
+          'domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.',
+        from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/', pathNot: TEST_PATHS },
+        to: {
+          path: [
+            '^(?:node:)?(?:fs|child_process|net|http|https|http2|tls|dgram|dns|cluster|worker_threads|os|readline|crypto|perf_hooks|timers|zlib)(?:$|/)',
+            '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+          ],
+          reachable: true,
+        },
+      },
+      {
+        name: 'features-do-not-import-bootstrap',
+        severity: 'error',
+        from: { path: '(?:^|/)src/main/[^/]+/' },
+        to: { path: '(?:^|/)src/main/server\\.ts$' },
+      },
+    ]);
+  });
+
+  it('accepts the allowed dependency direction', async () => {
+    const result = await cruiseFixture('allowed-direction');
+
+    expect(result.exitCode, outputText(result)).toBe(0);
+  });
+
+  it('rejects the reverse dependency direction', async () => {
+    const result = await cruiseFixture('reverse-direction');
+
+    expect(result.exitCode).not.toBe(0);
+    expect(outputText(result)).toEqual(
+      '\n  error features-do-not-import-bootstrap: src/main/auth/logic.ts → src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
+    );
+  });
+});

@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest';
+import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mts';
+import { analyzeCoupling, type CouplingModule } from './test-support/analyze-view.mts';
+
+const fixtureRoot = 'languages/typescript/preset/coupling/fixtures';
+
+describe('coupling report', () => {
+  it('reports a dependency hub and unstable consumers', async () => {
+    const sourceRoot = `${fixtureRoot}/signal/src/main`;
+    const report = analyzeCoupling(
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/signal` }),
+      sourceRoot,
+    );
+    const hub = report.modules.find((entry) => entry.source.endsWith('/shared/hub.ts'));
+    const alpha = report.packages.find((entry) => entry.name === 'alpha');
+    const shared = report.packages.find((entry) => entry.name === 'shared');
+
+    expect(hub).toEqual({
+      source: `${sourceRoot}/shared/hub.ts`,
+      package: 'shared',
+      fanIn: 3,
+      fanOut: 1,
+      totalCoupling: 4,
+      instability: 1 / 4,
+      runtimeFanIn: 3,
+      runtimeFanOut: 1,
+      runtimeInstability: 1 / 4,
+    });
+    expect(alpha).toEqual({
+      name: 'alpha',
+      modules: 2,
+      fanIn: 0,
+      fanOut: 1,
+      instability: 1,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: 0,
+        connectedComponents: 2,
+        largestComponentShare: 1 / 2,
+      },
+    });
+    expect(shared).toEqual({
+      name: 'shared',
+      modules: 2,
+      fanIn: 3,
+      fanOut: 0,
+      instability: 0,
+      cohesion: {
+        internalEdges: 1,
+        edgeDensity: 1 / 2,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
+  });
+
+  it('keeps a cohesive low-signal graph connected without inventing instability', async () => {
+    const sourceRoot = `${fixtureRoot}/low-signal/src/main`;
+    const report = analyzeCoupling(
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/low-signal` }),
+      sourceRoot,
+    );
+
+    const cohesive = report.packages.find((entry) => entry.name === 'cohesive');
+
+    expect(report.summary).toEqual({
+      modules: 3,
+      dependencies: 1,
+      runtimeDependencies: 1,
+      typeOnlyDependencies: 0,
+      packages: 2,
+    });
+    expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
+    expect(cohesive?.cohesion).toEqual({
+      internalEdges: 1,
+      edgeDensity: 1 / 2,
+      connectedComponents: 1,
+      largestComponentShare: 1,
+    });
+    expect(report.stabilityDirection).toEqual([]);
+  });
+
+  it('does not report a type-only import as a stability inversion but counts it in instability', () => {
+    const module = (
+      name: string,
+      ...dependencies: readonly (readonly [string, readonly string[]])[]
+    ): CouplingModule => ({
+      source: `src/main/${name}.ts`,
+      dependencies: dependencies.map(([target, dependencyTypes]) => ({
+        resolved: `src/main/${target}.ts`,
+        dependencyTypes,
+      })),
+    });
+    const graphWith = (types: readonly string[]) => ({
+      modules: [
+        module('p1/a', ['stable/s', ['local']]),
+        module('p2/a', ['stable/s', ['local']]),
+        module('stable/s', ['volatile/v', types]),
+        module('volatile/v', ['leaf/q', ['local']]),
+        module('leaf/q'),
+      ],
+    });
+
+    const runtime = analyzeCoupling(graphWith(['local']), 'src/main');
+    const typeOnly = analyzeCoupling(graphWith(['type-only']), 'src/main');
+
+    expect(runtime.stabilityDirection.map(({ source, target }) => [source, target])).toEqual([
+      ['src/main/stable', 'src/main/volatile'],
+    ]);
+    expect(typeOnly.stabilityDirection).toEqual([]);
+    expect(typeOnly.packages).toEqual(runtime.packages);
+  });
+
+  it('lists shared modules that exactly one feature reaches, counting type-only imports', async () => {
+    const sourceRoot = `${fixtureRoot}/reuse/src`;
+    const report = analyzeCoupling(
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/reuse` }),
+      sourceRoot,
+    );
+
+    expect(report.sharedUsedByOneFeature).toEqual([
+      {
+        source: `${sourceRoot}/main/shared/price.ts`,
+        feature: 'billing',
+        directory: `${sourceRoot}/main/features/billing/`,
+      },
+    ]);
+  });
+
+  it('fails visibly for a malformed analyzer graph', () => {
+    expect(() => analyzeCoupling({ modules: undefined }, 'src/main')).toThrow(/modules array/);
+  });
+});

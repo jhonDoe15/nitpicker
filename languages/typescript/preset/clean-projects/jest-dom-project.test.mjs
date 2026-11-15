@@ -2,8 +2,8 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { createCleanProject, metricValue, runSnapshot } from './test-support/clean-project.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { createCleanProject, metricValue, runSnapshot } from './test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/jest-dom-clean');
 const FIXTURE_TIMEOUT_MS = 180_000;

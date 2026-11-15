@@ -1,6 +1,6 @@
 import { chainOf } from '../../../../../shared/traversal.mjs';
 import { bindPair } from '../../../../../shared/fix/recipes/extract/bijection.mjs';
-import { freshName } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { nameHoles as sharedNameHoles } from '../../../../../shared/fix/recipes/extract/names.mjs';
 import { hasModifier } from './class-shape.mjs';
 import {
   codeParts,
@@ -12,6 +12,9 @@ import {
   roleOf,
   squashed,
 } from './syntax.mjs';
+import { fieldStep } from './cross/fields.mjs';
+import { deferredValue } from './holes/deferred.mjs';
+import { typeStep } from './holes/type-holes.mjs';
 
 const NARROWING_PARENTS = new Set([
   'assignment_expression',
@@ -23,7 +26,11 @@ const NARROWING_PARENTS = new Set([
 const SHAPE = 'the copies are shaped differently';
 
 function isTypeNode(node) {
-  return node.type.endsWith('_type') || node.type === 'type_identifier';
+  return (
+    node.type.endsWith('_type') ||
+    node.type === 'type_identifier' ||
+    node.type === 'scoped_type_identifier'
+  );
 }
 
 function declaredTypeOf(parameter) {
@@ -134,19 +141,29 @@ function directValue(node, side, context) {
     : { kind: 'parameter', type: declaredTypeOf(parameter) };
 }
 
+function valuesOf(pair, context) {
+  const direct = pair.map((node, side) => directValue(node, side, context));
+  if (!context.wide || direct.every((value) => value !== undefined)) {
+    return direct;
+  }
+  return pair.map((node, side) => deferredValue(node, side, context));
+}
+
 function addHole(state, context, pair) {
-  const values = pair.map((node, side) => directValue(node, side, context));
+  const values = valuesOf(pair, context);
   if (values.some((value) => value === undefined)) {
     return 'the copies differ in code that is not a plain value';
   }
   if (values[0].type !== values[1].type) {
     return 'the differing values have different types';
   }
-  const key = pair.map((node) => node.text).join('\u0000');
+  const key = [...pair.map((node) => node.text), values[0].type].join('\u0000');
   const hole = state.holes.get(key) ?? {
     key,
+    pairKey: pair.map((node) => node.text).join('\u0000'),
     type: values[0].type,
-    kind: 'direct',
+    kind: values[0].kind === 'deferred' ? 'deferred' : 'direct',
+    typeNode: values[0].typeNode,
     occurrences: [],
   };
   hole.occurrences.push({ a: pair[0], b: pair[1] });
@@ -170,7 +187,7 @@ function identifierStep(pair, context, state) {
   if (locals[0]) {
     return bindPair(state, x.text, y.text) ? undefined : 'the copies rename a local inconsistently';
   }
-  return x.text === y.text ? undefined : addHole(state, context, [x, y]);
+  return x.text === y.text ? fieldStep([x, y], context, state) : addHole(state, context, [x, y]);
 }
 
 function childrenStep(pair, state) {
@@ -186,9 +203,21 @@ function childrenStep(pair, state) {
   return undefined;
 }
 
+const CALLS = { method_invocation: 'name', field_access: 'field' };
+
+function isDifferentMember([x, y]) {
+  const member = CALLS[x.type];
+  return (
+    x.type === y.type && member !== undefined && field(x, member).text !== field(y, member).text
+  );
+}
+
 function step(pair, context, state) {
   const [x, y] = pair;
-  if (x.type !== y.type) {
+  if (context.wide && isTypeNode(x) && isTypeNode(y)) {
+    return typeStep(state, x, y);
+  }
+  if (x.type !== y.type || (context.wide && isDifferentMember(pair))) {
     return addHole(state, context, pair);
   }
   if (isTypeNode(x)) {
@@ -212,7 +241,13 @@ export function writtenNames(unit) {
 }
 
 export function alignUnits(units, pairs, context) {
-  const state = { forward: new Map(), backward: new Map(), holes: new Map(), pending: [...pairs] };
+  const state = {
+    forward: new Map(),
+    backward: new Map(),
+    holes: new Map(),
+    typeSites: new Set(),
+    pending: [...pairs],
+  };
   const full = { ...context, units };
   for (const pair of state.pending) {
     const problem = step(pair, full, state);
@@ -220,7 +255,11 @@ export function alignUnits(units, pairs, context) {
       return { declined: problem };
     }
   }
-  return { holes: [...state.holes.values()], bindings: [...state.forward] };
+  return {
+    holes: [...state.holes.values()],
+    bindings: [...state.forward],
+    typeSites: state.typeSites.size,
+  };
 }
 
 function flowName(node) {
@@ -231,16 +270,14 @@ function flowName(node) {
   return node.type === 'identifier' ? node.text : undefined;
 }
 
-export function nameHoles(holes, taken) {
-  const names = new Set(taken);
-  const named = [];
-  for (const hole of holes) {
-    const name = freshName(flowName(hole.occurrences[0].a), names);
-    if (name === undefined) {
-      return undefined;
-    }
-    names.add(name);
-    named.push({ ...hole, name });
+function stemOf(hole) {
+  if (hole.stem !== undefined) {
+    return hole.stem;
   }
-  return named;
+  const stem = flowName(hole.occurrences[0].a);
+  return hole.kind === 'deferred' ? `${stem ?? 'value'}Supplier` : stem;
+}
+
+export function nameHoles(holes, taken) {
+  return sharedNameHoles(holes, taken, stemOf);
 }

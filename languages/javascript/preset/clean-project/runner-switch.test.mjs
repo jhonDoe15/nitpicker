@@ -1,13 +1,13 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mts';
 import {
   createCleanProject,
   git,
   readReport,
   runNitpicker,
-} from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
+} from '../../../typescript/preset/clean-projects/test-support/clean-project.mts';
 
 const FIXTURE_TIMEOUT_MS = 180_000;
 const JEST_COMMAND = 'node --experimental-vm-modules node_modules/jest/bin/jest.js';

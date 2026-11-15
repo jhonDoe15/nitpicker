@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mjs';
+import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 
 const TYPES_ROOT = path.join(import.meta.dirname, '../../../../../node_modules/@types');
 
