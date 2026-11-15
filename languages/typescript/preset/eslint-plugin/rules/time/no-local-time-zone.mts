@@ -1,9 +1,18 @@
-import { constructorProblem, dateMethodProblem, intlProblem, parseProblem } from './date-calls.mjs';
-import { dateFnsProblem, dayjsProblem, luxonProblem } from './library-calls.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import type { SourceContext } from '../analysis/constant-resolution.mts';
+import { constructorProblem, dateMethodProblem, intlProblem, parseProblem } from './date-calls.mts';
+import { dateFnsProblem, dayjsProblem, luxonProblem } from './library-calls.mts';
+import type { Problem, TimeMessageId } from './time-views.mts';
+
+type Docs = { readonly requiresTypeChecking: boolean };
+type Check<Node extends TSESTree.Node> = (
+  context: SourceContext,
+  node: Node,
+) => Problem | undefined;
 
 const ZONE_EFFECT = "the result changes with the server's `TZ`";
 
-const CALL_CHECKS = [
+const CALL_CHECKS: readonly Check<TSESTree.CallExpression>[] = [
   dateMethodProblem,
   intlProblem,
   parseProblem,
@@ -11,9 +20,9 @@ const CALL_CHECKS = [
   dateFnsProblem,
   dayjsProblem,
 ];
-const NEW_CHECKS = [constructorProblem, intlProblem];
+const NEW_CHECKS: readonly Check<TSESTree.NewExpression>[] = [constructorProblem, intlProblem];
 
-export const rule = {
+export const rule: TSESLint.RuleModule<TimeMessageId, [], Docs> = {
   meta: {
     type: 'problem',
     docs: {
@@ -36,7 +45,7 @@ export const rule = {
     },
   },
   create(context) {
-    function check(node, checks) {
+    function check<Node extends TSESTree.Node>(node: Node, checks: readonly Check<Node>[]): void {
       const problem = checks
         .map((find) => find(context, node))
         .find((found) => found !== undefined);

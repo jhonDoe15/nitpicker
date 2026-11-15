@@ -1,19 +1,28 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { SourceContext } from '../../analysis/constant-resolution.mts';
+import { parameterUnits } from './unit-parameters.mts';
 import {
   conversionExample,
+  eslintUnitMessage,
   unitFactor,
   unitLabel,
   unitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
-import { eslintUnitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mjs';
-import { parameterUnits } from './unit-parameters.mjs';
-import {
-  calleeText,
-  isNarrowing,
-  mismatch,
-  propertyName,
-  unwrap,
-  valueUnit,
-} from './unit-values.mjs';
+  type Unit,
+} from './unit-views.mts';
+import { calleeText, propertyName, unwrap } from './unit-nodes.mts';
+import { isNarrowing, mismatch, valueUnit, type UnitValue } from './unit-values.mts';
+
+type MessageId = 'mixedUnits' | 'assignedUnit' | 'argumentUnit' | 'epochNarrowed';
+type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
+type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
+type Target = {
+  readonly node: TSESTree.Node;
+  readonly target: string;
+  readonly targetUnit: Unit | undefined;
+  readonly value: TSESTree.Node;
+  readonly messageId: MessageId;
+  readonly extra?: Readonly<Record<string, string>>;
+};
 
 const MIXING = new Set(['+', '-', '<', '<=', '>', '>=', '==', '!=', '===', '!==']);
 const ASSIGNING = new Set(['=', '+=', '-=']);
@@ -21,19 +30,22 @@ const MAX_TEXT = 40;
 const ELLIPSIS = '...';
 const COARSE_UNITS = new Set(['s', 'min']);
 
-function text(context, node) {
+function text(context: SourceContext, node: TSESTree.Node): string {
   const raw = context.sourceCode.getText(node).replaceAll(/\s+/gu, ' ');
   return raw.length > MAX_TEXT ? `${raw.slice(0, MAX_TEXT - ELLIPSIS.length)}${ELLIPSIS}` : raw;
 }
 
-function unitData(from, to, value) {
+function unitData(from: Unit, to: Unit, value: string): { factor: string; example: string } {
   return {
     factor: String(unitFactor(from, to)),
     example: conversionExample(value, from, to),
   };
 }
 
-function reportTarget(context, { node, target, targetUnit, value, messageId, extra = {} }) {
+function reportTarget(
+  context: Context,
+  { node, target, targetUnit, value, messageId, extra = {} }: Target,
+): void {
   const found = valueUnit(context, value);
   if (targetUnit === undefined || found === undefined || found.unit === targetUnit) {
     return;
@@ -53,23 +65,29 @@ function reportTarget(context, { node, target, targetUnit, value, messageId, ext
   });
 }
 
-function targetName(node) {
+function targetName(node: TSESTree.Node): string | undefined {
   const target = unwrap(node);
-  return target?.type === 'Identifier' ? target.name : propertyName(target);
+  return target.type === AST_NODE_TYPES.Identifier ? target.name : propertyName(target);
 }
 
-function keyName(property) {
+function keyName(property: TSESTree.Property | TSESTree.PropertyDefinition): string | undefined {
   if (property.computed) {
     return undefined;
   }
-  if (property.key.type === 'Identifier') {
+  if (property.key.type === AST_NODE_TYPES.Identifier) {
     return property.key.name;
   }
-  return typeof property.key.value === 'string' ? property.key.value : undefined;
+  return property.key.type === AST_NODE_TYPES.Literal && typeof property.key.value === 'string'
+    ? property.key.value
+    : undefined;
 }
 
-function checkNamed(context, node, { name, value }) {
-  if (name !== undefined && value !== null && value !== undefined) {
+function checkNamed(
+  context: Context,
+  node: TSESTree.Node,
+  { name, value }: { name: string | undefined; value: TSESTree.Node | undefined },
+): void {
+  if (name !== undefined && value !== undefined) {
     reportTarget(context, {
       node,
       target: name,
@@ -80,12 +98,19 @@ function checkNamed(context, node, { name, value }) {
   }
 }
 
-function checkPattern(context, property) {
-  const local = property.value.type === 'AssignmentPattern' ? property.value.left : property.value;
+function checkPattern(context: Context, property: TSESTree.Property): void {
+  const local =
+    property.value.type === AST_NODE_TYPES.AssignmentPattern ? property.value.left : property.value;
   const key = keyName(property);
-  const localUnit = local.type === 'Identifier' ? unitOfName(local.name) : undefined;
+  const localUnit = local.type === AST_NODE_TYPES.Identifier ? unitOfName(local.name) : undefined;
   const keyUnit = key === undefined ? undefined : unitOfName(key);
-  if (localUnit !== undefined && keyUnit !== undefined && localUnit !== keyUnit) {
+  if (
+    local.type === AST_NODE_TYPES.Identifier &&
+    key !== undefined &&
+    localUnit !== undefined &&
+    keyUnit !== undefined &&
+    localUnit !== keyUnit
+  ) {
     context.report({
       node: property,
       messageId: 'assignedUnit',
@@ -100,11 +125,11 @@ function checkPattern(context, property) {
   }
 }
 
-function checkCall(context, node) {
+function checkCall(context: Context, node: CallLike): void {
   const callee = calleeText(node.callee) ?? text(context, node.callee);
   for (const { index, unit, name } of parameterUnits(context, node)) {
     const argument = node.arguments[index];
-    if (argument !== undefined && argument.type !== 'SpreadElement') {
+    if (argument !== undefined && argument.type !== AST_NODE_TYPES.SpreadElement) {
       reportTarget(context, {
         node: argument,
         target: '',
@@ -117,11 +142,15 @@ function checkCall(context, node) {
   }
 }
 
-function fitsUnsigned(found, operator) {
+function fitsUnsigned(found: UnitValue, operator: string): boolean {
   return operator === '>>> 0' && COARSE_UNITS.has(found.unit);
 }
 
-function checkNarrowing(context, node, { value, operator }) {
+function checkNarrowing(
+  context: Context,
+  node: TSESTree.Node,
+  { value, operator }: { value: TSESTree.Node; operator: string },
+): void {
   const found = valueUnit(context, value);
   if (found?.epoch === true && !fitsUnsigned(found, operator)) {
     context.report({
@@ -132,7 +161,7 @@ function checkNarrowing(context, node, { value, operator }) {
   }
 }
 
-function checkBinary(context, node) {
+function checkBinary(context: Context, node: TSESTree.BinaryExpression): void {
   if (isNarrowing(context, node)) {
     checkNarrowing(context, node, { value: node.left, operator: `${node.operator} 0` });
     return;
@@ -142,7 +171,7 @@ function checkBinary(context, node) {
   }
   const left = valueUnit(context, node.left);
   const right = valueUnit(context, node.right);
-  if (mismatch(left, right)) {
+  if (left !== undefined && right !== undefined && mismatch(left, right)) {
     const rightText = text(context, node.right);
     context.report({
       node,
@@ -158,22 +187,26 @@ function checkBinary(context, node) {
   }
 }
 
-function checkUnary(context, node) {
+function checkUnary(context: Context, node: TSESTree.UnaryExpression): void {
   const inner = unwrap(node.argument);
-  if (node.operator === '~' && inner.type === 'UnaryExpression' && inner.operator === '~') {
+  if (
+    node.operator === '~' &&
+    inner.type === AST_NODE_TYPES.UnaryExpression &&
+    inner.operator === '~'
+  ) {
     checkNarrowing(context, node, { value: inner.argument, operator: '~~' });
   }
 }
 
-function checkProperty(context, node) {
-  if (node.parent.type === 'ObjectPattern') {
+function checkProperty(context: Context, node: TSESTree.Property): void {
+  if (node.parent.type === AST_NODE_TYPES.ObjectPattern) {
     checkPattern(context, node);
   } else if (node.kind === 'init' && !node.shorthand && !node.method) {
     checkNamed(context, node, { name: keyName(node), value: node.value });
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -204,12 +237,15 @@ export const rule = {
         }
       },
       VariableDeclarator(node) {
-        if (node.id.type === 'Identifier') {
-          checkNamed(context, node, { name: node.id.name, value: node.init });
+        if (node.id.type === AST_NODE_TYPES.Identifier) {
+          checkNamed(context, node, { name: node.id.name, value: node.init ?? undefined });
         }
       },
       AssignmentPattern(node) {
-        if (node.left.type === 'Identifier' && node.parent.type !== 'Property') {
+        if (
+          node.left.type === AST_NODE_TYPES.Identifier &&
+          node.parent.type !== AST_NODE_TYPES.Property
+        ) {
           checkNamed(context, node, { name: node.left.name, value: node.right });
         }
       },
@@ -217,7 +253,7 @@ export const rule = {
         checkProperty(context, node);
       },
       PropertyDefinition(node) {
-        checkNamed(context, node, { name: keyName(node), value: node.value });
+        checkNamed(context, node, { name: keyName(node), value: node.value ?? undefined });
       },
       CallExpression(node) {
         checkCall(context, node);
