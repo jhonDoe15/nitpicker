@@ -16,9 +16,15 @@ export type StrictOptions = {
   readonly nest?: true | undefined;
   readonly frameworkDefaultExports?: string[];
   readonly detachedWorkRunners?: string[];
-  readonly databaseWrites?: { readonly orms: readonly string[]; readonly opensTransactions: boolean };
+  readonly databaseWrites?: {
+    readonly orms: readonly string[];
+    readonly opensTransactions: boolean;
+  };
   readonly routeAuth?: { readonly entries: readonly string[] };
-  readonly softDeleteFilters?: { readonly orms: readonly string[]; readonly filters: readonly string[] };
+  readonly softDeleteFilters?: {
+    readonly orms: readonly string[];
+    readonly filters: readonly string[];
+  };
 };
 
 type Selector = { readonly selector: string; readonly message: string };
