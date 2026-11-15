@@ -4,7 +4,7 @@ import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import { applyJavascriptDialect as untypedDialect } from '../../../../../../javascript/preset/eslint-dialect.mjs';
 import { strictPresetConfig } from '../../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../../layout.mjs';
-import { rule } from '../no-unvalidated-schema-field.mjs';
+import { rule } from '../no-unvalidated-schema-field.mts';
 
 const typescript = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

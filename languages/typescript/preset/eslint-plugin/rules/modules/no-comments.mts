@@ -1,17 +1,61 @@
-import { docCommentContentReports, publicApiNode } from './doc-comment-content.mjs';
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import {
+  docCommentContentReports as untypedDocCommentContentReports,
+  publicApiNode as untypedPublicApiNode,
+} from './doc-comment-content.mjs';
+import { commentRemoval } from '../../fixes/comments/comment-removal.mts';
+import { fixable } from '../../fixes/support/descriptors.mts';
+import { validationBehavior as untypedValidationBehavior } from '../../../libraries/project-libraries.mjs';
 import {
   castTags,
   isJsdocBlock,
   parseJsdoc,
-} from '../../../../../javascript/preset/documentation/jsdoc.mjs';
-import { commentRemoval } from '../../fixes/comments/comment-removal.mjs';
-import { fixable } from '../../fixes/support/descriptors.mjs';
-import { readHeadPolicy } from '../../../head-policy.mjs';
-import { validationBehavior } from '../../../libraries/project-libraries.mjs';
+  type JsdocOptions,
+  type JsdocProblem,
+} from '../typed/jsdoc-views.mts';
+import { readHeadPolicy } from '../typed/policy-views.mts';
+import type { LibraryChoices } from '../typed/policy-views.mts';
+import type { SourceCode } from '../typed/node-views.mts';
+
+type MessageIds =
+  | 'typescriptSuppression'
+  | 'eslintSuppression'
+  | 'coverageSuppression'
+  | 'comment'
+  | 'jsdocProse'
+  | 'jsdocUnsupportedTag'
+  | 'jsdocMalformed'
+  | 'jsdocAnyType'
+  | 'jsdocNullType'
+  | 'jsdocCast'
+  | 'restatingDocComment'
+  | 'longDocComment'
+  | 'internalDocComment';
+type CommentReport = {
+  readonly messageId: MessageIds;
+  readonly data?: Readonly<Record<string, unknown>>;
+};
+type Settings = {
+  readonly jsdocTypes: boolean;
+  readonly suppressionsOnly: boolean;
+  readonly sourceCode: SourceCode;
+};
+
+const docCommentContentReports: (
+  comment: TSESTree.Comment,
+  node: TSESTree.Node,
+) => CommentReport[] = untypedDocCommentContentReports;
+const publicApiNode: (
+  sourceCode: SourceCode,
+  comment: TSESTree.Comment,
+) => TSESTree.Node | undefined = untypedPublicApiNode;
+const validationBehavior: (libraries: LibraryChoices) => { readonly name: string } =
+  untypedValidationBehavior;
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
+const NON_COMMENTS = new Set<string>(['Shebang']);
 const REMOVABLE = new Set([
   'comment',
   'internalDocComment',
@@ -33,7 +77,7 @@ const TOOL_DIRECTIVES = [
 ];
 const toolDirective = new RegExp(`^\\s*(?:${TOOL_DIRECTIVES.join('|')})`);
 
-function suppressionReport(comment) {
+function suppressionReport(comment: TSESTree.Comment): CommentReport[] | undefined {
   const suppression = typescriptSuppression.exec(comment.value);
   if (suppression) {
     return [{ messageId: 'typescriptSuppression', data: { directive: suppression[0] } }];
@@ -41,30 +85,54 @@ function suppressionReport(comment) {
   const coverage = coverageSuppression.exec(comment.value);
   if (coverage) {
     return [
-      { messageId: 'coverageSuppression', data: { directive: coverage[1].replace(/\s+/g, ' ') } },
+      {
+        messageId: 'coverageSuppression',
+        data: { directive: (coverage[1] ?? '').replace(/\s+/g, ' ') },
+      },
     ];
   }
   return eslintSuppression.test(comment.value) ? [{ messageId: 'eslintSuppression' }] : undefined;
 }
 
-function jsdocReports(comment, sourceCode) {
+function isMessageId(id: string): id is MessageIds {
+  return Object.hasOwn(rule.meta.messages, id);
+}
+
+function problemReports(problems: readonly JsdocProblem[]): CommentReport[] {
+  return problems.flatMap((problem) =>
+    isMessageId(problem.messageId) ? [{ ...problem, messageId: problem.messageId }] : [],
+  );
+}
+
+function jsdocReports(comment: TSESTree.Comment, sourceCode: SourceCode): CommentReport[] {
   const { tags, problems } = parseJsdoc(comment.value);
   const castsNextExpression = sourceCode.getTokenAfter(comment)?.value === '(';
   return [
-    ...problems,
-    ...(castsNextExpression && castTags(tags).length > 0 ? [{ messageId: 'jsdocCast' }] : []),
+    ...problemReports(problems),
+    ...(castsNextExpression && castTags(tags).length > 0
+      ? [{ messageId: 'jsdocCast' as const }]
+      : []),
   ];
 }
 
-function plainCommentReports(comment, sourceCode) {
-  if (toolDirective.test(comment.value)) return [];
-  if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
+function plainCommentReports(comment: TSESTree.Comment, sourceCode: SourceCode): CommentReport[] {
+  if (toolDirective.test(comment.value)) {
+    return [];
+  }
+  if (!isJsdocBlock(comment)) {
+    return [{ messageId: 'comment' }];
+  }
   const node = publicApiNode(sourceCode, comment);
-  if (!node) return [{ messageId: 'internalDocComment' }];
+  if (!node) {
+    return [{ messageId: 'internalDocComment' }];
+  }
   return docCommentContentReports(comment, node);
 }
 
-function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
+function commentReports(
+  comment: TSESTree.Comment,
+  { jsdocTypes, sourceCode, suppressionsOnly }: Settings,
+): CommentReport[] {
   const suppression = suppressionReport(comment);
   if (suppression !== undefined) {
     return suppression;
@@ -78,7 +146,7 @@ function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
   return plainCommentReports(comment, sourceCode);
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, JsdocOptions> = {
   meta: {
     type: 'problem',
     fixable: 'code',
@@ -118,15 +186,17 @@ export const rule = {
     },
   },
   create(context) {
-    const settings = {
-      jsdocTypes: context.options[0]?.jsdocTypes === true,
-      suppressionsOnly: context.options[0]?.suppressionsOnly === true,
+    const settings: Settings = {
+      jsdocTypes: context.options[0]?.['jsdocTypes'] === true,
+      suppressionsOnly: context.options[0]?.['suppressionsOnly'] === true,
       sourceCode: context.sourceCode,
     };
     return {
       Program() {
         for (const comment of context.sourceCode.getAllComments()) {
-          if (comment.type === 'Shebang') continue;
+          if (NON_COMMENTS.has(comment.type)) {
+            continue;
+          }
           for (const report of commentReports(comment, settings)) {
             const plan = REMOVABLE.has(report.messageId)
               ? commentRemoval(context.sourceCode, comment)

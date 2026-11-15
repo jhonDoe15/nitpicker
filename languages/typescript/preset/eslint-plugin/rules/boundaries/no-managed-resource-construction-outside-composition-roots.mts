@@ -1,4 +1,9 @@
-import { compositionRootOptionsSchema, isCompositionRootFile } from './composition-root-files.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import {
+  compositionRootOptionsSchema,
+  isCompositionRootFile,
+  type CompositionRootOptions,
+} from './composition-root-files.mts';
 
 const MANAGED_SUFFIXES = [
   'Service',
@@ -32,21 +37,21 @@ const RESOURCE_FACTORY =
   /^create(?:Server|SecureServer|Client|Pool|Connection|Worker|Transport|Queue|Cache|Store|Scheduler)$/;
 const RESOURCE_FACTORY_MEMBERS = new Set(['axios.create']);
 
-function calleeName(callee) {
-  if (callee.type === 'Identifier') {
+function calleeName(callee: TSESTree.Node): string | undefined {
+  if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name;
   }
   if (
-    callee.type === 'MemberExpression' &&
+    callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
-    callee.property.type === 'Identifier'
+    callee.property.type === AST_NODE_TYPES.Identifier
   ) {
     return callee.property.name;
   }
   return undefined;
 }
 
-function isResourceFactoryCall(callee) {
+function isResourceFactoryCall(callee: TSESTree.Node): boolean {
   const name = calleeName(callee);
   if (name === undefined) {
     return false;
@@ -55,13 +60,13 @@ function isResourceFactoryCall(callee) {
     return true;
   }
   return (
-    callee.type === 'MemberExpression' &&
-    callee.object.type === 'Identifier' &&
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
     RESOURCE_FACTORY_MEMBERS.has(`${callee.object.name}.${name}`)
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'outsideRoot', CompositionRootOptions> = {
   meta: {
     type: 'problem',
     docs: {
@@ -78,18 +83,21 @@ export const rule = {
       return {};
     }
 
-    function report(node, name) {
+    function report(
+      node: TSESTree.NewExpression | TSESTree.CallExpression,
+      name: string | undefined,
+    ): void {
       context.report({ node, messageId: 'outsideRoot', data: { name } });
     }
 
     return {
-      NewExpression(node) {
+      NewExpression(node: TSESTree.NewExpression) {
         const name = calleeName(node.callee);
         if (name !== undefined && MANAGED_RESOURCE.test(name) && !VALUE_OBJECT.test(name)) {
           report(node, name);
         }
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         if (isResourceFactoryCall(node.callee)) {
           report(node, calleeName(node.callee));
         }

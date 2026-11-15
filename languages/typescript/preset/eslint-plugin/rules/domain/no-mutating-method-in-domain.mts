@@ -1,18 +1,27 @@
-import { copyingMethodFix } from '../../fixes/code/copying-method-fix.mjs';
-import { fixable } from '../../fixes/support/descriptors.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { copyingMethodFix } from '../../fixes/code/copying-method-fix.mts';
+import { fixable } from '../../fixes/support/descriptors.mts';
 import {
   isArrayMutator,
   mutatedOwner,
   staticName,
-} from '../analysis/mutation/mutating-methods.mjs';
+} from '../analysis/mutation/mutating-methods.mts';
+import { typeServices } from '../security/security-values.mts';
+import { nameOf } from '../typed/node-views.mts';
+
+type Docs = { readonly requiresTypeChecking: boolean };
 
 const INDIRECT_CALLS = new Set(['call', 'apply', 'bind']);
 
-function isPlainCallee(node) {
-  return !node.computed && node.parent.type === 'CallExpression' && node.parent.callee === node;
+function isPlainCallee(node: TSESTree.MemberExpression): boolean {
+  return (
+    !node.computed &&
+    node.parent.type === AST_NODE_TYPES.CallExpression &&
+    node.parent.callee === node
+  );
 }
 
-function isReportedBySyntax(node, method) {
+function isReportedBySyntax(node: TSESTree.MemberExpression, method: string): boolean {
   if (!isArrayMutator(method) || node.computed) {
     return false;
   }
@@ -21,14 +30,14 @@ function isReportedBySyntax(node, method) {
   }
   const outer = node.parent;
   return (
-    outer.type === 'MemberExpression' &&
+    outer.type === AST_NODE_TYPES.MemberExpression &&
     outer.object === node &&
-    INDIRECT_CALLS.has(outer.property.name) &&
+    INDIRECT_CALLS.has(nameOf(outer.property) ?? '') &&
     isPlainCallee(outer)
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'mutatingMethod', [], Docs> = {
   meta: {
     type: 'problem',
     fixable: 'code',
@@ -44,14 +53,14 @@ export const rule = {
     },
   },
   create(context) {
-    const services = context.sourceCode.parserServices;
-    if (services?.program === undefined || services.program === null) {
+    const services = typeServices(context);
+    if (services === undefined) {
       throw new Error(
         'no-mutating-method-in-domain needs type information (parserOptions.projectService)',
       );
     }
     return {
-      MemberExpression(node) {
+      MemberExpression(node: TSESTree.MemberExpression) {
         const method = staticName(node, services);
         if (method === undefined || isReportedBySyntax(node, method)) {
           return;

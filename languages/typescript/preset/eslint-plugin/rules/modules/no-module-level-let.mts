@@ -1,12 +1,17 @@
-function isModuleLevel(declaration) {
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+
+function isModuleLevel(declaration: TSESTree.VariableDeclaration): boolean {
   const parent = declaration.parent;
-  if (parent.type === 'Program') {
+  if (parent.type === AST_NODE_TYPES.Program) {
     return true;
   }
-  return parent.type === 'ExportNamedDeclaration' && parent.parent.type === 'Program';
+  return (
+    parent.type === AST_NODE_TYPES.ExportNamedDeclaration &&
+    parent.parent.type === AST_NODE_TYPES.Program
+  );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'moduleLet'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -20,7 +25,7 @@ export const rule = {
   },
   create(context) {
     return {
-      VariableDeclaration(node) {
+      VariableDeclaration(node: TSESTree.VariableDeclaration) {
         if (node.kind === 'let' && isModuleLevel(node)) {
           context.report({ node, messageId: 'moduleLet' });
         }

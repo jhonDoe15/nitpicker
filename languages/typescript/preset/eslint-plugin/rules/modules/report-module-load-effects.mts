@@ -1,8 +1,25 @@
-import { stylesheetSpecifier } from '../../../layout.mjs';
-import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { SYNC_API_MODULES } from '../analysis/node/node-sync-modules.mjs';
-import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
-import { guardedByMain, isMainGuard } from './entry/main-guard.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { stylesheetSpecifier as untypedStylesheetSpecifier } from '../../../layout.mjs';
+import { SYNC_API_MODULES } from '../analysis/node/node-sync-modules.mts';
+import {
+  importedCalleeName,
+  moduleBindings,
+  type ModuleBindings,
+} from '../analysis/subprocess-calls.mts';
+import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { guardedByMain, isMainGuard } from './entry/main-guard.mts';
+
+type MessageIds =
+  | 'sideEffectImport'
+  | 'staticBlock'
+  | 'topLevelAwait'
+  | 'topLevelControl'
+  | 'topLevelExpression'
+  | 'importTimeEffect';
+type Options = readonly [Readonly<Record<string, unknown>>?];
+type CallLike = TSESTree.NewExpression | TSESTree.CallExpression;
+
+const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const SYNC_MODULES = new Set(SYNC_API_MODULES);
 
@@ -11,66 +28,68 @@ const ENTRY_HINT =
   'index.html, else src/main.tsx, and the NestJS entry in nest-cli.json) is detected; for another entry ' +
   'file, list it under `layout.entryPoints` in nitpicker.config.json.';
 
-const TOP_LEVEL_CONTROL = new Set([
-  'BlockStatement',
-  'DoWhileStatement',
-  'ForInStatement',
-  'ForOfStatement',
-  'ForStatement',
-  'IfStatement',
-  'SwitchStatement',
-  'TryStatement',
-  'WhileStatement',
-  'WithStatement',
+const TOP_LEVEL_CONTROL = new Set<string>([
+  AST_NODE_TYPES.BlockStatement,
+  AST_NODE_TYPES.DoWhileStatement,
+  AST_NODE_TYPES.ForInStatement,
+  AST_NODE_TYPES.ForOfStatement,
+  AST_NODE_TYPES.ForStatement,
+  AST_NODE_TYPES.IfStatement,
+  AST_NODE_TYPES.SwitchStatement,
+  AST_NODE_TYPES.TryStatement,
+  AST_NODE_TYPES.WhileStatement,
+  AST_NODE_TYPES.WithStatement,
 ]);
 
-function isDirective(node) {
+function isDirective(node: TSESTree.ExpressionStatement): boolean {
   return typeof node.directive === 'string';
 }
 
-function isTopLevelControl(node, sourceCode) {
+function isTopLevelControl(node: TSESTree.Node, sourceCode: SourceCode): boolean {
   return (
-    node.parent?.type === 'Program' &&
+    node.parent?.type === AST_NODE_TYPES.Program &&
     TOP_LEVEL_CONTROL.has(node.type) &&
     !isMainGuard(node, sourceCode)
   );
 }
 
-function executesAtModuleLoad(node, sourceCode) {
+function executesAtModuleLoad(node: TSESTree.Node, sourceCode: SourceCode): boolean {
   for (const current of ancestorsOf(node)) {
     if (
-      current.type === 'ArrowFunctionExpression' ||
-      current.type === 'FunctionDeclaration' ||
-      current.type === 'FunctionExpression' ||
+      current.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+      current.type === AST_NODE_TYPES.FunctionDeclaration ||
+      current.type === AST_NODE_TYPES.FunctionExpression ||
       guardedByMain(current, node, sourceCode)
     ) {
       return false;
     }
-    if (current.type === 'Program') {
+    if (current.type === AST_NODE_TYPES.Program) {
       return true;
     }
   }
   return false;
 }
 
-function segmentName(node) {
-  if (node.type === 'Identifier') {
+function segmentName(node: TSESTree.Node): string | undefined {
+  if (node.type === AST_NODE_TYPES.Identifier) {
     return node.name;
   }
-  return node.type === 'MemberExpression' && !node.computed ? node.property.name : undefined;
+  return node.type === AST_NODE_TYPES.MemberExpression && !node.computed
+    ? nameOf(node.property)
+    : undefined;
 }
 
-function memberPath(node) {
+function memberPath(node: TSESTree.Node): (string | undefined)[] {
   const chain = [node];
   for (const current of chain) {
-    if (current.type === 'MemberExpression') {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
       chain.push(current.object);
     }
   }
   return chain.map(segmentName).reverse();
 }
 
-const EFFECT_CALLEES = new Set([
+const EFFECT_CALLEES = new Set<string | undefined>([
   'fetch',
   'setTimeout',
   'setInterval',
@@ -82,32 +101,44 @@ const EFFECT_CALLEES = new Set([
   'getRandomValues',
   'addEventListener',
 ]);
-const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'crypto']);
-const EFFECT_MEMBER_CALLS = new Set(['Date.now', 'performance.now', 'Math.random']);
-const EFFECT_CONSTRUCTORS = new Set(['Worker', 'WebSocket', 'XMLHttpRequest', 'EventSource']);
+const GLOBAL_OBJECTS = new Set<string | undefined>(['globalThis', 'window', 'self', 'crypto']);
+const EFFECT_MEMBER_CALLS = new Set<string | undefined>([
+  'Date.now',
+  'performance.now',
+  'Math.random',
+]);
+const EFFECT_CONSTRUCTORS = new Set<string>([
+  'Worker',
+  'WebSocket',
+  'XMLHttpRequest',
+  'EventSource',
+]);
 
-function isModuleLevelDeclaration(node) {
+function isModuleLevelDeclaration(node: TSESTree.Node): boolean {
   return (
-    node.type === 'VariableDeclaration' &&
-    (node.parent.type === 'Program' ||
-      (node.parent.type === 'ExportNamedDeclaration' && node.parent.parent.type === 'Program'))
+    node.type === AST_NODE_TYPES.VariableDeclaration &&
+    (node.parent.type === AST_NODE_TYPES.Program ||
+      (node.parent.type === AST_NODE_TYPES.ExportNamedDeclaration &&
+        node.parent.parent.type === AST_NODE_TYPES.Program))
   );
 }
 
-function calleeText(callee) {
+function calleeText(callee: TSESTree.Node): string | undefined {
   const path = memberPath(callee);
   return path.every((segment) => segment !== undefined) ? path.join('.') : undefined;
 }
 
-function isNodeSyncCall(node, syncBindings) {
+function isNodeSyncCall(node: CallLike, syncBindings: ModuleBindings): boolean {
   return importedCalleeName(node.callee, syncBindings)?.endsWith('Sync') === true;
 }
 
-function importTimeEffect(node, syncBindings) {
-  if (node.type === 'NewExpression') {
+function importTimeEffect(node: CallLike, syncBindings: ModuleBindings): string | undefined {
+  if (node.type === AST_NODE_TYPES.NewExpression) {
     const name = calleeText(node.callee);
     const isClock = name === 'Date' && node.arguments.length === 0;
-    return isClock || EFFECT_CONSTRUCTORS.has(name) ? `new ${name}()` : undefined;
+    return name !== undefined && (isClock || EFFECT_CONSTRUCTORS.has(name))
+      ? `new ${name}()`
+      : undefined;
   }
   const text = calleeText(node.callee);
   const name = text?.split('.').at(-1);
@@ -116,12 +147,12 @@ function importTimeEffect(node, syncBindings) {
     (EFFECT_CALLEES.has(name) && (text === name || GLOBAL_OBJECTS.has(root))) ||
     EFFECT_MEMBER_CALLS.has(text) ||
     isNodeSyncCall(node, syncBindings) ||
-    text?.startsWith('process.');
-  return isEffect ? `${text}()` : undefined;
+    text?.startsWith('process.') === true;
+  return text !== undefined && isEffect ? `${text}()` : undefined;
 }
 
-function isCommonJsExport(expression) {
-  if (expression.type !== 'AssignmentExpression' || expression.operator !== '=') {
+function isCommonJsExport(expression: TSESTree.Node): boolean {
+  if (expression.type !== AST_NODE_TYPES.AssignmentExpression || expression.operator !== '=') {
     return false;
   }
   const path = memberPath(expression.left);
@@ -130,7 +161,13 @@ function isCommonJsExport(expression) {
   );
 }
 
-function importTimeEffectAtLoad(node, { syncBindings, sourceCode }) {
+function importTimeEffectAtLoad(
+  node: CallLike,
+  {
+    syncBindings,
+    sourceCode,
+  }: { readonly syncBindings: ModuleBindings; readonly sourceCode: SourceCode },
+): string | undefined {
   const call = importTimeEffect(node, syncBindings);
   return call !== undefined &&
     executesAtModuleLoad(node, sourceCode) &&
@@ -139,7 +176,7 @@ function importTimeEffectAtLoad(node, { syncBindings, sourceCode }) {
     : undefined;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, Options> = {
   meta: {
     type: 'problem',
     docs: {
@@ -163,43 +200,43 @@ export const rule = {
     },
   },
   create(context) {
-    const commonJsExports = context.options[0]?.commonJsExports === true;
+    const commonJsExports = context.options[0]?.['commonJsExports'] === true;
     const { sourceCode } = context;
     const syncBindings = moduleBindings(sourceCode.ast, SYNC_MODULES);
     return {
-      ImportDeclaration(node) {
+      ImportDeclaration(node: TSESTree.ImportDeclaration) {
         if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
           context.report({ node, messageId: 'sideEffectImport' });
         }
       },
-      AwaitExpression(node) {
+      AwaitExpression(node: TSESTree.AwaitExpression) {
         if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'topLevelAwait' });
         }
       },
-      'NewExpression, CallExpression'(node) {
+      'NewExpression, CallExpression'(node: CallLike) {
         const call = importTimeEffectAtLoad(node, { syncBindings, sourceCode });
         if (call !== undefined) {
           context.report({ node, messageId: 'importTimeEffect', data: { call } });
         }
       },
-      ExpressionStatement(node) {
+      ExpressionStatement(node: TSESTree.ExpressionStatement) {
         if (
-          node.parent.type !== 'Program' ||
+          node.parent.type !== AST_NODE_TYPES.Program ||
           isDirective(node) ||
-          node.expression.type === 'AwaitExpression' ||
+          node.expression.type === AST_NODE_TYPES.AwaitExpression ||
           (commonJsExports && isCommonJsExport(node.expression))
         ) {
           return;
         }
         context.report({ node, messageId: 'topLevelExpression' });
       },
-      StaticBlock(node) {
+      StaticBlock(node: TSESTree.StaticBlock) {
         if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'staticBlock' });
         }
       },
-      ':statement'(node) {
+      ':statement'(node: TSESTree.Statement) {
         if (isTopLevelControl(node, sourceCode)) {
           context.report({
             node,

@@ -1,10 +1,39 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { chainOf } from '../../analysis/ancestry.mjs';
+import type TypeScript from 'typescript';
+import { syntaxChildren as untypedSyntaxChildren } from '../../../../syntax/children.mjs';
+import { chainOf } from '../../typed/node-views.mts';
+import { ts } from '../../typed/typescript-views.mts';
+
+export type ResolvedFunction =
+  | TypeScript.FunctionDeclaration
+  | TypeScript.MethodDeclaration
+  | TypeScript.GetAccessorDeclaration
+  | TypeScript.ClassDeclaration
+  | TypeScript.ArrowFunction
+  | TypeScript.FunctionExpression
+  | TypeScript.ClassExpression;
+export type ReferenceMode = 'call' | 'reference' | 'access';
+type ReferenceExpression = TypeScript.Identifier | TypeScript.PropertyAccessExpression;
+type FunctionLiteral =
+  TypeScript.ArrowFunction | TypeScript.FunctionExpression | TypeScript.ClassExpression;
+type AliasSearch = { readonly symbol: TypeScript.Symbol | undefined; readonly depth: number };
+
+export const syntaxChildren: (node: TypeScript.Node) => TypeScript.Node[] = untypedSyntaxChildren;
 
 const ALIAS_DEPTH = 5;
 const FUNCTION_METHODS = new Set(['call', 'apply', 'bind']);
 
-function innerOf(expression) {
+export function parentNode(node: TypeScript.Node): TypeScript.Node | undefined {
+  return node.parent;
+}
+
+export function includesNode(
+  list: readonly TypeScript.Node[] | undefined,
+  node: TypeScript.Node,
+): boolean {
+  return list?.includes(node) === true;
+}
+
+function innerOf(expression: TypeScript.Node): TypeScript.Node | undefined {
   if (
     ts.isParenthesizedExpression(expression) ||
     ts.isAsExpression(expression) ||
@@ -20,15 +49,15 @@ function innerOf(expression) {
     : undefined;
 }
 
-export function unwrapExpression(expression) {
-  return chainOf(expression, innerOf).at(-1);
+export function unwrapExpression(expression: TypeScript.Node): TypeScript.Node {
+  return chainOf<TypeScript.Node>(expression, innerOf).at(-1) ?? expression;
 }
 
-function isFunctionLiteral(node) {
+function isFunctionLiteral(node: TypeScript.Node): node is FunctionLiteral {
   return ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isClassExpression(node);
 }
 
-function functionLiteralOf(expression) {
+function functionLiteralOf(expression: TypeScript.Node): FunctionLiteral | undefined {
   const pending = [expression];
   for (const candidate of pending) {
     const inner = unwrapExpression(candidate);
@@ -40,7 +69,7 @@ function functionLiteralOf(expression) {
   return undefined;
 }
 
-function functionOf(declaration) {
+function functionOf(declaration: TypeScript.Declaration): ResolvedFunction | undefined {
   if (
     ts.isFunctionDeclaration(declaration) ||
     ts.isMethodDeclaration(declaration) ||
@@ -63,18 +92,18 @@ function functionOf(declaration) {
   return ts.isExportAssignment(declaration) ? functionLiteralOf(declaration.expression) : undefined;
 }
 
-function isReferenceExpression(node) {
+function isReferenceExpression(node: TypeScript.Node): node is ReferenceExpression {
   return ts.isIdentifier(node) || ts.isPropertyAccessExpression(node);
 }
 
-function nameOf(node) {
+function nameOf(node: ReferenceExpression): TypeScript.Identifier | TypeScript.MemberName {
   return ts.isIdentifier(node) ? node : node.name;
 }
 
-function isCallbackPosition(node) {
+function isCallbackPosition(node: TypeScript.Node): boolean {
   const { parent } = node;
   if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) {
-    return parent.arguments?.includes(node) === true;
+    return includesNode(parent.arguments, node);
   }
   return (
     ts.isPropertyAccessExpression(parent) &&
@@ -83,7 +112,9 @@ function isCallbackPosition(node) {
   );
 }
 
-export function referenceOf(node) {
+export function referenceOf(
+  node: TypeScript.Node,
+): { readonly target: ReferenceExpression; readonly mode: ReferenceMode } | undefined {
   if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
     const target = unwrapExpression(node.expression);
     return isReferenceExpression(target) ? { target, mode: 'call' } : undefined;
@@ -102,11 +133,14 @@ export function referenceOf(node) {
     : undefined;
 }
 
-export function referenceName(target) {
+export function referenceName(target: ReferenceExpression): string {
   return nameOf(target).text;
 }
 
-function declarationsOf(checker, symbol) {
+function declarationsOf(
+  checker: TypeScript.TypeChecker,
+  symbol: TypeScript.Symbol | undefined,
+): readonly TypeScript.Declaration[] {
   const resolved =
     symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
       ? checker.getAliasedSymbol(symbol)
@@ -114,41 +148,62 @@ function declarationsOf(checker, symbol) {
   return resolved?.declarations ?? [];
 }
 
-function aliasedSymbolOf(checker, declaration) {
-  const initializer = ts.isVariableDeclaration(declaration)
-    ? declaration.initializer && unwrapExpression(declaration.initializer)
-    : undefined;
+function aliasedSymbolOf(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.Declaration,
+): TypeScript.Symbol | undefined {
+  const initializer =
+    ts.isVariableDeclaration(declaration) && declaration.initializer !== undefined
+      ? unwrapExpression(declaration.initializer)
+      : undefined;
   return initializer !== undefined && isReferenceExpression(initializer)
     ? checker.getSymbolAtLocation(nameOf(initializer))
     : undefined;
 }
 
-function aliasedDeclarations(checker, symbol) {
-  const found = [];
-  const pending = [{ symbol, depth: ALIAS_DEPTH }];
+function aliasedDeclarations(
+  checker: TypeScript.TypeChecker,
+  symbol: TypeScript.Symbol | undefined,
+): TypeScript.Declaration[] {
+  const found: TypeScript.Declaration[] = [];
+  const pending: AliasSearch[] = [{ symbol, depth: ALIAS_DEPTH }];
   for (const { symbol: current, depth } of pending) {
     const declarations = declarationsOf(checker, current);
     found.push(...declarations);
     const next =
       depth === 0 ? [] : declarations.map((declaration) => aliasedSymbolOf(checker, declaration));
-    pending.push(...next.filter(Boolean).map((alias) => ({ symbol: alias, depth: depth - 1 })));
+    pending.push(
+      ...next.flatMap((alias) =>
+        alias === undefined ? [] : [{ symbol: alias, depth: depth - 1 }],
+      ),
+    );
   }
   return found;
 }
 
-export function functionsOf(checker, target, mode) {
+export function functionsOf(
+  checker: TypeScript.TypeChecker,
+  target: ReferenceExpression,
+  mode: ReferenceMode,
+): ResolvedFunction[] {
   return functionsOfSymbol(checker, checker.getSymbolAtLocation(nameOf(target)), mode);
 }
 
-export function functionsOfSymbol(checker, symbol, mode) {
+export function functionsOfSymbol(
+  checker: TypeScript.TypeChecker,
+  symbol: TypeScript.Symbol | undefined,
+  mode: ReferenceMode,
+): ResolvedFunction[] {
   return aliasedDeclarations(checker, symbol)
     .filter((declaration) => mode !== 'access' || ts.isGetAccessorDeclaration(declaration))
     .map(functionOf)
     .filter((fn) => fn !== undefined);
 }
 
-function constructorParts(klass) {
-  return klass.members.flatMap((member) => {
+function constructorParts(
+  klass: TypeScript.ClassDeclaration | TypeScript.ClassExpression,
+): TypeScript.Node[] {
+  return klass.members.flatMap((member): TypeScript.Node[] => {
     if (ts.isConstructorDeclaration(member)) {
       return [...member.parameters, ...(member.body === undefined ? [] : [member.body])];
     }
@@ -161,9 +216,9 @@ function constructorParts(klass) {
   });
 }
 
-export function bodyParts(fn) {
+export function bodyParts(fn: ResolvedFunction): TypeScript.Node[] {
   if (ts.isClassDeclaration(fn) || ts.isClassExpression(fn)) {
     return constructorParts(fn);
   }
-  return [...fn.parameters, fn.body];
+  return [...fn.parameters, ...(fn.body === undefined ? [] : [fn.body])];
 }

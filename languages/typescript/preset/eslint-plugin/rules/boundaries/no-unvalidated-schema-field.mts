@@ -1,17 +1,25 @@
-import { looseForm, unvalidatedRoot } from './schema-fields/field-walk.mjs';
-import { ajvSchemaArgument, jsonSchemaFindings } from './schema-fields/json-schema-fields.mjs';
-import { calledExport, propertyName } from './schema-fields/library-nodes.mjs';
-import { isShapeMethod, SCHEMA_FORMS } from './schema-fields/schema-forms.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { SourceCode } from '../typed/node-views.mts';
+import { looseForm, unvalidatedRoot } from './schema-fields/field-walk.mts';
+import { ajvSchemaArgument, jsonSchemaFindings } from './schema-fields/json-schema-fields.mts';
+import { calledExport, propertyName, type SchemaLibrary } from './schema-fields/library-nodes.mts';
+import { isShapeMethod, SCHEMA_FORMS } from './schema-fields/schema-forms.mts';
 import {
   opaqueTypeFields,
   presenceOnlyDecorators,
   typiaTypeArgument,
-} from './schema-fields/typed-fields.mjs';
+} from './schema-fields/typed-fields.mts';
+
+type MessageId = 'unvalidatedField' | 'customWithoutValidator' | 'looseObject';
+type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
 
 const CLASS_VALIDATOR_EXAMPLE = '@IsString() @MinLength(1) or @IsEmail()';
 const TYPIA_EXAMPLE = "string & tags.MinLength<1> or string & tags.Format<'email'>";
 
-function shapeOf(sourceCode, node) {
+function shapeOf(
+  sourceCode: SourceCode,
+  node: TSESTree.CallExpression,
+): { readonly owner: SchemaLibrary | undefined } | undefined {
   const called = calledExport(sourceCode, node);
   if (called !== undefined) {
     return called.library.forms.objects.includes(called.name)
@@ -21,11 +29,19 @@ function shapeOf(sourceCode, node) {
   return isShapeMethod(propertyName(node.callee)) ? { owner: undefined } : undefined;
 }
 
-function reportField(context, node, data) {
+function reportField(
+  context: Context,
+  node: TSESTree.Node,
+  data: Readonly<Record<string, unknown>>,
+): void {
   context.report({ node, messageId: 'unvalidatedField', data });
 }
 
-function reportLeaf(context, node, leaf) {
+function reportLeaf(
+  context: Context,
+  node: TSESTree.Node,
+  leaf: { readonly library: SchemaLibrary; readonly display: string; readonly cast?: true },
+): void {
   if (leaf.cast) {
     context.report({ node, messageId: 'customWithoutValidator' });
     return;
@@ -33,26 +49,35 @@ function reportLeaf(context, node, leaf) {
   reportField(context, node, { factory: leaf.display, example: leaf.library.forms.example });
 }
 
-function shapeValues(shape, owner) {
-  const values = [];
-  const pending = [shape];
+function shapeValues(
+  shape: TSESTree.ObjectExpression,
+  owner: SchemaLibrary | undefined,
+): TSESTree.Node[] {
+  const values: TSESTree.Node[] = [];
+  const pending = new Set([shape]);
   for (const current of pending) {
-    const properties = current.properties.filter((property) => property.type === 'Property');
-    const nested = owner?.forms.stringLeaves === undefined ? [] : properties;
-    pending.push(
-      ...nested.map(({ value }) => value).filter((value) => value.type === 'ObjectExpression'),
+    const properties = current.properties.filter(
+      (property) => property.type === AST_NODE_TYPES.Property,
     );
+    const nested = owner?.forms.stringLeaves === undefined ? [] : properties;
+    for (const { value } of nested) {
+      if (value.type === AST_NODE_TYPES.ObjectExpression) {
+        pending.add(value);
+      }
+    }
     values.push(
-      ...properties.map(({ value }) => value).filter((value) => !pending.includes(value)),
+      ...properties
+        .map(({ value }) => value)
+        .filter((value) => !(value.type === AST_NODE_TYPES.ObjectExpression && pending.has(value))),
     );
   }
   return values;
 }
 
-function checkShape(context, node) {
+function checkShape(context: Context, node: TSESTree.CallExpression): void {
   const found = shapeOf(context.sourceCode, node);
   const [shape] = node.arguments;
-  if (found === undefined || shape?.type !== 'ObjectExpression') {
+  if (found === undefined || shape?.type !== AST_NODE_TYPES.ObjectExpression) {
     return;
   }
   const { owner } = found;
@@ -64,7 +89,7 @@ function checkShape(context, node) {
   }
 }
 
-function checkLooseObject(context, node) {
+function checkLooseObject(context: Context, node: TSESTree.CallExpression): void {
   const loose = looseForm(context.sourceCode, node);
   if (loose === undefined) {
     return;
@@ -76,7 +101,7 @@ function checkLooseObject(context, node) {
   });
 }
 
-function checkJsonSchema(context, node) {
+function checkJsonSchema(context: Context, node: TSESTree.CallExpression): void {
   const schema = ajvSchemaArgument(context.sourceCode, node);
   const { allowed, example } = SCHEMA_FORMS.ajv;
   for (const finding of schema === undefined ? [] : jsonSchemaFindings(schema)) {
@@ -92,16 +117,19 @@ function checkJsonSchema(context, node) {
   }
 }
 
-function checkTypiaType(context, node) {
+function checkTypiaType(context: Context, node: TSESTree.CallExpression): void {
   const { sourceCode } = context;
   const type = typiaTypeArgument(sourceCode, node);
   for (const field of type === undefined ? [] : opaqueTypeFields(sourceCode.ast, type)) {
-    const text = sourceCode.getText(field.typeAnnotation.typeAnnotation);
-    reportField(context, field, { factory: `The type ${text}`, example: TYPIA_EXAMPLE });
+    const text = sourceCode.getText(field.type);
+    reportField(context, field.member, { factory: `The type ${text}`, example: TYPIA_EXAMPLE });
   }
 }
 
-function checkDecorators(context, node) {
+function checkDecorators(
+  context: Context,
+  node: TSESTree.PropertyDefinition | TSESTree.AccessorProperty,
+): void {
   const decorators = presenceOnlyDecorators(context.sourceCode, node);
   if (decorators !== undefined) {
     reportField(context, node, {
@@ -111,7 +139,7 @@ function checkDecorators(context, node) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
