@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-unsafe-deserialization.mjs';
+import { rule } from './no-unsafe-deserialization.mts';
 
 const tester = typescriptRuleTester();
 const code = (messageId: string, name: string) => [{ messageId, data: { name } }];

@@ -1,26 +1,41 @@
-import { suggestible } from '../../../fixes/support/descriptors.mjs';
-import { HTTP_TIMEOUT_MS, httpTimeoutFix } from '../../../fixes/security/http-timeout-fix.mjs';
-import { clientBindings, clientCall } from './http-clients.mjs';
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { suggestible } from '../../../fixes/support/descriptors.mts';
+import { HTTP_TIMEOUT_MS, httpTimeoutFix } from '../../../fixes/security/http-timeout-fix.mts';
+import { clientBindings, clientCall, type ClientScope, type Found } from './http-clients.mts';
 import {
   axiosPosition,
   defaultsTimeoutOwner,
   everyInstanceCallTimed,
   setsGlobalDispatcherTimeout,
-} from './http-defaults.mjs';
+} from './http-defaults.mts';
 
-const PROJECT_DEFAULTS = ['axios', 'fetch'];
+type MessageIds = 'noTimeout' | 'addTimeout';
+type Options = readonly [Readonly<Record<string, unknown>>?];
+type Defaults = {
+  readonly axios: boolean;
+  fetch: boolean;
+  readonly owners: Set<string | undefined>;
+};
 
-function coveredByDefaults(found, defaults) {
-  if (found.client === 'fetch') {
+const AXIOS = 'axios';
+const FETCH = 'fetch';
+const PROJECT_DEFAULTS = [AXIOS, FETCH];
+
+function listOf(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function coveredByDefaults(found: Found, defaults: Defaults): boolean {
+  if (found.client === FETCH) {
     return defaults.fetch;
   }
   return (
-    found.client === 'axios' &&
+    found.client === AXIOS &&
     (defaults.axios || defaults.owners.has(found.owner) || defaults.owners.has(found.instance))
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, Options> = {
   meta: {
     type: 'problem',
     hasSuggestions: true,
@@ -31,7 +46,7 @@ export const rule = {
         properties: {
           fetch: { type: 'boolean' },
           nodeFetchTimeout: { type: 'boolean' },
-          projectDefaults: { type: 'array', items: { enum: PROJECT_DEFAULTS } },
+          projectDefaults: { type: 'array', items: { type: 'string', enum: PROJECT_DEFAULTS } },
         },
         additionalProperties: false,
       },
@@ -44,24 +59,21 @@ export const rule = {
   },
   create(context) {
     const options = context.options[0] ?? {};
-    const projectDefaults = options.projectDefaults ?? [];
-    const defaults = {
-      axios: projectDefaults.includes('axios'),
-      fetch: projectDefaults.includes('fetch'),
-      owners: new Set(),
+    const projectDefaults = listOf(options['projectDefaults']);
+    const defaults: Defaults = {
+      axios: projectDefaults.includes(AXIOS),
+      fetch: projectDefaults.includes(FETCH),
+      owners: new Set<string | undefined>(),
     };
-    const pending = [];
-    let scope;
+    const pending: { node: TSESTree.CallExpression; found: Found }[] = [];
+    const scope: ClientScope = {
+      context,
+      checkFetch: options[FETCH] !== false,
+      nodeFetchTimeout: options['nodeFetchTimeout'] !== false,
+      ...clientBindings(context.sourceCode.ast),
+    };
 
     return {
-      Program(node) {
-        scope = {
-          context,
-          checkFetch: options.fetch !== false,
-          nodeFetchTimeout: options.nodeFetchTimeout !== false,
-          ...clientBindings(node),
-        };
-      },
       AssignmentExpression(node) {
         const owner = defaultsTimeoutOwner(context, node);
         if (owner !== undefined) {
@@ -79,7 +91,7 @@ export const rule = {
         for (const { node, found } of pending) {
           const timedInstance =
             found.call === 'axios.create()' && everyInstanceCallTimed(context, node);
-          if (!coveredByDefaults(found, defaults) && !timedInstance) {
+          if (!(coveredByDefaults(found, defaults) || timedInstance)) {
             const plan = httpTimeoutFix(context.sourceCode, node, { found, axiosPosition });
             context.report(
               suggestible(

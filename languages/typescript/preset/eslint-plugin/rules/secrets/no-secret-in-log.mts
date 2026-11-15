@@ -1,5 +1,6 @@
-import { dottedName, memberName, unwrapped } from './secret-nodes.mjs';
-import { secretOperands } from './secret-operands.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { dottedName, memberName, unwrapped } from './secret-nodes.mts';
+import { secretOperands } from './secret-operands.mts';
 
 const LOG_METHODS = new Set([
   'trace',
@@ -20,17 +21,17 @@ const LOGGER_NAME = /^(?:console|logger|log|logging|winston|pino|bunyan|consola|
 const ERROR_TYPE = /(?:Error|Exception)$/;
 const STREAMS = new Set(['process.stdout', 'process.stderr']);
 
-function loggerOwner(owner) {
+function loggerOwner(owner: TSESTree.Node): boolean {
   const name = unwrapped(owner);
-  if (name.type === 'Identifier') {
+  if (name.type === AST_NODE_TYPES.Identifier) {
     return LOGGER_NAME.test(name.name);
   }
-  return name.type === 'MemberExpression' && LOGGER_NAME.test(memberName(name) ?? '');
+  return name.type === AST_NODE_TYPES.MemberExpression && LOGGER_NAME.test(memberName(name) ?? '');
 }
 
-function isLogCall(call) {
+function isLogCall(call: TSESTree.CallExpression): boolean {
   const callee = unwrapped(call.callee);
-  if (callee.type !== 'MemberExpression') {
+  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
     return false;
   }
   const method = memberName(callee);
@@ -40,12 +41,12 @@ function isLogCall(call) {
   return LOG_METHODS.has(method ?? '') && loggerOwner(callee.object);
 }
 
-function isErrorConstruction(node) {
+function isErrorConstruction(node: TSESTree.NewExpression): boolean {
   const name = dottedName(node.callee)?.split('.').at(-1);
   return name !== undefined && ERROR_TYPE.test(name);
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'secretInLog'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Disallow secrets passed to a log call or an error message' },
@@ -55,10 +56,12 @@ export const rule = {
     },
   },
   create(context) {
-    function check(node) {
+    function check(node: TSESTree.CallExpression | TSESTree.NewExpression): void {
       for (const argument of node.arguments) {
         for (const operand of secretOperands(argument)) {
-          const name = context.sourceCode.getText(operand.key ?? operand);
+          const name = context.sourceCode.getText(
+            operand.type === AST_NODE_TYPES.Property ? operand.key : operand,
+          );
           context.report({
             node: operand,
             messageId: 'secretInLog',
