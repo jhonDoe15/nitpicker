@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noEagerRelation } from './no-eager-relation.mjs';
-import { rule as noManyToManyCascadeRemove } from './no-many-to-many-cascade-remove.mjs';
+import { rule as noEagerRelation } from './no-eager-relation.mts';
+import { rule as noManyToManyCascadeRemove } from './no-many-to-many-cascade-remove.mts';
 
 const tester = typescriptRuleTester();
 const typeorm =

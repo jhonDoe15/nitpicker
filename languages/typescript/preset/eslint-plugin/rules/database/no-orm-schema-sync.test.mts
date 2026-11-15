@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-orm-schema-sync.mjs';
+import { rule } from './no-orm-schema-sync.mts';
 
 const tester = typescriptRuleTester();
 const sync = (form: string) => [{ messageId: 'schemaSync', data: { form } }];
