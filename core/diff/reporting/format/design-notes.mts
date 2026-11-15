@@ -1,4 +1,4 @@
-import { printable } from './text.mjs';
+import { printable } from './text.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 

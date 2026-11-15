@@ -492,7 +492,7 @@ Thread.currentThread(); t.interrupt()`) or hands the exception off through a lam
   added (`File.readText` and the other `kotlin.io` and `kotlin.io.path` file calls, `URL.readText`,
   `exitProcess`, `kotlin.concurrent.timer`, `launch` or `async` on a `CoroutineScope(...)` or
   `MainScope()`, `System.exit`, `Runtime.exit` and `Runtime.halt`, which detekt does not ban), and a
-  test (`load-effect-parity.test.mjs`) compares the two rules call by call (`Type#method`), with a
+  test (`load-effect-parity.test.mts`) compares the two rules call by call (`Type#method`), with a
   reason for each pair one side leaves out. Calls detekt already bans in main sources are left to it,
   so each is reported once: `Thread.start`, `Thread.sleep`, `thread { }`, `Runtime.exec`,
   `runBlocking`, `GlobalScope`, `System.getenv` and an imported `TimeZone` (a fully qualified

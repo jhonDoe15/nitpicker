@@ -1,7 +1,7 @@
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 
 type PreparedRoots = {

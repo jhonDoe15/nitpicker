@@ -190,7 +190,7 @@ afterEvaluate {
         def modulePath = relative(projectDir) ?: '.'
         project.ext.nitpickerKotlinJvmTarget = [
             reportDir: reportDir, pinned: shared.pinned, testsFailed: shared.testsFailed.contains(modulePath),
-            target: jvmTargets()[0],
+            target: jvmTargets()[0], shared: shared, mainCompileTask: jvmCompilation('main').compileKotlinTaskName,
             mainClasses: jvmCompilation('main').output.classesDirs,
             sourceRoots: jvmCompilation('main').allKotlinSourceSets.collectMany { it.kotlin.srcDirs }.findAll { it.exists() },
         ]
@@ -215,16 +215,32 @@ afterEvaluate {
                          'jdeps-classes.txt': ''] + kotlinReports
             writeMissing(directory, empty)
             def jvm = !jvmCompilations().isEmpty()
-            def ran = jvm ? 'the source checks, the format check, detekt, the kotlinc lint' +
-                (shared.quick ? '' : ', the tests of the JVM target, coverage and CRAP') : 'the source checks and the format check'
+            def allTargets = project.kotlin.hasProperty('targets') ? project.kotlin.targets.toList() : []
+            def otherTargets = allTargets.findAll { !(it.platformType.name() in ['jvm', 'common', 'androidJvm']) }*.name.sort()
+            def android = allTargets.any { it.platformType.name() == 'androidJvm' } ||
+                ['com.android.application', 'com.android.library', 'org.jetbrains.kotlin.android'].any { pluginManager.hasPlugin(it) }
+            def ran = { String name ->
+                def task = tasks.findByName(name)
+                task != null && task.state.executed && task.state.failure == null &&
+                    !(task.state.skipped && task.state.skipMessage in ['SKIPPED', 'NO-SOURCE'])
+            }
             def targets = jvmTargets()
             def firstOnly = targets.size() > 1
-                ? ["; only the first JVM target (${targets[0].name}) gets the kotlinc lint, tests, coverage and CRAP"] : []
-            def missing = (jvm ? [] : ['detekt', 'the kotlinc lint', 'the tests', 'coverage']) +
-                (jvm && shared.quick ? ['the tests and coverage'] : []) + ['mutation testing', 'the .java files']
+                ? ["; only the first JVM target (${targets[0].name}) gets the kotlinc lint, tests, coverage, CRAP and mutation testing"] : []
+            def testsRan = jvm && ran('nitpickerJacoco')
+            def mutationRan = jvm && ran('nitpickerPitRun')
+            def joined = { List<String> items ->
+                items.size() < 2 ? items.join('') : items.init().join(', ') + ' and ' + items.last()
+            }
+            def done = ['the source checks', 'the format check'] + (jvm ? ['detekt', 'the kotlinc lint'] : []) +
+                (testsRan ? ['the tests of the JVM target', 'coverage', 'CRAP'] : []) + (mutationRan ? ['mutation testing'] : [])
+            def missing = (jvm ? [] : ['detekt', 'the kotlinc lint']) +
+                (testsRan ? [] : ['the tests', 'coverage', 'CRAP']) + (mutationRan ? [] : ['mutation testing']) +
+                (otherTargets.isEmpty() ? [] : ["the tests of the ${otherTargets.join(', ')} target${otherTargets.size() > 1 ? 's' : ''}".toString()]) +
+                (android ? ['the Android variants'] : []) + ['the .java files']
             new File(directory, 'kotlin-notes.json').setText(groovy.json.JsonOutput.toJson([
-                "The Android or Multiplatform project ${project.path} gets ${ran}; " +
-                    "${missing.join(', ')} do not run on it${firstOnly ? firstOnly[0] : ''}.".toString()]), 'UTF-8')
+                "The Android or Multiplatform project ${project.path} gets ${joined(done)}; " +
+                    "${joined(missing)} do not run on it${firstOnly ? firstOnly[0] : ''}.".toString()]), 'UTF-8')
             new File(directory, 'manifest.json').text = groovy.json.JsonOutput.toJson([
                 versions             : shared.pinned,
                 moduleKey            : moduleKey,

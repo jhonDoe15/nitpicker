@@ -64,6 +64,11 @@ def relativeToRoot = { File file ->
     analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/')
 }
 
+def pitContext = [
+    mutators: pitMutators, settings: nitpickerSettings, historyRecorded: pitHistoryRecorded,
+    historyRoot: pitHistoryRoot, analysisRoot: analysisRoot, relativeToRoot: relativeToRoot,
+]
+
 def processFailure = { String name, int exit, String log ->
     def killed = exit == 137
         ? ' (killed, usually by the out-of-memory killer; run fewer jobs at once with NITPICKER_MAX_PARALLEL or give the job more memory)' : ''
@@ -453,7 +458,7 @@ allprojects {
         project.ext.nitpickerKotlinSourceModule = [quick: quickRun, testsFailed: (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }, kotlinTooling: kotlinTooling, initScriptDir: initScriptDir, pinned: pinned, reportBase: reportBase, modules: javaModules,
             moduleKey: moduleKeyOf, selected: kotlinSourceModule, buildFacts: kotlinCallerGaps,
             psiClasses: kotlinPsiClasses, runProcess: runProcess, repositories: projectRepositories,
-            formatter: nitpickerArgument('nitpicker.kotlin.formatter')]
+            formatter: nitpickerArgument('nitpicker.kotlin.formatter'), pitContext: pitContext, mutationOff: mutationOff]
         project.apply from: new File(initScriptDir, 'kotlin/kotlin-source-modules.gradle')
     }
     plugins.withId('java') {
@@ -489,15 +494,15 @@ allprojects {
         def javaFormatterVersion = nitpickerArgument('nitpicker.java.formatterVersion')
         def javaFormatterFlags = (nitpickerArgument('nitpicker.java.formatterFlags') ?: '').toString().split(',').findAll { it }
 
+        project.ext.nitpickerPitContext = pitContext
+        project.apply from: new File(initScriptDir, 'pit/pit-task.gradle')
+        project.ext.nitpickerPitConfigurations(pinned)
         configurations {
             nitpickerPmd { canBeConsumed = false }
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerSpotbugsPlugins { canBeConsumed = false; transitive = false }
             nitpickerFormat { canBeConsumed = false }
-            nitpickerPit { canBeConsumed = false }
             nitpickerSpringArch { canBeConsumed = false }
-            nitpickerPitJunit5 { canBeConsumed = false }
-            nitpickerPitTestng { canBeConsumed = false }
             nitpickerCheckstyle { canBeConsumed = false }
         }
         if (projectRepositories.allowed) {
@@ -516,19 +521,6 @@ allprojects {
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
             nitpickerSpringArch "com.tngtech.archunit:archunit:${pinned.archunit}"
             nitpickerSpringArch "org.ow2.asm:asm-analysis:${pinned.asm}"
-        }
-        dependencies {
-            nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
-            nitpickerPitJunit5("org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}") {
-                // The JUnit Platform comes from the project (see nitpickerPit): a copy pinned
-                // here would clash with the project's Jupiter version.
-                exclude group: 'org.junit.platform'
-                exclude group: 'org.junit.jupiter'
-                exclude group: 'org.opentest4j'
-                exclude group: 'org.apiguardian'
-            }
-            // PIT refuses a TestNG project without its TestNG plugin; TestNG itself comes from the project.
-            nitpickerPitTestng "org.pitest:pitest-testng-plugin:${pinned.pitestTestng}"
         }
         jacoco { toolVersion = pinned.jacoco }
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
@@ -630,9 +622,7 @@ allprojects {
         }
         def lintedSources = { (mainSources.files + testSourceDirectories()).findAll { it.exists() } }
         def capitalized = { String text -> text[0].toUpperCase() + text.substring(1) }
-        def skippedByBuild = { Task task ->
-            !task.enabled || (task.state.skipped && task.state.skipMessage == 'SKIPPED')
-        }
+        def skippedByBuild = project.ext.nitpickerSkippedByBuild
         def checkedTestTasks = {
             def seen = new LinkedHashSet<Task>()
             def pending = [tasks.named('check').get()]
@@ -951,21 +941,7 @@ allprojects {
         def pitReportDirectory = { Test source ->
             checkedTestTasks().size() > 1 ? reportDir.get().dir("pit/${source.name}") : reportDir.get().dir('pit')
         }
-        def pitTestClasses = { Test source ->
-            source.testClassesDirs.files.findAll { it.exists() }.collectMany { dir ->
-                def classes = fileTree(dir).matching { include '**/*.class'; exclude archunitIncludes }
-                if (!source.includes.isEmpty()) {
-                    classes = classes.matching { include source.includes }
-                }
-                if (!source.excludes.isEmpty()) {
-                    classes = classes.matching { exclude source.excludes }
-                }
-                classes.files.collect {
-                    dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                        .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
-                }
-            }.unique()
-        }
+        def pitTestClasses = { Test source -> project.ext.nitpickerPitTestClasses(source, archunitIncludes) }
         def pitStatusOrder = ['KILLED', 'TIMED_OUT', 'MEMORY_ERROR', 'RUN_ERROR', 'NON_VIABLE', 'SURVIVED',
                               'NO_COVERAGE']
         def pitKey = ['mutatedClass', 'mutatedMethod', 'methodDescription', 'lineNumber', 'mutator', 'indexes',
@@ -994,142 +970,28 @@ allprojects {
             def mutations = best.values().collect { xml(it) }.join('')
             target.text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mutations>${mutations}</mutations>\n"
         }
-        def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
         project.apply from: new File(initScriptDir, 'pit/pit-scope.gradle')
         project.apply from: new File(initScriptDir, 'pit/pit-retry.gradle')
         def scopedPitTargets = {
             project.ext.nitpickerScopedPitTargets(mutatedClassDirs().findAll { it.exists() }, sourceSets.main.allSource.files)
         }
         def registerPit = { String pitName, TaskProvider<Test> sourceTask ->
-            tasks.register(pitName, JavaExec) {
-                def source = sourceTask.get()
-                group = 'nitpicker'
-                dependsOn tasks.named('classes')
-                dependsOn source.testClassesDirs
-                mustRunAfter source
-                classpath = configurations.nitpickerPit
-                mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
-                def pitOutput = new ByteArrayOutputStream()
-                def pitTask = it
-                def execOperations = project.services.get(org.gradle.process.ExecOperations)
-                ignoreExitValue = true
-                standardOutput = pitOutput
-                errorOutput = pitOutput
-                doLast {
-                    def exitValue = executionResult.get().exitValue
-                    def output = pitOutput.toString('UTF-8')
-                    if (exitValue != 0) {
-                        def retry = project.ext.nitpickerPitRetry(
-                            pitTask, execOperations, pitReportDirectory(source).asFile, output)
-                        if (retry != null) {
-                            exitValue = retry.exitValue
-                            output = retry.output
-                        }
-                    }
-                    if (exitValue != 0) {
-                        def lines = output.readLines().findAll { it.trim() }
-                        def testTask = checkedTestTasks().size() > 1 ? " running the ${source.name} tests" : ''
-                        new File(pitReportDirectory(source).asFile, 'failure.txt').text =
-                            "PIT failed with exit code ${exitValue}${testTask}: ${lines.takeRight(40).join('\n')}"
-                    }
-                }
-                doFirst {
-                    def pitDir = pitReportDirectory(source)
-                    def classDirs = mutatedClassDirs().findAll { it.exists() }
-                    // A target is the first package holding classes on each path. PIT refuses any filter
-                    // that matches its own org.pitest classes, as `org.*` does, so such a package lists its
-                    // classes by name and its subpackages separately.
-                    def classNames = { File dir, String prefix ->
-                        (dir.listFiles() ?: []).findAll { it.isFile() && it.name.endsWith('.class') }
-                            .collect { "${prefix}${it.name.replaceAll(/\.class$/, '')}".toString() }
-                    }
-                    def packageTargets
-                    packageTargets = { File dir, String prefix ->
-                        def subpackages = { (dir.listFiles() ?: []).findAll { it.isDirectory() }
-                            .collectMany { packageTargets(it, "${prefix}${it.name}.".toString()) } }
-                        def classes = classNames(dir, prefix)
-                        classes.isEmpty() ? subpackages()
-                            : 'org.pitest.'.startsWith(prefix) ? classes + subpackages()
-                            : ["${prefix}*".toString()]
-                    }
-                    def targets = scopedPitTargets() ?:
-                        classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
-                    // Tests are named class by class: a package glob would also hand the main classes
-                    // that share a package with the tests to the test engine.
-                    def testRuntimeFiles = source.classpath.files
-                    def tests = pitTestClasses(source)
-                    // PIT's JUnit 5 plugin needs the launcher next to the project's engine; Gradle itself
-                    // supplies one to `test`, so a project may not declare it. Take the engine's version.
-                    def runtimeJars = testRuntimeFiles*.name
-                    def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
-                    def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
-                    if (engine != null) {
-                        classpath += configurations.nitpickerPitJunit5
-                    }
-                    if (engine != null && !runtimeJars.any { it.startsWith('junit-platform-launcher-') }) {
-                        classpath += project.configurations.detachedConfiguration(
-                            project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
-                    }
-                    if (runtimeJars.any { it ==~ /testng-\d.*\.jar/ }) {
-                        classpath += configurations.nitpickerPitTestng
-                    }
-                    project.delete(pitDir)
-                    pitDir.asFile.mkdirs()
-                    def pitClasspath = (testRuntimeFiles + classDirs)
-                        .findAll { it.exists() }.collect { it.absolutePath }.unique()
-                    args(['--reportDir', pitDir.asFile.absolutePath,
-                          '--targetClasses', targets.join(','),
-                          '--targetTests', tests.join(','),
-                          '--sourceDirs', mainSources.files.findAll { it.exists() }.join(','),
-                          '--classPath', pitClasspath.join(','),
-                          '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
-                          '--outputFormats', 'XML',
-                          '--timestampedReports', 'false',
-                          '--failWhenNoMutations', 'false',
-                          '--verbose', 'false'] +
-                        nitpickerSettings('pit', ['--threads', '2', '--mutators', pitMutators.join(',')]))
-                    def historyFile = project.layout.buildDirectory
-                        .file("nitpicker-pit-history/${source.name}.history").get().asFile
-                    if (pitHistoryRecorded) {
-                        args '--historyOutputLocation', historyFile.absolutePath
-                    }
-                    def baseRoot = pitHistoryRoot == null ? null : new File(pitHistoryRoot.toString()).canonicalFile
-                    def sameDrive = historyFile.toPath().root == analysisRoot.toPath().root
-                    def recorded = baseRoot == null || !sameDrive ? null
-                        : new File(baseRoot, relativeToRoot(historyFile)).canonicalFile
-                    if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
-                        args '--historyInputLocation', recorded.absolutePath
-                    }
-                    def testJvmArgs = (source.jvmArgs ?: []) +
-                        source.systemProperties.collect { key, value ->
-                            (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +
-                        [source.minHeapSize ? "-Xms${source.minHeapSize}" : null,
-                         source.maxHeapSize ? "-Xmx${source.maxHeapSize}" : null].findAll { it != null }*.toString() +
-                        source.jvmArgumentProviders.findAll { it.getClass().name != jacocoArgumentProvider }
-                            .collectMany { provider -> provider.asArguments().collect { it.toString() } }
-                    if (!testJvmArgs.isEmpty()) {
-                        def argumentFile = new File(pitDir.asFile, 'jvm-arguments')
-                        argumentFile.text = testJvmArgs.collect { argument ->
-                            '"' + argument.replace('\\', '\\\\').replace('"', '\\"')
-                                .replace('\n', '\\n').replace('\r', '\\r') + '"\n'
-                        }.join('')
-                        def quote = argumentFile.absolutePath.contains('"') ? "'" : '"'
-                        args '--argLine', "${quote}@${argumentFile.absolutePath}${quote}".toString()
-                    }
-                    if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
-                        if (!source.options.includeTags.isEmpty()) {
-                            args '--includedGroups', source.options.includeTags.toList().sort().join(',')
-                        }
-                        if (!source.options.excludeTags.isEmpty()) {
-                            args '--excludedGroups', source.options.excludeTags.toList().sort().join(',')
-                        }
-                    }
-                }
-                onlyIf {
+            def source = sourceTask.get()
+            project.ext.nitpickerRegisterPit([
+                name         : pitName,
+                source       : source,
+                dependsOn    : [tasks.named('classes')],
+                classDirs    : mutatedClassDirs,
+                sourceDirs   : { mainSources.files },
+                reportDir    : { pitReportDirectory(source) },
+                tests        : { pitTestClasses(source) },
+                scopedTargets: scopedPitTargets,
+                failureSuffix: { checkedTestTasks().size() > 1 ? " running the ${source.name} tests" : '' },
+                enabled      : {
                     !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
                         (source.name == 'test' || !pitTestClasses(source).isEmpty()) && scopedPitTargets() != []
-                }
-            }
+                },
+            ])
         }
         tasks.register('nitpickerPit') {
             group = 'nitpicker'

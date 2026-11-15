@@ -5,7 +5,7 @@ import path from 'node:path';
 import { runJavaDiff } from '../../java-diff.mjs';
 import { sourceTextReader } from '../../reporting/function-locator.mjs';
 import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mjs';
-import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

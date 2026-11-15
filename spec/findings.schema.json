@@ -8,7 +8,11 @@
   "properties": {
     "findings": {
       "type": "array",
-      "items": { "$ref": "#/$defs/finding" }
+      "items": {
+        "if": { "required": ["metrics"] },
+        "then": { "$ref": "#/$defs/metricGroup" },
+        "else": { "$ref": "#/$defs/finding" }
+      }
     },
     "moduleImports": {
       "description": "Optional. Import edges from a production file to the folder of a production file it imports, published by language analyzers when history.coChange is on. Core joins them into co-change findings and drops them from the report.",
@@ -21,6 +25,33 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\u0000]+$"
+    },
+    "path": {
+      "description": "Git-style relative path that stays within the analyzed project: not absolute, no drive letter, no leading '..'.",
+      "allOf": [
+        { "$ref": "#/$defs/nonEmptyString" },
+        { "not": { "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))" } }
+      ]
+    },
+    "metricGroup": {
+      "description": "Several descriptive metrics of one symbol written as one entry, to keep large metric reports small. The engine reads it as one finding per entry of `metrics`, in order: identity `<identity>:<name>`, message `<name> for <symbol>`, `metric` `{ name, value }`, and the entry's other fields.",
+      "type": "object",
+      "required": ["tool", "rule", "path", "identity", "classification", "symbol", "metrics"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "$ref": "#/$defs/nonEmptyString" },
+        "rule": { "$ref": "#/$defs/nonEmptyString" },
+        "path": { "$ref": "#/$defs/path" },
+        "identity": { "$ref": "#/$defs/nonEmptyString" },
+        "classification": { "const": "descriptive" },
+        "symbol": { "$ref": "#/$defs/nonEmptyString" },
+        "location": { "$ref": "#/$defs/location" },
+        "metrics": {
+          "description": "Metric values by name.",
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      }
     },
     "moduleImport": {
       "type": "object",
@@ -44,13 +75,7 @@
       "properties": {
         "tool": { "$ref": "#/$defs/nonEmptyString" },
         "rule": { "$ref": "#/$defs/nonEmptyString" },
-        "path": {
-          "description": "Git-style relative path that stays within the analyzed project: not absolute, no drive letter, no leading '..'.",
-          "allOf": [
-            { "$ref": "#/$defs/nonEmptyString" },
-            { "not": { "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))" } }
-          ]
-        },
+        "path": { "$ref": "#/$defs/path" },
         "identity": {
           "description": "Stable identity used to match a finding between base and head snapshots.",
           "$ref": "#/$defs/nonEmptyString"

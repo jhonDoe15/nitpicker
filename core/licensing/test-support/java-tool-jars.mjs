@@ -10,9 +10,11 @@ const JAVA_DIRECTORY = path.resolve(import.meta.dirname, '../../../languages/jav
 const GRADLE_SCRIPTS = [
   path.join(JAVA_DIRECTORY, 'gradle', 'nitpicker.init.gradle'),
   path.join(JAVA_DIRECTORY, 'gradle', 'errorprone', 'error-prone.gradle'),
+  path.join(JAVA_DIRECTORY, 'gradle', 'kotlin', 'kotlin-detekt.gradle'),
+  path.join(JAVA_DIRECTORY, 'gradle', 'kotlin', 'kotlin-format.gradle'),
 ];
 const MAVEN_TOOLS = path.join(JAVA_DIRECTORY, 'maven', 'maven-tools.mjs');
-const PINNED_COORDINATES = /([\w.-]+):([\w.-]+):\$\{(?:pinned|versions)\.(\w+)\}/g;
+const PINNED_COORDINATES = /([\w.-]+):([\w.-]+):\$\{(?:\w+ \?: )?(?:pinned|versions)\.(\w+)\}/g;
 const PINNED_KEY = /\bpinned\.(\w+)/g;
 const NOT_DOWNLOADED = new Set(['lizard']);
 
