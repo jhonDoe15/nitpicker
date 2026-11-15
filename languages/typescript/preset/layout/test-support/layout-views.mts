@@ -150,7 +150,4 @@ export function parseTsconfig(text: string): Tsconfig {
   };
 }
 
-export type VitestConfigFactory = (environment: {
-  readonly command: string;
-  readonly mode: string;
-}) => Promise<VitestConfig>;
+export type VitestConfigFactory = (root: string) => Promise<VitestConfig>;

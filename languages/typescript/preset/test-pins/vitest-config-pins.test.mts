@@ -33,15 +33,12 @@ type ResolvedConfig = {
   readonly plugins: readonly Plugin[];
 };
 
-type QualityConfig = (environment: {
-  command: string;
-  mode: string;
-}) => ResolvedConfig | Promise<ResolvedConfig>;
+type QualityConfig = (root: string) => ResolvedConfig | Promise<ResolvedConfig>;
 
-const importQualityConfig: (url: string) => Promise<{ default: QualityConfig }> = (url) =>
+const importQualityConfig: (url: string) => Promise<{ layeredConfig: QualityConfig }> = (url) =>
   import(url);
 
-const { default: qualityConfig } = await importQualityConfig(
+const { layeredConfig: qualityConfig } = await importQualityConfig(
   new URL('../defaults/vitest.quality.config.ts', import.meta.url).href,
 );
 
@@ -75,7 +72,7 @@ async function resolvedConfig(projectFiles: Record<string, string>): Promise<Res
   const previous = process.cwd();
   process.chdir(root);
   try {
-    return await Promise.resolve(qualityConfig({ command: 'serve', mode: 'test' }));
+    return await Promise.resolve(qualityConfig(root));
   } finally {
     process.chdir(previous);
   }
