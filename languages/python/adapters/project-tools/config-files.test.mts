@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { textsOf } from '../../../../shared/values/readers.mts';
-import { pythonConfigFiles } from './config-files.mjs';
+import { pythonConfigFiles } from './config-files.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

@@ -2,15 +2,15 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { withHint } from '../../rules/rule-hints.mjs';
-import { readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import { withHint } from '../../rules/rule-hints.mts';
+import { readDuplicateFindings, runDuplicates } from './python-duplicates.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { failureOf } from '../test-support/runs/failure-of.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-type Row = Readonly<Record<string, unknown>>;
 type DuplicatesContext = {
   readonly projectRoot: string;
   readonly reportRoot: string;
@@ -26,8 +26,6 @@ type Shape = {
   scale: string;
   bonus: string;
 };
-
-const readClones: (reportRoot: string, projectRoot: string) => Row[] = readDuplicateFindings;
 
 function temporaryRoot(): string {
   return scratchRoot('nitpicker-python-duplicates-');
@@ -57,9 +55,9 @@ function project(
   return { projectRoot, reportRoot: temporaryRoot(), project: { sourceRoots } };
 }
 
-function clonesOf(context: DuplicatesContext): Row[] {
+function clonesOf(context: DuplicatesContext): IngestedFinding[] {
   runDuplicates(context);
-  return readClones(context.reportRoot, context.projectRoot).filter(
+  return readDuplicateFindings(context.reportRoot, context.projectRoot).filter(
     ({ rule }) => rule === 'duplicate-clone',
   );
 }
@@ -106,7 +104,7 @@ describe('duplicates in Python sources', () => {
     const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE });
     runDuplicates(context);
 
-    const metrics = readClones(context.reportRoot, context.projectRoot)
+    const metrics = readDuplicateFindings(context.reportRoot, context.projectRoot)
       .filter(({ rule }) => rule === 'duplicate-clone-size')
       .map(({ metric }) => fieldOf(metric, 'name'));
 
@@ -342,7 +340,7 @@ describe('duplicates whose names and literals were renamed', () => {
       'src/app/parcel.py': renamedFunction(PARCEL),
     });
 
-    expect(fieldOf(withHint(clonesOf(context)[0]), 'message')).toBe(
+    expect(fieldOf(clonesOf(context).map((clone) => withHint(clone))[0], 'message')).toBe(
       'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places. ' +
         'If the repetition is intended, add src/app/invoice.py or src/app/parcel.py to "exclude" in nitpicker.config.json. ' +
         'If this is intended, add {"rule":"duplicate-clone","paths":["src/app/invoice.py"],"reason":"..."} to ' +

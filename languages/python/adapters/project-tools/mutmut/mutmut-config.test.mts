@@ -1,26 +1,33 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { writeMutmutConfig } from './mutmut-config.mjs';
+import { createToolContext } from '../../test-support/typed/tool-context.mts';
+import type { ToolContext } from '../../test-support/typed/tool-context.mts';
+import type { ToolSettings } from '../../typed/context/tool-context-types.mts';
+import { writeMutmutConfig } from './mutmut-config.mts';
 import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
-type Context = { readonly projectRoot: string; readonly [field: string]: unknown };
-
 function configurationContext(
   files: Readonly<Record<string, string>> = {},
-  overrides: Readonly<Record<string, unknown>> = {},
-): Context {
+  overrides: { readonly settings?: ToolSettings; readonly exclude?: readonly string[] } = {},
+): ToolContext {
   const projectRoot = temporaryRoot();
   writeFiles(projectRoot, files);
-  return { projectRoot, project: { sourceRoots: ['src'] }, exclude: [], ...overrides };
+  return createToolContext({
+    projectRoot,
+    liveRoot: projectRoot,
+    settings: { sourceRoots: ['src'] },
+    exclude: [],
+    ...overrides,
+  });
 }
 
 const read = (root: string, file: string) => readFileSync(path.join(root, file), 'utf8');
 
 const failure = (message: string) => new Error(message);
-const ensureMutmutConfiguration = (context: Context) => {
+const ensureMutmutConfiguration = (context: ToolContext) => {
   writeMutmutConfig({ context, fail: failure });
 };
 const LISTED = { mutmut: ['project', 'nitpicker'] };
@@ -63,7 +70,7 @@ describe('the mutmut configuration', () => {
   });
 
   it('creates pyproject.toml when the project has none', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['pkg', 'lib'] } });
+    const context = configurationContext({}, { settings: { sourceRoots: ['pkg', 'lib'] } });
 
     ensureMutmutConfiguration(context);
 
@@ -146,7 +153,7 @@ describe('the mutmut configuration', () => {
   });
 
   it('asks for the directories to mutate when neither nitpicker nor the project names them', () => {
-    const context = configurationContext({}, { project: { sourceRoots: ['.'] } });
+    const context = configurationContext({}, { settings: { sourceRoots: ['.'] } });
 
     expect(() => {
       ensureMutmutConfiguration(context);
@@ -158,7 +165,7 @@ describe('the mutmut configuration', () => {
   it('takes the source paths from the project when the source roots are the whole project', () => {
     const context = configurationContext(
       { 'pyproject.toml': '[tool.mutmut]\npaths_to_mutate = ["app"]\ndo_not_mutate = ["app/*"]\n' },
-      { project: { sourceRoots: ['.'] } },
+      { settings: { sourceRoots: ['.'] } },
     );
 
     ensureMutmutConfiguration(context);
@@ -168,7 +175,7 @@ describe('the mutmut configuration', () => {
 });
 
 describe('the mutmut configuration with tools.mutmut listing the project', () => {
-  const policy = (context: Context) => ({
+  const policy = (context: ToolContext) => ({
     toolPrecedence: LISTED,
     policyRoot: context.projectRoot,
   });
@@ -260,12 +267,12 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
       'src/shop/app.py': '',
       'scripts/tool.py': '',
     });
-    const context = {
+    const context = createToolContext({
       projectRoot: root,
-      project: { sourceRoots: ['src'] },
-      exclude: [],
+      liveRoot: root,
+      settings: { sourceRoots: ['src'] },
       mutationScope: ['src/shop/orders'],
-    };
+    });
 
     ensureMutmutConfiguration(context);
 
