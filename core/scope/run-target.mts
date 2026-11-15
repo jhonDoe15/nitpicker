@@ -1,7 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
+import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 
 type TargetRequest = {
   readonly options: { readonly paths?: readonly string[] | undefined };

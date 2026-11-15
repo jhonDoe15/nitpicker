@@ -1,15 +1,30 @@
 import type { ConfiguredCli } from '../command/comparison/run-context.mts';
 import type { CliOptions, ExitCode } from '../cli-context.mts';
-import type { NitpickerConfig } from '../configuration/config-types.mts';
+import type { Loosening as PolicyLoosening } from '../policy-changes/types/policy-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 import type { ReportEntry } from '../../shared/values/findings.mts';
 
-type ProjectOverlay = {
+export type ProjectEntry = {
+  readonly path: string;
+  readonly folder?: string;
   readonly preset?: string;
-  readonly companion?: true;
   readonly settings?: object;
-  readonly declared?: true;
-  readonly exclude?: readonly string[];
-  readonly inherits?: string;
+  readonly origin?: unknown;
+  readonly workspace?: string;
+};
+
+export type PlanContext = {
+  readonly root: string;
+  readonly repositoryRoot: string;
+  readonly prefix: string;
+  readonly rootConfig: NitpickerConfig;
+  readonly allPaths: readonly string[];
+};
+
+export type Inspection = {
+  readonly files: readonly string[];
+  readonly undeclared?: readonly unknown[];
+  readonly plan?: MonorepoPlan;
 };
 
 export type PlanProject = {
@@ -83,7 +98,7 @@ export type ProjectCli = {
   readonly baseConfigOverlay: ProjectOverlay | undefined;
   readonly projectKey?: string | undefined;
   readonly sharedBaseWorktree?: ConfiguredCli['sharedBaseWorktree'];
-  readonly repositoryLoosenings?: readonly unknown[];
+  readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly repositoryToolErrors?: readonly ReportEntry[];
 };
 

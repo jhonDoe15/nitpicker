@@ -11,6 +11,7 @@ import {
 } from './syntax.mjs';
 
 const STATIC = 'static';
+const TYPE_PARAMETERS = 'type_parameters';
 const VARARGS = 'a method has varargs or a receiver parameter, or the parameter counts differ';
 const CAPITALIZED = /^[A-Z]/u;
 const CONSTANT_LIKE = /^[A-Z][A-Z0-9_]*$/u;
@@ -24,7 +25,7 @@ export function hasModifier(node, word) {
   return modifiers !== undefined && modifiers.text.split(/\s+/u).includes(word);
 }
 
-function throwsOf(method) {
+export function throwsOf(method) {
   const clause = codeParts(method).find((child) => child.type === 'throws');
   return clause === undefined ? '' : squashed(clause);
 }
@@ -33,16 +34,122 @@ function hasPlainParameters(method) {
   return namedChildren(field(method, 'parameters')).length === parametersOf(method).length;
 }
 
-export function classProblem(methods) {
+const CLASS_LIKE = new Set([
+  'class_declaration',
+  'enum_declaration',
+  'record_declaration',
+  'interface_declaration',
+]);
+
+export function isAnonymous(method) {
+  return (
+    method.parent.type === 'class_body' &&
+    method.parent.parent.type === 'object_creation_expression'
+  );
+}
+
+function classOwner(node) {
+  const pending = [node.parent];
+  for (const current of pending) {
+    if (current === null) {
+      return undefined;
+    }
+    const isClassBody = current.type === 'class_body';
+    if (
+      CLASS_LIKE.has(current.type) ||
+      (isClassBody && current.parent.type === 'object_creation_expression')
+    ) {
+      return CLASS_LIKE.has(current.type) ? current : undefined;
+    }
+    pending.push(current.parent);
+  }
+  return undefined;
+}
+
+function enclosingClass(method) {
+  return isAnonymous(method) ? classOwner(method.parent.parent) : undefined;
+}
+
+export function enclosingMember(method) {
+  const owner = enclosingClass(method);
+  const chain = [method.parent.parent];
+  for (const current of chain) {
+    if (current.parent.id === owner.childForFieldName('body').id) {
+      return current;
+    }
+    chain.push(current.parent);
+  }
+  return method;
+}
+
+const LOCAL_TYPES = new Set([
+  'class_declaration',
+  'record_declaration',
+  'interface_declaration',
+  'enum_declaration',
+]);
+
+function enclosingCallable(creation) {
+  const pending = [creation.parent];
+  for (const current of pending) {
+    if (current === null) {
+      return undefined;
+    }
+    if (current.type === 'method_declaration' || current.type === 'constructor_declaration') {
+      return current;
+    }
+    pending.push(current.parent);
+  }
+  return undefined;
+}
+
+function scopeProblem(method) {
+  const callable = enclosingCallable(method.parent.parent);
+  if (callable === undefined) {
+    return undefined;
+  }
+  const local = descendants(callable).some(
+    (part) => part.id !== callable.id && LOCAL_TYPES.has(part.type),
+  );
+  return field(callable, TYPE_PARAMETERS) !== undefined || local
+    ? 'an anonymous class sits in a generic method or next to a local type'
+    : undefined;
+}
+
+function anonymousProblem(methods) {
+  const owners = methods.map(enclosingClass);
+  const bodies = methods.map((method) =>
+    codeParts(method.parent).filter((part) => part.type !== '{' && part.type !== '}'),
+  );
+  if (
+    owners.some((owner) => owner === undefined || owner.type !== CLASS) ||
+    owners[0].id !== owners[1].id
+  ) {
+    return 'the copies are not in one class';
+  }
+  if (bodies.flat().some((part) => part.type !== METHOD)) {
+    return 'an anonymous class declares more than methods';
+  }
+  return methods.map(scopeProblem).find((found) => found !== undefined);
+}
+
+function sameClassProblem(methods, anonymous) {
+  const [a, b] = methods;
+  if (anonymous && methods.every(isAnonymous)) {
+    return anonymousProblem(methods);
+  }
+  return a.parent.id !== b.parent.id || a.parent.parent.type !== CLASS
+    ? 'the copies are not in one class'
+    : undefined;
+}
+
+export function classProblem(methods, anonymous = false) {
   const [a, b] = methods;
   const checks = [
     [methods.some((method) => method.type !== METHOD), 'a copy is not a method'],
+    [sameClassProblem(methods, anonymous) !== undefined, sameClassProblem(methods, anonymous)],
     [
-      a.parent.id !== b.parent.id || a.parent.parent.type !== CLASS,
-      'the copies are not in one class',
-    ],
-    [
-      methods.some((method) => field(method, 'type_parameters') !== undefined),
+      methods.some((method) => field(method, TYPE_PARAMETERS) !== undefined),
       'a method has type parameters',
     ],
     [hasModifier(a, STATIC) !== hasModifier(b, STATIC), 'only one copy is static'],
@@ -51,11 +158,15 @@ export function classProblem(methods) {
   return checks.find(([failed]) => failed)?.[1];
 }
 
-export function methodProblem(methods) {
+export function parametersProblem(methods) {
   const [a, b] = methods;
   const unplain =
     !methods.every(hasPlainParameters) || parametersOf(a).length !== parametersOf(b).length;
-  return classProblem(methods) ?? (unplain ? VARARGS : undefined);
+  return unplain ? VARARGS : undefined;
+}
+
+export function methodProblem(methods, anonymous = false) {
+  return classProblem(methods, anonymous) ?? parametersProblem(methods);
 }
 
 function declaredFields(classBody, isStatic) {
@@ -75,9 +186,10 @@ function memberNames(classBody, kind, isStatic) {
   return new Set(members.map((member) => field(member, 'name').text));
 }
 
-function namesOf(method) {
-  const classBody = method.parent;
-  const owner = classBody.parent;
+export function namesOf(method) {
+  const anonymous = isAnonymous(method);
+  const owner = anonymous ? enclosingClass(method) : method.parent.parent;
+  const classBody = anonymous ? owner.childForFieldName('body') : method.parent;
   return {
     staticFields: declaredFields(classBody, true),
     instanceFields: declaredFields(classBody, false),
@@ -85,7 +197,10 @@ function namesOf(method) {
     instanceMethods: memberNames(classBody, METHOD, false),
     locals: boundNames(method),
     inner: memberNames(classBody, CLASS, false),
-    inherits: field(owner, 'superclass') !== undefined || field(owner, 'interfaces') !== undefined,
+    inherits:
+      anonymous ||
+      field(owner, 'superclass') !== undefined ||
+      field(owner, 'interfaces') !== undefined,
   };
 }
 
@@ -135,11 +250,11 @@ function stateOf(node, names) {
   return node.type === 'identifier' ? readsName(node, names) : NONE;
 }
 
-function isInside(node, spans) {
+export function isInside(node, spans) {
   return spans.some((span) => node.startIndex >= span.startIndex && node.endIndex <= span.endIndex);
 }
 
-function instanceStateOf(method, holeNodes, roots = [field(method, 'body')]) {
+export function instanceStateOf(method, holeNodes, roots = [field(method, 'body')]) {
   const names = namesOf(method);
   const states = roots
     .flatMap((root) => descendants(root))
@@ -152,8 +267,8 @@ function instanceStateOf(method, holeNodes, roots = [field(method, 'body')]) {
 }
 
 function canDeclareStatics(method) {
-  const owner = method.parent.parent;
-  const isGeneric = field(owner, 'type_parameters') !== undefined;
+  const owner = enclosingClass(method) ?? method.parent.parent;
+  const isGeneric = field(owner, TYPE_PARAMETERS) !== undefined;
   return !isGeneric && (owner.parent.type === 'program' || hasModifier(owner, STATIC));
 }
 

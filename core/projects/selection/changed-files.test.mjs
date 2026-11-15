@@ -1,8 +1,8 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commit, fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit, fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { changedFiles } from './changed-files.mjs';
 
 const git = useGitFixtures();

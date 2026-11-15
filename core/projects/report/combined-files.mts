@@ -3,8 +3,8 @@ import path from 'node:path';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
 import { renderJunitReport } from '../../diff/reporting/junit.mts';
 import { renderSarifReport } from '../../diff/reporting/sarif.mts';
-import { reportFolder as untypedReportFolder } from '../plan/project-entry.mjs';
-import { SUMMARY_FILE } from './combined-summary.mjs';
+import { reportFolder as untypedReportFolder } from '../plan/project-entry.mts';
+import { SUMMARY_FILE } from './combined-summary.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
 import type { MonorepoPlan, PlanProject, RepositoryPolicy } from '../project-types.mts';
 

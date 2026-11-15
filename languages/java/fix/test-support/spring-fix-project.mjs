@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { runRecipes } from '../../../../core/fix/engine/run-recipes.mjs';
 import { readSpringConfigFindings } from '../../adapters/spring/java-spring.mjs';
 import { JVM_RECIPES } from '../recipes/jvm-recipes.mjs';

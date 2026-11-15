@@ -1,16 +1,16 @@
-import { sumToolCount, formatSeconds } from './format/text.mjs';
+import { sumToolCount, formatSeconds } from './format/text.mts';
 import { heldFindings as heldGroups, heldLine as heldEntryLine } from './format/held-findings.mts';
 import { noteSectionLines as noteLines } from './format/notes.mts';
 import { noticeSection } from './review/notices.mts';
 import { policyChangeSection } from './review/policy-changes.mts';
-import { quickLines, stagedLines } from '../../quick/summary.mjs';
+import { quickLines, stagedLines } from '../../quick/summary.mts';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 import { planSection } from '../../../shared/fix-plans/render.mjs';
 import { projectLine, scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
-import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import {
   findingSectionLines,
   ruleFilterSection,
@@ -19,8 +19,6 @@ import {
 
 type Summary = ReportData['summary'];
 
-const seconds: (elapsedMs: unknown) => string = formatSeconds;
-const toolCountSum: (tools: unknown, property: string) => number = sumToolCount;
 const stagedLinesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly unknown[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
@@ -70,7 +68,7 @@ function summaryLines(report: ReportData): unknown[] {
     `New enforceable findings: ${field(summary, 'newEnforceableFindings')}`,
     `New findings: ${String(report.newFindings.length)}`,
     `Resolved findings: ${String(report.resolvedFindings.length)}`,
-    `Unchanged findings: ${String(toolCountSum(summary['tools'], 'unchanged'))}`,
+    `Unchanged findings: ${String(sumToolCount(summary['tools'], 'unchanged'))}`,
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
     ...partialRunLines(summary),
@@ -103,7 +101,7 @@ function toolCountLine(tool: unknown): string {
       : ` skipped (${field(tool, 'skippedBecause')} failed)`;
   const counts = `base=${field(tool, 'base')} head=${field(tool, 'head')} new=${field(tool, 'new')} resolved=${field(tool, 'resolved')}`;
   const unchanged = `unchanged=${field(tool, 'unchanged')} changed-metrics=${field(tool, 'changedMetrics')}`;
-  const elapsed = seconds(fieldOf(tool, 'elapsedMs') ?? 0);
+  const elapsed = formatSeconds(numberOr(fieldOf(tool, 'elapsedMs'), 0));
   return `${field(tool, 'name')}: ${counts} ${unchanged} elapsed=${elapsed}${skipped}`;
 }
 

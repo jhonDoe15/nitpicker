@@ -1,8 +1,8 @@
 import { realpathSync } from 'node:fs';
-import { resolveProjectRoot as resolveRoot } from '../../configuration/project-checks/project-root.mjs';
-import { noProjectAdvice } from '../plan/suggested-projects.mjs';
-import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
-import { inspectRepository } from '../plan/inspect.mjs';
+import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
+import { noProjectAdvice as untypedNoProjectAdvice } from '../plan/suggested-projects.mjs';
+import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
+import { inspectRepository } from '../plan/inspect.mts';
 import { isGitWorkTree } from '../plan/member-root.mjs';
 import { selectionOf } from '../run/selection-plan.mts';
 import { enclosingPlan } from '../run/single-mode.mts';
@@ -13,7 +13,7 @@ import {
 } from './projects-arguments.mts';
 import { listingJson, listingText, type Listing } from './projects-listing.mts';
 import type { TextOutput } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { MonorepoPlan } from '../project-types.mts';
 
 type ProjectsCli = {
@@ -24,14 +24,7 @@ type ProjectsCli = {
   readonly stdout: TextOutput;
 };
 
-const inspect: (query: { readonly root: string; readonly repositoryRoot: string | undefined }) => {
-  readonly plan?: MonorepoPlan;
-} = inspectRepository;
-
-const resolveProjectRoot: (
-  workingDirectory: string | undefined,
-  options: { readonly noProjectAdvice: unknown },
-) => string = resolveRoot;
+const noProjectAdvice: (repositoryRoot: string) => string | undefined = untypedNoProjectAdvice;
 
 function rootOf(cli: ProjectsCli): string {
   return cli.currentProjectRoot === undefined
@@ -43,7 +36,7 @@ function planAt(root: string): MonorepoPlan | undefined {
   if (!isGitWorkTree(root)) {
     return undefined;
   }
-  return inspect({ root, repositoryRoot: undefined }).plan ?? enclosingPlan(root)?.plan;
+  return inspectRepository({ root }).plan ?? enclosingPlan(root)?.plan;
 }
 
 function singleListing(root: string, options: ProjectsOptions): Listing {

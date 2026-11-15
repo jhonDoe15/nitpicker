@@ -16,9 +16,9 @@ const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const goRoot = path.join(packageRoot, 'languages/go');
 const cliPath = checkoutModulePath(path.join(packageRoot, 'core/cli.mjs'));
-const runnerPath = path.join(import.meta.dirname, 'go-runner.mjs');
+const runnerPath = checkoutModulePath(path.join(import.meta.dirname, 'go-runner.mjs'));
 const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
-const TEST_FILE = /(?:\.test\.mjs|_test\.go)$/u;
+const TEST_FILE = /(?:\.test\.m[jt]s|_test\.go)$/u;
 
 function goResourceFiles() {
   return readdirSync(goRoot, { recursive: true })

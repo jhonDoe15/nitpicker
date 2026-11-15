@@ -1,9 +1,10 @@
 const SKILL_SOURCE = 'jhonDoe15/nitpicker#v<version>';
-const NODE_TOOLS = 'typescript @types/node vitest @vitest/coverage-v8';
+const TYPESCRIPT_PIN = 'typescript@>=5.7 <6.1.0';
+const OTHER_TOOLS = '@types/node vitest @vitest/coverage-v8';
 const SCRIPT_MISSING =
   '  Install what nitpicker needs from your project (missing: nitpicker@<version>,' +
-  ` ${NODE_TOOLS.replaceAll(' ', ', ')}):`;
-const SCRIPT_INSTALL = `    npm install --save-dev nitpicker@<version> ${NODE_TOOLS}`;
+  ` ${TYPESCRIPT_PIN}, ${OTHER_TOOLS.replaceAll(' ', ', ')}):`;
+const SCRIPT_INSTALL = `    npm install --save-dev nitpicker@<version> '${TYPESCRIPT_PIN}' ${OTHER_TOOLS}`;
 const FROM_FILES = 'found from their project files';
 const FROM_DECLARATION = 'found from the workspace or build declaration';
 const WITH = '        with:';

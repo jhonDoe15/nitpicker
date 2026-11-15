@@ -1,7 +1,7 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { parseConfigFile, readLayers, repositoryRootOf } from './layers.mjs';
 
 const git = useGitFixtures();

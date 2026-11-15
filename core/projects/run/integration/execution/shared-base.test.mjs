@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mts';
 import {
   projectFiles,
   useMonorepoFixtures,

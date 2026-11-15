@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { readLayeredConfig } from './read-layered.mjs';
-import { configLayersOf } from './shared-files.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { readLayeredConfig } from './read-layered.mts';
+import { configLayersOf } from './shared-files.mts';
 
 const git = useGitFixtures();
 

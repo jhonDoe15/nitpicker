@@ -7,8 +7,8 @@ import {
   combinedSummary,
   exitCodeOf,
   writeCombinedReports,
-} from './combined-summary.mjs';
-import { reportFolder } from '../plan/project-entry.mjs';
+} from './combined-summary.mts';
+import { reportFolder } from '../plan/project-entry.mts';
 import { outcomeOf } from './outcome.mjs';
 
 function summaryOf(names, repositoryPolicy) {

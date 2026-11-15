@@ -1,7 +1,7 @@
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { withWaitedLock } from '../../../tooling/file-lock.mts';
 import type { SharedWorktree } from '../quick/head-run.mts';
@@ -18,7 +18,7 @@ const prepare: (options: {
   readonly projectRoot: string;
   readonly liveProjectRoot: string;
   readonly toolRoot: string;
-  readonly reuseExisting: boolean;
+  readonly reuseExisting?: true;
 }) => unknown = prepareSnapshotDependencies;
 
 const SHARED_PREPARATION_TIMEOUT_MS = 10 * 60 * 1000;
@@ -29,7 +29,7 @@ function prepareBase({
   toolRoot,
   sharedBase,
 }: PreparedRoots): unknown {
-  const options = { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot, reuseExisting: false };
+  const options = { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot };
   if (sharedBase === undefined) {
     return prepare(options);
   }
@@ -57,7 +57,6 @@ function withPreparedAnalyzerDependencies<T>(roots: PreparedRoots, operation: ()
       projectRoot: headSnapshotRoot,
       liveProjectRoot,
       toolRoot,
-      reuseExisting: false,
     });
     if (headDependencies !== undefined) {
       preparedDependencies.push(headDependencies);

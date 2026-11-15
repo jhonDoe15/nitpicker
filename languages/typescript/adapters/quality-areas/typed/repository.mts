@@ -4,15 +4,15 @@ import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from './area-types.mts';
 import type { KnipConfig } from './policy.mts';
 import { hash as untypedHash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { typescriptStructureProjectFindings as untypedStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
+import { typescriptStructureProjectFindings as untypedStructureProjectFindings } from '../../../preset/structure/project-findings.mts';
 import {
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
 } from '../../../preset/tool-configs.mjs';
 import { layeredJscpdConfig as untypedLayeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
-import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
-import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
+import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mts';
+import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mts';
 import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
 import { graphImports as untypedGraphImports } from '../../../preset/dependency-graph/workspace-imports.mjs';
 import {

@@ -5,7 +5,8 @@ import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-store
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { Loosening as PolicyLoosening } from '../../policy-changes/types/policy-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type { SharedWorktree } from '../../diff/comparison/quick/head-run.mts';
 
 export type ConfiguredCli = Cli & {
@@ -13,10 +14,10 @@ export type ConfiguredCli = Cli & {
   readonly jsonOutput?: TextOutput;
   readonly scope?: unknown;
   readonly currentFolder?: string | undefined;
-  readonly configOverlay?: { readonly inherits?: unknown } | undefined;
+  readonly configOverlay?: ProjectOverlay | undefined;
   readonly projectKey?: string | undefined;
-  readonly baseConfigOverlay?: unknown;
-  readonly repositoryLoosenings?: readonly unknown[];
+  readonly baseConfigOverlay?: ProjectOverlay | undefined;
+  readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly sharedBase?: ReturnType<typeof resolveBase>;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
   readonly repositoryToolErrors?: readonly object[];

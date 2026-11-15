@@ -47,7 +47,9 @@ export function packageEntryFiles(projectRoot, files) {
     .filter(({ file }) => tracked.has(file));
 }
 
-export function productionReach(projectRoot, { importers, entries = [] }) {
+export function productionReach(projectRoot, options) {
+  const { importers } = options;
+  const entries = options.entries ?? [];
   const root = realpathSync(projectRoot);
   const starts = [...importers.map((file) => ({ file, label: file })), ...entries];
   const labels = new Map(starts.map(({ file, label }) => [path.join(root, file), label]));

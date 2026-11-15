@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mts';
 import { projectFiles, useMonorepoFixtures } from '../../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();

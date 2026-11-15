@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
+import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();

@@ -1,4 +1,4 @@
-import { basePlanOf, planInputsChanged } from '../policy/base-plan.mjs';
+import { basePlanOf, planInputsChanged } from '../policy/base-plan.mts';
 import { changedFiles } from '../selection/changed-files.mjs';
 import { dependencyGraph } from '../selection/dependencies/graph.mts';
 import { requestedProjects } from '../selection/requested-projects.mts';
@@ -25,12 +25,6 @@ export type PlannedSelection = {
   readonly outside: readonly string[];
 };
 
-const basePlanAt: (query: {
-  readonly repositoryRoot: string;
-  readonly prefix: string;
-  readonly mergeBaseSha: string;
-}) => { readonly plan?: MonorepoPlan; readonly error?: unknown } = basePlanOf;
-
 export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison {
   if (cli.options.all) {
     return { changed: [] };
@@ -42,10 +36,9 @@ export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison 
     cli,
   });
   const changed: readonly string[] = changedFiles({ repositoryRoot, mergeBaseSha });
-  const { plan: basePlan, error } =
-    planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) === true
-      ? basePlanAt({ ...plan, mergeBaseSha })
-      : { plan, error: undefined };
+  const { plan: basePlan, error } = planInputsChanged({ repositoryRoot, mergeBaseSha, changed })
+    ? basePlanOf({ ...plan, mergeBaseSha })
+    : { plan, error: undefined };
   return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
 }
 

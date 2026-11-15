@@ -4,7 +4,7 @@ import {
   hasGradleSettings,
   includedBuilds,
 } from '../../../../languages/java/builds/gradle-scripts/included-builds.mjs';
-import { DEPENDENCY_MANIFESTS } from '../../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mjs';
+import { DEPENDENCY_MANIFESTS } from '../../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mts';
 import { containedPath } from '../../../../shared/paths/contained-path.mjs';
 import { addTemporaryWorktree } from '../../../diff/git/repository/worktree.mjs';
 import { isInside } from '../../discovery/repository-files.mjs';
