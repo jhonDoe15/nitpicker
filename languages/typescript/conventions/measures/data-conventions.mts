@@ -1,4 +1,4 @@
-import { indentationStyle, winner } from '../layout-measures.mjs';
+import { indentationStyle, winner } from '../typed/measure-views.mts';
 
 const TWO = 2;
 const FOUR = 4;
@@ -27,32 +27,42 @@ export const DATA_CONVENTIONS = [
   },
 ];
 
-const DATA_KINDS = {
+type DataKind = 'json' | 'yaml';
+type DataConventionOptions =
+  | { readonly useTabs: true }
+  | { readonly useTabs: false; readonly tabWidth: number }
+  | Record<string, never>;
+
+const DATA_KINDS: Readonly<Record<DataKind, { id: string; extension: RegExp }>> = {
   json: { id: 'prettier.jsonIndentation', extension: /\.json$/ },
   yaml: { id: 'prettier.yamlIndentation', extension: /\.ya?ml$/ },
 };
 
-export function dataFileKind(relativePath) {
-  return Object.keys(DATA_KINDS).find((kind) => DATA_KINDS[kind].extension.test(relativePath));
+export function dataFileKind(relativePath: string): DataKind | undefined {
+  return (['json', 'yaml'] as const).find((kind) => DATA_KINDS[kind].extension.test(relativePath));
 }
 
-export function dataConventionOptions(kind, conventions = {}, { followed = false } = {}) {
+export function dataConventionOptions(
+  kind: DataKind,
+  conventions: Readonly<Record<string, string>> = {},
+  { followed }: { readonly followed: boolean } = { followed: false },
+): DataConventionOptions {
   const definition = DATA_CONVENTIONS.find(({ id }) => id === DATA_KINDS[kind].id);
-  const value = conventions[definition.id] ?? (followed ? definition.fallback : undefined);
+  const value = conventions[DATA_KINDS[kind].id] ?? (followed ? definition?.fallback : undefined);
   if (value === undefined) {
     return {};
   }
   return value === 'tab' ? { useTabs: true } : { useTabs: false, tabWidth: Number(value) };
 }
 
-function yamlIndentation(text) {
+function yamlIndentation(text: string): string | undefined {
   const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '' && !/^\s*#/.test(line));
   const steps = lines.slice(0, -1).flatMap((line, index) => {
     const opener = SECTION_OPENER.exec(line);
-    const next = lines[index + 1];
+    const next = lines[index + 1] ?? '';
     return opener === null
       ? []
-      : [next.length - next.trimStart().length - opener.groups.indent.length];
+      : [next.length - next.trimStart().length - (opener.groups?.['indent']?.length ?? 0)];
   });
   return winner({
     2: steps.filter((step) => step === TWO).length,
