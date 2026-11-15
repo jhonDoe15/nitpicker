@@ -1,28 +1,66 @@
-import { createBounds } from './bounds.mjs';
-import { isFixedCollection } from './collections/fixed-collections.mjs';
-import { createIo } from './fan-out-io.mjs';
-import { combinatorName, callsOf, mappings, workerOf } from './sites.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import type { Context } from '../security/security-values.mts';
+import { createBounds, type Bounds } from './bounds.mts';
+import { isFixedCollection } from './collections/fixed-collections.mts';
+import { createIo, type Io } from './fan-out-io.mts';
+import type { ClientSpec } from './io-origin.mts';
+import type { Invocation } from './origins/origin-types.mts';
+import { combinatorName, callsOf, mappings, workerOf, type Site, type Worker } from './sites.mts';
+
+type FunctionNode =
+  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
+export type Found = {
+  readonly kind: ClientSpec['kind'];
+  readonly operation: string;
+  readonly via?: string;
+};
+export type FanOutScope = {
+  readonly context: Context;
+  readonly bounds: Bounds;
+  readonly io: Io;
+};
+type Entry = {
+  readonly worker: Worker;
+  readonly depth: number;
+  readonly origin: Invocation | undefined;
+};
+type HelperCall = { readonly call: Invocation; readonly helper: FunctionNode };
+type Group = {
+  readonly node: TSESTree.CallExpression;
+  readonly combinator: string;
+  readonly sites: readonly Site[];
+};
 
 const MAX_HELPER_DEPTH = 3;
 const MAX_TEXT = 50;
-export const TARGETS = { remote: 'remote service', message: 'broker' };
+export const TARGETS: Readonly<Record<string, string>> = {
+  remote: 'remote service',
+  message: 'broker',
+};
 
-function labelOf(context, call) {
+function labelOf(context: Context, call: Invocation): string {
   const text = context.sourceCode.getText(call.callee);
   return text.length <= MAX_TEXT ? `${text}()` : 'a call';
 }
 
-function foundAt(scope, entry, hit) {
+function foundAt(
+  scope: FanOutScope,
+  entry: Entry,
+  hit: { readonly call: Invocation; readonly kind: ClientSpec['kind'] },
+): Found {
   const operation = labelOf(scope.context, hit.call);
-  if (entry.depth === 0) {
+  if (entry.depth === 0 || entry.origin === undefined) {
     return { kind: hit.kind, operation };
   }
   return { kind: hit.kind, operation: labelOf(scope.context, entry.origin), via: operation };
 }
 
-function inspect(scope, entry) {
+function inspect(
+  scope: FanOutScope,
+  entry: Entry,
+): { readonly found?: Found; readonly helpers: HelperCall[] } {
   const { fn, root } = entry.worker;
-  const helpers = [];
+  const helpers: HelperCall[] = [];
   if (fn !== undefined && scope.bounds.acquiresIn(fn)) {
     return { helpers };
   }
@@ -42,9 +80,9 @@ function inspect(scope, entry) {
   return { helpers };
 }
 
-export function remoteIn(scope, worker) {
-  const seen = new Set();
-  const pending = [{ worker, depth: 0, origin: worker.root }];
+export function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined {
+  const seen = new Set<FunctionNode>();
+  const pending: Entry[] = [{ worker, depth: 0, origin: undefined }];
   for (const entry of pending) {
     const { found, helpers } = inspect(scope, entry);
     if (found !== undefined) {
@@ -62,7 +100,7 @@ export function remoteIn(scope, worker) {
   return undefined;
 }
 
-export function viaText(found) {
+export function viaText(found: Found): string {
   if (found.via === undefined) {
     return '';
   }
@@ -70,14 +108,14 @@ export function viaText(found) {
   return ` (which ${verb} \`${found.via}\`)`;
 }
 
-function reportSites(scope, group) {
+function reportSites(scope: FanOutScope, group: Group): void {
   const { context } = scope;
   const { node, combinator, sites } = group;
   const reported = new Set();
   for (const { collection, worker } of sites) {
     const found = remoteIn(scope, worker);
     const text = context.sourceCode.getText(collection);
-    const key = `${found?.operation}|${text}`;
+    const key = `${String(found?.operation)}|${text}`;
     if (found === undefined || reported.has(key) || isFixedCollection(context, collection)) {
       continue;
     }
@@ -96,13 +134,13 @@ function reportSites(scope, group) {
   }
 }
 
-function mentionsPMap(context) {
+function mentionsPMap(context: Context): boolean {
   return context.sourceCode.text.includes('p-map');
 }
 
-export function lazyScope(context) {
-  let bounds;
-  let io;
+export function lazyScope(context: Context): FanOutScope {
+  let bounds: Bounds | undefined;
+  let io: Io | undefined;
   return {
     context,
     get bounds() {
@@ -116,7 +154,7 @@ export function lazyScope(context) {
   };
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'unbounded'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Bound the concurrency of remote calls started per element' },
@@ -139,7 +177,9 @@ export const rule = {
           });
         } else if (mentionsPMap(context) && scope.bounds.isUnboundedPMap(node)) {
           const worker = workerOf(context, node.arguments[1]);
-          const sites = worker === undefined ? [] : [{ collection: node.arguments[0], worker }];
+          const [collection] = node.arguments;
+          const sites =
+            worker === undefined || collection === undefined ? [] : [{ collection, worker }];
           reportSites(scope, { node, combinator: 'pMap', sites });
         }
       },

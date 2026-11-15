@@ -1,30 +1,42 @@
-import { resolveConstant } from '../analysis/constant-resolution.mjs';
-import { clientBindings, isClientCall } from '../security/http/http-clients.mjs';
-import { unwrapped } from '../security/security-values.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { resolveConstant } from '../analysis/constant-resolution.mts';
+import { type ClientScope, clientBindings, isClientCall } from '../security/http/http-clients.mts';
+import { type Context, unwrapped } from '../security/security-values.mts';
 import {
+  type Race,
   cleansUp,
   closesOverSignal,
   passesLifetimeOwner,
   signalParameterOf,
-} from './operations/operation-lifetime.mjs';
-import { combinedEntries, operationsIn } from './operations/race-operations.mjs';
-import { globalMemberCall, isGlobalTimerCall } from './operations/syntax-nodes.mjs';
-import { isTimer, timeoutBindings, timeoutOf } from './operations/timeout-entries.mjs';
+} from './operations/operation-lifetime.mts';
+import { combinedEntries, operationsIn } from './operations/race-operations.mts';
+import { globalMemberCall, isGlobalTimerCall } from './operations/syntax-nodes.mts';
+import {
+  type TimeoutBindings,
+  isTimer,
+  timeoutBindings,
+  timeoutOf,
+} from './operations/timeout-entries.mts';
+
+type Scope = ClientScope & TimeoutBindings;
+type RaceTimeout = Race & { readonly timeout: string; readonly losers: readonly TSESTree.Node[] };
+type Options = readonly [Readonly<Record<string, unknown>>?];
 
 const MAX_TEXT = 40;
 
 const ADVICE =
   'Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race.';
 
-function calleeText(context, call) {
+function calleeText(context: Context, call: TSESTree.CallExpression): string {
   const text = context.sourceCode.getText(call.callee).replaceAll(/\s+/gu, ' ');
   return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}...` : text;
 }
 
-function isAbandoned(scope, call, race) {
+function isAbandoned(scope: Scope, call: TSESTree.CallExpression, race: Race): boolean {
   const { context } = scope;
   const callee = unwrapped(call.callee);
-  const named = callee.type === 'Identifier' || callee.type === 'MemberExpression';
+  const named =
+    callee.type === AST_NODE_TYPES.Identifier || callee.type === AST_NODE_TYPES.MemberExpression;
   return (
     named &&
     !isTimer(scope, call) &&
@@ -36,10 +48,13 @@ function isAbandoned(scope, call, race) {
   );
 }
 
-function raceTimeout(scope, node) {
+function raceTimeout(scope: Scope, node: TSESTree.CallExpression): RaceTimeout | undefined {
   const { context } = scope;
   const list = unwrapped(resolveConstant(context, unwrapped(node.arguments[0])));
-  if (list?.type !== 'ArrayExpression' || !globalMemberCall(context, node, 'Promise.race')) {
+  if (
+    list?.type !== AST_NODE_TYPES.ArrayExpression ||
+    !globalMemberCall(context, node, 'Promise.race')
+  ) {
     return undefined;
   }
   const entries = combinedEntries(context, node);
@@ -57,7 +72,7 @@ function raceTimeout(scope, node) {
       };
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'noSignal' | 'ignoredSignal', Options> = {
   meta: {
     type: 'problem',
     docs: {
@@ -76,22 +91,30 @@ export const rule = {
     },
   },
   create(context) {
-    const options = context.options[0] ?? {};
-    let scope;
+    const options: Readonly<Record<string, unknown>> = context.options[0] ?? {};
+    const { fetch: fetchOption, nodeFetchTimeout: nodeOption } = options;
+    let scope: Scope | undefined;
     return {
       Program(node) {
         scope = {
           context,
-          checkFetch: options.fetch !== false,
-          nodeFetchTimeout: options.nodeFetchTimeout !== false,
+          checkFetch: fetchOption !== false,
+          nodeFetchTimeout: nodeOption !== false,
           ...clientBindings(node),
           ...timeoutBindings(node),
         };
       },
       CallExpression(node) {
-        const race = raceTimeout(scope, node);
-        const losers = (race?.losers ?? []).flatMap((entry) => operationsIn(context, entry));
-        for (const call of losers.filter((loser) => isAbandoned(scope, loser, race))) {
+        const current = scope;
+        if (current === undefined) {
+          return;
+        }
+        const race = raceTimeout(current, node);
+        if (race === undefined) {
+          return;
+        }
+        const losers = race.losers.flatMap((entry) => operationsIn(context, entry));
+        for (const call of losers.filter((loser) => isAbandoned(current, loser, race))) {
           const parameter = signalParameterOf(context, call.callee);
           context.report({
             node: call,

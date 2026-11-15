@@ -1,69 +1,109 @@
-import { findVariable } from '../analysis/constant-resolution.mjs';
-import { bindingsOf, importedFunction, isModuleValue } from '../security/imported-names.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findVariable } from '../analysis/constant-resolution.mts';
+import {
+  bindingsOf,
+  importedFunction,
+  isModuleValue,
+  type ModuleBindings,
+} from '../security/imported-names.mts';
+import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 import {
   enclosingContext,
   frameworkNames,
   isStartupFunction,
   isWorkerBranch,
   routeHandlers,
-} from './async-contexts.mjs';
-import { FRAMEWORK_MODULES, SYNC_FAMILIES, WORKER_MODULES } from './sync-node-apis.mjs';
+} from './async-contexts.mts';
+import {
+  FRAMEWORK_MODULES,
+  SYNC_FAMILIES,
+  WORKER_MODULES,
+  type SyncFamily,
+} from './sync-node-apis.mts';
+
+type FamilyBindings = { readonly family: SyncFamily; readonly bindings: ModuleBindings };
+type FileScope = {
+  readonly families: readonly FamilyBindings[];
+  readonly frameworks: ReadonlySet<string>;
+  readonly nestBindings: ModuleBindings;
+  readonly workerBindings: ModuleBindings;
+};
+type Candidate = {
+  readonly node: TSESTree.CallExpression;
+  readonly name: string;
+  readonly family: SyncFamily;
+};
+
+const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 const WORKER_MODULE_NAMES = new Set(WORKER_MODULES);
 const FRAMEWORK_MODULE_NAMES = new Set(FRAMEWORK_MODULES);
-const WORKER_SCRIPT_BINDINGS = new Set(['parentPort', 'workerData']);
+const WORKER_SCRIPT_BINDINGS = new Set<string>(['parentPort', 'workerData']);
 const WORKER_SCRIPT_MEMBER = /\.(?:parentPort|workerData)\b/u;
 const NEST_MODULES = new Set(['@nestjs/common']);
-const CONTEXT_NAMES = { async: 'an async function', handler: 'a request handler' };
-const MODULE_SCOPES = new Set(['module', 'global']);
+const CONTEXT_NAMES: Readonly<Record<'async' | 'handler', string>> = {
+  async: 'an async function',
+  handler: 'a request handler',
+};
 
-function isWorkerScript(bindings, text) {
+function isWorkerScript(bindings: ModuleBindings, text: string): boolean {
   const named = [...bindings.named.values()].some((name) => WORKER_SCRIPT_BINDINGS.has(name));
   return named || (bindings.namespaces.size > 0 && WORKER_SCRIPT_MEMBER.test(text));
 }
 
-function rootIdentifier(node) {
+function rootIdentifier(node: TSESTree.Node): TSESTree.Identifier | undefined {
   const chain = [unwrapped(node)];
   for (const current of chain) {
-    if (current?.type === 'MemberExpression') {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
       chain.push(unwrapped(current.object));
     }
   }
   const root = chain.at(-1);
-  return root?.type === 'Identifier' ? root : undefined;
+  return root?.type === AST_NODE_TYPES.Identifier ? root : undefined;
 }
 
-function isShadowed(context, callee) {
+function isShadowed(context: Context, callee: TSESTree.Node): boolean {
   const root = rootIdentifier(callee);
   const variable = root === undefined ? undefined : findVariable(context, root, root.name);
-  if (variable === undefined || MODULE_SCOPES.has(variable.scope.type)) {
+  if (
+    variable === undefined ||
+    variable.scope.type === ScopeType.module ||
+    variable.scope.type === ScopeType.global
+  ) {
     return false;
   }
   const definition = variable.defs[0];
-  return definition?.type !== 'Variable' || definition.node.init === null;
+  return definition?.type !== DefinitionType.Variable || definition.node.init === null;
 }
 
-function withoutNative(callee) {
+function withoutNative(callee: TSESTree.Node): TSESTree.Node {
   const target = unwrapped(callee);
-  return target?.type === 'MemberExpression' && memberName(target) === 'native'
+  return target.type === AST_NODE_TYPES.MemberExpression && memberName(target) === 'native'
     ? target.object
     : target;
 }
 
-function calledName(context, callee, bindings) {
+function calledName(
+  context: Context,
+  callee: TSESTree.Node,
+  bindings: ModuleBindings,
+): string | undefined {
   const imported = importedFunction(context, callee, bindings);
   if (imported !== undefined) {
     return imported;
   }
-  return callee.type === 'MemberExpression' &&
+  return callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.computed &&
     isModuleValue(context, callee.object, bindings)
     ? memberName(callee)
     : undefined;
 }
 
-function syncCall(context, families, call) {
+function syncCall(
+  context: Context,
+  families: readonly FamilyBindings[],
+  call: TSESTree.CallExpression,
+): { readonly name: string; readonly family: SyncFamily } | undefined {
   const callee = withoutNative(call.callee);
   if (isShadowed(context, callee)) {
     return undefined;
@@ -77,7 +117,7 @@ function syncCall(context, families, call) {
   return undefined;
 }
 
-function fileScope(program, text) {
+function fileScope(program: TSESTree.Program, text: string): FileScope | undefined {
   const workerBindings = bindingsOf(program, WORKER_MODULE_NAMES);
   if (isWorkerScript(workerBindings, text) || text.startsWith('#!')) {
     return undefined;
@@ -93,7 +133,18 @@ function fileScope(program, text) {
   };
 }
 
-function reportCandidates(context, { candidates, calls, scope }) {
+function reportCandidates(
+  context: Context,
+  {
+    candidates,
+    calls,
+    scope,
+  }: {
+    readonly candidates: readonly Candidate[];
+    readonly calls: readonly TSESTree.CallExpression[];
+    readonly scope: FileScope;
+  },
+): void {
   const handlers = routeHandlers(context, calls, scope.frameworks);
   for (const { node, name, family } of candidates) {
     const found = enclosingContext(node, { handlers, nestBindings: scope.nestBindings });
@@ -116,7 +167,7 @@ function reportCandidates(context, { candidates, calls, scope }) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'blocking'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -130,15 +181,15 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const calls = [];
-    const candidates = [];
-    let scope;
+    const calls: TSESTree.CallExpression[] = [];
+    const candidates: Candidate[] = [];
+    let scope: FileScope | undefined;
 
     return {
-      Program(program) {
+      Program(program: TSESTree.Program) {
         scope = fileScope(program, sourceCode.text);
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         if (scope === undefined) {
           return;
         }

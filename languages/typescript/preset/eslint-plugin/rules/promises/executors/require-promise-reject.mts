@@ -1,6 +1,19 @@
-import { typeServices } from '../../security/security-values.mjs';
-import { ignoredErrors, readsError } from './error-callbacks.mjs';
-import { isFunctionExpression, promiseExecutor } from './executor-sources.mjs';
+import type {
+  ParserServicesWithTypeInformation,
+  TSESLint,
+  TSESTree,
+} from '@typescript-eslint/utils';
+import { typeServices } from '../../security/security-values.mts';
+import { ignoredErrors, readsError } from './error-callbacks.mts';
+import { isFunctionExpression, promiseExecutor, type ExecutorSource } from './executor-sources.mts';
+
+type Services = ParserServicesWithTypeInformation | undefined;
+type Context = Readonly<TSESLint.RuleContext<keyof typeof MESSAGES, []>>;
+type Guard = {
+  readonly context: Context;
+  readonly services: Services;
+  readonly receivers: ReadonlySet<string>;
+};
 
 const ALLOWED =
   "`new Promise((resolve, reject) => { source.once('error', reject); ... })`, or a form that rejects by itself: `once` from `node:events`, `pipeline` or `finished` from `node:stream/promises`, or `util.promisify`.";
@@ -12,15 +25,15 @@ const MESSAGES = {
   resolvesWithError: `\`{{name}}\` is passed to \`{{callee}}\` as a callback whose first argument is an error, so a failure resolves the promise with the error as its value. Pass \`(error) => (error ? reject(error) : resolve())\`, or use \`util.promisify\`, which rejects on the error by itself.`,
 };
 
-function errorReceivers(sources) {
+function errorReceivers(sources: readonly ExecutorSource[]): Set<string> {
   return new Set(
-    sources
-      .filter(({ kind, event }) => kind === 'listener' && event === 'error')
-      .map(({ receiver }) => receiver),
+    sources.flatMap((source) =>
+      source.kind === 'listener' && source.event === 'error' ? [source.receiver] : [],
+    ),
   );
 }
 
-function isGuarded({ context, services, receivers }, source) {
+function isGuarded({ context, services, receivers }: Guard, source: ExecutorSource): boolean {
   if (source.kind !== 'callback') {
     return source.event === 'error' || receivers.has(source.receiver);
   }
@@ -28,12 +41,16 @@ function isGuarded({ context, services, receivers }, source) {
   return callbacks.length > 0 && callbacks.every((fn) => readsError(context, services, fn));
 }
 
-function unguardedSource(context, services, sources) {
+function unguardedSource(
+  context: Context,
+  services: Services,
+  sources: readonly ExecutorSource[],
+): ExecutorSource | undefined {
   const receivers = errorReceivers(sources);
   return sources.find((source) => !isGuarded({ context, services, receivers }, source));
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<keyof typeof MESSAGES> = {
   meta: {
     type: 'problem',
     docs: {
@@ -46,7 +63,7 @@ export const rule = {
   create(context) {
     const services = typeServices(context);
     return {
-      NewExpression(construction) {
+      NewExpression(construction: TSESTree.NewExpression) {
         const found = promiseExecutor(context, construction);
         if (found === undefined) {
           return;
@@ -56,7 +73,7 @@ export const rule = {
           const source = unguardedSource(context, services, sources);
           if (source !== undefined) {
             context.report({
-              node: executor.params[1] ?? executor.params[0],
+              node: executor.params[1] ?? executor.params[0] ?? executor,
               messageId: 'missingReject',
               data: { source: source.text },
             });
