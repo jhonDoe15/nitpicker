@@ -1,4 +1,4 @@
-import { PYTHON_RULES_IDS, RULES_TOOL } from './rule-hints.mjs';
+import { PYTHON_RULES_IDS, RULES_TOOL } from './rule-hints.mts';
 
 const SCRIPT_RULES = new Set(PYTHON_RULES_IDS);
 const RUFF_RULES = new Set([
@@ -16,7 +16,7 @@ const RUFF_RULES = new Set([
   'T203',
 ]);
 
-export function isPythonTouchedRule(rule, finding) {
+export function isPythonTouchedRule(rule: string, finding?: { readonly tool?: string }): boolean {
   if (finding?.tool === RULES_TOOL) {
     return SCRIPT_RULES.has(rule);
   }

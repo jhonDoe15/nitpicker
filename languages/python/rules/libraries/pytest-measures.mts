@@ -9,21 +9,31 @@ const OPENERS = new Set(['(', '[', '{']);
 const CLOSERS = new Set([')', ']', '}']);
 const QUOTES = new Set(['"', "'"]);
 
-function countParentheses(text, pattern) {
+export type Counts = { withParentheses: number; without: number };
+type ParseState = { depth: number; quote: string; done: boolean };
+const TUPLE = 'tuple';
+type Layout = typeof TUPLE | 'list' | 'csv';
+export type ParametrizeUse = {
+  names: Layout | undefined;
+  values: Layout | undefined;
+  row: Layout | undefined;
+};
+
+function countParentheses(text: string, pattern: RegExp): Counts {
   const matches = [...text.matchAll(pattern)];
   const withParentheses = matches.filter((match) => match[1] !== undefined).length;
   return { withParentheses, without: matches.length - withParentheses };
 }
 
-export function fixtureCounts(text) {
+export function fixtureCounts(text: string): Counts {
   return countParentheses(text, FIXTURE);
 }
 
-export function markCounts(text) {
+export function markCounts(text: string): Counts {
   return countParentheses(text, MARK);
 }
 
-export function parenthesesChoice(counts) {
+export function parenthesesChoice(counts: readonly Counts[]): boolean[] {
   const total = counts.reduce(
     (sum, entry) => ({
       withParentheses: sum.withParentheses + entry.withParentheses,
@@ -31,12 +41,10 @@ export function parenthesesChoice(counts) {
     }),
     { withParentheses: 0, without: 0 },
   );
-  return total.withParentheses === total.without
-    ? undefined
-    : total.withParentheses > total.without;
+  return total.withParentheses === total.without ? [] : [total.withParentheses > total.without];
 }
 
-function nextState(state, character, previous) {
+function nextState(state: ParseState, character: string, previous: string | undefined): ParseState {
   const { depth, quote } = state;
   if (quote !== '') {
     return { ...state, quote: character === quote && previous !== '\\' ? '' : quote };
@@ -53,10 +61,10 @@ function nextState(state, character, previous) {
   return depth === 0 ? { ...state, done: true } : { ...state, depth: depth - 1 };
 }
 
-function topLevelArguments(text, start) {
+function topLevelArguments(text: string, start: number): string[] {
   const tail = text.slice(start).split('');
   const starts = [start];
-  let state = { depth: 0, quote: '', done: false };
+  let state: ParseState = { depth: 0, quote: '', done: false };
   for (const [offset, character] of tail.entries()) {
     state = nextState(state, character, tail[offset - 1]);
     if (state.done) {
@@ -69,9 +77,9 @@ function topLevelArguments(text, start) {
   return starts.slice(0, 2).map((position) => text.slice(position).trimStart());
 }
 
-function namesType(argument) {
+function namesType(argument: string): Layout | undefined {
   if (argument.startsWith('(')) {
-    return 'tuple';
+    return TUPLE;
   }
   if (argument.startsWith('[')) {
     return 'list';
@@ -80,33 +88,33 @@ function namesType(argument) {
   return text?.includes(',') === true ? 'csv' : undefined;
 }
 
-function sequenceType(argument = '') {
+function sequenceType(argument = ''): Layout | undefined {
   if (argument.startsWith('[')) {
     return 'list';
   }
   return argument.startsWith('(') ? 'tuple' : undefined;
 }
 
-function rowType(values = '') {
+function rowType(values = ''): Layout | undefined {
   const inner = values.slice(1).trimStart();
   if (inner.startsWith('(')) {
-    return 'tuple';
+    return TUPLE;
   }
   return inner.startsWith('[') ? 'list' : undefined;
 }
 
-export function parametrizeUses(text) {
+export function parametrizeUses(text: string): ParametrizeUse[] {
   return [...text.matchAll(PARAMETRIZE)].map((match) => {
     const [names = '', values] = topLevelArguments(text, match.index + match[0].length);
     return { names: namesType(names), values: sequenceType(values), row: rowType(values) };
   });
 }
 
-export function mostCommon(values) {
-  const counts = new Map();
+export function mostCommon<T>(values: readonly (T | undefined)[]): T | undefined {
+  const counts = new Map<T, number>();
   for (const value of values.filter((entry) => entry !== undefined)) {
     counts.set(value, (counts.get(value) ?? 0) + 1);
   }
   const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  return ranked.length === 0 || ranked[1]?.[1] === ranked[0][1] ? undefined : ranked[0][0];
+  return ranked.length === 0 || ranked[1]?.[1] === ranked[0]?.[1] ? undefined : ranked[0]?.[0];
 }

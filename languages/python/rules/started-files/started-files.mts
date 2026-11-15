@@ -1,10 +1,14 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { readTextIfExists } from '../../../../shared/filesystem.mjs';
-import { shellCommands } from '../../../../shared/started-files/shell-commands.mjs';
-import { workflowCommands } from '../../../../shared/started-files/workflow-commands.mjs';
-import { depthFirst } from '../../../../shared/traversal.mjs';
-import { tomlTable } from '../../adapters/configuration/project-files.mjs';
+import {
+  depthFirst,
+  readTextIfExists,
+  shellCommands,
+  workflowCommands,
+  type CommandNode,
+} from './typed/started-views.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { tomlTable } from '../../adapters/configuration/project-files.mts';
 
 const PYPROJECT = 'pyproject.toml';
 const WORKFLOWS = '.github/workflows';
@@ -16,7 +20,7 @@ const UNRESOLVED = /[$*{}`]/u;
 const ASSIGNMENT = /^[A-Za-z_]\w*=/u;
 const DESCRIPTIVE_KEYS = new Set(['description', 'help', 'name', 'version', 'readme', 'license']);
 
-function workflowTexts(projectRoot) {
+function workflowTexts(projectRoot: string): string[] {
   const directory = path.join(projectRoot, WORKFLOWS);
   return existsSync(directory)
     ? readdirSync(directory)
@@ -25,30 +29,36 @@ function workflowTexts(projectRoot) {
     : [];
 }
 
-function commandChildren({ value, key }) {
+function commandChildren({ value, key }: CommandNode): CommandNode[] {
   if (DESCRIPTIVE_KEYS.has(key) || typeof value !== 'object' || value === null) {
     return [];
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => ({ value: entry, key }));
+    return value.map((entry: unknown) => ({ value: entry, key }));
   }
-  return Object.entries(value).map(([name, entry]) => ({ value: entry, key: name }));
+  return Object.entries(value).map(([name, entry]: [string, unknown]) => ({
+    value: entry,
+    key: name,
+  }));
 }
 
-function commandStrings(root) {
-  return [...depthFirst({ value: root, key: '' }, commandChildren)]
-    .filter(({ value, key }) => typeof value === 'string' && !DESCRIPTIVE_KEYS.has(key))
-    .map(({ value }) => value);
+function commandStrings(root: unknown): string[] {
+  return [...depthFirst({ value: root, key: '' }, commandChildren)].flatMap(({ value, key }) =>
+    typeof value === 'string' && !DESCRIPTIVE_KEYS.has(key) ? [value] : [],
+  );
 }
 
-function afterLauncher(tokens) {
+function afterLauncher(tokens: readonly string[]): readonly string[] {
   const first = tokens.findIndex((token) => !ASSIGNMENT.test(token));
   const rest = first < 0 ? [] : tokens.slice(first);
   const launcher = LAUNCHERS.has(rest[0] ?? '') && rest[1] === 'run';
   return launcher ? rest.slice(2) : rest;
 }
 
-function startedBy({ tokens, directory }) {
+type Segment = { readonly tokens: readonly string[]; readonly directory: string };
+type Started = { readonly module?: string | undefined; readonly file?: string | undefined };
+
+function startedBy({ tokens, directory }: Segment): Started {
   const rest = afterLauncher(tokens);
   const interpreter = PYTHON.test(rest[0] ?? '');
   const launchArguments = interpreter ? rest.slice(1) : rest;
@@ -61,8 +71,10 @@ function startedBy({ tokens, directory }) {
   return runs ? { file: path.posix.normalize(path.posix.join(directory, file)) } : {};
 }
 
-export function startedPythonFiles(projectRoot) {
-  const pyproject = tomlTable(projectRoot, PYPROJECT)?.tool;
+export type StartedFiles = { files: string[]; modules: string[] };
+
+export function startedPythonFiles(projectRoot: string): StartedFiles {
+  const pyproject = fieldOf(tomlTable(projectRoot, PYPROJECT), 'tool');
   const commands = [
     ...commandStrings(pyproject).map((command) => ({ command, directory: '' })),
     ...workflowTexts(projectRoot).flatMap((text) => workflowCommands(text)),

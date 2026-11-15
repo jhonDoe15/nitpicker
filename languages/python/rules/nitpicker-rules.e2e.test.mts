@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TEST_DIRECTORIES } from '../adapters/execution/python-project.mjs';
-import { testFileGlobs } from '../adapters/execution/python-test-files.mjs';
+import { TEST_DIRECTORIES } from '../adapters/execution/python-project.mts';
+import { testFileGlobs } from '../adapters/execution/python-test-files.mts';
 import { useScripts } from './test-support/python-rule-scripts.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
@@ -43,7 +43,7 @@ describe.skipIf(!enabled)('frozen-dataclass', () => {
       `${directory}/helpers.py`,
       `src/${directory}/a.py`,
     ]),
-    ...testFileGlobs(false)
+    ...testFileGlobs({ django: false })
       .flatMap((glob) => [glob, `src/polls/${glob}`])
       .map((file) => file.replace('*', 'orders')),
   ])('does not apply to %s, a test file of the shared test file list', (file) => {

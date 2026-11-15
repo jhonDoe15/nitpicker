@@ -1,26 +1,39 @@
-export const VALIDATORS = [
+const PYDANTIC = 'pydantic';
+const MSGSPEC = 'msgspec';
+const CATTRS = 'cattrs';
+const MARSHMALLOW = 'marshmallow';
+const VOLUPTUOUS = 'voluptuous';
+const CERBERUS = 'cerberus';
+type Validator = {
+  readonly name: string;
+  readonly packages: readonly string[];
+  readonly importRoots: readonly string[];
+  readonly call: string;
+};
+
+export const VALIDATORS: readonly [Validator, ...Validator[]] = [
   {
-    name: 'pydantic',
-    packages: ['pydantic', 'pydantic-settings'],
-    importRoots: ['pydantic', 'pydantic_settings'],
+    name: PYDANTIC,
+    packages: [PYDANTIC, 'pydantic-settings'],
+    importRoots: [PYDANTIC, 'pydantic_settings'],
     call: 'Model.model_validate(data)',
   },
   {
-    name: 'msgspec',
-    packages: ['msgspec'],
-    importRoots: ['msgspec'],
+    name: MSGSPEC,
+    packages: [MSGSPEC],
+    importRoots: [MSGSPEC],
     call: 'msgspec.json.decode(raw, type=Model)',
   },
   {
-    name: 'cattrs',
-    packages: ['cattrs', 'cattr', 'attrs', 'attr'],
-    importRoots: ['cattrs'],
+    name: CATTRS,
+    packages: [CATTRS, 'cattr', 'attrs', 'attr'],
+    importRoots: [CATTRS],
     call: 'cattrs.structure(data, Model)',
   },
   {
-    name: 'marshmallow',
-    packages: ['marshmallow', 'marshmallow-dataclass', 'marshmallow-enum'],
-    importRoots: ['marshmallow', 'marshmallow_dataclass'],
+    name: MARSHMALLOW,
+    packages: [MARSHMALLOW, 'marshmallow-dataclass', 'marshmallow-enum'],
+    importRoots: [MARSHMALLOW, 'marshmallow_dataclass'],
     call: 'Schema().load(data)',
   },
   {
@@ -30,15 +43,15 @@ export const VALIDATORS = [
     call: 'Model.from_dict(data)',
   },
   {
-    name: 'voluptuous',
-    packages: ['voluptuous'],
-    importRoots: ['voluptuous'],
+    name: VOLUPTUOUS,
+    packages: [VOLUPTUOUS],
+    importRoots: [VOLUPTUOUS],
     call: 'Schema(spec)(data)',
   },
   {
-    name: 'cerberus',
-    packages: ['cerberus'],
-    importRoots: ['cerberus'],
+    name: CERBERUS,
+    packages: [CERBERUS],
+    importRoots: [CERBERUS],
     call: 'Validator(schema).validate(data)',
   },
 ];
@@ -63,6 +76,6 @@ export const DEFAULT_DATABASE = 'format';
 export const DEFAULT_LOGGER = 'logging';
 export const DEFAULT_VALIDATOR = 'pydantic';
 
-export function validatorNamed(name) {
+export function validatorNamed(name: string): Validator {
   return VALIDATORS.find((validator) => validator.name === name) ?? VALIDATORS[0];
 }

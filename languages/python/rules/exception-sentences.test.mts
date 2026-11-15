@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../adapters/python-analyzer.mjs';
+import { configurationFiles } from '../adapters/python-analyzer.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const PYTHON_PACKAGE = 'languages/python/';
-const ROUTE_SOURCE = 'rules/rule-hints.mjs';
+const ROUTE_SOURCE = 'rules/rule-hints.mts';
 const HAND_WRITTEN_ROUTE =
   /"python\.exceptions" entry|add an exception for|to "exceptions" in nitpicker|to "?exclude"? in nitpicker|with exclude in nitpicker/u;
 
@@ -16,7 +16,7 @@ function messageSources() {
 }
 
 describe('Python finding messages', () => {
-  it('get their exception route only from the shared sentence that rule-hints.mjs calls', () => {
+  it('get their exception route only from the shared sentence that rule-hints.mts calls', () => {
     const handWritten = messageSources()
       .filter((file) => file !== ROUTE_SOURCE)
       .flatMap((file) =>

@@ -8,11 +8,11 @@ import {
   checkRules,
   readAllowances,
   readTestFiles,
-} from '../../../../adapters/analysis/python-ast-rules.mjs';
+} from '../../../../adapters/analysis/python-ast-rules.mts';
 import { ruffFindings } from '../../../../adapters/python-reports.mts';
-import { RUFF_REPORT, lint } from '../../../../adapters/python-tools.mjs';
+import { RUFF_REPORT, lint } from '../../../../adapters/python-tools.mts';
 import type { IngestedFinding } from '../../../../ingest/typed/ingest-types.mts';
-import { toolContext } from '../../../test-support/python-rule-scripts.mts';
+import { createToolContext } from '../../../../adapters/test-support/typed/tool-context.mts';
 import { PROBE_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mjs';
 
 const RULES_DIR = path.resolve(import.meta.dirname, '../../..');
@@ -28,10 +28,6 @@ type Sidecar = { readonly allowed: readonly unknown[]; readonly supportFiles: re
 type Interpreter = { readonly command: string; readonly files: Record<string, string> };
 const parseRules: (text: string) => RuleRow[] = JSON.parse;
 const parseSidecar: (text: string) => Sidecar = JSON.parse;
-const allowances: (root: string) => {
-  supportFiles: string[];
-  allowed: unknown[];
-} = readAllowances;
 const testFilesOf: (root: string) => string[] = readTestFiles;
 const parseJson: (text: string) => unknown = JSON.parse;
 
@@ -73,7 +69,7 @@ function analyse(
   const projectRoot = folder(roots, 'nitpicker-runner-project-');
   const reportRoot = folder(roots, 'nitpicker-runner-report-');
   writeFiles(projectRoot, files);
-  const context = toolContext({
+  const context = createToolContext({
     projectRoot,
     liveRoot: projectRoot,
     settings: { environment: 'path', sourceRoots: ['.'] },
@@ -90,7 +86,7 @@ function analyse(
     roots: [projectRoot],
     projectRoot,
     testFiles: testFilesOf(reportRoot),
-    ...allowances(reportRoot),
+    ...readAllowances(reportRoot),
   });
   return { rules, sidecar, ruff: found };
 }
