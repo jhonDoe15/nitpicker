@@ -2,7 +2,8 @@ import { append } from '../../../kotlin-facts.mjs';
 
 const RECEIVER_HOSTS = new Set(['apply', 'run', 'with']);
 const MEMBER_NAME = /^[\p{Ll}_]/u;
-const LEXICAL_ENDS = new Set(['class', 'object']);
+const CLASS_SCOPE = 'class';
+const LEXICAL_ENDS = new Set([CLASS_SCOPE, 'object']);
 
 function addName(names, name, entry) {
   append(names, name, entry);
@@ -48,7 +49,7 @@ function scopeNames(view, scope) {
   const names = new Map();
   if (scope.k === 'fun') {
     functionNames(view, scope, names);
-  } else if (scope.k === 'class' || scope.k === 'object') {
+  } else if (scope.k === CLASS_SCOPE || scope.k === 'object') {
     classNames(view, scope, names);
   } else {
     lambdaNames(scope, names);
@@ -92,7 +93,7 @@ function lookup(index, { chain, line, holder }, name) {
 }
 
 function classMember(index, { chain }, member) {
-  const owner = chain.find(({ k }) => k === 'class');
+  const owner = chain.find(({ k }) => k === CLASS_SCOPE);
   const entry = owner === undefined ? undefined : index.names.get(owner.id)?.get(member)?.[0];
   return entry === undefined ? undefined : { node: entry.key };
 }

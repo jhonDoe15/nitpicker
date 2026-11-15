@@ -1,7 +1,7 @@
 import { append } from '../../../kotlin-facts.mjs';
 import { typeArguments } from '../../spring-names.mjs';
 import { bindingIndex } from './bindings.mjs';
-import { helperEdges } from './helpers.mjs';
+import { helperEdges } from './helper-calls.mjs';
 import { DIRECT, memberTainted, seeds } from './sources.mjs';
 
 const TEMPLATE_CALLS = new Set([
