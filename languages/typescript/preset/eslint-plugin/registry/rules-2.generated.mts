@@ -1,3 +1,5 @@
+import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
@@ -9,6 +11,7 @@ import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordere
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
+import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
@@ -50,6 +53,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
@@ -61,6 +66,7 @@ export const partRules = {
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
+  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,

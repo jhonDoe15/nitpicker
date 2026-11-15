@@ -113,6 +113,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
     'nitpicker/no-wasted-collection-step': 'error',
+    'nitpicker/no-raw-http-value': 'error',
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
