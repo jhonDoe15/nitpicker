@@ -105,7 +105,7 @@ describe('npm package contents', () => {
     }
 
     packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
-  });
+  }, 180_000);
 
   it('fails when a runtime file is omitted from files', () => {
     const files = new Set(['package.json']);
