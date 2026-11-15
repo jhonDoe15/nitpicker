@@ -1,22 +1,58 @@
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { packageSpecifierPattern, uiFrameworks } from '../../../architecture/domain-packages.mjs';
-import { reachableModules, resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
-import { moduleSourceOf, moduleSourcesOf } from '../../../modules/module-sources.mjs';
+import {
+  packageSpecifierPattern as untypedPackageSpecifierPattern,
+  uiFrameworks,
+} from '../../../architecture/domain-packages.mjs';
+import {
+  reachableModules as untypedReachableModules,
+  resolveModuleSpecifier as untypedResolveModuleSpecifier,
+} from '../../../modules/module-resolution.mjs';
+import {
+  moduleSourceOf as untypedModuleSourceOf,
+  moduleSourcesOf as untypedModuleSourcesOf,
+} from '../../../modules/module-sources.mjs';
+
+type MessageIds = 'uiFramework' | 'jsxInDomain' | 'uiFrameworkThroughShared';
+type ReachStep =
+  | { readonly file: string; readonly truncated?: undefined }
+  | { readonly truncated: boolean; readonly file?: undefined };
+type ModuleSourceNode =
+  | TSESTree.ImportDeclaration
+  | TSESTree.ImportExpression
+  | TSESTree.ExportNamedDeclaration
+  | TSESTree.ExportAllDeclaration
+  | TSESTree.TSImportEqualsDeclaration
+  | TSESTree.CallExpression;
+
+const packageSpecifierPattern: (packages: readonly string[]) => RegExp =
+  untypedPackageSpecifierPattern;
+const resolveModuleSpecifier: (
+  written: string,
+  containingFile: string,
+) => { readonly kind: string; readonly path?: string | undefined } = untypedResolveModuleSpecifier;
+const reachableModules: (
+  entries: string,
+  specifiersOf: (file: string) => readonly string[],
+  limits: { readonly maxDepth: number; readonly maxFiles: number },
+) => Iterable<ReachStep> = untypedReachableModules;
+const moduleSourceOf: (node: TSESTree.Node) => string | undefined = untypedModuleSourceOf;
+const moduleSourcesOf: (file: string) => string[] = untypedModuleSourcesOf;
 
 const UI_FRAMEWORK = packageSpecifierPattern(uiFrameworks);
 const SHARED_MODULE = /(?:^|\/)main\/shared\//u;
 const LIMITS = { maxDepth: 6, maxFiles: 100 };
 
-function isSharedModule(file) {
+function isSharedModule(file: string): boolean {
   return SHARED_MODULE.test(file.replaceAll('\\', '/'));
 }
 
-function frameworkReachedThroughShared(source, filename) {
+function frameworkReachedThroughShared(source: string, filename: string): string | undefined {
   const entry = resolveModuleSpecifier(source, filename).path;
   if (entry === undefined || !isSharedModule(entry)) {
     return undefined;
   }
-  function specifiersOf(file) {
+  function specifiersOf(file: string): readonly string[] {
     if (file === filename) {
       return [source];
     }
@@ -26,7 +62,10 @@ function frameworkReachedThroughShared(source, filename) {
     if (step.truncated === true) {
       return undefined;
     }
-    const framework = specifiersOf(step.file).find((next) => UI_FRAMEWORK.test(next));
+    const framework =
+      step.file === undefined
+        ? undefined
+        : specifiersOf(step.file).find((next) => UI_FRAMEWORK.test(next));
     if (framework !== undefined) {
       return framework;
     }
@@ -34,7 +73,7 @@ function frameworkReachedThroughShared(source, filename) {
   return undefined;
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds> = {
   meta: {
     type: 'problem',
     docs: { description: 'Keep UI frameworks and UI state libraries out of domain/' },
@@ -49,7 +88,7 @@ export const rule = {
     },
   },
   create(context) {
-    function check(node) {
+    function check(node: ModuleSourceNode): void {
       const source = moduleSourceOf(node);
       if (source === undefined) {
         return;
@@ -69,7 +108,7 @@ export const rule = {
         });
       }
     }
-    function checkJsx(node) {
+    function checkJsx(node: TSESTree.JSXElement | TSESTree.JSXFragment): void {
       if (!node.parent.type.startsWith('JSX')) {
         context.report({ node, messageId: 'jsxInDomain' });
       }

@@ -1,33 +1,48 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
-import { dependsOnInput } from './input-dependence.mjs';
-import { unwrapped } from './regex-bindings.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type TypeScript from 'typescript';
+import { resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
+import { typeServices } from '../security/security-values.mts';
+import { nameOf } from '../typed/node-views.mts';
+import { ts } from '../typed/typescript-views.mts';
+import { dependsOnInput } from './input-dependence.mts';
+import { unwrapped } from './regex-bindings.mts';
 
-const PATTERN_METHODS = new Set(['match', 'matchAll', 'search']);
+type Node = TSESTree.Node;
+type Context = TSESLint.RuleContext<'stringPattern' | 'unescapedValue', readonly unknown[]>;
+type State = {
+  readonly context: Context;
+  readonly checker: TypeScript.TypeChecker;
+  readonly typeOf: (node: Node) => TypeScript.Type;
+};
+type Docs = { readonly requiresTypeChecking: boolean };
+
+const PATTERN_METHODS = new Set<string>(['match', 'matchAll', 'search']);
 const RUNTIME_STRING_FLAGS = ts.TypeFlags.String | ts.TypeFlags.TemplateLiteral;
 
-function isStringType(type) {
+function isStringType(type: TypeScript.Type): boolean {
   const parts = type.isUnion() ? type.types : [type];
-  return parts.length > 0 && parts.every((part) => part.flags & ts.TypeFlags.StringLike);
+  return parts.length > 0 && parts.every((part) => (part.flags & ts.TypeFlags.StringLike) !== 0);
 }
 
-function isRuntimeStringType(type) {
+function isRuntimeStringType(type: TypeScript.Type): boolean {
   const parts = type.isUnion() ? type.types : [type];
-  return parts.some((part) => part.flags & RUNTIME_STRING_FLAGS);
+  return parts.some((part) => (part.flags & RUNTIME_STRING_FLAGS) !== 0);
 }
 
-function calleeName(callee) {
-  if (callee.type === 'Identifier') {
+function calleeName(callee: Node): string | undefined {
+  if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name;
   }
-  return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : undefined;
+  return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
+    ? nameOf(callee.property)
+    : undefined;
 }
 
-function concatenationParts(node) {
+function concatenationParts(node: Node): Node[] {
   const pending = [node];
-  const parts = [];
+  const parts: Node[] = [];
   for (const current of pending) {
-    if (current.type === 'BinaryExpression' && current.operator === '+') {
+    if (current.type === AST_NODE_TYPES.BinaryExpression && current.operator === '+') {
       pending.push(current.left, current.right);
     } else {
       parts.push(current);
@@ -36,20 +51,20 @@ function concatenationParts(node) {
   return parts;
 }
 
-function patternParts(node) {
+function patternParts(node: Node): readonly Node[] {
   const target = unwrapped(node);
-  if (target.type === 'TemplateLiteral') {
+  if (target.type === AST_NODE_TYPES.TemplateLiteral) {
     return target.expressions;
   }
   if (
-    target.type === 'TaggedTemplateExpression' &&
-    target.tag.type === 'MemberExpression' &&
-    target.tag.object.name === 'String' &&
-    target.tag.property.name === 'raw'
+    target.type === AST_NODE_TYPES.TaggedTemplateExpression &&
+    target.tag.type === AST_NODE_TYPES.MemberExpression &&
+    nameOf(target.tag.object) === 'String' &&
+    nameOf(target.tag.property) === 'raw'
   ) {
     return target.quasi.expressions;
   }
-  if (target.type === 'BinaryExpression' && target.operator === '+') {
+  if (target.type === AST_NODE_TYPES.BinaryExpression && target.operator === '+') {
     const parts = concatenationParts(target);
     const hasText = parts.some((part) => stringValue(part) !== undefined);
     return hasText ? parts.filter((part) => stringValue(part) === undefined) : [];
@@ -57,20 +72,20 @@ function patternParts(node) {
   return [];
 }
 
-function isRegExpConstruction(node) {
-  return node.callee.type === 'Identifier' && node.callee.name === 'RegExp';
+function isRegExpConstruction(node: TSESTree.CallExpression | TSESTree.NewExpression): boolean {
+  return node.callee.type === AST_NODE_TYPES.Identifier && node.callee.name === 'RegExp';
 }
 
-function isPatternSource(state, node) {
+function isPatternSource(state: State, node: Node): boolean {
   return (
-    node.type === 'MemberExpression' &&
+    node.type === AST_NODE_TYPES.MemberExpression &&
     !node.computed &&
-    node.property.name === 'source' &&
+    nameOf(node.property) === 'source' &&
     state.typeOf(node.object).getSymbol()?.getName() === 'RegExp'
   );
 }
 
-function isRuntimeValue(state, part) {
+function isRuntimeValue(state: State, part: Node): boolean {
   const target = unwrapped(part);
   if (isPatternSource(state, target)) {
     return false;
@@ -82,7 +97,10 @@ function isRuntimeValue(state, part) {
   return isRuntimeStringType(type) && dependsOnInput(state.context, target);
 }
 
-function checkConstruction(state, node) {
+function checkConstruction(
+  state: State,
+  node: TSESTree.CallExpression | TSESTree.NewExpression,
+): void {
   const [pattern] = node.arguments;
   if (pattern === undefined || !isRegExpConstruction(node)) {
     return;
@@ -97,14 +115,15 @@ function checkConstruction(state, node) {
   }
 }
 
-function checkStringArgument(state, node) {
+function checkStringArgument(state: State, node: TSESTree.CallExpression): void {
   const method = calleeName(node.callee);
   const [argument] = node.arguments;
   if (
-    node.callee.type !== 'MemberExpression' ||
+    node.callee.type !== AST_NODE_TYPES.MemberExpression ||
+    method === undefined ||
     !PATTERN_METHODS.has(method) ||
     argument === undefined ||
-    argument.type === 'SpreadElement'
+    argument.type === AST_NODE_TYPES.SpreadElement
   ) {
     return;
   }
@@ -113,7 +132,7 @@ function checkStringArgument(state, node) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'stringPattern' | 'unescapedValue', [], Docs> = {
   meta: {
     type: 'problem',
     docs: {
@@ -130,14 +149,14 @@ export const rule = {
     },
   },
   create(context) {
-    const services = context.sourceCode.parserServices;
-    if (services?.program === null || services?.program === undefined) {
+    const services = typeServices(context);
+    if (services === undefined) {
       return {};
     }
-    const state = {
+    const state: State = {
       context,
       checker: services.program.getTypeChecker(),
-      typeOf: (node) => services.getTypeAtLocation(node),
+      typeOf: (node: Node) => services.getTypeAtLocation(node),
     };
     return {
       NewExpression(node) {

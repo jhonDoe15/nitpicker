@@ -1,5 +1,16 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { isGenericName, lastWord } from './generic-names.mjs';
+import { isNode } from '../typed/node-views.mts';
+import { isGenericName, lastWord } from './generic-names.mts';
+
+type TypeNode =
+  | TSESTree.ClassDeclaration
+  | TSESTree.ClassExpression
+  | TSESTree.TSInterfaceDeclaration
+  | TSESTree.TSTypeAliasDeclaration
+  | TSESTree.TSEnumDeclaration
+  | TSESTree.TSModuleDeclaration;
+type NameContext = { readonly cwd: string; readonly filename: string };
 
 const TYPE_SELECTOR = [
   'ClassDeclaration',
@@ -35,7 +46,7 @@ const ROLE_SUFFIXES = new Set([
 const ROUTE =
   'Pure logic shared between features goes in the shared folder under a name that says what it does. An exception fits only for a name a tool or framework requires.';
 
-function fileStem(file) {
+function fileStem(file: string): string {
   const segments = path.parse(file).name.split('.');
   const last = segments.findLastIndex(
     (segment, index) => index === 0 || !ROLE_SUFFIXES.has(segment.toLowerCase()),
@@ -43,27 +54,37 @@ function fileStem(file) {
   return segments.slice(0, last + 1).join('.');
 }
 
-function projectParts(context) {
-  const relative = path.relative(context.cwd ?? process.cwd(), context.filename);
+function projectParts(context: NameContext): string[] {
+  const relative = path.relative(context.cwd, context.filename);
   const inside = relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
   return (inside ? relative : path.basename(context.filename)).split(path.sep);
 }
 
-function superclassNames(node) {
-  const heritage = [node.superClass, ...(node.implements ?? []), ...(node.extends ?? [])];
-  return heritage
-    .map((item) => item?.expression ?? item)
-    .map((item) => (item?.type === 'MemberExpression' ? item.property : item))
-    .filter((item) => item?.type === 'Identifier')
+function heritageOf(node: TypeNode): TSESTree.Node[] {
+  const superClass = 'superClass' in node && node.superClass !== null ? [node.superClass] : [];
+  const implemented = 'implements' in node ? node.implements : [];
+  const extended = 'extends' in node ? node.extends : [];
+  return [...superClass, ...implemented, ...extended];
+}
+
+function unwrappedHeritage(item: TSESTree.Node): TSESTree.Node {
+  return 'expression' in item && isNode(item.expression) ? item.expression : item;
+}
+
+function superclassNames(node: TypeNode): string[] {
+  return heritageOf(node)
+    .map(unwrappedHeritage)
+    .map((item) => (item.type === AST_NODE_TYPES.MemberExpression ? item.property : item))
+    .filter((item) => item.type === AST_NODE_TYPES.Identifier)
     .map((item) => item.name);
 }
 
-function followsLibraryType(node) {
-  const word = lastWord(node.id.name);
-  return superclassNames(node).some((name) => lastWord(name) === word);
+function followsLibraryType(node: TypeNode, name: string): boolean {
+  const word = lastWord(name);
+  return superclassNames(node).some((superName) => lastWord(superName) === word);
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'genericFile' | 'genericFolder' | 'genericType'> = {
   meta: {
     type: 'suggestion',
     docs: {
@@ -82,7 +103,7 @@ export const rule = {
     const top = { line: 1, column: 0 };
     return {
       Program() {
-        const stem = fileStem(parts.at(-1));
+        const stem = fileStem(parts.at(-1) ?? '');
         const folder = parts.slice(0, -1).find(isGenericName);
         if (isGenericName(stem)) {
           context.report({ loc: top, messageId: 'genericFile', data: { name: stem } });
@@ -91,12 +112,18 @@ export const rule = {
           context.report({ loc: top, messageId: 'genericFolder', data: { name: `${folder}/` } });
         }
       },
-      [TYPE_SELECTOR](node) {
-        if (node.id && isGenericName(node.id.name) && !followsLibraryType(node)) {
+      [TYPE_SELECTOR](node: TypeNode) {
+        const { id } = node;
+        if (
+          id !== null &&
+          id.type === AST_NODE_TYPES.Identifier &&
+          isGenericName(id.name) &&
+          !followsLibraryType(node, id.name)
+        ) {
           context.report({
-            node: node.id,
+            node: id,
             messageId: 'genericType',
-            data: { name: node.id.name },
+            data: { name: id.name },
           });
         }
       },
