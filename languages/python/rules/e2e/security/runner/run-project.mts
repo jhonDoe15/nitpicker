@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { containedPath } from '../../../../../../core/fix/common/contained-path.mjs';
 import {
   ALLOWANCES_REPORT,
   RULES_REPORT,
@@ -31,24 +32,16 @@ const parseSidecar: (text: string) => Sidecar = JSON.parse;
 const testFilesOf: (root: string) => string[] = readTestFiles;
 const parseJson: (text: string) => unknown = JSON.parse;
 
-function inside(root: string, file: string) {
-  const target = path.resolve(root, file);
-  if (!target.startsWith(`${root}${path.sep}`)) {
-    throw new Error(`${file} is outside ${root}`);
-  }
-  return target;
-}
-
 function writeFiles(root: string, files: Record<string, string>) {
   for (const [file, content] of Object.entries(files)) {
-    const target = inside(root, file);
+    const target = containedPath(root, file);
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, content);
   }
 }
 
 function readText(root: string, name: string): string {
-  return readFileSync(inside(root, name), 'utf8');
+  return readFileSync(containedPath(root, name), 'utf8');
 }
 
 function folder(roots: string[], prefix: string) {

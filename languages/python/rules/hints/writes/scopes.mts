@@ -5,17 +5,21 @@ import type { RuleHint } from '../hint-types.mts';
 const OUTBOX =
   'when the remote side effect must match the transaction outcome, write an outbox row inside the transaction and send it from a worker instead of moving the call without thinking about consistency';
 
-function transactionDescribe(subject: string): string {
-  const { path, fields } = parseEffect(subject);
-  const [held = ''] = fields;
-  return `${pathPhrase(path)} makes a remote call while \`${held}\` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction`;
+function remoteCallWhile(state: string): (subject: string) => string {
+  return (subject) => {
+    const { path, fields } = parseEffect(subject);
+    const [held = ''] = fields;
+    return `${pathPhrase(path)} makes a remote call while \`${held}\` ${state}`;
+  };
 }
 
-function lockDescribe(subject: string): string {
-  const { path, fields } = parseEffect(subject);
-  const [held = ''] = fields;
-  return `${pathPhrase(path)} makes a remote call while \`${held}\` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all`;
-}
+const transactionDescribe = remoteCallWhile(
+  'holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
+);
+
+const lockDescribe = remoteCallWhile(
+  'is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
+);
 
 export const SCOPE_HINTS: readonly RuleHint[] = [
   {

@@ -69,8 +69,8 @@ function baseTwins(
   };
 }
 
-function inlineCode(value: string) {
-  const text = value.replaceAll(/\s+/gu, ' ').trim();
+function inlineCode(value: unknown): string {
+  const text = String(value).replaceAll(/\s+/gu, ' ').trim();
   const shown = text.length > CODE_LIMIT ? `${text.slice(0, CODE_LIMIT)}…` : text;
   return shown === '' ? "`''` (nothing)" : `\`${shown}\``;
 }

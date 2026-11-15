@@ -191,6 +191,11 @@ export function runPythonTools(context: ToolContext): ToolFailure[] {
       ];
     }
   });
+  writeManifest(context, outcome);
+  return failures;
+}
+
+function writeManifest(context: ToolContext, outcome: ToolOutcome): void {
   writeFileSync(
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
@@ -203,7 +208,6 @@ export function runPythonTools(context: ToolContext): ToolFailure[] {
       testRunner: context.project.testRunner,
     }),
   );
-  return failures;
 }
 
 export function lintOptions(context: ToolContext): string[] {

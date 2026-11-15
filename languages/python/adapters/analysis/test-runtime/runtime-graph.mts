@@ -118,10 +118,7 @@ export function buildRuntimeGraph({
   literals?: Literals;
   fixtureTests?: readonly string[];
 }): RuntimeGraph {
-  const entries: GraphEntry[] = [
-    ...modules.map((entry) => ({ ...entry, production: true })),
-    ...others.map((entry) => ({ ...entry, production: false })),
-  ].map((entry) => ({ ...entry, isPackage: path.posix.basename(entry.file) === INIT }));
+  const entries = graphEntries(modules, others);
   const fileOf = new Map(
     entries.map(({ module, file }): [string, string] => [module, file]).reverse(),
   );
@@ -147,17 +144,39 @@ export function buildRuntimeGraph({
   const fixtures = new Map(fixtureTests.map((test): [string, FixtureReach] => [test, reach(test)]));
   return {
     fixtures: (test) => fixtures.get(test) ?? NO_FIXTURES,
-    edges: new Map(
-      entries.map(({ file }): [string, GraphEdge[]] => [
-        file,
-        [
-          ...(bySource.get(file) ?? []),
-          ...(fixtures.get(file)?.files ?? []).map((target): GraphEdge => ({
-            target,
-            kind: EDGE_KINDS.RUNTIME,
-          })),
-        ].map(({ target, kind, dynamic }) => ({ target, kind, dynamic })),
-      ]),
-    ),
+    edges: graphEdges({ entries, bySource, fixtures }),
   };
+}
+
+function graphEntries(
+  modules: readonly PythonModule[],
+  others: readonly OtherModule[],
+): GraphEntry[] {
+  return [
+    ...modules.map((entry) => ({ ...entry, production: true })),
+    ...others.map((entry) => ({ ...entry, production: false })),
+  ].map((entry) => ({ ...entry, isPackage: path.posix.basename(entry.file) === INIT }));
+}
+
+function graphEdges({
+  entries,
+  bySource,
+  fixtures,
+}: {
+  readonly entries: readonly GraphEntry[];
+  readonly bySource: ReadonlyMap<string, readonly FileEdge[]>;
+  readonly fixtures: ReadonlyMap<string, FixtureReach>;
+}): Map<string, GraphEdge[]> {
+  return new Map(
+    entries.map(({ file }): [string, GraphEdge[]] => [
+      file,
+      [
+        ...(bySource.get(file) ?? []),
+        ...(fixtures.get(file)?.files ?? []).map((target): GraphEdge => ({
+          target,
+          kind: EDGE_KINDS.RUNTIME,
+        })),
+      ].map(({ target, kind, dynamic }) => ({ target, kind, dynamic })),
+    ]),
+  );
 }

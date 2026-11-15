@@ -1,5 +1,5 @@
 import { WARNING, withoutRaceReports } from '../race/race-reports.mts';
-import { fieldOf, messageOf, parseJson } from '../../../../shared/values/readers.mts';
+import { fieldOf, messageOf, optionalText, parseJson } from '../../../../shared/values/readers.mts';
 import type { ParsedTestRun, TestEvent } from '../go-types.mts';
 
 type Failure = { id: string; package: string; test: string | undefined; output: string };
@@ -12,10 +12,6 @@ const OUTCOMES: Readonly<Record<string, string>> = {
 };
 const RUNNER_LINE = /^(?:=== |--- |FAIL\b|ok\b|PASS$|coverage: )/u;
 const PACKAGE_SUFFIX = / \[[^\]]+\]$/u;
-
-function optionalText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
 
 function eventOf(value: unknown): TestEvent {
   const elapsed = fieldOf(value, 'Elapsed');

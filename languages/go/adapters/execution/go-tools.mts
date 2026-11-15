@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { readGoModule } from './go-module.mts';
 import { run } from './go-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
@@ -113,11 +114,7 @@ export function sourceHash(source: string, extra: string): string {
 }
 
 function sourceFile(source: string, name: string) {
-  const full = path.resolve(source, name);
-  if (!full.startsWith(source + path.sep)) {
-    throw new Error(`${name} is outside ${source}`);
-  }
-  return readFileSync(full);
+  return readFileSync(containedPath(source, name));
 }
 
 function buildProgram(context: GoContext, { name, source, rule, env, toolchain = '' }: Program) {

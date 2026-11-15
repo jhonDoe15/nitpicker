@@ -27,15 +27,14 @@ const MILLISECONDS_PER_MINUTE = 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
 export const VERSION_PATTERN = /\d+\.\d\S*/;
 
+function toolTimeoutMs(context: Pick<ProcessContext, 'analyzerDeadlineMs'>): number {
+  return context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS;
+}
+
 export function execute(
   context: ProcessContext,
   command: readonly string[],
-  {
-    timeout = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS,
-    env = {},
-    defaultEnv = {},
-    cwd,
-  }: ExecuteOptions = {},
+  { timeout = toolTimeoutMs(context), env = {}, defaultEnv = {}, cwd }: ExecuteOptions = {},
 ): SpawnResult {
   const [tool = '', ...args] = command;
   const launch = context.launcher.launch(tool, args);
@@ -76,7 +75,7 @@ export function run(
   {
     accepted = [0],
     rule,
-    timeoutMs = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS,
+    timeoutMs = toolTimeoutMs(context),
     notFoundHint = '',
     ...environment
   }: RunOptions,
@@ -106,7 +105,7 @@ function describeFailure({
   context,
   command,
   result,
-  timeoutMs = context.analyzerDeadlineMs ?? TOOL_TIMEOUT_MS,
+  timeoutMs = toolTimeoutMs(context),
   notFoundHint = '',
 }: FailureDetails): string {
   const [tool = '', subcommand = '-'] = command;

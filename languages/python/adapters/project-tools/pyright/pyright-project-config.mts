@@ -49,21 +49,26 @@ function absolute(directory: string, entry: unknown): unknown {
   return typeof entry === 'string' ? path.resolve(directory, entry) : entry;
 }
 
+function withAbsolutePaths(config: Fields, keys: readonly string[], directory: string): Fields {
+  return {
+    ...config,
+    ...Object.fromEntries(
+      keys
+        .filter((key) => config[key] !== undefined)
+        .map((key) => [key, absolute(directory, config[key])]),
+    ),
+  };
+}
+
 function absolutized(
   config: Fields,
   { original, source }: { original: string; source: string },
 ): Fields {
-  const result: Record<string, unknown> = { ...config };
-  for (const key of ENVIRONMENT_PATH_KEYS) {
-    if (result[key] !== undefined) {
-      result[key] = absolute(original, result[key]);
-    }
-  }
-  for (const key of SOURCE_PATH_KEYS) {
-    if (result[key] !== undefined) {
-      result[key] = absolute(source, result[key]);
-    }
-  }
+  const result: Record<string, unknown> = withAbsolutePaths(
+    withAbsolutePaths(config, ENVIRONMENT_PATH_KEYS, original),
+    SOURCE_PATH_KEYS,
+    source,
+  );
   for (const key of PATH_LIST_KEYS) {
     const entries = result[key];
     if (Array.isArray(entries)) {
@@ -148,9 +153,13 @@ function locateIn(directory: string, checker: string): string | undefined {
 }
 
 function locate(directories: readonly string[], checker: string): string | undefined {
-  return directories
-    .map((directory) => locateIn(directory, checker))
-    .find((file) => file !== undefined);
+  for (const directory of directories) {
+    const file = locateIn(directory, checker);
+    if (file !== undefined) {
+      return file;
+    }
+  }
+  return undefined;
 }
 
 function rebaser(root: string, directories: readonly string[], projectRoot: string): Rebase {

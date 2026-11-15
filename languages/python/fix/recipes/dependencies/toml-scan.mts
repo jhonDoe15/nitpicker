@@ -87,13 +87,10 @@ export function scanToml(text: string): TomlSection[] {
 }
 
 export function arrayElements(text: string, key: TomlKey | undefined): TomlArray | undefined {
-  if (key === undefined) {
+  if (key === undefined || text[key.valueStart] !== '[') {
     return undefined;
   }
   const open = key.valueStart;
-  if (text[open] !== '[') {
-    return undefined;
-  }
   const elements: TomlElement[] = [];
   for (const match of text.slice(open + 1, key.valueEnd).matchAll(TOKEN)) {
     const [token = ''] = match;
