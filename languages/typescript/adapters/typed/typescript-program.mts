@@ -19,3 +19,11 @@ export function parentOf(node: TypeScript.Node): TypeScript.Node | undefined {
 }
 
 export const chainOf: <T>(start: T, next: (current: T) => T | undefined) => T[] = untypedChainOf;
+
+export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
+  const children: TypeScript.Node[] = [];
+  typescriptApi().forEachChild(node, (child) => {
+    children.push(child);
+  });
+  return children;
+}

@@ -6,7 +6,7 @@ Part of the [Python preset guide](../python-preset.md).
   file, the branch arcs coverage.py recorded, `executed_branches` and `missing_branches` as
   `[from line, to line]` pairs (a negative `to` leaves the enclosing function, class or module).
   The runner always turns branch coverage on, so both snapshots have them.
-- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-reports/coverage-branches.mjs`) groups the
+- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-reports/coverage-branches.mts`) groups the
   arcs by their `from` line and emits one enforceable `coverage-py` / `changed-branch-coverage`
   finding per line whose taken outcomes are below 95% (the minimum of the other languages). Lines
   without branches are never reported. The tool name is `coverage-py`, not `coverage`: `coverage`
@@ -68,7 +68,7 @@ or remove it if it can't happen. If this is intended, add
   (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
   function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
   which drops every finding for that file, not only this rule's. Test files are not measured, so a `.` source root does not gate them.
-- **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
+- **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mts` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
   twelve cases on a real project (moved gap baselined, edited line fails, edited and tested passes,

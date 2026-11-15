@@ -6,7 +6,6 @@ export const KOTLIN_SOURCE_RULES = Object.freeze([
   'GenericPackageName',
   'GenericTypeName',
   'HardcodedSecret',
-  'IoCallInLoop',
   'MutableModuleState',
   'ParameterMutation',
   'RepeatedStringLiteral',

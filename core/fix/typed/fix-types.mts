@@ -30,16 +30,19 @@ export type FixInvocation = {
   readonly timeout?: number;
 };
 
+type PlannedFinding = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly line: number;
+};
+
 export type PlannedFix = {
   readonly recipe?: string;
   readonly tool?: string;
   readonly safety: string;
-  readonly finding?: {
-    readonly tool: string;
-    readonly rule: string;
-    readonly path: string;
-    readonly line: number;
-  };
+  readonly finding?: PlannedFinding;
+  readonly alsoFindings?: readonly PlannedFinding[];
   readonly files: readonly string[];
 };
 

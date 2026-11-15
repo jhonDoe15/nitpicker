@@ -12,7 +12,9 @@ import {
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
+import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
@@ -66,6 +68,7 @@ export type DiffReport = {
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly outcomes: readonly ScopedOutcome[];
+  readonly metadata?: MetadataMap;
   readonly notes: ReportEntry[];
   readonly toolErrors: ReportEntry[];
 };
@@ -87,6 +90,8 @@ const loosenedFindings: (
   options: object,
 ) => Finding[] = policyFindings;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
+const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
+  withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
 const scopedOutcomes: (
@@ -98,13 +103,20 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
-  const baseRun = withDependencies(context.baseRun, objectOf(policies.base));
-  const headRun = withDependencies(context.headRun, objectOf(policies.head));
+  const baseRun = withSharedDirectives(
+    withDependencies(context.baseRun, objectOf(policies.base)),
+    context.analyzers,
+  );
+  const headRun = withSharedDirectives(
+    withDependencies(context.headRun, objectOf(policies.head)),
+    context.analyzers,
+  );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
   const notes = scopedNotes(compared.notes, context.scope);
-  const report = buildReport({ ...context, outcomes, notes, toolErrors });
+  const metadata = mergeMetadata(baseRun.metadata, headRun.metadata);
+  const report = buildReport({ ...context, outcomes, notes, toolErrors, metadata });
   return {
     ...report,
     newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
@@ -197,7 +209,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(analyzers, configOverrides),
+      policyHash: hashOf(analyzers, configOverrides, context.metadata),
       configOverrides,
       policyChanges,
       policyLoosenings,

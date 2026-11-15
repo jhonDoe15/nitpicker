@@ -7,7 +7,7 @@ import { sha256 } from '../report/canonical.mts';
 
 export const LOOKUP_FILE = 'core/diff/cache/findings-cache.mts';
 export const LOOKUP_ENTRY = 'lookUpCachedReport';
-const RESOLVER_NAME = 'resolveAnalyzerMetadata';
+const RESOLVER_NAME = 'resolvedAnalyzerMetadata';
 const RESOLVER = `../execution/report/analyzer-metadata.mts#${RESOLVER_NAME}`;
 const VARIANT_DIRECTORY = 'reports/flow-model/real/variants';
 
@@ -39,22 +39,23 @@ export const LOOKUP_INPUTS = Object.freeze({
   resolveContext: { strict: { oneOf: [true, false] } },
 } satisfies Inputs);
 
-const RESOLVE = `    ${RESOLVER_NAME}(analyzer, resolveContext);\n`;
-const TRY_BLOCK = `  try {\n${RESOLVE}  } catch (error) {\n    return { kind: 'unresolved', error };\n  }\n`;
-const READ = '  const report = cache.read(analyzer);\n';
+const RESOLVED = `${RESOLVER_NAME}(analyzer, resolveContext)`;
+const RESOLVE = `    const metadata = ${RESOLVED};\n`;
+const READ = '    const report = cache.read(analyzer, metadata);\n';
 const CATCH_RETURN = "    return { kind: 'unresolved', error };\n";
+const UNMAPPED = '    const metadata = undefined;\n';
 const READ_BEFORE = 'resolve-before-read|cache.read|analyzer';
 const READ_ANY = 'resolve-before-read|cache.read|?';
 
 const SEEDED: readonly (readonly [string, readonly Edit[]])[] = [
-  ['seed-omit-resolution', [[TRY_BLOCK, '']]],
-  ['seed-read-before-resolution', [[TRY_BLOCK + READ, READ + TRY_BLOCK]]],
-  ['seed-wrong-object', [[RESOLVE, `    ${RESOLVER_NAME}(resolveContext, analyzer);\n`]]],
-  ['seed-continue-after-failure', [[CATCH_RETURN, '    analyzer.unresolved = error;\n']]],
+  ['seed-omit-resolution', [[RESOLVE, UNMAPPED]]],
   [
-    'seed-conditional-resolution',
-    [[RESOLVE, `    if (resolveContext.strict) {\n  ${RESOLVE}    }\n`]],
+    'seed-read-before-resolution',
+    [[RESOLVE + READ, UNMAPPED + READ + RESOLVE.replace('const metadata', 'const late')]],
   ],
+  ['seed-wrong-object', [[RESOLVED, `${RESOLVER_NAME}(resolveContext, analyzer)`]]],
+  ['seed-continue-after-failure', [[CATCH_RETURN, UNMAPPED + READ + CATCH_RETURN]]],
+  ['seed-conditional-resolution', [[RESOLVED, `resolveContext.strict ? ${RESOLVED} : undefined`]]],
 ];
 
 const UNSUPPORTED: readonly (readonly [
@@ -71,7 +72,7 @@ const UNSUPPORTED: readonly (readonly [
   ],
   [
     'unsupported-alias-dispatch',
-    [[READ, '  const read = cache.read;\n  const report = read(analyzer);\n']],
+    [[READ, '    const read = cache.read;\n    const report = read(analyzer, metadata);\n']],
     ['unknown-dispatch', 'unknown-guard'],
     [READ_ANY],
   ],
@@ -80,7 +81,7 @@ const UNSUPPORTED: readonly (readonly [
     [
       [
         READ,
-        '  let report;\n  for (const attempt of [1, 2]) {\n    report = cache.read(analyzer);\n  }\n',
+        '    let report;\n    for (const attempt of [1, 2]) {\n      report = cache.read(analyzer, metadata);\n    }\n',
       ],
     ],
     ['loop', 'unknown-guard'],

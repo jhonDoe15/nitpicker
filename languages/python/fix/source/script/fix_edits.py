@@ -13,7 +13,13 @@ def run(payload):
         return {"fixes": [], "declines": [], "skipped": version}
     sys.path[:0] = [HERE, RULES]
     sys.dont_write_bytecode = True
-    from runner import main
+    mode = payload.get("mode")
+    if mode == "project":
+        from project_runner import main
+    elif mode == "ignores":
+        from project_runner import ignore_main as main
+    else:
+        from runner import main
 
     return main(payload)
 

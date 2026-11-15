@@ -23,7 +23,7 @@ const SCHEMA = JSON.parse(
 );
 const OPENING = [
   'Compare the copies: src/a/load-orders.ts:2-6 and src/b/load-invoices.ts:2-6.',
-  'Why a recipe did not make this change: the copies are in different files, and no recipe rewrites a pair across files.',
+  'Why a recipe did not make this change: the copies are in different files, and no recipe rewrites a pair across files: the new module and the import in each file depend on the module system, the file extensions and the path rules of the project.',
 ];
 const SHARED_PLACE = [
   'Put load in a module in src/shared/: two features use it.',
@@ -95,11 +95,12 @@ describe('the near-duplicate plan', () => {
     ]);
     expect(plan.context.location).toEqual(PLACE);
     expect(plan.context.declined).toEqual({
-      reason: 'the copies are in different files, and no recipe rewrites a pair across files',
+      reason:
+        'the copies are in different files, and no recipe rewrites a pair across files: the new module and the import in each file depend on the module system, the file extensions and the path rules of the project',
     });
     expect(plan.steps).toEqual([
       'Compare the copies: src/a/load-orders.ts:2-6 and src/b/load-invoices.ts:2-6.',
-      'Why a recipe did not make this change: the copies are in different files, and no recipe rewrites a pair across files.',
+      'Why a recipe did not make this change: the copies are in different files, and no recipe rewrites a pair across files: the new module and the import in each file depend on the module system, the file extensions and the path rules of the project.',
       'Put load in a module in src/shared/: two features use it.',
       'A shared module must not import a feature (shared-imports-feature): pass what it needs from a feature as parameters.',
       'Move the body of loadOrders into load(store: Store, limit: number, text, amount), and use the new parameters where the copies differ.',
@@ -290,19 +291,19 @@ describe('declineReason', () => {
       'a type that differs',
       sameFile('a.ts', ['f', 'g'], { parameters: [{ kind: 'type', values: ['A', 'B'] }] }),
       'typescript-extract-near-duplicate',
-      'the copies differ in a type, which a parameter of the extracted function cannot carry',
+      'the copies differ in a type, and a type parameter cannot stand for it after new, in a cast or an instanceof',
     ],
     [
       'an expression that differs in Java',
       sameFile('A.java', ['A.f', 'A.g'], { parameters: [{ kind: 'value', deferred: true }] }),
       'java-extract-near-duplicate',
-      'a differing expression cannot be passed in Java, because the parameter needs its type written',
+      'a differing expression needs its type written to become a Supplier: a declared local, a return or an if condition',
     ],
     [
       'two classes',
       sameFile('A.java', ['A.f', 'B.g']),
       'java-extract-near-duplicate',
-      'the copies are in different classes',
+      'the copies are in different classes, and only anonymous classes of one class can be extracted together',
     ],
     [
       'a language without a recipe',
@@ -312,6 +313,41 @@ describe('declineReason', () => {
     ],
   ])('gives the reason of %s', (_name, pair, recipe, reason) => {
     expect(declineReason(pair)).toEqual(recipe === undefined ? { reason } : { recipe, reason });
+  });
+
+  const twoFiles = (paths, extra = {}) => ({
+    verdict: 'parameterizable',
+    parameters: [],
+    copies: paths.map((path, index) => copy(path, `${path.replace('.java', '')}.f${index}`)),
+    ...extra,
+  });
+
+  it('points Java copies in two files of one folder at the recipe that extracts them', () => {
+    expect(declineReason(twoFiles(['p/A.java', 'p/B.java']))).toEqual({
+      recipe: 'java-extract-near-duplicate',
+      command: 'nitpicker --fix --rule structure/near-duplicate',
+    });
+  });
+
+  it.each([
+    [
+      'Java copies in two folders',
+      ['p/A.java', 'q/B.java'],
+      'the copies are in different files, and the Java recipe extracts a pair across files only when a same or parameterizable pair sits in one folder (one package)',
+    ],
+    [
+      'Java copies of a run in two files',
+      ['p/A.java', 'p/B.java'],
+      'the copies are in different files, and the Java recipe extracts a pair across files only when a same or parameterizable pair sits in one folder (one package)',
+      { verdict: 'partial-run' },
+    ],
+    [
+      'Kotlin copies in two files',
+      ['p/A.kt', 'p/B.kt'],
+      'the copies are in different files, and no recipe rewrites a pair across files',
+    ],
+  ])('gives the reason for %s', (_name, paths, reason, extra) => {
+    expect(declineReason(twoFiles(paths, extra))).toEqual({ reason });
   });
 
   it('uses the note of the first recipe that declined the pair', () => {

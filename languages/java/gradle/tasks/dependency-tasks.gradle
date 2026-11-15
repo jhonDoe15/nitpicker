@@ -14,10 +14,38 @@ tasks.register('nitpickerDependencies') {
     doLast {
         reportDir.get().asFile.mkdirs()
         def archivesOf = [:]
+        def redirects = [:]
+        def redirectsKnown = true
+        try {
+            configurations.compileClasspath.incoming.resolutionResult.root.dependencies.each { dependency ->
+                if (dependency instanceof org.gradle.api.artifacts.result.ResolvedDependencyResult) {
+                    def module = dependency.selected.moduleVersion
+                    dependency.selected.variants.each { variant ->
+                        variant.externalVariant.ifPresent { external ->
+                            def owner = external.owner
+                            if (owner instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier) {
+                                redirects.computeIfAbsent("${module.group}:${module.name}".toString()) { [] as Set } <<
+                                    "${owner.group}:${owner.module}".toString()
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception | LinkageError ignored) {
+            redirects.clear()
+            redirectsKnown = false
+        }
         def lenient = configurations.compileClasspath.resolvedConfiguration.lenientConfiguration
         lenient.firstLevelModuleDependencies.each { resolved ->
+            def own = resolved.moduleArtifacts
+            def id = "${resolved.moduleGroup}:${resolved.moduleName}".toString()
+            def variants = own.isEmpty() ? resolved.children.findAll {
+                redirectsKnown
+                    ? redirects.getOrDefault(id, []).contains("${it.moduleGroup}:${it.moduleName}".toString())
+                    : it.moduleGroup == resolved.moduleGroup && it.moduleName.startsWith(resolved.moduleName + '-')
+            }.collectMany { it.moduleArtifacts } : []
             archivesOf["${resolved.moduleGroup}:${resolved.moduleName}".toString()] =
-                resolved.moduleArtifacts.collect { it.file }.findAll { it.exists() }.unique()
+                (own + variants).collect { it.file }.findAll { it.exists() }.unique()
         }
         def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() && it.list()?.length }
         def declared = declaredConfigurations.findAll { configurations.findByName(it) != null }.collectMany { name ->

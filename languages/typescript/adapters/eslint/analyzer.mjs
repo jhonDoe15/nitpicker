@@ -6,53 +6,43 @@ const runnerPath = checkoutModulePath(
   path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs'),
 );
 
-export function createEslintAnalyzer({
-  name,
-  version,
-  configurationHash,
-  exclusions,
-  configRelativePath,
-  patterns,
-  policyFiles = [],
-  timeoutMs,
-  eslintTimeoutMs,
-  eslintCliPath,
-  environment = {},
-  shardWeight = 1,
-  policyFromPackage = false,
-}) {
-  return {
+function invocationOf(settings, roots) {
+  const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = settings;
+  const { projectRoot, policyRoot, toolRoot, liveProjectRoot } = roots;
+  const args = [
+    runnerPath,
+    '--analyzer-name',
     name,
-    version,
-    configurationHash,
+    '--project-root',
+    projectRoot,
+    '--policy-root',
+    policyRoot,
+    '--tool-root',
+    toolRoot,
+    '--config',
+    configRelativePath,
+    ...optionalArguments({ ...settings, liveProjectRoot }),
+    ...environmentArguments(environment),
+    ...patterns.flatMap((pattern) => ['--pattern', pattern]),
+    ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
+  ];
+  return { command: process.execPath, args, cwd: toolRoot };
+}
+
+export function createEslintAnalyzer(settings) {
+  const { patterns, exclusions, shardWeight = 1, policyFromPackage = false } = settings;
+  return {
+    name: settings.name,
+    version: settings.version,
+    configurationHash: settings.configurationHash,
     exclusions,
-    timeoutMs,
+    lintedGlobs: { include: patterns, exclude: exclusions },
+    timeoutMs: settings.timeoutMs,
     shardWeight,
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
-    createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
-      const args = [
-        runnerPath,
-        '--analyzer-name',
-        name,
-        '--project-root',
-        projectRoot,
-        '--policy-root',
-        policyRoot,
-        '--tool-root',
-        toolRoot,
-        '--config',
-        configRelativePath,
-        ...optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }),
-        ...environmentArguments(environment),
-        ...patterns.flatMap((pattern) => ['--pattern', pattern]),
-        ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
-      ];
-      return {
-        command: process.execPath,
-        args,
-        cwd: toolRoot,
-      };
+    createInvocation(roots) {
+      return invocationOf(settings, roots);
     },
   };
 }
