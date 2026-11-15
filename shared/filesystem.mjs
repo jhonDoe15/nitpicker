@@ -11,6 +11,11 @@ export function pathInside(root, relative) {
   return full;
 }
 
+export function isStrictlyInside(parent, candidate) {
+  const relative = path.relative(parent, candidate);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 export function readTextIfExists(file) {
   return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }

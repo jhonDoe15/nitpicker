@@ -16,6 +16,7 @@ import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { PROJECT_LAYER_VARIABLE as projectLayerVariable } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 
 const anyNumber: unknown = expect.any(Number);
+const anyString: unknown = expect.any(String);
 const sha40: unknown = expect.stringMatching(exactText`${/[a-f0-9]{40}/}`);
 const sha64: unknown = expect.stringMatching(exactText`${/[a-f0-9]{64}/}`);
 const PROJECT_LAYER_VARIABLE: string = projectLayerVariable;
@@ -189,6 +190,8 @@ Full diagnostics: ${outputRoot}/report.txt
       exclusions: [],
       renamedPaths: 0,
       elapsedMs: anyNumber,
+      generatedAt: anyString,
+      workingTree: sha64,
       overallStatus: 'tool-error',
       newEnforceableFindings: 0,
       policyChanges: [],
