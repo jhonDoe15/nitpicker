@@ -67,6 +67,7 @@ import {
   withUtf16Columns,
   withoutAllowedForms,
   withoutFrameworkForms,
+  withoutShadowedFindings,
 } from './typed/report/report-views.mts';
 
 const COLUMN_UNITS = { ruff: 'code-points', mypy: 'ascii-only' };
@@ -147,10 +148,17 @@ export function readPythonFindings({
     ],
     libraries,
   );
-  const findings = withUtf16Columns(withoutFrameworkForms(found, projectRoot, imports), {
-    units: COLUMN_UNITS,
-    readSource: (file: string) => readSource(projectRoot, file),
-  });
+  const findings = withUtf16Columns(
+    withoutFrameworkForms(
+      withoutShadowedFindings(found, { keepsOwner: ownerSurvives(exceptions) }),
+      projectRoot,
+      imports,
+    ),
+    {
+      units: COLUMN_UNITS,
+      readSource: (file: string) => readSource(projectRoot, file),
+    },
+  );
   return { findings, ...moduleImportsSection(readFactImports(reportRoot), policy.history) };
 }
 

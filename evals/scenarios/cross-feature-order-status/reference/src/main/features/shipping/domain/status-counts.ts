@@ -3,11 +3,14 @@ import type { Order, OrderStatus } from '../../orders/index.js';
 type StatusCounts = Readonly<Record<OrderStatus, number>>;
 
 export function countByStatus(orders: readonly Order[]): StatusCounts {
-  return orders.reduce<StatusCounts>(
-    (counts: StatusCounts, order): StatusCounts => ({
-      ...counts,
-      [order.status]: counts[order.status] + 1,
-    }),
-    { pending: 0, paid: 0, shipped: 0, cancelled: 0, 'on-hold': 0 },
-  );
+  function count(status: OrderStatus): number {
+    return orders.filter((order) => order.status === status).length;
+  }
+  return {
+    pending: count('pending'),
+    paid: count('paid'),
+    shipped: count('shipped'),
+    cancelled: count('cancelled'),
+    'on-hold': count('on-hold'),
+  };
 }
