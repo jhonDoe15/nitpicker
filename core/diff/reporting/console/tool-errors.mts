@@ -7,7 +7,7 @@ import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
-import { singleLine } from '../format/text.mjs';
+import { singleLine } from '../format/text.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 

@@ -25,7 +25,7 @@ const KOTLIN_TOOL = 'kotlin-source/';
 const E2E_EVIDENCE = {
   'line: kotlin-source/ChildCoroutineOutlivesResource over pmd/CoroutineEscapesTest': path.resolve(
     import.meta.dirname,
-    '../kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mjs',
+    '../kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mts',
   ),
   'line: checkstyle/FileTabCharacter over checkstyle/Indentation': path.resolve(
     import.meta.dirname,

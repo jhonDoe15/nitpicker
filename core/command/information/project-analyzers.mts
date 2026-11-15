@@ -1,12 +1,12 @@
 import { describeError } from '../../../shared/messages/error-chain.mjs';
-import { applyDisable, loadConfig } from '../../configuration/config.mjs';
+import { applyDisable, loadConfig } from '../../configuration/config.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveRunTarget } from '../../scope/run-target.mts';
 import { missingPathHint } from '../arguments.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { CliOptions } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 export type InformationCli = {
   readonly options: Pick<CliOptions, 'paths'>;

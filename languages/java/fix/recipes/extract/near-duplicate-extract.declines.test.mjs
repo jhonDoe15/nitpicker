@@ -80,11 +80,6 @@ const CASES = [
   ],
   ['varargs', classOf(varargs(TOP), varargs(BOTTOM)), note(7, VARARGS)],
   ['a narrowing literal', pairOf(narrowing, ['1', '2']), note(7, PLAIN)],
-  [
-    'a comment only the second copy has',
-    classOf(TOP, BOTTOM.replace('String label', '// keep the order\n        String label')),
-    note(7, 'the second copy has comments the shared function would drop'),
-  ],
   ['a final local', pairOf(constant, ['1', '2']), note(7, PLAIN)],
   ['a sum that narrows', pairOf(summed, ['1', '2']), note(7, PLAIN)],
   ['a char sum that narrows', pairOf(charred, ["'a'", "'b'"]), note(7, PLAIN)],

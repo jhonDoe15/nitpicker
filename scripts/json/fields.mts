@@ -1,8 +1,7 @@
-import { listOf } from '../../shared/values/readers.mts';
+import { type Fields, listOf } from '../../shared/values/readers.mts';
 
 export { listOf };
-
-export type Fields = Readonly<Record<string, unknown>>;
+export type { Fields };
 
 function isFields(value: unknown): value is Fields {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
