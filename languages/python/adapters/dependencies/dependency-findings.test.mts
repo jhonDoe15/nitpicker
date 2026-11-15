@@ -8,8 +8,8 @@ import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { ImportsReport, ImportStatement } from '../analysis/typed/python-graph-types.mts';
 import { recordingRun } from '../test-support/runs/recording-run.mts';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, vi } from 'vitest';
-import { readConfigFile } from '../../core/configuration/config.mjs';
+import { readConfigFile } from '../../core/configuration/config.mts';
 import { applyVitestTimeouts } from '../../languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mts';
 
 const root = path.resolve(import.meta.dirname, '../..');

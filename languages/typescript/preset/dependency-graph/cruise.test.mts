@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';

@@ -5,7 +5,7 @@ import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
 } from '../head-policy.mjs';
-import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mjs';
+import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
 import {
   projectToolLayer as untypedProjectToolLayer,
   withProjectToolConfigs as untypedWithProjectToolConfigs,
@@ -26,13 +26,6 @@ const resolveHeadPolicy: (config: { tools?: ToolMap }, projectRoot?: string) => 
   untypedResolveHeadPolicy;
 const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
   untypedWithHeadCheckoutFacts;
-const conventionStyle: (
-  preset: string | undefined,
-  context: { config: Record<string, unknown>; projectRoot: string },
-) => {
-  unused?: unknown;
-  summary?: (conventions?: unknown) => string[];
-} = untypedConventionStyle;
 const withProjectToolConfigs: (
   tools: ToolMap | undefined,
   projectRoot: string,
@@ -190,7 +183,7 @@ describe('project tool configs in the head policy', () => {
       'package.json': '{ "knip": {} }',
     });
     const summary = (config: Record<string, unknown>, preset?: string) =>
-      conventionStyle(preset, { config, projectRoot: root }).summary?.();
+      conventionStyle(preset, { config, projectRoot: root }).summary?.({});
     const notice =
       'Ignoring knip.jsonc and the "knip" key in package.json; ' +
       'opt in with "tools": { "knip": { "precedence": ["project", "nitpicker"] } }';
@@ -204,7 +197,7 @@ describe('project tool configs in the head policy', () => {
     expect(summary({ preset: 'javascript' }, 'javascript')).toEqual([notice]);
     expect(summary({ tools: OPTED_IN })).toEqual([]);
     expect(
-      conventionStyle(undefined, { config: {}, projectRoot: project({}) }).summary?.(),
+      conventionStyle(undefined, { config: {}, projectRoot: project({}) }).summary?.({}),
     ).toEqual([]);
   });
 });

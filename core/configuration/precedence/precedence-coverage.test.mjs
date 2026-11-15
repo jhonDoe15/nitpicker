@@ -5,8 +5,8 @@ import { KOTLIN_FORMATTERS } from '../../../languages/java/adapters/style/jvm-fo
 import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { PRESET_TOOLS } from '../../../shared/exceptions/rule-tools.mjs';
-import { SUPPORTED_PRESETS } from '../validate.mjs';
-import { toolSettingKeysOf } from '../tool-settings.mjs';
+import { SUPPORTED_PRESETS } from '../validate.mts';
+import { toolSettingKeysOf } from '../tool-settings.mts';
 import { precedenceExemption, precedenceExemptions } from './precedence-exempt-tools.mjs';
 
 const EXTERNAL_TOOLS = {

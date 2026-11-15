@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { changedTestLines, slowTestFindings } from './slow-tests.mts';
 import type { SlowTestContext } from './slow-tests.mts';
 import type { Finding } from '../../static-checks/shared.mts';

@@ -11,7 +11,7 @@
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",
       "scripts/test-shards/repository-timeouts.mts",
-      "core/fix/prettier-base-runner.mjs",
+      "core/fix/prettier-base-runner.mts",
       "languages/python/adapters/python-runner.mts",
       "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mts",
@@ -31,7 +31,7 @@
       "core/diff/sharding/aggregate-shards.mts",
       "core/diff/execution/analyzer-scheduler.mts",
       "core/reference/generate.mts",
-      "core/diff/execution/test-support/fake-analyzer.mjs",
+      "core/diff/execution/test-support/fake-analyzer.mts",
       "languages/java/adapters/java-runner.mjs",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mts",
@@ -80,9 +80,9 @@
     {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": [
-        "core/cli-bin.test.mjs",
-        "core/diff/execution/analyzer-process.test.mjs",
-        "core/diff/sharding/aggregate-cli.test.mjs"
+        "core/cli-bin.test.mts",
+        "core/diff/execution/analyzer-process.test.mts",
+        "core/diff/sharding/aggregate-cli.test.mts"
       ],
       "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
@@ -98,7 +98,7 @@
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
-      "paths": ["core/installed.test.mjs"],
+      "paths": ["core/installed.test.mts"],
       "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout, and removing each installed tree takes long enough to need its own hook timeout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
     },
     {
