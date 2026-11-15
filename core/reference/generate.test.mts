@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { fieldAt, listOf } from '../../scripts/json/fields.mts';
 import { textOf } from '../../shared/values/readers.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { entryProblems } from './build.mts';
 import type { ReferenceEntry } from './build.mts';
 import {
@@ -30,23 +31,14 @@ const defineRecipes: (recipes: readonly unknown[]) => (typeof DEFAULT_FIX_SOURCE
   untypedDefineRecipes;
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
-const roots: string[] = [];
 const PAGE_LIMIT = 512 * 1024;
 const RELEASE_WORKFLOW = '.github/workflows/github-release.yml';
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function project(files: Record<string, string>) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-reference-'));
-  roots.push(root);
-  for (const [name, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), contents);
-  }
+  const root = temporaryRoot('nitpicker-reference-');
+  writeFiles(root, files);
   return root;
 }
 

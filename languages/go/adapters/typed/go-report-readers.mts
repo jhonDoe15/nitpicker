@@ -5,7 +5,7 @@ import { tidyFindings as untypedTidyFindings } from '../dead-code/go-mod-tidy.mj
 import { raceUnavailable as untypedRaceUnavailable } from '../race/race-run.mjs';
 import { withoutGatedForeignKeys as untypedWithoutGatedForeignKeys } from '../lint/foreign-keys/key-gate.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import { callUntyped as call } from '../../../../shared/values/untyped-call.mts';
+import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { isRow } from './row-readers.mts';
 import type { FindingRow } from '../go-types.mts';
 

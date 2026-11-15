@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts as untypedTs } from '../../typescript-api/typescript-api.mjs';
 import { chainOf as untypedChainOf } from '../../../../shared/traversal.mjs';
-import { isTypeScriptApi } from '../../../../shared/values/typescript-guard.mts';
+import { isTypeScriptApi } from '../../../../shared/values/boundaries/typescript-guard.mts';
 
 export function typescriptApi(): typeof TypeScript {
   const api: unknown = untypedTs;

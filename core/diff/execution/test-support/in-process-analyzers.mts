@@ -40,7 +40,7 @@ const javaRunnerPath = path.resolve(
   import.meta.dirname,
   '../../../../languages/java/adapters/java-runner.mjs',
 );
-const pythonRunnerPath = checkoutModulePath(
+const pythonRunnerPath = sourcePath(
   path.resolve(import.meta.dirname, '../../../../languages/python/adapters/python-runner.mjs'),
 );
 
