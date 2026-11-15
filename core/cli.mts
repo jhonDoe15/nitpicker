@@ -13,14 +13,14 @@ import {
   describeConfigOverrides,
   describeDisableCascade,
   loadConfig,
-} from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
+} from './configuration/config.mts';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
 import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
-import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
@@ -38,10 +38,10 @@ import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { runInitCommand } from './init/run-init.mts';
-import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
 import { runProjectsCommand } from './projects/command/projects-command.mts';
-import { runScoped as runScopedCommand } from './projects/run/refusal.mjs';
+import { runScoped } from './projects/run/refusal.mts';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -65,11 +65,8 @@ import type {
   RunSetup,
   Subcommand,
 } from './cli-context.mts';
-import type { NitpickerConfig } from './configuration/config-types.mts';
-import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
-
-const runScoped: (cli: object, command: string, run: (scope: object) => ExitCode) => ExitCode =
-  runScopedCommand;
+import type { NitpickerConfig } from '../shared/values/config-types.mts';
+import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
@@ -81,9 +78,7 @@ const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
 };
 const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
   cache: (cli, rest) =>
-    runScoped(cli, 'cache', (scope: object) =>
-      runCacheCommand({ ...cli, ...scope, arguments_: rest }),
-    ),
+    runScoped(cli, 'cache', (scope) => runCacheCommand({ ...cli, ...scope, arguments_: rest })),
   init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
   projects: (cli, rest) => runProjectsCommand({ ...cli, arguments_: rest }),
   base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
@@ -105,7 +100,7 @@ export function runCli(options: CliInput = {}): ExitCode {
     });
   }
   if (name === 'aggregate') {
-    return runScoped(cli, 'aggregate', (scope: object) =>
+    return runScoped(cli, 'aggregate', (scope) =>
       runAggregateCli({
         arguments_: cli.arguments_.slice(1),
         ...scope,

@@ -1,4 +1,4 @@
-import { singleLine } from '../format/text.mjs';
+import { singleLine } from '../format/text.mts';
 import { pluralize as nounFor } from '../summary.mts';
 import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';

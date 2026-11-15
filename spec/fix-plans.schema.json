@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jhonDoe15/nitpicker/spec/fix-plans.schema.json",
   "title": "Nitpicker fix plans",
-  "description": "The fix-plans.json that a comparison run writes beside new-findings.json: one plan for each new enforceable finding of a nitpicker check whose fix needs judgment. A plan is built from the finding, the files of the project and the rule's allowed form. It changes no file and calls no language model; the agent or the person who reads it makes the change.",
+  "description": "The fix-plans.json that a comparison run writes beside new-findings.json: one plan for each new enforceable finding of a nitpicker check whose fix needs judgment, except that the surviving or unreached mutants and the uncovered branches of one function share one plan. A plan is built from the finding, the files of the project and the rule's allowed form. It changes no file and calls no language model; the agent or the person who reads it makes the change.",
   "type": "array",
   "items": { "$ref": "#/$defs/plan" },
   "$defs": {
@@ -22,6 +22,20 @@
             "rule": { "$ref": "#/$defs/nonEmptyString" },
             "path": { "$ref": "#/$defs/nonEmptyString" },
             "line": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "findings": {
+          "description": "Only on a plan that covers several findings of one rule in one function (mutants, uncovered branches): the line and the column of each of them, by line. `finding` is the first of them.",
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["line"],
+            "additionalProperties": false,
+            "properties": {
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 1 }
+            }
           }
         },
         "kind": {

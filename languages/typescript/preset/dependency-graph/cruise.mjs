@@ -1,6 +1,7 @@
 import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import path from 'node:path';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
@@ -11,7 +12,7 @@ const dependencyCruiser = path.join(
   projectRoot,
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
-const config = path.join(import.meta.dirname, 'dependency-cruiser.config.mjs');
+const config = checkoutModulePath(path.join(import.meta.dirname, 'dependency-cruiser.config.mjs'));
 export { EXCLUDED_PATH_PATTERN };
 const excludedPath = new RegExp(EXCLUDED_PATH_PATTERN);
 export const ARCHITECTURE_CONFIG =

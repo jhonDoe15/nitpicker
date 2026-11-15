@@ -10,7 +10,7 @@ import {
   GREETER_HI,
   GREETER_HI_TEST,
   VIOLATION,
-} from '../../../../languages/python/adapters/e2e/test-support/python-preset-data.mjs';
+} from '../../../../languages/python/adapters/e2e/test-support/python-preset-data.mts';
 import {
   commitBranch,
   gate,
@@ -20,7 +20,7 @@ import {
   removeRepositories,
   repository,
   write,
-} from '../../../../languages/python/adapters/e2e/test-support/python-e2e-support.mjs';
+} from '../../../../languages/python/adapters/e2e/test-support/python-e2e-support.mts';
 
 const languages = path.resolve(import.meta.dirname, '../../../../languages');
 const PACKAGES = ['-e', '.', 'coverage', 'mypy', 'pytest', 'ruff'];

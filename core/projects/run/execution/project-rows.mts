@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { clearDiffReports } from '../../../diff/reporting/reporters.mts';
 import { clearSnapshotReports } from '../../../snapshot/reporters.mts';
-import { reportFolder as untypedReportFolder } from '../../plan/project-entry.mjs';
+import { reportFolder as untypedReportFolder } from '../../plan/project-entry.mts';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf, writeFailureReport } from '../../report/outcome.mjs';
 import type { SharedWorktree } from '../../../diff/comparison/quick/head-run.mts';

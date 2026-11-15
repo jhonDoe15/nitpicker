@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { readConfigFile } from '../../configuration/config.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { readLayeredConfig } from './read-layered.mjs';
-import { configLayersOf, sharedConfigFiles } from './shared-files.mjs';
+import { readConfigFile } from '../../configuration/config.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { readLayeredConfig } from './read-layered.mts';
+import { configLayersOf, sharedConfigFiles } from './shared-files.mts';
 
 const git = useGitFixtures();
 

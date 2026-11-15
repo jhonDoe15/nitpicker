@@ -29,6 +29,7 @@ import { FIX_SCRIPT, SCRIPT_OPERATION } from './source/script-edits.mjs';
 import { createPythonRecipes } from './recipes/python-recipes.mjs';
 import { dependencyInputs } from './recipes/inputs/dependency-inputs.mjs';
 import { docstringInputs } from './recipes/inputs/docstring-inputs.mjs';
+import { unusedIgnoreInputs } from './recipes/inputs/unused-ignore-inputs.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
 const JUPYTER_MISSING = /Jupyter dependencies are not installed/u;
@@ -168,6 +169,9 @@ function recipeInputs(context, files, selectedRules) {
         pythonDocstrings: docstringInputs(context, files),
         ...(selectedRules.some((rule) => DEPENDENCY_SELECTIONS.includes(rule))
           ? { pythonDependencies: dependencyInputs(context) }
+          : {}),
+        ...(selectedRules.includes('mypy/unused-ignore')
+          ? { pythonUnusedIgnores: unusedIgnoreInputs(context, files) }
           : {}),
       },
       toolErrors: [],

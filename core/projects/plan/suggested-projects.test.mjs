@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { noProjectAdvice } from './suggested-projects.mjs';
 
 const git = useGitFixtures();

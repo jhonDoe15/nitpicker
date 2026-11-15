@@ -2,9 +2,9 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
-import { inspectRepository } from '../../projects/plan/inspect.mjs';
+import { inspectRepository } from '../../projects/plan/inspect.mts';
 import * as expected from '../test-support/monorepo-expected.mjs';
-import { init, readText, useProjects } from '../test-support/projects.mjs';
+import { init, readText, useProjects } from '../test-support/projects.mts';
 
 const createProject = useProjects();
 const WORKFLOW = '.github/workflows/nitpicker.yml';

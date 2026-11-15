@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { detectProjects, undeclaredProjects } from './detect.mjs';
 import { listRepositoryFiles } from './repository-files.mjs';
 

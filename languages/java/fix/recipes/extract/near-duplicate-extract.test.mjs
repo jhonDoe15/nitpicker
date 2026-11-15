@@ -15,7 +15,7 @@ describe('javaExtractNearDuplicateRecipe', () => {
   it('is a review recipe for the near-duplicate rule of the Java preset', () => {
     expect([recipe.safety, recipe.scope, recipe.presets, recipe.rules]).toEqual([
       'review',
-      'file',
+      'project',
       ['java'],
       [{ tool: 'structure', rule: 'near-duplicate' }],
     ]);
@@ -49,6 +49,43 @@ describe('javaExtractNearDuplicateRecipe', () => {
           }
 
           String bottom(List<String> selection, int limit) {
+              return sharedTop(selection, limit, "bottom:");
+          }
+      }
+      "
+    `);
+  });
+
+  it('keeps a comment only the second copy has above its call', () => {
+    const commented = method('bottom', { prefix: 'bottom:' }).replace(
+      'String label',
+      '// keep the order\n        String label',
+    );
+    const { after } = plan(classOf(method('top'), commented));
+    expect(after).toMatchInlineSnapshot(`
+      "package demo;
+
+      import java.util.ArrayList;
+      import java.util.List;
+
+      class Align {
+          String top(List<String> selection, int limit) {
+              return sharedTop(selection, limit, "top:");
+          }
+
+          private static String sharedTop(List<String> selection, int limit, String value) {
+              List<String> selected = new ArrayList<>();
+              for (String element : selection) {
+                  if (element.length() < limit) {
+                      selected.add(element);
+                  }
+              }
+              String label = String.join(",", selected);
+              return (label.length() > 0 ? value : "none:") + label;
+          }
+
+          String bottom(List<String> selection, int limit) {
+              // keep the order
               return sharedTop(selection, limit, "bottom:");
           }
       }

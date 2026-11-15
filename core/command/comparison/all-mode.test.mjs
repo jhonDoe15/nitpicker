@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);

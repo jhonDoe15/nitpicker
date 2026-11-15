@@ -7,16 +7,20 @@ import {
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
-import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
-import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
-import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
-import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
+import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mts';
+import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
+import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
+import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { applyRunProfile } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
+import type {
+  Loosening as PolicyLoosening,
+  ScopeInputs,
+} from '../../policy-changes/types/policy-types.mts';
 
 type Warn = (message: string) => unknown;
 
@@ -24,9 +28,9 @@ type ResolverOptions = {
   readonly headConfig: NitpickerConfig;
   readonly headPolicy?: unknown;
   readonly injectedAnalyzers?: readonly Analyzer[] | undefined;
-  readonly overlay?: unknown;
-  readonly inherits?: unknown;
-  readonly repositoryLoosenings?: readonly unknown[];
+  readonly overlay?: ProjectOverlay | undefined;
+  readonly inherits?: string | undefined;
+  readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly profile?: object;
   readonly warn?: Warn;
 };
@@ -35,7 +39,7 @@ type BaseSnapshot = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
   readonly liveProjectRoot: string;
-  readonly moves: unknown;
+  readonly moves: ScopeInputs['moves'];
   readonly analyzers: readonly Analyzer[];
 };
 
@@ -50,9 +54,9 @@ type MeasuredBase = Omit<
 
 type BaseSetupCli = {
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
-  readonly baseConfigOverlay?: unknown;
-  readonly configOverlay?: { readonly inherits?: unknown } | undefined;
-  readonly repositoryLoosenings?: readonly unknown[] | undefined;
+  readonly baseConfigOverlay?: ProjectOverlay | undefined;
+  readonly configOverlay?: ProjectOverlay | undefined;
+  readonly repositoryLoosenings?: readonly PolicyLoosening[] | undefined;
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
@@ -63,7 +67,7 @@ const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => A
 function readBaseConfig(
   baseProjectRoot: string,
   warn: Warn,
-  overlay: unknown,
+  overlay: ProjectOverlay | undefined,
 ): NitpickerConfig | undefined {
   if (overlay === undefined && !existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
     return undefined;
@@ -111,7 +115,7 @@ export function createBaseSetupResolver({
   return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
     const compared = baseConfig ?? {};
-    const scope: unknown = readPolicyScope({
+    const scope = readPolicyScope({
       baseConfig: compared,
       headConfig,
       baseProjectRoot,
@@ -133,7 +137,7 @@ export function createBaseSetupResolver({
             profile,
             analyzers,
           })),
-      ...policyChangeFields(compared, headConfig, { ...objectOf(scope), repositoryLoosenings }),
+      ...policyChangeFields(compared, headConfig, { ...scope, repositoryLoosenings }),
     };
   };
 }

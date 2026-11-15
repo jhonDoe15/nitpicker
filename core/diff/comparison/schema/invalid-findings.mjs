@@ -1,5 +1,6 @@
 import { parseAnalyzerReport, parseFinding } from '../finding-schema.mjs';
 import { isRecord } from './values.mjs';
+import { expandMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
@@ -53,7 +54,7 @@ export function parseAnalyzerReportKeepingValid(value, analyzerName) {
   }
   const report = parseAnalyzerReport({ ...value, findings: [] }, analyzerName);
   const problems = new Map();
-  const findings = value.findings.flatMap((finding, index) =>
+  const findings = expandMetricFindings(value.findings).flatMap((finding, index) =>
     parsedOrProblem(finding, {
       context: `${analyzerName} findings[${String(index)}]`,
       analyzerName,

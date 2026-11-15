@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { runCli } from '../../../cli.mts';
-import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
+import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mjs';
-import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { fakeAnalyzer } from '../../../command/test-support/cli-harness.mjs';
+} from '../../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mts';
+import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
+import { fakeAnalyzer } from '../../../command/test-support/cli-harness.mts';
 
 const BASE_REF = 'comparison-base';
 

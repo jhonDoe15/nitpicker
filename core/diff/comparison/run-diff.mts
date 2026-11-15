@@ -26,12 +26,16 @@ import { fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../../shared/values/findings.mts';
 
 type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
-
 type NoticeContext = { readonly mergeBaseSha: string; readonly touchedPaths: readonly string[] };
 
 type BaseSnapshot = SnapshotRoots & {
   readonly liveProjectRoot: string;
-  readonly moves: unknown;
+  readonly moves:
+    | {
+        readonly files?: ReadonlyMap<string, string>;
+        readonly directories?: ReadonlyMap<string, string>;
+      }
+    | undefined;
   readonly analyzers: RunSettings['analyzers'];
 };
 
@@ -111,13 +115,11 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
+  const projectPath = settings.projectRelativePath;
   Object.assign(report.summary, partialRunOf(settings.partialRun), {
-    projectPath: settings.projectRelativePath.split(path.sep).join('/'),
+    projectPath: projectPath.replaceAll(path.sep, '/'),
   });
-  const location = {
-    projectPath: settings.projectRelativePath,
-    repositoryRoot: settings.repositoryRoot,
-  };
+  const location = { projectPath, repositoryRoot: settings.repositoryRoot };
   report.fixPlans = plansFor(report, location);
   report.text = writeReports(settings.outputRoot, report, location);
   return report;

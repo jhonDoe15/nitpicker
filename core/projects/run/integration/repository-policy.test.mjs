@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { crashingAnalyzer, fakeAnalyzer } from '../../../command/test-support/cli-harness.mjs';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { fixtureGit } from '../../../diff/git/test-support/git-repository.mjs';
+import { crashingAnalyzer, fakeAnalyzer } from '../../../command/test-support/cli-harness.mts';
+import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
+import { fixtureGit } from '../../../diff/git/test-support/git-repository.mts';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();

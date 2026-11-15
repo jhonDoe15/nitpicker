@@ -67,7 +67,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
   needed for the per-function data.
-- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-reports/coverage-json.mjs`:
+- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-reports/coverage-json.mts`:
   `line-coverage` per file (a metric, as for JaCoCo and lcov) and `uncovered-function` for each
   function none of whose statements ran. Both are descriptive; PY3 turns the same report into CRAP
   and PY4 into changed-branch coverage (slice 4 below). The JSON also carries the per-line branch data

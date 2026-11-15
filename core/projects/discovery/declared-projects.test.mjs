@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { resolveDeclaredProjects } from './declared-projects.mjs';
 import {
   directoriesWith,

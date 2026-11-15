@@ -16,7 +16,11 @@ import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
 import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mjs';
-import { javaStyle } from '../adapters/style/java-style.mjs';
+import {
+  javaFormatterFlags,
+  javaFormatterSettings,
+  javaStyle,
+} from '../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
@@ -40,7 +44,11 @@ const NO_KOTLIN_FORMATTER =
 function javaStep(settings, files, pinned) {
   const { headPolicy, executeFixCommand } = settings;
   const style = javaStyle(headPolicy.conventions);
-  const plan = javaFormatterPlan(style, pinned);
+  const plan = javaFormatterPlan(
+    style,
+    pinned,
+    javaFormatterSettings(headPolicy.conventions).version,
+  );
   return plan === undefined
     ? { notes: [style === 'spring' ? BUILD_JAVA_FORMATTER : NO_JAVA_FORMATTER] }
     : {
@@ -49,6 +57,7 @@ function javaStep(settings, files, pinned) {
         formatWith: (classpaths) =>
           javaFormat({
             style,
+            flags: javaFormatterFlags(headPolicy.conventions),
             classpath: classpaths['java-format'],
             java: formatterJava({
               tool: plan.label,

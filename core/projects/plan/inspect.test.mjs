@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { memberProjectOf } from './member-root.mjs';
-import { inspectRepository, planMonorepo } from './inspect.mjs';
+import { inspectRepository, planMonorepo } from './inspect.mts';
 
 const git = useGitFixtures();
 

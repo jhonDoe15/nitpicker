@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { oneProjectScope } from './refusal.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { oneProjectScope } from './refusal.mts';
 
 const git = useGitFixtures();
 

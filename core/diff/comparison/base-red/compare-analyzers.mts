@@ -7,6 +7,7 @@ import {
   COMPILE_FAILED_SKIPPED_RULE,
   TESTS_FAILED_RULES,
   TESTS_UNMEASURED_RULES,
+  TOOL_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mjs';
@@ -15,6 +16,7 @@ import {
   withoutHeadUnmeasured,
   withoutUnmeasuredMutants,
 } from './unknown-findings.mts';
+import { type MetadataMap, mergeMetadata } from '../../execution/report/analyzer-metadata.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 
 export type AnalyzerRun = {
@@ -22,6 +24,7 @@ export type AnalyzerRun = {
   readonly timings: ReadonlyMap<string, number>;
   readonly skipped?: ReadonlyMap<string, unknown> | undefined;
   readonly toolErrors: readonly ReportEntry[];
+  readonly metadata?: MetadataMap | undefined;
 };
 
 export type Moves = Map<string, string>;
@@ -33,7 +36,8 @@ export type ComparisonRequest = {
   readonly toolErrors: ReportEntry[];
   readonly baseToHeadRenames?: Moves | undefined;
   readonly baseToHeadDirectories?: Moves | undefined;
-  readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
+  readonly touchedCode?:
+    { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
 };
 
 export type FindingComparison = {
@@ -142,7 +146,11 @@ function baseFindingsOf({ name, baseRun, toolErrors, notes, redBase }: NamedCont
     return withoutEmittedToolErrors(findings, 'base', toolErrors);
   }
   notes.push(...failures.map((failure) => noteOf(name, failure)));
-  return findings.filter((finding) => !failures.includes(finding));
+  return withoutEmittedToolErrors(
+    findings.filter((finding) => !failures.includes(finding)),
+    'base',
+    toolErrors,
+  );
 }
 
 function compareAnalyzer(context: AnalyzerContext): AnalyzerOutcome {
@@ -150,8 +158,11 @@ function compareAnalyzer(context: AnalyzerContext): AnalyzerOutcome {
   const name = nameOf(analyzer, index);
   const headReport = headRun.reports.get(name);
   const stopped = stoppedAtCompileErrors(headReport);
-  const baseFindings = baseFindingsOf({ ...context, name });
-  const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
+  const baseEmitted = baseFindingsOf({ ...context, name });
+  const headEmitted = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
+  const skipped = skippedToolsOf(toolErrors);
+  const baseFindings = withoutTools(baseEmitted, skipped);
+  const headFindings = withoutTools(headEmitted, skipped);
   const unknownFailures = failuresOf({ ...context, name });
   const comparable =
     (stopped || baseRun.reports.get(name) !== undefined || unknownFailures !== undefined) &&
@@ -172,6 +183,16 @@ function compareAnalyzer(context: AnalyzerContext): AnalyzerOutcome {
     result,
     tool: toolSummary({ ...context, name, baseFindings, headFindings, result, unknownFailures }),
   };
+}
+
+function skippedToolsOf(toolErrors: readonly ReportEntry[]): ReadonlySet<unknown> {
+  return new Set(
+    toolErrors.filter(({ rule }) => rule === TOOL_SKIPPED_RULE).map(({ tool }) => tool),
+  );
+}
+
+function withoutTools(findings: readonly Finding[], tools: ReadonlySet<unknown>): Finding[] {
+  return tools.size === 0 ? [...findings] : findings.filter(({ tool }) => !tools.has(tool));
 }
 
 function stoppedAtCompileErrors(report: AnalyzerReport | undefined): boolean {
@@ -223,6 +244,7 @@ function toolSummary(
   context: ComparedContext & { readonly result: FindingComparison },
 ): ReportEntry {
   const { analyzer, name, baseRun, headRun, baseFindings, headFindings, result } = context;
+  const resolved = mergeMetadata(baseRun.metadata, headRun.metadata);
   const baseElapsedMs = baseRun.timings.get(name);
   const headElapsedMs = headRun.timings.get(name);
   const skippedBecause =
@@ -231,8 +253,8 @@ function toolSummary(
   return {
     name,
     ...(skippedBecause === undefined ? {} : { skippedBecause }),
-    version: metadataOf(analyzer, 'version'),
-    configurationHash: metadataOf(analyzer, 'configurationHash'),
+    version: metadataOf(analyzer, 'version', resolved),
+    configurationHash: metadataOf(analyzer, 'configurationHash', resolved),
     base: baseFindings.length,
     head: headFindings.length,
     new: result.newFindings.length,

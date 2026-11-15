@@ -1,15 +1,15 @@
 import path from 'node:path';
 import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
-import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
-import { enclosingMember } from '../plan/enclosing.mjs';
-import { baseDeclaresProjects, basePlanOf } from '../policy/base-plan.mjs';
+import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
+import { enclosingMember } from '../plan/enclosing.mts';
+import { baseDeclaresProjects, basePlanOf } from '../policy/base-plan.mts';
 import { asProjectLoosenings, projectSetLoosenings } from '../policy/project-set.mts';
 import { comparisonBase, toolErrorsOf } from './context.mts';
 import { undeclaredHint } from './messages.mjs';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { ReportEntry } from '../../../shared/values/findings.mts';
 import type { ProjectLoosening } from '../policy/project-set.mts';
-import type { MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
+import type { Inspection, MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
 
 type Loosenings = {
   readonly loosenings: readonly ProjectLoosening[];
@@ -25,14 +25,6 @@ type Enclosing = {
   readonly files: readonly string[];
   readonly member: PlanProject;
 };
-type Inspection = { readonly undeclared?: readonly unknown[]; readonly files: readonly string[] };
-
-const memberEnclosing: (directory: string) => Partial<Enclosing> | undefined = enclosingMember;
-const basePlanAt: (query: {
-  readonly repositoryRoot: string;
-  readonly prefix: string;
-  readonly mergeBaseSha: string;
-}) => { readonly plan?: MonorepoPlan; readonly error?: unknown } = basePlanOf;
 
 export function requestsProjects(cli: MonorepoCli): boolean {
   return (cli.options.projectPaths ?? []).length > 0;
@@ -57,7 +49,7 @@ function formerAt({ root, files, cli }: Probe, repositoryRoot: string): Loosenin
   if (!baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha })) {
     return { loosenings: [], toolErrors: [] };
   }
-  const { plan: basePlan, error } = basePlanAt({ repositoryRoot, prefix, mergeBaseSha });
+  const { plan: basePlan, error } = basePlanOf({ repositoryRoot, prefix, mergeBaseSha });
   const loosenings = projectSetLoosenings({
     basePlan,
     headPlan: undefined,
@@ -97,8 +89,9 @@ export function singleMode(
 }
 
 export function enclosingPlan(directory: string): Enclosing | undefined {
-  const { plan, files, member } = memberEnclosing(directory) ?? {};
-  return plan === undefined || files === undefined || member === undefined
+  const enclosing = enclosingMember(directory);
+  const plan = enclosing?.plan;
+  return enclosing === undefined || plan === undefined
     ? undefined
-    : { plan, files, member };
+    : { plan, files: enclosing.files, member: enclosing.member };
 }

@@ -8,6 +8,7 @@ import {
   writeAdapterFindings,
 } from './typed/static-checks.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import {
   linkDependencies,
   installPolicyFiles,
@@ -17,9 +18,9 @@ import {
 } from './eslint/policy.mts';
 import type { LinkedPolicyFile } from './typed/tooling.mts';
 import { validatedContainedFile } from './eslint/paths.mts';
-import { detectPackageManager } from './dependency-graph/package-managers/detect.mjs';
-import { installedDependencies } from './dependency-graph/installed-dependencies.mjs';
-import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mjs';
+import { detectPackageManager } from './dependency-graph/package-managers/detect.mts';
+import { installedDependencies } from './dependency-graph/installed-dependencies.mts';
+import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mts';
 import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
 import {
@@ -33,6 +34,14 @@ type EslintState = {
   installedPolicyFiles: LinkedPolicyFile[];
   preparedDependencies: unknown;
 };
+
+const checkoutFile: (file: string) => string = checkoutModulePath;
+
+function checkoutConfigPath(policyRoot: string, relativePath: string): string {
+  const packaged = path.resolve(policyRoot, relativePath);
+  const source = checkoutFile(packaged);
+  return source === packaged ? relativePath : path.relative(policyRoot, source);
+}
 
 if (isInvokedModule(import.meta.url)) {
   process.exitCode = await writeAdapterFindings(
@@ -52,7 +61,7 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
     const installedPolicyFiles = prepareEslint(options, state);
     const policyConfig = validatedContainedFile(
       options.policyRoot,
-      options.configRelativePath,
+      checkoutConfigPath(options.policyRoot, options.configRelativePath),
       '--config',
     );
     const testEnvironments = testEnvironmentsFor(options);
@@ -75,16 +84,13 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
   }
 }
 
-const missingMessage: (
-  packageManager: { readonly root: string },
-  dependencyPath: string,
-) => string = missingDependenciesMessage;
-
 function prepareEslint(options: EslintOptions, state: EslintState): LinkedPolicyFile[] {
   const installed: unknown = installedDependencies(options.liveProjectRoot);
   if (typeof installed !== 'string') {
-    const packageManager: { readonly root: string } = detectPackageManager(options.liveProjectRoot);
-    throw new Error(missingMessage(packageManager, path.join(packageManager.root, 'node_modules')));
+    const packageManager = detectPackageManager(options.liveProjectRoot);
+    throw new Error(
+      missingDependenciesMessage(packageManager, path.join(packageManager.root, 'node_modules')),
+    );
   }
   const dependencyRoot = realpathSync(installed);
   if (!statSync(dependencyRoot).isDirectory()) {

@@ -18,9 +18,8 @@ import {
 import type { MonorepoCli, ProjectOutcome, ProjectRow } from '../../project-types.mts';
 
 const CPUS_PER_PROJECT = 4;
-const workerUrl: (url: URL) => URL = checkoutModuleUrl;
 const WORKER_SCRIPT = fileURLToPath(
-  workerUrl(new URL('../../../project-worker.mjs', import.meta.url)),
+  checkoutModuleUrl(new URL('../../../project-worker.mjs', import.meta.url)),
 );
 
 type InOrder = (index: number, write: () => void) => void;

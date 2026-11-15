@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { detectedPreset } from '../../configuration/project-checks/preset-detection.mjs';
-import { inspectRepository } from '../../projects/plan/inspect.mjs';
+import { inspectRepository } from '../../projects/plan/inspect.mts';
 import { suggestedProjects } from '../../projects/plan/suggested-projects.mjs';
 import { existingConfig } from '../files/config-file.mts';
 
@@ -26,7 +26,7 @@ type PlanMember = {
   readonly folder?: string;
   readonly absolute: string;
   readonly preset: string;
-  readonly overlay?: { readonly declared?: true };
+  readonly overlay?: { readonly declared?: true } | undefined;
 };
 
 type Inspection = {

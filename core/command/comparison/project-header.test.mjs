@@ -6,10 +6,10 @@ import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 

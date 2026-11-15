@@ -184,7 +184,7 @@ files count, or remove stray copies of those files, such as vendored dependencie
 ### Another run is in progress
 
 **Symptom.** `nitpicker: another run is in progress in this project (pid 1234); wait for it to
-finish.` Exit code 2. Or `Could not take the run lock <path>`.
+finish.` Exit code 2. Or `Could not take the lock <path>`.
 
 **Cause.** Only one run can work in a project at a time, because the runs write the same report folder
 and share temporary state. The first run writes its process id to

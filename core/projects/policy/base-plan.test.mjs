@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { inspectRepository } from '../plan/inspect.mjs';
-import { basePlanOf, planInputsChanged } from './base-plan.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { inspectRepository } from '../plan/inspect.mts';
+import { basePlanOf, planInputsChanged } from './base-plan.mts';
 
 const git = useGitFixtures();
 

@@ -1,19 +1,19 @@
 import path from 'node:path';
 import { policyAcceptance } from '../policy/policy-acceptance.mts';
 import { outputRootFor } from '../../diff/reporting/reporters.mts';
-import { inspectRepository } from '../plan/inspect.mjs';
+import { inspectRepository } from '../plan/inspect.mts';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
 import {
   asProjectLoosenings,
   projectSetLoosenings,
   repositoryPolicy,
 } from '../policy/project-set.mts';
-import { reappearedProjects } from '../policy/reappeared.mjs';
+import { reappearedProjects } from '../policy/reappeared.mts';
 import {
   clearStaleProjectReports,
   writeCombinedMachineReports,
 } from '../report/combined-files.mts';
-import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/combined-summary.mjs';
+import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/combined-summary.mts';
 import { renderPlan, renderSummary } from '../report/console.mjs';
 import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
@@ -30,6 +30,7 @@ import { runRowsWithSharedBase } from './execution/shared-base.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
   Comparison,
+  Inspection,
   MonorepoCli,
   MonorepoPlan,
   PlanProject,
@@ -40,18 +41,9 @@ import type {
 import type { Loosening } from '../policy/project-set.mts';
 
 type Planned = { readonly plan: MonorepoPlan; readonly files: readonly string[] };
-type Inspection = {
-  readonly files: readonly string[];
-  readonly undeclared?: readonly unknown[];
-  readonly plan?: MonorepoPlan;
-};
 type Entry = { readonly cli: MonorepoCli; readonly currentProjectRoot: string };
 type MonorepoResult = { readonly exitCode?: ExitCode; readonly extraCli?: object };
 
-const inspect: (query: {
-  readonly root: string;
-  readonly repositoryRoot: string | undefined;
-}) => Inspection = inspectRepository;
 const memberOf: (plan: MonorepoPlan, directory: string | undefined) => PlanProject | undefined =
   memberProjectOf;
 
@@ -216,7 +208,7 @@ export function runMonorepo({
   if (cli.singleProject === true || !isGitWorkTree(currentProjectRoot)) {
     return {};
   }
-  const inspection = inspect({ root: currentProjectRoot, repositoryRoot: undefined });
+  const inspection = inspectRepository({ root: currentProjectRoot });
   const { plan, files } = inspection;
   if (plan === undefined) {
     return aroundMember(inspection, { cli, currentProjectRoot }, runProject);
