@@ -2,15 +2,17 @@ import {
   djangoSettingsModule,
   djangoSubdirectory,
   pytestNamesDjangoSettings,
-} from '../../execution/python-django.mjs';
-import { mutmutPytestEnvironment, probePytest } from '../../execution/python-test-runner.mjs';
+} from '../../execution/python-django.mts';
+import { mutmutPytestEnvironment, probePytest } from '../../execution/python-test-runner.mts';
+import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
+import type { ToolContext } from '../../typed/context/tool-context-types.mts';
 
 export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const DISABLE_HINT =
   'To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.';
 const COPY_HINT = 'list them under "also_copy" in [tool.mutmut] of pyproject.toml';
 
-export function skippedFinding(identity, reason) {
+export function skippedFinding(identity: string, reason: string): IngestedFinding {
   return {
     tool: 'mutmut',
     rule: MUTATION_SKIPPED_RULE,
@@ -21,13 +23,13 @@ export function skippedFinding(identity, reason) {
   };
 }
 
-export function missingPytest(context) {
+export function missingPytest(context: ToolContext): string | undefined {
   return probePytest(context) === undefined
     ? `mutmut runs the tests with pytest, which cannot be imported in the ${context.launcher.description} environment: install pytest there (it also runs unittest, Django and nose2 test cases), or set "python.environment" to the environment that has it. ${DISABLE_HINT}`
     : undefined;
 }
 
-export function runnerSkip(context) {
+export function runnerSkip(context: ToolContext): IngestedFinding | undefined {
   if (context.project.testRunner !== 'django') {
     return undefined;
   }
@@ -47,24 +49,27 @@ export function runnerSkip(context) {
   );
 }
 
-function djangoEnvironment(context) {
+function djangoEnvironment(context: ToolContext): Record<string, string> {
   const module = djangoSettingsModule(context.projectRoot);
   const configured = pytestNamesDjangoSettings(context.projectRoot);
   return module === undefined || configured ? {} : { DJANGO_SETTINGS_MODULE: module };
 }
 
-export function mutmutEnvironment(context, ignored = []) {
+export function mutmutEnvironment(
+  context: ToolContext,
+  ignored: readonly string[] = [],
+): { env: Record<string, string>; defaultEnv: Record<string, string> } {
   return {
     env: mutmutPytestEnvironment(context, ignored),
     defaultEnv: context.project.testRunner === 'django' ? djangoEnvironment(context) : {},
   };
 }
 
-export function mutationRunnerLabels(context) {
+export function mutationRunnerLabels(context: ToolContext): string[] {
   return [`pytest-django@${probePytest(context)?.django ? 'installed' : 'missing'}`];
 }
 
-export function noTestsCollected(context) {
+export function noTestsCollected(context: ToolContext): IngestedFinding {
   const { testRunner } = context.project;
   const pattern =
     testRunner === 'pytest' ? '' : ` with python_files=test*.py, the file pattern of ${testRunner}`;
