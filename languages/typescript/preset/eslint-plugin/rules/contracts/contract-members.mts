@@ -1,15 +1,21 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { isNestController } from './decorators.mjs';
-import { infrastructureOf } from './infrastructure-types.mjs';
-import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mjs';
+import type TypeScript from 'typescript';
+import { ts } from '../typed/typescript-views.mts';
+import { isNestController } from './decorators.mts';
+import { infrastructureOf, type Infrastructure } from './infrastructure-types.mts';
+import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mts';
+
+type Checker = TypeScript.TypeChecker;
+type Leak = { readonly member: string; readonly found: Infrastructure };
+type Members = { readonly name: string; readonly signatures: readonly TypeScript.Signature[] }[];
+type MemberScope = { readonly label: string; readonly allowTransport: boolean };
 
 const HIDDEN = ts.ModifierFlags.Private | ts.ModifierFlags.Protected;
 
-function resolved(checker, symbol) {
+function resolved(checker: Checker, symbol: TypeScript.Symbol): TypeScript.Symbol {
   return (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
-function infrastructureIn(checker, type) {
+function infrastructureIn(checker: Checker, type: TypeScript.Type): Infrastructure[] {
   return findInType(checker, type, (candidate) =>
     typeSymbols(candidate)
       .map((symbol) => infrastructureOf(symbol))
@@ -17,15 +23,21 @@ function infrastructureIn(checker, type) {
   );
 }
 
-function isHandlerSignature(checker, signature) {
+function isHandlerSignature(checker: Checker, signature: TypeScript.Signature): boolean {
   return signature
     .getParameters()
     .some((parameter) =>
-      infrastructureIn(checker, checker.getTypeOfSymbol(parameter)).some((found) => found.request),
+      infrastructureIn(checker, checker.getTypeOfSymbol(parameter)).some(
+        (found) => found.kind === 'transport' && found.request,
+      ),
     );
 }
 
-function signatureLeaks(checker, signature, allowTransport) {
+function signatureLeaks(
+  checker: Checker,
+  signature: TypeScript.Signature,
+  allowTransport: boolean,
+): Infrastructure[] {
   const handler = allowTransport || isHandlerSignature(checker, signature);
   const { parameters, returns } = callSignatureTypes(checker, signature);
   return [...parameters, returns]
@@ -33,21 +45,27 @@ function signatureLeaks(checker, signature, allowTransport) {
     .filter((found) => !(handler && found.kind === 'transport'));
 }
 
-function isPublic(symbol) {
+function isNamed(declaration: TypeScript.Declaration): declaration is TypeScript.NamedDeclaration {
+  return 'name' in declaration;
+}
+
+function isPublic(symbol: TypeScript.Symbol): boolean {
   return (symbol.declarations ?? []).every(
     (declaration) =>
       (ts.getCombinedModifierFlags(declaration) & HIDDEN) === 0 &&
-      !ts.isPrivateIdentifier(declaration.name ?? declaration),
+      !ts.isPrivateIdentifier(
+        isNamed(declaration) ? (declaration.name ?? declaration) : declaration,
+      ),
   );
 }
 
-function isProjectDeclared(symbol) {
+function isProjectDeclared(symbol: TypeScript.Symbol): boolean {
   return (symbol.declarations ?? []).some(
     (declaration) => !declaration.getSourceFile().isDeclarationFile,
   );
 }
 
-function callableMembers(checker, type) {
+function callableMembers(checker: Checker, type: TypeScript.Type): Members {
   return type
     .getProperties()
     .filter(
@@ -61,7 +79,11 @@ function callableMembers(checker, type) {
     .filter(({ signatures }) => signatures.length > 0);
 }
 
-function memberLeaks(checker, members, { label, allowTransport }) {
+function memberLeaks(
+  checker: Checker,
+  members: Members,
+  { label, allowTransport }: MemberScope,
+): Leak[] {
   return members.flatMap(({ name, signatures }) =>
     signatures
       .flatMap((signature) => signatureLeaks(checker, signature, allowTransport))
@@ -69,7 +91,7 @@ function memberLeaks(checker, members, { label, allowTransport }) {
   );
 }
 
-function isFactory(checker, signature) {
+function isFactory(checker: Checker, signature: TypeScript.Signature): boolean {
   const returns = signature.getReturnType();
   return (
     (returns.flags & ts.TypeFlags.Object) !== 0 &&
@@ -80,7 +102,11 @@ function isFactory(checker, signature) {
   );
 }
 
-function functionLeaks(checker, signatures, label) {
+function functionLeaks(
+  checker: Checker,
+  signatures: readonly TypeScript.Signature[],
+  label: string,
+): Leak[] {
   return signatures.flatMap((signature) => {
     if (!isFactory(checker, signature)) {
       return signatureLeaks(checker, signature, false).map((found) => ({ member: label, found }));
@@ -90,8 +116,8 @@ function functionLeaks(checker, signatures, label) {
   });
 }
 
-function classLeaks(checker, symbol, label) {
-  const declaration = symbol.declarations.find(ts.isClassLike);
+function classLeaks(checker: Checker, symbol: TypeScript.Symbol, label: string): Leak[] {
+  const declaration = symbol.declarations?.find(ts.isClassLike);
   const allowTransport = declaration !== undefined && isNestController(checker, declaration);
   const instance = callableMembers(checker, checker.getDeclaredTypeOfSymbol(symbol));
   const statics = callableMembers(checker, checker.getTypeOfSymbol(symbol));
@@ -103,7 +129,7 @@ function classLeaks(checker, symbol, label) {
   ];
 }
 
-function typeLeaks(checker, type, label) {
+function typeLeaks(checker: Checker, type: TypeScript.Type, label: string): Leak[] {
   const own = functionLeaks(checker, type.getCallSignatures(), label);
   return [
     ...own,
@@ -111,14 +137,14 @@ function typeLeaks(checker, type, label) {
   ];
 }
 
-function heldInfrastructure(type) {
+function heldInfrastructure(type: TypeScript.Type): Infrastructure[] {
   const parts = type.isUnion() ? type.types : [type];
   return parts
     .flatMap((part) => typeSymbols(part).map((symbol) => infrastructureOf(symbol)))
     .filter((found) => found !== undefined);
 }
 
-function variableLeaks(checker, type, label) {
+function variableLeaks(checker: Checker, type: TypeScript.Type, label: string): Leak[] {
   const held = heldInfrastructure(type);
   return held.length === 0
     ? typeLeaks(checker, type, label)
@@ -128,7 +154,7 @@ function variableLeaks(checker, type, label) {
 const OWN_LEAKS = ts.SymbolFlags.Class | ts.SymbolFlags.Function | ts.SymbolFlags.Variable;
 const TYPE_LEAKS = ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias;
 
-function symbolLeaks(checker, symbol, label) {
+function symbolLeaks(checker: Checker, symbol: TypeScript.Symbol, label: string): Leak[] {
   if ((symbol.flags & ts.SymbolFlags.Class) !== 0) {
     return classLeaks(checker, symbol, label);
   }
@@ -143,16 +169,16 @@ function symbolLeaks(checker, symbol, label) {
     : typeLeaks(checker, checker.getDeclaredTypeOfSymbol(symbol), label);
 }
 
-function isNamespace(symbol) {
+function isNamespace(symbol: TypeScript.Symbol): boolean {
   return (
     (symbol.flags & ts.SymbolFlags.ValueModule) !== 0 &&
     (symbol.flags & (OWN_LEAKS | TYPE_LEAKS)) === 0
   );
 }
 
-export function exportLeaks(checker, exported) {
-  const leaks = [];
-  const seen = new Set();
+export function exportLeaks(checker: Checker, exported: TypeScript.Symbol): Leak[] {
+  const leaks: Leak[] = [];
+  const seen = new Set<TypeScript.Symbol>();
   const pending = [{ entry: exported, label: exported.name }];
   for (const { entry, label } of pending) {
     const symbol = resolved(checker, entry);

@@ -1,8 +1,26 @@
-import { isCallerObject } from '../analysis/mutation/caller-objects.mjs';
-import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mjs';
-import { changedParameter, isObjectAssign, withoutAssertion } from './parameter-owners.mjs';
+import {
+  AST_NODE_TYPES,
+  type ParserServicesWithTypeInformation,
+  type TSESLint,
+  type TSESTree,
+} from '@typescript-eslint/utils';
+import { nameOf, type Ranged, type SourceCode } from '../typed/node-views.mts';
+import { isCallerObject } from '../analysis/mutation/caller-objects.mts';
+import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mts';
+import { hasTypeInformation } from '../promises/cannot-reject.mts';
+import { isObjectAssign } from './parameter-copies.mts';
+import { changedParameter, withoutAssertion } from './parameter-owners.mts';
 
-function isMutableIndexed(services, node) {
+type Docs = { readonly requiresTypeChecking: boolean };
+type MessageIds = 'parameterMutation' | 'propertyWrite';
+type Services = ParserServicesWithTypeInformation;
+type Scope = {
+  readonly context: Readonly<TSESLint.RuleContext<MessageIds, []>>;
+  readonly sourceCode: SourceCode;
+  readonly services: Services;
+};
+
+function isMutableIndexed(services: Services, node: TSESTree.Node): boolean {
   const checker = services.program.getTypeChecker();
   const type = services.getTypeAtLocation(node);
   const parts = type.isUnion() ? type.types : [type];
@@ -11,30 +29,30 @@ function isMutableIndexed(services, node) {
   );
 }
 
-function textOf(sourceCode, node) {
+function textOf(sourceCode: SourceCode, node: TSESTree.Node): string {
   return sourceCode.getText(node).replaceAll(/\s+/g, ' ');
 }
 
-function isElementWrite(services, target) {
+function isElementWrite(services: Services, target: TSESTree.MemberExpression): boolean {
   return (
     isMutableIndexed(services, target.object) &&
-    (target.computed || target.property.name === 'length')
+    (target.computed || nameOf(target.property) === 'length')
   );
 }
 
-function callerParameter(scope, object, mutation) {
+function callerParameter(scope: Scope, object: TSESTree.Node, mutation: Ranged): unknown {
   const { services, sourceCode } = scope;
-  function crossesProperty(member) {
-    return isCallerObject(services, member.object, member.property.name);
+  function crossesProperty(member: TSESTree.MemberExpression): boolean {
+    return isCallerObject(services, member.object, nameOf(member.property));
   }
   return changedParameter({ sourceCode, crossesProperty }, object, mutation);
 }
 
-function checkWrite(scope, node, written) {
+function checkWrite(scope: Scope, node: TSESTree.Node, written: TSESTree.Node): void {
   const { context, services, sourceCode } = scope;
   const target = withoutAssertion(written);
   if (
-    target.type !== 'MemberExpression' ||
+    target.type !== AST_NODE_TYPES.MemberExpression ||
     callerParameter(scope, target.object, node) === undefined
   ) {
     return;
@@ -51,23 +69,23 @@ function checkWrite(scope, node, written) {
   }
 }
 
-function checkAssign(scope, node) {
+function checkAssign(scope: Scope, node: TSESTree.CallExpression): void {
   const { context, services, sourceCode } = scope;
   const [written, ...sources] = node.arguments;
   const first = written === undefined ? undefined : withoutAssertion(written);
   if (
     first !== undefined &&
     sources.length > 0 &&
-    first.type !== 'SpreadElement' &&
+    first.type !== AST_NODE_TYPES.SpreadElement &&
     callerParameter(scope, first, node) !== undefined &&
-    isCallerObject(services, first)
+    isCallerObject(services, first, undefined)
   ) {
     const name = `Object.assign(${textOf(sourceCode, first)}, …)`;
     context.report({ node, messageId: 'propertyWrite', data: { name } });
   }
 }
 
-function checkCall(scope, node) {
+function checkCall(scope: Scope, node: TSESTree.CallExpression): void {
   const { callee } = node;
   const { context, services, sourceCode } = scope;
   if (isObjectAssign(node)) {
@@ -75,7 +93,7 @@ function checkCall(scope, node) {
     return;
   }
   if (
-    callee.type !== 'MemberExpression' ||
+    callee.type !== AST_NODE_TYPES.MemberExpression ||
     callerParameter(scope, callee.object, node) === undefined
   ) {
     return;
@@ -87,7 +105,7 @@ function checkCall(scope, node) {
   }
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
   meta: {
     type: 'problem',
     docs: {
@@ -106,21 +124,21 @@ export const rule = {
   create(context) {
     const { sourceCode } = context;
     const services = sourceCode.parserServices;
-    if (services?.program === null || services?.program === undefined) {
+    if (!hasTypeInformation(services)) {
       return {};
     }
-    const scope = { context, sourceCode, services };
+    const scope: Scope = { context, sourceCode, services };
     return {
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         checkCall(scope, node);
       },
-      AssignmentExpression(node) {
+      AssignmentExpression(node: TSESTree.AssignmentExpression) {
         checkWrite(scope, node, node.left);
       },
-      UpdateExpression(node) {
+      UpdateExpression(node: TSESTree.UpdateExpression) {
         checkWrite(scope, node, node.argument);
       },
-      UnaryExpression(node) {
+      UnaryExpression(node: TSESTree.UnaryExpression) {
         if (node.operator === 'delete') {
           checkWrite(scope, node, node.argument);
         }

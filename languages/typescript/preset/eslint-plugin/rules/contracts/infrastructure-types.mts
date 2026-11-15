@@ -1,6 +1,17 @@
-import { isGeneratedPrismaClient } from './prisma-client.mjs';
+import type TypeScript from 'typescript';
+import { isGeneratedPrismaClient } from './prisma-client.mts';
 
-const PERSISTENCE = [
+type Table = readonly (readonly [string, RegExp])[];
+export type Infrastructure =
+  | { readonly kind: 'persistence'; readonly name: string; readonly packageName: string }
+  | {
+      readonly kind: 'transport';
+      readonly name: string;
+      readonly packageName: string;
+      readonly request: boolean;
+    };
+
+const PERSISTENCE: Table = [
   ['@prisma/client', /^(?:PrismaClient|TransactionClient|\w+Delegate)$/u],
   ['knex', /^(?:Knex|Transaction|QueryBuilder)$/u],
   ['pg', /^(?:Pool|PoolClient|Client|QueryResult)$/u],
@@ -22,7 +33,7 @@ const PERSISTENCE = [
   ['@mikro-orm/*', /^(?:EntityManager|MikroORM|EntityRepository)$/u],
 ];
 
-const TRANSPORT = [
+const TRANSPORT: Table = [
   ['express', /^(?:Request|Response)$/u],
   ['express-serve-static-core', /^(?:Request|Response)$/u],
   ['fastify', /^(?:FastifyRequest|FastifyReply)$/u],
@@ -38,13 +49,13 @@ const REQUEST_NAMES =
 const NODE_MODULES = '/node_modules/';
 const PRISMA_CLIENT = '@prisma/client';
 
-export function packageOf(fileName) {
+export function packageOf(fileName: string): string | undefined {
   const normalized = fileName.replaceAll('\\', '/');
   const index = normalized.lastIndexOf(NODE_MODULES);
   if (index === -1) {
     return isGeneratedPrismaClient(fileName) ? PRISMA_CLIENT : undefined;
   }
-  const [first, second] = normalized.slice(index + NODE_MODULES.length).split('/');
+  const [first = '', second = ''] = normalized.slice(index + NODE_MODULES.length).split('/');
   if (first === '.prisma') {
     return PRISMA_CLIENT;
   }
@@ -52,23 +63,25 @@ export function packageOf(fileName) {
   return name.startsWith('@types/') ? typesPackage(name.slice('@types/'.length)) : name;
 }
 
-function typesPackage(name) {
+function typesPackage(name: string): string {
   return name.includes('__') ? `@${name.replace('__', '/')}` : name;
 }
 
-function matchesPackage(pattern, name) {
+function matchesPackage(pattern: string, name: string): boolean {
   return pattern.endsWith('/*') ? name.startsWith(pattern.slice(0, -1)) : pattern === name;
 }
 
-function kindIn(table, name, symbolName) {
+function kindIn(table: Table, name: string, symbolName: string): boolean {
   return table.some(([pattern, names]) => matchesPackage(pattern, name) && names.test(symbolName));
 }
 
-export function infrastructureOf(symbol) {
+export function infrastructureOf(
+  symbol: TypeScript.Symbol | undefined,
+): Infrastructure | undefined {
   const declaration = symbol?.declarations?.[0];
   const packageName =
     declaration === undefined ? undefined : packageOf(declaration.getSourceFile().fileName);
-  if (packageName === undefined) {
+  if (symbol === undefined || packageName === undefined) {
     return undefined;
   }
   if (kindIn(PERSISTENCE, packageName, symbol.name)) {
