@@ -1,8 +1,8 @@
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { rule as unboundedFanOut } from '../concurrency/unbounded-fan-out.mjs';
-import { rule as ioInLoop } from './no-io-in-loop.mjs';
+import { rule as unboundedFanOut } from '../concurrency/unbounded-fan-out.mts';
+import { rule as ioInLoop } from './no-io-in-loop.mts';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const linter = new Linter();

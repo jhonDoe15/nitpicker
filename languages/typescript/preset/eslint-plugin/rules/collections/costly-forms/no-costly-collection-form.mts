@@ -1,8 +1,11 @@
-import { arrayMembership } from './array-membership.mjs';
-import { keyedLookup } from './keyed-lookup.mjs';
-import { sortedExtreme } from './sorted-extreme.mjs';
+import type { TSESLint } from '@typescript-eslint/utils';
+import { arrayMembership } from './array-membership.mts';
+import { keyedLookup } from './keyed-lookup.mts';
+import { sortedExtreme } from './sorted-extreme.mts';
 
 const EXCEPTION = 'An exception fits only for a list that always stays a handful of items.';
+
+type MessageId = keyof typeof costlyCollectionMessages;
 
 const costlyCollectionMessages = {
   arrayAsSet: `\`{{name}}\` is appended to and searched with \`{{method}}\`, so every search scans the whole array. Keep it in a \`Set\`: \`add\` to append and \`has\` to test (\`[...set]\` gives the items back in insertion order). ${EXCEPTION}`,
@@ -10,7 +13,7 @@ const costlyCollectionMessages = {
   sortForExtreme: `\`{{method}}\` sorts the whole array only to take its first or last element. Take the smallest or largest in one pass: \`xs.reduce((best, x) => (compare(x, best) < 0 ? x : best))\`, or \`Math.min\`/\`Math.max\` for a few numbers. ${EXCEPTION}`,
 };
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -22,7 +25,7 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    function report(descriptor) {
+    function report(descriptor: TSESLint.ReportDescriptor<MessageId> | undefined): void {
       if (descriptor !== undefined) {
         context.report(descriptor);
       }
