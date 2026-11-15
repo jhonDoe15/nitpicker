@@ -47,6 +47,11 @@ describe('javaExtractNearDuplicateRecipe declines type holes', () => {
       () => ({ step: 'picked.add(item); seen += item.hashCode();' }),
       VALUES,
     ],
+    [
+      'a call of a neutral name on a value of the type',
+      () => ({ step: 'picked.add(item); if (item.isEmpty()) { seen++; }' }),
+      VALUES,
+    ],
     ['a value passed to a call', () => ({ step: 'System.out.println(item);' }), VALUES],
   ])('leaves the source alone for %s', (_name, options, reason) => {
     const source = typed(options);

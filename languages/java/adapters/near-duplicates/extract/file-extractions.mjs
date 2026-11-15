@@ -6,8 +6,9 @@ import { lastSegment } from '../../../../../shared/fix/recipes/extract/names.mjs
 import { collected, outcomeOf } from '../../../../../shared/fix/recipes/extract/outcomes.mjs';
 import { nearDuplicateMatches } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import { javaUnits } from '../tree/units.mjs';
-import { readerFor } from './creation/constructors.mjs';
+import { readerFor } from './creation/exceptions/constructors.mjs';
 import { crossOutcomes } from './cross/group.mjs';
+import { packageScanner } from './cross/shared-class.mjs';
 import { wholeExtraction } from './java-extract.mjs';
 import { partialExtraction } from './partial/partial-extract.mjs';
 import { METHOD, descendants, field } from './syntax.mjs';
@@ -51,7 +52,7 @@ function inFile(candidate, source, context) {
     root: source.rootNode,
     text: source.text,
     claimed: context.claimed.get(source.file),
-    readType: context.readType,
+    typeSources: context.typeSources,
   });
   const path = source.file;
   return result.edits === undefined
@@ -63,7 +64,7 @@ function isCrossFile({ first, second }) {
   return first.file !== second.file;
 }
 
-export function javaExtractions(sources, { mode, root }) {
+export function javaExtractions(sources, { mode, root, parse }) {
   const strategy = STRATEGIES[mode];
   const units = sources.flatMap(({ rootNode, file }) => javaUnits(rootNode, file));
   const matches = nearDuplicateMatches(units, { isExcepted: () => false });
@@ -78,7 +79,7 @@ export function javaExtractions(sources, { mode, root }) {
     strategy,
     sources: byFile,
     claimed: new Map(sources.map(({ file }) => [file, new Set()])),
-    readType: readerFor(root, sources),
+    typeSources: readerFor(root, sources, parse),
   };
   const here = candidates.filter((candidate) => !isCrossFile(candidate));
   const across = candidates.filter(isCrossFile).map((candidate) => ({
@@ -94,7 +95,7 @@ export function javaExtractions(sources, { mode, root }) {
     ...across
       .filter((entry) => !plain.includes(entry))
       .map(({ candidate }) => outcomeOf(candidate, { declined: 'a copy is not a plain method' })),
-    ...crossOutcomes(plain, { root, readType: context.readType }),
+    ...crossOutcomes(plain, { scan: packageScanner(root), typeSources: context.typeSources }),
   ];
   return collected(outcomes, notes);
 }

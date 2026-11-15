@@ -1,4 +1,4 @@
-import { descendants } from '../syntax.mjs';
+import { descendants } from '../../syntax.mjs';
 
 export const IMPORT_NODE = 'import_declaration';
 export const IMPORT = /^import\s+(static\s+)?([\w.]+?)(\.\*)?\s*;/u;
@@ -149,8 +149,8 @@ function staticMeaning(words, root) {
 
 export function meaningProblem({ sources, texts, siblings }) {
   const code = texts.flatMap((text) => codeAndTags(text)[0].match(WORD) ?? []);
-  const lower = new Set(
-    texts.flatMap((text) => codeAndTags(text)[0].match(/(?<![\w$.])[a-z_$][\w$]*/gu) ?? []),
+  const names = new Set(
+    texts.flatMap((text) => codeAndTags(text)[0].match(/(?<![\w$.])[A-Za-z_$][\w$]*/gu) ?? []),
   );
   const roots = sources.map(({ rootNode }) => rootNode);
   const word = [...new Set(code)].find(
@@ -159,7 +159,7 @@ export function meaningProblem({ sources, texts, siblings }) {
   if (word !== undefined) {
     return `the name ${word} means a different type in each file`;
   }
-  return new Set(roots.map((root) => staticMeaning(lower, root))).size > 1
+  return new Set(roots.map((root) => staticMeaning(names, root))).size > 1
     ? 'the files import different static members the shared code may use'
     : undefined;
 }

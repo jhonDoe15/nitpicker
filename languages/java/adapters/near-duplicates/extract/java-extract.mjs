@@ -186,7 +186,7 @@ export function shapedPlan(request, plan, visibility) {
   const { methods, text } = request;
   const base = indentOf(text, memberOf(methods[0]).startIndex);
   const shape = shapeOf({
-    readType: request.readType,
+    typeSources: request.typeSources,
     methods,
     typeHoles: plan.typeHoles,
     taken: plan.taken,

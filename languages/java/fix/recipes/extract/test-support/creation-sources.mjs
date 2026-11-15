@@ -24,6 +24,10 @@ export function creatorClass(...members) {
   return `package demo;\n\n${LIST_IMPORTS}\nclass Make {\n${members.join('\n')}}\n`;
 }
 
+function failure(kind) {
+  return `throw new IOException("Failed parsing '" + next + "' as ${kind}; at " + in.length(), e);`;
+}
+
 function adapterBody(type, kind, options) {
   const { catches = 'MalformedURLException', handler, body, more = '' } = options;
   return `            @Override
@@ -38,7 +42,7 @@ function adapterBody(type, kind, options) {
                 try {
                     ${body ?? `return new ${type}(next);`}
                 } catch (${catches} e) {
-                    ${handler ?? `throw new IOException("Failed parsing '" + next + "' as ${kind}; at " + in.length(), e);`}
+                    ${handler ?? failure(kind)}
                 }${more}
             }
 `;

@@ -14,10 +14,14 @@ function reasons(text) {
 
 const TRY_ONLY =
   'a catch clause of a differing exception type needs a try that is only a constructor call';
-const EXCEPTION_USE =
-  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method or an argument of a new object whose class has one constructor of that size';
-const RESULT =
-  'a constructor of a differing type is used where its type matters: only a return, an assignment or a declared local may take it';
+const EXCEPTION_USE = [
+  'the catch body uses the exception where its type cannot be shared: only a call of a Throwable method',
+  'or an argument of a new object whose class has one constructor of that size',
+].join(' ');
+const RESULT = [
+  'a constructor of a differing type is used where its type matters:',
+  'only a return, an assignment or a declared local may take it',
+].join(' ');
 const ARGUMENTS =
   'the arguments of a constructor of a differing type have no type the shared code can write';
 const NAMES = 'the shared code has no free names for its extra parameters';

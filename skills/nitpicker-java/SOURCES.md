@@ -111,7 +111,11 @@ removed from the files that lose them.
   project sources, or one of a few JDK exception classes). Otherwise another overload could be
   picked, and the finding stays. A catch type that is a well-known unchecked exception is not tied to
   the creator: the creator gets its own exception parameter, and an exception the clause does not
-  handle is rethrown as it was. When javac rejects the result, `--fix` rolls it back.
+  handle is rethrown as it was. A catch type of `Throwable` or an `Error` is left alone, and so is a
+  tied catch whose constructor throws a checked exception the catch type does not name (`Exception`
+  covers any). The class of a constructor is found like Java finds it: the enclosing classes and the
+  top-level types of the file, then the single imports, the package and the imports on demand; a name
+  that stays unsure leaves the finding. When javac rejects the result, `--fix` rolls it back.
 - A constructor that is returned or stored as a declared type (`CharSequence` for `StringBuilder` and
   `StringBuffer`) bounds the type parameter by that type. A parameterized or array type there is left
   alone.
@@ -123,8 +127,10 @@ removed from the files that lose them.
   `else`) is extracted when the recipe can line up the copies as written.
 - In two files, a capitalized name of the shared code must mean the same type in both files: the
   same single import, a class of the package, or the same imports on demand. The name of the new class
-  must be free in every source folder of the package (`.java`, `.kt` and `.groovy`), and sources under
-  `build`, `generated` and `target` folders are not touched.
+  must be free in the package folder of every language folder of the source set (`src/main/java`,
+  `src/main/kotlin` and `src/main/groovy`, or the `src/test` folders for a test source set; any other
+  layout has the one folder), and sources under `build`, `target`, `out`, `generated-sources` and
+  `generated/java` folders are not touched (a package folder named `generated` is extracted).
 - A comment that only the second copy has moves above the call in the second copy.
 - A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
   that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to
@@ -154,10 +160,11 @@ removed from the files that lose them.
   the class, two packages, a class that has type parameters or is not top-level, or when the class
   name is taken: the file exists, or another file of the package uses the name. Copies in two
   folders are left alone, and so is a pair in two named classes of one file.
-- On gson, the `read` methods of the URL and URI adapters, and of the SqlDate and SqlTime adapters, are
-  extracted this way. The `write` methods of the Sql adapters stay: the rule finds them only after
-  it rewrites their code, and the shared type would need a bound (`java.util.Date`) that the recipe
-  cannot know.
+- On gson, the three pairs of copies are extracted this way: the `read` methods of the URL and URI
+  adapters, the `read` methods of the SqlDate and SqlTime adapters, and their `write` methods, whose
+  shared type is bounded by `java.util.Date` because the code only compares the value with `null` or
+  passes it to `format` of a `DateFormat`. The two `write` copies and the two `read` copies of the Sql
+  adapters are one fix, so the new class carries all of their shared methods at once.
 
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first

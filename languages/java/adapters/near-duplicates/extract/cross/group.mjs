@@ -4,7 +4,7 @@ import { outcomeOf } from '../../../../../../shared/fix/recipes/extract/outcomes
 import { indentUnit } from '../java-extract.mjs';
 import { nameCollisions, suppressions } from '../syntax.mjs';
 import { crossExtraction } from './cross-extract.mjs';
-import { codeOf, headerOf, importsFor, meaningProblem, packageOf } from './imports.mjs';
+import { codeOf, headerOf, importsFor, meaningProblem, packageOf } from './names/imports.mjs';
 import { importEditing } from './names/qualified.mjs';
 import {
   classNameFor,
@@ -32,7 +32,7 @@ function suppressionProblem({ pairs }) {
   return differ(pairs[0].map((method) => method.parent.parent)) || pairs.some(differ);
 }
 
-function groupProblem(group, root) {
+function groupProblem(group, scan) {
   const [first, second] = group.sources;
   if (packageOf(first.rootNode) !== packageOf(second.rootNode)) {
     return PACKAGES;
@@ -47,7 +47,7 @@ function groupProblem(group, root) {
   const folder = path.posix.dirname(first.file) === '.' ? '' : path.posix.dirname(first.file);
   const folders = packageFolders(folder, packageOf(first.rootNode));
   const used = [first, second].some(({ rootNode }) => nameCollisions(rootNode).has(name));
-  const disk = used ? `the name ${name} is used in a copy` : diskProblem({ root, folders, name });
+  const disk = used ? `the name ${name} is used in a copy` : diskProblem({ scan, folders, name });
   return disk === undefined ? { name, folder, folders } : disk;
 }
 
@@ -110,7 +110,7 @@ function declinedAll(group, declined) {
   return group.candidates.map((candidate) => outcomeOf(candidate, { declined }));
 }
 
-function extractedAll(group, found, readType) {
+function extractedAll(group, found, typeSources) {
   const claimed = new Set([found.name]);
   const results = group.candidates.map((candidate, index) =>
     crossExtraction({
@@ -119,7 +119,7 @@ function extractedAll(group, found, readType) {
       label: candidate.first.name,
       engineHoles: candidate.finding.parameters.length,
       claimed,
-      readType,
+      typeSources,
       names: { className: found.name },
     }),
   );
@@ -146,22 +146,22 @@ function fixesOf(group, found, { results, kept }) {
   if (rewritten.declined !== undefined) {
     return { declined: rewritten.declined };
   }
-  const extras = [...rewritten.extras, assembled(group, found, kept)];
-  const outcomes = kept.map((result, owner) => {
-    const own = rewritten.bodies.filter((edit) => edit.owner === owner).map(plainEdit);
-    return outcomeOf(group.candidates[results.indexOf(result)], {
-      edits: owner === 0 ? [...own, ...extras] : own,
-    });
-  });
-  return { outcomes };
+  const reported = kept.map((result) => group.candidates[results.indexOf(result)].reported);
+  const edits = [
+    ...rewritten.bodies.map(plainEdit),
+    ...rewritten.extras,
+    assembled(group, found, kept),
+  ];
+  return { outcomes: [{ fix: { finding: reported[0], edits, alsoFixes: reported.slice(1) } }] };
 }
 
-function groupOutcomes(group, { root, readType }) {
-  const found = groupProblem(group, root);
+function groupOutcomes(group, context) {
+  const { scan, typeSources } = context;
+  const found = groupProblem(group, context.scan);
   if (typeof found === 'string') {
     return declinedAll(group, found);
   }
-  const extracted = extractedAll(group, found, readType);
+  const extracted = extractedAll(group, found, typeSources);
   const notes = declinedNotes(group, extracted);
   if (extracted.kept.length === 0) {
     return notes;
@@ -172,7 +172,7 @@ function groupOutcomes(group, { root, readType }) {
       member,
       ...interfaces.map(({ text }) => text),
     ]),
-    siblings: folderTypes(root, found.folders),
+    siblings: folderTypes(scan, found.folders),
   });
   const done = meaning === undefined ? fixesOf(group, found, extracted) : { declined: meaning };
   return done.declined === undefined

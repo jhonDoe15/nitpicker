@@ -1,6 +1,10 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { readInside, resolveInside } from '../../../../../../shared/conventions/read-inside.mjs';
+import {
+  isRealPathInside,
+  readRealInside,
+  resolveInside,
+} from '../../../../../../shared/conventions/read-inside.mjs';
 
 const WORDS = /[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])/gu;
 
@@ -48,46 +52,58 @@ export function packageFolders(folder, packageLine) {
     : ['java', 'kotlin', 'groovy'].map((lang) => `${set[1]}${lang}/${tail}`);
 }
 
-function directoryOf(root, folder) {
+function listing(root, folder) {
   const directory = folder === '' ? path.resolve(root) : resolveInside(root, folder);
-  return directory !== undefined && existsSync(directory) ? directory : undefined;
+  if (directory === undefined || !existsSync(directory)) {
+    return [];
+  }
+  return folder === '' || isRealPathInside(root, directory) ? readdirSync(directory) : [];
 }
 
-function packageFiles(root, folders) {
-  return folders.flatMap((folder) => {
-    const directory = directoryOf(root, folder);
-    return directory === undefined
-      ? []
-      : readdirSync(directory)
-          .filter((name) => SOURCE_FILE.test(name))
-          .map((name) => ({ name: name.replace(SOURCE_FILE, ''), directory, file: name }));
-  });
+function scanFolders(root, folders) {
+  return folders.flatMap((folder) =>
+    listing(root, folder)
+      .filter((file) => SOURCE_FILE.test(file))
+      .map((file) => ({
+        name: file.replace(SOURCE_FILE, ''),
+        text: readRealInside(root, path.posix.join(folder, file), 'utf8') ?? '',
+      })),
+  );
 }
 
-export function folderTypes(root, folders) {
-  return new Set(packageFiles(root, folders).map(({ name }) => name));
+export function packageScanner(root) {
+  const scans = new Map();
+  return function scan(folders) {
+    const key = folders.join('\u0000');
+    if (!scans.has(key)) {
+      scans.set(key, scanFolders(root, folders));
+    }
+    return scans.get(key);
+  };
 }
 
-export function diskProblem({ root, folders, name }) {
-  const files = packageFiles(root, folders);
+export function folderTypes(scan, folders) {
+  return new Set(scan(folders).map(({ name }) => name));
+}
+
+export function diskProblem({ scan, folders, name }) {
+  const files = scan(folders);
   if (files.some((entry) => entry.name === name)) {
     return `a file named ${name} already exists in the package`;
   }
   const word = new RegExp(`\\b${name}\\b`, 'u');
-  const used = files.some(({ directory, file }) =>
-    word.test(readInside(directory, file, 'utf8') ?? ''),
-  );
-  return used ? `the name ${name} is used in the package` : undefined;
+  return files.some(({ text }) => word.test(text))
+    ? `the name ${name} is used in the package`
+    : undefined;
 }
 
-export function classText({ header, packageLine, imports, name, members, unit, annotations }) {
-  const sections = [
-    header,
-    packageLine,
-    imports.join('\n'),
-    `${annotations.map((annotation) => `${annotation}\n`).join('')}final class ${name} {\n${unit}private ${name}() {}\n\n${members
-      .map((member) => `${unit}${member}`)
-      .join('\n\n')}\n}`,
-  ];
+function classBody({ name, members, unit, annotations }) {
+  const marks = annotations.map((annotation) => `${annotation}\n`).join('');
+  const body = members.map((member) => `${unit}${member}`).join('\n\n');
+  return `${marks}final class ${name} {\n${unit}private ${name}() {}\n\n${body}\n}`;
+}
+
+export function classText({ header, packageLine, imports, ...rest }) {
+  const sections = [header, packageLine, imports.join('\n'), classBody(rest)];
   return `${sections.filter((section) => section !== '').join('\n\n')}\n`;
 }
