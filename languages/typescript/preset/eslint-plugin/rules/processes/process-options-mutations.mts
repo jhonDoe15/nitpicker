@@ -7,7 +7,7 @@ type TypeWrapper =
 
 const { DefinitionType } = TSESLint.Scope;
 
-export function isTypeWrapper(node: TSESTree.Node | undefined): node is TypeWrapper {
+function isTypeWrapper(node: TSESTree.Node | undefined): node is TypeWrapper {
   return (
     node?.type === AST_NODE_TYPES.TSAsExpression ||
     node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||

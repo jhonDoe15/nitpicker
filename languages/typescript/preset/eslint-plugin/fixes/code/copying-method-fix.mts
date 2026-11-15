@@ -3,11 +3,8 @@ import {
   type ParserServicesWithTypeInformation,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import { chainOf } from '../../rules/typed/node-views.mts';
+import { ASSERTION_FORMS, unwrapOf } from '../../rules/typed/syntax-views.mts';
 import { replacing, type FixPlan } from '../support/ranges.mts';
-
-type WrapperNode =
-  TSESTree.TSAsExpression | TSESTree.TSNonNullExpression | TSESTree.TSSatisfiesExpression;
 
 const COPYING_FORMS = new Map([
   ['sort', 'toSorted'],
@@ -19,28 +16,15 @@ const FRESH_STATICS = new Map([
   ['Object', new Set(['keys', 'values', 'entries'])],
 ]);
 
-function isWrapper(node: TSESTree.Node): node is WrapperNode {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression
-  );
-}
-
-function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf<TSESTree.Node>(node, (link) => (isWrapper(link) ? link.expression : undefined)).at(
-      -1,
-    ) ?? node
-  );
-}
-
 function isFreshArray(node: TSESTree.Node): boolean {
-  const value = unwrapped(node);
+  const value = unwrapOf(node, ASSERTION_FORMS);
   if (value.type === AST_NODE_TYPES.ArrayExpression) {
     return true;
   }
-  const callee = value.type === AST_NODE_TYPES.CallExpression ? unwrapped(value.callee) : undefined;
+  const callee =
+    value.type === AST_NODE_TYPES.CallExpression
+      ? unwrapOf(value.callee, ASSERTION_FORMS)
+      : undefined;
   if (callee?.type !== AST_NODE_TYPES.MemberExpression || callee.computed) {
     return false;
   }

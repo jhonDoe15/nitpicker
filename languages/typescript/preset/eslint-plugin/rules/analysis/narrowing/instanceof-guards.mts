@@ -3,9 +3,9 @@ import {
   ancestorsOf,
   constantInitializer,
   isNode,
-  nameOf,
   type SourceCode,
 } from '../../typed/node-views.mts';
+import { calleeNameOf } from '../../typed/syntax-views.mts';
 
 type Guard = { readonly sourceCode: SourceCode; readonly name: string };
 
@@ -18,22 +18,13 @@ const EXIT_STATEMENTS = new Set<string>([
 
 const ERROR_CLASS = /^\w*(?:Error|Exception)$/;
 
-function className(expression: TSESTree.Node): string | undefined {
-  if (expression.type === AST_NODE_TYPES.Identifier) {
-    return expression.name;
-  }
-  return expression.type === AST_NODE_TYPES.MemberExpression && !expression.computed
-    ? nameOf(expression.property)
-    : undefined;
-}
-
 function isInstanceofOf(expression: TSESTree.Node, name: string): boolean {
   return (
     expression.type === AST_NODE_TYPES.BinaryExpression &&
     expression.operator === 'instanceof' &&
     expression.left.type === AST_NODE_TYPES.Identifier &&
     expression.left.name === name &&
-    ERROR_CLASS.test(className(expression.right) ?? '')
+    ERROR_CLASS.test(calleeNameOf(expression.right) ?? '')
   );
 }
 

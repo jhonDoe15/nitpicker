@@ -49,6 +49,17 @@ function reportLeaf(
   reportField(context, node, { factory: leaf.display, example: leaf.library.forms.example });
 }
 
+function queueNested(
+  pending: Set<TSESTree.ObjectExpression>,
+  properties: readonly TSESTree.Property[],
+): void {
+  for (const { value } of properties) {
+    if (value.type === AST_NODE_TYPES.ObjectExpression) {
+      pending.add(value);
+    }
+  }
+}
+
 function shapeValues(
   shape: TSESTree.ObjectExpression,
   owner: SchemaLibrary | undefined,
@@ -59,12 +70,7 @@ function shapeValues(
     const properties = current.properties.filter(
       (property) => property.type === AST_NODE_TYPES.Property,
     );
-    const nested = owner?.forms.stringLeaves === undefined ? [] : properties;
-    for (const { value } of nested) {
-      if (value.type === AST_NODE_TYPES.ObjectExpression) {
-        pending.add(value);
-      }
-    }
+    queueNested(pending, owner?.forms.stringLeaves === undefined ? [] : properties);
     values.push(
       ...properties
         .map(({ value }) => value)

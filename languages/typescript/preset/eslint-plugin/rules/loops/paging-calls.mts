@@ -1,13 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { contains } from '../typed/node-views.mts';
+import { contains, type VisitorKeys } from '../typed/node-views.mts';
+import { isFunction } from '../typed/syntax-views.mts';
 import {
   descendants,
-  isFunction,
   isIdentifierAssignment,
   type IdentifierAssignment,
   type LoopNode,
   type TestedLoop,
-  type VisitorKeys,
 } from './loop-shapes.mts';
 
 type Binding = {

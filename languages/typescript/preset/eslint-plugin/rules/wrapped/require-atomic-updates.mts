@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/util
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { chainOf, isNode, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { memberKeyOf } from '../typed/syntax-views.mts';
 import { reportedNode, ruleModule, withReportFilter, type Context } from './report-filter.mts';
 
 type MessageId = 'nonAtomicUpdate' | 'nonAtomicObjectUpdate';
@@ -54,13 +55,6 @@ function unwrapped(node: TSESTree.Node): TSESTree.Node | undefined {
   ).at(-1);
 }
 
-function propertyKey(member: TSESTree.MemberExpression): string {
-  if (!member.computed && member.property.type === AST_NODE_TYPES.Identifier) {
-    return member.property.name;
-  }
-  return member.property.type === AST_NODE_TYPES.Literal ? String(member.property.value) : ANY_KEY;
-}
-
 function memberChain(expression: TSESTree.Node): Chain | undefined {
   const nodes = chainOf<TSESTree.Node>(unwrapped(expression), (node) =>
     node.type === AST_NODE_TYPES.MemberExpression ? unwrapped(node.object) : undefined,
@@ -70,7 +64,11 @@ function memberChain(expression: TSESTree.Node): Chain | undefined {
     return undefined;
   }
   const members = nodes.slice(0, -1).filter(isMember);
-  return { root, members, keys: members.map((member) => propertyKey(member)).toReversed() };
+  return {
+    root,
+    members,
+    keys: members.map((member) => memberKeyOf(member, ANY_KEY)).toReversed(),
+  };
 }
 
 function overlaps(read: readonly string[], written: readonly string[]): boolean {

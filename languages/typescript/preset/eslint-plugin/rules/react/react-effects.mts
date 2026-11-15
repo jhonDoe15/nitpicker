@@ -1,9 +1,9 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName } from '../analysis/test-code-analysis.mts';
+import { isFunction as isFunctionNode, type FunctionNode } from '../typed/syntax-views.mts';
 import { ancestorsOf, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
 
-export type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+export { isFunctionNode, type FunctionNode };
 export type EffectCallback = (TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression) & {
   readonly parent: TSESTree.CallExpression;
 };
@@ -12,14 +12,6 @@ type ImportBindingDefinition = TSESLint.Scope.Definitions.ImportBindingDefinitio
 const effectHooks = new Set(['useEffect', 'useLayoutEffect']);
 const REACT_PACKAGE = 'react';
 const REACT_NAMESPACE = 'React';
-
-export function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-}
 
 export function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
   return ancestorsOf(node).find(isFunctionNode);

@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { chainOf, depthFirst } from '../../typed/node-views.mts';
-import { ts } from '../../typed/typescript-views.mts';
+import { aliasedSymbolAt, ts } from '../../typed/typescript-views.mts';
 import {
   isFactoryHolderName,
   isFactoryHolderSymbol,
@@ -47,16 +47,6 @@ function calleeName(
   return ts.isIdentifier(callee) ? callee : memberNameNode(callee);
 }
 
-function symbolAt(
-  checker: TypeScript.TypeChecker,
-  name: TypeScript.Node,
-): TypeScript.Symbol | undefined {
-  const symbol = checker.getSymbolAtLocation(name);
-  return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
-    ? checker.getAliasedSymbol(symbol)
-    : symbol;
-}
-
 function isRegistrationCall(
   checker: TypeScript.TypeChecker,
   call: TypeScript.CallExpression,
@@ -65,7 +55,7 @@ function isRegistrationCall(
   return (
     name !== undefined &&
     isRegistrationName(name.text) &&
-    isRegistrationSymbol(symbolAt(checker, name))
+    isRegistrationSymbol(aliasedSymbolAt(checker, name))
   );
 }
 
@@ -81,7 +71,7 @@ function isFactoryHolderArgument(
   return (
     name !== undefined &&
     isFactoryHolderName(name.text) &&
-    isFactoryHolderSymbol(symbolAt(checker, name))
+    isFactoryHolderSymbol(aliasedSymbolAt(checker, name))
   );
 }
 

@@ -8,7 +8,8 @@ import {
   isNode,
   type Ranged,
 } from '../../typed/node-views.mts';
-import { unwrapped } from '../../regex/regex-bindings.mts';
+import { isFunction, type FunctionNode } from '../../typed/syntax-views.mts';
+import { unwrapped } from '../../security/security-values.mts';
 
 export { contains, memberName, unwrapped };
 
@@ -23,8 +24,6 @@ export type MethodUse =
       readonly call?: undefined;
       readonly member: TSESTree.MemberExpression;
     };
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
 type Role = 'loop' | 'callback' | 'handler' | 'recursion';
 
 const WRAPPERS = new Set<string>([
@@ -84,14 +83,6 @@ export function methodCallOn(node: TSESTree.Node): MethodUse | undefined {
   return call?.type === AST_NODE_TYPES.CallExpression && calledMember(call) === member
     ? { name: memberName(member), call }
     : { name: memberName(member), member };
-}
-
-function isFunction(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
 }
 
 function callbackRole(fn: TSESTree.Node): Role | undefined {

@@ -1,30 +1,15 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf, nameOf } from '../typed/node-views.mts';
+import { nameOf } from '../typed/node-views.mts';
+import { NULLISH_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import { calleeCannotReject, hasTypeInformation, isThenable } from './cannot-reject.mts';
 
 type Options = readonly [{ readonly runners?: readonly string[] }?];
 
-function isWrapper(
-  node: TSESTree.Node,
-): node is TSESTree.ChainExpression | TSESTree.TSAsExpression | TSESTree.TSNonNullExpression {
-  return (
-    node.type === AST_NODE_TYPES.ChainExpression ||
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression
-  );
-}
-
 const MESSAGE =
   '`void` discards this promise, so nothing handles its rejection and Node.js exits on an unhandled rejection by default. Await it, or call an async function whose whole body is a `try` with a `catch` that logs and does not rethrow: `void sendReport(id);` with `async function sendReport(id) { try { await report(id); } catch (error) { logger.error({ error }, "report failed"); } }`. A detached-work runner the project already has can be named in nitpicker.config.json under `conventions` as `"typescript.detachedWorkRunners": ["runDetached"]`.';
 
-function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf(node, (current) => (isWrapper(current) ? current.expression : undefined)).at(-1) ?? node
-  );
-}
-
 function calleeName(callee: TSESTree.Node): string | undefined {
-  const inner = unwrapped(callee);
+  const inner = unwrapOf(callee, NULLISH_WRAPPERS);
   if (inner.type === AST_NODE_TYPES.Identifier) {
     return inner.name;
   }
@@ -65,7 +50,7 @@ export const rule: TSESLint.RuleModule<
     const runners = new Set(context.options[0]?.runners ?? []);
 
     function isHandled(argument: TSESTree.Node): boolean {
-      const call = unwrapped(argument);
+      const call = unwrapOf(argument, NULLISH_WRAPPERS);
       if (call.type !== AST_NODE_TYPES.CallExpression) {
         return false;
       }

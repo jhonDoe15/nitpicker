@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf } from '../../typed/node-views.mts';
+import { ASSERTION_WRAPPERS, outermostOf } from '../../typed/syntax-views.mts';
 import { findVariable, stringValue, type SourceContext } from '../constant-resolution.mts';
 
 type Wrapper =
@@ -29,11 +29,7 @@ export function isProcessModule(source: string | undefined): boolean {
 }
 
 export function wrapperTop(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf<TSESTree.Node>(node, (current) =>
-      isWrapper(current.parent) ? current.parent : undefined,
-    ).at(-1) ?? node
-  );
+  return outermostOf(node, ASSERTION_WRAPPERS);
 }
 
 export function staticName(member: TSESTree.MemberExpression): string | undefined {

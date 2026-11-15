@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, variableNamed, type SourceCode } from '../../rules/typed/node-views.mts';
+import { memberKeyOf } from '../../rules/typed/syntax-views.mts';
 
 type SyntheticMember = {
   readonly type: AST_NODE_TYPES.MemberExpression;
@@ -14,6 +15,7 @@ type WriteMessageId = 'unrestoredEnvWrite' | 'unrestoredGlobalWrite';
 
 const GLOBAL_OBJECTS = new Set(['globalThis', 'global', 'window', 'self']);
 const OVERRIDDEN_OBJECTS = new Set(['Date', 'Math', 'Intl', 'console']);
+const COMPUTED_KEY = '[computed]';
 const ENV_KEY = 'process.env';
 const FUNCTIONS = new Set<string>([
   AST_NODE_TYPES.FunctionDeclaration,
@@ -36,15 +38,6 @@ function isUnshadowed(sourceCode: SourceCode, identifier: TSESTree.Identifier): 
   return (variableNamed(sourceCode, identifier)?.defs.length ?? 0) === 0;
 }
 
-function memberName(member: SyntheticMember): string {
-  if (!member.computed && member.property.type === AST_NODE_TYPES.Identifier) {
-    return member.property.name;
-  }
-  return member.property.type === AST_NODE_TYPES.Literal
-    ? String(member.property.value)
-    : '[computed]';
-}
-
 function targetKey(sourceCode: SourceCode, target: Target | undefined): string | undefined {
   if (isProcessEnv(target)) {
     return isUnshadowed(sourceCode, target.object) ? ENV_KEY : undefined;
@@ -60,9 +53,11 @@ function targetKey(sourceCode: SourceCode, target: Target | undefined): string |
     return undefined;
   }
   if (GLOBAL_OBJECTS.has(object.name)) {
-    return `globalThis.${memberName(target)}`;
+    return `globalThis.${memberKeyOf(target, COMPUTED_KEY)}`;
   }
-  return OVERRIDDEN_OBJECTS.has(object.name) ? `${object.name}.${memberName(target)}` : undefined;
+  return OVERRIDDEN_OBJECTS.has(object.name)
+    ? `${object.name}.${memberKeyOf(target, COMPUTED_KEY)}`
+    : undefined;
 }
 
 type WriteTracker = {

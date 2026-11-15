@@ -165,27 +165,29 @@ function enclosingLoop(context: Context, node: TSESTree.Node): Loop | undefined 
   return undefined;
 }
 
+function pushSite(context: Context, identifier: TSESTree.Node): Site | undefined {
+  const member = identifier.parent;
+  if (member?.type !== AST_NODE_TYPES.MemberExpression || memberName(member) !== 'push') {
+    return undefined;
+  }
+  const call = member.parent;
+  if (call.type !== AST_NODE_TYPES.CallExpression) {
+    return undefined;
+  }
+  const loop = enclosingLoop(context, call);
+  const [first] = call.arguments;
+  const awaited = first?.type === AST_NODE_TYPES.AwaitExpression;
+  if (loop?.collection === undefined || awaited || first === undefined) {
+    return undefined;
+  }
+  return { collection: loop.collection, worker: { root: call, expression: skipped(first) } };
+}
+
 function pushed(context: Context, identifier: TSESTree.Identifier): Site[] {
   const variable = findVariable(context, identifier, identifier.name);
-  const sites: Site[] = [];
-  for (const reference of variable?.references ?? []) {
-    const member = reference.identifier.parent;
-    if (member.type !== AST_NODE_TYPES.MemberExpression || memberName(member) !== 'push') {
-      continue;
-    }
-    const call = member.parent;
-    if (call.type !== AST_NODE_TYPES.CallExpression) {
-      continue;
-    }
-    const loop = enclosingLoop(context, call);
-    const [first] = call.arguments;
-    const awaited = first?.type === AST_NODE_TYPES.AwaitExpression;
-    if (loop?.collection !== undefined && !awaited && first !== undefined) {
-      const expression = skipped(first);
-      sites.push({ collection: loop.collection, worker: { root: call, expression } });
-    }
-  }
-  return sites;
+  return (variable?.references ?? [])
+    .map((reference) => pushSite(context, reference.identifier))
+    .filter((site) => site !== undefined);
 }
 
 function mappingStep(context: Context, target: TSESTree.Node): Step {

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKeyName } from '../analysis/static-shapes.mts';
-import { objectOf, propertiesOf, valueOf } from '../persistence/orm-bindings.mts';
+import { maybeValue, objectOf, propertiesOf } from '../persistence/orm-bindings.mts';
 import type { SourceCode } from '../typed/node-views.mts';
 import { initializer, libraryBinding, variableOf } from '../persistence/library-bindings.mts';
 
@@ -35,10 +35,6 @@ function isFunction(node: MaybeNode): node is FunctionNode {
     node?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     node?.type === AST_NODE_TYPES.FunctionExpression
   );
-}
-
-function maybeValue(sourceCode: SourceCode, node: MaybeNode): MaybeNode {
-  return node === undefined ? undefined : valueOf(sourceCode, node);
 }
 
 function importedName(sourceCode: SourceCode, callee: MaybeNode): string | undefined {

@@ -76,16 +76,20 @@ export function chainLinks<Node, Root>(
   };
 }
 
+function addKeys<Node>(keys: Set<string>, entries: readonly Child<Node>[]): void {
+  for (const { key } of entries) {
+    if (key !== undefined) {
+      keys.add(key);
+    }
+  }
+}
+
 export function deepKeys<Node>(root: Node, children: (node: Node) => Child<Node>[]): Set<string> {
   const keys = new Set<string>();
   const pending = [root];
   for (const node of pending) {
     const entries = children(node);
-    for (const { key } of entries) {
-      if (key !== undefined) {
-        keys.add(key);
-      }
-    }
+    addKeys(keys, entries);
     pending.push(...entries.flatMap(({ value }) => (value === undefined ? [] : [value])));
   }
   return keys;

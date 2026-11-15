@@ -3,6 +3,7 @@ import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
 
 type Checker = TypeScript.TypeChecker;
+type ParameterShape = { type: TypeScript.Type; optional: boolean; rest: boolean };
 type EffectiveHeritage = {
   readonly getEffectiveImplementsTypeNodes: (
     node: TypeScript.ClassDeclaration,
@@ -143,4 +144,92 @@ export function visibilityOf(declaration: TypeScript.MethodDeclaration): number 
     return 2;
   }
   return (flags & ts.ModifierFlags.Protected) === 0 ? 0 : 1;
+}
+
+function parameterShape(
+  checker: TypeScript.TypeChecker,
+  parameter: TypeScript.Symbol,
+): ParameterShape {
+  const valueDeclaration = parameter.valueDeclaration;
+  const declaration =
+    valueDeclaration !== undefined && ts.isParameter(valueDeclaration)
+      ? valueDeclaration
+      : undefined;
+  return {
+    type: checker.getTypeOfSymbol(parameter),
+    optional: declaration !== undefined && checker.isOptionalParameter(declaration),
+    rest: declaration?.dotDotDotToken !== undefined,
+  };
+}
+
+function sameParameters(
+  checker: TypeScript.TypeChecker,
+  own: TypeScript.Signature,
+  target: TypeScript.Signature,
+): boolean {
+  return (
+    own.parameters.length === target.parameters.length &&
+    own.parameters.every((parameter, index) => {
+      const mine = parameterShape(checker, parameter);
+      const other = target.parameters[index];
+      const theirs = other === undefined ? undefined : parameterShape(checker, other);
+      return (
+        theirs !== undefined &&
+        mine.type === theirs.type &&
+        mine.optional === theirs.optional &&
+        mine.rest === theirs.rest
+      );
+    })
+  );
+}
+
+function isAsyncDeclaration(declaration: TypeScript.Declaration): boolean {
+  const fn = ts.isVariableDeclaration(declaration) ? declaration.initializer : declaration;
+  return (
+    fn !== undefined &&
+    ts.isFunctionLike(fn) &&
+    ts.canHaveModifiers(fn) &&
+    (ts.getModifiers(fn) ?? []).some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword)
+  );
+}
+
+export function isAsyncCallee(
+  services: ParserServicesWithTypeInformation,
+  callee: TSESTree.Node,
+): boolean {
+  const checker = services.program.getTypeChecker();
+  const symbol = checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(callee));
+  const target =
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  return (target?.declarations ?? []).some(isAsyncDeclaration);
+}
+
+export function hasSameFunctionSignature(
+  services: ParserServicesWithTypeInformation,
+  wrapper: TSESTree.Node,
+  callee: TSESTree.Node,
+): boolean {
+  const checker = services.program.getTypeChecker();
+  const wrapperSignatures = services.getTypeAtLocation(wrapper).getCallSignatures();
+  const calleeSignatures = services.getTypeAtLocation(callee).getCallSignatures();
+  const [own] = wrapperSignatures;
+  const [target] = calleeSignatures;
+  if (
+    wrapperSignatures.length !== 1 ||
+    calleeSignatures.length !== 1 ||
+    own === undefined ||
+    target === undefined
+  ) {
+    return false;
+  }
+  const predicates = [own, target].filter(
+    (signature) => checker.getTypePredicateOfSignature(signature) !== undefined,
+  );
+  return (
+    predicates.length === 0 &&
+    sameParameters(checker, own, target) &&
+    own.getReturnType() === target.getReturnType()
+  );
 }

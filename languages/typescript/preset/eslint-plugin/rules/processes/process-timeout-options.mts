@@ -2,13 +2,13 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import {
   constantNumber,
   isFunctionNode,
-  resolveConstant,
   resolveFunction,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { propertyKeyName } from '../analysis/test-code-analysis.mts';
 import { variableNamed } from '../typed/node-views.mts';
-import { isTypeWrapper, optionsMayChange } from './process-options-mutations.mts';
+import { ASSERTION_FORMS, resolvedThrough } from '../typed/syntax-views.mts';
+import { optionsMayChange } from './process-options-mutations.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type OptionValue = MaybeNode | typeof UNKNOWN_VALUE;
@@ -16,16 +16,6 @@ type Entry = { readonly node: MaybeNode; readonly ancestors: readonly TSESTree.N
 type Expanded = { readonly unknown: boolean; readonly properties: readonly Entry[] };
 
 const UNKNOWN_VALUE = Symbol('unknown option value');
-
-function resolved(context: SourceContext, node: MaybeNode): MaybeNode {
-  const pending = [resolveConstant(context, node)];
-  for (const current of pending) {
-    if (isTypeWrapper(current)) {
-      pending.push(resolveConstant(context, current.expression));
-    }
-  }
-  return pending.at(-1);
-}
 
 function isUndefined(context: SourceContext, node: MaybeNode): boolean {
   return (
@@ -50,7 +40,7 @@ function propertyValue(
 function expandOptions(context: SourceContext, entry: Entry, call: TSESTree.Node): Expanded {
   const expression =
     entry.node?.type === AST_NODE_TYPES.SpreadElement ? entry.node.argument : entry.node;
-  const value = resolved(context, expression);
+  const value = resolvedThrough(context, expression, ASSERTION_FORMS);
   if (optionsMayChange(context, expression, call)) {
     return { unknown: true, properties: [] };
   }
@@ -120,12 +110,13 @@ export function optionsArgument(
 ): MaybeNode {
   const options = optionsCandidate(context, call, commandOnly);
   const isCallback =
-    isFunctionNode(resolved(context, options)) || resolveFunction(context, options) !== undefined;
+    isFunctionNode(resolvedThrough(context, options, ASSERTION_FORMS)) ||
+    resolveFunction(context, options) !== undefined;
   return isCallback ? undefined : options;
 }
 
 function isArgumentList(context: SourceContext, node: MaybeNode): boolean {
-  const value = resolved(context, node);
+  const value = resolvedThrough(context, node, ASSERTION_FORMS);
   return value?.type === AST_NODE_TYPES.ArrayExpression || isNothing(context, value);
 }
 
@@ -133,7 +124,7 @@ function timeoutMissing(context: SourceContext, timeout: MaybeNode): boolean {
   if (timeout === undefined) {
     return true;
   }
-  const value = resolved(context, timeout);
+  const value = resolvedThrough(context, timeout, ASSERTION_FORMS);
   if (isUndefined(context, value)) {
     return true;
   }
@@ -144,7 +135,8 @@ function timeoutMissing(context: SourceContext, timeout: MaybeNode): boolean {
 function signalMissing(context: SourceContext, signal: OptionValue): boolean {
   return (
     signal === undefined ||
-    (signal !== UNKNOWN_VALUE && isNothing(context, resolved(context, signal)))
+    (signal !== UNKNOWN_VALUE &&
+      isNothing(context, resolvedThrough(context, signal, ASSERTION_FORMS)))
   );
 }
 

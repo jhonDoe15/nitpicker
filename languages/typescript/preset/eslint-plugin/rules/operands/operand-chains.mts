@@ -1,7 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Term } from '../analysis/logic/estree-terms.mts';
 import { isLogical, key, print } from '../analysis/logic/term-views.mts';
-import { chainOf, depthFirst, type SourceCode } from '../typed/node-views.mts';
+import { depthFirst, type SourceCode } from '../typed/node-views.mts';
+import { ASSERTION_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import {
   comparisonVerdict,
   constantComparison,
@@ -17,29 +18,6 @@ export type Slip = {
   readonly data: Readonly<Record<string, string>>;
 };
 
-function isTypeWrapper(
-  node: TSESTree.Node,
-): node is
-  | TSESTree.TSAsExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSTypeAssertion {
-  return (
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
-function inner(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf<TSESTree.Node>(node, (current) =>
-      isTypeWrapper(current) ? current.expression : undefined,
-    ).at(-1) ?? node
-  );
-}
-
 function isSameChain(node: TSESTree.Node, operator: string): node is TSESTree.LogicalExpression {
   return node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator;
 }
@@ -48,10 +26,10 @@ function sourceOperands(chain: TSESTree.LogicalExpression): TSESTree.Node[] {
   const operator = chain.operator;
   return [
     ...depthFirst<TSESTree.Node>(chain, (node) => {
-      const current = inner(node);
+      const current = unwrapOf(node, ASSERTION_WRAPPERS);
       return isSameChain(current, operator) ? [current.left, current.right] : [];
     }),
-  ].filter((node) => !isSameChain(inner(node), operator));
+  ].filter((node) => !isSameChain(unwrapOf(node, ASSERTION_WRAPPERS), operator));
 }
 
 function termOperands(term: Term, operator: string): Term[] {

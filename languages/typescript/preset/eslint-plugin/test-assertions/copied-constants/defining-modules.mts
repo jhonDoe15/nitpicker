@@ -1,4 +1,4 @@
-import { DEFAULT_EXPORT, resolvedFile, type ModuleAlias } from './copied-constants-views.mts';
+import { DEFAULT_EXPORT, resolvedFile } from './copied-constants-views.mts';
 import {
   MAX_REEXPORT_DEPTH,
   isProductionModule,
@@ -8,7 +8,7 @@ import {
 } from './exported-constants.mts';
 
 type Start = { readonly file: string; readonly name: string };
-type Options = { readonly root: string; readonly aliases: readonly ModuleAlias[] };
+type Options = { readonly root: string };
 
 function localName(reexport: Reexport, name: string): string | undefined {
   if (reexport.names === undefined) {
@@ -17,13 +17,9 @@ function localName(reexport: Reexport, name: string): string | undefined {
   return reexport.names.find(({ exported }) => exported === name)?.local;
 }
 
-function reexportedFrom(
-  module: ParsedModule,
-  { file, name }: Start,
-  { aliases }: Options,
-): Start[] {
+function reexportedFrom(module: ParsedModule, { file, name }: Start): Start[] {
   return module.reexports.flatMap((reexport) => {
-    const target = resolvedFile(reexport.specifier, file, { aliases });
+    const target = resolvedFile(reexport.specifier, file);
     const local = localName(reexport, name);
     return target !== undefined && local !== undefined ? [{ file: target, name: local }] : [];
   });
@@ -42,7 +38,7 @@ function definingFiles(start: Start, options: Options): string[] {
       continue;
     }
     pending.push(
-      ...reexportedFrom(module, { file, name }, options).map((next) => ({
+      ...reexportedFrom(module, { file, name }).map((next) => ({
         ...next,
         depth: depth + 1,
       })),
@@ -54,8 +50,7 @@ function definingFiles(start: Start, options: Options): string[] {
 export function definingModules(
   file: string,
   names: Iterable<string>,
-  { root, aliases = [] }: { readonly root: string; readonly aliases?: readonly ModuleAlias[] },
+  options: Options,
 ): Set<string> {
-  const options = { root, aliases };
   return new Set([...names].flatMap((name) => definingFiles({ file, name }, options)));
 }

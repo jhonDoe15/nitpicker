@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mts';
 import { ancestorsOf, chainOf } from '../../typed/node-views.mts';
+import { assignedTarget } from '../../typed/syntax-views.mts';
 import {
   isTypeWrapper,
   leafValues,
@@ -155,16 +156,6 @@ function consumingSink(context: Context, node: TSESTree.Node): Sink | undefined 
   const argument = index === 0 ? node : owners[index - 1];
   return call?.type === AST_NODE_TYPES.CallExpression && call.callee !== argument
     ? sinkOf(context, call, argument)
-    : undefined;
-}
-
-function assignedTarget(node: TSESTree.Node): TSESTree.Node | undefined {
-  const holder = node.parent;
-  if (holder?.type === AST_NODE_TYPES.VariableDeclarator && holder.init === node) {
-    return holder.id;
-  }
-  return holder?.type === AST_NODE_TYPES.AssignmentExpression && holder.right === node
-    ? holder.left
     : undefined;
 }
 

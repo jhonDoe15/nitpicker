@@ -1,29 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant } from '../../analysis/test-code-analysis.mts';
 import { collectObjectKeys } from '../object-keys.mts';
+import { keyName } from '../../../fixes/support/objects.mts';
+import { isNamedMember } from '../../typed/syntax-views.mts';
 import { fixable } from '../../../fixes/support/descriptors.mts';
 import { pinsFix } from '../../../fixes/tests/tsconfig-pins-fix.mts';
-
-function propertyName(property: TSESTree.ObjectLiteralElement): string | undefined {
-  if (property.type !== AST_NODE_TYPES.Property || property.computed) {
-    return undefined;
-  }
-  if (property.key.type === AST_NODE_TYPES.Identifier) {
-    return property.key.name;
-  }
-  return String(property.key.value);
-}
-
-function isJsonStringify(callee: TSESTree.Node): boolean {
-  return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'JSON' &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.property.name === 'stringify'
-  );
-}
 
 export const rule: TSESLint.RuleModule<'unpinnedTsconfig'> = {
   meta: {
@@ -38,7 +19,7 @@ export const rule: TSESLint.RuleModule<'unpinnedTsconfig'> = {
   create(context) {
     return {
       CallExpression(node) {
-        if (!isJsonStringify(node.callee)) {
+        if (!isNamedMember(node.callee, 'JSON', 'stringify')) {
           return;
         }
         const config = resolveConstant(context, node.arguments[0]);
@@ -47,13 +28,12 @@ export const rule: TSESLint.RuleModule<'unpinnedTsconfig'> = {
         }
         const compilerOptions = config.properties.find(
           (property): property is TSESTree.Property =>
-            property.type === AST_NODE_TYPES.Property &&
-            propertyName(property) === 'compilerOptions',
+            property.type === AST_NODE_TYPES.Property && keyName(property) === 'compilerOptions',
         );
         if (compilerOptions === undefined) {
           return;
         }
-        const { keys, complete } = collectObjectKeys(context, compilerOptions.value, propertyName);
+        const { keys, complete } = collectObjectKeys(context, compilerOptions.value, keyName);
         if (!complete) {
           return;
         }

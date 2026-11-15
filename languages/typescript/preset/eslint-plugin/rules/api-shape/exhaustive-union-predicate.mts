@@ -9,6 +9,7 @@ import { hasTypeInformation } from '../promises/cannot-reject.mts';
 import { isProjectFile } from '../analysis/mutation/caller-objects.mts';
 import { logicalOperands } from '../analysis/static-shapes.mts';
 import { ancestorsOf, type SourceCode } from '../typed/node-views.mts';
+import { isFunction } from '../typed/syntax-views.mts';
 import {
   isLiteralValue,
   isPlainReference,
@@ -21,20 +22,10 @@ type Services = ParserServicesWithTypeInformation;
 type Check = { readonly services: Services; readonly sourceCode: SourceCode };
 type Context = Readonly<TSESLint.RuleContext<'partialUnionTest', []>>;
 type Docs = { readonly requiresTypeChecking: boolean };
-type FunctionNode =
-  TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
 type LiteralType = TypeScript.StringLiteralType | TypeScript.NumberLiteralType;
 
 const COMPARISON_FOR: Readonly<Record<string, string>> = { '||': '===', '&&': '!==' };
 const MINIMUM_MEMBERS = 3;
-
-function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-}
 
 function comparisonOf(node: TSESTree.Node, operator: string): Comparison | undefined {
   if (node.type !== AST_NODE_TYPES.BinaryExpression || node.operator !== operator) {
@@ -161,21 +152,30 @@ function isPredicateValue(node: TSESTree.Node): boolean {
 }
 
 function returnsTypePredicate(node: TSESTree.Node): boolean {
-  const owner = ancestorsOf(node).find(isFunctionNode);
+  const owner = ancestorsOf(node).find(isFunction);
   return owner?.returnType?.typeAnnotation.type === AST_NODE_TYPES.TSTypePredicate;
+}
+
+function sharedSubject(
+  sourceCode: Check['sourceCode'],
+  comparisons: readonly Comparison[],
+): Comparison['subject'] | undefined {
+  const [first] = comparisons;
+  if (first === undefined) {
+    return undefined;
+  }
+  const text = sourceCode.getText(first.subject);
+  return comparisons.some((comparison) => sourceCode.getText(comparison.subject) !== text)
+    ? undefined
+    : first.subject;
 }
 
 function partialUnion(
   { services, sourceCode }: Check,
   comparisons: readonly Comparison[],
 ): string | undefined {
-  const [first] = comparisons;
-  if (first === undefined) {
-    return undefined;
-  }
-  const { subject } = first;
-  const text = sourceCode.getText(subject);
-  if (comparisons.some((comparison) => sourceCode.getText(comparison.subject) !== text)) {
+  const subject = sharedSubject(sourceCode, comparisons);
+  if (subject === undefined) {
     return undefined;
   }
   const type = services.getTypeAtLocation(subject);

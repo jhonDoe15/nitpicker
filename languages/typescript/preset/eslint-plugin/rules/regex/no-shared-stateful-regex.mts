@@ -5,9 +5,9 @@ import {
   areExclusive,
   isInLoopWithout,
   isLoopCondition,
-  unwrapped,
   type HeldRegex,
 } from './regex-bindings.mts';
+import { unwrapped } from '../security/security-values.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
 type Node = TSESTree.Node;

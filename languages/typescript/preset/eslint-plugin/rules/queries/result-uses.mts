@@ -1,12 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mts';
-import {
-  isTypeWrapper,
-  memberName,
-  unwrapped,
-  type Context,
-} from '../security/security-values.mts';
-import { ancestorsOf, chainOf } from '../typed/node-views.mts';
+import { memberName, unwrapped, type Context } from '../security/security-values.mts';
+import { ancestorsOf } from '../typed/node-views.mts';
+import { outermostOf, TYPE_WRAPPERS } from '../typed/syntax-views.mts';
 import { readsOnlyFields } from './row-callbacks.mts';
 import { libraryBinding, variableOf } from '../persistence/library-bindings.mts';
 
@@ -58,11 +54,7 @@ const LOOPS = new Set<string>([
 ]);
 
 function outerOf(node: TSESTree.Node): TSESTree.Node {
-  return (
-    chainOf<TSESTree.Node>(node, (current) =>
-      isTypeWrapper(current.parent) ? current.parent : undefined,
-    ).at(-1) ?? node
-  );
+  return outermostOf(node, TYPE_WRAPPERS);
 }
 
 function homeOf(node: TSESTree.Node): MaybeNode {

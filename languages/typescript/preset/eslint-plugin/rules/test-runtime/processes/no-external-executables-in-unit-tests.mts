@@ -1,10 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { literalValue } from '../../typed/syntax-views.mts';
 
 const subprocessModules = new Set(['child_process', 'node:child_process', 'execa', 'cross-spawn']);
-
-function literalValue(node: TSESTree.Node | undefined): unknown {
-  return node?.type === AST_NODE_TYPES.Literal ? node.value : undefined;
-}
 
 export const rule: TSESLint.RuleModule<'externalExecutable'> = {
   meta: {

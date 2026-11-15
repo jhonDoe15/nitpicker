@@ -1,8 +1,8 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import type { SourceCode } from '../../typed/node-views.mts';
+import type { FunctionNode } from '../../typed/syntax-views.mts';
+import type { VisitorKeys } from '../../typed/node-views.mts';
 
-export type FunctionNode =
-  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
+export type { FunctionNode, VisitorKeys };
 export type OpenerFunction = FunctionNode & { readonly parent: TSESTree.CallExpression };
 export type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 export type ScopeKind = 'transaction' | 'lock';
@@ -18,7 +18,6 @@ export type Construct =
   | TSESTree.CatchClause
   | TSESTree.ConditionalExpression;
 export type Part = TSESTree.Node | undefined;
-export type VisitorKeys = SourceCode['visitorKeys'];
 export type Marker = {
   readonly call: Call;
   readonly role: Role;

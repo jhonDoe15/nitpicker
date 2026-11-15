@@ -6,6 +6,7 @@ import type {
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { typeServices } from '../../security/security-values.mts';
+import { memoized } from '../../support/memo.mts';
 import { filterCoverage, globalFilters, localFilters } from './exception-filters.mts';
 import {
   ancestorsOf,
@@ -69,19 +70,6 @@ function isMapped(
   );
 }
 
-function registeredFilters(
-  cache: Map<TypeScript.Program, TypeScript.ClassLikeDeclaration[]>,
-  program: TypeScript.Program,
-): TypeScript.ClassLikeDeclaration[] {
-  const cached = cache.get(program);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const filters = globalFilters(program);
-  cache.set(program, filters);
-  return filters;
-}
-
 export const rule: TSESLint.RuleModule<'unmapped', [], Docs> = {
   meta: {
     type: 'problem',
@@ -110,7 +98,7 @@ export const rule: TSESLint.RuleModule<'unmapped', [], Docs> = {
         }
         const filters = [
           ...localFilters(checker, [handler.method, handler.owner]),
-          ...registeredFilters(registered, services.program),
+          ...memoized(registered, services.program, globalFilters),
         ];
         const name = `${classLabel(handler.owner)}.${handler.method.name.getText()}`;
         for (const [thrown, path] of thrownClasses(checker, handler.method)) {

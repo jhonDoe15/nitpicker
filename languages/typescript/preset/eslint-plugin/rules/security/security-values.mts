@@ -7,6 +7,7 @@ import {
 } from '@typescript-eslint/utils';
 import { chainOf, isNode } from '../typed/node-views.mts';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
+import { TYPE_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import { declaredMemberValue } from './member-values.mts';
 
 export type Context = Readonly<TSESLint.RuleContext<string, readonly unknown[]>>;
@@ -28,13 +29,7 @@ export function isLiteral(node: MaybeNode, value: unknown): boolean {
 }
 
 export function isTypeWrapper(node: MaybeNode): node is TypeWrapper {
-  return (
-    node?.type === AST_NODE_TYPES.TSAsExpression ||
-    node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node?.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node?.type === AST_NODE_TYPES.TSTypeAssertion ||
-    node?.type === AST_NODE_TYPES.ChainExpression
-  );
+  return node !== undefined && TYPE_WRAPPERS.includes(node.type);
 }
 
 function hasProgram(
@@ -61,13 +56,7 @@ export function callName(
 export function unwrapped(node: TSESTree.Node): TSESTree.Node;
 export function unwrapped(node: MaybeNode): MaybeNode;
 export function unwrapped(node: MaybeNode): MaybeNode {
-  const chain = [node];
-  for (const current of chain) {
-    if (isTypeWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
+  return unwrapOf(node, TYPE_WRAPPERS);
 }
 
 export function staticKey(property: TSESTree.Node): string | undefined {

@@ -4,7 +4,6 @@ import {
   callName,
   isLiteral,
   leafValues,
-  propertyNamed,
   resolvedValue,
   type Context,
 } from '../security/security-values.mts';
@@ -29,6 +28,7 @@ import {
   isUnconditionalFunction,
   objectOf,
   propertyKey,
+  textOf,
 } from './orm-options.mts';
 
 const QUERY_LEVEL = 'query';
@@ -59,20 +59,15 @@ function isStringLike(context: Context, node: TSESTree.Node | undefined): boolea
   );
 }
 
-function entryText(context: Context, entry: TSESTree.Node, key: string): string | undefined {
-  const value = propertyNamed(context, entry, key);
-  return value === undefined ? undefined : stringValue(resolvedValue(context, value));
-}
-
 function prismaEntryLogs(context: Context, element: TSESTree.Node): boolean {
   if (stringValue(resolvedValue(context, element)) === QUERY_LEVEL) {
     return true;
   }
   const entry = objectOf(context, element);
-  if (entry === undefined || entryText(context, entry, 'level') !== QUERY_LEVEL) {
+  if (entry === undefined || textOf(context, entry, 'level') !== QUERY_LEVEL) {
     return false;
   }
-  const emit = entryText(context, entry, 'emit');
+  const emit = textOf(context, entry, 'emit');
   return emit === 'stdout' || !hasKey(context, entry, 'emit');
 }
 

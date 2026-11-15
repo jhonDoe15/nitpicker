@@ -1,13 +1,8 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
-import {
-  isTypeWrapper,
-  memberName,
-  staticKey,
-  typeServices,
-  type Context,
-} from '../security/security-values.mts';
+import { memberName, staticKey, typeServices, type Context } from '../security/security-values.mts';
 import { chainOf } from '../typed/node-views.mts';
+import { isCall, outermostOf, TYPE_WRAPPERS, type CallLike } from '../typed/syntax-views.mts';
 import {
   calledName,
   importedName,
@@ -32,7 +27,6 @@ const ESCAPED = 'escaped';
 const ARGUMENT = 'argument';
 
 type Outcome = typeof HANDLED | typeof NEUTRAL | typeof ESCAPED;
-type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
 export type Inner = Exclude<TSESTree.Node, TSESTree.Program>;
 type Container =
   TSESTree.ObjectExpression | TSESTree.ArrayExpression | TSESTree.Property | TSESTree.SpreadElement;
@@ -49,18 +43,13 @@ const ESCAPES = new Map<string, string>([
   [AST_NODE_TYPES.SpreadElement, ARGUMENT],
 ]);
 
-function isCall(node: TSESTree.Node): node is CallLike {
-  return node.type === AST_NODE_TYPES.CallExpression || node.type === AST_NODE_TYPES.NewExpression;
+function isInner(node: TSESTree.Node): node is Inner {
+  return node.type !== AST_NODE_TYPES.Program;
 }
 
 function outerOf(node: Inner): Inner {
-  return (
-    chainOf<Inner>(node, (current) =>
-      isTypeWrapper(current.parent) && current.parent.expression === current
-        ? current.parent
-        : undefined,
-    ).at(-1) ?? node
-  );
+  const outer = outermostOf(node, TYPE_WRAPPERS);
+  return isInner(outer) ? outer : node;
 }
 
 function methodCall(member: TSESTree.MemberExpression): MemberCall | undefined {

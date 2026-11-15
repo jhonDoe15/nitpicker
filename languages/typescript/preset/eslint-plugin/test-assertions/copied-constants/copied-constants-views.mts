@@ -14,8 +14,6 @@ export type ConstantValue =
   | { readonly kind: 'string'; readonly value: string }
   | { readonly kind: 'number'; readonly value: number };
 
-export type ModuleAlias = { readonly find: string | RegExp; readonly replacement: string };
-
 type Resolution = { readonly kind: string; readonly path?: string | undefined };
 
 type StampedCache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
@@ -39,18 +37,11 @@ export const copiedConstantData: (details: {
   readonly literal: ConstantValue;
 }) => Readonly<Record<string, unknown>> = untypedCopiedConstantData;
 
-const resolveModuleSpecifier: (
-  written: string,
-  containingFile: string,
-  options?: { readonly aliases?: readonly ModuleAlias[] },
-) => Resolution = untypedResolveModuleSpecifier;
+const resolveModuleSpecifier: (written: string, containingFile: string) => Resolution =
+  untypedResolveModuleSpecifier;
 
-export function resolvedFile(
-  written: string,
-  containingFile: string,
-  options?: { readonly aliases?: readonly ModuleAlias[] },
-): string | undefined {
-  const target = resolveModuleSpecifier(written, containingFile, options);
+export function resolvedFile(written: string, containingFile: string): string | undefined {
+  const target = resolveModuleSpecifier(written, containingFile);
   return target.kind === 'file' ? target.path : undefined;
 }
 

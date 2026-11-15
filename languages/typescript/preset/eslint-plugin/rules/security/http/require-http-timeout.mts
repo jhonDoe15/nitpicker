@@ -1,4 +1,5 @@
 import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { listOf } from '../../../../../../../shared/values/readers.mts';
 import { suggestible } from '../../../fixes/support/descriptors.mts';
 import { HTTP_TIMEOUT_MS, httpTimeoutFix } from '../../../fixes/security/http-timeout-fix.mts';
 import { clientBindings, clientCall, type ClientScope, type Found } from './http-clients.mts';
@@ -20,10 +21,6 @@ type Defaults = {
 const AXIOS = 'axios';
 const FETCH = 'fetch';
 const PROJECT_DEFAULTS = [AXIOS, FETCH];
-
-function listOf(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? value : [];
-}
 
 function coveredByDefaults(found: Found, defaults: Defaults): boolean {
   if (found.client === FETCH) {

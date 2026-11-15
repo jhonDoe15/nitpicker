@@ -55,7 +55,7 @@ function exportedLocalNames(program: TSESTree.Program): Set<string> {
   return new Set(program.body.flatMap(exportedNamesOf));
 }
 
-function topLevelFunction(node: TSESTree.Node): TopLevel | undefined {
+function outermostFunction(node: TSESTree.Node): FunctionNode | undefined {
   let outermost: FunctionNode | undefined;
   for (const current of ancestorsOf(node).filter(
     (ancestor) => ancestor.type !== AST_NODE_TYPES.Program,
@@ -64,6 +64,11 @@ function topLevelFunction(node: TSESTree.Node): TopLevel | undefined {
       outermost = current;
     }
   }
+  return outermost;
+}
+
+function topLevelFunction(node: TSESTree.Node): TopLevel | undefined {
+  const outermost = outermostFunction(node);
   if (outermost === undefined) {
     return undefined;
   }
@@ -143,6 +148,26 @@ function isGlobalTimer(context: SourceContext, callee: TSESTree.Node): callee is
   );
 }
 
+type TimerScope = {
+  readonly context: SourceContext;
+  readonly bindings: ReturnType<typeof moduleBindings>;
+};
+
+function timerOf(
+  { context, bindings }: TimerScope,
+  node: TSESTree.CallExpression,
+): { readonly timer: string; readonly delayIndex: number } | undefined {
+  const { callee } = node;
+  if (isGlobalTimer(context, callee)) {
+    const timer = callee.type === AST_NODE_TYPES.Identifier ? callee.name : callee.property.name;
+    return { timer, delayIndex: 1 };
+  }
+  const imported = importedCalleeName(callee, bindings);
+  return imported !== undefined && TIMER_FUNCTIONS.has(imported)
+    ? { timer: imported, delayIndex: 0 }
+    : undefined;
+}
+
 export const rule: TSESLint.RuleModule<'uninjectableDelay'> = {
   meta: {
     type: 'problem',
@@ -154,23 +179,9 @@ export const rule: TSESLint.RuleModule<'uninjectableDelay'> = {
   create(context) {
     const bindings = moduleBindings(context.sourceCode.ast, TIMER_MODULES);
     const exportedNames = exportedLocalNames(context.sourceCode.ast);
-    function timerOf(
-      node: TSESTree.CallExpression,
-    ): { readonly timer: string; readonly delayIndex: number } | undefined {
-      const { callee } = node;
-      if (isGlobalTimer(context, callee)) {
-        const timer =
-          callee.type === AST_NODE_TYPES.Identifier ? callee.name : callee.property.name;
-        return { timer, delayIndex: 1 };
-      }
-      const imported = importedCalleeName(callee, bindings);
-      return imported !== undefined && TIMER_FUNCTIONS.has(imported)
-        ? { timer: imported, delayIndex: 0 }
-        : undefined;
-    }
     return {
       CallExpression(node) {
-        const timer = timerOf(node);
+        const timer = timerOf({ context, bindings }, node);
         if (timer === undefined) {
           return;
         }

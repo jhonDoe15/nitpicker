@@ -1,6 +1,6 @@
 import type { ParserServicesWithTypeInformation, TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { ts } from '../../typed/typescript-views.mts';
+import { isType, ts } from '../../typed/typescript-views.mts';
 
 type Scope = { readonly program: TypeScript.Program; readonly checker: TypeScript.TypeChecker };
 
@@ -28,10 +28,6 @@ function declaredInProject(
 
 function hasMutableIndex(checker: TypeScript.TypeChecker, type: TypeScript.Type): boolean {
   return checker.getIndexInfosOfType(type).some((info) => !info.isReadonly);
-}
-
-function isType(value: unknown): value is TypeScript.Type {
-  return typeof value === 'object' && value !== null && 'flags' in value && 'getSymbol' in value;
 }
 
 function targetOf(type: TypeScript.Type): TypeScript.Type {

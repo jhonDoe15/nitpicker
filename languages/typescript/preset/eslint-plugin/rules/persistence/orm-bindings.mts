@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKeyName } from '../analysis/static-shapes.mts';
 import { constantInitializer, type SourceCode } from '../typed/node-views.mts';
+import { ASSERTION_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import { libraryBinding, variableOf, type LibraryBinding } from './library-bindings.mts';
 
 export const TYPEORM = 'TypeORM';
@@ -8,11 +9,6 @@ export const MIKRO_ORM = 'MikroORM';
 export const SEQUELIZE = 'Sequelize';
 export type DecoratedOrm = typeof TYPEORM | typeof MIKRO_ORM;
 export type Orm = DecoratedOrm | typeof SEQUELIZE;
-type Wrapper =
-  | TSESTree.TSAsExpression
-  | TSESTree.TSSatisfiesExpression
-  | TSESTree.TSNonNullExpression
-  | TSESTree.TSTypeAssertion;
 type MaybeNode = TSESTree.Node | undefined;
 
 const ORM_PACKAGES = new Map<Orm, readonly string[]>([
@@ -97,44 +93,27 @@ export function importsOrm(sourceCode: SourceCode, orm: Orm): boolean {
     .some((source) => isOrmSource(source, orm));
 }
 
-function isWrapper(node: MaybeNode): node is Wrapper {
-  return (
-    node?.type === AST_NODE_TYPES.TSAsExpression ||
-    node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node?.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node?.type === AST_NODE_TYPES.TSTypeAssertion
-  );
-}
-
-function unwrapped(node: TSESTree.Node): TSESTree.Node;
-function unwrapped(node: MaybeNode): MaybeNode;
-function unwrapped(node: MaybeNode): MaybeNode {
-  const chain = [node];
-  for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
-}
-
 export function valueOf(sourceCode: SourceCode, expression: TSESTree.Node): TSESTree.Node {
-  const node = unwrapped(expression);
+  const node = unwrapOf(expression, ASSERTION_WRAPPERS);
   return node.type === AST_NODE_TYPES.Identifier
-    ? (unwrapped(constantInitializer(sourceCode, node)) ?? node)
+    ? (unwrapOf(constantInitializer(sourceCode, node), ASSERTION_WRAPPERS) ?? node)
     : node;
+}
+
+export function maybeValue(sourceCode: SourceCode, node: MaybeNode): MaybeNode {
+  return node === undefined ? undefined : valueOf(sourceCode, node);
 }
 
 export function objectOf(
   sourceCode: SourceCode,
   expression: MaybeNode,
 ): TSESTree.ObjectExpression | undefined {
-  const node = unwrapped(expression);
+  const node = unwrapOf(expression, ASSERTION_WRAPPERS);
   if (node?.type === AST_NODE_TYPES.ObjectExpression) {
     return node;
   }
   if (node?.type === AST_NODE_TYPES.Identifier) {
-    const value = unwrapped(constantInitializer(sourceCode, node));
+    const value = unwrapOf(constantInitializer(sourceCode, node), ASSERTION_WRAPPERS);
     return value?.type === AST_NODE_TYPES.ObjectExpression ? value : undefined;
   }
   return undefined;

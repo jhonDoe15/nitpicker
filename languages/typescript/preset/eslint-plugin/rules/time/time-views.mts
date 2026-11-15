@@ -4,7 +4,7 @@ import type {
   TSESTree,
 } from '@typescript-eslint/utils';
 import { initializer as untypedInitializer } from '../../../libraries/module-bindings.mjs';
-export type { LibraryBinding } from '../boundaries/schema-fields/library-bindings.mts';
+export type { LibraryBinding } from '../typed/node-views.mts';
 
 type Variable = TSESLint.Scope.Variable;
 

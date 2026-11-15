@@ -1,11 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { suggestible } from '../../fixes/support/descriptors.mts';
 import { dropShellFix, execFileFix } from '../../fixes/processes/shell-command-fix.mts';
-import {
-  resolveConstant,
-  stringValue,
-  type SourceContext,
-} from '../analysis/constant-resolution.mts';
+import { stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import {
   importedCalleeName,
   moduleBindings,
@@ -13,11 +9,10 @@ import {
   type ModuleBindings,
 } from '../analysis/subprocess-calls.mts';
 import { variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { ASSERTION_FORMS, resolvedThrough } from '../typed/syntax-views.mts';
 
 type Node = TSESTree.Node;
 type MessageId = 'shellString' | 'shellProgram' | 'useExecFile' | 'dropShell';
-type Wrapper =
-  TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSNonNullExpression;
 
 const { DefinitionType } = TSESLint.Scope;
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
@@ -34,29 +29,11 @@ const SHELL_PROGRAMS = new Set<string>([
   'cmd.exe',
 ]);
 
-function isWrapper(node: Node | undefined): node is Wrapper {
-  return (
-    node?.type === AST_NODE_TYPES.TSAsExpression ||
-    node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node?.type === AST_NODE_TYPES.TSNonNullExpression
-  );
-}
-
 function isPlainString(node: Node): boolean {
   return (
     (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
     (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
   );
-}
-
-function resolvedValue(context: SourceContext, node: Node | undefined): Node | undefined {
-  const chain = [resolveConstant(context, node)];
-  for (const current of chain) {
-    if (isWrapper(current)) {
-      chain.push(resolveConstant(context, current.expression));
-    }
-  }
-  return chain.at(-1);
 }
 
 function keyText(key: Node): unknown {
@@ -77,7 +54,7 @@ function isShellProperty(property: TSESTree.ObjectLiteralElement): boolean {
 function enablesShell(context: SourceContext, options: Node): boolean {
   const pending: Node[] = [options];
   for (const current of pending) {
-    const object = resolvedValue(context, current);
+    const object = resolvedThrough(context, current, ASSERTION_FORMS);
     if (object?.type !== AST_NODE_TYPES.ObjectExpression) {
       continue;
     }
@@ -104,8 +81,8 @@ function shellCommand(
   context: SourceContext,
   call: TSESTree.CallExpression,
 ): { program: string; flag: string | undefined; command: Node } | undefined {
-  const program = stringValue(resolvedValue(context, call.arguments[0]));
-  const list = resolvedValue(context, call.arguments[1]);
+  const program = stringValue(resolvedThrough(context, call.arguments[0], ASSERTION_FORMS));
+  const list = resolvedThrough(context, call.arguments[1], ASSERTION_FORMS);
   const last = program?.split(/[\\/]/).at(-1);
   if (
     program === undefined ||

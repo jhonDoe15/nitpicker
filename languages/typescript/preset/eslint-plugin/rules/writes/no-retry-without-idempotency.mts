@@ -4,20 +4,13 @@ import { enclosingLoop, isRetryAttempt } from '../loops/loop-shapes.mts';
 import { isBindCall } from '../security/imported-names.mts';
 import type { Context } from '../security/security-values.mts';
 import { callEffects, describePath, referenceEffects } from '../support/io-effects.mts';
+import { isCallback, type Callback } from '../typed/syntax-views.mts';
 import { retryScope, type RetryScope } from './retry-scopes.mts';
 
-type Callback = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 type Reference = TSESTree.Identifier | TSESTree.MemberExpression;
 type MaybeNode = TSESTree.Node | undefined;
 
 const UNSAFE = 'unsafe';
-
-function isCallback(node: MaybeNode): node is Callback {
-  return (
-    node?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    node?.type === AST_NODE_TYPES.FunctionExpression
-  );
-}
 
 function isReference(node: MaybeNode): node is Reference {
   return node?.type === AST_NODE_TYPES.Identifier || node?.type === AST_NODE_TYPES.MemberExpression;

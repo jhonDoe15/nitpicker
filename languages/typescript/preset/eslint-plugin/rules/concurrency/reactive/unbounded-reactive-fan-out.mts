@@ -95,10 +95,9 @@ function report(
     node: group.node,
     messageId: group.form,
     data: { operator: group.operator },
+    sites: group.sites,
   };
-  reportSites(scope, at, group.sites, (collection) =>
-    context.sourceCode.getText(skipped(collection)),
-  );
+  reportSites(scope, at, (collection) => context.sourceCode.getText(skipped(collection)));
 }
 
 export const rule: TSESLint.RuleModule<'operator' | 'combinator'> = {

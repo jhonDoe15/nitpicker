@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
-import { NULLISH_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
+import { unwrapped } from '../../typed/syntax-views.mts';
 
 type NameSet = ReadonlySet<string | undefined>;
 
@@ -47,10 +47,6 @@ const changeablePageElements = new Set<string | undefined>(['documentElement', '
 const rootMounts = new Set<string | undefined>(['createRoot', 'hydrateRoot', 'createPortal']);
 const uiFile = /(?:^|\/)(?:ui\/|adapters\/|shared\/|lib\/|use(?:[A-Z]|-)[^/]*$)/u;
 const MAX_ALIASES = 8;
-
-function unwrapped(node: TSESTree.Node): TSESTree.Node {
-  return unwrapOf(node, NULLISH_WRAPPERS);
-}
 
 function propertyName(member: TSESTree.Node): string | undefined {
   return member.type === AST_NODE_TYPES.MemberExpression && !member.computed

@@ -1,4 +1,4 @@
-import type { ParserServicesWithTypeInformation } from '@typescript-eslint/utils';
+import type { ParserServicesWithTypeInformation, TSESLint } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
 import type { SourceCode } from '../typed/node-views.mts';
@@ -29,6 +29,20 @@ export function hasTypeInformation(
     services?.program !== undefined &&
     services.esTreeNodeToTSNodeMap !== undefined
   );
+}
+
+export type TypedScope<MessageIds extends string> = {
+  readonly context: Readonly<TSESLint.RuleContext<MessageIds, []>>;
+  readonly sourceCode: SourceCode;
+  readonly services: ParserServicesWithTypeInformation;
+};
+
+export function typedScopeOf<MessageIds extends string>(
+  context: Readonly<TSESLint.RuleContext<MessageIds, []>>,
+): TypedScope<MessageIds> | undefined {
+  const { sourceCode } = context;
+  const services = sourceCode.parserServices;
+  return hasTypeInformation(services) ? { context, sourceCode, services } : undefined;
 }
 
 export function isThenable(checker: TypeScript.TypeChecker, node: TypeScript.Node): boolean {

@@ -7,6 +7,7 @@ import type TypeScript from 'typescript';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
 import type { SourceCode } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
+import { propertyName } from './units/unit-nodes.mts';
 import { hasTypeInformation, initializer, variableOf, type Problem } from './time-views.mts';
 import {
   DATE_ONLY,
@@ -23,19 +24,6 @@ type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
 
 const TIME_ZONE = 'timeZone';
 const NULLISH = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
-
-export function propertyName(member: TSESTree.Node): string | undefined {
-  if (member.type !== AST_NODE_TYPES.MemberExpression) {
-    return undefined;
-  }
-  if (!member.computed && member.property.type === AST_NODE_TYPES.Identifier) {
-    return member.property.name;
-  }
-  return member.property.type === AST_NODE_TYPES.Literal &&
-    typeof member.property.value === 'string'
-    ? member.property.value
-    : undefined;
-}
 
 export function objectKeys(
   node: TSESTree.Node | undefined,

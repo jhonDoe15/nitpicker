@@ -8,6 +8,7 @@ import {
   isTestFunctionName,
 } from '../../analysis/test-code-analysis.mts';
 import { isIntegrationTestFor as untypedIsIntegrationTestFor } from '../../../../layout/end-to-end-tests.mjs';
+import { isNamedMember } from '../../typed/syntax-views.mts';
 import { suggestible } from '../../../fixes/support/descriptors.mts';
 import { raisedTimeoutFix } from '../../../fixes/tests/raised-timeout-fix.mts';
 import { isFunctionNode, type SourceContext } from '../../analysis/constant-resolution.mts';
@@ -48,19 +49,8 @@ function timeoutProperties(
   );
 }
 
-function isSetConfig(callee: TSESTree.Node): boolean {
-  return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'vi' &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.property.name === 'setConfig'
-  );
-}
-
 function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): TimeoutNode[] {
-  if (isSetConfig(node.callee)) {
+  if (isNamedMember(node.callee, 'vi', 'setConfig')) {
     return timeoutProperties(context, node.arguments[0]).map((property) => ({
       node: property.value,
       hook: HOOK_TIMEOUT_KEYS.includes(property.key.name),

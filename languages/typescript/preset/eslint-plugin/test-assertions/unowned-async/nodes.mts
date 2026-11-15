@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import type { FunctionNode } from '../../rules/typed/syntax-views.mts';
 import type { SourceContext } from '../../rules/analysis/constant-resolution.mts';
 import type { ModuleBindings } from '../../rules/analysis/subprocess-calls.mts';
 import { chainOf, isNode } from '../../rules/typed/node-views.mts';
 
-export type FunctionNode =
-  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
+export type { FunctionNode };
 export type Env = { readonly context: SourceContext; readonly bindings: FileBindings };
 export type FileBindings = {
   readonly assertionNames: Set<string>;
