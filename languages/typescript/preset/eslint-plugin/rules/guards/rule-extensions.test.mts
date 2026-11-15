@@ -1,73 +1,77 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
-import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
-import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
-import { rule as noSelfRecursion } from '../control/no-self-recursion.mjs';
-import { rule as noUnknownInDomain } from '../boundaries/no-unknown-in-domain.mjs';
-import { rule as noUnvalidatedSchemaField } from '../boundaries/no-unvalidated-schema-field.mjs';
-import { rule as preserveErrorCause } from '../errors/preserve-error-cause.mjs';
-import { rule as reportModuleLoadEffects } from '../modules/report-module-load-effects.mjs';
-import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester, ruleModule } from '../../test-support/rule-tester.mts';
+import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mts';
+import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mts';
+import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mts';
+import { rule as noSelfRecursion } from '../control/no-self-recursion.mts';
+import { rule as noUnknownInDomain } from '../boundaries/no-unknown-in-domain.mts';
+import { rule as noUnvalidatedSchemaField } from '../boundaries/no-unvalidated-schema-field.mts';
+import { rule as preserveErrorCause } from '../errors/preserve-error-cause.mts';
+import { rule as reportModuleLoadEffects } from '../modules/report-module-load-effects.mts';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();
 const root = '/repo/src/main/composition-root.ts';
 
-tester.run('preserve-error-cause for Error subclasses', withoutFixes(preserveErrorCause), {
-  valid: [
-    'try { run(); } catch (error) { throw new AppError("failed", { cause: error }); }',
-    'try { run(); } catch (error) { throw new AppError("failed", 500, { cause: error }); }',
-    'try { run(); } catch (error) { throw new WrapError("failed", error); }',
-    'try { run(); } catch { return new AppError("failed"); }',
-    'try { run(); } catch (error) { const failure = new AppError("failed", { cause: error }); throw failure; }',
-    'try { run(); } catch (error) { return Promise.reject(new AppError("failed", { cause: error })); }',
-    'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
-    'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
-    'try { run(); } catch (error) { throw new AggregateError([error, other], "run and close failed"); }',
-    'try { run(); } catch (error) { const cause = error; throw new AppError("bad", { cause }); }',
-  ],
-  invalid: [
-    {
-      code: 'try { run(); } catch (error) { throw new AggregateError([other], "failed"); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { const cause = String(error); throw new AppError("bad", { cause: other }); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { throw new AppError(String(error)); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { throw new AppError(`bad ${error instanceof Error ? error.message : "x"}`); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { throw new TypeError(String(error), { cause: other }); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { throw new Error(String(error)); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { log(error); throw new AppError("range"); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch { throw new AppError("failed"); }',
-      errors: [{ messageId: 'bindingLess' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { log(error); const failure = new AppError("failed"); throw failure; }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-    {
-      code: 'try { run(); } catch (error) { log(error); return Promise.reject(new AppError("failed")); }',
-      errors: [{ messageId: 'lostCause' }],
-    },
-  ],
-});
+tester.run(
+  'preserve-error-cause for Error subclasses',
+  withoutFixes(ruleModule(preserveErrorCause)),
+  {
+    valid: [
+      'try { run(); } catch (error) { throw new AppError("failed", { cause: error }); }',
+      'try { run(); } catch (error) { throw new AppError("failed", 500, { cause: error }); }',
+      'try { run(); } catch (error) { throw new WrapError("failed", error); }',
+      'try { run(); } catch { return new AppError("failed"); }',
+      'try { run(); } catch (error) { const failure = new AppError("failed", { cause: error }); throw failure; }',
+      'try { run(); } catch (error) { return Promise.reject(new AppError("failed", { cause: error })); }',
+      'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
+      'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
+      'try { run(); } catch (error) { throw new AggregateError([error, other], "run and close failed"); }',
+      'try { run(); } catch (error) { const cause = error; throw new AppError("bad", { cause }); }',
+    ],
+    invalid: [
+      {
+        code: 'try { run(); } catch (error) { throw new AggregateError([other], "failed"); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { const cause = String(error); throw new AppError("bad", { cause: other }); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { throw new AppError(String(error)); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { throw new AppError(`bad ${error instanceof Error ? error.message : "x"}`); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { throw new TypeError(String(error), { cause: other }); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { throw new Error(String(error)); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { log(error); throw new AppError("range"); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch { throw new AppError("failed"); }',
+        errors: [{ messageId: 'bindingLess' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { log(error); const failure = new AppError("failed"); throw failure; }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+      {
+        code: 'try { run(); } catch (error) { log(error); return Promise.reject(new AppError("failed")); }',
+        errors: [{ messageId: 'lostCause' }],
+      },
+    ],
+  },
+);
 
 tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
   valid: [

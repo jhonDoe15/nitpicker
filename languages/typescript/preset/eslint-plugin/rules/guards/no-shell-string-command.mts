@@ -1,61 +1,98 @@
-import { suggestible } from '../../fixes/support/descriptors.mjs';
-import { dropShellFix, execFileFix } from '../../fixes/processes/shell-command-fix.mjs';
-import { variableNamed } from '../analysis/ancestry.mjs';
-import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { suggestible } from '../../fixes/support/descriptors.mts';
+import { dropShellFix, execFileFix } from '../../fixes/processes/shell-command-fix.mts';
+import {
+  resolveConstant,
+  stringValue,
+  type SourceContext,
+} from '../analysis/constant-resolution.mts';
 import {
   importedCalleeName,
   moduleBindings,
   withPromisified,
-} from '../analysis/subprocess-calls.mjs';
+  type ModuleBindings,
+} from '../analysis/subprocess-calls.mts';
+import { variableNamed, type SourceCode } from '../typed/node-views.mts';
 
+type Node = TSESTree.Node;
+type MessageId = 'shellString' | 'shellProgram' | 'useExecFile' | 'dropShell';
+type Wrapper =
+  TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSNonNullExpression;
+
+const { DefinitionType } = TSESLint.Scope;
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
-const SHELL_STRING_CALLS = new Set(['exec', 'execSync']);
-const ARGUMENT_CALLS = new Set(['spawn', 'spawnSync', 'execFile', 'execFileSync']);
-const SHELL_PROGRAMS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish', 'cmd', 'cmd.exe']);
-const TYPE_WRAPPERS = new Set(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression']);
+const SHELL_STRING_CALLS = new Set<string>(['exec', 'execSync']);
+const ARGUMENT_CALLS = new Set<string>(['spawn', 'spawnSync', 'execFile', 'execFileSync']);
+const SHELL_PROGRAMS = new Set<string>([
+  'sh',
+  'bash',
+  'zsh',
+  'dash',
+  'ksh',
+  'fish',
+  'cmd',
+  'cmd.exe',
+]);
 
-function isPlainString(node) {
+function isWrapper(node: Node | undefined): node is Wrapper {
   return (
-    (node.type === 'Literal' && typeof node.value === 'string') ||
-    (node.type === 'TemplateLiteral' && node.expressions.length === 0)
+    node?.type === AST_NODE_TYPES.TSAsExpression ||
+    node?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+    node?.type === AST_NODE_TYPES.TSNonNullExpression
   );
 }
 
-function resolvedValue(context, node) {
+function isPlainString(node: Node): boolean {
+  return (
+    (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
+    (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
+  );
+}
+
+function resolvedValue(context: SourceContext, node: Node | undefined): Node | undefined {
   const chain = [resolveConstant(context, node)];
   for (const current of chain) {
-    if (TYPE_WRAPPERS.has(current?.type)) {
+    if (isWrapper(current)) {
       chain.push(resolveConstant(context, current.expression));
     }
   }
   return chain.at(-1);
 }
 
-function isShellProperty(property) {
+function keyText(key: Node): unknown {
+  if (key.type === AST_NODE_TYPES.Identifier) {
+    return key.name;
+  }
+  return key.type === AST_NODE_TYPES.Literal ? key.value : undefined;
+}
+
+function isShellProperty(property: TSESTree.ObjectLiteralElement): boolean {
   return (
-    property.type === 'Property' &&
-    (property.key.name ?? property.key.value) === 'shell' &&
-    !(property.value.type === 'Literal' && property.value.value === false)
+    property.type === AST_NODE_TYPES.Property &&
+    keyText(property.key) === 'shell' &&
+    !(property.value.type === AST_NODE_TYPES.Literal && property.value.value === false)
   );
 }
 
-function enablesShell(context, options) {
-  const pending = [options];
+function enablesShell(context: SourceContext, options: Node): boolean {
+  const pending: Node[] = [options];
   for (const current of pending) {
     const object = resolvedValue(context, current);
-    if (object?.type !== 'ObjectExpression') {
+    if (object?.type !== AST_NODE_TYPES.ObjectExpression) {
       continue;
     }
     if (object.properties.some(isShellProperty)) {
       return true;
     }
-    const spreads = object.properties.filter((property) => property.type === 'SpreadElement');
+    const spreads = object.properties.filter(
+      (property) => property.type === AST_NODE_TYPES.SpreadElement,
+    );
     pending.push(...spreads.map((spread) => spread.argument));
   }
   return false;
 }
 
-function isCommandFlag(token) {
+function isCommandFlag(token: string | undefined): boolean {
   if (token === '/c' || token === '/C') {
     return true;
   }
@@ -63,33 +100,44 @@ function isCommandFlag(token) {
   return /^[A-Za-z]+$/.test(letters) && letters.includes('c');
 }
 
-function shellCommand(context, call) {
+function shellCommand(
+  context: SourceContext,
+  call: TSESTree.CallExpression,
+): { program: string; flag: string | undefined; command: Node } | undefined {
   const program = stringValue(resolvedValue(context, call.arguments[0]));
   const list = resolvedValue(context, call.arguments[1]);
-  if (!SHELL_PROGRAMS.has(program?.split(/[\\/]/).at(-1)) || list?.type !== 'ArrayExpression') {
+  const last = program?.split(/[\\/]/).at(-1);
+  if (
+    program === undefined ||
+    last === undefined ||
+    !SHELL_PROGRAMS.has(last) ||
+    list?.type !== AST_NODE_TYPES.ArrayExpression
+  ) {
     return undefined;
   }
   const flagIndex = list.elements.findIndex((element) => isCommandFlag(stringValue(element)));
   const command = flagIndex === -1 ? undefined : list.elements[flagIndex + 1];
-  return command === undefined || command === null || command.type === 'SpreadElement'
+  return command === undefined || command === null || command.type === AST_NODE_TYPES.SpreadElement
     ? undefined
     : { program, flag: stringValue(list.elements[flagIndex]), command };
 }
 
-function isFixedCommand(sourceCode, command) {
+function isFixedCommand(sourceCode: SourceCode, command: Node): boolean {
   if (isPlainString(command)) {
     return true;
   }
   const definition =
-    command.type === 'Identifier' ? variableNamed(sourceCode, command)?.defs.at(0) : undefined;
+    command.type === AST_NODE_TYPES.Identifier
+      ? variableNamed(sourceCode, command)?.defs.at(0)
+      : undefined;
   return (
-    definition?.type === 'Variable' &&
+    definition?.type === DefinitionType.Variable &&
     definition.parent.kind === 'const' &&
     isPlainString(definition.node.init ?? command)
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     hasSuggestions: true,
@@ -105,13 +153,16 @@ export const rule = {
     },
   },
   create(context) {
-    let bindings = { named: new Map(), namespaces: new Set() };
+    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
         bindings = withPromisified(node, moduleBindings(node, CHILD_PROCESS));
       },
       CallExpression(node) {
         const name = importedCalleeName(node.callee, bindings);
+        if (name === undefined) {
+          return;
+        }
         const command = node.arguments[0];
         const shellString =
           SHELL_STRING_CALLS.has(name) &&
@@ -121,11 +172,14 @@ export const rule = {
         const shellOption =
           argumentCall && node.arguments.slice(1).some((options) => enablesShell(context, options));
         if (shellString || shellOption) {
-          const suggestion = shellString
+          const suggestion: {
+            readonly id: 'useExecFile' | 'dropShell';
+            readonly plan: ReturnType<typeof dropShellFix>;
+          } = shellString
             ? { id: 'useExecFile', plan: execFileFix(context.sourceCode, node, name) }
             : { id: 'dropShell', plan: dropShellFix(context.sourceCode, node) };
           context.report(
-            suggestible(
+            suggestible<MessageId>(
               { node, messageId: 'shellString' },
               { messageId: suggestion.id, plan: suggestion.plan },
             ),

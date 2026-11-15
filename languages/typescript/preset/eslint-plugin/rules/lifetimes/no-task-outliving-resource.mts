@@ -1,12 +1,20 @@
-import { detachedForm } from './detached-forms.mjs';
-import { finallyRegions, referencesIn, usingRegions } from './resource-regions.mjs';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { detachedForm } from './detached-forms.mts';
+import {
+  finallyRegions,
+  referencesIn,
+  usingRegions,
+  type ResourceRegion,
+} from './resource-regions.mts';
+
+type MessageId = 'detached' | 'deferred' | 'unawaited' | 'returned';
 
 const EXCEPTION_ROUTE =
   ' An exception fits only when the task owns the resource or the resource lives as long as the process.';
 const AWAIT_ADVICE =
   'await the task before the block ends (await Promise.all([...]) for several), or open and close the resource inside the task';
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -23,9 +31,9 @@ export const rule = {
   },
   create(context) {
     const sourceCode = context.sourceCode;
-    const reported = new Set();
+    const reported = new Set<TSESTree.Node>();
 
-    function check(entry) {
+    function check(entry: ResourceRegion): void {
       for (const identifier of referencesIn(entry)) {
         const form = detachedForm(sourceCode, identifier, entry.region);
         if (form !== undefined && !reported.has(form.node)) {

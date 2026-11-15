@@ -1,62 +1,70 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { nameOf } from '../../typed/node-views.mts';
 import {
   firstRelease,
   isCleanupFunction,
   laterStep,
   nearestFunction,
   releaseCall,
-} from './cleanup-steps.mjs';
-import { unwrapExpression } from '../scope/close-scopes.mjs';
+} from './cleanup-steps.mts';
+import { isFunctionNode, unwrapExpression } from '../scope/close-scopes.mts';
 
 const EXCEPTION_ROUTE =
   ' An exception fits only when a failed release should abort the remaining ones.';
 const MAX_NAMED = 3;
 
-function promiseAll(call) {
+function promiseAll(call: TSESTree.CallExpression): boolean {
   const callee = call.callee;
   return (
-    callee.type === 'MemberExpression' &&
-    callee.object.name === 'Promise' &&
-    callee.property.name === 'all'
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    nameOf(callee.object) === 'Promise' &&
+    nameOf(callee.property) === 'all'
   );
 }
 
-function mappedRelease(argument) {
+function mappedRelease(argument: TSESTree.Node): boolean {
   const call = unwrapExpression(argument);
-  const callee = call.type === 'CallExpression' ? call.callee : undefined;
-  if (callee?.type !== 'MemberExpression' || callee.property.name !== 'map') {
+  if (
+    call.type !== AST_NODE_TYPES.CallExpression ||
+    call.callee.type !== AST_NODE_TYPES.MemberExpression ||
+    nameOf(call.callee.property) !== 'map'
+  ) {
     return false;
   }
   const [callback] = call.arguments;
-  const body = callback?.body;
-  return body?.type === 'BlockStatement'
+  const body = callback !== undefined && isFunctionNode(callback) ? callback.body : undefined;
+  return body?.type === AST_NODE_TYPES.BlockStatement
     ? body.body.some(
         (statement) =>
-          statement.type === 'ReturnStatement' &&
+          statement.type === AST_NODE_TYPES.ReturnStatement &&
           statement.argument !== null &&
           releaseCall(statement.argument) !== undefined,
       )
     : body !== undefined && releaseCall(body) !== undefined;
 }
 
-function releasesAll(call) {
+function releasesAll(call: TSESTree.CallExpression): boolean {
   const [argument] = call.arguments;
-  if (argument?.type === 'ArrayExpression') {
-    return argument.elements.filter((item) => item !== null && releaseCall(item)).length > 1;
+  if (argument?.type === AST_NODE_TYPES.ArrayExpression) {
+    return (
+      argument.elements.filter((item) => item !== null && releaseCall(item) !== undefined).length >
+      1
+    );
   }
   return argument !== undefined && mappedRelease(argument);
 }
 
-function named(steps) {
+function named(steps: readonly string[]): string {
   const shown = steps.slice(0, MAX_NAMED).join(', ');
-  return steps.length > MAX_NAMED ? `${shown} and ${steps.length - MAX_NAMED} more` : shown;
+  return steps.length > MAX_NAMED ? `${shown} and ${String(steps.length - MAX_NAMED)} more` : shown;
 }
 
-function inCleanup(node) {
+function inCleanup(node: TSESTree.Node): boolean {
   const fn = nearestFunction(node);
   return fn !== undefined && isCleanupFunction(fn);
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'sequential' | 'parallel'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -73,7 +81,7 @@ export const rule = {
     const { sourceCode } = context;
 
     return {
-      BlockStatement(block) {
+      BlockStatement(block: TSESTree.BlockStatement) {
         if (!inCleanup(block)) {
           return;
         }
@@ -82,24 +90,28 @@ export const rule = {
             firstRelease(statement) !== undefined &&
             block.body.slice(position + 1).some((later) => laterStep(sourceCode, later)),
         );
-        if (index < 0) {
+        const first = block.body[index];
+        if (first === undefined) {
+          return;
+        }
+        const release = firstRelease(first);
+        if (release === undefined) {
           return;
         }
         const skipped = block.body
           .slice(index + 1)
           .map((later) => laterStep(sourceCode, later))
           .filter((step) => step !== undefined);
-        const first = block.body[index];
         context.report({
           node: first,
           messageId: 'sequential',
           data: {
-            release: `${sourceCode.getText(firstRelease(first).callee)}()`,
+            release: `${sourceCode.getText(release.callee)}()`,
             skipped: named(skipped),
           },
         });
       },
-      CallExpression(node) {
+      CallExpression(node: TSESTree.CallExpression) {
         if (promiseAll(node) && inCleanup(node) && releasesAll(node)) {
           context.report({ node, messageId: 'parallel' });
         }
