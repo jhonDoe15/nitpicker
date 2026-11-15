@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { parentOf } from '../typed/typescript-views.mts';
 
 export type ContainerApi = {
   readonly library: string;
@@ -118,8 +119,8 @@ function packageOf(fileName: string): string | undefined {
   return first.startsWith('@') ? `${first}/${second}` : first;
 }
 
-function ownerName(node: TypeScript.Node): string | undefined {
-  const name = 'name' in node ? node.name : undefined;
+function ownerName(node: TypeScript.Node | undefined): string | undefined {
+  const name = node !== undefined && 'name' in node ? node.name : undefined;
   return typeof name === 'object' &&
     name !== null &&
     'text' in name &&
@@ -133,7 +134,7 @@ export function containerApiOf(symbol: TypeScript.Symbol | undefined): Container
     return undefined;
   }
   for (const declaration of symbol.declarations ?? []) {
-    const owner = ownerName(declaration.parent);
+    const owner = ownerName(parentOf(declaration));
     const library = packageOf(declaration.getSourceFile().fileName);
     const api =
       library === undefined

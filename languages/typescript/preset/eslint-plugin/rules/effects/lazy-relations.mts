@@ -15,7 +15,7 @@ import {
   type TsFunction,
 } from '../support/io/implementations.mts';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { parentOf, ts } from '../typed/typescript-views.mts';
 import {
   decoratedRelation,
   tsLazyRelation,
@@ -149,8 +149,9 @@ export function originQuery(
   if (declaration === undefined) {
     return undefined;
   }
-  const owner = declaration.parent;
+  const owner = parentOf(declaration);
   const managed =
+    owner !== undefined &&
     (ts.isClassLike(owner) || ts.isInterfaceDeclaration(owner)) &&
     owner.name?.text === 'EntityManager';
   return { call, method, label: estreeCallView(call, undefined).label, options: managed ? 1 : 0 };

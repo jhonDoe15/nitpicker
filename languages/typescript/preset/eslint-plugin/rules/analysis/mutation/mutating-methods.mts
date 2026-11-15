@@ -61,8 +61,10 @@ function partsOf(type: TypeScript.Type): readonly TypeScript.Type[] {
 }
 
 function ownerOf(declaration: TypeScript.Declaration): string | undefined {
-  const { parent } = declaration;
-  return 'name' in parent &&
+  const parent: unknown = declaration.parent;
+  return typeof parent === 'object' &&
+    parent !== null &&
+    'name' in parent &&
     typeof parent.name === 'object' &&
     parent.name !== null &&
     'text' in parent.name &&
