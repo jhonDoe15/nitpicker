@@ -3,7 +3,17 @@ import {
   REVIEW as untypedReview,
   SAFE as untypedSafe,
 } from '../../../../core/fix/engine/safety.mjs';
-import type { CodeFix, SourceText } from './typed/code-fix-views.mts';
+
+export type CodeFix = {
+  readonly id: string;
+  readonly safety: string;
+  readonly codes: readonly number[];
+  readonly fixName: string;
+  readonly description?: RegExp;
+  readonly needs?: RegExp;
+};
+
+export type SourceText = { readonly name: string; readonly text: string };
 
 const REVIEW: string = untypedReview;
 const SAFE: string = untypedSafe;
