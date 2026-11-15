@@ -8,7 +8,7 @@ import {
   JSDOC_RULE_OPTIONS,
   applyJavascriptDialect,
   scriptRuleEntries,
-} from './eslint-dialect.mjs';
+} from './eslint-dialect.mts';
 
 type ConfigEntry = Linter.Config;
 
