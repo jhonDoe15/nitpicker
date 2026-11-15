@@ -22,10 +22,11 @@ import {
   type Fact,
   type FlowContext,
 } from './facts.mts';
+import { coercionSites, type CoercionSite, type Guard } from './coercions/coercion-sites.mts';
 import { conditionChecks, type Check } from './statement-flow.mts';
 import { isNarrowingTest, outsideFunctions } from './syntax.mts';
 
-type MessageId = 'alwaysTrue' | 'alwaysFalse';
+type MessageId = 'alwaysTrue' | 'alwaysFalse' | 'coercionTrue' | 'coercionFalse';
 type Verdict = 'true' | 'false';
 type Scan = {
   readonly context: Readonly<TSESLint.RuleContext<MessageId, readonly []>>;
@@ -173,6 +174,37 @@ function checkChain(scan: Scan, node: TSESTree.Node, facts: readonly Fact[]): vo
   }
 }
 
+function guardFacts(scan: Scan, guards: readonly Guard[]): Fact[] {
+  return guards.flatMap(({ test, holds, branch }) => {
+    const text = scan.sourceCode.getText(test);
+    const reason = `it is only reached when \`${text}\` is ${String(holds)}`;
+    const known = fact(test, scan.sourceCode, { holds, reason });
+    const written = effectsOf([branch], scan.flow);
+    const isWritten =
+      [...known.names].some((name) => written.writes.has(name)) ||
+      (written.memberWrite && known.readsMembers);
+    return isWritten ? [] : [known];
+  });
+}
+
+function checkCoercion(scan: Scan, site: CoercionSite, facts: readonly Fact[]): void {
+  const { sourceCode } = scan;
+  const { node, operand, guards } = site;
+  const known = relevantFacts(
+    [...facts, ...guardFacts(scan, guards)],
+    fact(operand, sourceCode, { holds: true }).names,
+  );
+  const query = conditionTerm(operand, sourceCode);
+  const verdict = verdictOf(known, { term: query });
+  if (verdict === undefined || !isNarrowed(operand, scan.services)) {
+    return;
+  }
+  const { reason } = reasonFor(known, query, verdict);
+  const condition = sourceCode.getText(node);
+  const messageId = verdict === 'true' ? 'coercionTrue' : 'coercionFalse';
+  scan.context.report({ node, messageId, data: { condition, reason } });
+}
+
 function checkedConditions(found: Check): TSESTree.Node[] {
   return found.condition === undefined ? sitesIn(found.expression) : [found.condition];
 }
@@ -181,6 +213,9 @@ function analyze(scan: Scan, statements: readonly TSESTree.Statement[]): void {
   for (const found of conditionChecks(statements, scan.flow)) {
     for (const condition of checkedConditions(found)) {
       checkChain(scan, condition, found.facts);
+    }
+    for (const site of coercionSites(found.condition ?? found.expression)) {
+      checkCoercion(scan, site, found.facts);
     }
   }
 }
@@ -202,6 +237,10 @@ export const rule: TSESLint.RuleModule<
         '`{{condition}}` is always true here: {{reason}}. Remove the check, or fix the condition that was meant.',
       alwaysFalse:
         '`{{condition}}` is always false here: {{reason}}, so the code it guards never runs. Remove it, or fix the condition that was meant.',
+      coercionTrue:
+        '`{{condition}}` is always true here: {{reason}}. Use the value itself, or fix the test that was meant.',
+      coercionFalse:
+        '`{{condition}}` is always false here: {{reason}}. Use `false`, or fix the test that was meant.',
     },
   },
   create(context) {

@@ -43,7 +43,7 @@ const HONO_TARGETS: Names = {
 };
 const FASTIFY_PARTS: Names = { querystring: QUERY_STRING, params: 'path', headers: HEADERS };
 
-function unwrapped(node: TypeScript.Expression): TypeScript.Node | undefined {
+export function unwrapped(node: TypeScript.Expression): TypeScript.Node | undefined {
   const chain: TypeScript.Node[] = [node];
   for (const current of chain) {
     if (
@@ -57,7 +57,7 @@ function unwrapped(node: TypeScript.Expression): TypeScript.Node | undefined {
   return chain.at(-1);
 }
 
-function isRequest(node: TypeScript.Node): boolean {
+export function isRequest(node: TypeScript.Node): boolean {
   if (ts.isIdentifier(node)) {
     return REQUEST_NAMES.has(node.text);
   }
@@ -74,7 +74,7 @@ function honoAccessor(node: TypeScript.CallExpression): string | undefined {
     : undefined;
 }
 
-function transportSource(expression: TypeScript.Expression | undefined): string | undefined {
+export function transportSource(expression: TypeScript.Expression | undefined): string | undefined {
   const node = expression === undefined ? undefined : unwrapped(expression);
   if (node === undefined) {
     return undefined;
@@ -85,7 +85,7 @@ function transportSource(expression: TypeScript.Expression | undefined): string 
   return ts.isCallExpression(node) ? honoAccessor(node) : undefined;
 }
 
-function calleeName(call: TypeScript.CallExpression): string | undefined {
+export function calleeName(call: TypeScript.CallExpression): string | undefined {
   const callee = call.expression;
   if (ts.isPropertyAccessExpression(callee)) {
     return callee.name.text;

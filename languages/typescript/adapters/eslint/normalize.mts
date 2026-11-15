@@ -62,7 +62,10 @@ type MessageContext = {
 
 const ts = typescriptApi();
 
-const REPORT_ONLY_RULES = new Set(['nitpicker/promise-wait-deadline']);
+const REPORT_ONLY_RULES = new Set([
+  'nitpicker/no-presence-truthiness',
+  'nitpicker/promise-wait-deadline',
+]);
 
 export function normalizeEslintResults({
   value,

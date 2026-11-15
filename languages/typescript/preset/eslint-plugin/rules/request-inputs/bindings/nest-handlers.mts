@@ -78,9 +78,9 @@ function isMultipart(method: TypeScript.MethodDeclaration): boolean {
   );
 }
 
-function transportOf(
+export function transportOf(
   parameter: TypeScript.ParameterDeclaration,
-  multipart: boolean,
+  { multipart }: { readonly multipart: boolean },
 ): Transport | undefined {
   for (const decorator of decoratorsOf(parameter)) {
     const call = decoratorCall(decorator);
@@ -237,7 +237,7 @@ function parameterProblems(
   multipart: boolean,
   checker: Checker,
 ): Located[] {
-  const transport = transportOf(parameter, multipart);
+  const transport = transportOf(parameter, { multipart });
   if (transport === undefined) {
     return [];
   }
