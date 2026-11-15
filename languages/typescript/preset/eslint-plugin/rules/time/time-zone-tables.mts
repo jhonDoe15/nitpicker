@@ -1,4 +1,4 @@
-export const LOCAL_DATE_METHODS = {
+export const LOCAL_DATE_METHODS: Readonly<Record<string, string>> = {
   getFullYear: 'getUTCFullYear',
   getYear: 'getUTCFullYear',
   getMonth: 'getUTCMonth',
@@ -39,7 +39,7 @@ export const LUXON_FACTORIES = [
   'fromObject',
   'fromRFC2822',
 ];
-export const LUXON_OPTION_POSITIONS = {
+export const LUXON_OPTION_POSITIONS: Readonly<Record<string, number>> = {
   fromJSDate: 1,
   fromISO: 1,
   fromFormat: 2,
@@ -52,21 +52,24 @@ export const LUXON_OPTION_POSITIONS = {
 export const LUXON_ZONE_KEYS = ['zone', 'setZone'];
 export const LOCAL_ZONE_NAMES = ['local', 'system'];
 
-export const CHAIN_READS = ['isValid', 'ts', 'offset', 'zoneName'];
+const IS_VALID = 'isValid';
+export const CHAIN_READS = [IS_VALID, 'ts', 'offset', 'zoneName'];
 
 export const DAYJS_FACTORIES = ['', 'unix'];
 
-export const CHAIN_ZONE_SETTERS = {
+export type ChainLibrary = 'luxon' | 'dayjs';
+
+export const CHAIN_ZONE_SETTERS: Readonly<Record<ChainLibrary, readonly string[]>> = {
   luxon: ['setZone', 'toUTC'],
   dayjs: ['utc', 'tz', 'utcOffset'],
 };
 
-export const CHAIN_INSTANTS = {
-  luxon: ['toMillis', 'toSeconds', 'toUnixInteger', 'valueOf', 'toJSDate', 'isValid'],
-  dayjs: ['valueOf', 'unix', 'toISOString', 'toDate', 'toJSON', 'isValid'],
+export const CHAIN_INSTANTS: Readonly<Record<ChainLibrary, readonly string[]>> = {
+  luxon: ['toMillis', 'toSeconds', 'toUnixInteger', 'valueOf', 'toJSDate', IS_VALID],
+  dayjs: ['valueOf', 'unix', 'toISOString', 'toDate', 'toJSON', IS_VALID],
 };
 
-export const CHAIN_COMPARISONS = {
+export const CHAIN_COMPARISONS: Readonly<Record<ChainLibrary, readonly string[]>> = {
   luxon: ['diff', 'equals', 'toRelative'],
   dayjs: ['isBefore', 'isAfter', 'isSame', 'diff'],
 };
