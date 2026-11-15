@@ -6,6 +6,7 @@ import {
   commonSummary,
   readUnchangedShards as readShardsUnchanged,
 } from './read-shards.mts';
+import type { MetadataMap } from '../execution/report/analyzer-metadata.mts';
 import { parseArguments as readArguments } from './arguments.mts';
 import {
   policyHash,
@@ -29,7 +30,7 @@ export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-sh
 export { planAnalyzerShards } from './sharding.mts';
 export { noChangesReport } from '../comparison/results.mts';
 export { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
-export { resolveMetadata } from './metadata.mts';
+export { resolveMetadata, resolvedExpectations } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
 type Warn = (message: string) => unknown;
@@ -110,6 +111,7 @@ type SummaryRequest = {
   readonly configOverrides: unknown[];
   readonly newFindings: readonly Entry[];
   readonly toolErrors: readonly Entry[];
+  readonly metadata?: MetadataMap;
 };
 
 export function configuredAnalyzers(): readonly Analyzer[] {
@@ -158,13 +160,14 @@ export function aggregateSummary({
   configOverrides,
   newFindings,
   toolErrors,
+  metadata,
 }: SummaryRequest): Entry {
   const toolsByName = new Map(
     shardReports.flatMap(({ summary }) => summary.tools.map((tool) => [tool.name, tool])),
   );
   return {
     ...commonSummary(firstSummary(shardReports)),
-    policyHash: policyHash(analyzers, configOverrides),
+    policyHash: policyHash(analyzers, configOverrides, metadata),
     ...summaryFields(configOverrides, firstSummary(shardReports)),
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),

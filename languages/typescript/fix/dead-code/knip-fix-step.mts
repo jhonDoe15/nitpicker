@@ -1,12 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath as untypedContainedPath } from '../../../../core/fix/common/contained-path.mjs';
-import {
-  fixerError as untypedFixerError,
-  runFixCommand as untypedRunFixCommand,
-} from '../../../../core/fix/common/fix-command.mjs';
-import { readBytes as untypedReadBytes } from '../../../../core/fix/common/fix-files.mjs';
-import { formatNotes as untypedFormatNotes } from '../../../../core/fix/common/fix-notes.mjs';
 import { snapshotOf as untypedSnapshotOf } from '../../../../core/fix/engine/edits/snapshot.mjs';
 import {
   PACKAGE_ROOT,
@@ -25,12 +18,19 @@ import { spawnedEntryFiles } from '../../adapters/dependency-graph/spawned-entri
 import { KNIP_TOOL } from '../../preset/project-tools/project-config-files.mjs';
 import { projectToolLayer as untypedProjectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
 import { layoutKnipConfig as untypedLayoutKnipConfig } from '../../preset/tool-configs.mjs';
-import { guardDeletions as untypedGuardDeletions } from '../project/dead-files/dead-file-guard.mjs';
-import { copyProject as untypedCopyProject } from './project-copy.mjs';
-import { knipFixTypes as untypedKnipFixTypes } from './knip-fix-types.mjs';
+import { guardDeletions as untypedGuardDeletions } from '../project/dead-files/dead-file-guard.mts';
+import {
+  containedPath,
+  fixerError,
+  formatNotes,
+  readBytes,
+  runFixCommand,
+  type Bytes,
+} from '../typed/fix-views.mts';
+import { copyProject as untypedCopyProject } from './project-copy.mts';
+import { knipFixTypes as untypedKnipFixTypes } from './knip-fix-types.mts';
 
 type Planned = { readonly name: string; readonly edit: FixEdit; readonly deleted: boolean };
-type Bytes = ReadonlyMap<string, Buffer>;
 type KnipLayer = Parameters<typeof layeredKnipConfig>[1];
 type KnipBase = { readonly entry: readonly string[]; readonly [key: string]: unknown };
 
@@ -40,29 +40,6 @@ export type KnipFixSettings = FixSettings & {
   readonly policyEnvironment: NodeJS.ProcessEnv;
 };
 
-const containedPath: (root: string, name: string) => string = untypedContainedPath;
-const fixerError: (tool: string, error: unknown) => unknown = untypedFixerError;
-const runFixCommand: (command: {
-  readonly operation: string;
-  readonly command: string;
-  readonly args: readonly string[];
-  readonly cwd: string;
-  readonly acceptedStatuses: readonly number[];
-  readonly environment: NodeJS.ProcessEnv;
-  readonly input: undefined;
-  readonly executeFixCommand: FixSettings['executeFixCommand'];
-}) => unknown = untypedRunFixCommand;
-const readBytes: (projectRoot: string, files: readonly FixFile[]) => Bytes = untypedReadBytes;
-const formatNotes: (
-  tool: string,
-  outcome: {
-    readonly rewritten: readonly string[];
-    readonly changedMeanwhile: readonly string[];
-    readonly unwritable: readonly string[];
-    readonly unformattable: readonly string[];
-    readonly keptAsIs: readonly string[];
-  },
-) => string[] = untypedFormatNotes;
 const snapshotOf: (bytes: Bytes) => unknown = untypedSnapshotOf;
 const resolveKnip: (
   name: string,
