@@ -4,7 +4,7 @@ import { prettierPrecedence as untypedPrecedence } from '../../languages/typescr
 import {
   isIgnoredByLayers as untypedIsIgnoredByLayers,
   layeredPrettierOptions as untypedLayeredOptions,
-} from '../../languages/typescript/adapters/prettier/prettier-layers.mjs';
+} from '../../languages/typescript/adapters/prettier/prettier-layers.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../shared/values/readers.mts';
 
 export type PolicyOptions = Readonly<Record<string, unknown>>;
