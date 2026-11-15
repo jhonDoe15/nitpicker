@@ -3,7 +3,7 @@ import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-multiple-collection-joins.mjs';
+import { rule } from './no-multiple-collection-joins.mts';
 import { ormProject } from './test-support/orm-stubs.mts';
 
 const MANIFEST = JSON.stringify({ dependencies: { '@mikro-orm/core': '^6.0.0' } });
