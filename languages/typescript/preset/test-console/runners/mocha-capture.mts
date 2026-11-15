@@ -13,7 +13,7 @@ import type {
   Place,
   Tracking,
 } from './mocha-types.mts';
-import { loadMochaClass } from '../../../adapters/test-runners/mocha/mocha-files.config.mjs';
+import { loadMochaClass } from '../../../adapters/test-runners/mocha/mocha-files.config.mts';
 
 const loadMochaClassTyped: (script: string) => Promise<MochaClass> = loadMochaClass;
 const recordConsoleTyped: (
