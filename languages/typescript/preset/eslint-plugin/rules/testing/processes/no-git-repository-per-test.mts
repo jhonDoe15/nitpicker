@@ -1,21 +1,23 @@
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
+import type { ModuleBindings, Subprocess } from '../../analysis/subprocess-calls.mts';
 import {
   describeSubprocess,
   describeWrapperCall,
   gitSubcommand,
   perTestVisitors,
   subprocessBindings,
-} from '../../analysis/test-code-analysis.mjs';
+} from '../../analysis/test-code-analysis.mts';
 
 const REPOSITORY_CREATING_SUBCOMMANDS = new Set(['init', 'clone']);
 
-function createsRepository(described) {
+function createsRepository(described: Pick<Subprocess, 'command' | 'tokens'> | undefined): boolean {
   return (
     described?.command === 'git' &&
     REPOSITORY_CREATING_SUBCOMMANDS.has(gitSubcommand(described.tokens) ?? '')
   );
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'repositoryPerTest'> = {
   meta: {
     type: 'problem',
     schema: [],
@@ -25,16 +27,19 @@ export const rule = {
     },
   },
   create(context) {
-    let bindings = { named: new Map(), namespaces: new Set() };
+    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
         bindings = subprocessBindings(node);
       },
       ...perTestVisitors(context, (node) => {
-        if (node.type !== 'CallExpression') return undefined;
+        if (node.type !== AST_NODE_TYPES.CallExpression) {
+          return undefined;
+        }
         const direct = describeSubprocess(context, node, bindings);
-        if (direct)
+        if (direct !== undefined) {
           return createsRepository(direct) ? { messageId: 'repositoryPerTest' } : undefined;
+        }
         return createsRepository(describeWrapperCall(context, node, bindings))
           ? { messageId: 'repositoryPerTest' }
           : undefined;

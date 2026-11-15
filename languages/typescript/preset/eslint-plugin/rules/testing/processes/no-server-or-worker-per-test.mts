@@ -1,16 +1,19 @@
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
+import type { ModuleBindings } from '../../analysis/subprocess-calls.mts';
 import {
   importedCalleeName,
   moduleBindings,
   perTestVisitors,
-} from '../../analysis/test-code-analysis.mjs';
+} from '../../analysis/test-code-analysis.mts';
 
 const SERVER_MODULES = new Set(
   ['http', 'https', 'http2', 'net', 'tls'].flatMap((name) => [name, `node:${name}`]),
 );
 const WORKER_MODULES = new Set(['worker_threads', 'node:worker_threads']);
+const SERVER_PER_TEST = 'serverPerTest';
 const SERVER_FACTORIES = new Set(['createServer', 'createSecureServer']);
 
-export const rule = {
+export const rule: TSESLint.RuleModule<'serverPerTest'> = {
   meta: {
     type: 'problem',
     schema: [],
@@ -20,8 +23,8 @@ export const rule = {
     },
   },
   create(context) {
-    let servers = { named: new Map(), namespaces: new Set() };
-    let workers = { named: new Map(), namespaces: new Set() };
+    let servers: ModuleBindings = { named: new Map(), namespaces: new Set() };
+    let workers: ModuleBindings = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
         servers = moduleBindings(node, SERVER_MODULES);
@@ -30,19 +33,19 @@ export const rule = {
       ...perTestVisitors(context, (node) => {
         const name = importedCalleeName(
           node.callee,
-          node.type === 'NewExpression' ? workers : servers,
+          node.type === AST_NODE_TYPES.NewExpression ? workers : servers,
         );
-        if (node.type === 'CallExpression' && SERVER_FACTORIES.has(name ?? '')) {
-          return { messageId: 'serverPerTest' };
+        if (node.type === AST_NODE_TYPES.CallExpression && SERVER_FACTORIES.has(name ?? '')) {
+          return { messageId: SERVER_PER_TEST };
         }
-        if (node.type === 'NewExpression' && name === 'Worker') {
-          return { messageId: 'serverPerTest' };
+        if (node.type === AST_NODE_TYPES.NewExpression && name === 'Worker') {
+          return { messageId: SERVER_PER_TEST };
         }
         if (
-          node.type === 'NewExpression' &&
+          node.type === AST_NODE_TYPES.NewExpression &&
           importedCalleeName(node.callee, servers) === 'Server'
         ) {
-          return { messageId: 'serverPerTest' };
+          return { messageId: SERVER_PER_TEST };
         }
         return undefined;
       }),

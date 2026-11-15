@@ -1,16 +1,39 @@
+import type { JSONSchema, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { fixable } from '../../../fixes/support/descriptors.mjs';
-import { replacing } from '../../../fixes/support/ranges.mjs';
-import { readLayout } from '../../../../head-policy.mjs';
-import { scanDomEvidence } from './dom-evidence.mjs';
-import { closureUsesDom, setupUsesDom } from './module-closure.mjs';
+import { fixable } from '../../../fixes/support/descriptors.mts';
+import { replacing } from '../../../fixes/support/ranges.mts';
+import { readLayout } from '../../typed/policy-views.mts';
+import type { SourceCode } from '../../typed/node-views.mts';
+import { scanDomEvidence } from './dom-evidence.mts';
+import { closureUsesDom, setupUsesDom, type ModuleAlias } from './module-closure.mts';
+
+type MessageId =
+  'unusedDirectiveEnvironment' | 'unusedDirectiveOverDomProject' | 'unusedProjectEnvironment';
+type AliasFind = string | { readonly pattern: string; readonly flags?: string };
+type EnvironmentOptions = {
+  readonly environment?: string;
+  readonly setupFiles?: readonly string[];
+  readonly aliases?: readonly { readonly find: AliasFind; readonly replacement: string }[];
+};
+type Options = readonly [EnvironmentOptions?];
+type Declared = {
+  readonly directive: string;
+  readonly name: string;
+  readonly loc: TSESTree.SourceLocation | undefined;
+  readonly nameRange: TSESTree.Range;
+};
+type Reported = {
+  readonly messageId: MessageId;
+  readonly data: Readonly<Record<string, string | undefined>>;
+  readonly loc?: TSESTree.SourceLocation;
+};
 
 const layout = readLayout();
 const DOM_ENVIRONMENTS = new Set(['jsdom', 'happy-dom']);
 const ENVIRONMENT_DIRECTIVE = /@(vitest|jest)-environment\s+([\w-]+)\b/u;
 const EXCEPTION_HINT =
   'An exception fits only when the file uses the DOM in a way nitpicker cannot see.';
-const ALIAS_FIND = {
+const ALIAS_FIND: JSONSchema.JSONSchema4 = {
   anyOf: [
     { type: 'string' },
     {
@@ -22,37 +45,46 @@ const ALIAS_FIND = {
   ],
 };
 
-function projectRelative(filename, cwd) {
+function isDomEnvironment(name: string | undefined): boolean {
+  return name !== undefined && DOM_ENVIRONMENTS.has(name);
+}
+
+function projectRelative(filename: string, cwd: string): string {
   const relative = path.relative(cwd, filename).split(path.sep).join('/');
-  if (!relative.startsWith('..')) return relative;
+  if (!relative.startsWith('..')) {
+    return relative;
+  }
   const roots = [...layout.sourceRoots, ...layout.testRoots];
   const root = roots.find((candidate) => filename.includes(`/${candidate}/`));
   return root === undefined ? relative : filename.slice(filename.indexOf(`/${root}/`) + 1);
 }
 
-function declaredEnvironment(sourceCode) {
+function declaredEnvironment(sourceCode: SourceCode): Declared | undefined {
   const match = ENVIRONMENT_DIRECTIVE.exec(sourceCode.text);
-  if (match === null) return undefined;
+  const [, tool, name] = match ?? [];
+  if (match === null || tool === undefined || name === undefined) {
+    return undefined;
+  }
   const comment = sourceCode
     .getAllComments()
     .find((candidate) => candidate.range[0] <= match.index && match.index < candidate.range[1]);
   const nameEnd = match.index + match[0].length;
   return {
-    directive: `@${match[1]}-environment`,
-    name: match[2],
+    directive: `@${tool}-environment`,
+    name,
     loc: comment?.loc,
-    nameRange: [nameEnd - match[2].length, nameEnd],
+    nameRange: [nameEnd - name.length, nameEnd],
   };
 }
 
-function bundlerAliases(options) {
+function bundlerAliases(options: EnvironmentOptions | undefined): ModuleAlias[] {
   return (options?.aliases ?? []).map(({ find, replacement }) => ({
     find: typeof find === 'string' ? find : new RegExp(find.pattern, find.flags),
     replacement,
   }));
 }
 
-function mayUseDom(filename, text, aliases) {
+function mayUseDom(filename: string, text: string, aliases: readonly ModuleAlias[]): boolean {
   const evidence = scanDomEvidence(text, filename);
   return (
     evidence.usesDom ||
@@ -61,19 +93,25 @@ function mayUseDom(filename, text, aliases) {
   );
 }
 
-function projectSetupUsesDom(options, cwd, aliases) {
+function projectSetupUsesDom(
+  options: EnvironmentOptions | undefined,
+  cwd: string,
+  aliases: readonly ModuleAlias[],
+): boolean {
   return (
-    DOM_ENVIRONMENTS.has(options?.environment) &&
-    setupUsesDom(options?.setupFiles ?? [], cwd, aliases)
+    isDomEnvironment(options?.environment) && setupUsesDom(options?.setupFiles ?? [], cwd, aliases)
   );
 }
 
-function reportFor(declared, projectEnvironment) {
+function reportFor(
+  declared: Declared | undefined,
+  projectEnvironment: string | undefined,
+): Reported {
   if (declared === undefined) {
     return { messageId: 'unusedProjectEnvironment', data: { environment: projectEnvironment } };
   }
   return {
-    messageId: DOM_ENVIRONMENTS.has(projectEnvironment)
+    messageId: isDomEnvironment(projectEnvironment)
       ? 'unusedDirectiveOverDomProject'
       : 'unusedDirectiveEnvironment',
     data: { environment: declared.name, directive: declared.directive },
@@ -81,7 +119,7 @@ function reportFor(declared, projectEnvironment) {
   };
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<MessageId, Options> = {
   meta: {
     type: 'problem',
     fixable: 'code',
@@ -112,17 +150,25 @@ export const rule = {
   },
   create(context) {
     const filename = context.filename;
-    if (!layout.isRunnableTestFile(projectRelative(filename, context.cwd))) return {};
+    if (!layout.isRunnableTestFile(projectRelative(filename, context.cwd))) {
+      return {};
+    }
     const sourceCode = context.sourceCode;
     return {
       'Program:exit'(program) {
         const options = context.options[0];
         const declared = declaredEnvironment(sourceCode);
         const environment = declared?.name ?? options?.environment;
-        if (!DOM_ENVIRONMENTS.has(environment)) return;
+        if (!isDomEnvironment(environment)) {
+          return;
+        }
         const aliases = bundlerAliases(options);
-        if (mayUseDom(filename, sourceCode.text, aliases)) return;
-        if (projectSetupUsesDom(options, context.cwd, aliases)) return;
+        if (mayUseDom(filename, sourceCode.text, aliases)) {
+          return;
+        }
+        if (projectSetupUsesDom(options, context.cwd, aliases)) {
+          return;
+        }
         const plan =
           declared?.loc === undefined ? undefined : replacing(declared.nameRange, 'node');
         context.report(
