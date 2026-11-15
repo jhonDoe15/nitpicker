@@ -4,7 +4,7 @@ import {
   exceptionSentence,
 } from '../../../../../shared/messages/exception-sentence.mjs';
 import { areaRank } from './finding-areas.mts';
-import { singleLine } from '../text.mjs';
+import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 

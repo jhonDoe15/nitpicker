@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { withHint } from '../../rules/rule-hints.mjs';
 import { readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { failureOf } from '../test-support/runs/failure-of.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();

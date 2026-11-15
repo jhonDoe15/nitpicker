@@ -1,7 +1,7 @@
 import {
   nestedCheckout as untypedNestedCheckout,
   useGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../../core/diff/git/test-support/git-checkout.mts';
 import { useTempProjects } from '../rules/test-support/temp-projects.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { describe, expect, it } from 'vitest';

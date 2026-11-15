@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import { mutationMarkerFindings as untypedFindings } from './mutation-markers.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

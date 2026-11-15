@@ -1,18 +1,19 @@
 import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { fixTypeScript } from '../../languages/typescript/fix/typescript-fix.mts';
-import { dryRun as untypedDryRun } from './dry-run/dry-run.mjs';
+import { dryRun as untypedDryRun } from './dry-run/dry-run.mts';
 import {
   createJournal as untypedCreateJournal,
   journalWriter as untypedJournalWriter,
-} from './dry-run/journal.mjs';
+} from './dry-run/journal.mts';
 import { fixerError as untypedFixerError } from './common/fix-command.mjs';
 import { directWriter as untypedDirectWriter } from './engine/writer.mjs';
-import { lowerBaseline as untypedLowerBaseline } from './all-files/lower-baseline.mjs';
-import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mjs';
-import { languageFixers as untypedLanguageFixers } from './language-fixers.mjs';
-import { ALL_RECIPES } from './engine/all-recipes.mjs';
-import { emptyRuleNotes as untypedEmptyRuleNotes } from './status/rule-notes.mjs';
+import { lowerBaseline as untypedLowerBaseline } from './all-files/lower-baseline.mts';
+import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mts';
+import { languageFixers as untypedLanguageFixers } from './language-fixers.mts';
+import { ALL_RECIPES } from './engine/all-recipes.mts';
+import { emptyRuleNotes as untypedEmptyRuleNotes } from './status/rule-notes.mts';
+import type { Journal } from './dry-run/journal-types.mts';
 import type {
   DryRunPlan,
   FixInvocation,
@@ -24,7 +25,6 @@ import type {
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
 type Executor = (invocation: FixInvocation) => unknown;
-type Journal = object;
 type RolledBack = { readonly files: readonly string[]; readonly recipe: string };
 
 type RunOptions = {

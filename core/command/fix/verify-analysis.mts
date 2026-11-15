@@ -3,7 +3,7 @@ import path from 'node:path';
 import { applyRunProfile } from '../../quick/profile.mts';
 import { runQualitySnapshot } from '../../snapshot/run-snapshot.mts';
 import { selectAnalyzers } from '../../diff/execution/run-analyzers.mts';
-import { analyzersToVerify } from '../../fix/verify/analyzer-names.mjs';
+import { analyzersToVerify } from '../../fix/verify/analyzer-names.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { realTemporaryDirectory } from '../../tooling/temporary-files.mjs';
 import { TEMPORARY_WORKTREE_PREFIX } from '../../diff/git/repository/worktree.mjs';

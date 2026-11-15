@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { startedPythonFiles } from './started-files.mjs';
 
 const { temporaryRoot } = useGitFixtures();

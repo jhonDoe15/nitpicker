@@ -36,7 +36,8 @@ export type ComparisonRequest = {
   readonly toolErrors: ReportEntry[];
   readonly baseToHeadRenames?: Moves | undefined;
   readonly baseToHeadDirectories?: Moves | undefined;
-  readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
+  readonly touchedCode?:
+    { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
 };
 
 export type FindingComparison = {
