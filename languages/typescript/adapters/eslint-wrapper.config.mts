@@ -1,8 +1,11 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mjs';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
+
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 const DEFAULT_EXPORT = 'default';
 
@@ -16,11 +19,15 @@ const layeredPolicy: (
 const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');
 const projectRoot = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_ROOT');
 const projectConfigPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_CONFIG');
-const policyModule: unknown = await import(pathToFileURL(policyConfigPath).href);
+const policyModule: unknown = await import(
+  pathToFileURL(checkoutModulePath(policyConfigPath)).href
+);
 
 const extraPolicyPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG');
 const extraPolicyModule: unknown =
-  extraPolicyPath === undefined ? undefined : await import(pathToFileURL(extraPolicyPath).href);
+  extraPolicyPath === undefined
+    ? undefined
+    : await import(pathToFileURL(checkoutModulePath(extraPolicyPath)).href);
 
 if (!(
   Array.isArray(fieldOf(policyModule, DEFAULT_EXPORT)) &&

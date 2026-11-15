@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
 import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
-import { analyzeTestRuntime as untypedAnalyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mjs';
+import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mts';
 
 type Layout = ReturnType<typeof untypedResolveLayout>;
 type Edge = [string, string] | [string, string, string[]];
@@ -31,19 +31,10 @@ type EntryOptions = {
   readonly foundationDirectories: Set<string>;
   readonly compositionRoots?: Set<string>;
 };
-type TestRuntimeUsage = { readonly category: string; readonly subprocessBridges: string[] };
+type TestRuntimeUsage = ReturnType<typeof analyzeTestRuntime>['tests'][number];
 
 const analyzeEntryPoints: (graph: Graph, sourceRoot: string, options: EntryOptions) => EntryReport =
   untypedAnalyzeEntryPoints;
-const analyzeTestRuntime: (
-  graph: Graph,
-  options: {
-    readonly layout: Layout;
-    readonly productionRoot: string;
-    readonly sourceTexts?: Map<string, string>;
-  },
-) => { readonly tests: TestRuntimeUsage[]; readonly findings: unknown[] } =
-  untypedAnalyzeTestRuntime;
 const resolveLayout: (
   config?: object,
   roots?: string[],
@@ -223,7 +214,7 @@ function bridgeUsage(text: string, layout: Layout): TestRuntimeUsage {
   const test = 'test/app.test.js';
   const [usage] = analyzeTestRuntime(
     { modules: [{ source: test, dependencies: [] }] },
-    { layout, productionRoot: 'src/main', sourceTexts: new Map([[test, text]]) },
+    { layout, productionRoots: ['src/main'], sourceTexts: new Map([[test, text]]) },
   ).tests;
   if (usage === undefined) {
     throw new Error('No test runtime usage was reported');
@@ -278,7 +269,7 @@ describe('test runtime of a JavaScript project', () => {
   it('counts a JavaScript test that imports production code', () => {
     const report = analyzeTestRuntime(graphOf([['test/app.test.js', 'src/main/app.js']]), {
       layout: javascriptLayout,
-      productionRoot: 'src/main',
+      productionRoots: ['src/main'],
     });
     expect(report.tests.map((entry) => entry.category)).toEqual(['direct-production-runtime']);
     expect(report.findings).toEqual([]);

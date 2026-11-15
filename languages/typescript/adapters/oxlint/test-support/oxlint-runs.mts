@@ -4,7 +4,7 @@ import { parseJson, textOf } from '../../../../../shared/values/readers.mts';
 export type LintProjectRequest = {
   readonly root: string;
   readonly patterns: readonly string[];
-  readonly projectConfigName?: string;
+  readonly projectConfigName?: string | undefined;
   readonly runEslintCli?: RunEslintCli;
 };
 

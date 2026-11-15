@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../../test-support/fixture-project.mts';
-import { copy, loader, pair, twoMethods } from '../test-support/sources.mts';
+import { built, copy, loader, pair, twoMethods, typed } from '../test-support/sources.mts';
 import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mts';
 
 const projects = useFixtureProjects();
@@ -46,6 +46,20 @@ function moduleLoad(name: string, path: string): string {
   return loader(name, `require('${path}')`);
 }
 
+function described(name: string, type: string): string {
+  return `export function ${name}(limit: ${type}, items: string[]): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    if (out.length < items.length) {
+      out.push(item + limit.toString());
+    }
+  }
+  out.reverse();
+  return out;
+}
+`;
+}
+
 function note(line: number, reason: string): string[] {
   return [`--fix left src/a.ts:${String(line)} near-duplicate: ${reason}`];
 }
@@ -67,6 +81,31 @@ describe('nearDuplicateExtractRecipe declines', () => {
   });
 
   it.each([
+    [
+      'a generic type that differs in its name',
+      `${typed('topLists', 'Array<string>')}\n${typed('topSets', 'Set<string>')}`,
+      note(12, 'the copies use different types'),
+    ],
+    [
+      'a qualified type name',
+      `declare namespace Shapes { type Round = string; type Flat = string }\n${typed('topRound', 'Shapes.Round')}\n${typed('topFlat', 'Shapes.Flat')}`,
+      note(2, 'the copies use different types'),
+    ],
+    [
+      'a body that needs members of the differing type',
+      `${typed('topStrings', 'string', { guard: ' && item.length > 0' })}\n${typed('topBytes', 'Uint8Array', { guard: ' && item.length > 0' })}`,
+      note(1, 'the change would add errors to src/a.ts'),
+    ],
+    [
+      'a member read on a value of the differing type',
+      `${described('describeText', 'string')}\n${described('describeCount', 'number')}`,
+      note(1, 'the change would add errors to src/a.ts'),
+    ],
+    [
+      'a constructor that differs',
+      `class Foo { constructor(readonly value: string) {} }\nclass Bar { constructor(readonly value: string) {} }\n${built('buildFoos', 'Foo')}\n${built('buildBars', 'Bar')}`,
+      note(3, 'the copies differ in a part that is not a plain value'),
+    ],
     [
       'name collision',
       `${pair()}\nexport const sharedAlignTop = 1;\n`,
@@ -114,5 +153,23 @@ describe('nearDuplicateExtractRecipe declines', () => {
     ],
   ])('leaves the source untouched for %s', (_name, source, notes) => {
     expect(outcome({ 'src/a.ts': source })).toEqual({ source, notes });
+  });
+
+  it('leaves JavaScript copies that construct different classes alone', () => {
+    const plain = (name: string, constructor: string) =>
+      built(name, constructor)
+        .replace('items: string[], limit: number): object[]', 'items, limit)')
+        .replace('picked: object[]', 'picked');
+    const source = `class Foo { constructor(value) { this.value = value; } }\nclass Bar { constructor(value) { this.value = value; } }\n${plain('buildFoos', 'Foo')}\n${plain('buildBars', 'Bar')}`;
+    const result = projects.fix(
+      { 'src/a.js': source },
+      { recipe, rule: 'structure/near-duplicate' },
+    );
+    expect([result.tree['src/a.js'], result.notes]).toEqual([
+      source,
+      [
+        '--fix left src/a.js:3 near-duplicate: the copies differ in a part that is not a plain value',
+      ],
+    ]);
   });
 });

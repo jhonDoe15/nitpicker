@@ -26,11 +26,15 @@ function freshName(stem, taken) {
   return candidates.find((name) => !taken.has(name));
 }
 
-export function namedHoles(holes, taken, stemOf) {
+export function declineNote({ path, line }, reason) {
+  return `--fix left ${path}:${line} near-duplicate: ${reason}`;
+}
+
+export function nameHoles(holes, taken, stemOf) {
   const names = new Set(taken);
   const named = [];
   for (const hole of holes) {
-    const name = freshName(stemOf(hole.occurrences[0].a), names);
+    const name = freshName(stemOf(hole), names);
     if (name === undefined) {
       return undefined;
     }
@@ -38,8 +42,4 @@ export function namedHoles(holes, taken, stemOf) {
     named.push({ ...hole, name });
   }
   return named;
-}
-
-export function declineNote({ path, line }, reason) {
-  return `--fix left ${path}:${line} near-duplicate: ${reason}`;
 }

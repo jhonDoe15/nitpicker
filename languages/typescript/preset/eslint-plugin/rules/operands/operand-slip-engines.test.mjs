@@ -2,6 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, describe, expect, it } from 'vitest';
+import { checkoutModuleUrl } from '../../../../../../shared/paths/checkout-module.mjs';
 import { normalizeEslintResults } from '../../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../../adapters/oxlint/oxlint-runner.mts';
 import { createProject } from '../../../../adapters/oxlint/test-support/oxlint-project.mts';
@@ -10,7 +11,9 @@ const RULE = 'nitpicker/no-operand-slip';
 const PATTERNS = ['src/**/*.{ts,mjs}', 'test/**/*.{ts,mjs}'];
 
 function policy({ javascript }) {
-  const logic = import.meta.resolve('../../../eslint-config/logic/logic-rules.mjs');
+  const logic = checkoutModuleUrl(
+    new URL('../../../eslint-config/logic/logic-rules.mjs', import.meta.url),
+  ).href;
   const layoutModule = import.meta.resolve('../../../layout.mjs');
   const dialect = import.meta.resolve('../../../../../javascript/preset/eslint-dialect.mjs');
   return `import { logicConfigFor } from ${JSON.stringify(logic)};

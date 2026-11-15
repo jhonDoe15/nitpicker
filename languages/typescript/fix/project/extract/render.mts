@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Hole, NamedHole } from './typed/extract-types.mts';
-import { namedHoles } from './typed/typed-views.mts';
+import { nameHoles as sharedNameHoles } from './typed/typed-views.mts';
 import { descendants } from './syntax.mts';
 
 const ts = typescriptApi();
@@ -38,7 +38,40 @@ export function nameHoles(
   holes: readonly Hole[],
   taken: Iterable<string>,
 ): NamedHole[] | undefined {
-  return namedHoles(holes, taken, flowName);
+  return sharedNameHoles(holes, taken, (hole) => flowName(hole.occurrences[0].a));
+}
+
+const TYPE_NAMES = [
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z',
+  ...Array.from({ length: 20 }, (_, index) => `T${String(index + 1)}`),
+];
+
+export function nameTypeHoles(
+  holes: readonly Hole[],
+  taken: ReadonlySet<string>,
+): NamedHole[] | undefined {
+  const free = TYPE_NAMES.filter((name) => !taken.has(name));
+  if (holes.length > free.length) {
+    return undefined;
+  }
+  return holes.flatMap((hole, index) => {
+    const name = free[index];
+    return name === undefined ? [] : [{ ...hole, name }];
+  });
+}
+
+export function typeArgumentText(
+  hole: Hole,
+  side: 0 | 1,
+  sourceFile: TypeScript.SourceFile,
+): string {
+  return hole.occurrences[0][side === 0 ? 'a' : 'b'].getText(sourceFile).replaceAll(/\s+/gu, ' ');
 }
 
 export function replacedText(
@@ -47,11 +80,13 @@ export function replacedText(
   sourceFile: TypeScript.SourceFile,
 ): string {
   const replacements = holes.flatMap((hole) =>
-    hole.occurrences.map(({ a }) => ({
-      start: a.getStart(sourceFile) - range.start,
-      end: a.end - range.start,
-      text: hole.kind === 'thunk' ? `${hole.name}()` : hole.name,
-    })),
+    hole.occurrences
+      .filter(({ a }) => a.getStart(sourceFile) >= range.start && a.end <= range.end)
+      .map(({ a }) => ({
+        start: a.getStart(sourceFile) - range.start,
+        end: a.end - range.start,
+        text: hole.kind === 'thunk' ? `${hole.name}()` : hole.name,
+      })),
   );
   return replacements
     .toSorted((left, right) => right.start - left.start)

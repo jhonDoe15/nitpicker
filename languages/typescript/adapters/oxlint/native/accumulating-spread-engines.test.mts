@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
 import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
   accumulatingSpreadMessages,
@@ -37,7 +38,9 @@ const OWNED_ENGINE_FILES = [
 ];
 
 function presetUrl(file: string) {
-  return JSON.stringify(import.meta.resolve(`../../../preset/${file}`));
+  return JSON.stringify(
+    checkoutModuleUrl(new URL(import.meta.resolve(`../../../preset/${file}`))).href,
+  );
 }
 
 function policy({ javascript }: { readonly javascript: boolean }) {
@@ -310,18 +313,18 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     });
     const hashOf = () => hashFiles(cacheKeyFiles, [], { root: copy });
     const before = analyzerOf(hashOf());
-    cache.write(before, { findings: oxlintFindings });
+    cache.write(before, { findings: oxlintFindings }, undefined);
     const hashes = OWNED_ENGINE_FILES.map((file) => {
       writeFileSync(path.join(copy, file), `export const changed = ${JSON.stringify(file)};\n`);
       return hashOf();
     });
 
     expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
-    expect(ruleFindings(cache.read(before)?.findings ?? [])).toEqual(
+    expect(ruleFindings(cache.read(before, undefined)?.findings ?? [])).toEqual(
       ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
     );
     expect(new Set([before.configurationHash, ...hashes]).size).toBe(OWNED_ENGINE_FILES.length + 1);
-    expect(hashes.map((hash) => cache.read(analyzerOf(hash)))).toEqual(
+    expect(hashes.map((hash) => cache.read(analyzerOf(hash), undefined))).toEqual(
       OWNED_ENGINE_FILES.map(() => undefined),
     );
   });

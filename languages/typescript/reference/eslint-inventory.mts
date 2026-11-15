@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { fieldOf } from '../../../shared/values/readers.mts';
@@ -35,11 +36,14 @@ type ProjectVariant = {
 };
 
 export const ESLINT_CONFIGS: readonly (readonly [string, URL])[] = [
-  ['eslint-lint', new URL('../preset/defaults/eslint.config.mjs', import.meta.url)],
-  ['eslint-errors', new URL('errors.config.mjs', POLICIES)],
-  ['eslint-logging', new URL('logging.config.mjs', POLICIES)],
-  ['eslint-module-effects', new URL('module-effects.config.mjs', POLICIES)],
-  ['coding-standards', new URL('coding-standards.config.mjs', POLICIES)],
+  [
+    'eslint-lint',
+    checkoutModuleUrl(new URL('../preset/defaults/eslint.config.mjs', import.meta.url)),
+  ],
+  ['eslint-errors', checkoutModuleUrl(new URL('errors.config.mjs', POLICIES))],
+  ['eslint-logging', checkoutModuleUrl(new URL('logging.config.mjs', POLICIES))],
+  ['eslint-module-effects', checkoutModuleUrl(new URL('module-effects.config.mjs', POLICIES))],
+  ['coding-standards', checkoutModuleUrl(new URL('coding-standards.config.mjs', POLICIES))],
 ];
 
 const REACT_PACKAGES = { react: '^19.0.0', 'react-dom': '^19.0.0', 'react-intl': '^7.0.0' };
@@ -212,7 +216,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const configs = await Promise.all(
     ESLINT_CONFIGS.map(async ([tool, url]): Promise<ConfigEntry> => [
       tool,
-      configOfModule(await import(url.href)),
+      configOfModule(await import(checkoutModuleUrl(url).href)),
     ]),
   );
   const inventory = await inventoryOfConfigs({

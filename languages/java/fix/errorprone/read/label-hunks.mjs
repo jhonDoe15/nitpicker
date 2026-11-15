@@ -4,18 +4,28 @@ function distance(hunk, line) {
   return Math.min(...changedLines(hunk).map((changed) => Math.abs(changed - line)));
 }
 
-export function labelOf(hunk, diagnostics, checks) {
+function nearestDiagnostic(hunk, diagnostics, checks) {
   const wanted = new Set(checks);
-  const nearby = diagnostics
+  return diagnostics
     .filter(({ check }) => wanted.has(check))
     .map((diagnostic) => ({ ...diagnostic, gap: distance(hunk, diagnostic.line) }))
-    .toSorted((left, right) => left.gap - right.gap);
-  return nearby[0]?.check ?? (checks.length === 1 ? checks[0] : undefined);
+    .reduce((best, next) => (best === undefined || next.gap < best.gap ? next : best), undefined);
+}
+
+export function labelOf(hunk, diagnostics, checks) {
+  return (
+    nearestDiagnostic(hunk, diagnostics, checks)?.check ??
+    (checks.length === 1 ? checks[0] : undefined)
+  );
 }
 
 export function labelHunks(hunks, diagnostics, checks) {
   return hunks.flatMap((hunk) => {
-    const label = labelOf(hunk, diagnostics, checks);
-    return label === undefined ? [] : [{ label, hunk }];
+    const nearest = nearestDiagnostic(hunk, diagnostics, checks);
+    const label = nearest?.check ?? (checks.length === 1 ? checks[0] : undefined);
+    if (label === undefined) {
+      return [];
+    }
+    return [nearest === undefined ? { label, hunk } : { label, hunk, line: nearest.line }];
   });
 }

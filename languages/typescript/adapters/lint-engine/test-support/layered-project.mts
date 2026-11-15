@@ -5,7 +5,7 @@ import path from 'node:path';
 import { vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.mjs';
-import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mjs';
+import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mts';
 import { createProject } from '../../oxlint/test-support/oxlint-project.mts';
 import { runLintEngine } from '../lint-engine.mts';
 import { resolveHeadPolicy, type TestHeadPolicy } from './engine-views.mts';

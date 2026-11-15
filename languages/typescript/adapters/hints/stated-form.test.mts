@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout as untypedDefaultLayout } from '../../preset/layout.mjs';
-import { strictPresetConfig as untypedStrictPresetConfig } from '../../preset/eslint-config/strict.mjs';
+import { defaultResolvedLayout } from '../../preset/layout.mjs';
+import { strictPresetConfig } from '../../preset/eslint-config/strict.mts';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { routedEslintFields } from './test-support/hint-input.mts';
 import { statedAllowedForm, withStatedForm } from './stated-form.mts';
 
-const defaultResolvedLayout: unknown = untypedDefaultLayout;
-const strictPresetConfig: (
-  layout: unknown,
-  settings: object,
-  options: { readonly react: boolean },
-) => readonly { readonly rules?: Readonly<Record<string, unknown>> }[] = untypedStrictPresetConfig;
 const PLUGIN_RULES = ['no-comments', 'no-magic-numbers', 'no-production-console'];
 const UNREPORTED_MESSAGES = new Set(['no-magic-numbers useConst']);
 const PLACEHOLDER = /\{\{\s*(\w+)\s*\}\}/gu;
@@ -31,8 +25,8 @@ function pluginMessages(): [string, string, string][] {
 }
 
 function restrictedSyntaxMessages(): [string, string, string][] {
-  const configs = [false, true].flatMap((react) =>
-    strictPresetConfig(defaultResolvedLayout, {}, { react }),
+  const configs = [{}, { react: true } as const].flatMap((options) =>
+    strictPresetConfig(defaultResolvedLayout, {}, options),
   );
   const messages = configs.flatMap((config) => {
     const setting = config.rules?.['no-restricted-syntax'];

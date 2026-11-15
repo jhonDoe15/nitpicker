@@ -2,6 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
 import { oxlintOptions, residualRecorder, type ResidualRun } from '../test-support/oxlint-runs.mts';
@@ -22,11 +23,16 @@ afterAll(() => {
 });
 
 const preset = path.join(packageRoot, 'languages/typescript/preset');
+
+function presetModule(file: string): string {
+  return JSON.stringify(checkoutModulePath(`${preset}/${file}`));
+}
+
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
-  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react/react-scope.mjs`)};`,
-  `import { strictSyntaxConfigFor } from ${JSON.stringify(`${preset}/eslint-config/strict.mjs`)};`,
-  `import { resolveLayout } from ${JSON.stringify(`${preset}/layout.mjs`)};`,
+  `import { reactScopeConfigFor } from ${presetModule('eslint-config/react/react-scope.mjs')};`,
+  `import { strictSyntaxConfigFor } from ${presetModule('eslint-config/strict.mjs')};`,
+  `import { resolveLayout } from ${presetModule('layout.mjs')};`,
   'const parserOptions = { project: true, tsconfigRootDir: import.meta.dirname };',
   'export default [',
   "  { files: ['**/*.{ts,tsx}'], languageOptions: { parser: tseslint.parser, parserOptions } },",

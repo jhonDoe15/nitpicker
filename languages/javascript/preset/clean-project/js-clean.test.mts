@@ -1,16 +1,16 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
-  createGitTemplate,
-  findingsSchemaErrors,
   git,
   readReport,
   runNitpicker,
-} from './test-support/clean-project-views.mts';
+} from '../../../typescript/preset/clean-projects/test-support/clean-project.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
@@ -190,7 +190,13 @@ describe('the js-clean fixture project', () => {
   });
 
   function createProject(files: Record<string, string> = {}) {
-    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'js-clean', files });
+    const root = createCleanProject({
+      fixtureRoot,
+      gitTemplateRoot,
+      name: 'js-clean',
+      files,
+      environment: process.env,
+    });
     temporaryRoots.push(root);
     return root;
   }
@@ -388,10 +394,15 @@ it('fails on purpose', () => {
     }
 
     beforeAll(() => {
-      sharedRoot = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'js-clean' });
+      sharedRoot = createCleanProject({
+        fixtureRoot,
+        gitTemplateRoot,
+        name: 'js-clean',
+        environment: process.env,
+      });
       writeFileSync(legacyTarget(), legacy);
-      git(sharedRoot, 'add', '-A');
-      git(sharedRoot, 'commit', '-q', '-m', 'legacy violation');
+      git(sharedRoot, process.env, 'add', '-A');
+      git(sharedRoot, process.env, 'commit', '-q', '-m', 'legacy violation');
     });
 
     afterAll(() => {
@@ -399,7 +410,7 @@ it('fails on purpose', () => {
     });
 
     function runDifference(branch: string, edit: (text: string) => string) {
-      git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
+      git(sharedRoot, process.env, 'switch', '-q', '-f', '-c', branch, 'main');
       writeFileSync(legacyTarget(), edit(legacy));
       const result = runNitpicker(sharedRoot, [
         '--base',
