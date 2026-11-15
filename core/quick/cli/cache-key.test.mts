@@ -1,20 +1,12 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { cacheKey, createFindingsCache } from '../../diff/cache/findings-cache.mts';
 import type { AnalyzerReport } from '../../../shared/values/findings.mts';
 import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 import { analyzerAt } from '../../configuration/test-support/analyzer-access.mts';
 import { applyRunProfile } from '../profile.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
-const temporaryRoots: string[] = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function languageAnalyzer(name: string): ProfiledAnalyzer & { readonly version: string } {
   return {
@@ -55,8 +47,7 @@ describe('quick mode in the findings cache key', () => {
   });
 
   it('never serves a quick entry to a full run or a full entry to a quick run', () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-quick-cache-'));
-    temporaryRoots.push(directory);
+    const directory = temporaryRoot('nitpicker-quick-cache-');
     const cache = createFindingsCache({ store: undefined, directory, ...key });
     const full = languageAnalyzer('java');
     const quick = quickOf(full);
