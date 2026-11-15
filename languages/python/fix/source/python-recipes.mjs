@@ -27,7 +27,7 @@ const TABLE = [
   { id: 'python-mutmut-pragma', tool: 'mutmut', rule: 'mutant-ignored', safety: REVIEW },
 ];
 
-function declineNote({ rule, path: name, line, reason }) {
+export function declineNote({ rule, path: name, line, reason }) {
   return `--fix left ${name}:${String(line)} ${rule} as is: ${reason}`;
 }
 

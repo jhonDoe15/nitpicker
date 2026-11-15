@@ -200,6 +200,7 @@ function unwrappedReferences(root: string, file: string): string[] {
       const breaks =
         source !== target &&
         !line.includes('checkoutModuleUrl(') &&
+        !(lines[index - 1] ?? '').trimEnd().endsWith('checkoutModuleUrl(') &&
         !existsSync(repositoryFile(root, target)) &&
         existsSync(repositoryFile(root, source));
       return breaks ? [`${file}:${String(index + 1)} ${specifier}`] : [];

@@ -1,5 +1,6 @@
 export function filesEnvironment(files) {
   return {
+    files: () => Object.keys(files).toSorted(),
     read: (name) => files[name],
     exists: (name) => Object.hasOwn(files, name),
     list: (name) =>

@@ -1,0 +1,165 @@
+import type { FailureMessageCase } from './typed/case-types.mts';
+import tseslint from 'typescript-eslint';
+import { reactSyntaxConfigFor } from '../../eslint-config/react/react-scope.mts';
+import { defaultResolvedLayout } from '../../layout.mjs';
+import { browserCases } from './react/browser-cases.mts';
+import { componentTestCases } from './react/component-test-cases.mts';
+import { correctnessCases } from './react/correctness-cases.mts';
+import { exceptionHintCases } from './react/exception-hint-cases.mts';
+
+type ReactRow = readonly [name: string, banned: string, allowed: string, styling?: Styling];
+
+type Styling = 'class-names' | 'css-in-js' | 'inline-style';
+
+type ReactConfigs = Readonly<Record<Styling, unknown>>;
+
+const CSS_IN_JS = 'css-in-js';
+const INLINE_STYLE_BOX = "export const Box = () => <div style={{ color: 'red' }} />;";
+const DATA_FETCH_IN_EFFECT = `useEffect(() => { fetch(\`/items/\${a}\`); }, [a]);`;
+const filename = 'src/main/ui/fixture.tsx';
+const parserConfig = { languageOptions: { parser: tseslint.parser } };
+
+async function reactConfigsFor(): Promise<ReactConfigs> {
+  return {
+    'class-names': [parserConfig, ...(await reactSyntaxConfigFor(defaultResolvedLayout))],
+    [CSS_IN_JS]: [
+      parserConfig,
+      ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: CSS_IN_JS })),
+    ],
+    'inline-style': [
+      parserConfig,
+      ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: 'inline-style' })),
+    ],
+  };
+}
+
+function reactCase(
+  configs: ReactConfigs,
+  [name, banned, allowed, styling = 'class-names']: ReactRow,
+): FailureMessageCase {
+  return { name: `react: ${name}`, config: configs[styling], filename, banned, allowed };
+}
+
+const testFilename = 'test/ui/panel.test.tsx';
+const testingLibraryImport = [
+  "import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import userEvent from '@testing-library/user-event';",
+  '',
+].join('\n');
+
+function reactTestCase(
+  configs: ReactConfigs,
+  [name, banned, allowed]: ReactRow,
+): FailureMessageCase {
+  return {
+    name: `react test: ${name}`,
+    config: configs['class-names'],
+    filename: testFilename,
+    banned: `${testingLibraryImport}${banned}`,
+    allowed,
+  };
+}
+
+function panel(body: string): string {
+  return `export function Panel({ a }) { ${body} return <div />; }`;
+}
+
+const exclusivePair =
+  'export function Panel({ a, b }) { if (a && b) { throw new Error("both"); } return <div />; }';
+
+const reactSyntaxRows = [
+  [
+    'class component names function components',
+    "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
+    'function components',
+  ],
+  ['conditional hook names the same call order', panel('if (a) { useState(1); }'), 'same order'],
+  [
+    'hard-coded color names the theme',
+    "export const Dot = () => <svg fill='#336699' />;",
+    'theme or design-system palette',
+  ],
+  [
+    'missing effect dependency names when an exception fits',
+    panel('useEffect(() => { log(a); }, []);'),
+    'deliberately left out',
+  ],
+  ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
+  [
+    'index key names a stable id',
+    'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
+    'stable id',
+  ],
+  [
+    'index key names when an exception fits',
+    'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
+    'static list that never changes order',
+  ],
+  [
+    'derived state names computing during render',
+    panel('const [x, setX] = useState(0); useEffect(() => { setX(a * 2); }, [a]);'),
+    'during render',
+  ],
+  [
+    'derived state names when an exception fits',
+    panel('const [x, setX] = useState(0); useEffect(() => { setX(a * 2); }, [a]);'),
+    'external system',
+  ],
+  ['data fetching in an effect names a query library', panel(DATA_FETCH_IN_EFFECT), 'useQuery'],
+  [
+    'data fetching in an effect names when an exception fits',
+    panel(DATA_FETCH_IN_EFFECT),
+    'analytics beacon',
+  ],
+  ['inline style names className', INLINE_STYLE_BOX, '`className`'],
+  ['inline style names the runtime-value form', INLINE_STYLE_BOX, 'values computed at runtime'],
+  [
+    'another styling approach names the styling setting',
+    "import styled from 'styled-components';",
+    '"styling" under "react"',
+  ],
+  [
+    'CSS-in-JS import names className',
+    "import styled from 'styled-components';",
+    'CSS Modules or utility classes',
+  ],
+  [
+    'inline style names styled components when the project uses CSS-in-JS',
+    INLINE_STYLE_BOX,
+    'styled components',
+    CSS_IN_JS,
+  ],
+  [
+    'stylesheet import names styled components when the project uses CSS-in-JS',
+    "import './box.css';",
+    'styled components',
+    CSS_IN_JS,
+  ],
+  [
+    'stylesheet import names inline style objects when the project uses them',
+    "import './box.css';",
+    'inline `style` objects',
+    'inline-style',
+  ],
+  [
+    'image without alt names the alt prop',
+    "export const Logo = () => <img src='logo.png' />;",
+    'alt prop',
+  ],
+  [
+    'click handler on a div names the keyboard listener',
+    'export const Box = ({ open }) => <div onClick={open} />;',
+    'keyboard listener',
+  ],
+] as const;
+
+export async function reactFailureMessageCases(): Promise<FailureMessageCase[]> {
+  const configs = await reactConfigsFor();
+  return [
+    ...[...reactSyntaxRows, ...correctnessCases, ...browserCases].map((row) =>
+      reactCase(configs, row),
+    ),
+    ...componentTestCases.map((row) => reactTestCase(configs, row)),
+    ...exceptionHintCases,
+  ];
+}

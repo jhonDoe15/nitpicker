@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isStrictRule } from '../../typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../typescript/preset/strict-rules.mts';
 import { PYTHON_RULES_IDS, RULES_TOOL } from './rule-hints.mjs';
 import { isPythonTouchedRule } from './touched-rules.mjs';
 
