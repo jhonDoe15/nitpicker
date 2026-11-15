@@ -30,5 +30,7 @@ export function readJvmUnits(projectRoot, files) {
 
 export function readJavaExtractions(projectRoot, texts, mode) {
   const files = Object.keys(texts);
-  return files.length === 0 ? {} : runTrees({ root: projectRoot, files, texts, mode });
+  return files.length === 0
+    ? { fixes: [], notes: [] }
+    : runTrees({ root: projectRoot, files, texts, mode });
 }

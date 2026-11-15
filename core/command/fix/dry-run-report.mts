@@ -8,12 +8,14 @@ const PATCH_FILE = 'fix.patch';
 export const FIXES_FILE = 'fixes.json';
 const JSON_INDENT = 2;
 
-function fixLine(fix: PlannedFix): string {
+function fixLines(fix: PlannedFix): readonly string[] {
   if (fix.finding === undefined) {
-    return `${fix.tool ?? 'fixer'} would rewrite ${fix.files.join(', ')}`;
+    return [`${fix.tool ?? 'fixer'} would rewrite ${fix.files.join(', ')}`];
   }
-  const { tool, rule, path: name, line } = fix.finding;
-  return `${name}:${String(line)} ${tool}/${rule} (${fix.recipe ?? 'recipe'}, ${fix.safety})`;
+  return [fix.finding, ...(fix.alsoFindings ?? [])].map(
+    ({ tool, rule, path: name, line }) =>
+      `${name}:${String(line)} ${tool}/${rule} (${fix.recipe ?? 'recipe'}, ${fix.safety})`,
+  );
 }
 
 export function reportDryRun(stdout: TextOutput, outputRoot: string, plan: DryRunPlan): void {
@@ -22,11 +24,12 @@ export function reportDryRun(stdout: TextOutput, outputRoot: string, plan: DryRu
   mkdirSync(outputRoot, { recursive: true });
   writeFileSync(patchFile, plan.patch);
   writeFileSync(fixesFile, `${JSON.stringify({ fixes: plan.fixes }, undefined, JSON_INDENT)}\n`);
-  const lines = cappedLines(plan.fixes.map(fixLine), fixesFile)
+  const listed = plan.fixes.flatMap(fixLines);
+  const lines = cappedLines(listed, fixesFile)
     .map((line) => `  ${line}\n`)
     .join('');
   stdout.write(
-    `Fixes that --fix would apply (dry run, nothing was written to your files): ${String(plan.fixes.length)}\n${lines}`,
+    `Fixes that --fix would apply (dry run, nothing was written to your files): ${String(listed.length)}\n${lines}`,
   );
   stdout.write(`Patch: ${patchFile}\nFixes: ${fixesFile}\n`);
 }
