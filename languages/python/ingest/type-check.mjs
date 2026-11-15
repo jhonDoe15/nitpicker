@@ -6,7 +6,7 @@ const ERROR_CODE = /\s\[([\w-]+)\]$/;
 const FALLBACK_RULE = 'type-error';
 const ENFORCEABLE_SEVERITIES = new Set(['error', 'warning']);
 
-function projectPath(file, roots) {
+export function projectPath(file, roots) {
   return roots
     .map((root) => normalizeReportPath(file, root))
     .find((candidate) => candidate !== undefined);

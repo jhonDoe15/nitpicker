@@ -4,7 +4,7 @@ import { afterEach, vi } from 'vitest';
 import {
   installFakeToolchain,
   spawnFakeTools,
-} from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
+} from '../../../../languages/python/adapters/test-support/fake-toolchain.mts';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 
