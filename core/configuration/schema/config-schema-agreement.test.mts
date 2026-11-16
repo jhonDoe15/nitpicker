@@ -157,7 +157,7 @@ describe('config schema and validator agree', () => {
   it('on every convention definition with every preset', () => {
     const definitions = PRESETS.flatMap((preset) => conventionDefinitions(preset));
     const configs = definitions.flatMap((definition) =>
-      (definition.kind === 'names'
+      (definition.options === undefined
         ? [['assertThat'], [], ['not a name'], 'assertThat']
         : [...definition.options, '7', '250', '1000', 'unknown', 2]
       ).map((choice) => ({ conventions: { [definition.id]: choice } })),

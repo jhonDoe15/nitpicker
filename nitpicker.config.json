@@ -17,6 +17,7 @@
       "languages/typescript/adapters/eslint-wrapper.config.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
+      "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
