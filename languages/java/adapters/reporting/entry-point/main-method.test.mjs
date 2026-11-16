@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withoutMainMethodFindings } from './main-method.mjs';
+import { withoutMainMethodFindings } from './main-method.mts';
 
 const SOURCE = `package demo;
 

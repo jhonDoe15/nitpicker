@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
 import {
   isFormatting,
   MESSY,
@@ -10,7 +10,7 @@ import {
   ROOMY_SOURCE,
   summaryOf,
   withFourSpaces,
-} from '../test-support/style-sources.mjs';
+} from '../test-support/style-sources.mts';
 import {
   useMavenPresetProject,
   enabled,

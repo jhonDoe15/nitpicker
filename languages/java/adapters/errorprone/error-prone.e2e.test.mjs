@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
-import { readErrorProneFindings } from './java-errorprone.mjs';
+import { readErrorProneFindings } from './java-errorprone.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

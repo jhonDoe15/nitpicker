@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readErrorProneFindings } from '../java-errorprone.mjs';
+import { readErrorProneFindings } from '../java-errorprone.mts';
 
 const roots = [];
 afterEach(() => {

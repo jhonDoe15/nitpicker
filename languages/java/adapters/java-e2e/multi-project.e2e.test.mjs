@@ -14,7 +14,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
 import { POOL_PROTOCOL, writeEscape, writePool } from '../design/test-support/escape-sources.mjs';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 import { analyzeWithIncludedBuild, GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { pathsOutsideProject } from './test-support/project-paths.mjs';
 
