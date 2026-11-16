@@ -1,14 +1,7 @@
 import type { Node } from 'web-tree-sitter';
 import { depthFirst } from '../jvm-views.mts';
 import type { ClassScope, FileScope } from '../jvm-types.mts';
-import {
-  type ScopeParts,
-  codeChildren,
-  declaredClasses,
-  field,
-  present,
-  scopeOf,
-} from '../tree/nodes.mts';
+import { codeChildren, declaredClasses, field, present, fileScopeOf } from '../tree/nodes.mts';
 
 const DECLARATIONS = new Set([
   'variable_declaration',
@@ -64,24 +57,20 @@ function starsOf(program: Node): string[] {
     .map((child) => qualifiedText(present(codeChildren(child)[0])));
 }
 
-function classesOf(program: Node): string[] {
-  return declaredClasses(
-    program,
-    (node) => node.type === 'class_declaration' || node.type === 'object_declaration',
-    (node) => codeChildren(node).find((child) => child.type === 'identifier')?.text,
-  );
+function isClass(node: Node): boolean {
+  return node.type === 'class_declaration' || node.type === 'object_declaration';
 }
 
-const SCOPE_PARTS: ScopeParts = {
+function classNameOf(node: Node): string | undefined {
+  return codeChildren(node).find((child) => child.type === 'identifier')?.text;
+}
+
+export const fileScope = fileScopeOf({
   imports: importsOf,
   packageName: packageOf,
   stars: starsOf,
-  classes: classesOf,
-};
-
-export function fileScope(program: Node): FileScope {
-  return scopeOf(program, SCOPE_PARTS);
-}
+  classes: (program) => declaredClasses(program, isClass, classNameOf),
+});
 
 function nameOf(declaration: Node): string | undefined {
   const name = field(declaration, 'name');

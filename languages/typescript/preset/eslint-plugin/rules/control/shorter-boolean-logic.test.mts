@@ -1,8 +1,5 @@
-import {
-  decidedTester,
-  type TypedCase,
-  type TypedCaseWithErrors,
-} from '../decided/test-support/decided-tester.mts';
+import type { InvalidCase, TypedCase } from '../../test-support/typed-cases.mts';
+import { decidedTester } from '../decided/test-support/decided-tester.mts';
 import { rule } from './shorter-boolean-logic.mts';
 
 const { tester, typed: typedCase } = decidedTester({ module: 'esnext' });
@@ -10,8 +7,8 @@ const { tester, typed: typedCase } = decidedTester({ module: 'esnext' });
 type Found = readonly [condition: string, form: string, reason: string];
 
 function typed(code: string): TypedCase;
-function typed(code: string, found: Found): TypedCaseWithErrors;
-function typed(code: string, found?: Found): TypedCase | TypedCaseWithErrors {
+function typed(code: string, found: Found): InvalidCase;
+function typed(code: string, found?: Found): TypedCase | InvalidCase {
   if (found === undefined) {
     return typedCase(code);
   }

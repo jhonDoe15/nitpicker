@@ -1,15 +1,7 @@
 import type { Node } from 'web-tree-sitter';
 import { depthFirst } from '../jvm-views.mts';
-import type { ClassScope, FileScope, Names, ShapeNode, Unstable } from '../jvm-types.mts';
-import {
-  type ScopeParts,
-  codeChildren,
-  declaredClasses,
-  field,
-  present,
-  required,
-  scopeOf,
-} from './nodes.mts';
+import type { ClassScope, Names, ShapeNode, Unstable } from '../jvm-types.mts';
+import { codeChildren, declaredClasses, field, present, required, fileScopeOf } from './nodes.mts';
 
 const DECLARING = new Set([
   'formal_parameter',
@@ -98,24 +90,17 @@ function starsOf(program: Node): string[] {
     .map((text) => text.replaceAll(/\s+/gu, ''));
 }
 
-function classesOf(program: Node): string[] {
-  return declaredClasses(
-    program,
-    (node) => CLASS_DECLARATIONS.has(node.type),
-    (node) => field(node, 'name')?.text,
-  );
-}
-
-const SCOPE_PARTS: ScopeParts = {
+export const fileScope = fileScopeOf({
   imports: importsOf,
   packageName: packageOf,
   stars: starsOf,
-  classes: classesOf,
-};
-
-export function fileScope(program: Node): FileScope {
-  return scopeOf(program, SCOPE_PARTS);
-}
+  classes: (program) =>
+    declaredClasses(
+      program,
+      (node) => CLASS_DECLARATIONS.has(node.type),
+      (node) => field(node, 'name')?.text,
+    ),
+});
 
 function declaredFields(members: readonly Node[]): { names: string[]; isVolatile: boolean }[] {
   return members
