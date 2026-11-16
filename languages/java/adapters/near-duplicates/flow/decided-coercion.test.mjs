@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { decidedConditionFindings } from '../../../../shared/rules/decided/decided-conditions.mjs';
-import { javaParser, kotlinParser } from './test-support/parse-jvm.mjs';
+import { decidedConditionFindings } from '../../../../../shared/rules/decided/decided-conditions.mjs';
+import { javaParser, kotlinParser } from '../test-support/parse-jvm.mjs';
 
 const parsers = {};
 
