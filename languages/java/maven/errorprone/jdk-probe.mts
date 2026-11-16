@@ -12,8 +12,9 @@ export type JdkChoice =
   | { readonly java: string; readonly problem?: undefined }
   | { readonly problem: string; readonly java?: undefined };
 type Described = Installed & { readonly missing: boolean };
+export type JdkProbe = { readonly spawn: JavaSpawn; readonly environment: JavaEnvironment };
 type HomesOptions = {
-  readonly env?: JavaEnvironment;
+  readonly env: JavaEnvironment;
   readonly home?: string;
   readonly systemJdks?: readonly string[];
 };
@@ -38,10 +39,10 @@ function subdirectories(directory: string): string[] {
 }
 
 export function jdkHomes({
-  env = process.env,
+  env,
   home = homedir(),
   systemJdks = SYSTEM_JDKS,
-}: HomesOptions = {}): string[] {
+}: HomesOptions): string[] {
   const toolchains = path.join(home, '.m2', 'toolchains.xml');
   const declared = existsSync(toolchains)
     ? [...readFileSync(toolchains, 'utf8').matchAll(JDK_HOME)]
@@ -72,8 +73,8 @@ function describe(java: string, spawn: JavaSpawn): Described {
   return { java, missing: false, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
-export function installedJdks(spawn: JavaSpawn): Installed[] {
-  return jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', JAVA), spawn));
+export function installedJdks({ spawn, environment }: JdkProbe): Installed[] {
+  return jdkHomes({ env: environment }).map((jdk) => describe(path.join(jdk, 'bin', JAVA), spawn));
 }
 
 export function featureJdks(installed: readonly Installed[]): FeatureJdk[] {

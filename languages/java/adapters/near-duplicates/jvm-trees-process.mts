@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Parser } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { isText } from '../../../../shared/values/readers.mts';
 import { loadGrammar } from './grammar/load-grammar.mjs';
 import { kotlinUnits } from './kotlin/units.mjs';
 import { javaExtractions } from './extract/file-extractions.mjs';
@@ -19,10 +20,6 @@ const GRAMMARS = {
   java: javaUnits,
   kotlin: kotlinUnits,
 } as const;
-
-function isText(value: unknown): value is string {
-  return typeof value === 'string';
-}
 
 function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   if ('texts' in value && typeof value.texts === 'object' && value.texts !== null) {

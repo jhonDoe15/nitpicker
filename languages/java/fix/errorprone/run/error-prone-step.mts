@@ -20,7 +20,7 @@ export type PatchSettings = Pick<PatchRun, 'projectRoot' | 'environment' | 'exec
   readonly repositoryRoot: string;
   readonly headPolicy?: unknown;
   readonly selectedRules?: readonly string[];
-  readonly allFiles?: boolean;
+  readonly allFiles: boolean;
 };
 
 const JAVA_FILE = /\.java$/u;
@@ -74,7 +74,7 @@ export function errorPronePatch(
       files: javaFiles,
       baseSources: readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles }),
       live: liveTexts(projectRoot, javaFiles),
-      allFiles: settings.allFiles === true,
+      allFiles: settings.allFiles,
     });
     return new Map(
       javaFiles.flatMap(({ path: name }): [string, LabeledHunk[]][] => {

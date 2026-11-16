@@ -13,13 +13,13 @@ import {
   toolsKey,
 } from '../../maven/maven-tools.mjs';
 import { resolutionSettings } from './project-repositories.mts';
+import type { Environment } from '../../../../shared/processes/environment.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
-export type ToolSpec = { readonly coordinates: string; readonly transitive: boolean };
+type ToolSpec = { readonly coordinates: string; readonly transitive: boolean };
 export type Tools = Readonly<Record<string, ToolSpec>>;
 export type Classpaths = Record<string, readonly string[]>;
-export type Environment = Readonly<Record<string, string | undefined>>;
 type Resolution = {
   readonly projectRoot: string;
   readonly tools: Tools;

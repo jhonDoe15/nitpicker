@@ -23,9 +23,10 @@ type Deletion = {
   readonly span: unknown;
 };
 
-const RULE: RuleRef = { tool: 'facts', rule: String(DOC_COMMENT_RULE) };
+const JAVA_EXTENSION = '.java';
+const RULE: RuleRef = { tool: 'facts', rule: DOC_COMMENT_RULE };
 const ENTRIES: ReadonlyMap<string, unknown> = new Map<string, unknown>([
-  ['.java', javaDocCommentEntries],
+  [JAVA_EXTENSION, javaDocCommentEntries],
   ['.kt', kotlinDocCommentEntries],
 ]);
 const isCovered: (inputs: unknown, name: string) => boolean = untypedIsCovered;
@@ -84,11 +85,11 @@ function restatingRecipe({ id, preset, extensions }: Restating): FixRecipe {
 export const javaRestatingDocCommentRecipe = restatingRecipe({
   id: 'java-restating-doc-comment',
   preset: 'java',
-  extensions: ['.java'],
+  extensions: [JAVA_EXTENSION],
 });
 
 export const kotlinRestatingDocCommentRecipe = restatingRecipe({
   id: 'kotlin-restating-doc-comment',
   preset: 'kotlin',
-  extensions: ['.java', '.kt'],
+  extensions: [JAVA_EXTENSION, '.kt'],
 });

@@ -43,7 +43,11 @@ function runFormatter(
   const tool = fieldOf(formatter, 'tool');
   const flags = [...textsOf(fieldOf(formatter, 'flags')), ...textsOf(options['formatterFlags'])];
   return callUntyped(runJava, {
-    java: callUntyped(toolJava, { tool, level: callUntyped(sourceLevel, module['compiler']) }),
+    java: callUntyped(toolJava, {
+      tool,
+      level: callUntyped(sourceLevel, module['compiler']),
+      environment: options['environment'],
+    }),
     tool,
     classpath: fieldOf(options['tools'], textOf(fieldOf(formatter, 'classpath'))),
     jvmArgs: JAVAC_EXPORTS,

@@ -13,7 +13,7 @@ export type CompilerLevel = {
   readonly source: string | undefined;
   readonly target: string | undefined;
 };
-export type TestCompiler = CompilerLevel & { readonly compilerArgs: string[] };
+type TestCompiler = CompilerLevel & { readonly compilerArgs: string[] };
 export type CompilerSettings = TestCompiler & {
   readonly encoding: string | undefined;
   readonly proc: string | undefined;

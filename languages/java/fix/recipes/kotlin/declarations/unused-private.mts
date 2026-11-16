@@ -1,5 +1,5 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { closingIndex } from '../shared/kotlin-scan.mts';
+import { closingIndex, escapeRegExp } from '../shared/kotlin-scan.mts';
 import type { KotlinEdit, KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';
 
@@ -9,7 +9,8 @@ const ALLOWED = /^(?:ignored|expected|serialVersionUID)$/u;
 const FUNCTION = /^([ \t]*)private[ \t]+fun[ \t]+([A-Za-z]\w*)[ \t]*\(/gmu;
 
 function mentions(source: string, name: string): number {
-  return [...source.matchAll(new RegExp(String.raw`(?<![\w])${name}(?![\w])`, 'gu'))].length;
+  return [...source.matchAll(new RegExp(String.raw`(?<![\w])${escapeRegExp(name)}(?![\w])`, 'gu'))]
+    .length;
 }
 
 function bareAbove(code: string, index: number): boolean {

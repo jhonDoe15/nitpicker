@@ -17,7 +17,7 @@ import {
   rewrittenPaths,
   runRecipes,
   sharedInputs,
-} from '../../../core/fix/typed/fix-common.mts';
+} from '../../../core/fix/typed/fix-pipeline.mts';
 import type {
   FixFile,
   FixOutcome,

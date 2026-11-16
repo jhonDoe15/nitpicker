@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../programs/java-command.mts';
-import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import type { ToolClasspaths } from '../typed/kotlin-types.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { minimumJava } from '../errorprone/maven-jdk.mts';
@@ -22,6 +22,7 @@ type EffectsContext = {
   readonly options?: readonly string[] | undefined;
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly environment: JavaEnvironment;
 };
 type EngineRequest = Pick<EffectsContext, 'module' | 'tools' | 'pinned' | 'spawn' | 'timeoutMs'> & {
   readonly java: string;
@@ -90,13 +91,14 @@ function engineClasses({ module, tools, pinned, spawn, timeoutMs, java }: Engine
 }
 
 export function runEffects(context: EffectsContext): void {
-  const { module, reportDir, tools, spawn, timeoutMs } = context;
+  const { module, reportDir, tools, spawn, timeoutMs, environment } = context;
   const output = path.join(reportDir, `${NAME}.json`);
   rmSync(output, { force: true });
   const { java, problem } = minimumJava({
     tool: TOOL,
     minimum: RELEASE,
     spawn: spawn ?? spawnSync,
+    environment,
   });
   if (problem !== undefined) {
     writeFileSync(

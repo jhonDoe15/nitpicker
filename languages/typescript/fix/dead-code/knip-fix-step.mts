@@ -19,14 +19,8 @@ import { KNIP_TOOL } from '../../preset/project-tools/project-config-files.mjs';
 import { projectToolLayer as untypedProjectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
 import { layoutKnipConfig as untypedLayoutKnipConfig } from '../../preset/tool-configs.mjs';
 import { guardDeletions as untypedGuardDeletions } from '../project/dead-files/dead-file-guard.mts';
-import {
-  containedPath,
-  fixerError,
-  formatNotes,
-  readBytes,
-  runFixCommand,
-  type Bytes,
-} from '../typed/fix-views.mts';
+import { containedPath, fixerError, formatNotes, runFixCommand } from '../typed/fix-views.mts';
+import { type Bytes, readBytes } from '../../../../core/fix/typed/fix-pipeline.mts';
 import { copyProject as untypedCopyProject } from './project-copy.mts';
 import { knipFixTypes as untypedKnipFixTypes } from './knip-fix-types.mts';
 

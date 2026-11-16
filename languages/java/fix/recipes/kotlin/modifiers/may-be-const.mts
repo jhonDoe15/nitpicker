@@ -36,7 +36,8 @@ function inObjectOrTop(code: string, depths: Int32Array, offset: number): boolea
 
 function isConstant(scanned: ScannedKotlin, from: number): boolean {
   const { code, source } = scanned;
-  const lineEnd = code.indexOf('\n', from) === -1 ? code.length : code.indexOf('\n', from);
+  const newline = code.indexOf('\n', from);
+  const lineEnd = newline === -1 ? code.length : newline;
   const text = source
     .slice(from, from + code.slice(from, lineEnd).trimEnd().length)
     .replace(/;$/u, '');

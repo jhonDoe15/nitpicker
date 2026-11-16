@@ -32,7 +32,7 @@ const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
-export type MavenModule = ModuleLayout &
+type MavenModule = ModuleLayout &
   JacocoSettings & {
     readonly basedir: string;
     readonly pomFile: string;

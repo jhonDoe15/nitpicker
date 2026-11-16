@@ -51,6 +51,21 @@ export function javaFormatterPlan(
       };
 }
 
+function writtenEntries(
+  directory: string,
+  sources: ReadonlyMap<string, string | Uint8Array>,
+): { readonly name: string; readonly relative: string }[] {
+  const entries = [...sources].map(([name, content], index) => ({
+    name,
+    content,
+    relative: `${String(index)}/${name.split('/').at(-1) ?? name}`,
+  }));
+  for (const { relative, content } of entries) {
+    writeWorkspaceFile(directory, relative, content);
+  }
+  return entries.map(({ name, relative }) => ({ name, relative }));
+}
+
 export function javaFormat({
   style,
   flags: optionFlags = [],
@@ -64,13 +79,7 @@ export function javaFormat({
   const flags = textsOf(fieldOf(formatter, 'flags'));
   return function format(sources) {
     return withWorkspace((directory) => {
-      const entries = [...sources.keys()].map((name, index) => ({
-        name,
-        relative: `${String(index)}/${name.split('/').at(-1) ?? name}`,
-      }));
-      for (const { name, relative } of entries) {
-        writeWorkspaceFile(directory, relative, sources.get(name) ?? '');
-      }
+      const entries = writtenEntries(directory, sources);
       const result = runFormatterJar({
         operation: OPERATION,
         tool: label,

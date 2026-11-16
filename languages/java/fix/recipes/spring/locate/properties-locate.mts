@@ -18,8 +18,11 @@ export function propertyAt(
   entry: { readonly key: string },
 ): Located | undefined {
   const first = table[lineNumber - 1];
-  const found = first === undefined ? null : KEY.exec(first.text);
-  if (first === undefined || found === null || found[2] !== entry.key) {
+  if (first === undefined) {
+    return undefined;
+  }
+  const found = KEY.exec(first.text) ?? undefined;
+  if (found?.[2] !== entry.key) {
     return undefined;
   }
   const last = lastLineOf(table, lineNumber - 1);
@@ -30,7 +33,7 @@ export function propertyAt(
   return {
     first: lineNumber - 1,
     last,
-    key: { start: keyStart, end: keyStart + (found[2] ?? '').length },
+    key: { start: keyStart, end: keyStart + entry.key.length },
     value: { start: valueStart, end: valueEnd, quote: '' },
   };
 }

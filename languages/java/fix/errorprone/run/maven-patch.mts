@@ -99,6 +99,7 @@ export function runMavenPatch({
       classpaths: classpathsOf(work, module),
       configs,
       spawn,
+      environment,
     });
   }
   return { patchRoot, reportRoot };

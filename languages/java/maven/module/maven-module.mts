@@ -69,7 +69,14 @@ function sourceTask(
 
 function runSourceTools(options: ModuleOptions): void {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
-  const base = { module, reportDir, tools, configs, timeoutMs: options['timeoutMs'] };
+  const base = {
+    module,
+    reportDir,
+    tools,
+    configs,
+    timeoutMs: options['timeoutMs'],
+    environment: options['environment'],
+  };
   const tasks = [
     sourceTask(runPmd, LINT_URL, {
       ...base,
@@ -151,6 +158,7 @@ export function analyzeModule(options: ModuleRequest): unknown {
   }
   const sourceJava = callUntyped(parserJava, {
     level: callUntyped(sourceLevel, module['compiler']),
+    environment: options['environment'],
   });
   const written = { ...fieldsOf(manifest), ...fieldsOf(fieldOf(kotlin, 'manifest')), sourceJava };
   callUntyped(writeManifest, {

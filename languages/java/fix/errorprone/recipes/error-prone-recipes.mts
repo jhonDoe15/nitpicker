@@ -34,8 +34,7 @@ function editOf(text: string, name: string, { hunk, line }: LabeledHunk): Placed
 }
 
 function fileFixes(
-  text: string,
-  name: string,
+  { path: name, text }: RecipeSource,
   hunks: readonly LabeledHunk[],
   { names, ruleFor }: Labels,
 ): RecipeFix[] {
@@ -58,10 +57,10 @@ function fixesOf(
   files: readonly RecipeSource[],
   labels: Labels,
 ): RecipeFix[] {
-  const texts = new Map(files.map(({ path: name, text }) => [name, text]));
+  const sources = new Map(files.map((source) => [source.path, source]));
   return [...entries].flatMap(([name, hunks]) => {
-    const text = texts.get(name);
-    return text === undefined ? [] : fileFixes(text, name, hunks, labels);
+    const source = sources.get(name);
+    return source === undefined ? [] : fileFixes(source, hunks, labels);
   });
 }
 

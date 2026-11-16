@@ -1,5 +1,5 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { closingIndex, enclosingOpen } from '../shared/kotlin-scan.mts';
+import { closingIndex, enclosingOpen, escapeRegExp } from '../shared/kotlin-scan.mts';
 import { indicesDown } from '../shared/spans.mts';
 
 const LOCAL_VAR = /(?<![\w.`])var([ \t]+)([A-Za-z_]\w*)[ \t]*(?::[^=\n(]+)?=(?!=)/gu;
@@ -35,7 +35,8 @@ function enclosingBlock(
     : { open, close };
 }
 
-function reassigned(rest: string, name: string): boolean {
+function reassigned(rest: string, raw: string): boolean {
+  const name = escapeRegExp(raw);
   const assignment = new RegExp(
     String.raw`(?<![\w.])${name}\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${name}\b|::\s*${name}\b`,
     'u',
@@ -43,7 +44,8 @@ function reassigned(rest: string, name: string): boolean {
   return assignment.test(rest);
 }
 
-function redeclared(block: string, name: string): boolean {
+function redeclared(block: string, raw: string): boolean {
+  const name = escapeRegExp(raw);
   const declared = new RegExp(
     String.raw`(?<![\w.])(?:val|var)\s+(?:\(.*\b${name}\b.*\)|${name}\b)`,
     'gu',

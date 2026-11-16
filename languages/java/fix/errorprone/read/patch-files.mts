@@ -78,11 +78,8 @@ function reportEntries(reportFile: string, projectRoot: string): Entry<Diagnosti
 }
 
 function grouped<T>(entries: readonly Entry<readonly T[]>[]): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
-  for (const [name, items] of entries) {
-    groups.set(name, [...(groups.get(name) ?? []), ...items]);
-  }
-  return groups;
+  const byName = Map.groupBy(entries, ([name]) => name);
+  return new Map([...byName].map(([name, group]) => [name, group.flatMap(([, items]) => items)]));
 }
 
 export function readPatches({

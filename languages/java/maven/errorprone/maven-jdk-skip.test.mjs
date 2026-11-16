@@ -43,11 +43,11 @@ describe('a Maven tool that finds no JDK to run on', () => {
   });
 
   it('is not skipped when the JDK fits the sources', () => {
-    expect(structureJava({ level: 17, spawn: oldJava }).feature).toBe(17);
+    expect(structureJava({ level: 17, spawn: oldJava, environment: {} }).feature).toBe(17);
   });
 
   it('skips the structure metrics when no JDK reads the sources', () => {
-    expect(() => structureJava({ level: 25, spawn: oldJava })).toThrow(
+    expect(() => structureJava({ level: 25, spawn: oldJava, environment: {} })).toThrow(
       /its sources are Java 25.*JDK 17/u,
     );
   });

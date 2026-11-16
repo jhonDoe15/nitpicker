@@ -228,6 +228,7 @@ function presetInWork(
     ...prepared,
     testsSkipped: timedOut.length > 0,
     pitDeadline,
+    environment,
     configs,
     policy,
     kotlin,
