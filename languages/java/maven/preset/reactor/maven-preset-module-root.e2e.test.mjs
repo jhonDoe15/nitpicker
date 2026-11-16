@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings, runJavaDiff } from '../../../adapters/java-diff.mjs';
+import { collectJavaFindings, runJavaDiff } from '../../../adapters/java-diff.mts';
 import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mjs';
 import {
   useMavenPresetProject,

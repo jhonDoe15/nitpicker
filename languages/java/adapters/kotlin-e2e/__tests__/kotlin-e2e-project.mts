@@ -3,7 +3,10 @@ import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { runJavaDiff as untypedRunJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff as typedRunJavaDiff } from '../../java-diff.mts';
+import { callUntyped } from '../../typed/java-values.mts';
+import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
 import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 
 export const kotlinE2eEnabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
@@ -32,7 +35,17 @@ export type DiffInput = {
   readonly policy: KotlinPolicy;
 };
 
-export const runJavaDiff: (input: DiffInput) => DiffResult = untypedRunJavaDiff;
+export function runJavaDiff(input: DiffInput): DiffResult {
+  const result = callUntyped(typedRunJavaDiff, input);
+  return {
+    ...fieldsOf(result),
+    newFindings: findingsOf(fieldOf(result, 'newFindings')),
+    newEnforceable: findingsOf(fieldOf(result, 'newEnforceable')),
+    unchangedFindings: findingsOf(fieldOf(result, 'unchangedFindings')),
+    toolErrors: findingsOf(fieldOf(result, 'toolErrors') ?? []),
+    failed: fieldOf(result, 'failed') === true,
+  };
+}
 const schemaChecked: (result: DiffResult) => DiffResult = untypedSchemaChecked;
 
 const GIT_TIMEOUT_MS = 30_000;

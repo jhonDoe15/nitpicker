@@ -2,7 +2,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
 import { jacocoPlugin } from './maven-tools.mjs';
-import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mjs';
+import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mts';
 
 const { reactor, soloModule, removeReactors } = reactorKit();
 

@@ -12,7 +12,7 @@ import {
   dependencyFile,
   dependencyListArguments,
   PROJECT_CHECKS_OFF,
-} from '../../../maven/maven-build.mjs';
+} from '../../../maven/quick/maven-build-arguments.mjs';
 import { runMaven } from '../../../maven/maven-command.mjs';
 import { readReactor } from '../../../maven/maven-project.mjs';
 import { resolveToolSet, toolDependencies } from '../../../maven/maven-tools.mjs';

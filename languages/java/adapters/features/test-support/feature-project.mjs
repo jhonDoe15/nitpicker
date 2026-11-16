@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { projectWideReport } from '../../../builds/project-wide.mjs';
+import { projectWideReport } from '../../../builds/project-wide.mts';
 
 function write(root, files) {
   for (const [name, text] of Object.entries(files)) {

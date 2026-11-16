@@ -6,8 +6,8 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mjs';
-import { gradlePitDeadlineMs, pitFailureFindings } from './pit-failure.mjs';
+import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mts';
+import { gradlePitDeadlineMs, pitFailureFindings } from './pit-failure.mts';
 
 const roots = [];
 

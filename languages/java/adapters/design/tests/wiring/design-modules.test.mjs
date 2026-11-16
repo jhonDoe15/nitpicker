@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DESIGN_FACTS_FAILURE_RULE, designFindings } from '../../design-findings.mjs';
-import { gradleDesignModules, mavenDesignModules } from '../../design-modules.mjs';
-import { sourceJava } from '../../producer/design-facts.mjs';
+import { DESIGN_FACTS_FAILURE_RULE, designFindings } from '../../design-findings.mts';
+import { gradleDesignModules, mavenDesignModules } from '../../design-modules.mts';
+import { sourceJava } from '../../producer/design-facts.mts';
 
 const REPORTS = 'target/nitpicker';
 const work = [];
