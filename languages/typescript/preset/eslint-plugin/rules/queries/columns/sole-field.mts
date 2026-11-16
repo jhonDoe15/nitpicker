@@ -15,7 +15,7 @@ function returnedValue(callback: FunctionNode): TSESTree.Node | undefined {
     : unwrapped(value);
 }
 
-export function soleField(callback: FunctionNode): string | undefined {
+function soleField(callback: FunctionNode): string | undefined {
   const [param] = callback.params;
   const value = returnedValue(callback);
   if (param?.type === AST_NODE_TYPES.Identifier) {

@@ -29,7 +29,9 @@ export const rule: TSESLint.RuleModule<'race', WriteOptions> = {
     },
   },
   create(context) {
-    const { orms = [], opensTransactions = false } = context.options[0] ?? {};
+    const { orms = [], opensTransactions } = context.options[0] ?? {
+      opensTransactions: false,
+    };
     if (orms.length === 0 || !opensTransactions) {
       return {};
     }

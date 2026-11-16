@@ -51,10 +51,7 @@ function sequelizeEscapes(found: OrmCall, { context, fn }: ClientScope): boolean
   return (
     options.type === AST_NODE_TYPES.ObjectExpression &&
     options.properties.every((property) => property.type === AST_NODE_TYPES.Property) &&
-    !options.properties.some(
-      (property) =>
-        property.type === AST_NODE_TYPES.Property && nameOf(property.key) === 'transaction',
-    )
+    !options.properties.some((property) => nameOf(property.key) === 'transaction')
   );
 }
 
@@ -116,7 +113,9 @@ export const rule: TSESLint.RuleModule<'escaped' | 'separate', WriteOptions> = {
     },
   },
   create(context) {
-    const { orms = [], opensTransactions = false } = context.options[0] ?? {};
+    const { orms = [], opensTransactions } = context.options[0] ?? {
+      opensTransactions: false,
+    };
     if (orms.length === 0) {
       return {};
     }

@@ -41,8 +41,6 @@ function methodJob(method: TSESTree.MethodDefinition, bindings: Bindings): strin
   const owner = method.parent.parent;
   const isProcessor =
     nameOf(method.key) === 'process' &&
-    (owner.type === AST_NODE_TYPES.ClassDeclaration ||
-      owner.type === AST_NODE_TYPES.ClassExpression) &&
     (decoratedWith(owner, new Map([['Processor', PROCESSOR_MODULES]]), bindings) !== undefined ||
       bindings.get(nameOf(owner.superClass) ?? '')?.module === BULLMQ_MODULE);
   return isProcessor ? 'queue processor `process`' : undefined;

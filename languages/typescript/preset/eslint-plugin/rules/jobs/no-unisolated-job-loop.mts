@@ -76,8 +76,12 @@ export const rule: TSESLint.RuleModule<
   },
   create(context) {
     return {
-      FunctionExpression: (node) => check(context, node),
-      ArrowFunctionExpression: (node) => check(context, node),
+      FunctionExpression: (node) => {
+        check(context, node);
+      },
+      ArrowFunctionExpression: (node) => {
+        check(context, node);
+      },
     };
   },
 };

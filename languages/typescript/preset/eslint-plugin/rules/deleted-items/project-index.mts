@@ -50,7 +50,7 @@ function narrowedHelper(
   checker: TypeScript.TypeChecker,
 ): { readonly key: string; readonly name: string } | undefined {
   const type = checker.getTypeAtLocation(call);
-  if (!checker.isArrayType(type) || !isReference(type)) {
+  if (!(checker.isArrayType(type) && isReference(type))) {
     return undefined;
   }
   const [element] = checker.getTypeArguments(type);

@@ -14,7 +14,7 @@ const { DefinitionType } = TSESLint.Scope;
 
 export type OrmCall = { readonly call: TSESTree.CallExpression; readonly site: FoundSite };
 export type WriteOptions = readonly [
-  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
+  { readonly orms?: readonly string[]; readonly opensTransactions: boolean }?,
 ];
 
 export const WRITE_OPTIONS_SCHEMA: JSONSchema.JSONSchema4[] = [

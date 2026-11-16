@@ -140,14 +140,13 @@ function idsOf(read: TSESTree.Node): TSESTree.CallExpression | undefined {
 
 function chainNames(call: TSESTree.CallExpression): (string | undefined)[] {
   const names: (string | undefined)[] = [];
-  let current: TSESTree.Node = call;
-  while (current.type === AST_NODE_TYPES.CallExpression) {
-    const callee: TSESTree.Node = unwrapped(current.callee);
-    if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-      break;
+  const pending: TSESTree.Node[] = [call];
+  for (const current of pending) {
+    const callee = current.type === AST_NODE_TYPES.CallExpression ? unwrapped(current.callee) : undefined;
+    if (callee?.type === AST_NODE_TYPES.MemberExpression) {
+      names.push(memberName(callee));
+      pending.push(unwrapped(callee.object));
     }
-    names.push(memberName(callee));
-    current = unwrapped(callee.object);
   }
   return names;
 }

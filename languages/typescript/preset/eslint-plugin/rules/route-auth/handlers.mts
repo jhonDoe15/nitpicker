@@ -75,8 +75,8 @@ function calleeLeaf(callee: TSESTree.Node): string | undefined {
   return callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : nameOf(callee);
 }
 
-function isRouterFactory(init: MaybeNode | null, bindings: Bindings): boolean {
-  const call = unwrapped(init ?? undefined);
+function isRouterFactory(init: MaybeNode, bindings: Bindings): boolean {
+  const call = unwrapped(init);
   if (call?.type !== AST_NODE_TYPES.CallExpression && call?.type !== AST_NODE_TYPES.NewExpression) {
     return false;
   }
@@ -109,7 +109,7 @@ function collectSyntax(
     if (
       node.type === AST_NODE_TYPES.VariableDeclarator &&
       node.id.type === AST_NODE_TYPES.Identifier &&
-      isRouterFactory(node.init, bindings)
+      isRouterFactory(node.init ?? undefined, bindings)
     ) {
       receivers.add(node.id.name);
     }

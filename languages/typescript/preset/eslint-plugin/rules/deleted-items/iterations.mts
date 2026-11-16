@@ -36,11 +36,7 @@ function isCallbackFunction(node: TypeScript.Node | undefined): node is Callback
 }
 
 function unparenthesized(node: TypeScript.Expression): TypeScript.Expression {
-  let current = node;
-  while (ts.isParenthesizedExpression(current)) {
-    current = current.expression;
-  }
-  return current;
+  return ts.isParenthesizedExpression(node) ? unparenthesized(node.expression) : node;
 }
 
 function isHelperReference(node: TypeScript.Expression): boolean {

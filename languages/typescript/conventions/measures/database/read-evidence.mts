@@ -31,10 +31,11 @@ function tableReads(text: string, file: string): TableEntry[] {
 
 function evidenceOf(entry: TableEntry, ordinal: number): string[] {
   const mark = String(ordinal);
+  const table = String(entry.table);
   return [
-    `read:${entry.table}#${mark}`,
-    ...[...entry.columns.values()].map((column) => `guard:${entry.table}:col:${column}#${mark}`),
-    ...[...entry.helpers].map((helper) => `guard:${entry.table}:fn:${helper}#${mark}`),
+    `read:${table}#${mark}`,
+    ...[...entry.columns.values()].map((column) => `guard:${table}:col:${column}#${mark}`),
+    ...[...entry.helpers].map((helper) => `guard:${table}:fn:${helper}#${mark}`),
   ];
 }
 
