@@ -41,6 +41,7 @@ import {
   suggestionOrAllowed,
   validateExceptions,
 } from './views/validation-views.mts';
+import { validateExtends, validateProjects } from './layers/settings.mjs';
 
 type OptionalValidator = (value: unknown, key: string, preset: string | undefined) => void;
 
@@ -57,6 +58,8 @@ const OPTIONAL_VALIDATORS: readonly (readonly [string, OptionalValidator])[] = [
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
   ['analyzerTimeoutMinutes', validateAnalyzerTimeouts],
+  ['extends', validateExtends],
+  ['projects', (projects: unknown) => validateProjects(projects, SUPPORTED_PRESETS)],
 ];
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
@@ -84,6 +87,8 @@ export const KEYS = [
   'conventions',
   'go',
   'history',
+  'extends',
+  'projects',
 ];
 
 export const REACT_KEYS = ['enabled', 'styling'];
@@ -119,7 +124,7 @@ export function validateConfig(input: unknown): NitpickerConfig {
   return config;
 }
 
-function validateKeys(config: NitpickerConfig): void {
+export function validateKeys(config: NitpickerConfig): void {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key) && key !== SCHEMA_KEY) {
       throw configError(`unknown key "${key}"${suggestionOrAllowed(key, [SCHEMA_KEY, ...KEYS])}`);

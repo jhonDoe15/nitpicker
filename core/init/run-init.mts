@@ -16,13 +16,17 @@ import { planPeers } from './peers/peer-plan.mts';
 import { skillSource } from './skill/skill-source.mts';
 import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mts';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mts';
+import { runMonorepoInit } from './monorepo/run-monorepo-init.mts';
+import type { MonorepoLayoutOf } from './monorepo/monorepo-types.mts';
 import type { TextOutput } from '../cli-context.mts';
+import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
 
 type InitCli = {
   readonly arguments_: readonly string[];
   readonly stdout: TextOutput;
   readonly nodeVersion?: string;
   readonly currentProjectRoot?: string | undefined;
+  readonly monorepoLayout?: MonorepoLayoutOf | undefined;
 };
 
 type InitOptions = { readonly agentsMd: boolean; readonly ci: readonly string[] };
@@ -33,16 +37,29 @@ type Target = readonly [root: string, relative: string];
 
 type Targets = { readonly repository: string; readonly workflowFile: string };
 
-export function runInitCommand(cli: InitCli): number {
-  const options = parseInitArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(INIT_USAGE_TEXT);
-    return 0;
-  }
+type InitRun = {
+  readonly projectRoot: string;
+  readonly repository: string;
+  readonly nodeVersion: string;
+  readonly options: InitOptions;
+};
+
+function prepared(cli: InitCli, options: InitOptions): InitRun {
   const nodeVersion = cli.nodeVersion ?? process.versions.node;
   assertSupportedNode(nodeVersion);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
   const repository = requireRepository(projectRoot);
+  checkTargets(projectRoot, options, {
+    repository,
+    workflowFile: workflowPath(projectRoot, repository),
+  });
+  return { projectRoot, repository, nodeVersion, options };
+}
+
+function initProject(
+  cli: InitCli,
+  { projectRoot, repository, nodeVersion, options }: InitRun,
+): number {
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
@@ -50,6 +67,23 @@ export function runInitCommand(cli: InitCli): number {
   cli.stdout.write(renderReport({ project, peers, ...files, skillSource: source }));
   const placed = [files.config, files.workflow, files.approval];
   return placed.some((result) => result?.status === 'differs') ? 1 : 0;
+}
+
+export function runInitCommand(cli: InitCli): number {
+  const options = parseInitArguments(cli.arguments_);
+  if (options.help) {
+    cli.stdout.write(INIT_USAGE_TEXT);
+    return 0;
+  }
+  const run = prepared(cli, options);
+  const layout = cli.monorepoLayout?.(run.projectRoot, run.repository);
+  if (layout === undefined) {
+    return initProject(cli, run);
+  }
+  const { projectRoot: root, repository, nodeVersion } = run;
+  const result = runMonorepoInit(layout, { root, repository, nodeVersion, options });
+  cli.stdout.write(result.text);
+  return result.exitCode;
 }
 
 function checkTargets(
@@ -67,7 +101,7 @@ function checkTargets(
   const agentTargets = options.agentsMd
     ? INSTRUCTION_FILES.map((name): Target => [projectRoot, name])
     : [];
-  const targets = [...ciTargets, ...agentTargets];
+  const targets = [[projectRoot, CONFIG_FILE_NAME] as const, ...ciTargets, ...agentTargets];
   for (const [root, relative] of targets) {
     assertNothingInTheWay(root, relative);
   }
@@ -80,7 +114,6 @@ function placeFiles(
 ): Omit<Placed, 'project' | 'peers' | 'skillSource'> {
   const context = { project, peers, version: packageVersion(), repository };
   const workflowFile = workflowPath(projectRoot, repository);
-  checkTargets(projectRoot, options, { repository, workflowFile });
   return {
     config: placeConfig(projectRoot, project.preset, project.settings),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),

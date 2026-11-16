@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { firstProjectFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { includedSourceBuilds } from '../../builds/gradle-scripts/included-builds.mjs';
 
 type Manifest = Readonly<Record<string, unknown>>;
 type ReportModule = Readonly<Record<string, unknown>> & {
@@ -119,13 +120,32 @@ function readModule(reportBase: string, preset: string, entry: unknown): ReportM
   };
 }
 
-export function readReportModules(reportBase: string, preset: string): ReportModules {
+const sourceBuildsOf: (directory: string) => readonly string[] = includedSourceBuilds;
+
+function includedBuildsHint(projectRoot: string | undefined): string {
+  const builds = projectRoot === undefined ? [] : sourceBuildsOf(projectRoot);
+  if (builds.length === 0) {
+    return '';
+  }
+  const listed = builds.map((build) => `"${build}"`).join(', ');
+  return (
+    `. The build includes the builds ${builds.join(', ')}, which hold the code: gate each as a project ` +
+    `of its own with "projects": [${listed}] in nitpicker.config.json`
+  );
+}
+
+export function readReportModules(
+  reportBase: string,
+  preset: string,
+  projectRoot?: string,
+): ReportModules {
   const listFile = path.join(reportBase, MODULES_FILE);
   const listed = existsSync(listFile) ? listOf(readJson(listFile)) : [];
   if (listed.length === 0) {
     const plugin = preset === 'kotlin' ? KOTLIN_PLUGINS : 'java';
     throw new Error(
-      `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
+      `The ${preset} preset found no Gradle project that applies the ${plugin} plugin` +
+        includedBuildsHint(projectRoot),
     );
   }
   const modules = listed

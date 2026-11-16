@@ -95,19 +95,21 @@ describe('resolveToolClasspaths', () => {
       ktlint: ['/fake/ktlint.jar'],
     });
     const [call] = tools.calls;
-    expect({ ...call, cwd: call.cwd.replace(GRADLE_TOOLS, '<tools>') }).toEqual({
+    const directory = call.cwd.replace(/\.staging-\w+$/u, '');
+    expect({ ...call, cwd: directory }).toEqual({
       operation: 'fix-tools',
       command: 'gradle',
       args: gradleToolArguments(TOOLS, call.cwd),
-      cwd: '<tools>',
+      cwd: expect.stringMatching(GRADLE_TOOLS),
       acceptedStatuses: [0],
       environment: {},
       input: undefined,
       timeout: TOOL_RESOLUTION_TIMEOUT_MS,
     });
+    expect(existsSync(call.cwd)).toBe(false);
     expect([
-      readFileSync(path.join(call.cwd, 'build.gradle'), 'utf8'),
-      readFileSync(path.join(call.cwd, 'settings.gradle'), 'utf8'),
+      readFileSync(path.join(directory, 'build.gradle'), 'utf8'),
+      readFileSync(path.join(directory, 'settings.gradle'), 'utf8'),
     ]).toEqual([
       readFileSync(FIX_TOOLS_BUILD, 'utf8'),
       [
@@ -136,37 +138,38 @@ describe('resolveToolClasspaths', () => {
       ].join('\n'),
     );
     writeFileSync(path.join(root, 'gradle.properties'), 'systemProp.https.proxyHost=proxy\n');
-    const calls = [];
+    const written = [];
 
     expect(() =>
       resolveToolClasspaths({
         projectRoot: root,
         tools: TOOLS,
-        executeFixCommand: (invocation) => {
-          calls.push(invocation);
+        executeFixCommand: ({ cwd }) => {
+          written.push([
+            readFileSync(path.join(cwd, 'settings.gradle.kts'), 'utf8'),
+            existsSync(path.join(cwd, 'settings.gradle')),
+            readFileSync(path.join(cwd, 'gradle.properties'), 'utf8'),
+          ]);
           return { status: 1, stdout: '', stderr: 'Could not resolve com.google' };
         },
       }),
     ).toThrow(
       'fix-tools failed: Could not resolve com.google (nitpicker resolves the formatter jars in its own build at ',
     );
-    const directory = calls[0].cwd;
-    expect([
-      readFileSync(path.join(directory, 'settings.gradle.kts'), 'utf8'),
-      existsSync(path.join(directory, 'settings.gradle')),
-      readFileSync(path.join(directory, 'gradle.properties'), 'utf8'),
-    ]).toEqual([
+    expect(written).toEqual([
       [
-        'rootProject.name = "nitpicker-fix-tools"',
-        'dependencyResolutionManagement {',
-        '    repositories {',
-        '        maven { url = uri("https://mirror.example/maven") }',
-        '    }',
-        '}',
-        '',
-      ].join('\n'),
-      false,
-      'systemProp.https.proxyHost=proxy\n',
+        [
+          'rootProject.name = "nitpicker-fix-tools"',
+          'dependencyResolutionManagement {',
+          '    repositories {',
+          '        maven { url = uri("https://mirror.example/maven") }',
+          '    }',
+          '}',
+          '',
+        ].join('\n'),
+        false,
+        'systemProp.https.proxyHost=proxy\n',
+      ],
     ]);
   });
   it('reuses the jars it resolved before while they still exist', () => {

@@ -105,7 +105,7 @@ function gradleFindings(
     reportBase,
     kotlinRun,
   });
-  const report: unknown = readReportModules(reportBase, preset);
+  const report: unknown = readReportModules(reportBase, preset, projectRoot);
   const duplicates = {
     reportRoot: reportBase,
     manifest: fieldOf(report, 'manifest'),
