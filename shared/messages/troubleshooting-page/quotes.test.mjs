@@ -156,11 +156,15 @@ function producedBy(quoted, code) {
 
 function runOwners(strings, wanted) {
   const owners = new Map([...wanted].map((run) => [run, new Set()]));
-  strings.forEach(({ text }, owner) => {
-    for (let start = 0; start + SHARED_RUN <= text.length; start += 1) {
-      owners.get(text.slice(start, start + SHARED_RUN))?.add(owner);
+  for (const [owner, { text }] of strings.entries()) {
+    const runs = Array.from(
+      { length: Math.max(0, text.length - SHARED_RUN + 1) },
+      (_unused, start) => text.slice(start, start + SHARED_RUN),
+    );
+    for (const run of runs) {
+      owners.get(run)?.add(owner);
     }
-  });
+  }
   return owners;
 }
 
