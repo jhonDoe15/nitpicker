@@ -6,22 +6,14 @@ import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
-  applyJavascriptDialect as untypedApplyJavascriptDialect,
+  applyJavascriptDialect,
   scriptRuleEntries,
-} from './eslint-dialect.mjs';
+} from './eslint-dialect.mts';
 
-type ConfigEntry = {
-  readonly files?: unknown[];
-  readonly ignores?: string[];
-  readonly rules?: Readonly<Record<string, unknown>>;
-};
+type ConfigEntry = Linter.Config;
 
 const strictPresetConfig: (layout: typeof defaultResolvedLayout, options: object) => ConfigEntry[] =
   untypedStrictPresetConfig;
-const applyJavascriptDialect: (
-  entries: ConfigEntry[],
-  policy: { readonly preset?: string } | undefined,
-) => ConfigEntry[] = untypedApplyJavascriptDialect;
 
 function isLinterConfig(value: unknown): value is Linter.Config {
   return typeof value === 'object' && value !== null;
@@ -59,7 +51,7 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('splits an entry the dialect changes: TypeScript files keep the TypeScript rules', () => {
-    const entry = {
+    const entry: ConfigEntry = {
       files: ['src/**'],
       rules: {
         '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
@@ -84,8 +76,8 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('keeps entries the dialect does not change as they are', () => {
-    const ignores = { ignores: ['dist/**'] };
-    const unchanged = { files: ['src/**'], rules: { 'no-undef': 'error' } };
+    const ignores: ConfigEntry = { ignores: ['dist/**'] };
+    const unchanged: ConfigEntry = { files: ['src/**'], rules: { 'no-undef': 'error' } };
     const result = applyJavascriptDialect([ignores, unchanged], javascript);
     expect(result[0]).toBe(ignores);
     expect(result[1]).toBe(unchanged);
@@ -93,7 +85,9 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('maps the comment, unknown, guard and module-load rules to JSDoc for JavaScript files only', () => {
-    const moduleEffects = { rules: { 'nitpicker/report-module-load-effects': 'error' } };
+    const moduleEffects: ConfigEntry = {
+      rules: { 'nitpicker/report-module-load-effects': 'error' },
+    };
     const mapped = applyJavascriptDialect([...strict, moduleEffects], javascript);
     const settings = Object.entries(JSDOC_RULE_OPTIONS).map(([rule, options]) => ({
       rule,
@@ -122,7 +116,7 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('does not turn a disabled mapped rule on', () => {
-    const entries = [
+    const entries: ConfigEntry[] = [
       {
         rules: {
           'nitpicker/no-comments': 'off',
@@ -177,7 +171,7 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('keeps severity and string selectors when filtering restrictions', () => {
-    const entries = [
+    const entries: ConfigEntry[] = [
       {
         rules: {
           'no-restricted-syntax': [
@@ -199,7 +193,7 @@ describe('applyJavascriptDialect', () => {
   });
 
   it('does not filter a no-restricted-syntax rule that is not an array', () => {
-    const entries = [{ rules: { 'no-restricted-syntax': 'off' } }];
+    const entries: ConfigEntry[] = [{ rules: { 'no-restricted-syntax': 'off' } }];
     expect(applyJavascriptDialect(entries, javascript)).toEqual(entries);
   });
 });

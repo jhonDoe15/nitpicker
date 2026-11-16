@@ -1,18 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { openSnapshotEnvironment } from '../../execution/python-environment.mjs';
-import type { Files } from '../test-support/python-e2e-types.mts';
+import { writeFiles as write } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
@@ -22,13 +14,6 @@ function temporaryRoot() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-base-env-e2e-')));
   roots.push(root);
   return root;
-}
-
-function write(root: string, files: Files) {
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
 }
 
 function lock(root: string, program: string, args: readonly string[], lockFile: string) {

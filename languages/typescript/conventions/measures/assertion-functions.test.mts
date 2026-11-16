@@ -4,7 +4,7 @@ import {
   validateConventions,
 } from '../../../../shared/conventions/settings.mjs';
 import { conventionChoices, detectedFor } from '../typed/convention-views.mts';
-import { ASSERTION_HELPERS_CONVENTION, assertionFunctionNames } from './assertion-helpers.mjs';
+import { ASSERTION_HELPERS_CONVENTION, assertionFunctionNames } from './assertion-functions.mts';
 
 function evidence(text: string): unknown {
   return ASSERTION_HELPERS_CONVENTION.measure(text, 'src/a.test.ts');

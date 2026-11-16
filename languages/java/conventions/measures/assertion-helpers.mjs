@@ -44,11 +44,3 @@ export function assertionEvidence(text, file, language) {
     ...new Set(definedAssertions(text, language, extra).map((name) => `def:${name}`)),
   ];
 }
-
-export function followedHelpers(counts, { minFiles }) {
-  return Object.keys(counts)
-    .filter((key) => key.startsWith('use:'))
-    .map((key) => key.slice('use:'.length))
-    .filter((name) => counts[`use:${name}`] >= minFiles)
-    .filter((name) => (counts[`def:${name}`] ?? 0) > 0);
-}

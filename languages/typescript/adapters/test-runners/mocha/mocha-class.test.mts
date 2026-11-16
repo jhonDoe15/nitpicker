@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runEachFileOnce } from './mocha-files.config.mjs';
+import { runEachFileOnce } from './mocha-class.mts';
 
 function fakeMocha(): {
   readonly FakeMocha: new (files: readonly string[]) => { run: (done: string) => string };

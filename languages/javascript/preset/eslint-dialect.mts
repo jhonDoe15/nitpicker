@@ -1,8 +1,17 @@
+import type { Linter } from 'eslint';
 import {
-  isJavascriptPolicy,
-  JAVASCRIPT_EXTENSIONS,
-  TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
+  isJavascriptPolicy as untypedIsJavascriptPolicy,
+  JAVASCRIPT_EXTENSIONS as untypedJavascriptExtensions,
+  TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT as untypedTypescriptExtensions,
 } from './javascript-preset.mjs';
+
+type Setting = Linter.RuleEntry | undefined;
+type Restriction = string | { readonly selector: string };
+
+const isJavascriptPolicy: (policy: { readonly preset?: string } | undefined) => boolean =
+  untypedIsJavascriptPolicy;
+const JAVASCRIPT_EXTENSIONS: string[] = untypedJavascriptExtensions;
+const TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT: string[] = untypedTypescriptExtensions;
 
 const DROPPED_RULES = [
   '@typescript-eslint/consistent-type-definitions',
@@ -22,7 +31,7 @@ const SELECTOR_REWRITES = new Map([
 const JAVASCRIPT_FILES = `**/*.{${JAVASCRIPT_EXTENSIONS.join(',')}}`;
 const TYPESCRIPT_FILES = `**/*.{${TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT.join(',')}}`;
 
-export const JSDOC_RULE_OPTIONS = {
+export const JSDOC_RULE_OPTIONS: Record<string, object> = {
   'nitpicker/no-comments': { jsdocTypes: true },
   'nitpicker/no-unknown-in-domain': { jsdoc: true },
   'nitpicker/no-tri-state-boolean': { jsdoc: true },
@@ -32,7 +41,7 @@ export const JSDOC_RULE_OPTIONS = {
   'nitpicker/report-module-load-effects': { commonJsExports: true },
 };
 
-export const JAVASCRIPT_ONLY_RULES = {
+export const JAVASCRIPT_ONLY_RULES: Linter.RulesRecord = {
   'no-var': 'error',
   'prefer-const': 'error',
   'prefer-rest-params': 'error',
@@ -41,13 +50,13 @@ export const JAVASCRIPT_ONLY_RULES = {
 
 const TYPESCRIPT_SYNTAX_SELECTOR = /\bTS[A-Z]\w*/;
 const SELECTOR_RULES = new Set(['no-restricted-syntax', 'nitpicker/no-null']);
-const ACTIVE_SEVERITIES = ['error', 'warn', 1, 2];
+const ACTIVE_SEVERITIES: readonly Linter.RuleSeverity[] = ['error', 'warn', 1, 2];
 
-function selectorText(restriction) {
+function selectorText(restriction: Restriction) {
   return typeof restriction === 'string' ? restriction : restriction.selector;
 }
 
-function dialectRestriction(restriction) {
+function dialectRestriction(restriction: Restriction): Restriction {
   const selector = selectorText(restriction);
   const rewritten = SELECTOR_REWRITES.get(selector);
   if (rewritten === undefined) {
@@ -56,7 +65,10 @@ function dialectRestriction(restriction) {
   return typeof restriction === 'string' ? rewritten : { ...restriction, selector: rewritten };
 }
 
-function withoutTypeScriptSyntax([severity, ...restrictions]) {
+function withoutTypeScriptSyntax([severity, ...restrictions]: readonly [
+  Linter.RuleSeverity,
+  ...Restriction[],
+]): [Linter.RuleSeverity, ...Restriction[]] {
   return [
     severity,
     ...restrictions
@@ -65,11 +77,15 @@ function withoutTypeScriptSyntax([severity, ...restrictions]) {
   ];
 }
 
-function withOptions(setting, options) {
-  return ACTIVE_SEVERITIES.includes(setting) ? [setting, options] : setting;
+function isActiveSeverity(setting: Setting): setting is Linter.RuleSeverity {
+  return ACTIVE_SEVERITIES.some((severity) => severity === setting);
 }
 
-function dialectSetting(name, setting) {
+function withOptions(setting: Setting, options: unknown): Setting {
+  return isActiveSeverity(setting) ? [setting, options] : setting;
+}
+
+function dialectSetting(name: string, setting: Setting): Setting {
   if (SELECTOR_RULES.has(name) && Array.isArray(setting)) {
     return withoutTypeScriptSyntax(setting);
   }
@@ -78,7 +94,7 @@ function dialectSetting(name, setting) {
     : setting;
 }
 
-function dialectRules(rules) {
+function dialectRules(rules: Partial<Linter.RulesRecord>) {
   return Object.fromEntries(
     Object.entries(rules)
       .filter(([name]) => !DROPPED_RULES.includes(name))
@@ -86,13 +102,13 @@ function dialectRules(rules) {
   );
 }
 
-function restrictToFiles(entry, glob) {
+function restrictToFiles(entry: Linter.Config, glob: string): Linter.Config {
   const files =
     entry.files === undefined ? [glob] : entry.files.map((pattern) => [pattern, glob].flat());
   return { ...entry, files };
 }
 
-function dialectEntries(entry) {
+function dialectEntries(entry: Linter.Config): Linter.Config[] {
   if (entry.rules === undefined) {
     return [entry];
   }
@@ -106,10 +122,13 @@ function dialectEntries(entry) {
   ];
 }
 
-export function applyJavascriptDialect(entries, policy) {
+export function applyJavascriptDialect(
+  entries: Linter.Config[],
+  policy: { readonly preset?: string; readonly exceptions?: unknown[] } | undefined,
+): Linter.Config[] {
   return isJavascriptPolicy(policy) ? entries.flatMap(dialectEntries) : entries;
 }
 
-export function scriptRuleEntries(files) {
-  return [{ files, rules: JAVASCRIPT_ONLY_RULES }];
+export function scriptRuleEntries(files: readonly string[]): Linter.Config[] {
+  return [{ files: [...files], rules: JAVASCRIPT_ONLY_RULES }];
 }

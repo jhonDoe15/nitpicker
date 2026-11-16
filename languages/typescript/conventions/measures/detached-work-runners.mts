@@ -1,3 +1,5 @@
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+
 export const DETACHED_WORK_RUNNERS_CONVENTION = {
   id: 'typescript.detachedWorkRunners',
   label: 'Detached-work runners',
@@ -7,6 +9,6 @@ export const DETACHED_WORK_RUNNERS_CONVENTION = {
   files: [],
 };
 
-export function detachedWorkRunnerNames(conventions = {}) {
-  return conventions[DETACHED_WORK_RUNNERS_CONVENTION.id] ?? [];
+export function detachedWorkRunnerNames(conventions: object = {}): string[] {
+  return textsOf(fieldOf(conventions, DETACHED_WORK_RUNNERS_CONVENTION.id));
 }
