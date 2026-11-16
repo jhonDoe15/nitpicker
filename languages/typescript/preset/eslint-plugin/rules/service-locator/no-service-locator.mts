@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices } from '../security/security-values.mts';
-import { memoized } from '../support/memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { displayedLibrary, isModeledPackage } from './container-apis.mts';
 import { rootFileMatcher, rootFileOptionsSchema, type RootFileOptions } from './root-files.mts';

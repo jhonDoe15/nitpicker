@@ -12,7 +12,7 @@ import {
   typedReferenceEffects,
 } from './io/summaries.mts';
 import { calleeOrigin as typedCalleeOrigin, type CalleeOrigin } from './io/typed-calls.mts';
-import { memoized } from './memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 
 type IoCall = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 type IoEffect = {

@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { memoized } from '../rules/support/memo.mts';
+import { memoized } from '../../../../../shared/values/caches/memo.mts';
 import { ts } from '../rules/typed/typescript-views.mts';
 
 const MAX_TYPE_ARGUMENT_DEPTH = 12;

@@ -5,7 +5,7 @@ import type { Context } from '../security/security-values.mts';
 import { isOwned } from '../support/flow/scope-owners.mts';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { estreeCallView, type CallView } from '../support/io/call-views.mts';
-import { memoized } from '../support/memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 import { ancestorsOf, chainOf, contains, nameOf, type SourceCode } from '../typed/node-views.mts';
 
 import { BEGIN_TEXT, END_TEXT, SCOPES, SQL_METHODS, TRANSACTION } from './scopes/scope-words.mts';

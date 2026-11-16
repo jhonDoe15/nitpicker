@@ -6,7 +6,7 @@ import type {
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { typeServices } from '../../security/security-values.mts';
-import { memoized } from '../../support/memo.mts';
+import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
 import { filterCoverage, globalFilters, localFilters } from './exception-filters.mts';
 import {
   ancestorsOf,

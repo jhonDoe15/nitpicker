@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { tsRunsWithCaller } from '../flow/sync-callbacks.mts';
-import { memoized } from '../memo.mts';
+import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
 import type { Effects } from './call-tags.mts';
 import {
   calleeDeclaration,
