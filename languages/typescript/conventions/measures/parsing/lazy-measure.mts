@@ -6,7 +6,7 @@ import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 export type Measure = (text: string, file: string) => string[];
 
-const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
+export const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
 const load = createRequire(import.meta.url);
 const measures = new Map<string, Measure>();
 
@@ -22,8 +22,8 @@ function loadedMeasure(path: string, name: string): Measure {
   return measure;
 }
 
-export function lazyMeasure(packagedUrl: URL, name: string): Measure {
-  const path = fileURLToPath(checkoutModuleUrl(packagedUrl));
+export function lazyMeasure(moduleUrl: URL, name: string): Measure {
+  const path = fileURLToPath(moduleUrl);
   return (text, file) =>
     cachedValue(measures, `${path}#${name}`, () => loadedMeasure(path, name))(text, file);
 }
