@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { exceptionHint } from './test-support/kotlin-finding-views.mts';
 import { useTempProjects } from './test-support/temp-projects.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
+import { compareFindings as untypedCompare } from '../../../../../core/diff/comparison/compare.mjs';
 import {
   parseCompilerWarnings as untypedParseCompilerWarnings,
   readCompilerFindings as untypedReadCompilerFindings,
@@ -16,6 +17,14 @@ const readCompilerFindings: (
   mainRoots: string[],
   testRoots?: string[],
 ) => Finding[] = untypedReadCompilerFindings;
+
+const compareFindings: (request: {
+  baseFindings: Finding[];
+  headFindings: Finding[];
+  baseToHeadRenames: Map<string, string>;
+  touchedCode: undefined;
+  unknownOnBase: undefined;
+}) => Record<string, unknown[]> = untypedCompare;
 
 const { projectWith: sourcesIn } = useTempProjects('nitpicker-kotlinc-');
 
@@ -146,5 +155,28 @@ describe('readCompilerFindings', () => {
     const root = projectWith(undefined);
 
     expect(readCompilerFindings(path.join(root, 'reports'), ['src/main/kotlin'])).toEqual([]);
+  });
+
+  it('keeps a warning that names a class of a package that moved, and not one that names another', () => {
+    const at = (typeName: string) => {
+      const warning = `src/main/kotlin/demo/A.kt:7:5: warning: [UNCHECKED_CAST] Unchecked cast of 'Any' to '${typeName}'.`;
+      const root = projectWith({ exitCode: 0, output: warning });
+      return readCompilerFindings(path.join(root, 'reports'), ['src/main/kotlin']);
+    };
+    const compared = (base: Finding[], head: Finding[]) => {
+      const result = compareFindings({
+        baseFindings: base,
+        headFindings: head,
+        touchedCode: undefined,
+        unknownOnBase: undefined,
+        baseToHeadRenames: new Map([
+          ['src/main/kotlin/shop/service/Request.kt', 'src/main/kotlin/shop/audit/Request.kt'],
+        ]),
+      });
+      return [result['newFindings']?.length, result['unchangedFindings']?.length];
+    };
+
+    expect(compared(at('shop.service.Request'), at('shop.audit.Request'))).toEqual([0, 1]);
+    expect(compared(at('a.Request'), at('b.Request'))).toEqual([1, 0]);
   });
 });
