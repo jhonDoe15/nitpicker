@@ -69,7 +69,7 @@ describe('repository action pins', () => {
       expect(save?.['if']).toBe(expression(onMain));
       expect(
         fieldsOf(stepUsing('gradle/actions/setup-gradle@')?.['with'])?.['cache-disabled'],
-      ).toBe(true);
+      ).toBe(expression("github.event_name != 'pull_request'"));
       expect(fieldsOf(stepUsing('actions/setup-java@')?.['with'])?.['cache']).toBeUndefined();
     },
   );

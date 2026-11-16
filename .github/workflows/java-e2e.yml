@@ -79,7 +79,7 @@ jobs:
       # Maven comes with the runner image. The Maven and Gradle dependency caches restore on every run and are
       # saved only on main. The primary key hashes the build files; the restore key falls back to the latest
       # entry of main, so a pull request that edits a build file still starts from main's cache and only
-      # downloads what changed. setup-java and setup-gradle keep their own caching off to avoid a second save.
+      # downloads what changed. setup-java and setup-gradle save no cache of their own.
       - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
@@ -105,9 +105,10 @@ jobs:
         with:
           gradle-version: 8.14.3
           # Keep the MIT implementation; v6 defaults to a proprietary provider. The cache steps above
-          # hold the dependency cache, so setup-gradle neither restores nor saves one.
+          # hold the dependency cache, so setup-gradle never saves one. On pull requests it still
+          # restores its own exact entry, read-only, until the entries above exist on main.
           cache-provider: basic
-          cache-disabled: true
+          cache-disabled: ${{ github.event_name != 'pull_request' }}
       - run: npm ci
       - name: Java end-to-end suite
         run: npm run test:java -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/java-e2e/shard-${{ matrix.shard }}.json
