@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKey, unwrapped, type Context } from '../../security/security-values.mts';
 import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
 import { callChain } from '../query-calls.mts';
-import { homeOf, outerOf } from '../result-uses.mts';
+import { homeOf, outerOf, resultBinding } from '../result-uses.mts';
 
 export type LoadedRows = {
   readonly reads: TSESTree.Node[];
@@ -51,15 +51,10 @@ export function loadedRows(context: Context, awaited: TSESTree.Node): LoadedRows
 }
 
 export function singleRead(context: Context, node: TSESTree.Node): TSESTree.Node | undefined {
-  const outer = outerOf(node);
-  const declarator = outer.parent;
-  if (declarator?.type !== AST_NODE_TYPES.VariableDeclarator || declarator.init !== outer) {
+  const { outer, declarator, variable } = resultBinding(context, node);
+  if (declarator === undefined) {
     return outer;
   }
-  if (declarator.id.type !== AST_NODE_TYPES.Identifier) {
-    return undefined;
-  }
-  const [variable] = context.sourceCode.getDeclaredVariables(declarator);
   const reads = variable?.references.filter((reference) => reference.isRead()) ?? [];
   return reads.length === 1 && variable?.references.length === 2 ? reads[0]?.identifier : undefined;
 }

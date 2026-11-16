@@ -8,7 +8,7 @@ export type ChainStep = {
   readonly name: string | undefined;
   readonly args: readonly TSESTree.Node[] | undefined;
   readonly node: TSESTree.Node;
-  readonly isRootCall?: boolean;
+  readonly isRootCall: boolean;
 };
 export type CallChain = { readonly root: string | undefined; readonly steps: ChainStep[] };
 
@@ -35,7 +35,7 @@ function rootName(node: TSESTree.Node): string | undefined {
 function callStep(current: TSESTree.CallExpression): Found {
   const callee = unwrapped(current.callee);
   if (callee.type === MEMBER) {
-    const step = { name: memberName(callee), args: current.arguments, node: current };
+    const step = { name: memberName(callee), args: current.arguments, node: current, isRootCall: false };
     return { step, next: unwrapped(callee.object) };
   }
   const name = callee.type === AST_NODE_TYPES.Identifier ? callee.name : undefined;
@@ -47,7 +47,7 @@ function stepOf(current: TSESTree.Node): Found {
     return callStep(current);
   }
   if (current.type === MEMBER) {
-    const step = { name: memberName(current), args: undefined, node: current };
+    const step = { name: memberName(current), args: undefined, node: current, isRootCall: false };
     return { step, next: unwrapped(current.object) };
   }
   return { root: rootName(current) };

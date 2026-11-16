@@ -44,7 +44,7 @@ export function parseProgram(text: string, file: string): ProgramResult {
     });
     const ast = fieldOf(parsed, 'ast');
     const visitorKeys = fieldOf(parsed, 'visitorKeys');
-    if (!isProgram(ast) || !isVisitorKeys(visitorKeys)) {
+    if (!(isProgram(ast) && isVisitorKeys(visitorKeys))) {
       throw new TypeError('the parser returned no program');
     }
     return { ast, visitorKeys };

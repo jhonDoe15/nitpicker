@@ -101,7 +101,7 @@ function noteSubscriber(node: TypeScript.ClassDeclaration, index: Index): void {
 
 function noteCall(node: TypeScript.CallExpression, index: Index): void {
   const callee = node.expression;
-  if (!ts.isPropertyAccessExpression(callee) || !ts.isIdentifier(callee.expression)) {
+  if (!(ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression))) {
     return;
   }
   const isHookCall = HOOK_METHODS.test(callee.name.text);

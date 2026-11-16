@@ -27,11 +27,8 @@ function isDateNow(node: TSESTree.CallExpression): boolean {
 }
 
 function rootOf(node: TSESTree.Node): TSESTree.Node {
-  let current = unwrapped(node);
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = unwrapped(current.object);
-  }
-  return current;
+  const current = unwrapped(node);
+  return current.type === AST_NODE_TYPES.MemberExpression ? rootOf(current.object) : current;
 }
 
 function dependentOn(element: string, name: string): Children {
@@ -49,8 +46,8 @@ function propertyValues(properties: TSESTree.ObjectLiteralElement[]): Children {
   return values;
 }
 
-function elementsOf(elements: (TSESTree.Node | null)[]): Children {
-  const present = elements.filter((each): each is TSESTree.Node => each !== null);
+function elementsOf(elements: TSESTree.ArrayExpression['elements']): Children {
+  const present = elements.filter((each) => each !== null);
   return present.length === elements.length ? present : undefined;
 }
 
@@ -58,35 +55,48 @@ function isDateConstruction(node: TSESTree.NewExpression): boolean {
   return node.callee.type === AST_NODE_TYPES.Identifier && node.callee.name === 'Date';
 }
 
-function childrenOf(target: TSESTree.Node, element: string): Children {
-  switch (target.type) {
-    case AST_NODE_TYPES.Literal:
-    case AST_NODE_TYPES.ThisExpression:
-      return [];
-    case AST_NODE_TYPES.Identifier:
-      return dependentOn(element, target.name);
-    case AST_NODE_TYPES.MemberExpression:
-      return [rootOf(target), target.property];
-    case AST_NODE_TYPES.NewExpression:
-      return isDateConstruction(target) ? target.arguments : undefined;
-    case AST_NODE_TYPES.CallExpression:
-      return isDateNow(target) ? [] : undefined;
-    case AST_NODE_TYPES.TemplateLiteral:
-      return target.expressions;
-    case AST_NODE_TYPES.ArrayExpression:
-      return elementsOf(target.elements);
-    case AST_NODE_TYPES.ObjectExpression:
-      return propertyValues(target.properties);
-    case AST_NODE_TYPES.UnaryExpression:
-      return [target.argument];
-    case AST_NODE_TYPES.BinaryExpression:
-    case AST_NODE_TYPES.LogicalExpression:
-      return [target.left, target.right];
-    case AST_NODE_TYPES.ConditionalExpression:
-      return [target.test, target.consequent, target.alternate];
-    default:
-      return undefined;
+function leafChildren(target: TSESTree.Node, element: string): Children {
+  if (target.type === AST_NODE_TYPES.Literal || target.type === AST_NODE_TYPES.ThisExpression) {
+    return [];
   }
+  if (target.type === AST_NODE_TYPES.Identifier) {
+    return dependentOn(element, target.name);
+  }
+  if (target.type === AST_NODE_TYPES.MemberExpression) {
+    return [rootOf(target), target.property];
+  }
+  if (target.type === AST_NODE_TYPES.NewExpression) {
+    return isDateConstruction(target) ? target.arguments : undefined;
+  }
+  if (target.type === AST_NODE_TYPES.CallExpression) {
+    return isDateNow(target) ? [] : undefined;
+  }
+  return undefined;
+}
+
+function childrenOf(target: TSESTree.Node, element: string): Children {
+  if (target.type === AST_NODE_TYPES.TemplateLiteral) {
+    return target.expressions;
+  }
+  if (target.type === AST_NODE_TYPES.ArrayExpression) {
+    return elementsOf(target.elements);
+  }
+  if (target.type === AST_NODE_TYPES.ObjectExpression) {
+    return propertyValues(target.properties);
+  }
+  if (target.type === AST_NODE_TYPES.UnaryExpression) {
+    return [target.argument];
+  }
+  if (
+    target.type === AST_NODE_TYPES.BinaryExpression ||
+    target.type === AST_NODE_TYPES.LogicalExpression
+  ) {
+    return [target.left, target.right];
+  }
+  if (target.type === AST_NODE_TYPES.ConditionalExpression) {
+    return [target.test, target.consequent, target.alternate];
+  }
+  return leafChildren(target, element);
 }
 
 function independent(node: TSESTree.Node, element: string): boolean {

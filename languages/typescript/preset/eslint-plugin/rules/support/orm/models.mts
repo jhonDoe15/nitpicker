@@ -7,6 +7,8 @@ import { tableKey } from './table-names.mts';
 
 const wordsOf: (name: string) => string[] = untypedWordsOf;
 
+const PRISMA = 'prisma';
+const SEQUELIZE = 'sequelize';
 const UPSERT = 'upsert';
 const UPDATE = 'update';
 const FIND_ONE = 'findOne';
@@ -159,13 +161,13 @@ function prisma({ chain, method, kind, orms }: ModelQuery): OrmSite | undefined 
   const modelName = model?.name;
   const isModel =
     model?.args === undefined && typeof modelName === 'string' && !modelName.startsWith('$');
-  const matches = orms.includes('prisma') && stepIn(methodsOf('prisma', kind), method);
+  const matches = orms.includes(PRISMA) && stepIn(methodsOf(PRISMA, kind), method);
   return matches &&
     method.args !== undefined &&
     isModel &&
     isClientName(client) &&
     !MODEL_NAME.test(modelName)
-    ? { orm: 'prisma', table: tableKey(modelName) }
+    ? { orm: PRISMA, table: tableKey(modelName) }
     : undefined;
 }
 
@@ -194,9 +196,9 @@ function sequelize({ chain, method, kind, orms }: ModelQuery): OrmSite | undefin
   const receiver = receiverOf(chain);
   const name = receiver.name ?? '';
   const isModel = (MODEL_NAME.test(name) && !GLOBAL_OBJECTS.has(name)) || name.endsWith('Model');
-  const matches = orms.includes('sequelize') && stepIn(methodsOf('sequelize', kind), method);
+  const matches = orms.includes(SEQUELIZE) && stepIn(methodsOf(SEQUELIZE, kind), method);
   return matches && method.args !== undefined && receiver.args === undefined && isModel
-    ? { orm: 'sequelize', table: tableKey(name) }
+    ? { orm: SEQUELIZE, table: tableKey(name) }
     : undefined;
 }
 

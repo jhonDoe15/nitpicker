@@ -126,7 +126,7 @@ export function staleEntity(
   if (variable === undefined || declared === undefined || contains(region, declared)) {
     return undefined;
   }
-  const stale = !writtenInside(variable, region) && !readsInside(context, region);
+  const stale = !(writtenInside(variable, region) || readsInside(context, region));
   return stale ? entity?.name : undefined;
 }
 

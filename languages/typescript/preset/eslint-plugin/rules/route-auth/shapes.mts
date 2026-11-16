@@ -102,6 +102,6 @@ export function decoratorInfo(decorator: TSESTree.Decorator): DecoratorInfo {
 }
 
 export function shapeLabel(shape: string): string {
-  const [name, ...keys] = shape.split(SEPARATOR);
+  const [name = '', ...keys] = shape.split(SEPARATOR);
   return keys.length === 0 ? `@${name}()` : `@${name}({ ${keys.join(', ')} })`;
 }

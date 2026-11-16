@@ -80,9 +80,7 @@ function classSite(
   const fn = method.value;
   if (
     decoratorNamed(sourceCode, method, FIELD_DECORATORS) === undefined ||
-    fn.type !== AST_NODE_TYPES.FunctionExpression ||
-    (owner.type !== AST_NODE_TYPES.ClassDeclaration &&
-      owner.type !== AST_NODE_TYPES.ClassExpression)
+    fn.type !== AST_NODE_TYPES.FunctionExpression
   ) {
     return undefined;
   }
