@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { referencedNames, usesArchive } from './class-references.mjs';
-import { classWithStrings, descriptorOfLength } from './test-support/class-bytes.mjs';
+import { classWithStrings, descriptorOfLength } from './test-support/class-bytes.mts';
 
 const roots = [];
 afterEach(() => {

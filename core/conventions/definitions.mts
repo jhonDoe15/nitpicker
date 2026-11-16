@@ -4,7 +4,7 @@ import { PYTHON_CONVENTIONS } from '../../languages/python/conventions/python-co
 import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
-} from '../../languages/typescript/conventions/typescript-conventions.mjs';
+} from '../../languages/typescript/conventions/typescript-conventions.mts';
 import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mjs';
 import { kotlinStyle } from '../../languages/java/conventions/kotlin-style.mjs';
 import { pythonStyle } from '../../languages/python/conventions/python-style.mts';

@@ -2,7 +2,7 @@ import type * as Prettier from 'prettier';
 import {
   isIgnoredByLayers as isIgnoredByUntypedLayers,
   layeredPrettierOptions as untypedLayeredPrettierOptions,
-} from '../prettier/prettier-layers.mjs';
+} from '../prettier/prettier-layers.mts';
 
 export type PrettierLayers = {
   readonly precedence: readonly string[];

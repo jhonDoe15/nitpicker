@@ -1,20 +1,23 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestPit as untypedIngestPit } from '../../../../languages/java/ingest/pit.mjs';
+import { ingestPit as ingestPitXml } from '../../../../languages/java/ingest/pit.mts';
 import { ingestMutmut } from '../../../../languages/python/ingest/mutmut.mts';
 import { normalizeMutation } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import type { Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import type { Mutant } from '../../../../languages/typescript/adapters/quality-areas/typed/mutation.mts';
 import { bareReport } from '../test-support/bare-report.mts';
+import { findingsOf } from '../../../../languages/java/adapters/kotlin/rules/test-support/findings-list.mts';
 import { json } from '../reporters.mts';
 import { renderConsoleSummary } from '../summary.mts';
 
-const ingestPit: (
+function ingestPit(
   xml: string,
   options: { readonly resolvePath: () => string },
-) => { readonly findings: Finding[] } = untypedIngestPit;
+): { readonly findings: Finding[] } {
+  return { findings: findingsOf(ingestPitXml(xml, options).findings) };
+}
 
 const recordedMutmutRun = parseJson(
   readFileSync(

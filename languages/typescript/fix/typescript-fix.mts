@@ -23,7 +23,7 @@ import type {
   FixSettings,
   FixStep,
 } from '../../../core/fix/typed/fix-types.mts';
-import { TYPESCRIPT_RECIPES } from './recipes/typescript-recipes.mjs';
+import { TYPESCRIPT_RECIPES } from './recipes/typescript-recipes.mts';
 import { fixTargets } from './fix-targets.mts';
 import { type KnipFixSettings, knipFixStep } from './dead-code/knip-fix-step.mts';
 import { codeFixStep } from './code-fixes/code-fix-step.mts';

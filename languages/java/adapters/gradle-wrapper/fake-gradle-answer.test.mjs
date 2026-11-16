@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fakeGradle, spawnFakeGradle } from '../test-support/in-process-gradle.mjs';
-import { runGradle } from './gradle-process.mjs';
+import { runGradle } from './gradle-process.mts';
 
 const roots = [];
 

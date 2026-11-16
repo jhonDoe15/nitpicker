@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runMavenPreset } from '../maven-build.mjs';
+import { runMavenPreset } from '../maven-build.mts';
 import { readReactor } from '../maven-project.mjs';
 import { isInside, mavenScope } from './maven-scope.mjs';
 
