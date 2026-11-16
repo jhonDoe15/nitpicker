@@ -534,7 +534,13 @@ line; here it is spread out:
   "status": "failed",
   "exitCode": 1,
   "base": { "ref": "origin/main", "source": "remote-head" },
-  "counts": { "failing": 2, "byArea": { "lint": 1, "coverage": 1 }, "reportOnly": 0, "held": 3 },
+  "counts": {
+    "failing": 2,
+    "byArea": { "lint": 1, "coverage": 1 },
+    "byLabel": { "maintainability": 1, "tests": 1 },
+    "reportOnly": 0,
+    "held": 3
+  },
   "findings": [
     {
       "tool": "eslint-lint",
@@ -543,6 +549,7 @@ line; here it is spread out:
       "line": 4,
       "column": 20,
       "message": "No magic number: 3. Name it with a module-level constant.",
+      "labels": ["maintainability"],
       "allowedForm": "Name it with a module-level constant.",
       "exception": {
         "rule": "nitpicker/no-magic-numbers",
@@ -557,6 +564,7 @@ line; here it is spread out:
       "path": "src/main/pricing.ts",
       "line": 4,
       "message": "Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen. Not taken: the true arm of the if at 4:5.",
+      "labels": ["tests"],
       "allowedForm": "Test it, or remove it if it can't happen.",
       "exception": {
         "rule": "changed-branch-coverage",
@@ -582,8 +590,12 @@ line; here it is spread out:
   in the console summary: one entry per function for the mutants no test runs and at most three
   surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts every
   mutant.
-- `counts.byArea` counts the failing findings per area, in the order to fix them. Report-only and
-  held findings are counts only; the files in `reports` list them.
+- `counts.byArea` counts the failing findings per area, in the order to fix them, and
+  `counts.byLabel` per [label](#labels) (a finding with two labels counts under both). Report-only
+  and held findings are counts only; the files in `reports` list them.
+- Each finding has `labels`: its kinds first, then any frameworks (see [Labels](#labels)). A run
+  narrowed with `--label` adds `labels: { selected, hidden }`, where `hidden` counts the new
+  findings it left out.
 - `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
   (such as failing tests) and `headline`, its first line.
 - A comparison run has `base`, `"noChanges": true` when nothing changed since the merge base, and
@@ -777,11 +789,11 @@ before metric notes (which also show the metric and its value); an overflow coun
 
 ## Exit codes
 
-| Code | Meaning                                                                                                                                                    |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names.                                          |
-| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored. |
-| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                     |
+| Code | Meaning                                                                                                                                                                                   |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names, and one narrowed with `--label` listed only findings with those labels. |
+| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored.                                |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                                                    |
 
 A failing test on the head is a problem with the change, not with a tool, so it exits 1 like a
 violation, and the console summary leads with it: `✖ 1 test fails; coverage, CRAP and mutation were
@@ -828,8 +840,8 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 
 ```text
 nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]]
-          [--analyzer <name>]... [--rule <substring>]... [--project <path>]... [--jobs <n>]
-          [--details] [--json] [--quick] [--staged]
+          [--analyzer <name>]... [--rule <substring>]... [--label <label>]... [--project <path>]...
+          [--jobs <n>] [--details] [--json] [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help] [--version]
 nitpicker init [--agents-md] [--ci github] [--help]
@@ -842,7 +854,7 @@ nitpicker base [--base <ref>]
 nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]
 nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]
 nitpicker explain <tool/rule>...
-nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
+nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]
 ```
 
 - `<path>...`: show and gate only the findings in these files or folders; see
@@ -920,6 +932,10 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
+- `--label <label>`: focus the run on findings with this label (repeatable): run only the checks
+  that can report it and list only such findings. See [Labels](#labels) for the labels and how they
+  combine. A focused run is not a pass: run `nitpicker` without `--label` before you finish. Cannot
+  be combined with `--fix` or sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). It
   filters what is listed, not what runs: every analyzer still runs, so use `--analyzer` to run less.
   With `--fix`, it takes full `tool/rule` names and picks the fixes to apply (see
@@ -982,17 +998,18 @@ The other commands:
   `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
   changelog has no entry, or an empty one, for that version.
 - `nitpicker explain <tool/rule>...`: print what the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) says about
-  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  each rule: its labels, the presets and analyzers that report it, why it is on, the allowed form where the
   reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
   (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
   for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
   to list its rules. A name the reference does not know is reported with the closest rules and
   exits 1.
-- `nitpicker rules [--preset <name>] [--tool <name>] [--fixable]`: list the rules, one line each. It
-  lists the preset of the project's `nitpicker.config.json` (`typescript` without a config) and
-  leaves out the rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists
-  another preset in full, `--tool` keeps one tool, and `--fixable` keeps the rules `--fix` fixes
-  (marked `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
+- `nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]`: list the
+  rules, one line each. It lists the preset of the project's `nitpicker.config.json` (`typescript`
+  without a config) and leaves out the rules of analyzers listed in `disable`; `--preset` (or
+  `--preset=<name>`) lists another preset in full, `--tool` keeps one tool, `--label` keeps the
+  rules with these [labels](#labels), and `--fixable` keeps the rules `--fix` fixes (marked
+  `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 - `nitpicker projects`: list the projects of a [monorepo](#monorepos) and the ones a run would
@@ -1011,6 +1028,48 @@ The other commands:
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
+
+### Labels
+
+Every rule has labels that say what its findings are about, so you can focus a run on what matters
+to you now. A rule has one or more kinds, and a framework label when it is about one:
+
+| Label             | Findings about                                                           |
+| ----------------- | ------------------------------------------------------------------------ |
+| `bug`             | code that likely behaves wrongly: logic errors, null dereferences, races |
+| `security`        | vulnerabilities, injection, weak crypto, secrets, exposed endpoints      |
+| `performance`     | wasted work: N+1 queries, I/O in loops, costly collections               |
+| `reliability`     | failure handling: timeouts, resource leaks, swallowed errors             |
+| `simplification`  | code that can be simpler: redundant or dead code, needless steps         |
+| `maintainability` | size, complexity, duplication, coupling, architecture and design         |
+| `tests`           | test quality: failing tests, coverage, mutation, assertions              |
+| `style`           | formatting, naming, documentation layout and conventions                 |
+| `spring`          | Spring and Spring Boot                                                   |
+| `react`           | React, JSX and hooks                                                     |
+| `persistence`     | JPA, Spring Data, ORMs, SQL and migrations                               |
+| `async`           | promises, coroutines, reactive streams and executors                     |
+
+`nitpicker --label performance` runs only the analyzers that have a rule with that label (the
+analyzers they depend on, custom analyzers and the ones named with `--analyzer` still run) and lists
+only findings with it. The tests, coverage, CRAP and mutation run only when a label you pick covers
+them, so `--label bug` alone runs a Java, Kotlin or Python build the way `--quick` does. Kinds
+combine with "or" and frameworks narrow them: `--label bug --label performance --label spring` lists
+the bug and performance findings about Spring. The gate, exceptions and the reports work as usual
+on what is listed, and stderr names the checks the label left out.
+
+A focused run is never a pass. The console, `report.txt` and the GitHub step summary print `Only
+findings labeled <labels> (N findings with other labels hidden). Run nitpicker without --label
+before you finish.`, and `summary.json` records `labels: { selected, hidden, message }`. Without
+`--label`, the console adds `by label: bug 2 · style 5 (focus with --label <label>)` under the area
+counts when the failing findings have more than one label. `nitpicker rules --label <label>` lists
+the rules with a label, `nitpicker explain` prints them, the SARIF report sets them as
+`properties.tags` on each rule, and the JSON reports give each finding its `labels`.
+
+Labels come from the [rule reference](#rule-reference): nitpicker's own rules carry them by hand,
+and other tools' rules take them from the tool's own categories (PMD categories, SpotBugs and
+Checkstyle groups, detekt rule sets, ruff linters, Error Prone tags) with hand-picked overrides. A
+finding with no reference entry falls back to its area: format findings are `style`, type errors
+`bug`, the test checks `tests`, and the rest `maintainability`. The Go preset has its own table.
 
 ### Rule reference
 
@@ -1629,7 +1688,7 @@ change adds; a file already on the base is left alone. Each message names the ex
 | `migration-order`          | a migration whose version sorts before, or equals, the newest migration of its folder on the base branch: Flyway `V<version>__name`, Prisma `migrations/<timestamp>_name/`, and numbered files in a `migrations`, `migration` or `drizzle` folder (TypeORM, Kysely, Knex, Sequelize, MikroORM, Drizzle, golang-migrate, goose); an Alembic revision or a Django migration whose parent already has a child on the base branch, so the history has two heads                                                                                  |
 | `migration-hardcoded-name` | a migration file (the layouts above, Liquibase changelogs and other files directly in a `migrations`, `migration`, `migrate` or `drizzle` folder) that qualifies a name with the `public` schema, names a database in `ALTER DATABASE` or a role in `OWNER TO`; one finding per file and form                                                                                                                                                                                                                                                |
 | `foreign-key-index`        | a foreign key that a migration or an sqlc schema file adds with no index that starts with its columns, or a Prisma relation whose `fields` no `@@index`, `@@unique` or `@@id` of the model starts with; not reported when the project uses MySQL or MariaDB, which index foreign keys themselves                                                                                                                                                                                                                                             |
-| `field-limit-mismatch`     | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern that admits more than the column holds; or an OpenAPI or JSON Schema bound (`maxLength`, `minLength`, `maximum`, `pattern`) that differs from the validation of the same field |
+| `field-limit-mismatch`     | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern that admits more than the column holds; or an OpenAPI or JSON Schema bound (`maxLength`, `minLength`, `maximum`, `pattern`) that differs from the validation of the same field                                                                                                               |
 | `start-schema-push`        | a `start`, `prestart`, `serve` or `start:*` script in a `package.json` (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`), or a script it runs through `npm`, `pnpm`, `yarn`, `bun` or `npm-run-all` (with its `pre` hook), that pushes the ORM schema: `prisma db push`, `prisma migrate dev`/`reset`, `drizzle-kit push`, `typeorm schema:sync`/`schema:drop`, `mikro-orm schema:update`/`create`/`fresh`/`drop` (options between the tool and the command count); apply migrations in the deploy step instead |
 
 An env file that holds only public build-time values (every key starts with `VITE_`, `NEXT_PUBLIC_`,

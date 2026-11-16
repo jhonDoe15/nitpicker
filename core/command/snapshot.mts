@@ -32,6 +32,7 @@ import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 import { projectHeader } from './comparison/outcome.mts';
+import type { LabelFilter } from '../labels/taxonomy.mts';
 
 const displayPath: (absolutePath: string) => string = untypedDisplayPath;
 const colorEnabled: (stream: unknown, environment: NodeJS.ProcessEnv) => boolean =
@@ -57,6 +58,7 @@ type SnapshotCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
   readonly scope: unknown;
+  readonly labels?: LabelFilter | undefined;
   readonly setupErrors: readonly object[];
   readonly additionalToolErrors?: readonly unknown[];
 };
@@ -132,7 +134,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         scope,
         setupErrors,
       },
-      analyzerRunOptions({ outputRoot, runTasks }),
+      { ...analyzerRunOptions({ outputRoot, runTasks }), labels: cli.labels },
     ),
   );
   addToolErrors(report, cli.additionalToolErrors ?? []);

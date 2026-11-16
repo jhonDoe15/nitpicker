@@ -6,6 +6,7 @@ export type DrillDownOptions = {
   readonly analyzerNames: readonly string[];
   readonly ruleFilters: readonly string[];
   readonly projectPaths: readonly string[];
+  readonly labelNames: readonly string[];
   readonly shardCount: number | undefined;
   readonly shardIndex: number | undefined;
   readonly jobs: number | undefined;
@@ -23,6 +24,7 @@ const VALUE_OPTIONS = new Set([
   '--analyzer',
   '--rule',
   '--project',
+  '--label',
   '--shard-count',
   '--shard-index',
   '--jobs',
@@ -95,6 +97,7 @@ export function parseDrillDownOptions(commandArguments: readonly string[]): Dril
     analyzerNames,
     ruleFilters: valuesOf(entries, '--rule'),
     projectPaths: valuesOf(entries, '--project'),
+    labelNames: valuesOf(entries, '--label'),
     shardCount,
     shardIndex,
     jobs: jobsOf(entries),

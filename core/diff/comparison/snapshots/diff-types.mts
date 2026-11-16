@@ -1,6 +1,7 @@
 import type { CaptureHead, RunSettings, SkipPlan, SnapshotRoots } from './run-types.mts';
 import type { Comparison, SnapshotLayout } from './layout.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import type { LabelFilter } from '../../../labels/taxonomy.mts';
 
 type NoticeContext = {
   readonly mergeBaseSha: string;
@@ -26,6 +27,7 @@ export type DiffOptions = Omit<
   readonly headProjectRoot?: string | undefined;
   readonly requestedBaseRef?: unknown;
   readonly partialRun?: unknown;
+  readonly labels?: LabelFilter | undefined;
   readonly fixRecipes?: unknown;
   readonly includeWorkingTree?: true | undefined;
   readonly captureHead?: unknown;
