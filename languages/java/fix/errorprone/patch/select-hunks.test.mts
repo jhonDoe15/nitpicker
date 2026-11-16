@@ -1,31 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { selectHunks, type LabeledHunk } from './select-hunks.mts';
-import { parseUnifiedDiff } from './unified-diff.mts';
+import { selectHunks } from './select-hunks.mts';
+import { labeledHunk } from './test-support/labeled-hunks.mts';
 
-function entry(label: string, body: string, header: string): LabeledHunk {
-  const hunk = parseUnifiedDiff(`--- a\n+++ a\n${header}\n${body}`)[0]?.hunks[0];
-  if (hunk === undefined) {
-    throw new Error('the test patch has no hunk');
-  }
-  return { label, hunk };
-}
-
-const BODY = entry(
+const BODY = labeledHunk(
   'MissingOverride',
   ' a\n-  void run() {}\n+  @Override void run() {}\n b\n',
   '@@ -20,3 +20,3 @@',
 );
-const FAR = entry(
+const FAR = labeledHunk(
   'MissingOverride',
   ' a\n-  void far() {}\n+  @Override void far() {}\n b\n',
   '@@ -90,3 +90,3 @@',
 );
-const IMPORT = entry(
+const IMPORT = labeledHunk(
   'UnnecessarilyFullyQualified',
   ' import a.A;\n+import java.util.List;\n+import java.util.Map;\n import b.B;\n',
   '@@ -3,2 +3,4 @@',
 );
-const USES_LIST = entry(
+const USES_LIST = labeledHunk(
   'UnnecessarilyFullyQualified',
   '-  java.util.List<String> names;\n+  List<String> names;\n',
   '@@ -40,1 +40,1 @@',
@@ -61,7 +53,7 @@ describe('selectHunks', () => {
   });
 
   it('keeps an import hunk that removes a line only when that line was touched', () => {
-    const replaced = entry(
+    const replaced = labeledHunk(
       'NonCanonicalStaticImport',
       '-import static a.B.c;\n+import static a.C.c;\n',
       '@@ -4,1 +4,1 @@',
@@ -72,12 +64,12 @@ describe('selectHunks', () => {
   });
 
   it('keeps an added import that a kept hunk uses when its hunk also removes a line', () => {
-    const swap = entry(
+    const swap = labeledHunk(
       'SpringRestController',
       ' import a.A;\n-import a.Controller;\n+import a.RestController;\n import b.B;\n',
       '@@ -3,3 +3,3 @@',
     );
-    const body = entry(
+    const body = labeledHunk(
       'SpringRestController',
       '-@Controller class X {}\n+@RestController class X {}\n',
       '@@ -30,1 +30,1 @@',

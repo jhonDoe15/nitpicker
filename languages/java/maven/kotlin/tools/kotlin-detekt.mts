@@ -119,6 +119,11 @@ export function detektArguments({
   ];
 }
 
+function detektFinished(result: unknown, report: string): boolean {
+  const status = numberOr(fieldOf(result, 'status'), -1);
+  return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
+}
+
 export function runDetekt({
   module,
   reportDir,
@@ -163,10 +168,7 @@ export function runDetekt({
         cwd: module.basedir,
         spawn: options.spawn,
         timeoutMs: options.timeoutMs,
-        accept: (result: unknown) => {
-          const status = numberOr(fieldOf(result, 'status'), -1);
-          return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
-        },
+        accept: (result: unknown) => detektFinished(result, report),
       });
     },
   );

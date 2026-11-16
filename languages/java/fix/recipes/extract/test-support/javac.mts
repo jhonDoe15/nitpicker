@@ -10,12 +10,15 @@ export function javacAvailable(): boolean {
   return spawnSync(JAVAC, ['-version'], { timeout: TIMEOUT_MS }).status === 0;
 }
 
-export function compileStatus(source: string): number | null {
+export function compileStatus(source: string): number | undefined {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javac-'));
   try {
     const file = path.join(root, 'Wide.java');
     writeFileSync(file, source);
-    return spawnSync(JAVAC, ['-d', root, file], { encoding: 'utf8', timeout: TIMEOUT_MS }).status;
+    return (
+      spawnSync(JAVAC, ['-d', root, file], { encoding: 'utf8', timeout: TIMEOUT_MS }).status ??
+      undefined
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

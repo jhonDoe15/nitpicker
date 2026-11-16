@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { RecipeSource } from '../../../../../../core/fix/typed/fix-types.mts';
 import { afterEach, describe, expect, it } from 'vitest';
+import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture-files.mts';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
 import { packageScanner as untypedPackageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mjs';
 import { urlAndUri } from '../test-support/creation-sources.mts';
@@ -16,10 +17,7 @@ const roots: string[] = [];
 function projectWith(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cross-'));
   roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  writeFiles(root, files);
   return root;
 }
 

@@ -194,7 +194,7 @@ describe('javaExtractNearDuplicateRecipe across two files of one package', () =>
       text: text.replaceAll('\n', '\r\n'),
     }));
     const text = plan(files).after[`${FOLDER}/SqlAdapters.java`];
-    expect(text).toBeDefined();
+    expect(typeof text).toBe('string');
     expect(text?.replaceAll('\r\n', '').includes('\n')).toBe(false);
   });
 });

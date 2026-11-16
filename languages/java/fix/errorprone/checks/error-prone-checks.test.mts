@@ -9,8 +9,9 @@ import {
   SAFE_CHECKS,
 } from './error-prone-checks.mts';
 import { ownChecksOf } from '../own/own-checks.mts';
+import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 
-const CHECKS = JSON.parse(
+const CHECKS: unknown = JSON.parse(
   readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
 );
 const LISTED = [...SAFE_CHECKS, ...REVIEW_CHECKS, ...LEFT_OUT_CHECKS];
@@ -21,13 +22,16 @@ describe('the Error Prone fix lists', () => {
   });
 
   it('lists only checks of the reviewed Error Prone version', () => {
-    const reviewed = new Set(CHECKS.reviewedChecks);
+    const reviewed = new Set(textsOf(fieldOf(CHECKS, 'reviewedChecks')));
 
     expect(LISTED.filter((check) => !reviewed.has(check))).toEqual([]);
   });
 
   it('never lists a check the preset turns off', () => {
-    const off = new Set([...CHECKS.disable, ...CHECKS.defaultOff]);
+    const off = new Set([
+      ...textsOf(fieldOf(CHECKS, 'disable')),
+      ...textsOf(fieldOf(CHECKS, 'defaultOff')),
+    ]);
 
     expect([...SAFE_CHECKS, ...REVIEW_CHECKS].filter((check) => off.has(check))).toEqual([]);
   });

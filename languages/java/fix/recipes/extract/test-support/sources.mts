@@ -1,4 +1,9 @@
-import type { RecipeEdit } from '../../../../../../core/fix/typed/fix-types.mts';
+import type {
+  FixRecipe,
+  RecipeEdit,
+  RecipeFix,
+  RecipeSource,
+} from '../../../../../../core/fix/typed/fix-types.mts';
 
 type Replace = Extract<RecipeEdit, { type: 'replace' }>;
 type MethodOptions = { prefix?: string; modifiers?: string; limit?: string };
@@ -21,12 +26,38 @@ export function classOf(...members: readonly string[]): string {
   return `package demo;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\nclass Align {\n${members.join('\n')}}\n`;
 }
 
+function isReplace(edit: RecipeEdit): edit is Replace {
+  return edit.type === 'replace';
+}
+
 export function applied(text: string, edits: readonly RecipeEdit[]): string {
-  return edits
-    .filter((edit): edit is Replace => edit.type === 'replace')
-    .toSorted((left, right) => right.start - left.start)
-    .reduce(
-      (result, edit) => result.slice(0, edit.start) + edit.text + result.slice(edit.end),
-      text,
-    );
+  const ascending = edits.filter(isReplace).toSorted((left, right) => left.start - right.start);
+  return ascending.reduceRight(
+    (result, { start, end, text: replacement }) =>
+      `${result.slice(0, start)}${replacement}${result.slice(end)}`,
+    text,
+  );
+}
+
+export function plannedEdits(
+  recipe: FixRecipe,
+  file: RecipeSource,
+): { readonly fixes: readonly RecipeFix[]; readonly notes: readonly string[] } {
+  const { fixes, notes = [] } = recipe.plan({ files: [file], projectRoot: '/nonexistent' });
+  return { fixes, notes };
+}
+
+export function appliedPlan(
+  recipe: FixRecipe,
+  file: RecipeSource,
+): ReturnType<typeof plannedEdits> & { readonly after: string } {
+  const { fixes, notes } = plannedEdits(recipe, file);
+  return {
+    fixes,
+    notes,
+    after: applied(
+      file.text,
+      fixes.flatMap(({ edits }) => edits),
+    ),
+  };
 }

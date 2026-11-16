@@ -21,7 +21,7 @@ function pairOf(change: Change, values: readonly [string, string]): string {
 }
 
 function note(line: number, reason: string): string[] {
-  return [`--fix left ${PATH}:${line} near-duplicate: ${reason}`];
+  return [`--fix left ${PATH}:${String(line)} near-duplicate: ${reason}`];
 }
 
 const generic = (copy: string) => copy.replace('String ', '<T> String ');

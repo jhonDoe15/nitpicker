@@ -7,7 +7,7 @@ import {
 import { formatNotes as untypedFormatNotes } from '../../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf as untypedWithFixedLineEndingsOf } from '../../../../core/fix/common/rewrite/line-endings.mjs';
 import { writeTexts as untypedWriteTexts } from '../../../../core/fix/engine/write-texts.mjs';
-import type { FixFile, FixSettings, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
+import type { FixSettings, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
 
 export type Layout = NonNullable<Parameters<typeof createQualityChecks>[0]>;
 

@@ -1,6 +1,6 @@
 import type { FixRecipe, RecipeFix } from '../../../../core/fix/typed/fix-types.mts';
 import { describe, expect, it } from 'vitest';
-import { defineRecipes } from '../../../../core/fix/engine/recipes.mjs';
+import { defineRecipes } from '../../../../core/fix/test-support/engine-views.mts';
 import {
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,

@@ -7,9 +7,9 @@ import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/
 import type { RecipeResult } from '../../../../../core/fix/typed/fix-pipeline.mts';
 import type { FixFile, FixRecipe } from '../../../../../core/fix/typed/fix-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
-import { parseUnifiedDiff } from '../patch/unified-diff.mts';
 import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
 import { errorProneRecipes } from './error-prone-recipes.mts';
+import { labeledHunk } from '../patch/test-support/labeled-hunks.mts';
 
 type RunOptions = {
   readonly projectRoot: string;
@@ -35,20 +35,12 @@ function project(): string {
   return root;
 }
 
-function entry(label: string, body: string, header: string): LabeledHunk {
-  const hunk = parseUnifiedDiff(`--- a\n+++ a\n${header}\n${body}`)[0]?.hunks[0];
-  if (hunk === undefined) {
-    throw new Error('the test patch has no hunk');
-  }
-  return { label, hunk };
-}
-
-const STATIC = entry(
+const STATIC = labeledHunk(
   'ClassCanBeStatic',
   '-  class Inner {}\n+  static class Inner {}\n',
   '@@ -2,1 +2,1 @@',
 );
-const OVERRIDE = entry(
+const OVERRIDE = labeledHunk(
   'MissingOverride',
   '-  void run() {}\n+  @Override void run() {}\n',
   '@@ -3,1 +3,1 @@',
@@ -141,7 +133,7 @@ describe('the Error Prone recipes', () => {
 
   it('map a hunk of an own check to the finding of the rule it fixes', () => {
     const root = project();
-    const swap = entry(
+    const swap = labeledHunk(
       'UseStandardCharsets',
       '-  void run() {}\n+  void run() { }\n',
       '@@ -3,1 +3,1 @@',
@@ -154,7 +146,11 @@ describe('the Error Prone recipes', () => {
 
   it('keep the review own checks for the run that selects their rule', () => {
     const root = project();
-    const retry = entry('RetryInTest', '-  void run() {}\n+  void run() { }\n', '@@ -3,1 +3,1 @@');
+    const retry = labeledHunk(
+      'RetryInTest',
+      '-  void run() {}\n+  void run() { }\n',
+      '@@ -3,1 +3,1 @@',
+    );
 
     const plain = run(root, [retry]);
     const selected = run(root, [retry], ['pmd/RetryInTest']);
@@ -166,10 +162,6 @@ describe('the Error Prone recipes', () => {
   it('cover the java and kotlin presets', () => {
     const [safe, review, ownSafe, ownReview] = errorProneRecipes(new Map());
 
-    expect(safe).toBeDefined();
-    expect(review).toBeDefined();
-    expect(ownSafe).toBeDefined();
-    expect(ownReview).toBeDefined();
     expect(safe?.presets).toEqual(['java', 'kotlin']);
     expect([safe?.safety, review?.safety]).toEqual(['safe', 'review']);
     expect(safe?.rules).toEqual(SAFE_CHECKS.map(ruleOf));
@@ -182,7 +174,7 @@ describe('the Error Prone recipes', () => {
 
   it('report the line of the diagnostic, and one finding for the hunks of one diagnostic', () => {
     const root = project();
-    const moved = entry('MissingOverride', '+import x.Y;\n', '@@ -0,0 +1,0 @@');
+    const moved = labeledHunk('MissingOverride', '+import x.Y;\n', '@@ -0,0 +1,0 @@');
 
     const result = run(root, [{ ...moved, line: 4 }, DIAGNOSED]);
 

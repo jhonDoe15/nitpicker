@@ -23,7 +23,7 @@ type Launch = {
   readonly args: string[];
 };
 
-type RecordedLaunch = Launch & {
+export type RecordedLaunch = Launch & {
   readonly operation: string | undefined;
   readonly cwd: string;
   readonly layout: string[];
