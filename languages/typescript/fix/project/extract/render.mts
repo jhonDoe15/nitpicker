@@ -1,8 +1,9 @@
 import type TypeScript from 'typescript';
 import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Hole, NamedHole } from './typed/extract-types.mts';
-import { nameHoles as sharedNameHoles } from './typed/typed-views.mts';
+import { nameHoles as sharedNameHoles, withReplacements } from './typed/typed-views.mts';
 import { descendants } from './syntax.mts';
+import { TYPE_PARAMETER_NAMES } from '../../../../../shared/fix/recipes/extract/names.mjs';
 
 const ts = typescriptApi();
 
@@ -41,16 +42,7 @@ export function nameHoles(
   return sharedNameHoles(holes, taken, (hole) => flowName(hole.occurrences[0].a));
 }
 
-const TYPE_NAMES = [
-  'T',
-  'U',
-  'V',
-  'W',
-  'X',
-  'Y',
-  'Z',
-  ...Array.from({ length: 20 }, (_, index) => `T${String(index + 1)}`),
-];
+const TYPE_NAMES: readonly string[] = TYPE_PARAMETER_NAMES;
 
 export function nameTypeHoles(
   holes: readonly Hole[],
@@ -88,12 +80,7 @@ export function replacedText(
         text: hole.kind === 'thunk' ? `${hole.name}()` : hole.name,
       })),
   );
-  return replacements
-    .toSorted((left, right) => right.start - left.start)
-    .reduce(
-      (text, { start, end, text: name }) => text.slice(0, start) + name + text.slice(end),
-      sourceFile.text.slice(range.start, range.end),
-    );
+  return withReplacements(sourceFile.text.slice(range.start, range.end), replacements);
 }
 
 function typeString(checker: TypeScript.TypeChecker, type: TypeScript.Type): string {

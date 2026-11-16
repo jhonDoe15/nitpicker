@@ -3,7 +3,7 @@
 Part of the [Java preset guide](../java-preset.md).
 
 Rules that carry review findings over from the TypeScript preset. Each works the same on Gradle
-and Maven: the PMD rules are in the shared rule set files, and `spring/e2e/java-spring-review.e2e.test.mjs`
+and Maven: the PMD rules are in the shared rule set files, and `spring/e2e/java-spring-review.e2e.test.mts`
 builds one Spring project (`java-e2e/fixtures/review-rules`, every expected violation marked with
 `// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
 Every message names the allowed form and the exception that keeps code that is right.
@@ -80,7 +80,7 @@ they own, so each call is reported once: `SpringDataNoSaveInLoop` the `save`, `d
 and similar writes on a Spring Data repository or `EntityManager`, `SpringDataNoFlush` the flushes
 and `SpringDataRowWriteInLoop` the row writes. The Spring wrapper runs `IoCallInLoop` with its
 `springData` property set to `true`, and the rule holds a copy of their XPath, which
-`languages/java/adapters/spring/ruleset/spring-ruleset.test.mjs` keeps identical. A write in any
+`languages/java/adapters/spring/ruleset/spring-ruleset.test.mts` keeps identical. A write in any
 other callback (`filter`, `reduce`), on any other receiver or in a project without Spring is
 reported by `IoCallInLoop`, and a read in a loop (`findById`, a count query) always is. A loop that
 calls `EntityManager.clear()` is a JPA batch loop: its writes and flushes are reported by neither
@@ -632,12 +632,12 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   Error Prone's `TimeUnitMismatch` checks names against `TimeUnit` and parameter names only; when
   both flag a line, the overlap keeps `MixedTimeUnits`. `* 1000` style conversions count only with a
   numeric literal, so `x * MILLIS_PER_SECOND` leaves the unit unknown and is never reported.
-- `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
+- `test-only-export` (`adapters/review-rules/test-only-classes.mts`, run project-wide) reads
   `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
   own module first. A main class is reported when test classes use it and no other main class
   does, unless:
   - it carries a wiring annotation, directly or through a project annotation that carries one
-    (`adapters/review-rules/test-only-usage.mjs`): Spring stereotypes, `@Configuration`,
+    (`adapters/review-rules/test-only-usage.mts`): Spring stereotypes, `@Configuration`,
     `@SpringBootApplication`, `@AutoConfiguration`, `@ConfigurationProperties`, actuator
     `@Endpoint` and its variants, `@FeignClient`, Spring Data repositories, JPA `@Entity`,
     `@Embeddable`, `@MappedSuperclass` and `@Converter`, `@Named`, `@Singleton`, CDI scopes,

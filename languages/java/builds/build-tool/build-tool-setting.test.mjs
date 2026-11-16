@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../core/configuration/validate.mts';
 import { loadConfig } from '../../../../core/configuration/config.mts';
 import { detectJavaBuild, describeJavaBuild } from '../java-build.mjs';
-import { configureJavaAnalyzer, parseJavaRunnerArguments } from '../../adapters/java-policy.mjs';
+import { configureJavaAnalyzer, parseJavaRunnerArguments } from '../../adapters/java-policy.mts';
 import { validateJavaBuildSetting } from './build-tool-setting.mjs';
 
 const roots = [];

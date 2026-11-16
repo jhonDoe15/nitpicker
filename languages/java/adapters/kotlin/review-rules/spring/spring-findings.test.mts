@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { routed, type RuleFinding } from '../test-support/facts.mts';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
 import { findingFactory, fixtureFacts, springFindings, type Loose } from './spring-test-facts.mts';
-import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mjs';
+import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mts';
 import { SPRING_RULES, springMessage as untypedSpringMessage } from './spring-messages.mjs';
 import { EXPECTED } from '../test-support/spring-expected.mts';
 

@@ -29,4 +29,4 @@ sentinel and the sum are often in different files.
 
 The message names the operand, the sum, the maximum and the allowed forms, and ends with the exception
 sentence for `{ "rule": "pmd/MaxValueOverflow", "paths": ["<file>"], "reason": "..." }`. Tests:
-`adapters/review-rules/max-value-sums/max-value-sums.test.mjs`.
+`adapters/review-rules/max-value-sums/max-value-sums.test.mts`.

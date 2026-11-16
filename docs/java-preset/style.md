@@ -120,7 +120,7 @@ Spring Java Format is a formatter the build enforces and nitpicker does not run,
 format check and takes the layout side of `google`: the same Checkstyle suppressions
 (`checkstyle-suppressions.xml`, which keeps `RightCurly` and `LeftCurly` out of the way of its
 `}` newline `else {` style) and no Error Prone `AnnotationPosition`, which wants the annotation after
-the modifiers where Spring puts `@Nullable` first (`formatter-owned.mjs` in
+the modifiers where Spring puts `@Nullable` first (`formatter-owned.mts` in
 `languages/java/adapters/errorprone/layout/`). `nitpicker --fix` leaves the Java files alone and says
 to run the build's own apply goal or format task. A declared `spring` fixes the indentation at tabs and the line length at 120, as palantir fixes
 them at 4 spaces and 120. Spotless `eclipse()` and `prettier()` projects stay `none`.

@@ -2,15 +2,15 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
-import type { Finding } from '../../../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import type { JavaFinding as Finding } from '../../typed/java-values.mts';
 import {
   kotlinFindings as untypedKotlinFindings,
   projectWithKotlinReports,
   removeTemporaryProjects,
   rootReports,
-} from '../../reporting/test-support/kotlin-report-project.mjs';
-import { isJavaTouchedRule } from '../../touched-rules.mjs';
+} from '../../reporting/__tests__/kotlin-report-project.mts';
+import { isJavaTouchedRule } from '../../touched-rules.mts';
 
 type DetektInput = {
   results: readonly unknown[];
@@ -140,7 +140,7 @@ describe('detekt count findings on a legacy function', () => {
   it('fails a throw count that grew although detekt leaves the count out of its message', () => {
     const { newFindings } = compare(throwsAt(3), throwsAt(4));
 
-    expect(newFindings.map(({ message }) => message.split('. ')[0])).toEqual([
+    expect(newFindings.map(({ message }) => textOf(message).split('. ')[0])).toEqual([
       'Throw statements grew from 3 to 4',
     ]);
   });
@@ -193,7 +193,7 @@ describe('detekt count findings on a legacy function', () => {
     ).toEqual([]);
     expect(
       compare(parameters(seven, 7), parameters(`${seven}, h: Int`, 8)).newFindings.map(
-        ({ message }) => message.split('. ')[0],
+        ({ message }) => textOf(message).split('. ')[0],
       ),
     ).toEqual(['Parameters grew from 7 to 8']);
   });
@@ -284,7 +284,7 @@ describe('detekt count findings on a legacy function', () => {
     const finding = firstOf(detektOf({ results: [result(rule, text, 6)] }));
 
     expect(countOf(finding)).toBe(value);
-    expect(finding?.identity.endsWith(`|value:${String(value)}`)).toBe(true);
+    expect(textOf(finding?.identity).endsWith(`|value:${String(value)}`)).toBe(true);
   });
 
   it.each([
@@ -360,7 +360,7 @@ describe('detekt count findings on a renamed legacy function', () => {
 
     expect(newFindings).toEqual([]);
     expect(resolvedFindings).toEqual([]);
-    expect(unchangedFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+    expect(unchangedFindings.map(({ message }) => textOf(message).split(' which')[0])).toEqual([
       'Function choose has 3 return statements',
     ]);
   });
@@ -371,10 +371,10 @@ describe('detekt count findings on a renamed legacy function', () => {
       [5, 5],
     ]);
 
-    expect(newFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+    expect(newFindings.map(({ message }) => textOf(message).split(' which')[0])).toEqual([
       'Function choose has 4 return statements',
     ]);
-    expect(resolvedFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+    expect(resolvedFindings.map(({ message }) => textOf(message).split(' which')[0])).toEqual([
       'Function pick has 3 return statements',
     ]);
   });

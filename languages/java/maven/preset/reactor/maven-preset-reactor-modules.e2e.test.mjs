@@ -6,9 +6,9 @@ import {
   POOL_PROTOCOL,
   writeEscape,
   writePool,
-} from '../../../adapters/design/test-support/escape-sources.mjs';
+} from '../../../adapters/design/test-support/escape-sources.mts';
 import { collectJavaFindings, runJavaDiff } from '../../../adapters/java-diff.mts';
-import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mts';
 import {
   useMavenPresetProject,
   enabled,
@@ -17,7 +17,7 @@ import {
   EMPTY_CATCH,
   copyOf,
 } from '../../__tests__/maven-preset-project.mts';
-import { pathsOutsideProject } from '../../../adapters/java-e2e/test-support/project-paths.mjs';
+import { pathsOutsideProject } from '../../../adapters/java-e2e/test-support/project-paths.mts';
 
 describe.skipIf(!enabled)('Java preset on Maven reactor modules', () => {
   useMavenPresetProject();

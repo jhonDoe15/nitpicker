@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runFakeGradle } from '../test-support/fake-gradle/run-fake-gradle.mjs';
+import { runFakeGradle } from '../test-support/fake-gradle/run-fake-gradle.mts';
 
 const { status, stdout, stderr } = runFakeGradle({
   args: process.argv.slice(2),
