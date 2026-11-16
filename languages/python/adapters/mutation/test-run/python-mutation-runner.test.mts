@@ -9,8 +9,8 @@ import {
 import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import type { ToolContext } from '../../test-support/typed/tool-context.mts';
-import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from '../python-mutation.mjs';
-import { MUTATION_SKIPPED_RULE } from './python-mutation-runner.mjs';
+import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from '../python-mutation.mts';
+import { MUTATION_SKIPPED_RULE } from './python-mutation-runner.mts';
 import { NOTHING_COLLECTED } from '../test-support/nothing-collected.mts';
 import { failureOf } from '../../test-support/runs/failure-of.mts';
 

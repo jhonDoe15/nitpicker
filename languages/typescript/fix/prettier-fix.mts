@@ -3,11 +3,15 @@ import { staticChecks } from '../preset/quality-checks.mjs';
 import { usesLayeredPrettier as untypedUsesLayeredPrettier } from '../preset/head-policy.mjs';
 import { fileURLToPath } from 'node:url';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { rewriteFormatted as untypedRewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
-import { fixerError, formatNotes, runFixCommand } from './typed/fix-views.mts';
+import {
+  fixerError,
+  formatNotes,
+  rewriteFormatted,
+  runFixCommand,
+} from '../../../core/fix/typed/fix-views.mts';
 
 const usesLayeredPrettier: (environment: NodeJS.ProcessEnv) => boolean = untypedUsesLayeredPrettier;
 
@@ -21,19 +25,6 @@ type Formatted = {
 };
 type Formatter = (sources: ReadonlyMap<string, string>) => Formatted;
 type PrettierFile = FixFile & { readonly basePath?: string };
-
-const rewriteFormatted: (options: {
-  readonly projectRoot: string;
-  readonly repositoryRoot: string;
-  readonly mergeBaseSha: string | undefined;
-  readonly files: readonly FixFile[];
-  readonly format: Formatter;
-  readonly formatBase: Formatter;
-  readonly keepLineEndings: false;
-  readonly tool: string;
-  readonly allFiles: boolean;
-  readonly writer: FixSettings['writer'];
-}) => Parameters<typeof formatNotes>[1] = untypedRewriteFormatted;
 
 function prettierCheck(): { readonly config: string; readonly ignore: string } {
   const found = staticChecks.find((check) => check.name === 'prettier-format');

@@ -30,7 +30,7 @@ const PAIRED: Readonly<Record<string, string[]>> = {
 const USAGE_LINK = docsUrl('docs/usage.md', undefined);
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
+  '                 [--rule <substring>]... [--label <label>]... [--details] [--json] [--quick] [--staged]',
   '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '                 [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
@@ -38,8 +38,9 @@ const EXPECTED_USAGE_HEAD = [
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
   '       nitpicker changelog [<version>]',
   '       nitpicker base [--base <ref>]',
+  '       nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]',
   '       nitpicker explain <tool/rule>...',
-  '       nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
+  '       nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]',
   '',
   'Commands (nitpicker <command> --help lists its options):',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',
@@ -48,6 +49,7 @@ const EXPECTED_USAGE_HEAD = [
   '  nitpicker cache publish  Upload the findings of HEAD to the remote cache.',
   '  nitpicker changelog      Print what changed in a version, from the changelog of the package.',
   '  nitpicker base           Print the base ref a run would compare with.',
+  '  nitpicker show           Print the summary of the last run again, filtered, without running anything.',
   '  nitpicker explain        Print what the rule reference says about the rules named.',
   '  nitpicker rules          List the rules the preset of the project reports.',
   '',
@@ -59,6 +61,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --verify <narrow|full>           With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
+  '  --label <label>                  Run only the checks that can report these labels and list only such findings (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --quick                          Run only the fast checks and skip the tests and what builds on them.',
@@ -80,6 +83,10 @@ function exampleLines(analyzer: string) {
     ['nitpicker --base origin/release', 'check it against a given base'],
     ['nitpicker --fix', 'apply the fixes nitpicker knows, then check'],
     [`nitpicker --analyzer ${analyzer}`, 'iterate on one analyzer; finish with a plain nitpicker'],
+    [
+      'nitpicker --label performance',
+      'focus on one kind of finding; finish with a plain nitpicker',
+    ],
     ['nitpicker src/orders/order.ts', 'gate your change to one file'],
     ['nitpicker --all src/orders', 'show every finding in one folder'],
   ];
@@ -92,9 +99,14 @@ function expectedUsage(analyzerLines: string[], analyzer: string) {
     ...EXPECTED_USAGE_HEAD,
     ...analyzerLines,
     '',
+    'Labels (for --label; kinds match any, frameworks narrow them):',
+    '  kinds: bug, security, performance, reliability, simplification, maintainability, tests, style',
+    '  frameworks: spring, react, persistence, async',
+    '',
     'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).',
     'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read',
-    'new-findings.json (--all: findings.json) first, then report.txt.',
+    'new-findings.json (--all: findings.json) first, then report.txt. nitpicker show prints the last',
+    'run again, filtered by --rule or --path, without running it.',
     '',
     'Examples:',
     ...exampleLines(analyzer),
@@ -208,6 +220,9 @@ function sampleArguments(flag: string) {
   if (placeholder === undefined) {
     return name === '--dry-run' ? ['--fix', name] : [name];
   }
+  if (name === '--label') {
+    return [name, 'bug'];
+  }
   if (name === '--verify') {
     return ['--fix', name, 'full'];
   }
@@ -220,15 +235,21 @@ describe('nitpicker --help', () => {
     expect(run('--help')).toEqual({ exitCode: 0, stdoutText: EXPECTED_USAGE, stderrText: '' });
   });
 
-  it.each([[], ['init'], ['aggregate'], ['cache', 'publish'], ['base'], ['explain'], ['rules']])(
-    'takes -h as --help after %j',
-    (...command) => {
-      const help = run(...command, '--help');
+  it.each([
+    [],
+    ['init'],
+    ['aggregate'],
+    ['cache', 'publish'],
+    ['base'],
+    ['show'],
+    ['explain'],
+    ['rules'],
+  ])('takes -h as --help after %j', (...command) => {
+    const help = run(...command, '--help');
 
-      expect(run(...command, '-h')).toEqual(help);
-      expect(help.exitCode).toBe(0);
-    },
-  );
+    expect(run(...command, '-h')).toEqual(help);
+    expect(help.exitCode).toBe(0);
+  });
 
   it('lists the analyzers of the preset the config names, and uses one in the example', () => {
     const root = projectWith('{ "preset": "java" }', { 'pom.xml': '<project/>\n' });
@@ -296,6 +317,7 @@ describe('nitpicker --help', () => {
       'nitpicker cache publish',
       'nitpicker changelog',
       'nitpicker base',
+      'nitpicker show',
       'nitpicker explain',
       'nitpicker rules',
     ]);

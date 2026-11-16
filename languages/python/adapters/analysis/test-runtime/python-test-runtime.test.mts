@@ -5,11 +5,11 @@ import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mjs';
 import { validateConfig } from '../../../../../core/configuration/validate.mts';
 import { applyPythonExceptions } from '../../configuration/python-exceptions.mts';
-import { applyRuleHints } from '../../../rules/rule-hints.mjs';
+import { applyRuleHints } from '../../../rules/rule-hints.mts';
 import {
   readTestRuntimeFindings as untypedReadFindings,
   scanTestStrings,
-} from './python-test-runtime.mjs';
+} from './python-test-runtime.mts';
 import {
   fieldOf,
   fieldsOf,

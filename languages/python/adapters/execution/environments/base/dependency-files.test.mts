@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { dependenciesDiffer } from './dependency-files.mjs';
+import { dependenciesDiffer } from './dependency-files.mts';
 import {
   pyproject,
   createRootTracker,

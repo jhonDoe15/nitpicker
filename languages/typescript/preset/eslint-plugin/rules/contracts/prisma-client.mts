@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { isStrictlyInside } from '../../../../../../shared/paths/strictly-inside.mjs';
+import { isStrictlyInside } from '../../../../../../shared/filesystem.mjs';
 import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
 
 type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;

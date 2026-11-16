@@ -4,9 +4,9 @@ import path from 'node:path';
 import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/worktree.mjs';
 import { containedPath } from './package-managers/contained-path.mts';
 import { manifestDirectories } from './package-managers/members.mts';
-import { isStrictlyInside } from '../../../../shared/paths/strictly-inside.mjs';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
 
 const LOCAL_SPEC = /^(?:file|link|portal):(?<target>.+)$/u;
 const DEPENDENCY_FIELDS = [

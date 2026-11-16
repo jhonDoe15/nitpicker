@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
+import {
+  exactText,
+  maskedDiagnostics,
+} from '../../diff/reporting/test-support/output-expectations.mts';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import {
   unusedFieldConsoleEntry,
@@ -124,7 +127,12 @@ describe.each([
               "shortDescription": {
                 "text": "Detects when a private field is declared and/or assigned a value, but not used."
               },
-              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)}
+              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)},
+              "properties": {
+                "tags": [
+                  "simplification"
+                ]
+              }
             }
           ]
         }
@@ -453,27 +461,20 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     });
 
     expect(exitCode).toBe(1);
-    expect(out.text).toEqual(
+    expect(maskedDiagnostics(out.text)).toEqual(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
-        'Enforceable findings: 1',
-        'Descriptive findings: 3',
-        'Tool errors: 0',
         '',
-        'Per-tool counts:',
-        'java: total=4 enforceable=1 descriptive=3',
-        'repository-hygiene: total=0 enforceable=0 descriptive=0',
-        '',
-        'Enforceable findings:',
-        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
-        '',
+        'Quality snapshot summary',
+        '✖ 1 enforceable finding',
+        unusedFieldConsoleEntry('legacy', 3),
         'Design notes for review (not failing): 3 in the snapshot',
         '  coupling/coupling . dependencies summary (dependencies 0)',
         '  coupling/coupling . modules summary (modules 0)',
         '  coupling/coupling . packages summary (packages 0)',
-        '',
-        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
+        'By analyzer:',
+        '  java: 1 enforceable, 3 descriptive',
+        '  1 analyzer ran clean',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );

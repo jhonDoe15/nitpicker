@@ -132,3 +132,11 @@ function evenSample(files, limit) {
   const stride = sorted.length / limit;
   return Array.from({ length: limit }, (_, index) => sorted[Math.floor(index * stride)]);
 }
+
+export function followedHelpers(counts, { minFiles }) {
+  return Object.keys(counts)
+    .filter((key) => key.startsWith('use:'))
+    .map((key) => key.slice('use:'.length))
+    .filter((name) => counts[`use:${name}`] >= minFiles)
+    .filter((name) => (counts[`def:${name}`] ?? 0) > 0);
+}

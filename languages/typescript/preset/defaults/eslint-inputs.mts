@@ -14,7 +14,7 @@ import { untypedJavascriptConfig as javascriptWithoutTypesConfig } from '../esli
 import {
   applyJavascriptDialect as untypedApplyJavascriptDialect,
   scriptRuleEntries as untypedScriptRuleEntries,
-} from '../../../javascript/preset/eslint-dialect.mjs';
+} from '../../../javascript/preset/eslint-dialect.mts';
 import {
   reactRuleIds as untypedReactRuleIds,
   reactTestRuleIds as untypedReactTestRuleIds,
@@ -48,9 +48,9 @@ import {
 import { precedenceLayers as untypedPrecedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots as untypedExistingRoots } from '../layout.mjs';
 import { fileNameRuleOptions as untypedFileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
-import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
-import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mjs';
-import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
+import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
+import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';
+import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mts';
 import {
   testEnvironmentConfigFor as untypedTestEnvironmentConfigFor,
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,

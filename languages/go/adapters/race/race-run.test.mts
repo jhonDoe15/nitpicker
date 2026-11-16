@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseTestEvents } from '../typed/go-readers.mts';
 import { raceUnavailable } from '../typed/go-report-readers.mts';
-import { raceOnlyFailures } from './race-run.mjs';
+import { raceOnlyFailures } from './race-run.mts';
 
 const event = (fields: object) => JSON.stringify({ Package: 'example.com/shop', ...fields });
 

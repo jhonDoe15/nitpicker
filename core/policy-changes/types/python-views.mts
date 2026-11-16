@@ -1,14 +1,14 @@
 import { parseJsonc as untypedParseJsonc } from '../../../shared/jsonc/jsonc.mjs';
-import { parseIni as untypedParseIni } from '../../../languages/python/adapters/configuration/ini-parser.mjs';
+import { parseIni as untypedParseIni } from '../../../languages/python/adapters/configuration/ini-parser.mts';
 import {
   blackConfigFiles as untypedBlackConfigFiles,
   ruffConfigFiles as untypedRuffConfigFiles,
-} from '../../../languages/python/adapters/formatting/project-format-config.mjs';
-import { readProjectPyright as untypedReadProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
-import { readCoverageSettings as untypedReadCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mjs';
-import { readMypyConfig as untypedReadMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mjs';
-import { readMutmutConfig as untypedReadMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mjs';
-import { parseToml as untypedParseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+} from '../../../languages/python/adapters/formatting/project-format-config.mts';
+import { readProjectPyright as untypedReadProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mts';
+import { readCoverageSettings as untypedReadCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mts';
+import { readMypyConfig as untypedReadMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mts';
+import { readMutmutConfig as untypedReadMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mts';
+import { parseToml as untypedParseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mts';
 
 type IniSections = Map<string, Map<string, string>>;
 export type RuntimeConfig = { readonly file?: string };

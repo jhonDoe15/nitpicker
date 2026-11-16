@@ -7,6 +7,23 @@
   "$defs": {
     "text": { "type": "string", "minLength": 1 },
     "count": { "type": "integer", "minimum": 0 },
+    "label": {
+      "description": "A finding label: a kind (bug, security, performance, reliability, simplification, maintainability, tests, style) or a framework (spring, react, persistence, async).",
+      "enum": [
+        "bug",
+        "security",
+        "performance",
+        "reliability",
+        "simplification",
+        "maintainability",
+        "tests",
+        "style",
+        "spring",
+        "react",
+        "persistence",
+        "async"
+      ]
+    },
     "failure": {
       "description": "The run stopped before it had a result, for example on an unknown argument or a repository with no commits.",
       "type": "object",
@@ -49,6 +66,10 @@
           "description": "Nothing changed since the merge base, so nothing was checked.",
           "const": true
         },
+        "skippedAll": {
+          "description": "No analyzer reads the files the change touches, so every analyzer was skipped and nothing was checked.",
+          "const": true
+        },
         "counts": { "$ref": "#/$defs/counts" },
         "findings": {
           "description": "The failing findings, in the order the reports list them. Unreached mutants of one function are one entry, and a function lists at most three surviving mutants and then one entry for the rest.",
@@ -59,6 +80,11 @@
           "type": "array",
           "items": { "$ref": "#/$defs/toolError" }
         },
+        "skippedAnalyzers": {
+          "description": "The analyzers no changed file can affect, skipped on both sides.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/text" }
+        },
         "partialRun": {
           "description": "Only some analyzers ran (--analyzer); run without it before you finish.",
           "type": "object",
@@ -67,6 +93,19 @@
           "properties": {
             "ran": { "type": "array", "items": { "$ref": "#/$defs/text" } },
             "skipped": { "type": "array", "items": { "$ref": "#/$defs/text" } }
+          }
+        },
+        "labels": {
+          "description": "Only findings with these labels are listed (--label); run without it before you finish.",
+          "type": "object",
+          "required": ["selected", "hidden"],
+          "additionalProperties": false,
+          "properties": {
+            "selected": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/label" } },
+            "hidden": {
+              "description": "New findings left out because their labels did not match.",
+              "$ref": "#/$defs/count"
+            }
           }
         },
         "reports": {
@@ -83,13 +122,15 @@
         "properties": {
           "base": false,
           "noChanges": false,
+          "skippedAll": false,
+          "skippedAnalyzers": false,
           "counts": { "properties": { "held": false } }
         }
       }
     },
     "counts": {
       "type": "object",
-      "required": ["failing", "byArea", "reportOnly"],
+      "required": ["failing", "byArea", "byLabel", "reportOnly"],
       "additionalProperties": false,
       "properties": {
         "failing": {
@@ -114,6 +155,12 @@
           },
           "additionalProperties": { "type": "integer", "minimum": 1 }
         },
+        "byLabel": {
+          "description": "Failing findings per label, in taxonomy order; a finding with two labels counts under both.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/label" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
         "reportOnly": {
           "description": "Findings that never fail the gate (descriptive); listed in the reports.",
           "$ref": "#/$defs/count"
@@ -126,7 +173,7 @@
     },
     "finding": {
       "type": "object",
-      "required": ["tool", "rule", "path", "message"],
+      "required": ["tool", "rule", "path", "message", "labels"],
       "additionalProperties": false,
       "properties": {
         "tool": { "$ref": "#/$defs/text" },
@@ -141,6 +188,12 @@
         "message": {
           "description": "The message on one line, without the exception sentence when `exception` carries it.",
           "$ref": "#/$defs/text"
+        },
+        "labels": {
+          "description": "What the finding is about: one or more kinds first, then any frameworks.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/label" }
         },
         "allowedForm": {
           "description": "The part of the message that names what to write instead.",

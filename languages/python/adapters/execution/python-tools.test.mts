@@ -208,9 +208,12 @@ describe('running the tools', () => {
       })),
     );
   });
-  it('names a failing coverage report', () => {
-    const root = project({ 'fail.json': JSON.stringify({ 'coverage json': 'it blew up' }) });
-    const { context } = contextFor(root);
+  it('names a failing coverage report and keeps what the test run found', () => {
+    const root = project({
+      'test-exit.txt': '5\n',
+      'fail.json': JSON.stringify({ 'coverage json': 'it blew up' }),
+    });
+    const { context, reportRoot } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
       {
@@ -218,6 +221,7 @@ describe('running the tools', () => {
         message: 'coverage json exited 2 in the virtualenv environment:\nit blew up',
       },
     ]);
+    expect(testsRanOf(readReport(reportRoot, 'manifest.json'))).toBe(false);
   });
   it('fails the lint step and the rules step when ruff itself fails', () => {
     const root = project({ 'fail.json': JSON.stringify({ 'ruff check': 'it blew up' }) });
