@@ -15,8 +15,8 @@ import {
   setEnvironment,
 } from '../execution/test-support/python-tools-project.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
-import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from './python-mutation.mjs';
-import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mjs';
+import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from './python-mutation.mts';
+import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mts';
 import { section } from './test-support/mutmut-section.mts';
 import { NOTHING_COLLECTED, uncheckedData } from './test-support/nothing-collected.mts';
 import { failureOf } from '../test-support/runs/failure-of.mts';

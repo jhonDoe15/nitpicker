@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mts';
-import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mts';
 import { applyRuleHints } from './typed/ingest-views.mts';
 
 const entry = (overrides?: object) => ({

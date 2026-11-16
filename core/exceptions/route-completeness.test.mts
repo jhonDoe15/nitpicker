@@ -10,7 +10,7 @@ import {
 import {
   RULE_HINTS as UNTYPED_RULE_HINTS,
   withHint as untypedWithHint,
-} from '../../languages/python/rules/rule-hints.mjs';
+} from '../../languages/python/rules/rule-hints.mts';
 import { hasExceptionRoute as untypedHasRoute } from '../../shared/messages/exception-sentence.mjs';
 import { routeProblems } from './test-support/route-check.mts';
 

@@ -39,7 +39,8 @@ function projectWith(manifest: string | undefined, distributions: [string, strin
     projectRoot: root,
     reportRoot: root,
     launcher: {
-      launch: (_tool: string, args: string[]) => ({
+      description: 'test',
+      launch: (_tool: string, args: readonly string[]) => ({
         command: 'python3',
         args: ['-I', '-c', bootstrap, ...args.slice(1)],
         env: {},
@@ -48,7 +49,7 @@ function projectWith(manifest: string | undefined, distributions: [string, strin
   };
 }
 
-function versions(context: object, names: string[]) {
+function versions(context: Parameters<typeof installedVersions>[0], names: string[]) {
   const findings = names.map((name) => ({ identity: `unlisted:${name}` }));
   return installedVersions(context, findings);
 }

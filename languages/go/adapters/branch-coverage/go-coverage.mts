@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { moduleFileText, parseCoverProfile, readGoModule } from '../typed/go-readers.mts';
-import { COVERAGE_PROFILE } from '../tests/go-test.mjs';
+import { COVERAGE_PROFILE } from '../tests/go-test.mts';
 import { goBranchFindings } from './go-branch-coverage.mts';
 import { goCrapFindings } from './go-crap.mts';
 import type { Branch, FindingRow, GoFunction, TestRun } from '../go-types.mts';

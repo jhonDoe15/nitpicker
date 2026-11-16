@@ -1,4 +1,4 @@
-import { insideProject } from '../../../../../libraries/project-files.mjs';
+import { insideProject } from '../../../../../libraries/project-files.mts';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
