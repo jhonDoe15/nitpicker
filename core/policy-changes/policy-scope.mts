@@ -39,6 +39,7 @@ import {
 import { typescriptScope } from './scope/typescript-scope.mts';
 import { readToolConfigs } from './build-files/tool-config-files.mts';
 import { importedAmong } from './imported-files.mts';
+import { configLayersOf } from '../configuration/layers/shared-files.mts';
 
 export function gitBlobId(content: string | Uint8Array): string {
   return createHash('sha1')
@@ -93,6 +94,7 @@ export function createPolicyScope({
   headConfig,
   moves,
   presetRequired,
+  configLayers = { shared: [], changed: [] },
   tsconfigs,
   checkedJavascript,
   buildSources,
@@ -118,6 +120,8 @@ export function createPolicyScope({
     basePathOf,
     existsInBase: (file) => baseFileSet.has(file),
     presetRequired: presetRequired === true,
+    sharedConfigs: configLayers.shared,
+    changedConfigLayers: configLayers.changed,
     tsconfigs,
     checkedJavascript,
     buildSources,
@@ -237,6 +241,7 @@ export function readPolicyScope({
   headProjectRoot,
   liveProjectRoot = headProjectRoot,
   moves,
+  inherits,
   replacedOptions,
 }: PolicyRead): PolicyScope {
   const files = projectFilePaths(headProjectRoot);
@@ -254,6 +259,7 @@ export function readPolicyScope({
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) === undefined ? undefined : true,
+    configLayers: configLayersOf(baseProjectRoot, headProjectRoot, { blobId: gitBlobId, inherits }),
     ...typescriptScope(
       { root: baseProjectRoot, files: baseFiles, config: baseConfig },
       { root: headProjectRoot, files, config: headConfig },

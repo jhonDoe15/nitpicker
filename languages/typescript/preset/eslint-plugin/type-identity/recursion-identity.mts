@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { memoized } from '../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../shared/values/caching/cached-value.mts';
 import { ts } from '../rules/typed/typescript-views.mts';
 
 const MAX_TYPE_ARGUMENT_DEPTH = 12;
@@ -70,7 +70,7 @@ export function giveEachInstantiationItsOwnIdentity(program: ProgramLike | undef
   Reflect.set(checker, SHARED_IDENTITY, sharedIdentity);
   Reflect.set(checker, IDENTITY_SCOPE, new WeakMap());
   checker.getRecursionIdentity = (type: TypeScript.Type) =>
-    memoized(
+    cachedValue(
       currentScope(checker),
       nestsTooDeep(checker, type) ? sharedIdentity(type) : type,
       (identity) => ({

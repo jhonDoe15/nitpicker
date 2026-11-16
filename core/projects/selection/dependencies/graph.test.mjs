@@ -1,0 +1,328 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
+import { dependencyGraph, dependentsOf, deepestProject, edgeLabel } from './graph.mts';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
+
+const git = useGitFixtures();
+
+function layout(files) {
+  const root = git.temporaryRoot('nitpicker-graph-');
+  for (const [name, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), content);
+  }
+  return root;
+}
+
+function edges(files, projects) {
+  const graph = dependencyGraph(layout(files), projects);
+  return Object.fromEntries(
+    [...graph].map(([project, needs]) => [project, [...needs].toSorted(byText)]),
+  );
+}
+
+const manifest = (name, dependencies = {}, extra = {}) =>
+  JSON.stringify({ name, dependencies, ...extra });
+
+describe('JavaScript workspace dependencies', () => {
+  it('follows dependencies that name another workspace package, whatever the protocol', () => {
+    expect(
+      edges(
+        {
+          'ui/package.json': manifest('@acme/ui'),
+          'util/package.json': manifest('@acme/util'),
+          'web/package.json': manifest(
+            'web',
+            { '@acme/ui': 'workspace:*', react: '^19.0.0' },
+            { devDependencies: { '@acme/util': '^1.0.0' } },
+          ),
+        },
+        ['ui', 'util', 'web'],
+      ),
+    ).toEqual({ ui: [], util: [], web: ['ui', 'util'] });
+  });
+
+  it('follows file, link and portal specifiers to the project holding the folder', () => {
+    expect(
+      edges(
+        {
+          'libs/core/package.json': manifest('core'),
+          'app/package.json': manifest('app', {
+            a: 'file:../libs/core/dist',
+            b: 'link:../libs/core',
+            c: 'portal:../../outside',
+          }),
+        },
+        ['libs/core', 'app'],
+      ),
+    ).toEqual({ 'libs/core': [], app: ['libs/core'] });
+  });
+
+  it('follows an npm alias to the workspace package it names', () => {
+    expect(
+      edges(
+        {
+          'ui/package.json': manifest('@acme/ui'),
+          'web/package.json': manifest('web', { ui: 'npm:@acme/ui@^1.0.0', left: 'npm:leftpad@1' }),
+        },
+        ['ui', 'web'],
+      ),
+    ).toEqual({ ui: [], web: ['ui'] });
+  });
+
+  it('copes with a manifest that cannot be read or has no name', () => {
+    expect(
+      edges({ 'a/package.json': '{ broken', 'b/package.json': '[]', 'c/package.json': '{}' }, [
+        'a',
+        'b',
+        'c',
+      ]),
+    ).toEqual({ a: [], b: [], c: [] });
+  });
+});
+
+describe('Python dependencies', () => {
+  const pyproject = (name, tail = '') => `[project]\nname = "${name}"\n${tail}`;
+
+  it('follows uv workspace sources and path sources', () => {
+    expect(
+      edges(
+        {
+          'libs/Core_Lib/pyproject.toml': pyproject('Core_Lib'),
+          'libs/other/pyproject.toml': pyproject('other'),
+          'api/pyproject.toml': pyproject(
+            'api',
+            'dependencies = ["core-lib", "other"]\n[tool.uv.sources]\n' +
+              'core-lib = { workspace = true }\nother = { path = "../libs/other" }\nplain = "x"\n',
+          ),
+        },
+        ['libs/Core_Lib', 'libs/other', 'api'],
+      ),
+    ).toEqual({ 'libs/Core_Lib': [], 'libs/other': [], api: ['libs/Core_Lib', 'libs/other'] });
+  });
+
+  it('follows Poetry path dependencies in every group', () => {
+    expect(
+      edges(
+        {
+          'lib/pyproject.toml': '[tool.poetry]\nname = "lib"\n',
+          'api/pyproject.toml':
+            '[tool.poetry]\nname = "api"\n[tool.poetry.dependencies]\nlib = { path = "../lib" }\n' +
+            'python = "^3.12"\n[tool.poetry.group.dev.dependencies]\nx = "1"\n',
+          'cli/pyproject.toml':
+            '[tool.poetry]\nname = "cli"\n[tool.poetry.group.dev.dependencies]\nlib = { path = "../lib" }\n',
+        },
+        ['lib', 'api', 'cli'],
+      ),
+    ).toEqual({ lib: [], api: ['lib'], cli: ['lib'] });
+  });
+
+  it('does not treat a plain dependency on a similarly named package as local', () => {
+    expect(
+      edges(
+        {
+          'lib/pyproject.toml': pyproject('lib'),
+          'api/pyproject.toml': pyproject('api', 'dependencies = ["lib"]\n'),
+        },
+        ['lib', 'api'],
+      ),
+    ).toEqual({ lib: [], api: [] });
+  });
+});
+
+describe('JVM build dependencies', () => {
+  it('follows included builds and Maven parents outside the build', () => {
+    expect(
+      edges(
+        {
+          'shared/settings.gradle': '',
+          'svc/settings.gradle': "includeBuild '../shared'\nincludeBuild('./inner')\n",
+          'kt/settings.gradle.kts': 'includeBuild(file("../shared"))\n',
+          'mvn/pom.xml':
+            '<project><parent><relativePath>../shared/pom.xml</relativePath></parent>' +
+            '<modules><module>inner</module></modules></project>',
+        },
+        ['shared', 'svc', 'kt', 'mvn'],
+      ),
+    ).toEqual({ shared: [], svc: ['shared'], kt: ['shared'], mvn: ['shared'] });
+  });
+});
+
+describe('dependents', () => {
+  const graph = new Map([
+    ['core', new Set()],
+    ['lib', new Set(['core'])],
+    ['app', new Set(['lib'])],
+    ['other', new Set()],
+  ]);
+
+  it('reaches everything that depends on a changed project, directly or not', () => {
+    expect(dependentsOf(graph, new Set(['core']))).toEqual(
+      new Map([
+        ['lib', 'core'],
+        ['app', 'lib'],
+      ]),
+    );
+  });
+
+  it('adds nothing for a project nobody depends on', () => {
+    expect(dependentsOf(graph, new Set(['app', 'other']))).toEqual(new Map());
+  });
+
+  it('terminates on a cycle', () => {
+    const cyclic = new Map([
+      ['a', new Set(['b'])],
+      ['b', new Set(['a'])],
+    ]);
+
+    expect(dependentsOf(cyclic, new Set(['a']))).toEqual(new Map([['b', 'a']]));
+  });
+});
+
+describe('deepestProject', () => {
+  it('picks the project nearest to a folder, and the root last', () => {
+    expect(deepestProject(['.', 'a', 'a/b'], 'a/b/c')).toBe('a/b');
+    expect(deepestProject(['.', 'a'], 'x/y')).toBe('.');
+    expect(deepestProject(['a'], 'x')).toBeUndefined();
+  });
+});
+
+describe('TypeScript compiler dependencies', () => {
+  const base = JSON.stringify({
+    compilerOptions: {
+      types: [],
+      lib: ['ES2022'],
+      baseUrl: '.',
+      paths: { '@acme/ui': ['libs/ui/src/index.ts'], '@acme/data/*': ['libs/data/src/*'] },
+    },
+  });
+  const extending = JSON.stringify({ extends: '../../tsconfig.base.json' });
+
+  it('follows a paths alias the project imports, through the extended tsconfig', () => {
+    const files = {
+      'tsconfig.base.json': base,
+      'apps/web/tsconfig.json': extending,
+      'apps/web/src/main.ts': "import { button } from '@acme/ui';\n",
+      'apps/admin/tsconfig.json': extending,
+      'apps/admin/src/main.ts': "import { rows } from '@acme/data/rows';\n",
+      'libs/ui/src/index.ts': 'export const button = 1;\n',
+      'libs/data/src/rows.ts': 'export const rows = 1;\n',
+    };
+    const projects = ['apps/web', 'apps/admin', 'libs/ui', 'libs/data'];
+    const root = layout(files);
+    const graph = dependencyGraph(root, projects);
+
+    expect(Object.fromEntries([...graph].map(([key, needs]) => [key, [...needs]]))).toEqual({
+      'apps/web': ['libs/ui'],
+      'apps/admin': ['libs/data'],
+      'libs/ui': [],
+      'libs/data': [],
+    });
+    expect(edgeLabel(graph, 'apps/web', 'libs/ui')).toBe('tsconfig paths');
+  });
+
+  it('follows project references', () => {
+    const files = {
+      'apps/web/tsconfig.json': JSON.stringify({ references: [{ path: '../../libs/ui' }] }),
+      'libs/ui/tsconfig.json': JSON.stringify({
+        compilerOptions: { types: [], lib: ['ES2022'], composite: true },
+      }),
+    };
+    const graph = dependencyGraph(layout(files), ['apps/web', 'libs/ui']);
+
+    expect([...(graph.get('apps/web') ?? [])]).toEqual(['libs/ui']);
+    expect(edgeLabel(graph, 'apps/web', 'libs/ui')).toBe('tsconfig references');
+  });
+});
+
+describe('JVM dependencies by coordinates', () => {
+  const pom = (coordinates, dependencies = '') =>
+    `<project><parent><groupId>com.acme</groupId><artifactId>parent</artifactId></parent>${coordinates}` +
+    `<dependencyManagement><dependencies><dependency><groupId>com.acme</groupId><artifactId>users</artifactId></dependency></dependencies></dependencyManagement>` +
+    `<dependencies>${dependencies}</dependencies></project>`;
+
+  it('follows a Maven dependency on the coordinates another project builds', () => {
+    const files = {
+      'libs/common/pom.xml': pom('<artifactId>common</artifactId>'),
+      'services/orders/pom.xml': pom(
+        '<artifactId>orders</artifactId>',
+        '<dependency><groupId>com.acme</groupId><artifactId>common</artifactId></dependency>',
+      ),
+      'services/users/pom.xml': pom('<artifactId>users</artifactId>'),
+    };
+    const graph = dependencyGraph(layout(files), [
+      'libs/common',
+      'services/orders',
+      'services/users',
+    ]);
+
+    expect(Object.fromEntries([...graph].map(([key, needs]) => [key, [...needs]]))).toEqual({
+      'libs/common': [],
+      'services/orders': ['libs/common'],
+      'services/users': [],
+    });
+    expect(edgeLabel(graph, 'services/orders', 'libs/common')).toBe('com.acme:common');
+  });
+
+  it('resolves property references in Maven coordinates', () => {
+    const files = {
+      'lib/pom.xml': `<project>
+  <parent><groupId>com.acme</groupId><artifactId>parent</artifactId></parent>
+  <artifactId>lib</artifactId>
+</project>`,
+      'app/pom.xml': `<project>
+  <groupId>com.acme</groupId>
+  <artifactId>app</artifactId>
+  <properties><lib.group>com.acme</lib.group></properties>
+  <dependencies>
+    <dependency><groupId>\${project.groupId}</groupId><artifactId>lib</artifactId></dependency>
+    <dependency><groupId>\${lib.group}</groupId><artifactId>lib</artifactId></dependency>
+  </dependencies>
+</project>`,
+    };
+
+    expect(edges(files, ['app', 'lib'])).toEqual({ app: ['lib'], lib: [] });
+  });
+
+  it('follows Gradle dependencies, substitutions and version catalog entries', () => {
+    const files = {
+      'libs/common/settings.gradle': "rootProject.name = 'common'\n",
+      'libs/common/build.gradle': "group = 'com.acme'\n",
+      'libs/model/build.gradle.kts': 'group = "com.acme"\n',
+      'services/orders/build.gradle': "dependencies { implementation 'com.acme:common:1.0' }\n",
+      'services/users/build.gradle.kts': 'dependencies { implementation(libs.acme.model) }\n',
+      'services/users/gradle/libs.versions.toml':
+        '[libraries]\nacme-model = { module = "com.acme:model", version = "1.0" }\n',
+    };
+    const projects = ['libs/common', 'libs/model', 'services/orders', 'services/users'];
+    const graph = dependencyGraph(layout(files), projects);
+
+    expect([...(graph.get('services/orders') ?? [])]).toEqual(['libs/common']);
+    expect([...(graph.get('services/users') ?? [])]).toEqual(['libs/model']);
+  });
+});
+
+describe('one folder gated by two presets', () => {
+  const files = {
+    'lib/package.json': manifest('@x/lib'),
+    'app/package.json': manifest('app', { '@x/lib': '*' }),
+  };
+  const folders = new Map([
+    ['lib@typescript', 'lib'],
+    ['lib@java', 'lib'],
+  ]);
+
+  it.each([[['lib@typescript', 'lib@java', 'app']], [['lib@java', 'lib@typescript', 'app']]])(
+    'links a dependent to every preset of the folder, listed as %j',
+    (order) => {
+      const graph = dependencyGraph(layout(files), order, folders);
+
+      expect([...(graph.get('app') ?? [])].toSorted(byText)).toEqual([
+        'lib@java',
+        'lib@typescript',
+      ]);
+    },
+  );
+});

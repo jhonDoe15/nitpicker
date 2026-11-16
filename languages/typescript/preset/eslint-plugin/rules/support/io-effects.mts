@@ -12,7 +12,7 @@ import {
   typedReferenceEffects,
 } from './io/summaries.mts';
 import { calleeOrigin as typedCalleeOrigin, type CalleeOrigin } from './io/typed-calls.mts';
-import { memoized } from '../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 
 type IoCall = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 type IoEffect = {
@@ -41,7 +41,7 @@ function untypedEffects(call: IoCall, context: Context): Effects {
 export function callEffects(call: IoCall, context: Context): Effects {
   const services = typeServices(context);
   return services === undefined
-    ? memoized(untypedCache, call, () => untypedEffects(call, context))
+    ? cachedValue(untypedCache, call, () => untypedEffects(call, context))
     : typedCallEffects(services.esTreeNodeToTSNodeMap.get(call), services.program);
 }
 

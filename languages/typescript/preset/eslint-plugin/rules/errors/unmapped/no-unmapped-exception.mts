@@ -6,7 +6,7 @@ import type {
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { typeServices } from '../../security/security-values.mts';
-import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { filterCoverage, globalFilters, localFilters } from './exception-filters.mts';
 import {
   ancestorsOf,
@@ -98,7 +98,7 @@ export const rule: TSESLint.RuleModule<'unmapped', [], Docs> = {
         }
         const filters = [
           ...localFilters(checker, [handler.method, handler.owner]),
-          ...memoized(registered, services.program, globalFilters),
+          ...cachedValue(registered, services.program, globalFilters),
         ];
         const name = `${classLabel(handler.owner)}.${handler.method.name.getText()}`;
         for (const [thrown, path] of thrownClasses(checker, handler.method)) {

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, type SourceContext } from '../../rules/analysis/constant-resolution.mts';
-import { memoized } from '../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { chainOf } from '../../rules/typed/node-views.mts';
 import { resolvedFunction } from '../unowned-async/hosts.mts';
 import {
@@ -58,7 +58,7 @@ function collectFacts({ context, bindings }: LoopEnv, fn: FunctionNode): Facts {
 }
 
 export function factsOf(env: LoopEnv, fn: FunctionNode): Facts {
-  return memoized(env.facts, fn, () => collectFacts(env, fn));
+  return cachedValue(env.facts, fn, () => collectFacts(env, fn));
 }
 
 function remember(

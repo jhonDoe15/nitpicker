@@ -24,6 +24,7 @@ type PreparationRequest = {
   readonly liveProjectRoot?: string | undefined;
   readonly toolRoot?: unknown;
   readonly dependencyHook?: DependencyHook | undefined;
+  readonly reuseExisting?: true | undefined;
 };
 
 type PreparedDependencies = {
@@ -104,7 +105,9 @@ export function prepareSnapshotDependencies(
     dependencyHook.directory,
   );
   if (existsSync(dependencyPath)) {
-    validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, dependencyHook });
+    if (options.reuseExisting !== true) {
+      validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, dependencyHook });
+    }
     return undefined;
   }
   switch (mode) {

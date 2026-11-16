@@ -117,6 +117,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         configOverrides: [],
         policyChanges: [],
         policyLoosenings: [],
+        projectPath: '.',
         policyChangeAccepted: false,
         notices: [],
         tools: [],

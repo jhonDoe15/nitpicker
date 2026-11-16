@@ -1,14 +1,26 @@
-import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
+import { resolveBase } from '../../diff/git/repository/base-ref.mts';
+import { policyAcceptance } from '../../projects/policy/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
 import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import type { Loosening as PolicyLoosening } from '../../policy-changes/types/policy-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
+import type { SharedWorktree } from '../../diff/comparison/snapshots/run-types.mts';
 
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
   readonly jsonOutput?: TextOutput;
+  readonly scope?: unknown;
+  readonly currentFolder?: string | undefined;
+  readonly configOverlay?: ProjectOverlay | undefined;
+  readonly projectKey?: string | undefined;
+  readonly baseConfigOverlay?: ProjectOverlay | undefined;
+  readonly repositoryLoosenings?: readonly PolicyLoosening[];
+  readonly sharedBase?: ReturnType<typeof resolveBase>;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
+  readonly repositoryToolErrors?: readonly object[];
 };
 
 export type ComparisonCli = Omit<ConfiguredCli, 'analyzers' | 'currentProjectRoot'> &
@@ -60,4 +72,20 @@ export function resolveRunCacheStore(
     writeNotes(cli.stderr, warnings);
   }
   return cli.options.cache ? store : undefined;
+}
+
+export function comparisonBaseOf(
+  cli: ComparisonCli,
+  repositoryRoot: string,
+): ReturnType<typeof resolveBase> {
+  return (
+    cli.sharedBase ??
+    resolveBase({
+      repositoryRoot,
+      explicitBase: cli.options.baseRef,
+      configuredBase: cli.config.base,
+      environment: cli.environment,
+      staged: cli.options.staged,
+    })
+  );
 }

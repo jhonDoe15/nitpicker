@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { packageFromPath } from '../../support/io/packages.mts';
 import { resolvedSymbol } from '../../support/io/implementations.mts';
-import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { ts } from '../../typed/typescript-views.mts';
 
 export type Relation = { readonly entity: string; readonly relation: string };
@@ -119,7 +119,7 @@ function schemaRelations(
 }
 
 function schemaIndex(program: TypeScript.Program): SchemaRelation[] {
-  return memoized(schemaIndexes, program, () => {
+  return cachedValue(schemaIndexes, program, () => {
     const checker = program.getTypeChecker();
     const found: SchemaRelation[] = [];
     const pending: TypeScript.Node[] = program
