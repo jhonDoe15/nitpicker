@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import {
   availabilityNotices,
   coChangeNotices,

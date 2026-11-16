@@ -11,7 +11,7 @@ type DesignRequest = {
   readonly listModules: () => readonly DesignModule[];
   readonly policy: JavaPolicy | undefined;
   readonly analyzerName?: string;
-  readonly output: string;
+  readonly output?: string | undefined;
   readonly evaluate?: Evaluate;
 };
 

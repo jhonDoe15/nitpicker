@@ -1,0 +1,264 @@
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import {
+  type InheritedMethod,
+  type Locate,
+  inheritedMethod,
+  superclassOf,
+} from './inherited-tests.mts';
+import { templateMethods, testMethod } from './test-methods.mts';
+import type { JavaFinding } from '../typed/java-values.mts';
+import {
+  DECLARES_KOTEST_SPEC,
+  MESSAGES,
+  RULE_IDS,
+  SLOW_TEST_FIXES,
+  inModule,
+  isIntegrationTest,
+  isSpringBootTest,
+  isUnitTestTask,
+  messageFields,
+  renderMessage,
+  shownSeconds,
+  slowTestBudget,
+  slowestRuns,
+  sourceLocator,
+  sourceOf,
+  type Method,
+  type SlowOptions,
+  type SlowTest,
+  type TestCase,
+} from './typed/slow-test-views.mts';
+
+const SLOW_TEST_TOOL = 'test-runtime';
+export const TEST_RESULTS_DIRECTORY = 'test-results';
+const CONTAINERS_FILE = 'nitpicker-containers.json';
+const MOVE_ADVICE = {
+  gradle:
+    ', or if it is an integration test, name it *IT or move it to an integration test source set',
+  maven: ', or if it is an integration test, name it *IT so that Failsafe runs it',
+};
+const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
+
+const NOT_TIMED_OUTCOMES = ['failure', 'error', 'flakyFailure', 'flakyError', 'skipped'];
+
+export function testCasesOf(xml: string, task: string): TestCase[] {
+  const root = parseXml(xml);
+  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
+  return suites.flatMap((suite) =>
+    childrenNamed(suite, 'testcase')
+      .filter((testCase) =>
+        NOT_TIMED_OUTCOMES.every((name) => childrenNamed(testCase, name).length === 0),
+      )
+      .map((testCase) => ({
+        task,
+        file: testCase.attrs['file'],
+        className: testCase.attrs['classname'] ?? suite.attrs['name'] ?? '',
+        name: testCase.attrs['name'] ?? '',
+        seconds: Number((testCase.attrs['time'] ?? '0').replaceAll(',', '')),
+      })),
+  );
+}
+
+function readContainers(directory: string): Map<string, string[]> {
+  const file = path.join(directory, CONTAINERS_FILE);
+  const entries = existsSync(file) ? listOf(parseJson(readFileSync(file, 'utf8'))) : [];
+  return new Map(
+    entries.map((entry): [string, string[]] => [
+      `${textOf(fieldOf(entry, 'className'))}#${textOf(fieldOf(entry, 'name'))}`,
+      textsOf(fieldOf(entry, 'containers')),
+    ]),
+  );
+}
+
+function readTestCases(reportRoot: string): TestCase[] {
+  const resultsRoot = path.join(reportRoot, TEST_RESULTS_DIRECTORY);
+  const tasks = existsSync(resultsRoot) ? readdirSync(resultsRoot).sort() : [];
+  return tasks.flatMap((task) => {
+    const directory = path.join(resultsRoot, task);
+    const containers = readContainers(directory);
+    return readdirSync(directory)
+      .filter((name) => name.endsWith('.xml'))
+      .sort()
+      .flatMap((name) => testCasesOf(readFileSync(path.join(directory, name), 'utf8'), task))
+      .map((testCase) => {
+        const found = containers.get(`${testCase.className}#${testCase.name}`);
+        return found === undefined ? testCase : { ...testCase, containers: found };
+      });
+  });
+}
+
+function withContainerPath(testCase: TestCase, locate: Locate, projectRoot: string): TestCase {
+  const { containers, ...plain } = testCase;
+  if (containers === undefined) {
+    return testCase;
+  }
+  const text = readOptional(projectRoot, sourceOf(locate, testCase.className));
+  return text !== undefined && DECLARES_KOTEST_SPEC.test(text)
+    ? { ...plain, name: [...containers, testCase.name].join('/') }
+    : plain;
+}
+
+function readOptional(root: string, relative: string | undefined): string | undefined {
+  const file = relative === undefined ? undefined : path.join(root, relative);
+  return file !== undefined && existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+}
+
+function isIntegration(
+  testCase: TestCase,
+  text: string | undefined,
+  context: { locate: Locate; projectRoot: string },
+): boolean {
+  return (
+    isIntegrationTest({
+      className: testCase.className,
+      unitSource: isUnitTestTask(testCase.task),
+    }) ||
+    (text !== undefined && isSpringBootTest(text, context))
+  );
+}
+
+function sameUnnamedCase(baseText: string, text: string, className: string): boolean {
+  const baseTemplates = templateMethods(baseText, className);
+  const templates = templateMethods(text, className);
+  return baseTemplates === '' && templates === '' ? baseText === text : baseTemplates === templates;
+}
+
+function sameTest(
+  baseText: string,
+  { testCase, method }: { testCase: TestCase & { text: string }; method: Method | undefined },
+): boolean {
+  if (method === undefined) {
+    return sameUnnamedCase(baseText, testCase.text, testCase.className);
+  }
+  return testMethod(baseText, testCase.name, testCase.className)?.text === method.text;
+}
+
+function movedFrom(
+  baselineRoot: string,
+  { source, modulePath, testRoots, projectRoot }: SlowTest,
+): string[] {
+  const name = path.basename(source ?? '');
+  return testRoots.flatMap((root) => {
+    const directory = path.join(baselineRoot, inModule(modulePath, root));
+    return existsSync(directory)
+      ? readdirSync(directory, { recursive: true, encoding: 'utf8' })
+          .filter((entry) => path.basename(entry) === name)
+          .filter((entry) => !existsSync(path.join(projectRoot, root, entry)))
+          .map((entry) => readFileSync(path.join(directory, entry), 'utf8'))
+      : [];
+  });
+}
+
+function inheritedChanged(
+  slow: SlowTest,
+  declaring: InheritedMethod,
+  baselineRoot: string,
+): boolean {
+  const { modulePath, testCase, text } = slow;
+  const baseText = readOptional(baselineRoot, inModule(modulePath, slow.source ?? '.'));
+  const owners = baseText === undefined ? movedFrom(baselineRoot, slow) : [baseText];
+  const baseDeclaring = readOptional(baselineRoot, inModule(modulePath, declaring.source));
+  return (
+    !owners.some(
+      (owner) =>
+        superclassOf(owner, testCase.className) === superclassOf(text ?? '', testCase.className),
+    ) ||
+    baseDeclaring === undefined ||
+    testMethod(baseDeclaring, testCase.name, declaring.className)?.text !== declaring.method.text
+  );
+}
+
+function isChanged(slow: SlowTest, baselineRoot: string): boolean {
+  const { source, text, modulePath } = slow;
+  if (slow.declaring !== undefined) {
+    return inheritedChanged(slow, slow.declaring, baselineRoot);
+  }
+  const baseText = readOptional(
+    baselineRoot,
+    source === undefined ? undefined : inModule(modulePath, source),
+  );
+  if (text === undefined) {
+    return baseText !== text;
+  }
+  const compared = { testCase: { ...slow.testCase, text }, method: slow.method };
+  if (baseText !== undefined) {
+    return !sameTest(baseText, compared);
+  }
+  return !movedFrom(baselineRoot, slow).some((moved) => sameTest(moved, compared));
+}
+
+function slowTestFinding({
+  testCase,
+  method,
+  limit,
+  integration,
+  modulePath,
+  ...slow
+}: SlowTest): JavaFinding {
+  const source = slow.declaring?.source ?? slow.source;
+  const exception = JSON.stringify({
+    rule: RULE_IDS.slowTest,
+    paths: [inModule(modulePath, source ?? '.')],
+    reason: '...',
+  });
+  return {
+    tool: SLOW_TEST_TOOL,
+    rule: RULE_IDS.slowTest,
+    path: source ?? '.',
+    identity: `test:${testCase.className}#${testCase.name}`,
+    ...(method === undefined ? {} : { location: { line: method.line } }),
+    ...messageFields(MESSAGES.slowTest, {
+      name: `${(testCase.className.split('.').pop() ?? '').replaceAll('$', '.')} ${testCase.name}`,
+      seconds: shownSeconds(testCase.seconds, limit),
+      kind: integration ? 'an integration' : 'a unit',
+      limit,
+      fix: renderMessage(SLOW_TEST_FIXES.java, {
+        move: integration ? '' : MOVE_ADVICE[MAVEN_TASKS.has(testCase.task) ? 'maven' : 'gradle'],
+      }),
+      exception,
+    }),
+    classification: 'enforceable',
+  };
+}
+
+export function readSlowTestFindings(options: SlowOptions): JavaFinding[] {
+  const { reportRoot, projectRoot, testRoots, limits, baseline, modulePath } = options;
+  if (baseline?.snapshot === 'base') {
+    return [];
+  }
+  const budget = slowTestBudget(limits);
+  const locate = sourceLocator(projectRoot, testRoots);
+  return slowestRuns(
+    readTestCases(reportRoot).map((testCase) => withContainerPath(testCase, locate, projectRoot)),
+    (testCase) => `${testCase.className}#${testCase.name}`,
+  ).flatMap((testCase) => {
+    const source = sourceOf(locate, testCase.className);
+    const text = readOptional(projectRoot, source);
+    const integration = isIntegration(testCase, text, { locate, projectRoot });
+    const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
+    const own =
+      text === undefined ? undefined : testMethod(text, testCase.name, testCase.className);
+    const declaring =
+      own === undefined && text !== undefined
+        ? inheritedMethod({ text, testCase, locate, projectRoot })
+        : undefined;
+    const method = own ?? declaring?.method;
+    const slow: SlowTest = {
+      testCase,
+      source,
+      text,
+      method,
+      declaring,
+      limit,
+      integration,
+      modulePath,
+      testRoots,
+      projectRoot,
+    };
+    const counted = baseline?.baselineRoot === undefined || isChanged(slow, baseline.baselineRoot);
+    return testCase.seconds > limit && counted ? [slowTestFinding(slow)] : [];
+  });
+}

@@ -10,7 +10,7 @@ import {
 import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
 import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mjs';
-import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mjs';
+import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mts';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
 import { collectJavaFindings as untypedCollectJavaFindings } from '../../../java-diff.mts';
 import {

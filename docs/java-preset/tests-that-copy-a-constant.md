@@ -32,4 +32,4 @@ sources of every module, because the constants live in other files than the test
 The message names the constant and its file, says to use the name (`Limits.MAX_LENGTH + 1`) and
 names the pin form, and ends with the exception sentence for
 `{ "rule": "pmd/CopiedConstantInTest", "paths": ["<file>"], "reason": "..." }`. Tests:
-`adapters/review-rules/copied-constants/copied-constants.test.mjs`.
+`adapters/review-rules/copied-constants/copied-constants.test.mts`.

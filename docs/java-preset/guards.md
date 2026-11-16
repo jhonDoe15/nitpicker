@@ -254,7 +254,7 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   that ran on the base therefore does not excuse that module failing on the head. The
   `javac/lint-not-run` notice is scoped the same way, to the module's main source roots (the test
   lint's, to its test source roots).
-- **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
+- **Cycles.** `java-coupling.mts` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
   only and shrinking it resolves findings without re-reporting the rest. The edge from a sealed

@@ -1,0 +1,465 @@
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { INIT_SCRIPT } from '../builds/java-build.mjs';
+import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
+import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
+import {
+  pinnedKotlinCompiler,
+  prepareCompiler,
+  runPsiProgram,
+  writeSources,
+  type PsiCompiler,
+} from './test-support/kotlin/kotlin-psi-program.mts';
+import { column, columns, listAt } from './test-support/kotlin/psi-fields.mts';
+import { findingsOf } from './typed/java-values.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import {
+  BOM,
+  BROKEN,
+  CALLEE_NOT_A_NAME,
+  CRLF,
+  DEEP_CHAIN,
+  FLAT,
+  INITIALIZERS,
+  MULTIFILE_A,
+  MULTIFILE_B,
+  NESTING,
+  PREDICATE_SYMBOLS,
+  ROOT_PACKAGE,
+  UNITS,
+} from './test-support/kotlin/kotlin-metrics-sources.mts';
+import {
+  LIFETIME_FACTS,
+  LIFETIMES,
+  lifetimeFacts,
+  LOAD_EFFECTS,
+  LOAD_FINDINGS,
+  LOAD_HELPERS,
+  LOAD_SINGLETONS,
+} from './test-support/kotlin/kotlin-fact-sources.mts';
+
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
+const pinned = pinnedKotlinCompiler();
+
+const FORCE_OTHER_KOTLIN = `
+configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin") {
+            useVersion("1.9.25")
+        }
+    }
+}
+`;
+
+const fixtureBuild = readFileSync(
+  path.resolve(import.meta.dirname, 'fixtures/kotlin-project/build.gradle.kts'),
+  'utf8',
+);
+const kotlinPlugin = /kotlin\("jvm"\) version "([^"]+)"/u.exec(fixtureBuild)?.[1];
+const MODULE_BUILD = [
+  'plugins {\n    kotlin("jvm")\n}\n',
+  'repositories {\n    mavenCentral()\n}\n',
+  'kotlin {\n    jvmToolchain(21)\n}\n',
+].join('\n');
+const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
+
+let workspace: string;
+let compiler: PsiCompiler;
+
+function twoModuleProject() {
+  return writeSources(workspace, 'modules', {
+    'settings.gradle.kts': 'rootProject.name = "modules"\ninclude("one", "two")\n',
+    'build.gradle.kts': `plugins {\n    kotlin("jvm") version "${String(kotlinPlugin)}" apply false\n}\n`,
+    'one/build.gradle.kts': MODULE_BUILD,
+    'two/build.gradle.kts': MODULE_BUILD,
+    'one/src/main/kotlin/One.kt': 'package demo.one\n\nfun one() = 1\n',
+    'two/src/main/kotlin/Two.kt': 'package demo.two\n\nfun two() = 2\n',
+  });
+}
+
+function runPsiTasks(project: string, options: string[] = []) {
+  return spawnSync(
+    gradle,
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      '--parallel',
+      '-Pnitpicker.kotlin=true',
+      '-I',
+      INIT_SCRIPT,
+      ...options,
+      ':one:nitpickerKotlinPsi',
+      ':two:nitpickerKotlinPsi',
+    ],
+    { cwd: project, encoding: 'utf8', timeout: 170_000 },
+  );
+}
+
+function functionsOf(project: string, module: string) {
+  const report = path.join(project, module, 'build/nitpicker/kotlin-metrics.json');
+  return listOf(fieldOf(parseJson(readFileSync(report, 'utf8')), 'functions')).map((fn) =>
+    fieldOf(fn, 'name'),
+  );
+}
+
+function text(item: unknown, key: string): string {
+  return textOf(fieldOf(item, key));
+}
+
+function measure(project: string, roots?: string[]) {
+  return runPsiProgram(compiler, project, roots);
+}
+
+describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
+  beforeAll(() => {
+    workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-metrics-'));
+    const project = path.join(workspace, 'project');
+    cpSync(path.resolve(import.meta.dirname, 'fixtures/kotlin-project'), project, {
+      recursive: true,
+    });
+    writeFileSync(
+      path.join(project, 'build.gradle.kts'),
+      `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
+    );
+    compiler = prepareCompiler({ workspace, project, gradle, environment: process.env });
+  });
+
+  afterAll(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it('resolves the pinned compiler although the project forces another Kotlin version', () => {
+    const jars = compiler.classpath.split(path.delimiter).map((jar) => path.basename(jar));
+
+    expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
+      `kotlin-compiler-embeddable-${pinned}.jar`,
+    ]);
+    expect(jars.filter((jar) => /1\.9\.25/.test(jar))).toEqual([]);
+  });
+
+  it('measures the units of a file and leaves out what is not a unit', () => {
+    const { metrics } = measure(writeSources(workspace, 'units', { 'src/Units.kt': UNITS }));
+
+    expect(
+      listAt(metrics, 'functions').map((unit) =>
+        [
+          `${text(unit, 'name')} ${text(unit, 'start')}-${text(unit, 'end')} s${text(unit, 'statements')} p${text(unit, 'parameters')} c${text(unit, 'complexity')}`,
+          fieldOf(unit, 'inline') === true ? ' inline' : '',
+          fieldOf(unit, 'initializer') === true ? ' initializer' : '',
+          fieldOf(unit, 'lambda') === true ? ' lambda' : '',
+        ].join(''),
+      ),
+    ).toEqual([
+      'plain 3-8 s3 p2 c5',
+      'Int.double 10-10 s1 p0 c1',
+      'twice 12-16 s3 p1 c1 inline',
+      'twice.inside 13-13 s1 p0 c1 inline lambda',
+      'callbacks 18-25 s4 p1 c1',
+      'callbacks.scale 19-19 s3 p1 c2 lambda',
+      'callbacks.clamp 20-22 s1 p1 c3 lambda',
+      'callbacks.named 23-23 s1 p1 c1 lambda',
+      'callbacks.<lambda> 24-24 s3 p1 c2 lambda',
+      'Holder.Holder 28-30 s1 p0 c1',
+      'Holder.<init> 32-34 s1 p0 c1 initializer',
+      'Holder.doubled.get 37-37 s1 p0 c1',
+      'Holder.combine 39-41 s3 p4 c2 lambda',
+      'Holder.cached 43-46 s2 p0 c1 lambda',
+      'Holder.anonymous 48-50 s1 p1 c1 lambda',
+      'Holder.eager 52-55 s2 p0 c1 lambda',
+    ]);
+  });
+
+  it('measures init blocks and property initializers that branch, every lambda as a unit of its own, and leaves out the straight-line initializers', () => {
+    const { metrics } = measure(
+      writeSources(workspace, 'initializers', { 'src/Init.kt': INITIALIZERS }),
+    );
+
+    expect(
+      listAt(metrics, 'functions').map((unit) =>
+        [
+          `${text(unit, 'name')} ${text(unit, 'start')}-${text(unit, 'end')}`,
+          `s${text(unit, 'statements')}`,
+          `p${text(unit, 'parameters')}`,
+          `c${text(unit, 'complexity')}`,
+          ...(fieldOf(unit, 'initializer') === true ? ['initializer'] : []),
+          ...(fieldOf(unit, 'lambda') === true ? ['lambda'] : []),
+        ].join(' '),
+      ),
+    ).toEqual([
+      'Boot.<init> 9-12 s2 p0 c1 initializer',
+      'Boot.label 16-16 s1 p0 c2 initializer',
+      'Boot.table 18-18 s1 p1 c1 lambda',
+      'Boot.chosen 20-24 s1 p0 c3 initializer',
+      'Boot.observed 26-28 s1 p3 c1 lambda',
+      'Boot.<anonymous>.run 31-33 s1 p0 c1',
+      'Boot.<anonymous>.<init> 35-37 s1 p0 c1 initializer',
+      'Boot.Companion.registry 41-41 s1 p0 c1 lambda',
+      'Boot.Companion.<init> 43-45 s1 p0 c1 initializer',
+      'Single.<init> 50-52 s1 p0 c1 initializer',
+      'top 55-55 s1 p0 c1 lambda',
+    ]);
+  });
+
+  it('counts a flat if / else if / else chain as one level and an if inside an else block or a branch as one deeper', () => {
+    const { metrics } = measure(writeSources(workspace, 'nesting', { 'src/Nesting.kt': NESTING }));
+
+    expect(
+      listAt(metrics, 'functions').map(
+        (unit) =>
+          `${text(unit, 'name')} n${text(unit, 'maxControlNesting')} c${text(unit, 'complexity')}`,
+      ),
+    ).toEqual([
+      'chain n1 c4',
+      'inElseBlock n2 c3',
+      'inBranch n2 c5',
+      'withWhen n2 c4',
+      'inLoop n2 c4',
+    ]);
+  });
+
+  it('lists the package and classes of each file, including a file outside its package directory', () => {
+    const { metrics } = measure(
+      writeSources(workspace, 'files', {
+        'src/Flat.kt': FLAT,
+        'src/Root.kt': ROOT_PACKAGE,
+        'src/Units.kt': UNITS,
+      }),
+    );
+
+    expect(listAt(metrics, 'files')).toEqual([
+      { file: 'src/Flat.kt', package: 'demo.flat', classes: ['demo.flat.FlatKt'], imports: [] },
+      { file: 'src/Root.kt', package: '', classes: ['RootKt'], imports: [] },
+      {
+        file: 'src/Units.kt',
+        package: 'demo.units',
+        classes: ['demo.units.Holder', 'demo.units.UnitsKt'],
+        imports: [],
+      },
+    ]);
+  });
+
+  it('reads a file with a byte order mark and one with Windows line endings', () => {
+    const { metrics } = measure(
+      writeSources(workspace, 'encoding', { 'src/Bom.kt': BOM, 'src/Crlf.kt': CRLF }),
+    );
+
+    expect(columns(listAt(metrics, 'files'), 'package', 'classes')).toEqual([
+      ['demo.bom', ['demo.bom.BomKt']],
+      ['demo.crlf', ['demo.crlf.CrlfKt']],
+    ]);
+    expect(
+      listAt(metrics, 'functions').map(
+        (unit) => `${text(unit, 'name')} ${text(unit, 'start')}-${text(unit, 'end')}`,
+      ),
+    ).toEqual(['bom 3-3', 'crlf 3-5']);
+  });
+
+  it('gives each part of a multifile class its own class and the first file the facade', () => {
+    const { metrics } = measure(
+      writeSources(workspace, 'multifile', {
+        'src/MfA.kt': MULTIFILE_A,
+        'src/MfB.kt': MULTIFILE_B,
+      }),
+    );
+
+    expect(columns(listAt(metrics, 'files'), 'file', 'classes')).toEqual([
+      ['src/MfA.kt', ['demo.mf.Mf__MfAKt', 'demo.mf.Mf']],
+      ['src/MfB.kt', ['demo.mf.Mf__MfBKt']],
+    ]);
+  });
+
+  it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {
+    const { status, log } = measure(writeSources(workspace, 'broken', { 'src/Broken.kt': BROKEN }));
+
+    const [, line, version] =
+      new RegExp(
+        [
+          '^src\\/Broken\\.kt:(\\d+): .*The sources compile, so the pinned Kotlin compiler (\\S+)',
+          ' is too old to read them: bump kotlinCompiler in nitpicker\\.init\\.gradle\\.$',
+        ].join(''),
+        'm',
+      ).exec(log) ?? [];
+    expect([status, line, version]).toEqual([1, '4', pinned]);
+  });
+
+  it('reads a source file nested far deeper than the default stack allows', () => {
+    const { status, log, metrics, facts } = measure(
+      writeSources(workspace, 'deep', { 'src/Deep.kt': DEEP_CHAIN }),
+    );
+
+    expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
+    expect(fieldOf(listAt(metrics, 'functions')[0], 'name')).toBe('nested');
+    expect(column(listAt(facts, 'files'), 'file')).toEqual(['src/Deep.kt']);
+    expect(column(listAt(fieldOf(facts, 'design'), 'callables'), 'id')).toEqual([
+      'src/Deep.kt#nested',
+    ]);
+  });
+
+  it('reads a call whose callee is not a plain name', () => {
+    const { status, log, facts } = measure(
+      writeSources(workspace, 'callee', { 'src/Callee.kt': CALLEE_NOT_A_NAME }),
+    );
+
+    expect([status, log.includes('NullPointerException')]).toEqual([0, false]);
+    expect(column(listAt(fieldOf(facts, 'design'), 'callables'), 'name')).toEqual([
+      'make',
+      'twice',
+    ]);
+  });
+
+  it('collects the calls of finally and CancellationException handlers outside NonCancellable, and the launches of use blocks', () => {
+    const { facts } = measure(
+      writeSources(workspace, 'lifetimes', { 'src/Lifetimes.kt': LIFETIMES }),
+    );
+
+    expect(lifetimeFacts(listAt(facts, 'files')[0])).toEqual(LIFETIME_FACTS);
+  });
+
+  it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
+    const { facts } = measure(
+      writeSources(workspace, 'symbols', { 'src/Symbols.kt': PREDICATE_SYMBOLS }),
+    );
+    const [symbols] = listAt(facts, 'files');
+
+    expect(
+      fieldOf(
+        listAt(symbols, 'classes').find((entry) => fieldOf(entry, 'name') === 'Phase'),
+        'entries',
+      ),
+    ).toEqual(['NEW', 'in', 'DONE']);
+    expect(
+      listAt(symbols, 'predicates').map(
+        (predicate) =>
+          `${text(predicate, 'symbol')}: ${column(listAt(predicate, 'comparisons'), 'right').join(' ')}`,
+      ),
+    ).toEqual([
+      'Holder.k: Phase.NEW Phase.DONE',
+      'Holder.g: Phase.NEW Phase.`in`',
+      'Holder.l: Phase.NEW Phase.DONE',
+      'Holder.f: Phase.`in` Phase.DONE',
+      'isStart: Phase.NEW Phase.`in`',
+    ]);
+  });
+
+  it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
+    const { facts } = measure(
+      writeSources(workspace, 'load', {
+        'src/Load.kt': LOAD_EFFECTS,
+        'src/Singletons.kt': LOAD_SINGLETONS,
+        'src/Helpers.kt': LOAD_HELPERS,
+      }),
+    );
+    const findings = findingsOf(
+      loadEffectFindings(listAt(facts, 'files'), { finding: findingFactory() }),
+    );
+
+    expect(
+      findings.map(
+        ({ path: file, symbol, location }) =>
+          `${path.basename(file)} ${textOf(symbol)} ${String(location?.line)}`,
+      ),
+    ).toEqual(LOAD_FINDINGS);
+  });
+
+  it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
+    const project = writeSources(workspace, 'roots', {
+      'src/main/Main.kt': FLAT,
+      'src/test/Check.kt': 'package demo.check\n\nclass Check { fun go() { Thread.sleep(5) } }\n',
+    });
+    const { metrics, facts } = measure(project, ['src/main', 'test:src/test']);
+    const broken = measure(
+      writeSources(workspace, 'broken-test', { 'src/test/Broken.kt': BROKEN }),
+      ['test:src/test'],
+    );
+
+    expect(column(listAt(metrics, 'files'), 'file')).toEqual(['src/main/Main.kt']);
+    expect(
+      listAt(facts, 'files').map((entry) => [
+        fieldOf(entry, 'file'),
+        fieldOf(entry, 'test'),
+        listAt(entry, 'waits').length,
+      ]),
+    ).toEqual([
+      ['src/main/Main.kt', false, 0],
+      ['src/test/Check.kt', true, 1],
+    ]);
+    const reported = broken.log.split('\n').find((line) => line.startsWith('src/test/Broken.kt'));
+    expect(reported).toMatch(
+      /^src\/test\/Broken\.kt:4: .*\. This test source is not compiled by this step: .*$/u,
+    );
+  });
+});
+
+describe.skipIf(!enabled)('kotlin-psi in a Gradle build of several modules', () => {
+  let project: string;
+  let shared: string;
+
+  beforeAll(() => {
+    workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-psi-build-'));
+    project = twoModuleProject();
+    shared = path.join(project, 'build/tmp/nitpickerKotlinPsi');
+  });
+
+  afterAll(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it('compiles the program once into the root build and every module runs it, in this build and the next', () => {
+    const first = runPsiTasks(project);
+    expect(first.status, first.stdout + first.stderr).toBe(0);
+    const compiled = readdirSync(shared);
+    const classFile = path.join(shared, compiled[0] ?? '', PSI_CLASS);
+    const compiledAt = statSync(classFile).mtimeMs;
+    const second = runPsiTasks(project);
+
+    expect(second.status, second.stdout + second.stderr).toBe(0);
+    expect([compiled.length, readdirSync(shared)]).toEqual([1, compiled]);
+    expect(statSync(classFile).mtimeMs).toBe(compiledAt);
+    expect([functionsOf(project, 'one'), functionsOf(project, 'two')]).toEqual([['one'], ['two']]);
+    expect(existsSync(path.join(project, 'one/build/tmp/nitpickerKotlinPsi'))).toBe(false);
+  });
+
+  it('fails with a request for a JDK when Gradle runs on a Java runtime without javac', () => {
+    const settings = spawnSync(
+      'sh',
+      ['-c', `exec "\${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version`],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    const jdk = /java\.home = (.+)/u.exec(settings.stderr)?.[1] ?? '';
+    const runtime = path.join(workspace, 'runtime');
+    cpSync(jdk, runtime, { recursive: true });
+    rmSync(path.join(runtime, 'bin/javac'));
+
+    const result = runPsiTasks(project, [
+      '--no-daemon',
+      `-Dorg.gradle.java.home=${runtime}`,
+      `-Porg.gradle.java.installations.paths=${jdk}`,
+    ]);
+
+    const reasons = (result.stdout + result.stderr)
+      .split('\n')
+      .filter((line) => line.includes('without javac'))
+      .map((line) => line.trim());
+
+    expect(result.status).not.toBe(0);
+    expect([...new Set(reasons)]).toEqual([
+      `> The kotlin preset compiles its Kotlin parser with javac, and Gradle runs on ${runtime}, ` +
+        'a Java runtime without javac. Run the build on a JDK (Java 21): point JAVA_HOME or ' +
+        'org.gradle.java.home at one.',
+    ]);
+  });
+});

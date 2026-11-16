@@ -3,7 +3,7 @@ import {
   addRedBaseBranches,
   createRepository,
   redBaseCases,
-} from '../../red-base/test-support/red-base-cases.mjs';
+} from '../../red-base/test-support/red-base-cases.mts';
 
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 

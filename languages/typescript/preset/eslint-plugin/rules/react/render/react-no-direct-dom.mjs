@@ -1,4 +1,5 @@
 import { variableNamed } from '../../analysis/ancestry.mjs';
+import { followedChain } from '../../analysis/globals/value-chain.mjs';
 
 const queryMethods = new Set([
   'getElementById',
@@ -73,14 +74,11 @@ function constInitOf(sourceCode, node) {
 }
 
 function aliasChain(sourceCode, node) {
-  const chain = [unwrapped(node)];
-  for (const current of chain) {
-    const alias = chain.length <= MAX_ALIASES ? constInitOf(sourceCode, current) : undefined;
-    if (alias !== undefined) {
-      chain.push(alias);
-    }
-  }
-  return chain;
+  return followedChain(
+    unwrapped(node),
+    (current) => constInitOf(sourceCode, current),
+    MAX_ALIASES + 1,
+  );
 }
 
 function isGlobal(sourceCode, node, names) {
