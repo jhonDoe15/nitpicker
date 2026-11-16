@@ -6,7 +6,11 @@ import {
   type Term,
 } from '../../analysis/logic/term-views.mts';
 import { scopeChain, type SourceCode } from '../../typed/node-views.mts';
-import type { FunctionNode } from '../../typed/syntax-views.mts';
+import {
+  isCallExpression,
+  soleReturnedValue,
+  type FunctionNode,
+} from '../../typed/syntax-views.mts';
 import { inside, rangeKey } from '../syntax.mts';
 
 type Helper = {
@@ -24,10 +28,6 @@ type HelperNote = { readonly name: string; readonly text: string };
 const { DefinitionType } = TSESLint.Scope;
 const MODULE_SCOPES = new Set<string>(['module', 'global']);
 const CALL = 'call';
-
-function isCall(node: TSESTree.Node): node is TSESTree.CallExpression {
-  return node.type === AST_NODE_TYPES.CallExpression;
-}
 
 function variableAt(
   scope: TSESLint.Scope.Scope,
@@ -64,13 +64,7 @@ function returnedExpression(fn: FunctionNode): TSESTree.Expression | undefined {
   if (fn.async || fn.generator) {
     return undefined;
   }
-  if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
-    return fn.body;
-  }
-  const [only, ...rest] = fn.body.body;
-  return rest.length === 0 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
+  return soleReturnedValue(fn);
 }
 
 function parameterNames(fn: FunctionNode): string[] | undefined {
@@ -138,7 +132,7 @@ function tagged(base: Term, range: Range | undefined, helper: HelperNote): Term 
 }
 
 function innerExpansions(helper: Helper, context: Context): [TSESTree.CallExpression, Helper][] {
-  return [...inside(helper.body)].filter(isCall).flatMap((call) => {
+  return [...inside(helper.body)].filter(isCallExpression).flatMap((call) => {
     const inner = helperOf(call, context);
     return inner === undefined ? [] : [[call, inner]];
   });
@@ -194,7 +188,7 @@ function expandedCall(
 export function withPredicateCalls(built: Term, root: TSESTree.Node, source: Source): Term {
   const calls = new Map(
     [...inside(root)]
-      .filter(isCall)
+      .filter(isCallExpression)
       .map((node): [string, TSESTree.CallExpression] => [rangeKey(node.range), node]),
   );
   if (calls.size === 0) {

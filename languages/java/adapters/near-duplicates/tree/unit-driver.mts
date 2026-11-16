@@ -11,13 +11,9 @@ import type {
   UnitRoot,
 } from '../jvm-types.mts';
 import { methodNode, nameNode } from './names.mts';
-import { at, codeChildren, opaque, present } from './nodes.mts';
+import { at, codeChildren, isList, opaque, present } from './nodes.mts';
 
 const TOKEN = /[\w$]+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/gu;
-
-function isList(value: Converted): value is readonly ShapeNode[] {
-  return Array.isArray(value);
-}
 
 function convertedTree<Extra extends object>(
   root: Node,

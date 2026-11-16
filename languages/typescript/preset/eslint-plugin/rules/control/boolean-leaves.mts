@@ -7,18 +7,13 @@ import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/term
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { inside } from '../decided/syntax.mts';
 import type { Term } from '../analysis/logic/term-views.mts';
+import { hasProgram } from '../security/security-values.mts';
 import { ts } from '../typed/typescript-views.mts';
 
 type Range = readonly [number, number];
 
 const rangeKey: (range: Range) => string = untypedRangeKey;
 const BOOLEAN = ts.TypeFlags.BooleanLike;
-
-function hasProgram(
-  services: Partial<ParserServices> | undefined,
-): services is ParserServicesWithTypeInformation {
-  return services?.program !== undefined && services.program !== null;
-}
 
 function isBooleanTyped(node: TSESTree.Node, services: ParserServicesWithTypeInformation): boolean {
   return partsOf(services.getTypeAtLocation(node)).every((part) => (part.flags & BOOLEAN) !== 0);

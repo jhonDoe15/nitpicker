@@ -32,7 +32,7 @@ export function isTypeWrapper(node: MaybeNode): node is TypeWrapper {
   return node !== undefined && TYPE_WRAPPERS.includes(node.type);
 }
 
-function hasProgram(
+export function hasProgram(
   services: Partial<ParserServices> | undefined,
 ): services is ParserServicesWithTypeInformation {
   return services?.program !== undefined && services.program !== null;

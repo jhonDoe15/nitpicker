@@ -1,44 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { decidedTester } from './test-support/decided-tester.mts';
 import { rule } from './no-decided-condition.mts';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-decided-models-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: { strict: true, noEmit: true, types: [], lib: ['ES2022'] },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-type ExpectedError = { messageId: string; data: Record<string, string> };
-type TypedCase = { filename: string; code: string };
-
-function typed(code: string): TypedCase;
-function typed(code: string, errors: ExpectedError[]): TypedCase & { errors: ExpectedError[] };
-function typed(
-  code: string,
-  errors?: ExpectedError[],
-): TypedCase | (TypedCase & { errors: ExpectedError[] }) {
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
-
-function error(messageId: string, condition: string, reason: string): ExpectedError {
-  return { messageId, data: { condition, reason } };
-}
+const { tester, typed, error } = decidedTester();
 
 const NEVER_NEGATIVE = 'a size or length is a whole number, never negative';
 

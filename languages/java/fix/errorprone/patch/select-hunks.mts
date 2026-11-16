@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { wordIn } from '../../../adapters/near-duplicates/jvm-views.mts';
 import { changedLines, hunkLines } from './hunk-edits.mts';
 import type { Hunk, HunkLine } from './unified-diff.mts';
 
@@ -7,7 +7,6 @@ export type LabeledHunk = { readonly label: string; readonly hunk: Hunk; readonl
 
 const IMPORT_LINE = /^\s*import\s+(?:static\s+)?([\w.$]+?)(?:\.(\*|[\w$]+))?\s*;\s*$/u;
 const BLANK = /^\s*$/u;
-const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 
 function changedTexts(hunk: Hunk): string[] {
   return hunk.lines.filter(({ kind }) => kind !== ' ').map(({ text }) => text);
@@ -32,8 +31,7 @@ function importedName(text: string): string | undefined {
 }
 
 function usedIn(name: string, texts: readonly string[]): boolean {
-  const pattern = new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
-  return texts.some((text) => pattern.test(text));
+  return wordIn(name, texts, '(?<![\\w$])');
 }
 
 function keptAdditions(hunk: Hunk, keptTexts: readonly string[]): Hunk | undefined {

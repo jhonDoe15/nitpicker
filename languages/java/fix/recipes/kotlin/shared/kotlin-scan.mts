@@ -1,3 +1,4 @@
+import type { Span } from '../../../../adapters/near-duplicates/extract-types.mts';
 import { lineAt as untypedLineAt } from '../../../../../../shared/conventions/lines.mjs';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
@@ -10,7 +11,7 @@ import {
 } from '../../../../adapters/kotlin/scan/kotlin-source.mjs';
 
 export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
-export type Span = { readonly start: number; readonly end: number };
+export type { Span };
 
 export type KotlinEdit = Span & { readonly text: string };
 

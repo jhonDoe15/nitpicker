@@ -1,43 +1,22 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import {
+  decidedTester,
+  type TypedCase,
+  type TypedCaseWithErrors,
+} from '../decided/test-support/decided-tester.mts';
 import { rule } from './shorter-boolean-logic.mts';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-shorter-logic-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: { strict: true, module: 'esnext', noEmit: true, types: [], lib: ['ES2022'] },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
+const { tester, typed: typedCase } = decidedTester({ module: 'esnext' });
 
 type Found = readonly [condition: string, form: string, reason: string];
-type TypedCase = { filename: string; code: string };
-type TypedReported = TypedCase & {
-  errors: { messageId: string; data: { condition: string; form: string; reason: string } }[];
-};
 
 function typed(code: string): TypedCase;
-function typed(code: string, found: Found): TypedReported;
-function typed(code: string, found?: Found): TypedCase | TypedReported {
-  const filename = path.join(root, `src/case-${randomUUID()}.ts`);
-  writeFileSync(filename, code);
+function typed(code: string, found: Found): TypedCaseWithErrors;
+function typed(code: string, found?: Found): TypedCase | TypedCaseWithErrors {
   if (found === undefined) {
-    return { filename, code };
+    return typedCase(code);
   }
   const [condition, form, reason] = found;
-  return { filename, code, errors: [{ messageId: 'shorter', data: { condition, form, reason } }] };
+  return typedCase(code, [{ messageId: 'shorter', data: { condition, form, reason } }]);
 }
 
 const NUMBER = 'export function f(n: number, x: number, a: boolean, b: boolean, c: boolean)';

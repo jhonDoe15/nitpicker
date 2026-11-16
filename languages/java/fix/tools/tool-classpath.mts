@@ -16,7 +16,7 @@ import {
 import { resolutionSettings } from './project-repositories.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, textListsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type ToolSpec = { readonly coordinates: string; readonly transitive: boolean };
 export type Tools = Readonly<Record<string, ToolSpec>>;
@@ -97,12 +97,6 @@ function storeClasspaths(directory: string, classpaths: Classpaths): void {
   }
 }
 
-function classpathsOf(value: unknown): Classpaths {
-  return Object.fromEntries(
-    Object.entries(fieldsOf(value)).map(([name, jars]) => [name, textsOf(jars)]),
-  );
-}
-
 export function configuredTool(environment: Environment, name: string): string | undefined {
   const value = environment[name];
   return value === '' ? undefined : value;
@@ -110,7 +104,7 @@ export function configuredTool(environment: Environment, name: string): string |
 
 function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand }: Resolution) {
   const directory = textOf(cacheDirectory(`gradle-tools-${textOf(toolsKey(tools))}`));
-  const cached = classpathsOf(readClasspaths(directory, Object.keys(tools)));
+  const cached = textListsOf(readClasspaths(directory, Object.keys(tools)));
   if (textsOf(missing(cached)).length === 0) {
     return cached;
   }
@@ -156,7 +150,7 @@ function resolveWithMaven({
       [dependency(coordinates, transitive ? [] : ['*'])],
     ]),
   );
-  return classpathsOf(
+  return textListsOf(
     callUntyped(resolveToolSet, {
       projectRoot,
       maven: configuredTool(environment, 'NITPICKER_MAVEN'),

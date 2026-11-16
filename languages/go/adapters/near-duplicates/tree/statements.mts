@@ -13,6 +13,7 @@ import {
   field,
   fields,
   grouped,
+  labelledAt,
   listItems,
   listOf,
   namedType,
@@ -160,11 +161,6 @@ function update(prefix: string): GoConverter {
     ]);
 }
 
-function labelled(kind: string, source: Node): PlacedNode {
-  const [label] = codeChildren(source);
-  return at({ kind, ...(label === undefined ? {} : { value: label.text }) }, source);
-}
-
 function returned(source: Node, context: GoContext): PlacedNode {
   const values = codeChildren(source).flatMap((list) => listItems(list));
   return at('return', source, [
@@ -266,8 +262,8 @@ export const STATEMENTS: GoConverters = {
   if_statement: ifOf,
   for_statement: forOf,
   return_statement: returned,
-  break_statement: (source) => labelled('break', source),
-  continue_statement: (source) => labelled('continue', source),
+  break_statement: (source) => labelledAt('break', source, codeChildren(source)[0]),
+  continue_statement: (source) => labelledAt('continue', source, codeChildren(source)[0]),
   fallthrough_statement: (source) => grouped('fallthrough', source),
   goto_statement: (source) => grouped(`goto:${codeChildren(source)[0]?.text}`, source),
   go_statement: simple('go'),

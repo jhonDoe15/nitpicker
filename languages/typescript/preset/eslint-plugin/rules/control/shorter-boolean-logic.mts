@@ -7,6 +7,7 @@ import { conditionTerm } from '../decided/facts.mts';
 import { chainOf } from '../typed/node-views.mts';
 import { booleanParts } from './boolean-leaves.mts';
 import { isNarrowingLeaf } from './narrowing-leaf.mts';
+import { isTestOf } from './test-positions.mts';
 
 type Leaf = { readonly op: 'leaf'; readonly term: Term; readonly text: string };
 type Skeleton = object;
@@ -53,16 +54,6 @@ function topOf(node: TSESTree.Node): TSESTree.Node {
   return chain.at(-1) ?? node;
 }
 
-function isTestPosition(node: TSESTree.Node): boolean {
-  const { parent } = node;
-  return (
-    parent !== undefined &&
-    TEST_PARENTS.has(parent.type) &&
-    'test' in parent &&
-    parent.test === node
-  );
-}
-
 export const rule: TSESLint.RuleModule<'shorter'> = {
   meta: {
     type: 'suggestion',
@@ -92,7 +83,7 @@ export const rule: TSESLint.RuleModule<'shorter'> = {
       seen.add(top);
       const term = conditionTerm(top, sourceCode);
       const found = findShorter(skeletonOf(term, source), {
-        booleanContext: isNot(term) || isTestPosition(top),
+        booleanContext: isNot(term) || isTestOf(top, TEST_PARENTS),
         isPinned: isNarrowingLeaf,
         isBoolean: booleanParts(top, sourceCode.parserServices),
       });

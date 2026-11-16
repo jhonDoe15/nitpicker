@@ -1,7 +1,15 @@
 import type { Node } from 'web-tree-sitter';
 import { depthFirst } from '../jvm-views.mts';
 import type { ClassScope, FileScope, Names, ShapeNode, Unstable } from '../jvm-types.mts';
-import { codeChildren, field, present, required } from './nodes.mts';
+import {
+  type ScopeParts,
+  codeChildren,
+  declaredClasses,
+  field,
+  present,
+  required,
+  scopeOf,
+} from './nodes.mts';
 
 const DECLARING = new Set([
   'formal_parameter',
@@ -91,19 +99,22 @@ function starsOf(program: Node): string[] {
 }
 
 function classesOf(program: Node): string[] {
-  return [...depthFirst(program, codeChildren)]
-    .filter((node) => CLASS_DECLARATIONS.has(node.type))
-    .map((node) => field(node, 'name')?.text)
-    .filter((name): name is string => name !== undefined);
+  return declaredClasses(
+    program,
+    (node) => CLASS_DECLARATIONS.has(node.type),
+    (node) => field(node, 'name')?.text,
+  );
 }
 
+const SCOPE_PARTS: ScopeParts = {
+  imports: importsOf,
+  packageName: packageOf,
+  stars: starsOf,
+  classes: classesOf,
+};
+
 export function fileScope(program: Node): FileScope {
-  return {
-    imported: importsOf(program),
-    packageName: packageOf(program),
-    stars: starsOf(program),
-    classes: classesOf(program),
-  };
+  return scopeOf(program, SCOPE_PARTS);
 }
 
 function declaredFields(members: readonly Node[]): { names: string[]; isVolatile: boolean }[] {

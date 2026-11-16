@@ -1,14 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import {
-  decidingFact as untypedDecidingFact,
-  relevantFacts as untypedRelevantFacts,
-  solveFacts as untypedSolveFacts,
-} from '../../../../../../../shared/logic/sync/solve-facts.mjs';
+import { decidingFact as untypedDecidingFact } from '../../../../../../../shared/logic/sync/solve-facts.mjs';
 import { term, type Term } from '../../analysis/logic/term-views.mts';
 import { toTerm } from '../../analysis/logic/estree-terms.mts';
 import { chainOf, type SourceCode } from '../../typed/node-views.mts';
 import type { FlowContext } from '../effects.mts';
-import { factOfTerm, type Fact } from '../facts.mts';
+import { factOfTerm, relevantFacts, solveFacts, type Fact } from '../facts.mts';
 
 type Statement = TSESTree.Statement;
 type Expression = TSESTree.Expression;
@@ -39,9 +35,6 @@ type LabelScan = {
 
 const decidingFact: (facts: readonly Fact[], query: Term, verdict: Verdict) => Fact | undefined =
   untypedDecidingFact;
-const relevantFacts: (facts: readonly Fact[], names: ReadonlySet<string>) => Fact[] =
-  untypedRelevantFacts;
-const solveFacts: (conditions: readonly Term[], query: Term) => string = untypedSolveFacts;
 
 const JUMP_TYPES = new Set<string>([
   AST_NODE_TYPES.ReturnStatement,

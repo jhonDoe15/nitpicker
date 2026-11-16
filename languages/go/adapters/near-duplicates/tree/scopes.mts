@@ -1,5 +1,5 @@
 import type { Node } from 'web-tree-sitter';
-import { chainOf, depthFirst } from '../types/go-views.mts';
+import { chainOf, depthFirst } from '../../../../java/adapters/near-duplicates/jvm-views.mts';
 import { codeChildren, field, fields } from './nodes.mts';
 
 const IDENTIFIER = 'identifier';

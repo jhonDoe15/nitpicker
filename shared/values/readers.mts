@@ -73,3 +73,9 @@ export function stringsIn(value: unknown): string[] {
   }
   return found;
 }
+
+export function textListsOf(value: unknown): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(value)).map(([name, found]) => [name, textsOf(found)]),
+  );
+}
