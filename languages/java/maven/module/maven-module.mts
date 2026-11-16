@@ -93,10 +93,7 @@ function runSourceTools(options: ModuleOptions): void {
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
   ];
-  callUntyped(runToolsConcurrently, tasks, {
-    spawn: options['spawn'],
-    concurrent: options['quick'] === true,
-  });
+  callUntyped(runToolsConcurrently, tasks, { spawn: options['spawn'] });
 }
 
 function analyzeSources(options: ModuleOptions): unknown {

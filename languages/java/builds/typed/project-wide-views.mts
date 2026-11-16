@@ -3,6 +3,7 @@ import { readFeatureGraph } from '../../adapters/features/feature-findings.mjs';
 import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mjs';
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mjs';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mjs';
+import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mjs';
 import { readJvmReuse } from '../../adapters/reuse/jvm-reuse-facts.mjs';
@@ -113,3 +114,5 @@ export const roundTripFindings: (projectRoot: string, options: WideOptions) => J
   readRoundTripFindings;
 export const copiedConstantFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
   readCopiedConstantFindings;
+export const maxValueFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
+  readMaxValueFindings;

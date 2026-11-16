@@ -66,6 +66,8 @@ const BANNED_GUARDS = {
   'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            conn = scope.async { "link" }\n        }\n        return conn!!.await()\n    }\n}\n`,
   'Registry.kt': `${PACKAGE}import java.util.concurrent.ConcurrentHashMap\n\nannotation class Service\n\n@Service\nclass Registry {\n    private val sessions = ConcurrentHashMap<String, String>()\n\n    fun open(id: String, value: String) {\n        sessions[id] = value\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): List<String> {\n        val seen = mutableListOf<String>()\n        for (path in paths) {\n            if (path !in seen) seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> = paths.map { p -> known.find { it.length == p.length } }\n\n    fun shortest(paths: List<String>): String = paths.sortedBy { it.length }.first()\n}\n`,
+  'Negotiation.kt': `${PACKAGE}class Request {\n    fun getHeader(name: String): String? = null\n}\n\nclass Negotiation {\n    fun accepted(request: Request): List<String>? = request.getHeader("Accept")?.split(",")\n}\n`,
+  'Origins.kt': `${PACKAGE}import java.net.URI\n\nclass Origins {\n    fun secure(uri: URI): Boolean = uri.scheme == "https"\n\n    fun hostCookie(name: String): Boolean = name.startsWith("__Host-")\n}\n`,
   'Steps.kt': `${PACKAGE}class Steps {\n    fun letters(words: List<String>): List<Char> = words.map { it.toList() }.flatten()\n\n    fun count(words: Set<String>): Int = words.toList().size\n}\n`,
 };
 
@@ -113,6 +115,8 @@ const ALLOWED_GUARDS = {
   'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            val attempt = scope.async { "link" }\n            conn = attempt\n            attempt.invokeOnCompletion { if (it != null && conn === attempt) conn = null }\n        }\n        return conn!!.await()\n    }\n}\n`,
   'Registry.kt': `${PACKAGE}import java.util.concurrent.ConcurrentHashMap\n\nannotation class Service\n\n@Service\nclass Registry {\n    private val sessions = ConcurrentHashMap<String, String>()\n\n    fun open(id: String, value: String) {\n        sessions[id] = value\n    }\n\n    fun end(id: String) {\n        sessions.remove(id)\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): Set<String> {\n        val seen = mutableSetOf<String>()\n        for (path in paths) {\n            seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> {\n        val byLength = known.associateBy { it.length }\n        return paths.map { p -> byLength[p.length] }\n    }\n\n    fun shortest(paths: List<String>): String? = paths.minByOrNull { it.length }\n}\n`,
+  'Negotiation.kt': `${PACKAGE}class Request {\n    fun getHeader(name: String): String? = null\n}\n\nclass Negotiation {\n    fun accepted(request: Request): String? = request.getHeader("Accept")?.lowercase()\n}\n`,
+  'Origins.kt': `${PACKAGE}import java.net.URI\n\nclass Origins {\n    fun secure(uri: URI): Boolean = uri.scheme.equals("https", ignoreCase = true)\n\n    fun hostCookie(name: String): Boolean = name.lowercase().startsWith("__host-")\n}\n`,
   'Steps.kt': `${PACKAGE}class Steps {\n    fun letters(words: List<String>): List<Char> = words.flatMap { it.toList() }\n\n    fun count(words: Set<String>): Int = words.size\n}\n`,
 };
 
@@ -181,6 +185,9 @@ export const EXPECTED_BANNED = [
   'kotlin-source/ListUsedAsSet Paths.kt',
   'kotlin-source/LinearLookupInLoop Paths.kt',
   'kotlin-source/SortForExtreme Paths.kt',
+  'kotlin-source/HandSplitHttpHeader Negotiation.kt',
+  'kotlin-source/HttpValueCase Origins.kt',
+  'kotlin-source/HttpValueCase Origins.kt',
   'kotlin-source/RedundantStreamStep Steps.kt',
   'kotlin-source/RedundantStreamStep Steps.kt',
   'kotlinc/deprecation Casts.kt',

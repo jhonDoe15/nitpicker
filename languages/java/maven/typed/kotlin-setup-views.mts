@@ -34,6 +34,7 @@ export type KotlinSetup = {
 };
 export type KotlinSetupRequest = {
   readonly projectRoot: string;
+  readonly mavenRoot?: string;
   readonly policy: JavaPolicy;
   readonly modules: readonly ProjectModule[];
   readonly effectivePom: unknown;

@@ -6,7 +6,7 @@ import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 import { readOptions } from '../options/java-read-options.mts';
 import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from '../reporting/java-reports.mts';
-import { readReportModules } from '../gradle-reports/report-modules.mts';
+import { readNotAffected, readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
@@ -77,6 +77,7 @@ function runJavaPreset(
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
       testsSkipped,
+      budget,
     });
     const checkTests = testsFailedModules.length === 0 && !testsSkipped;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
@@ -125,6 +126,7 @@ function gradleFindings(
     findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
     imports: fieldOf(read, 'imports'),
     testsFailures: withRootSourceRoots(testsFailures, fieldOf(report, 'modules')),
+    notAffected: readNotAffected(reportBase),
   };
 }
 
@@ -170,6 +172,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     findings: [...read.findings, ...design],
     imports: read.imports,
     testsFailures: run.testsFailures,
+    notAffected: run.notAffected,
   };
 }
 

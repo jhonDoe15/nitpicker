@@ -14,6 +14,7 @@ type ReportModule = Readonly<Record<string, unknown>> & {
 type ReportModules = { readonly modules: ReportModule[]; readonly manifest: Manifest };
 
 const MODULES_FILE = 'modules.json';
+const NOT_AFFECTED_FILE = 'not-affected.json';
 const MANIFEST_FILE = 'manifest.json';
 const JACOCO_FILE = 'jacoco.xml';
 const MAIN_CLASSES_FILE = 'jdeps-classes.txt';
@@ -197,4 +198,9 @@ export function readMainCheckstyle(
     return undefined;
   }
   throw new Error(`The ${preset} preset found no Checkstyle report for ${moduleLabel(module)}`);
+}
+
+export function readNotAffected(reportBase: string): readonly unknown[] {
+  const file = path.join(reportBase, NOT_AFFECTED_FILE);
+  return existsSync(file) ? listOf(readJson(file)) : [];
 }

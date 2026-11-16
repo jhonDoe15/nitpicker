@@ -35,3 +35,17 @@ export function pitFailureFindings(reportRoot: string, moduleDir = ''): JavaFind
     classification: 'tool-error',
   }));
 }
+
+type PitBudget = {
+  readonly commandTimeoutMs?: number | undefined;
+  readonly pitDeadlineMs?: number | undefined;
+};
+
+export function gradlePitDeadlineMs(
+  { commandTimeoutMs, pitDeadlineMs }: PitBudget,
+  reserveMs: number,
+  now = Date.now(),
+): number {
+  const timeoutMs = commandTimeoutMs ?? Number.NaN;
+  return Math.min(now + timeoutMs - reserveMs, pitDeadlineMs ?? Number.POSITIVE_INFINITY);
+}

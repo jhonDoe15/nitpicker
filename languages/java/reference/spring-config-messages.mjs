@@ -55,6 +55,19 @@ const SAMPLE_SOURCE = [
   '',
 ].join('\n');
 
+const SAMPLE_CONTROLLER = [
+  'package example;',
+  '@Controller',
+  'public class SampleController {',
+  '  @GetMapping("/owners")',
+  '  String find(Owner owner) {',
+  '    owners.findByLastNameStartingWith(owner.getLastName());',
+  '    return "owners";',
+  '  }',
+  '}',
+  '',
+].join('\n');
+
 const SAMPLE_KEYS = new Map(
   SAMPLE_PROPERTIES.map((line) => line.split('=')[0]).map((key) => [relaxKey(key), key]),
 );
@@ -72,6 +85,7 @@ function writeSampleProject(root) {
     `${SAMPLE_PROPERTIES.join('\n')}\n`,
   );
   writeFileSync(path.join(root, 'src/main/java/example/Sample.java'), SAMPLE_SOURCE);
+  writeFileSync(path.join(root, 'src/main/java/example/SampleController.java'), SAMPLE_CONTROLLER);
   mkdirSync(path.join(root, 'classes/META-INF'), { recursive: true });
   writeFileSync(
     path.join(root, 'classes/META-INF/spring-configuration-metadata.json'),

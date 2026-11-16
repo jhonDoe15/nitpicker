@@ -13,7 +13,9 @@ The gate can't check these; reviewers keep catching them.
   `__getattr__` forwarder, `OldName = NewName` and a deprecation warning; an old signature kept
   alive by a wrapper is not checked.
 - A wrapper or default that forwards a value must not turn `None`, `0`, `""`, `[]` or `False` into
-  a default: test both. The gate catches `value or DEFAULT` on a parameter that can be falsy.
+  a default: test both. The gate catches `value or DEFAULT` on a parameter that can be falsy, and notes
+  `if name:` or `name or d` on an `Optional[str]` or `bool | None` (`presence-truthiness`, report-only):
+  write `name is not None`. Under `if x:`, `bool(x)` is always true (`decided-condition`).
 - A state with more than two values is an `enum.StrEnum` or a union of frozen dataclasses (the gate
   rejects `bool | None`, not a pair of flags). Map its members with a dict keyed by the enum and
   `parametrize` a test over `list(Status)`, so a new member fails a test. A `match` over an enum

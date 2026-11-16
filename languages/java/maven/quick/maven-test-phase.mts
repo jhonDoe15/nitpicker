@@ -6,7 +6,7 @@ import {
   runJacocoReport,
 } from '../maven-tests.mts';
 import { runPit } from '../pit/maven-pit.mts';
-import { runMaven, TEST_RERUNS_OFF } from '../maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from '../maven-command.mjs';
 import { springAotSkip } from '../spring/arch-rules-gate.mts';
 import { isTestsTimeout, timedOutTests } from '../../adapters/red-base/tests-failed.mts';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
@@ -29,6 +29,7 @@ type BuildRequest = {
   readonly work: string;
   readonly modules: readonly MavenModule[];
   readonly reruns?: readonly string[] | undefined;
+  readonly selection?: readonly string[] | undefined;
 };
 type PhaseOptions = Readonly<Record<string, unknown>>;
 type GoalRequest = {
@@ -120,6 +121,7 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  selection = [],
   reruns = textsOf(TEST_RERUNS_OFF),
 }: BuildRequest): void {
   callUntyped(runMaven, {
@@ -129,6 +131,7 @@ export function buildAndTest({
     timeoutMs,
     args: [
       '--quiet',
+      ...selection,
       ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
       ...textsOf(callUntyped(dependencyListArguments, work)),
       '-Dmaven.test.failure.ignore=true',
@@ -152,4 +155,9 @@ export function buildOrSkipTests(build: BuildRequest, policy: JavaPolicy): unkno
     buildAndTest({ ...build, quick: true });
     return [timedOutTests(fieldOf(error, 'timedOut'))];
   }
+}
+
+export function testReruns(configs: unknown): string[] {
+  const values = fieldOf(fieldOf(configs, 'tests'), 'arguments');
+  return textsOf(callUntyped(testRerunArguments, values));
 }

@@ -270,7 +270,9 @@ describe('the Gradle hand-off', () => {
     ).filter(
       (argument) =>
         !(
-          argument.startsWith('-Pnitpicker.reportDir=') || argument.startsWith('-Pnitpicker.node=')
+          argument.startsWith('-Pnitpicker.reportDir=') ||
+          argument.startsWith('-Pnitpicker.node=') ||
+          argument.startsWith('-Pnitpicker.pit.deadline=')
         ),
     );
   };
@@ -310,12 +312,14 @@ describe('the Gradle hand-off', () => {
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=none',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      '--build-cache',
       '-I',
       INIT_SCRIPT,
       'nitpickerJava',
     ]);
     expect(argumentsOf(root, { preset: 'java' })).toEqual([
       ...common,
+      '--build-cache',
       '-I',
       INIT_SCRIPT,
       'nitpickerJava',

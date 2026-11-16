@@ -52,6 +52,7 @@ tasks.named('nitpickerJava') {
 if (!shared.mutationOff) {
     project.ext.nitpickerPitContext = shared.pitContext
     project.apply from: new File(shared.initScriptDir, 'pit/pit-scope.gradle')
+    project.apply from: new File(shared.initScriptDir, 'pit/pit-process.gradle')
     project.apply from: new File(shared.initScriptDir, 'pit/pit-retry.gradle')
     project.apply from: new File(shared.initScriptDir, 'pit/pit-task.gradle')
     project.ext.nitpickerPitConfigurations(shared.pinned)

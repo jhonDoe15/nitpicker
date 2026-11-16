@@ -34,6 +34,7 @@ type JavaAnalyzer = {
   readonly reportedTools: readonly unknown[];
   readonly timeoutMs: number;
   readonly comparisonKey: unknown;
+  readonly inputs: unknown;
   readonly createInvocation: (context: InvocationContext) => Invocation;
 };
 
@@ -41,6 +42,7 @@ const sourcePath: (file: string) => string = checkoutModulePath;
 const closureOf: (files: readonly string[], root: string) => Map<string, string> = importClosure;
 const javaBinary: (name: string) => string = javaCommand;
 import { HEAD_TESTS_TOOL } from './red-base/tests-failed.mts';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = sourcePath(path.join(import.meta.dirname, 'java-runner.mjs'));
@@ -81,6 +83,8 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/pit/pit-scope.gradle',
+  'languages/java/gradle/pit/pit-process.gradle',
+  'languages/java/gradle/affected/affected-projects.gradle',
   'languages/java/gradle/pit/pit-retry.gradle',
   'languages/java/gradle/pit/pit-task.gradle',
   'languages/java/gradle/kotlin/kotlin-detekt.gradle',
@@ -178,6 +182,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   let runtimeVersion: string | undefined;
   return {
     name: kotlin ? 'kotlin' : 'java',
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
     switchableParts: ['mutation'],
     version: readPinnedVersions(),
