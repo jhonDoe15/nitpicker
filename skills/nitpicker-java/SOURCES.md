@@ -203,14 +203,6 @@ two methods share.
 
 The full list is `languages/java/fix/errorprone/checks/review-checks.mjs`.
 
-## Fix plans for near-duplicates
-
-`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
-fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
-It gives the signature of the function to extract (the parameters of the first copy, then one
-parameter for each value that differs), the arguments each copy passes, the nearest shared folder
-that the layout allows (`layout.sharedRoots`, else a `shared` folder), or the nearest common folder when both classes are in one feature and why no recipe made the change. The plan names a class in that folder, since a Java method needs one. For a pair in one class the plan names `java-extract-near-duplicate` (or `java-extract-partial-run`) and the `nitpicker --fix --rule structure/near-duplicate` command, or the reason the facts show it declines (a type or an expression that differs, two classes). The names it picks avoid every name in the two copies.
-
 ## Left out
 
 32 checks never get a fix from `--fix`, listed in

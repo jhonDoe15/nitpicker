@@ -81,7 +81,6 @@
     "CHANGELOG.md",
     "spec/config.schema.json",
     "spec/findings.schema.json",
-    "spec/fix-plans.schema.json",
     "spec/json-output.schema.json"
   ],
   "exports": {
@@ -89,7 +88,6 @@
     "./config.schema.json": "./spec/config.schema.json",
     "./spec/config.schema.json": "./spec/config.schema.json",
     "./spec/findings.schema.json": "./spec/findings.schema.json",
-    "./spec/fix-plans.schema.json": "./spec/fix-plans.schema.json",
     "./spec/json-output.schema.json": "./spec/json-output.schema.json"
   },
   "peerDependencies": {
