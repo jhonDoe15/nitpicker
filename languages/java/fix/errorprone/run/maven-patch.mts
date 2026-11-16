@@ -5,16 +5,16 @@ import { readPinnedTools } from '../../../builds/java-build.mjs';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../../maven/configuration/maven-classpaths.mjs';
+} from '../../../maven/configuration/maven-classpaths.mts';
 import { readEffectivePom } from '../../../maven/configuration/effective-pom.mjs';
-import { runErrorProne, processorTool } from '../../../maven/errorprone/maven-errorprone.mjs';
+import { runErrorProne, processorTool } from '../../../maven/errorprone/maven-errorprone.mts';
 import {
   dependencyFile,
   dependencyListArguments,
   PROJECT_CHECKS_OFF,
-} from '../../../maven/quick/maven-build-arguments.mjs';
+} from '../../../maven/quick/maven-build-arguments.mts';
 import { runMaven } from '../../../maven/maven-command.mjs';
-import { readReactor } from '../../../maven/maven-project.mjs';
+import { readReactor } from '../../../maven/maven-project.mts';
 import { resolveToolSet, toolDependencies } from '../../../maven/maven-tools.mjs';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';

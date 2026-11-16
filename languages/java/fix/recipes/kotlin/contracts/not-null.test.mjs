@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { useCheckNotNullRecipe, useRequireNotNullRecipe } from './not-null.mjs';
+import { useCheckNotNullRecipe, useRequireNotNullRecipe } from './not-null.mts';
 
 describe('not-null contract recipes', () => {
   it('turns require(x != null) into requireNotNull(x), keeping the message', () => {

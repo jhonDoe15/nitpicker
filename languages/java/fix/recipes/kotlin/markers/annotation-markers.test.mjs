@@ -4,7 +4,7 @@ import {
   generatedMarkerRecipe,
   jvmSyntheticRecipe,
   mutationIgnoreRecipe,
-} from './annotation-markers.mjs';
+} from './annotation-markers.mts';
 
 describe('annotation marker recipes', () => {
   it('removes a Generated annotation on its own line, with its arguments', () => {

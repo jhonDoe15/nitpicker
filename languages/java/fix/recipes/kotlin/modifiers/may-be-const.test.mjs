@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { mayBeConstRecipe, mayBeConstReviewRecipe } from './may-be-const.mjs';
+import { mayBeConstRecipe, mayBeConstReviewRecipe } from './may-be-const.mts';
 
 const fix = (text) => applyRecipe(mayBeConstReviewRecipe, applyRecipe(mayBeConstRecipe, text));
 

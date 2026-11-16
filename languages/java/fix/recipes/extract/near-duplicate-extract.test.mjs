@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { javaExtractNearDuplicateRecipe as recipe } from './near-duplicate-extract.mjs';
+import { javaExtractNearDuplicateRecipe as recipe } from './near-duplicate-extract.mts';
 import { applied, classOf, method } from './test-support/sources.mjs';
 
 const PATH = 'src/main/java/demo/Align.java';

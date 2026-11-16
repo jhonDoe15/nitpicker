@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { commentedCodeRecipe } from './commented-code.mjs';
+import { commentedCodeRecipe } from './commented-code.mts';
 
 describe('commentedCodeRecipe', () => {
   it('deletes a group of commented-out lines with their lines', () => {

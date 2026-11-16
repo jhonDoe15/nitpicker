@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { useCheckOrErrorRecipe, useRequireRecipe } from './preconditions.mjs';
+import { useCheckOrErrorRecipe, useRequireRecipe } from './preconditions.mts';
 
 function require(body) {
   return applyRecipe(useRequireRecipe, `fun f(a: Int, s: String?) {\n${body}\n}\n`);

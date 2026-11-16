@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe } from '../test-support/apply-recipe.mjs';
-import { catchLogRecipe } from './catch-log.mjs';
+import { catchLogRecipe } from './catch-log.mts';
 
 const HEAD = 'private val log = org.slf4j.LoggerFactory.getLogger("a")\n';
 const THROW = 'throw IllegalStateException()';

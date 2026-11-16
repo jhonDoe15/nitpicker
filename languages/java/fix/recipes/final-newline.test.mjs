@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kotlinFinalNewlineRecipe } from './final-newline.mjs';
+import { kotlinFinalNewlineRecipe } from './final-newline.mts';
 
 function plan(files) {
   return kotlinFinalNewlineRecipe.plan({ files }).fixes;

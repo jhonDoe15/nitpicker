@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { modifierOrderRecipe } from './modifier-order.mjs';
+import { modifierOrderRecipe } from './modifier-order.mts';
 
 const fix = (text) => applyRecipe(modifierOrderRecipe, text);
 

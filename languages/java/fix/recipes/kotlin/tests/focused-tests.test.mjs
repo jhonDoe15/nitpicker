@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { focusedTestRecipe } from './focused-tests.mjs';
+import { focusedTestRecipe } from './focused-tests.mts';
 
 const HEAD = 'import io.kotest.core.spec.style.FunSpec\n';
 const TEST = 'src/test/kotlin/demo/ASpec.kt';

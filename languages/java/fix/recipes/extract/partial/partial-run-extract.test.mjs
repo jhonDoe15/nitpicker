@@ -7,7 +7,7 @@ import {
   validationMethod,
   validationPair,
 } from '../test-support/partial-sources.mjs';
-import { javaExtractPartialRunRecipe as recipe } from './partial-run-extract.mjs';
+import { javaExtractPartialRunRecipe as recipe } from './partial-run-extract.mts';
 
 const PATH = 'src/main/java/demo/Align.java';
 

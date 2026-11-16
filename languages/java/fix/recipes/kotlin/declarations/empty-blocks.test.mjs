@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { emptyBlocksRecipe } from './empty-blocks.mjs';
+import { emptyBlocksRecipe } from './empty-blocks.mts';
 
 const fix = (text) => applyRecipe(emptyBlocksRecipe, text);
 

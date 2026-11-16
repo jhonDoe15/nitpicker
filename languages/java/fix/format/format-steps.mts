@@ -10,7 +10,7 @@ import {
   javaStyle,
 } from '../../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../../builds/java-build.mjs';
-import { formatterJava } from '../../maven/errorprone/maven-jdk.mjs';
+import { formatterJava } from '../../maven/errorprone/maven-jdk.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import {

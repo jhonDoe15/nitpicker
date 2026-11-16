@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { unnecessaryLetRecipe } from './unnecessary-let.mjs';
+import { unnecessaryLetRecipe } from './unnecessary-let.mts';
 
 const fix = (text) => applyRecipe(unnecessaryLetRecipe, text);
 

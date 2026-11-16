@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe } from '../test-support/apply-recipe.mjs';
-import { logConcatenationRecipe } from './log-concatenation.mjs';
+import { logConcatenationRecipe } from './log-concatenation.mts';
 
 const HEAD = 'import org.slf4j.LoggerFactory\nprivate val log = LoggerFactory.getLogger("a")\n';
 

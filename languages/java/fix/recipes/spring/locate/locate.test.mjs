@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { lineTable, removalRange } from './lines.mjs';
-import { propertyAt } from './properties-locate.mjs';
-import { yamlAt } from './yaml-locate.mjs';
+import { lineTable, removalRange } from './lines.mts';
+import { propertyAt } from './properties-locate.mts';
+import { yamlAt } from './yaml-locate.mts';
 
 function span(text, found) {
   return text.slice(found.value.start, found.value.end);

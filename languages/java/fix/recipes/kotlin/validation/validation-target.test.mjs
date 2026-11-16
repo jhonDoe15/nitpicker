@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { validationTargetRecipe } from './validation-target.mjs';
+import { validationTargetRecipe } from './validation-target.mts';
 
 const HEAD = [
   'import jakarta.validation.constraints.NotBlank',

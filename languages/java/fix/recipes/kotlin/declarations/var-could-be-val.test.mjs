@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { varCouldBeValRecipe } from './var-could-be-val.mjs';
+import { varCouldBeValRecipe } from './var-could-be-val.mts';
 
 const fix = (text) => applyRecipe(varCouldBeValRecipe, text);
 const inFunction = (body) => `fun f() {\n${body}\n}\n`;

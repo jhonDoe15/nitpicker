@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { unusedPrivateRecipe } from './unused-private.mjs';
+import { unusedPrivateRecipe } from './unused-private.mts';
 
 const fix = (text) => applyRecipe(unusedPrivateRecipe, text);
 
