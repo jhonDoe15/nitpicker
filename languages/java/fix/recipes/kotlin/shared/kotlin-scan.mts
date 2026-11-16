@@ -1,4 +1,5 @@
 import { lineAt as untypedLineAt } from '../../../../../../shared/conventions/lines.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
   braceDepths as untypedBraceDepths,
   closingIndex as untypedClosingIndex,
@@ -8,6 +9,7 @@ import {
   splitArguments as untypedSplitArguments,
 } from '../../../../adapters/kotlin/scan/kotlin-source.mjs';
 
+export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 export type Span = { readonly start: number; readonly end: number };
 
 export type KotlinEdit = Span & { readonly text: string };

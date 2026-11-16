@@ -4,13 +4,10 @@ import {
   fixerError as untypedFixerError,
   runFixCommand as untypedRunFixCommand,
 } from '../../../../core/fix/common/fix-command.mjs';
-import { readBytes as untypedReadBytes } from '../../../../core/fix/common/fix-files.mjs';
 import { formatNotes as untypedFormatNotes } from '../../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf as untypedWithFixedLineEndingsOf } from '../../../../core/fix/common/rewrite/line-endings.mjs';
 import { writeTexts as untypedWriteTexts } from '../../../../core/fix/engine/write-texts.mjs';
 import type { FixFile, FixSettings, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
-
-export type Bytes = ReadonlyMap<string, Buffer>;
 
 export type Layout = NonNullable<Parameters<typeof createQualityChecks>[0]>;
 
@@ -46,9 +43,6 @@ export const runFixCommand: (command: {
   readonly input: string | undefined;
   readonly executeFixCommand: FixSettings['executeFixCommand'];
 }) => CommandResult = untypedRunFixCommand;
-
-export const readBytes: (projectRoot: string, files: readonly FixFile[]) => Bytes =
-  untypedReadBytes;
 
 export const formatNotes: (tool: string, outcome: FormatOutcome) => string[] = untypedFormatNotes;
 

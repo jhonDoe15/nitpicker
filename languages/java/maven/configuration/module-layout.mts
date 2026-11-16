@@ -23,6 +23,7 @@ export type JacocoSettings = {
 };
 
 export const DIRECTORY = 'directory';
+const CONFIGURATION = 'configuration';
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
@@ -33,7 +34,7 @@ export function configured(
   plugin: XmlElement | undefined,
   name: string,
 ): string | undefined {
-  return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
+  return textAt(execution, CONFIGURATION, name) ?? textAt(plugin, CONFIGURATION, name);
 }
 
 function rootsInside(basedir: string, roots: readonly string[]): string[] {
@@ -48,7 +49,7 @@ function helperRoots(plugin: XmlElement | undefined, goal: string, basedir: stri
     plugin === undefined
       ? []
       : executionsWithGoal(plugin, goal).flatMap((execution) =>
-          childrenAt(execution, 'configuration', 'sources', 'source').map(
+          childrenAt(execution, CONFIGURATION, 'sources', 'source').map(
             (source) => source.text ?? '.',
           ),
         );
@@ -59,7 +60,7 @@ function groovyTestRoots(plugin: XmlElement | undefined, basedir: string): strin
   const declared = (
     plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
   )
-    .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
+    .flatMap((element) => childrenAt(element, CONFIGURATION, 'testSources', 'testSource'))
     .flatMap((source) => {
       const directory = textAt(source, DIRECTORY);
       return directory === undefined ? [] : [directory];

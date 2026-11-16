@@ -5,7 +5,8 @@ import { gradleTarget } from '../../../adapters/gradle-wrapper/gradle-command.mj
 import { INIT_SCRIPT as untypedInitScript } from '../../../builds/java-build.mjs';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { type Environment, configuredTool } from '../../tools/tool-classpath.mts';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
+import { configuredTool } from '../../tools/tool-classpath.mts';
 import { OWN_CHECKS_DIRECTORY, usesOwnChecks } from '../own/own-checks.mts';
 
 export type PatchRun = {

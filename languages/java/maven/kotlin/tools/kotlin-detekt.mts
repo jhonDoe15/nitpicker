@@ -152,7 +152,10 @@ export function runDetekt({
     { reportDir, file: DETEKT_SKIPPED, placeholders: { 'detekt.sarif': EMPTY_SARIF } },
     () => {
       callUntyped(runJava, {
-        java: callUntyped(detektJava, { spawn: options.spawn }),
+        java: callUntyped(detektJava, {
+          spawn: options.spawn,
+          environment: options.toolchains.environment,
+        }),
         tool: 'detekt',
         classpath: tools['detekt'],
         mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',

@@ -1,12 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { noFittingJdk } from './jdk-skip.mts';
 import { javaCommand } from '../programs/java-command.mts';
 import {
   type FeatureJdk,
   type Installed,
   type JdkChoice,
+  type JdkProbe,
   featureJdks,
   installedJdks,
   projectJava,
@@ -19,6 +20,10 @@ type ChooseRequest = {
   readonly project: FeatureJdk;
   readonly installed: readonly Installed[];
   readonly minimum?: number;
+};
+type ProbeOptions = {
+  readonly spawn?: JavaSpawn | undefined;
+  readonly environment: JavaEnvironment;
 };
 
 const ERROR_PRONE_JDK = 21;
@@ -128,66 +133,76 @@ export function chooseToolJdk({
     : { java: found.java };
 }
 
-function installedBelow(project: FeatureJdk, minimum: number, spawn: JavaSpawn): Installed[] {
-  return project.feature >= minimum ? [] : installedJdks(spawn);
+function installedBelow(project: FeatureJdk, minimum: number, probe: JdkProbe): Installed[] {
+  return project.feature >= minimum ? [] : installedJdks(probe);
 }
 
 export function minimumJava({
   tool,
   minimum,
   spawn = spawnSync,
+  environment,
 }: {
   readonly tool: string;
   readonly minimum: number;
   readonly spawn?: JavaSpawn | undefined;
+  readonly environment: JavaEnvironment;
 }): JdkChoice {
   const project = projectJava(spawn);
-  const installed = installedBelow(project, minimum, spawn);
+  const installed = installedBelow(project, minimum, { spawn, environment });
   return chooseToolJdk({ tool, project, installed, minimum });
 }
 
-export function toolJava({
-  tool,
-  level,
-  spawn = spawnSync,
-}: {
-  readonly tool: string;
-  readonly level?: number | undefined;
-  readonly spawn?: JavaSpawn | undefined;
-}): string {
-  const minimum = Math.max(ERROR_PRONE_JDK, level ?? 0);
-  const project = projectJava(spawn);
-  const installed = installedBelow(project, minimum, spawn);
-  const { java, problem } = chooseToolJdk({ tool, project, installed, minimum });
+function chosenJava(
+  { spawn = spawnSync, environment }: ProbeOptions,
+  choose: (project: FeatureJdk, probe: JdkProbe) => JdkChoice,
+): string {
+  const { java, problem } = choose(projectJava(spawn), { spawn, environment });
   if (problem !== undefined) {
     throw noFittingJdk(problem);
   }
   return java;
 }
 
+export function toolJava({
+  tool,
+  level,
+  ...probe
+}: ProbeOptions & { readonly tool: string; readonly level?: number | undefined }): string {
+  const minimum = Math.max(ERROR_PRONE_JDK, level ?? 0);
+  return chosenJava(probe, (project, found) =>
+    chooseToolJdk({ tool, project, installed: installedBelow(project, minimum, found), minimum }),
+  );
+}
+
 export function parserJava({
   level,
   spawn = spawnSync,
+  environment,
 }: {
   readonly level: number | undefined;
   readonly spawn?: JavaSpawn | undefined;
+  readonly environment: JavaEnvironment;
 }): { readonly java: string; readonly feature?: number } {
   if (level === undefined) {
     return { java: javaCommand(JAVA) };
   }
   const project = projectJava(spawn);
-  const found = lowestFrom(installedBelow(project, level, spawn), level) ?? project;
+  const found =
+    lowestFrom(installedBelow(project, level, { spawn, environment }), level) ?? project;
   return { feature: found.feature, java: found.java };
 }
 
 export function structureJava({
   level,
   spawn = spawnSync,
+  environment,
 }: {
   readonly level: number | undefined;
   readonly spawn?: JavaSpawn | undefined;
+  readonly environment: JavaEnvironment;
 }): { readonly java: string; readonly feature?: number } {
-  const found = parserJava({ level, spawn });
+  const found = parserJava({ level, spawn, environment });
   if (level !== undefined && found.feature !== undefined && found.feature < level) {
     throw noFittingJdk(
       `its sources are Java ${String(level)}, and the structure metrics parse them with the javac of the ` +
@@ -215,17 +230,11 @@ export function chooseFormatterJdk({
 
 export function formatterJava({
   tool,
-  spawn = spawnSync,
-}: {
-  readonly tool: string;
-  readonly spawn?: JavaSpawn | undefined;
-}): string {
-  const project = projectJava(spawn);
-  const { java, problem } = chooseFormatterJdk({ tool, project, installed: installedJdks(spawn) });
-  if (problem !== undefined) {
-    throw noFittingJdk(problem);
-  }
-  return java;
+  ...probe
+}: ProbeOptions & { readonly tool: string }): string {
+  return chosenJava(probe, (project, found) =>
+    chooseFormatterJdk({ tool, project, installed: installedJdks(found) }),
+  );
 }
 
 export function chooseDetektJdk({
@@ -247,35 +256,20 @@ export function chooseDetektJdk({
     : { java: found.java };
 }
 
-export function detektJava({
-  spawn = spawnSync,
-}: {
-  readonly spawn?: JavaSpawn | undefined;
-}): string {
-  const project = projectJava(spawn);
-  const installed = project.feature <= DETEKT_NEWEST_JDK ? [] : installedJdks(spawn);
-  const { java, problem } = chooseDetektJdk({ project, installed });
-  if (problem !== undefined) {
-    throw noFittingJdk(problem);
-  }
-  return java;
+export function detektJava(probe: ProbeOptions): string {
+  return chosenJava(probe, (project, found) =>
+    chooseDetektJdk({
+      project,
+      installed: project.feature <= DETEKT_NEWEST_JDK ? [] : installedJdks(found),
+    }),
+  );
 }
 
 export function errorProneJava({
   preview,
-  spawn = spawnSync,
-}: {
-  readonly preview: boolean;
-  readonly spawn?: JavaSpawn | undefined;
-}): string {
-  const project = projectJava(spawn);
-  const { java, problem } = chooseErrorProneJdk({
-    project,
-    preview,
-    installed: installedJdks(spawn),
-  });
-  if (problem !== undefined) {
-    throw noFittingJdk(problem);
-  }
-  return java;
+  ...probe
+}: ProbeOptions & { readonly preview: boolean }): string {
+  return chosenJava(probe, (project, found) =>
+    chooseErrorProneJdk({ project, preview, installed: installedJdks(found) }),
+  );
 }

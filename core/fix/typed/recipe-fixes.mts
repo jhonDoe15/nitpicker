@@ -1,11 +1,7 @@
-import { fieldOf, listOf } from '../../../shared/values/readers.mts';
+import { fieldOf, isText, listOf } from '../../../shared/values/readers.mts';
 import type { RecipeEdit, RecipeFix } from './fix-types.mts';
 
 const TEXT_EDITS = new Set(['write', 'delete', 'untrack']);
-
-function isText(value: unknown): value is string {
-  return typeof value === 'string';
-}
 
 function isRecipeEdit(value: unknown): value is RecipeEdit {
   const type = fieldOf(value, 'type');

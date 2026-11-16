@@ -18,7 +18,10 @@ export function runStructure(options: MetricsOptions): void {
     .filter((root) => existsSync(root))
     .map((root) => textOf(relativeTo(module.basedir, root)));
   callUntyped(skipWithoutJdk, { reportDir: options.reportDir, file: STRUCTURE_SKIPPED }, () => {
-    const jdk = callUntyped(structureJava, { level: callUntyped(sourceLevel, module['compiler']) });
+    const jdk = callUntyped(structureJava, {
+      level: callUntyped(sourceLevel, module['compiler']),
+      environment: options['environment'],
+    });
     callUntyped(runJava, {
       java: fieldOf(jdk, 'java'),
       tool: 'StructureMetrics',

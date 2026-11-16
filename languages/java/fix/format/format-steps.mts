@@ -13,11 +13,8 @@ import { readPinnedTools } from '../../builds/java-build.mjs';
 import { formatterJava } from '../../maven/errorprone/maven-jdk.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import {
-  type Classpaths,
-  type Environment,
-  resolveToolClasspaths,
-} from '../tools/tool-classpath.mts';
+import type { Environment } from '../../../../shared/processes/environment.mts';
+import { type Classpaths, resolveToolClasspaths } from '../tools/tool-classpath.mts';
 import type { FormatterPlan } from './formatter-run.mts';
 import { javaFormat, javaFormatterPlan } from './java-format.mts';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mts';
@@ -28,7 +25,7 @@ export type FormatSettings = {
   readonly headPolicy: unknown;
   readonly config: unknown;
   readonly writer: FixWriter;
-  readonly allFiles?: boolean;
+  readonly allFiles: boolean;
   readonly environment?: Environment | undefined;
   readonly executeFixCommand: unknown;
 };
@@ -42,6 +39,8 @@ type Planned = FixStep & { readonly step: FormatStep | undefined };
 
 const JAVA_FILE = /\.java$/u;
 const KOTLIN_FILE = /\.kt$/u;
+const CONVENTIONS = 'conventions';
+const FORMATTER = 'formatter';
 const NO_JAVA_FORMATTER =
   'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten';
 const BUILD_JAVA_FORMATTER =
@@ -55,7 +54,7 @@ function javaStep(
   pinned: unknown,
 ): FormatStep | string {
   const { headPolicy, executeFixCommand } = settings;
-  const conventions = fieldOf(headPolicy, 'conventions');
+  const conventions = fieldOf(headPolicy, CONVENTIONS);
   const style = textOf(javaStyle(conventions));
   const version = fieldOf(callUntyped(javaFormatterSettings, conventions), 'version');
   const plan = javaFormatterPlan(style, pinned, version);
@@ -74,6 +73,7 @@ function javaStep(
         java: callUntyped(formatterJava, {
           tool: plan.label,
           spawn: callUntyped(fixSpawn, { operation: 'java-probe', executeFixCommand }),
+          environment: settings.environment ?? {},
         }),
         executeFixCommand,
       }),
@@ -84,9 +84,9 @@ function kotlinTools(settings: FormatSettings): unknown {
   const { projectRoot, headPolicy, config } = settings;
   const kotlin = fieldOf(config, 'kotlin');
   return callUntyped(resolveKotlinTools, projectRoot, {
-    formatter: fieldOf(fieldOf(headPolicy, 'kotlin'), 'formatter') ?? fieldOf(kotlin, 'formatter'),
+    formatter: fieldOf(fieldOf(headPolicy, 'kotlin'), FORMATTER) ?? fieldOf(kotlin, FORMATTER),
     detektConfig: fieldOf(kotlin, 'detektConfig'),
-    conventions: fieldOf(headPolicy, 'conventions') ?? {},
+    conventions: fieldOf(headPolicy, CONVENTIONS) ?? {},
     policyRoot: projectRoot,
     toolPrecedence: callUntyped(toolPrecedenceOf, fieldOf(headPolicy, 'tools')),
   });
@@ -98,9 +98,9 @@ function kotlinStep(
   pinned: unknown,
 ): FormatStep | string {
   const tools = kotlinTools(settings);
-  const formatter = fieldOf(tools, 'formatter');
+  const formatter = fieldOf(tools, FORMATTER);
   const plan = kotlinFormatterPlan(formatter, pinned);
-  const conventions = fieldOf(settings.headPolicy, 'conventions') ?? {};
+  const conventions = fieldOf(settings.headPolicy, CONVENTIONS) ?? {};
   const style = callUntyped(kotlinStyleFile, tools, conventions);
   if (plan === undefined) {
     return NO_KOTLIN_FORMATTER;
@@ -166,7 +166,7 @@ function applyStep(step: FormatStep, classpaths: Classpaths, scope: object): Fix
 
 function rewriteScope(settings: FormatSettings, mergeBaseSha: string | undefined): object {
   const { projectRoot, repositoryRoot, writer, allFiles } = settings;
-  return { projectRoot, repositoryRoot, mergeBaseSha, writer, allFiles: allFiles === true };
+  return { projectRoot, repositoryRoot, mergeBaseSha, writer, allFiles };
 }
 
 function classpathsFor(settings: FormatSettings, active: readonly FormatStep[]): Classpaths {

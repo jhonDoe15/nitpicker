@@ -4,7 +4,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
 import { javaFiles } from '../maven-lint.mts';
-import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
@@ -22,6 +22,7 @@ type ErrorProneContext = {
   readonly configs: unknown;
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly environment: JavaEnvironment;
 };
 type CompileSet = {
   readonly name: string;
@@ -38,7 +39,8 @@ type ArgumentSet = CompileSet & {
   readonly flags: readonly string[];
 };
 
-const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
+const ERROR_PRONE = 'errorprone';
+const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, ERROR_PRONE);
 const COMPILER_PACKAGES = [
   ...['api', 'file', 'main', 'model', 'parser'],
   ...['processing', 'tree', 'util', 'code', 'comp'],
@@ -171,22 +173,28 @@ function compileSets(
 }
 
 function analyze(
-  { module, reportDir, tools, classpaths, configs, spawn, timeoutMs }: ErrorProneContext,
+  {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    configs,
+    spawn,
+    timeoutMs,
+    environment,
+  }: ErrorProneContext,
   modular: Modular,
 ): void {
   const report = path.join(reportDir, 'errorprone.json');
-  const work = path.join(reportDir, 'errorprone');
+  const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
   const compiler = compilerOf(module.compiler);
   const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
-      processors: [
-        ...(tools['errorprone'] ?? []),
-        ...processorPath(set.classpath, compiler, tools),
-      ],
-      flags: textsOf(fieldOf(fieldOf(configs, 'errorprone'), 'arguments')),
+      processors: [...(tools[ERROR_PRONE] ?? []), ...processorPath(set.classpath, compiler, tools)],
+      flags: textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments')),
     }),
   );
   if (argumentFiles.length === 0) {
@@ -197,7 +205,7 @@ function analyze(
     settings.compilerArgs.includes('--enable-preview'),
   );
   runJava({
-    java: errorProneJava({ preview, spawn }),
+    java: errorProneJava({ preview, spawn, environment }),
     spawn,
     timeoutMs,
     tool: 'Error Prone',

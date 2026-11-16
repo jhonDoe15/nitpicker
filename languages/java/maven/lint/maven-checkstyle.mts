@@ -10,7 +10,7 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { CHECKSTYLE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
-import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, optionalText, textOf } from '../../../../shared/values/readers.mts';
 import { skipWithoutJdk, toolJava } from '../errorprone/maven-jdk.mts';
 import type { SourceModule } from '../errorprone/compiler-types.mts';
@@ -29,15 +29,19 @@ type CheckstyleOptions = {
   readonly style: unknown;
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly environment: JavaEnvironment;
 };
 type SetupFiles = {
   readonly directory: string;
   readonly nitpickerConfig: string;
   readonly project?: string | undefined;
-  readonly projectWins?: boolean | undefined;
+  readonly projectWins: boolean;
   readonly suppressions?: string;
 };
-type ReportRequest = Pick<CheckstyleOptions, 'module' | 'tools' | 'spawn' | 'timeoutMs'> & {
+type ReportRequest = Pick<
+  CheckstyleOptions,
+  'module' | 'tools' | 'spawn' | 'timeoutMs' | 'environment'
+> & {
   readonly setup: CheckstyleSetup;
   readonly pinned: CheckstylePinned;
   readonly roots: readonly string[];
@@ -83,19 +87,20 @@ function checkstyleSetup(
   if (jar === undefined) {
     throw new Error(`checkstyle-${pinned.checkstyle}.jar is not among the Checkstyle tools`);
   }
-  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync));
+  const bundled = textOf(nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync)));
   const unformatted = fieldOf(style, 'javaStyle') === 'none';
   const declared = fieldsOf(fieldOf(configs, CHECKSTYLE));
-  const wins = declared['projectWins'];
   return writeCheckstyleSetup({
     directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
-    nitpickerConfig: withGuardChecks(
-      unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
-      ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
+    nitpickerConfig: textOf(
+      withGuardChecks(
+        unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
+        ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
+      ),
     ),
     suppressions: unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS,
     project: optionalText(declared['project']),
-    projectWins: typeof wins === 'boolean' ? wins : undefined,
+    projectWins: declared['projectWins'] !== false,
   });
 }
 
@@ -137,7 +142,8 @@ function emptyReport(pinned: CheckstylePinned): string {
 }
 
 function checkstyleReport(options: ReportRequest): void {
-  const { module, setup, tools, pinned, roots, report, always, spawn, timeoutMs } = options;
+  const { module, setup, tools, pinned, roots, report, always, spawn, timeoutMs, environment } =
+    options;
   const files = javaFiles(roots);
   if (files.length === 0) {
     if (always) {
@@ -146,7 +152,7 @@ function checkstyleReport(options: ReportRequest): void {
     return;
   }
   runJava({
-    java: toolJava({ tool: TOOL }),
+    java: toolJava({ tool: TOOL, environment }),
     tool: TOOL,
     classpath: tools[CHECKSTYLE],
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',
@@ -159,8 +165,8 @@ function checkstyleReport(options: ReportRequest): void {
 }
 
 function runCheckstyleReports(options: CheckstyleOptions): void {
-  const { module, reportDir, tools, pinned, spawn, timeoutMs } = options;
-  const context = { module, tools, pinned, spawn, timeoutMs };
+  const { module, reportDir, tools, pinned, spawn, timeoutMs, environment } = options;
+  const context = { module, tools, pinned, spawn, timeoutMs, environment };
   checkstyleReport({
     ...context,
     setup: checkstyleSetup(options, false),

@@ -18,13 +18,12 @@ import {
   containedPath,
   fixerError,
   formatNotes,
-  readBytes,
   runFixCommand,
   withFixedLineEndingsOf,
   writeTexts,
-  type Bytes,
   type Layout,
 } from './typed/fix-views.mts';
+import { type Bytes, readBytes } from '../../../core/fix/typed/fix-pipeline.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 

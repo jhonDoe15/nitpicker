@@ -9,7 +9,7 @@ import {
   rewrittenPaths,
   runRecipes,
   sharedInputs,
-} from '../../../core/fix/typed/fix-common.mts';
+} from '../../../core/fix/typed/fix-pipeline.mts';
 import type {
   FixFile,
   FixOutcome,
@@ -24,13 +24,12 @@ import { errorPronePatch } from './errorprone/run/error-prone-step.mts';
 import { type PatchEntries, errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mts';
 import { JVM_RECIPES } from './recipes/jvm-recipes.mts';
 import { SPRING_CONFIG_FILE } from './recipes/spring/config/config-targets.mts';
-import type { Environment } from './tools/tool-classpath.mts';
+import type { Environment } from '../../../shared/processes/environment.mts';
 import { formatSteps } from './format/format-steps.mts';
 import { callUntyped } from '../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
-type JvmSettings = Omit<FixSettings, 'allFiles' | 'selectedRules' | 'recipes'> & {
-  readonly allFiles?: boolean;
+type JvmSettings = Omit<FixSettings, 'selectedRules' | 'recipes'> & {
   readonly selectedRules?: readonly string[];
   readonly recipes?: unknown;
   readonly environment?: Environment;
@@ -114,30 +113,33 @@ function notesOf(steps: readonly FixStep[]): string[] {
   return steps.flatMap(({ notes }) => notes);
 }
 
+function fixFilesOf(settings: JvmSettings, accepts: (name: string) => boolean) {
+  const { repositoryRoot, projectRoot, baseRef, scope, allFiles } = settings;
+  return collectFixFiles({ repositoryRoot, projectRoot, baseRef, scope, accepts, allFiles });
+}
+
 export function fixJvm(settings: JvmSettings): FixOutcome {
-  const { repositoryRoot, projectRoot, baseRef, scope } = settings;
-  const config = settings.config ?? {};
+  const { projectRoot } = settings;
   const selectedRules = settings.selectedRules ?? [];
-  const headPolicy = settings.headPolicy ?? {};
-  const resolved = { ...settings, headPolicy, config };
+  const resolved = {
+    ...settings,
+    headPolicy: settings.headPolicy ?? {},
+    config: settings.config ?? {},
+  };
   const accepts = acceptsOf(resolved);
-  const allFiles = settings.allFiles === true;
-  const fileSet = collectFixFiles({
-    repositoryRoot,
-    projectRoot,
-    baseRef,
-    scope,
-    accepts,
-    allFiles,
-  });
-  const { comparison, files, links } = fileSet;
+  const { comparison, files, links } = fixFilesOf(settings, accepts);
   if (files.length === 0 && selectedRules.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const patch = patchAttempt(resolved, files, comparison.mergeBaseSha);
-  const patchEntries = patch.entries;
-  const recipes = recipeRun({ settings: resolved, files, accepts, selectedRules, patchEntries });
+  const recipes = recipeRun({
+    settings: resolved,
+    files,
+    accepts,
+    selectedRules,
+    patchEntries: patch.entries,
+  });
   const formatted =
     selectedRules.length === 0 ? recipes.files : changedFiles(projectRoot, recipes.files, before);
   const outcomes = formatSteps(resolved, formatted, comparison.mergeBaseSha);

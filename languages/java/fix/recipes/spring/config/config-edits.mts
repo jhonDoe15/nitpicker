@@ -179,7 +179,7 @@ function listGroups(file: ConfigFile, items: readonly ConfigItem[]): Group[] {
     if (entry === undefined) {
       continue;
     }
-    const byKey = groups.get(document) ?? new Map();
+    const byKey = groups.get(document) ?? new Map<string, ConfigItem[]>();
     const key = relaxKey(entry.key);
     groups.set(document, byKey.set(key, [...(byKey.get(key) ?? []), item]));
   }
@@ -248,7 +248,8 @@ function singleEdits(
       return narrowEdits(file, entry);
     case 'rename':
       return renameEdits(file, entry, state.renamed);
-    default: {
+    case 'remove':
+    case undefined: {
       const lines = removalLines(file, entry);
       for (const line of lines ?? []) {
         state.removed.set(line, item);
@@ -284,7 +285,7 @@ export function fixesFor(
     })),
     notes: state.left.map(
       ({ item: { target }, why }) =>
-        `${target.path}:${target.entry?.line ?? 1} spring/${target.rule}: left as is, ${why}`,
+        `${target.path}:${String(target.entry?.line ?? 1)} spring/${target.rule}: left as is, ${why}`,
     ),
   };
 }

@@ -10,7 +10,7 @@ import {
 } from '../../../../core/tooling/temporary-files.mjs';
 import { runJava } from '../../maven/maven-command.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import type { Tools } from '../tools/tool-classpath.mts';
 
 export type FormatterPlan = {
@@ -32,7 +32,7 @@ type FormatterJar = {
 };
 
 export function withWorkspace<T>(use: (directory: string) => T): T {
-  const directory: string = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-fix-')));
+  const directory = textOf(trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-fix-'))));
   try {
     return use(directory);
   } finally {

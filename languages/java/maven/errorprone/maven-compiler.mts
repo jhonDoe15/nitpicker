@@ -55,7 +55,7 @@ function processorCoordinates(project: XmlElement, entry: XmlElement): string {
   if (version === undefined || version === '' || UNRESOLVED.test(version)) {
     const found = version === undefined ? 'no <version> and none in dependencyManagement' : version;
     throw new Error(
-      `maven-compiler-plugin's annotationProcessorPaths names ${groupId}:${artifactId} without a ` +
+      `maven-compiler-plugin's annotationProcessorPaths names ${String(groupId)}:${String(artifactId)} without a ` +
         `version the effective POM resolves (${found}). Give the path a <version>, or manage ` +
         'the artifact in dependencyManagement',
     );

@@ -1,4 +1,4 @@
-import { closingIndex, literalAt, splitArguments } from '../shared/kotlin-scan.mts';
+import { closingIndex, escapeRegExp, literalAt, splitArguments } from '../shared/kotlin-scan.mts';
 import type { ScannedKotlin } from '../shared/kotlin-scan.mts';
 
 type ThrowCall = { readonly end: number; readonly message: string | undefined };
@@ -25,10 +25,24 @@ export function shadowsStandardCalls(code: string): boolean {
 
 export function shadowsException(code: string, name: string): boolean {
   const foreign = new RegExp(
-    String.raw`^\s*import\s+(?!java\.lang\.|kotlin\.)[\w.]+\.${name}\b`,
+    String.raw`^\s*import\s+(?!java\.lang\.|kotlin\.)[\w.]+\.${escapeRegExp(name)}\b`,
     'm',
   );
-  return new RegExp(String.raw`\b(?:class|typealias)\s+${name}\b`).test(code) || foreign.test(code);
+  return (
+    new RegExp(String.raw`\b(?:class|typealias)\s+${escapeRegExp(name)}\b`).test(code) ||
+    foreign.test(code)
+  );
+}
+
+function literalMessage(
+  scanned: ScannedKotlin,
+  argument: { readonly start: number; readonly end: number },
+): string | undefined {
+  const written = scanned.source.slice(argument.start, argument.end);
+  const message = written.trim();
+  const start = argument.start + written.search(/\S/u);
+  const literal = literalAt(scanned, start);
+  return literal?.end === start + message.length ? message : undefined;
 }
 
 export function throwCall(
@@ -36,10 +50,11 @@ export function throwCall(
   from: number,
   exceptionName: string,
 ): ThrowCall | undefined {
-  const { code, source } = scanned;
-  const head = new RegExp(String.raw`^throw\s+(?:java\.lang\.)?${exceptionName}\s*\(`, 'u').exec(
-    code.slice(from),
-  );
+  const { code } = scanned;
+  const head = new RegExp(
+    String.raw`^throw\s+(?:java\.lang\.)?${escapeRegExp(exceptionName)}\s*\(`,
+    'u',
+  ).exec(code.slice(from));
   if (head === null) {
     return undefined;
   }
@@ -52,13 +67,8 @@ export function throwCall(
   if (argument === undefined) {
     return { end: close + 1, message: undefined };
   }
-  const written = source.slice(argument.start, argument.end);
-  const message = written.trim();
-  const start = argument.start + written.search(/\S/u);
-  const literal = literalAt(scanned, start);
-  return literal === undefined || literal.end !== start + message.length
-    ? undefined
-    : { end: close + 1, message };
+  const message = literalMessage(scanned, argument);
+  return message === undefined ? undefined : { end: close + 1, message };
 }
 
 function onlyBlanks(source: string, from: number, to: number): boolean {
@@ -128,7 +138,7 @@ const HIDDEN = '\u0000';
 
 function topLevel(code: string): string {
   let depth = 0;
-  return [...code]
+  return Array.from(code)
     .map((character) => {
       if ('([{'.includes(character)) {
         depth += 1;
