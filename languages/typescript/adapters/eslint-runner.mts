@@ -8,6 +8,7 @@ import {
   writeAdapterFindings,
 } from './typed/static-checks.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import {
   linkDependencies,
   installPolicyFiles,
@@ -31,6 +32,14 @@ type EslintState = {
   preparedDependencies: unknown;
 };
 
+const checkoutFile: (file: string) => string = checkoutModulePath;
+
+function checkoutConfigPath(policyRoot: string, relativePath: string): string {
+  const packaged = path.resolve(policyRoot, relativePath);
+  const source = checkoutFile(packaged);
+  return source === packaged ? relativePath : path.relative(policyRoot, source);
+}
+
 if (isInvokedModule(import.meta.url)) {
   process.exitCode = await writeAdapterFindings(
     'ESLint differential adapter failed',
@@ -49,7 +58,7 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
     const installedPolicyFiles = prepareEslint(options, state);
     const policyConfig = validatedContainedFile(
       options.policyRoot,
-      options.configRelativePath,
+      checkoutConfigPath(options.policyRoot, options.configRelativePath),
       '--config',
     );
     const testEnvironments = testEnvironmentsFor(options);

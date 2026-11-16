@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -286,7 +286,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         path: bad,
         identity: 'format',
         message:
-          'File is not formatted with ktfmt. Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
+          'File is not formatted with ktfmt. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);

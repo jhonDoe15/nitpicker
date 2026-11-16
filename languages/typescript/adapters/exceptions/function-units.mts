@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { functionUnits as untypedFunctionUnits } from '../../preset/structure/units/function-units.mjs';
+import { functionUnits as untypedFunctionUnits } from '../../preset/structure/units/function-units.mts';
 
 export type FunctionUnit = {
   readonly name: string;

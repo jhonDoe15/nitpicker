@@ -3,22 +3,29 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+} from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { createFindingsCache, isCacheable } from './findings-cache.mjs';
+import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
+import type { CacheStore } from './cache-stores.mts';
+import { withComparisonKeys } from './keys/comparison-keys.mts';
 import { runGit } from '../git/repository/command.mjs';
-import { analyzerName } from '../reporting/report-model.mjs';
-import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { analyzerName } from '../reporting/report-model.mts';
+import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+
+const withPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: unknown) => T) => T =
+  withHeadPolicyFile;
+
+export const WITHOUT_CHANGED_TESTS = ' (without changed tests)';
 
 type PublishRequest = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
   readonly liveProjectRoot: string;
   readonly analyzers: readonly Analyzer[];
-  readonly store: unknown;
+  readonly store: CacheStore | undefined;
   readonly configOverrides?: readonly unknown[];
   readonly headPolicy?: unknown;
   readonly runTasks: unknown;
@@ -32,8 +39,8 @@ export type PublishOutcome = {
 };
 
 type Publication = {
-  readonly run: unknown;
-  readonly cache: { write(analyzer: Analyzer, report: unknown): unknown };
+  readonly run: AnalyzerRun;
+  readonly cache: FindingsCache;
   readonly published: string[];
   readonly skipped: string[];
 };
@@ -71,6 +78,10 @@ export function publishBaseSnapshot({
       for (const [index, analyzer] of analyzers.entries()) {
         publishAnalyzer(analyzer, index, { run, cache, published, skipped });
       }
+      publishUnmutated({ analyzers, liveProjectRoot, headPolicy, runTasks, warn }, projectRoot, {
+        cache,
+        published,
+      });
     } finally {
       removeSnapshotDependencies(dependencies);
     }
@@ -84,12 +95,14 @@ function runBaseAnalyzers(
     liveProjectRoot,
     headPolicy,
     runTasks,
+    mutationScope,
   }: Pick<PublishRequest, 'analyzers' | 'liveProjectRoot' | 'runTasks'> & {
     readonly headPolicy: unknown;
+    readonly mutationScope?: readonly string[];
   },
   projectRoot: string,
-): unknown {
-  return withHeadPolicyFile(headPolicy, (headPolicyFile: unknown) =>
+): AnalyzerRun {
+  return withPolicyFile(headPolicy, (headPolicyFile: unknown) =>
     runAnalyzers({
       analyzers,
       projectRoot,
@@ -100,11 +113,68 @@ function runBaseAnalyzers(
       snapshot: 'base',
       baselineRoot: undefined,
       baselineMovesFile: undefined,
-      mutationScope: undefined,
+      mutationScope,
       logRoot: undefined,
       runTasks,
     }),
   );
+}
+
+function isAnalyzer(entry: unknown): entry is Analyzer {
+  return typeof entry === 'object' && entry !== null;
+}
+
+function keyedAnalyzers(candidates: readonly Analyzer[], headRoot: string): Analyzer[] {
+  const keyed: Analyzer[] = [];
+  for (const entry of withComparisonKeys(candidates, {
+    touchedPaths: [],
+    headRoot,
+    quick: false,
+  })) {
+    if (isAnalyzer(entry)) {
+      keyed.push(entry);
+    }
+  }
+  return keyed;
+}
+
+function publishUnmutated(
+  {
+    analyzers,
+    liveProjectRoot,
+    headPolicy,
+    runTasks,
+    warn,
+  }: Pick<PublishRequest, 'analyzers' | 'liveProjectRoot' | 'runTasks' | 'warn'> & {
+    readonly headPolicy: unknown;
+  },
+  projectRoot: string,
+  { cache, published }: Pick<Publication, 'cache' | 'published'>,
+): void {
+  const candidates = analyzers.filter(
+    (analyzer) => typeof analyzer['comparisonKey'] === 'function',
+  );
+  const keyed = keyedAnalyzers(candidates, projectRoot);
+  const unmutated = keyed.filter((analyzer, index) => analyzer !== candidates[index]);
+  if (unmutated.length === 0) {
+    return;
+  }
+  const labels: { published: string[]; skipped: string[] } = { published: [], skipped: [] };
+  try {
+    const run = runBaseAnalyzers(
+      { analyzers: unmutated, liveProjectRoot, headPolicy, runTasks, mutationScope: [] },
+      projectRoot,
+    );
+    for (const [index, analyzer] of unmutated.entries()) {
+      publishAnalyzer(analyzer, index, { run, cache, ...labels });
+    }
+  } catch (error) {
+    labels.skipped.push(error instanceof Error ? error.message : String(error));
+  }
+  published.push(...labels.published.map((name) => `${name}${WITHOUT_CHANGED_TESTS}`));
+  for (const detail of labels.skipped) {
+    warn(`the base without changed tests was not published: ${detail}`);
+  }
 }
 
 function snapshotDependencies(
@@ -122,17 +192,16 @@ function publishAnalyzer(
   { run, cache, published, skipped }: Publication,
 ): void {
   const name = textOf(analyzerName(analyzer, index));
-  const found = fieldOf(run, 'reports');
-  const reports = found instanceof Map ? found : undefined;
-  const report: unknown = reports?.get(name);
+  const { reports } = run;
+  const report = reports.get(name);
   if (
     report === undefined ||
-    isCacheable(analyzer, report, { toolErrors: fieldOf(run, 'toolErrors'), reports }) !== true
+    !isCacheable(analyzer, report, { toolErrors: run.toolErrors, reports })
   ) {
     skipped.push(`${name} (analysis failed)`);
     return;
   }
-  if (cache.write(analyzer, report) === true) {
+  if (cache.write(analyzer, report, run.metadata.get(analyzer))) {
     published.push(name);
     return;
   }

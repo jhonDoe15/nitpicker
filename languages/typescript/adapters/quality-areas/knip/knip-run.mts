@@ -1,6 +1,7 @@
 import { unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { parseJson } from '../../../../../shared/values/readers.mts';
 import { trackTemporaryPath } from '../../typed/tooling.mts';
 import {
   hasEncodedRegExp as untypedHasEncodedRegExp,
@@ -10,6 +11,7 @@ import { projectToolLayer as untypedProjectToolLayer } from '../../../preset/pro
 import { KNIP_TOOL } from '../../../preset/project-tools/project-config-files.mjs';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import type { KnipConfig } from '../typed/policy.mts';
+import type { KnipReport } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
 import { readHeadPolicy } from '../../typed/head-policy.mts';
 import { runNodeTool } from '../typed/tooling.mts';
 import { type KnipLayer, layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
@@ -28,13 +30,28 @@ function manifestGuard(manifestPath: string): string {
   ].join('\n');
   return `data:text/javascript,${encodeURIComponent(source)}`;
 }
+function isKnipReport(value: unknown): value is KnipReport {
+  return typeof value === 'object' && value !== null;
+}
+
+function readKnipReport(text: string): KnipReport {
+  const report = parseJson(text);
+  if (!isKnipReport(report)) {
+    throw new TypeError('knip did not print a JSON object');
+  }
+  return report;
+}
+
 const CONFIG_BASENAME = '.nitpicker-diff-knip';
 
 export function withProjectKnipConfig(config: KnipConfig): KnipConfig {
   return layeredKnipConfig(config, projectToolLayer(KNIP_TOOL, readHeadPolicy().tools.knip));
 }
 
-function configFile(projectRoot: string, config: KnipConfig): { path: string; text: string } {
+export function knipConfigFile(
+  projectRoot: string,
+  config: KnipConfig,
+): { path: string; text: string } {
   const written = writtenKnipConfig(config);
   return hasEncodedRegExp(written)
     ? {
@@ -47,8 +64,8 @@ function configFile(projectRoot: string, config: KnipConfig): { path: string; te
       };
 }
 
-export function knipReport(options: QualityAreaOptions, config: KnipConfig): unknown {
-  const file = configFile(options.projectRoot, config);
+export function knipReport(options: QualityAreaOptions, config: KnipConfig): KnipReport {
+  const file = knipConfigFile(options.projectRoot, config);
   trackTemporaryPath(file.path);
   writeFileSync(file.path, file.text);
   try {
@@ -59,7 +76,7 @@ export function knipReport(options: QualityAreaOptions, config: KnipConfig): unk
       arguments_: ['--config', file.path, '--reporter', 'json'],
       acceptedStatuses: [0, 1],
     });
-    return JSON.parse(result.stdout);
+    return readKnipReport(result.stdout);
   } finally {
     unlinkSync(file.path);
   }

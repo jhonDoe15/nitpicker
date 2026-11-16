@@ -115,4 +115,57 @@ describe('duplicates rule on neutral clones', () => {
       { path: 'b.java', startLine: 8, endLine: 13 },
     ]);
   });
+
+  it.each([
+    [
+      'java',
+      'package shop.service;\nimport java.util.List;\nimport static shop.Util.*;\nint total = 1;',
+      'package shop.audit;\nimport java.util.List;\nint total = 1;',
+    ],
+    [
+      'kotlin',
+      'package shop.service\nimport shop.service.Tax as T\nval total = 1',
+      'package shop.billing\nimport shop.billing.Tax as T\nval total = 1',
+    ],
+    [
+      'python',
+      'from shop.service import tax\nimport shop.service.util\ntotal = 1',
+      'from shop.billing import tax\ntotal = 1',
+    ],
+    [
+      'typescript',
+      "import { tax } from './tax.js';\nimport {\n  a,\n} from '../shared/a.js';\nexport * from './all.js';\nconst total = 1;",
+      "import { tax } from '../billing/tax.js';\nimport {\n  a,\n} from '../../shared/a.js';\nconst total = 1;",
+    ],
+    [
+      'commonjs and dynamic import',
+      "import fs = require('./fs');\nconst a = require('./a');\nconst b = await import('./b.js');\nrequire('./side');\nconst total = 1;",
+      "import fs = require('../x/fs');\nconst a = require('../x/a');\nconst total = 1;",
+    ],
+  ])(
+    'keeps the identity of a %s clone when only its package or import lines change',
+    (_name, before, after) => {
+      const identity = (fragment) =>
+        byRule(
+          evaluateDuplicates([clone('a.java', 'b.java', { fragment })], 'duplicates'),
+          'duplicate-clone',
+        )[0].identity;
+
+      expect(identity(after)).toBe(identity(before));
+      expect(identity(`${after}\nint other = 2;`)).not.toBe(identity(before));
+    },
+  );
+
+  it('keeps the original hash of a clone that is only import lines', () => {
+    const identity = (fragment) =>
+      byRule(
+        evaluateDuplicates([clone('a.java', 'b.java', { fragment })], 'duplicates'),
+        'duplicate-clone',
+      )[0].identity;
+    const onlyImports = (target) =>
+      `import { a } from '${target}';\nimport { b } from '${target}';`;
+
+    expect(identity(onlyImports('./one'))).not.toBe(identity(onlyImports('./two')));
+    expect(identity(onlyImports('./one'))).toBe(identity(onlyImports('./one')));
+  });
 });

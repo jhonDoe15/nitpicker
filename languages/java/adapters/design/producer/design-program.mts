@@ -69,7 +69,7 @@ function cacheKey(sources: readonly string[], spawn: JavaSpawn): string {
   return digest.digest('hex').slice(0, KEY_LENGTH);
 }
 
-function succeeded(result: unknown): boolean {
+export function succeeded(result: unknown): boolean {
   return fieldOf(result, 'status') === 0;
 }
 

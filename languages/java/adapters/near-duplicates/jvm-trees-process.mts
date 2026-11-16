@@ -3,9 +3,15 @@ import { Parser } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { loadGrammar } from './grammar/load-grammar.mjs';
 import { kotlinUnits } from './kotlin/units.mjs';
+import { javaExtractions } from './extract/file-extractions.mjs';
 import { javaUnits } from './tree/units.mjs';
 
-type TreesRequest = { readonly root: string; readonly files: readonly string[] };
+type TreesRequest = {
+  readonly root: string;
+  readonly files: readonly string[];
+  readonly texts: Readonly<Record<string, string>> | undefined;
+  readonly mode: string;
+};
 type UnitsOf = (program: unknown, file: string) => unknown;
 type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
@@ -18,11 +24,24 @@ function isText(value: unknown): value is string {
   return typeof value === 'string';
 }
 
+function textsOf(value: object): Readonly<Record<string, string>> | undefined {
+  if ('texts' in value && typeof value.texts === 'object' && value.texts !== null) {
+    return Object.fromEntries(
+      Object.entries(value.texts).filter((entry): entry is [string, string] => isText(entry[1])),
+    );
+  }
+  return undefined;
+}
+
+function modeOf(value: object): string {
+  return 'mode' in value && value.mode === 'partial' ? 'partial' : 'whole';
+}
+
 function treesRequest(value: unknown): TreesRequest {
   if (typeof value === 'object' && value !== null && 'root' in value && 'files' in value) {
     const { root, files } = value;
     if (isText(root) && Array.isArray(files) && files.every(isText)) {
-      return { root, files };
+      return { root, files, texts: textsOf(value), mode: modeOf(value) };
     }
   }
   throw new TypeError('The JVM trees request must be { root, files } with text values');
@@ -51,16 +70,47 @@ function unitsOf({ parser, unitsOf: convert }: Grammar, root: string, file: stri
   }
 }
 
-const request = treesRequest(JSON.parse(readFileSync(0, 'utf8')));
-await Parser.init();
-const java = await grammarOf('java');
-const kotlin = request.files.some((file) => file.endsWith('.kt'))
-  ? await grammarOf('kotlin')
-  : java;
-process.stdout.write(
-  JSON.stringify(
-    request.files.flatMap((file) =>
-      unitsOf(file.endsWith('.kt') ? kotlin : java, request.root, file),
-    ),
-  ),
-);
+type Source = { readonly file: string; readonly text: string };
+
+function extractionsOf(
+  { parser }: Grammar,
+  sources: readonly Source[],
+  options: { readonly root: string; readonly mode: string },
+): unknown {
+  const trees = sources.flatMap(({ file, text }) => {
+    const tree = parser.parse(text);
+    return tree === null ? [] : [{ tree, file, text }];
+  });
+  try {
+    return javaExtractions(
+      trees.map(({ tree, file, text }) => ({ rootNode: tree.rootNode, file, text })),
+      { ...options, parse: (text: string) => parser.parse(text) },
+    );
+  } finally {
+    for (const { tree } of trees) {
+      tree.delete();
+    }
+  }
+}
+
+async function main(): Promise<unknown> {
+  const request = treesRequest(JSON.parse(readFileSync(0, 'utf8')));
+  await Parser.init();
+  const java = await grammarOf('java');
+  const { texts } = request;
+  if (texts !== undefined) {
+    return extractionsOf(
+      java,
+      request.files.map((file) => ({ file, text: texts[file] ?? '' })),
+      { root: request.root, mode: request.mode },
+    );
+  }
+  const kotlin = request.files.some((file) => file.endsWith('.kt'))
+    ? await grammarOf('kotlin')
+    : java;
+  return request.files.flatMap((file) =>
+    unitsOf(file.endsWith('.kt') ? kotlin : java, request.root, file),
+  );
+}
+
+process.stdout.write(JSON.stringify(await main()));

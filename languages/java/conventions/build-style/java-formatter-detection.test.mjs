@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { declaredJavaFormatter } from './java-formatter-detection.mjs';
+import { SKIP_JAVADOC, SKIP_REFLOW } from './java-formatter-options.mjs';
 
 function sourceWith(files) {
   return {
@@ -9,8 +10,17 @@ function sourceWith(files) {
   };
 }
 
-function declared(files) {
+function detailed(files) {
   return declaredJavaFormatter(sourceWith(files)).declared;
+}
+
+function declared(files) {
+  const found = detailed(files);
+  return found === undefined
+    ? undefined
+    : Object.fromEntries(
+        Object.entries(found).filter(([key]) => !['version', 'options'].includes(key)),
+      );
 }
 
 const SPOTLESS_POM = (java) =>
@@ -255,5 +265,91 @@ describe('declaredJavaFormatter notes', () => {
     expect(declaredJavaFormatter(sourceWith(files)).notes).toEqual([
       'Read the first 200 build files and skipped 3 more',
     ]);
+  });
+
+  it.each([
+    [
+      'Spotless palantirJavaFormat with a version and formatJavadoc in Gradle',
+      'build.gradle.kts',
+      'spotless { java { palantirJavaFormat("2.90.0").formatJavadoc(true) } }',
+      { formatter: 'palantir', version: '2.90.0', options: [SKIP_REFLOW] },
+    ],
+    [
+      'Spotless palantirJavaFormat with defaults',
+      'build.gradle',
+      "spotless { java { palantirJavaFormat('2.50.0') } }",
+      { formatter: 'palantir', version: '2.50.0', options: [SKIP_JAVADOC, SKIP_REFLOW] },
+    ],
+    [
+      'Spotless googleJavaFormat with reflowLongStrings',
+      'build.gradle.kts',
+      'spotless { java { googleJavaFormat("1.25.2").reflowLongStrings() } }',
+      { formatter: 'google', aosp: false, version: '1.25.2', options: [] },
+    ],
+    [
+      'Spotless googleJavaFormat with formatJavadoc(false)',
+      'build.gradle',
+      "spotless { java { googleJavaFormat('1.25.2').aosp().formatJavadoc(false).reflowLongStrings(true) } }",
+      { formatter: 'google', aosp: true, version: '1.25.2', options: [SKIP_JAVADOC] },
+    ],
+    [
+      'Spotless googleJavaFormat without a version',
+      'build.gradle',
+      'spotless { java { googleJavaFormat() } }',
+      { formatter: 'google', aosp: false, options: [SKIP_REFLOW] },
+    ],
+    [
+      'spotless-maven-plugin palantirJavaFormat',
+      'pom.xml',
+      SPOTLESS_POM(
+        '<palantirJavaFormat><version>2.90.0</version><formatJavadoc>true</formatJavadoc><reflowLongStrings>true</reflowLongStrings></palantirJavaFormat>',
+      ),
+      { formatter: 'palantir', version: '2.90.0', options: [] },
+    ],
+    [
+      'spotless-maven-plugin googleJavaFormat',
+      'pom.xml',
+      SPOTLESS_POM(
+        '<googleJavaFormat><version>1.17.0</version><style>AOSP</style></googleJavaFormat>',
+      ),
+      { formatter: 'google', aosp: true, version: '1.17.0', options: [SKIP_REFLOW] },
+    ],
+  ])('reads the version and options of %s', (_name, file, text, expected) => {
+    expect(detailed({ [file]: text })).toEqual({ aosp: false, ...expected });
+  });
+
+  it.each([
+    [
+      'the palantir plugin',
+      'build.gradle',
+      "plugins { id 'com.palantir.java-format' version '2.50.0' }",
+    ],
+    [
+      'a version catalog',
+      'gradle/libs.versions.toml',
+      'gjf = "com.google.googlejavaformat:google-java-format:1.25.2"',
+    ],
+    ['fmt-maven-plugin', 'pom.xml', FMT_POM('')],
+    [
+      'a style that makes palantir google',
+      'build.gradle',
+      'spotless { java { palantirJavaFormat("2.50.0").style("GOOGLE") } }',
+    ],
+  ])('takes no version or options from %s', (_name, file, text) => {
+    const found = detailed({ [file]: text });
+    expect(found.version).toBeUndefined();
+    expect(found.options).toBeUndefined();
+  });
+
+  it('ignores a version that is not a release number', () => {
+    expect(
+      detailed({
+        'build.gradle': 'spotless { java { googleJavaFormat(libs.versions.gjf.get()) } }',
+      }),
+    ).toEqual({ formatter: 'google', aosp: false, options: [SKIP_REFLOW] });
+    expect(
+      detailed({ 'build.gradle': "spotless { java { palantirJavaFormat('latest.release') } }" })
+        .version,
+    ).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts';
-import type { NitpickerConfig } from './configuration/config-types.mts';
+import type { NitpickerConfig } from '../shared/values/config-types.mts';
+import type { RunTasks } from './diff/execution/progress.mts';
 
 export type TextOutput = {
   write(text: string): unknown;
@@ -9,6 +10,7 @@ export type CliOptions = {
   readonly analyzerNames: readonly string[];
   readonly ruleFilters: readonly string[];
   readonly fix: boolean;
+  readonly dryRun: boolean;
   readonly details: boolean;
   readonly quick: boolean;
   readonly deferExit: boolean;
@@ -24,9 +26,8 @@ export type CliOptions = {
   readonly staged: boolean;
   readonly baseRef?: string;
   readonly outputRoot?: string;
+  readonly verify?: string;
 };
-
-type RunTasks = (...task: never[]) => unknown;
 
 export type CliInput = {
   readonly arguments_?: readonly string[] | undefined;
@@ -45,6 +46,7 @@ export type CliInput = {
 export type Cli = CliInput & {
   readonly arguments_: readonly string[];
   readonly environment: NodeJS.ProcessEnv;
+  readonly spawnEnvironment: NodeJS.ProcessEnv;
   readonly interactive: boolean;
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;

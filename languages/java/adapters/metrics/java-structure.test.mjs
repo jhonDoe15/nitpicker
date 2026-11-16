@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mjs';

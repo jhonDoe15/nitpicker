@@ -27,7 +27,9 @@ import {
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
+import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 
 const CODING_STANDARDS = 'languages/typescript/preset/coding-standards/check.mjs';
 const TEST_RUNTIME = 'languages/typescript/preset/test-runtime/analyze.mjs';
@@ -133,7 +135,10 @@ export async function runTestRuntime(options: QualityAreaOptions): Promise<Findi
       ...fieldsOf(report),
       findings: listOf(fieldOf(report, 'findings')).map((finding) => ({
         ...fieldsOf(finding),
-        sourceHash: hash(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+        sourceHash: wholeFileHash(
+          textOf(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+          textOf(fieldOf(finding, 'test')),
+        ),
       })),
     },
     options.analyzerName,
@@ -175,20 +180,28 @@ function withSpawnedEntries(config: KnipConfig, projectRoot: string): KnipConfig
   };
 }
 
+const withPackageEntries: (config: KnipConfig, projectRoot: string, layout: Layout) => KnipConfig =
+  untypedWithPackageEntries;
+
 export function runDeadCode(options: QualityAreaOptions): Finding[] {
-  const config = withProjectKnipConfig(
-    withSpawnedEntries(
-      layoutKnipConfig(
-        parseReportJson(
-          readFileSync(
-            path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-            'utf8',
+  const layout = readLayout();
+  const config = withPackageEntries(
+    withProjectKnipConfig(
+      withSpawnedEntries(
+        layoutKnipConfig(
+          parseReportJson(
+            readFileSync(
+              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+              'utf8',
+            ),
           ),
+          layout,
         ),
-        readLayout(),
+        options.projectRoot,
       ),
-      options.projectRoot,
     ),
+    options.projectRoot,
+    layout,
   );
   const normal = knipReport(options, config);
   return [

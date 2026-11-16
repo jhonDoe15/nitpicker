@@ -8,8 +8,9 @@ Maven project that applies `kotlin-maven-plugin`, including modules that mix Jav
 [Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
 findings, fail only on new enforceable findings. It is not a second implementation. It shares the
 Gradle init script or Maven runner, the ingesters, the failure policy and the cache with the Java
-preset, and adds Kotlin tools next to the Java ones. The build tool is detected, never configured: a
-project with a Gradle build runs through Gradle, one with only a `pom.xml` through Maven (see
+preset, and adds Kotlin tools next to the Java ones. The build tool is detected: a
+project with a Gradle build runs through Gradle, one with only a `pom.xml` through Maven, and
+`"java": { "buildTool": "maven" | "gradle" }` picks one when both exist (see
 [Maven](kotlin-preset/maven.md)). The JDK and Gradle a CI job needs, and recipes for GitHub Actions, GitLab CI and
 Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
@@ -27,6 +28,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [One-way rules](kotlin-preset/one-way-rules.md)
 - [Source checks](kotlin-preset/source-checks.md)
 - [Source scans](kotlin-preset/source-scans.md)
+- [Effects rules](kotlin-preset/effects-rules.md)
 - [Compiler warnings](kotlin-preset/compiler-warnings.md)
 - [Doc comments](kotlin-preset/doc-comments.md)
 - [Frameworks](kotlin-preset/frameworks.md)
@@ -39,6 +41,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Duplicates](kotlin-preset/duplicates.md)
 - [Coupling](kotlin-preset/coupling.md)
 - [Maven](kotlin-preset/maven.md)
+- [Multi-module builds: affected modules and a project in a module](kotlin-preset/multi-module-scope.md)
 - [Failure policy](kotlin-preset/failure-policy.md)
 - [Config keys](kotlin-preset/config-keys.md)
 - [Slow tests](kotlin-preset/slow-tests.md)

@@ -1,5 +1,5 @@
   <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked.">
+        message="Add @Valid to this @RequestBody; without it the constraints of its type are never checked.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]

@@ -82,6 +82,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
+- Give every field written from a request a validation bound at or below its column width (`z.string().max(30)`,
+  `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
@@ -89,11 +92,34 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Never run a query or a request once per item of a loop: fetch or write the items in one query
+  (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
+  `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
+  chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
+  (`nitpicker/no-io-in-loop`).
+- Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
+  created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
+- Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
+  `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
+- Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
+  commits (and outside the lock), and keep only the shared-state change under the lock
+  (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
+- A retried write carries one key for all attempts: a Stripe `idempotencyKey`, a `MessageDeduplicationId`,
+  `jobId` or `msgID`, `ON CONFLICT` on an insert, or retry only the read
+  (`nitpicker/no-retry-without-idempotency`).
+- Don't write to the database and publish a message in one function: write an outbox row in the same
+  transaction and let a relay publish it (`nitpicker/no-dual-write`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
   before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
   `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
+- Compare HTTP text case-insensitively and parse structured headers: lowercase a header value, media
+  type, charset, scheme, cookie name or file extension (`value.toLowerCase()`) before comparing it, and
+  parse `Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match` and `Cookie` with the `content-type`,
+  `negotiator`, `accepts` or `cookie` package or the framework's own helper instead of `split(',')` or
+  `split(';')` (`nitpicker/no-raw-http-value`). Header names read with `Headers.get`, `req.header` or
+  `req.get` ignore case already; a library that is itself the parser takes an exception.
 - Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
   `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
   shared folder under such a name (`nitpicker/no-generic-name`).
@@ -135,3 +161,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   form is converted in its schema, since the value arrives as text: `z.coerce.number()`, `z.stringbool()`,
   valibot `v.pipe(v.string(), v.toNumber(), v.number())`. Never `z.coerce.boolean()`: it turns `"false"`
   into true (`nitpicker/no-uncoerced-request-input`).
+- A missing value is `undefined`, not falsy: test `count !== undefined`, `name !== undefined`, default with
+  `value ?? fallback`, and filter with `(v) => v !== undefined`, never `if (count)`, `name || d` or
+  `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
+  `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
+  `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- In a server project, text from a search or filter field is trimmed once before it reaches a lookup:
+  `req.query.q?.trim()`, a zod `.trim()` schema, or one global middleware that trims every string; a padded
+  `" Davis"` finds nothing (`nitpicker/no-untrimmed-request-text`).

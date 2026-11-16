@@ -1,9 +1,9 @@
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { readLayout } from '../typed/head-policy.mts';
-import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
+import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mts';
 import { immutableTypesParts } from './immutable-types-hint.mts';
 import { withStatedForm } from './stated-form.mts';
-import { logicRuleHints } from '../../preset/eslint-config/logic/logic-rules.mjs';
+import { logicRuleHints } from '../../preset/eslint-config/logic/logic-rules.mts';
 import {
   type HintInput,
   type HintedFields,

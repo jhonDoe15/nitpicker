@@ -6,15 +6,14 @@ import {
   commonSummary,
   readUnchangedShards as readShardsUnchanged,
 } from './read-shards.mts';
+import type { MetadataMap } from '../execution/report/analyzer-metadata.mts';
 import { parseArguments as readArguments } from './arguments.mts';
-import { noChangesReport as untypedNoChangesReport } from '../comparison/results.mjs';
-import { writeDiffReports as untypedWriteReports } from '../reporting/reporters.mjs';
 import {
-  policyHash as untypedPolicyHash,
-  sortByToolAndPath as untypedSort,
-  summaryFields as untypedSummaryFields,
-} from '../reporting/report-model.mjs';
-import { resolveProjectRoot as untypedProjectRoot } from '../../configuration/project-checks/project-root.mjs';
+  policyHash,
+  sortByToolAndPath as sortEntries,
+  summaryFields,
+} from '../reporting/report-model.mts';
+import { resolveProjectRoot as untypedProjectRoot } from '../../configuration/project-checks/project-root.mts';
 import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { withTroubleshooting as untypedWithTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { describeError as untypedDescribeError } from '../../../shared/messages/error-chain.mjs';
@@ -24,11 +23,14 @@ import {
 } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
+import type { ReportData } from '../../../shared/values/findings.mts';
 import { textOf, textsOf } from '../../../shared/values/readers.mts';
 
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
-export { resolveMetadata } from './metadata.mts';
+export { noChangesReport } from '../comparison/results.mts';
+export { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
+export { resolveMetadata, resolvedExpectations } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
 type Warn = (message: string) => unknown;
@@ -44,7 +46,7 @@ export type AggregateRequest = {
   readonly warn: Warn;
 };
 
-export type AggregateReport = {
+export type AggregateReport = ReportData & {
   readonly summary: Entry;
   text?: unknown;
 };
@@ -109,6 +111,7 @@ type SummaryRequest = {
   readonly configOverrides: unknown[];
   readonly newFindings: readonly Entry[];
   readonly toolErrors: readonly Entry[];
+  readonly metadata?: MetadataMap;
 };
 
 export function configuredAnalyzers(): readonly Analyzer[] {
@@ -122,28 +125,18 @@ export function readUnchangedShards(
   const [first, ...rest] = readShardsUnchanged(inputRoot, shardCount) ?? [];
   return first === undefined ? undefined : [first, ...rest];
 }
-export const noChangesReport: (context: object) => AggregateReport & {
-  readonly summary: Entry & { elapsedMs?: number };
-} = untypedNoChangesReport;
-export const writeDiffReports: (
-  outputRoot: string,
-  report: AggregateReport,
-  location: RepositoryLocation,
-) => unknown = untypedWriteReports;
 export function parseArguments(
   commandArguments: readonly string[],
 ): AggregateOptions | { readonly kind: 'help' } {
   return readArguments(commandArguments);
 }
-export const sortByToolAndPath: (entries: readonly Entry[]) => Entry[] = untypedSort;
+export function sortByToolAndPath(entries: readonly Entry[]): Entry[] {
+  return sortEntries([...entries]);
+}
 export const resolveProjectRoot: () => string = untypedProjectRoot;
 export const describeError: (error: unknown) => string = untypedDescribeError;
 export const displayPath: (absolutePath: string) => unknown = untypedDisplayPath;
 export const withoutAnsi: (text: string) => string = untypedWithoutAnsi;
-const policyHash: (analyzers: readonly Analyzer[], configOverrides: unknown[]) => string =
-  untypedPolicyHash;
-const summaryFields: (configOverrides: unknown[], summary: ShardSummary) => Entry =
-  untypedSummaryFields;
 
 export function withTroubleshooting(message: string, anchor: unknown): string {
   return textOf(untypedWithTroubleshooting(message, anchor));
@@ -167,13 +160,14 @@ export function aggregateSummary({
   configOverrides,
   newFindings,
   toolErrors,
+  metadata,
 }: SummaryRequest): Entry {
   const toolsByName = new Map(
     shardReports.flatMap(({ summary }) => summary.tools.map((tool) => [tool.name, tool])),
   );
   return {
     ...commonSummary(firstSummary(shardReports)),
-    policyHash: policyHash(analyzers, configOverrides),
+    policyHash: policyHash(analyzers, configOverrides, metadata),
     ...summaryFields(configOverrides, firstSummary(shardReports)),
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),

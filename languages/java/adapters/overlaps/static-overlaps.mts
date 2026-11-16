@@ -4,7 +4,7 @@ import { type LineLocation, lineLocator } from './java-spans.mts';
 import type { JavaFinding, SourceReader } from '../typed/java-values.mts';
 import { fieldOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
 
-type Scope = 'file' | 'line' | 'class' | 'member' | 'javadoc' | 'catch' | 'field';
+type Scope = 'file' | 'line' | 'variable' | 'class' | 'member' | 'javadoc' | 'catch' | 'field';
 export type OverlapPair = {
   readonly primary: readonly string[];
   readonly secondary: readonly string[];
@@ -19,8 +19,18 @@ type KeyOf = (scope: Scope, finding: JavaFinding) => string | undefined;
 type Covering = Map<JavaFinding, JavaFinding[]>;
 type IndexedPair = { readonly pair: OverlapPair; readonly primaries: Map<string, JavaFinding[]> };
 
-const SCOPES: readonly Scope[] = ['file', 'line', 'class', 'member', 'javadoc', 'catch', 'field'];
+const SCOPES: readonly Scope[] = [
+  'file',
+  'line',
+  'variable',
+  'class',
+  'member',
+  'javadoc',
+  'catch',
+  'field',
+];
 const SYMBOL_MEMBER = /[(#]/u;
+const QUOTED_NAME = /'([^']+)'/u;
 const FIELD_SEGMENTS = 2;
 
 function scopeOf(value: unknown): Scope {
@@ -83,6 +93,12 @@ function scopeKey(scope: Scope, finding: JavaFinding, locate: Locate): string | 
   }
   if (scope === 'line') {
     return line === undefined ? undefined : JSON.stringify([finding.path, line]);
+  }
+  if (scope === 'variable') {
+    const name = QUOTED_NAME.exec(finding.message ?? '')?.[1];
+    return line === undefined || name === undefined
+      ? undefined
+      : JSON.stringify([finding.path, line, name]);
   }
   const located: Located = { ...locate(finding), ...symbolField(finding) };
   const parts = {

@@ -121,3 +121,11 @@ export function propertiesOf(sourceCode, object) {
       .filter(([key]) => key !== undefined),
   );
 }
+
+export function mergedProperties(sourceCode, argumentsList) {
+  return new Map(
+    argumentsList.flatMap((argument) => [
+      ...propertiesOf(sourceCode, objectOf(sourceCode, argument)),
+    ]),
+  );
+}

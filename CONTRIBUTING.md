@@ -167,17 +167,18 @@ node scripts/test-shards/record-durations.mts --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 4 isolated runner shards and Kotlin uses 3, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 124 Java and 110
+each shard. Independent behavior groups have separate fixture trees; the full 233 Java and 261
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/4` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/3`. A file that runs longer than about
 two minutes belongs in several files with their own fixtures, so the shards stay balanced;
 `scripts/test-shards/README.md` has the timings.
 
-Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
-JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
-tests run with a three-minute deadline; Java hooks have five minutes and Kotlin hooks three.
-The timeout lint rule remains active for these suites. These are bounded execution limits,
+Files named `*.e2e.*` or `*.integration.*`, and every file below a folder named `e2e`,
+`integration` or ending in `-e2e` (hook helpers included), get a higher default ceiling than
+unit tests: three minutes per test, five minutes per hook (Java and Kotlin alike). Helper folders
+without such a name are listed in a small `tools.tests.timeouts.projects` entry. The timeout lint
+rule remains active for these suites. These are bounded execution limits,
 separate from slow-test thresholds and measured shard duration; see [timeout tiers](docs/usage.md#test-timeout-tiers).
 
 After moving E2E files or changing their package-script filters, verify real Vitest discovery
@@ -205,7 +206,7 @@ Python end-to-end CI uses two isolated shards with two test workers each and ret
 `scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
 
-Go end-to-end CI uses two shards and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
+Go end-to-end CI uses one shard and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
 on the `PATH` (1.26 or newer, or an older one with the default `GOTOOLCHAIN=auto`, which downloads
 1.26 to build the pinned gofumpt and goimports) and network access to the Go module proxy the
 first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.

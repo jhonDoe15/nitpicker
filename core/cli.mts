@@ -1,35 +1,34 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
-import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
-import { runCacheCommand } from './command/cache.mts';
+import { reportingProgress } from './diff/execution/progress.mts';
+import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
-import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
-import { runBaseCommand } from './command/base.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
+import { SUBCOMMANDS } from './command/subcommands/subcommands.mts';
 import { resolveRunTarget } from './scope/run-target.mts';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
   describeDisableCascade,
   loadConfig,
-} from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
+} from './configuration/config.mts';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
 import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
-import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mts';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
-import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
-import { runQualityDiff } from './diff/comparison/run-diff.mjs';
-import { fixIfRequested } from './command/fix-request.mts';
+import { runQualityDiff } from './diff/comparison/run-diff.mts';
+import { fixAllFilesIfRequested, fixIfRequested } from './command/fix-request.mts';
+import { runnerOptions } from './command/comparison/runner-options.mts';
 import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
@@ -37,8 +36,7 @@ import { baseSetupResolver } from './command/policy-review/base-setup.mts';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
-import { runInitCommand } from './init/run-init.mts';
-import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
@@ -58,13 +56,10 @@ import type {
   ConfiguredRun,
   ExitCode,
   RunSetup,
-  Subcommand,
 } from './cli-context.mts';
-import type { NitpickerConfig } from './configuration/config-types.mts';
-import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
+import type { NitpickerConfig } from '../shared/values/config-types.mts';
+import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
 
-const selectFrom: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
     const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
@@ -72,13 +67,6 @@ const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   },
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
-};
-const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
-  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
-  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
-  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
-  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
-  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
 };
 
 export function runCli(options: CliInput = {}): ExitCode {
@@ -141,6 +129,7 @@ function withCliDefaults(options: CliInput): Omit<Cli, 'indexFile'> {
     workingDirectory: options.workingDirectory,
     arguments_: (options.arguments_ ?? process.argv.slice(2)).map(helpFlag),
     environment: options.environment ?? process.env,
+    spawnEnvironment: { ...process.env, ...options.environment },
     interactive:
       typeof options.interactive === 'boolean'
         ? options.interactive
@@ -192,7 +181,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
-  const selected = selectFrom(setup.analyzers, options.analyzerNames);
+  const selected = selectAnalyzers(setup.analyzers, options.analyzerNames);
   assertProjectPeers({
     projectRoot: currentProjectRoot,
     analyzers: selected,
@@ -208,6 +197,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
 
 function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
   const { config, currentProjectRoot, headPolicy } = run;
+  const fixToolErrors = fixAllFilesIfRequested(cli, run);
   writeNotes(cli.stderr, historyAvailabilityNotes(config, headPolicy, currentProjectRoot));
   const snapshotHeadPolicy: unknown = snapshotPolicy({
     config,
@@ -226,6 +216,7 @@ function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
     environment: cli.environment,
     runTasks: cli.runTasks,
     scope: run.scope,
+    additionalToolErrors: fixToolErrors,
   });
 }
 
@@ -255,24 +246,24 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const selection = selectComparisonAnalyzers(cli);
-  const analyzers: unknown = selection.analyzers;
+  const { analyzers } = selection;
   clearDiffReports(outputRoot);
   const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult: unknown = fixIfRequested(
-    { ...cli, headPolicy, spawnEnvironment: { ...process.env, ...cli.environment } },
+    { ...cli, headPolicy, outputRoot },
     repositoryRoot,
     base,
   );
   const cacheStore = resolveRunCacheStore(cli);
   const requestedBaseRef: unknown = base.baseRef;
-  const report: unknown = runQualityDiff({
+  const report = runQualityDiff({
     repositoryRoot,
     projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
     headProjectRoot: currentProjectRoot,
     requestedBaseRef,
     outputRoot,
     analyzers,
-    partialRun: selection.partialRun,
+    ...selection.runFields,
     cacheStore,
     includeWorkingTree: true,
     captureHead: cli.captureHead,
@@ -284,10 +275,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
-    scope: cli.scope,
-    progress: cli.progress,
-    runTasks: cli.runTasks,
-    warn: (message: string) => cli.stderr.write(`nitpicker: ${message}\n`),
+    ...runnerOptions(cli),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
 }

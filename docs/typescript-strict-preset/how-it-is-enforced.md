@@ -8,6 +8,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- The unsafe-any checks (`no-unsafe-member-access`, `no-unsafe-assignment`, `no-unsafe-call`,
+  `no-unsafe-argument`, `no-unsafe-return`, `restrict-template-expressions` and
+  `restrict-plus-operands`) run on TypeScript files and JavaScript files covered by a project
+  tsconfig with `checkJs: true`, including inherited options and referenced projects. Untyped
+  JavaScript in a TypeScript project is still reported by `javascript-in-typescript-project`.
+  Narrowing tsconfig coverage so existing JavaScript loses those checks is reported as a policy
+  loosening. The JavaScript preset keeps its own type-checked policy.
 - A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
   configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
   engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files
@@ -110,6 +117,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported (what
   they re-export is not reported as `test-only-export`);
   the module-load-effects check does not apply to them, since running at load is what a script does.
+  The TypeScript and JavaScript presets add the files that something starts by path, so they need
+  no entry: a file that a `package.json` script or a GitHub Actions step runs (`node`, `tsx`,
+  `ts-node`, `bun`, `nodemon` and similar launchers, including the modules given to `--import`,
+  `--loader`, `--require` and `--test-reporter`, which may also `export default`); a file named by a
+  literal path in `new Worker(...)`, `fork(...)` or a spawn of `process.execPath`, in a script that
+  uses them; a file that a Gradle or Maven task runs with `node`; and a file with a shebang or a
+  main-module guard (`import.meta.main`, `require.main === module`, `process.argv[1]` compared with
+  the file's own URL). Only a path that names a tracked file counts, and a compiled name
+  (`worker.js`) finds its source (`worker.ts`). `layout.entryPoints` stays for what this misses.
 - A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
   import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
   they skip `contract/`), `async ({}, use)` fixtures are allowed there, and the folder is never
@@ -119,3 +135,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
 - A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
   like every other test file (see [Test runners](../usage.md#test-runners)).
+
+## Fixes
+
+Seventeen of nitpicker's own ESLint rules offer a rewrite. A `safe` rule has an ESLint fix that
+`nitpicker --fix` applies. A `review` rule (`no-falsy-default`, `require-http-timeout`,
+`require-test-process-timeout`, `no-raised-test-timeout`, `no-disabled-tls-verification`,
+`no-shell-string-command`) changes behaviour on purpose, so it offers the rewrite as an ESLint
+suggestion that only a run which selects the rule applies. A fixer gives up and leaves the finding when it
+cannot prove the rewrite is safe. The list, with what each rewrite does, is under
+[ESLint rule fixes](../usage.md#eslint-rule-fixes).

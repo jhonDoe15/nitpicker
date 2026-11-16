@@ -1,5 +1,6 @@
 import { fixerError, fixSpawn } from '../../../core/fix/common/fix-command.mjs';
 import {
+  changedFiles,
   collectFixFiles,
   excludedBy,
   readBytes,
@@ -8,36 +9,55 @@ import {
 import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
+import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
+import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
 import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mjs';
-import { javaStyle } from '../adapters/style/java-style.mjs';
+import {
+  javaFormatterFlags,
+  javaFormatterSettings,
+  javaStyle,
+} from '../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
+import { defineRecipes } from '../../../core/fix/engine/recipes.mjs';
+import { errorPronePatch } from './errorprone/run/error-prone-step.mjs';
+import { errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mjs';
+import { JVM_RECIPES } from './recipes/jvm-recipes.mjs';
+import { SPRING_CONFIG_FILE } from './recipes/spring/config/config-targets.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
 
 const JAVA_FILE = /\.java$/u;
 const KOTLIN_FILE = /\.kt$/u;
 const NO_JAVA_FORMATTER =
   'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten';
+const BUILD_JAVA_FORMATTER =
+  'The build enforces Spring Java Format (conventions "java.formatter" is "spring"), which nitpicker does not run, so Java files were not rewritten: run its apply goal or format task';
 const NO_KOTLIN_FORMATTER =
   'No Kotlin formatter found, so Kotlin files were not rewritten: set "kotlin.formatter" to "ktlint" or "ktfmt" in nitpicker.config.json to format them';
 
 function javaStep(settings, files, pinned) {
   const { headPolicy, executeFixCommand } = settings;
   const style = javaStyle(headPolicy.conventions);
-  const plan = javaFormatterPlan(style, pinned);
+  const plan = javaFormatterPlan(
+    style,
+    pinned,
+    javaFormatterSettings(headPolicy.conventions).version,
+  );
   return plan === undefined
-    ? { notes: [NO_JAVA_FORMATTER] }
+    ? { notes: [style === 'spring' ? BUILD_JAVA_FORMATTER : NO_JAVA_FORMATTER] }
     : {
         files,
         plan,
         formatWith: (classpaths) =>
           javaFormat({
             style,
+            flags: javaFormatterFlags(headPolicy.conventions),
             classpath: classpaths['java-format'],
             java: formatterJava({
               tool: plan.label,
@@ -108,13 +128,15 @@ function applyStep(step, classpaths, scope) {
         files: step.files,
         format: step.formatWith(classpaths),
         touchedLinesOnly: step.touchedLinesOnly === true,
+        tool: step.plan.label,
+        writer: scope.writer,
       }),
     ),
   }));
 }
 
-function rewriteScope({ projectRoot, repositoryRoot }, mergeBaseSha) {
-  return { projectRoot, repositoryRoot, mergeBaseSha };
+function rewriteScope({ projectRoot, repositoryRoot, writer, allFiles }, mergeBaseSha) {
+  return { projectRoot, repositoryRoot, mergeBaseSha, writer, allFiles: allFiles === true };
 }
 
 function runSteps(settings, steps, mergeBaseSha) {
@@ -125,6 +147,7 @@ function runSteps(settings, steps, mergeBaseSha) {
         ? {}
         : resolveToolClasspaths({
             projectRoot: settings.projectRoot,
+            buildTool: settings.config?.java?.buildTool,
             environment: settings.environment,
             executeFixCommand: settings.executeFixCommand,
             tools: Object.assign({}, ...active.map(({ plan }) => plan.tools)),
@@ -141,32 +164,86 @@ function runSteps(settings, steps, mergeBaseSha) {
   ];
 }
 
-export function fixJvm(settings) {
-  const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
-  const headPolicy = settings.headPolicy ?? {};
+function recipeRun({ settings, files, accepts, selectedRules, patchEntries }) {
+  const shared = sharedInputs({
+    projectRoot: settings.projectRoot,
+    headPolicy: settings.headPolicy,
+    selectedRules,
+  });
+  const run = runRecipes({
+    projectRoot: settings.projectRoot,
+    files,
+    recipes:
+      settings.recipes ??
+      defineRecipes([...JVM_RECIPES, ...SHARED_RECIPES, ...errorProneRecipes(patchEntries)]),
+    writer: settings.writer,
+    preset: settings.config.preset ?? 'java',
+    selectedRules,
+    accepts,
+    inputs: shared.inputs,
+  });
+  return { ...run, toolErrors: [...shared.toolErrors, ...run.toolErrors] };
+}
+
+function acceptsOf({ projectRoot, headPolicy, config }) {
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
   const roots = declaredSourceRoots(projectRoot);
+  return function accepts(name) {
+    return (
+      (SPRING_CONFIG_FILE.test(name) && !excluded(name)) ||
+      ((JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+        !excluded(name) &&
+        inJvmSourceSets(name, roots) &&
+        !isGeneratedJvm(projectRoot, name))
+    );
+  };
+}
+
+export function fixJvm(settings) {
+  const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
+  const selectedRules = settings.selectedRules ?? [];
+  const headPolicy = settings.headPolicy ?? {};
+  const accepts = acceptsOf({ projectRoot, headPolicy, config });
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     scope,
-    accepts: (name) =>
-      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
-      !excluded(name) &&
-      inJvmSourceSets(name, roots) &&
-      !isGeneratedJvm(projectRoot, name),
+    accepts,
+    allFiles: settings.allFiles === true,
   });
-  if (files.length === 0) {
+  if (files.length === 0 && selectedRules.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const resolved = { ...settings, headPolicy, config };
-  const outcomes = runSteps(resolved, plannedSteps(resolved, files), comparison.mergeBaseSha);
+  const patch = attempt('error-prone-fix', () => ({
+    entries: errorPronePatch(resolved, files, comparison.mergeBaseSha),
+  }));
+  const recipes = recipeRun({
+    settings: resolved,
+    files,
+    accepts,
+    selectedRules,
+    patchEntries: patch.entries ?? new Map(),
+  });
+  const formatted =
+    selectedRules.length === 0 ? recipes.files : changedFiles(projectRoot, recipes.files, before);
+  const outcomes = runSteps(resolved, plannedSteps(resolved, formatted), comparison.mergeBaseSha);
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
-    toolErrors: outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
-    notes: [...outcomes.flatMap(({ notes = [] }) => notes), ...linkNote(links)],
+    fixedFindings: recipes.fixedFindings,
+    toolErrors: [
+      ...patch.toolErrors,
+      ...recipes.toolErrors,
+      ...outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
+    ],
+    notes: [
+      ...patch.notes,
+      ...recipes.notes,
+      ...outcomes.flatMap(({ notes = [] }) => notes),
+      ...linkNote(links),
+    ],
   };
 }

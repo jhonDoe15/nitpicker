@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mts';
-import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
+import {
+  mavenErrorSummary,
+  mavenTarget,
+  runJava,
+  runMaven,
+  testRerunArguments,
+} from './maven-command.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -119,6 +125,33 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     );
   });
 
+  it('names the signal when Maven is killed, with the memory remedy', () => {
+    const root = project();
+    const maven = project({ mvn: { text: '#!/bin/sh\nkill -KILL $$\n', mode: 0o755 } });
+
+    expect(() =>
+      runMaven({ projectRoot: root, maven: path.join(maven, 'mvn'), args: ['verify'] }),
+    ).toThrow(
+      `Maven was killed by SIGKILL (usually the out-of-memory killer; run fewer jobs at once`,
+    );
+  });
+
+  it('keeps the exit code and says when a Java tool printed nothing', () => {
+    const run = (exit) =>
+      runJava({
+        tool: 'PIT',
+        java: path.join(
+          project({ java: { text: `#!/bin/sh\nexit ${exit}\n`, mode: 0o755 } }),
+          'java',
+        ),
+        args: [],
+        cwd: project(),
+        accept: (result) => result.status === 0,
+      });
+
+    expect(() => run(137)).toThrow('PIT failed with exit code 137: no diagnostic output');
+  });
+
   it('reports a failed Maven build of the analyzed project as java/maven-failure', () => {
     const root = project({ 'pom.xml': {} });
     const maven = project({
@@ -173,5 +206,18 @@ describe('mavenErrorSummary', () => {
     expect(mavenErrorSummary('Unrecognized option: --no-transfer-progress\n')).toBe(
       'Unrecognized option: --no-transfer-progress\nnitpicker needs Maven 3.6.3 or newer',
     );
+  });
+});
+
+describe('testRerunArguments', () => {
+  it('turns reruns off unless the project sets a count', () => {
+    expect(testRerunArguments()).toEqual([
+      '-Dsurefire.rerunFailingTestsCount=0',
+      '-Dfailsafe.rerunFailingTestsCount=0',
+    ]);
+    expect(testRerunArguments({ 'surefire.rerunFailingTestsCount': 2 })).toEqual([
+      '-Dsurefire.rerunFailingTestsCount=2',
+      '-Dfailsafe.rerunFailingTestsCount=0',
+    ]);
   });
 });

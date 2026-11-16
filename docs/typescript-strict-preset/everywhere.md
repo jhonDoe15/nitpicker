@@ -182,6 +182,32 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
   `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
   (Python).
+- TypeScript and JavaScript have no map collector that fails on an `undefined` or `null` value (the Java
+  `pmd/NullMapValue` rule for `Collectors.toMap`): `Object.fromEntries` and `Map` accept both, so no rule covers it.
+- `nitpicker/no-raw-http-value`: HTTP text compared by exact case or split by hand, in all production
+  code (not in tests). A value read by `headers.get('x')`, `req.header('x')`, `req.get('x')`,
+  `req.headers['x']` or `req.headers.accept`, of a header whose value is case-insensitive
+  (`Content-Type`, `Accept*`, `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`,
+  `Cache-Control`, `Authorization`, `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like),
+  directly or through a local that is never assigned again (also behind `trim()`, `?? ''` and
+  `|| ''`), is reported when it meets a string literal with a letter in `===`, `==`, `!==`, `!=`,
+  `startsWith`, `endsWith`, `includes`, `indexOf`, a `switch`, `in`, a regular expression without
+  the `i` flag, or as the key of `Set.has`, `Map.get`, `Array.includes` or `table[value]`. Also
+  reported: a structured header (`Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match`,
+  `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by `split(',')` or `split(';')` or
+  matched by a regular expression with a separator, `name.startsWith('__Host-')` or
+  `'__Secure-'` on a cookie name, a file extension from `extname` or `split('.').pop()` used as the
+  key of a table named `mime` or `contentType` without `toLowerCase()`, and a header name written
+  with capitals (`req.headers['Content-Type']`) on the request's `headers` object, which Node
+  lowercases. The allowed forms are `value.toLowerCase()` before the comparison, or a parser: the
+  `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework's own helper
+  (`req.accepts`, `req.is`, `c.req.parseBody`). A header name read through `Headers.get`,
+  `req.header` or `req.get` is case-insensitive and never reported, an HTTP method is case-sensitive
+  and not part of the rule, and a parsed `URL` already lowercases its `protocol` and `hostname`, so those are reported only when compared with a literal that has capitals (`u.protocol === 'HTTPS:'` never matches). Types (`Headers`, `Request`, `URL`, `IncomingHttpHeaders`) are used when available, names such as `headers` and `req` otherwise. A library
+  that is itself the parser takes an exception for this rule. The same forms run as
+  `pmd/HttpValueCase` and `pmd/HandSplitHttpHeader` (Java), `kotlin-source/HttpValueCase` and
+  `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
+  (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
   that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,
@@ -409,6 +435,168 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
   standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
   and without type information any name passed to `from()` counts as a collection.
+- Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
+  loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
+  `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
+  `findLast`, `findLastIndex`, the mapping function of `Array.from(items, fn)`, and a
+  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mjs` classifies them:
+  with the type checker first, a call whose receiver type or declaration comes from a database
+  package (`pg`, `mysql2`, `mongodb`, `mongoose`, `redis`, `ioredis`, `typeorm`, `sequelize`,
+  `knex`, `drizzle-orm`, `@prisma/client`, `better-sqlite3`, `@aws-sdk/client-dynamodb` and
+  similar) is a query, and one from `node:http`/`https`, `axios`, `got`, `undici`, `ky`,
+  `superagent`, `@grpc/grpc-js` or another `@aws-sdk` client is a request, when it returns a
+  promise or takes a callback (so `repository.create(...)`, which only builds an entity, is not
+  one). A query builder of `knex`, `mongoose`, `kysely`, `objection` or `drizzle-orm` counts only
+  where the query runs: the call is awaited, `then`-ed, returned, pushed or passed to
+  `Promise.all`, or is a terminal method (`exec`, `first`, `execute`, `getMany`, `getOne`), so
+  adding `query.where(...)` filters in a loop is not reported. Sequelize association getters
+  (`order.getCustomer()`) count as queries. A call to a project function or method counts when its
+  body does, through up to four helpers, and the message names the shortest path
+  (`` `loadOrder()`, which calls `pool.query()` ``); overloads, members of an object literal,
+  methods inherited from a base class and a method declared on a type (`type OrderStore = {
+find(...) }`, judged by the classes and object literals that implement it outside test files) are
+  followed. A helper's callback counts only when it runs during the call (iteration methods,
+  `then`/`catch`/`finally`, `new Promise`, transaction and lock callbacks, retry wrappers); a
+  handler registered with `on`, `setTimeout` or a router runs later and is not counted. Only where
+  the type is unknown (`any`, an untyped module, JavaScript the checker does not see, a member
+  declared without a body that nothing implements) are receiver names used, and only for a call
+  written in the loop itself: `find*`/`save*`/`query*`-style methods (`get` itself, `getById`,
+  `getAll`) on a receiver whose name ends in `repo`, `repository`, `dao`, `db`, `database`,
+  `prisma`, `connection`, `knex`, `redis`, `sql`, `pg` or `mongo` (a query), `pool` (for `query`,
+  `connect` and `execute`), `client` (a query when another word of the name is one of those or the
+  method is SQL-style, otherwise a request), `http`, `axios`, `api` or `gateway` (a request).
+  `find`, `filter`, `some`, `every` and `map` with a function argument search a collection and are
+  never a query, and a project type named like a repository whose method does no I/O is not
+  reported. A query is also reported inside `Promise.all(items.map(...))`, a `const` holding
+  `items.map(...)` that is only passed to `Promise.all`, `allSettled`, `any` or `race`, or an array
+  the loop only `push`es un-awaited calls into before passing it to one of them: running them
+  concurrently still sends one query per item. Fetch or write them in one query (`findByIds`,
+  `findAllById`, `createMany`, `insertMany`, `WHERE id IN (...)`); a Redis command is told to use
+  `mget`/`mset`/`hmget` or a `pipeline()`. A request is reported in a sequential loop only: in
+  `Promise.all` it is `nitpicker/unbounded-fan-out`'s, so no call is reported twice; use the API's
+  batch endpoint, or bounded concurrency (`p-limit`, `p-map` with `{ concurrency }`, or
+  `Promise.all` over fixed-size chunks). A call that takes a whole chunk of the items is the batch
+  form and is not reported: its argument uses the element of a loop over chunks (an iterable named
+  like `chunk(rows, 500)`, `_.chunk`, `chunks` or `batches`, a typed array of arrays, or a `const`
+  holding `rows.slice(...)` in the loop body) or slices the items in the argument itself
+  (`repo.findByIds(ids.slice(i, i + 100))`). Broker publishes and job enqueues (`kafkajs`,
+  `amqplib`, SQS `SendMessage`, SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`)
+  are not reported: one publish per item is the protocol. Paging, cursor and polling loops are not
+  reported: the loop condition reads a variable the body assigns from the call's result, and the
+  call's inputs either stay the same (polling) or carry state across iterations through a variable
+  assigned from another variable, as in
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`. A `while (true)`
+  or `for (;;)` loop is a paging loop when a call input is assigned from another variable in it, a
+  call in the loop condition is polling, and a variable stepped by more than one
+  (`offset += 100`, in the body or the `for` update) and used by the call is an offset. Stepping an
+  index with `i += 1`, `i++` or `i = i + 1` is not state, so a lookup per item that stops early is
+  still reported. Retries (a `try` directly in the loop body that returns or breaks on success,
+  with a `catch` that lets the loop go on) are not reported, and neither are file system calls
+  (`node:fs`, `node:fs/promises`): one read or write per file has no batch form. One chain
+  (`db.select().from(t).where(...)`) is reported once. The JavaScript preset runs the same rule: JS
+  that the type checker covers (`allowJs` with `checkJs`, or JSDoc types) is classified by type,
+  and the rest by import and receiver name.
+- `nitpicker/no-accumulator-concat`: an accumulator array is not copied with `concat` on every
+  step, in all production code. It reports `acc.concat(x)` in the callback passed straight to
+  `reduce` or `reduceRight` when `acc` is the callback's first parameter, and a loop or iteration
+  callback that reassigns an array declared outside it from `acc.concat(x)`
+  (`all = all.concat(item.tags)`). Each step copies everything collected so far, so the work is
+  quadratic; the spread forms are `nitpicker/no-accumulating-spread`'s, so no step is reported
+  twice. `concat` counts only on an array: with the type checker the accumulator's type must be an
+  array or a tuple (a string's `concat` is not reported); without it, the variable or the `reduce`
+  start value must be an array literal. Allowed forms: `flatMap`, `Object.fromEntries`,
+  `Object.groupBy`, or push into an array created before the loop.
+- `nitpicker/no-lazy-relation-in-loop` (needs the type checker): `await item.relation` in a loop or
+  iteration callback over the result of a TypeORM `find`, `findAndCount`, `findBy`,
+  `findAndCountBy` (on a repository, or on an `EntityManager` with the entity first:
+  `manager.find(Order, options)`) or query builder `getMany` in the same function, where `relation`
+  is declared lazy (`@ManyToOne(() => Customer, { lazy: true })`, a relation property typed
+  `Promise<T>`, or an `EntitySchema` relation with `lazy: true`, in TypeScript or JavaScript), is
+  reported: each item runs one more query. An `EntitySchema` relation is matched by the schema's
+  type argument or `name`, or by its relation name when the item's type is unknown. Fetch it in
+  that query: name it in `relations` (`relations: { customer: true }` or `['customer']`) or join it
+  with `leftJoinAndSelect('order.customer', 'customer')`. Only proven cases are reported: a
+  collection of unknown origin (a parameter, a field), options that are not a literal, and a query
+  builder that does not start from `createQueryBuilder` in the same chain are not, and neither is
+  one item read outside a loop. A project function or method that receives the item, called in the
+  loop (`await toDto(order)`) or passed by reference to an iteration method (`rows.map(toDto)`),
+  and awaits the lazy relation of that parameter in its body is reported at the call, with the
+  message naming the helper and the access it awaits. Prisma has no lazy loading, and Sequelize
+  association getters are explicit calls that `nitpicker/no-io-in-loop` reports.
+- Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
+  `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
+  call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project
+  helpers (the message names the path), inside an open transaction is reported when the
+  transaction also runs a query, which proves it holds a connection. Transactions are the callback
+  of Prisma's interactive `$transaction` and of `transaction(...)`/`transactional(...)`, and the
+  calls between a begin (`startTransaction()`, `beginTransaction()`, an awaited `transaction()`
+  without a callback, or SQL `BEGIN`/`START TRANSACTION` text) and the next `commit`,
+  `commitTransaction`, `rollback`, `rollbackTransaction` or SQL `COMMIT`/`ROLLBACK`, including
+  callbacks that run there (`await Promise.all(items.map(() => axios.post(...)))`). With the type
+  checker a begin must be declared by a database package (TypeORM `QueryRunner`, Sequelize, knex,
+  `pg`), so an APM `apm.startTransaction('job')` is not one, a callback opener must be declared by
+  a database package or by the project, and the proof is a query recognized in the transaction;
+  without it, any receiver counts and a call on the callback's parameter also proves the
+  connection. An end inside a branch (an `if`, a `catch`, a `switch` case, `?:`) ends the
+  transaction only in that branch, so a guard clause with an early rollback leaves the calls after
+  it in the transaction. A handler registered inside the transaction (`setTimeout`, `on`) runs
+  later and is not judged. The connection stays held for the remote latency, so the pool runs dry
+  under load: make the remote call before the transaction starts or after it commits, or, when its
+  side effect must match the transaction's outcome, write an outbox row inside the transaction and
+  send it from a worker. The lock rule reports a remote call, direct or through helpers, while a
+  lock is held: the callback of `runExclusive`, async-lock `acquire(key, fn)`,
+  `navigator.locks.request` and redlock `using`, or the calls between `await lock.acquire()` and
+  the next `release()`/`unlock()`. With the type checker the lock is decided by its type: an
+  async-mutex `Mutex`, a `Semaphore` constructed with one permit, async-lock, redlock and
+  `navigator.locks` are locks, while a `Semaphore` with more permits bounds concurrency
+  (`limiter.runExclusive(() => axios.get(url))` is the bounded form `nitpicker/no-io-in-loop` asks
+  for) and is not reported; receiver names (`lock`, `mutex`, `semaphore`, `redlock`, or
+  `runExclusive`) decide only when the type is unknown or declared by the project. A `release()`
+  inside a branch ends the lock only in that branch. A fill-once block stays allowed: the call under
+  an `if` that tests the state the block then sets (`if (!token) { token = await refresh(); }`, or
+  `if (cache.has(key)) return;` before `cache.set(key, await download(key))`), or assigned with
+  `??=`/`||=`, so callers wait for one request instead of each sending their own; a guard on any
+  other state does not exempt the call, and inside a transaction it never does. Every waiter queues
+  behind the remote latency: make the remote call before taking the lock or after releasing it and
+  keep only the shared-state change under it. Broker publishes are `nitpicker/no-dual-write`'s.
+- `nitpicker/no-retry-without-idempotency`: a write with no idempotency contract, direct or through
+  project helpers, inside a retry is reported, since a timeout after the server accepted the write
+  makes the retry run it twice. Retries are `p-retry`, `async-retry`, `exponential-backoff`
+  `backOff` (imported, required, or loaded with `import x = require(...)`), a cockatiel policy's
+  `execute`, and the hand-written retry loop that `nitpicker/no-io-in-loop` exempts (a `try` in the
+  loop that leaves on success with `return` or `break` while its `catch` goes on, including a
+  `catch` that rethrows only on the last attempt); a retried function passed by name or as
+  `this.send.bind(this)` is followed with the type checker. The supported writes are: a Stripe
+  `create` without `{ idempotencyKey }` in its request options; a broker publish (`kafkajs`,
+  `amqplib`, `@google-cloud/pubsub`, `nats` without a JetStream `msgID`, BullMQ `add` without
+  `jobId`, SQS `SendMessage` or SNS `Publish` without `MessageDeduplicationId`); and SQL `INSERT`
+  text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `INSERT IGNORE` or
+  `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options that are not a
+  literal (a parameter of a wrapper, the result of an options-builder helper) count as a contract,
+  an HTTP `POST` alone is not reported, and other writes are not judged. Give the write a stable
+  idempotency key derived from the request, a provider deduplication id, an upsert, or retry only
+  the read.
+- `nitpicker/no-dual-write`: a function that writes to the database (`save`, `insert`, `update`,
+  `upsert`, `delete`, `remove`, `destroy`, `create`, `persist`, DynamoDB `Put`/`Update`/`Delete`
+  commands, SQL `INSERT`, `UPDATE`, `DELETE`, `MERGE` or `UPSERT` text; a cache write such as Redis
+  `set` is not one, and neither is `createQueryBuilder`) at one call and publishes a broker message at another, each direct or through
+  helpers, is reported at the publish. A helper call that does both counts for neither, so only the
+  lowest function that does both is reported. A function is judged as a whole, not per branch: a
+  write in one `if` branch and a publish in the other are reported too. Each function is judged on its own, and so is the
+  module's top level, except a callback that runs during the call it is passed to (iteration
+  methods, `then`/`catch`/`finally`, `new Promise`, transaction and lock callbacks, retry wrappers,
+  `afterCommit`), which belongs to the function that passes it: a route handler or an event
+  listener is its own unit, so two handlers registered by one function, one writing and one
+  publishing, are not a dual write, and a handler that does both is. The outbox relay is not
+  reported: a publish inside a loop over rows read from the database, or one that uses a single row
+  read from the database, that uses the row, directly or through a helper
+  (`await publish(row.id)`), followed by a write that uses the same row (marking it sent); the
+  per-item I/O rule leaves that marking write alone too. A batch job that writes first and
+  publishes after is still a dual write. A publish inside a Sequelize `transaction.afterCommit(...)`
+  hook, or after an awaited transaction callback or a `commit` that every write is inside, gets its
+  own message: it no longer publishes a rolled-back change, but a crash after the commit still
+  loses the message. Write the message to an outbox table in the same transaction and let a relay
+  publish it, or use change data capture or a database-backed queue.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
@@ -644,7 +832,11 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `if (path.relative(base, full).startsWith('..')) throw ...`). The prefix must end in a
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
-  (`path.join(dir, 'package.json')`).
+  (`path.join(dir, 'package.json')`). An entry of a directory listing is a single name, so it is
+  fine when it is joined onto the directory that was listed
+  (`readdirSync(dir).map((name) => path.join(dir, name))`, also `for (const name of
+await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or with another
+  parameter after it, it is still reported.
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so
   every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
@@ -935,7 +1127,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   variable written elsewhere, an import or an unresolved global is dropped on such a call. The
   conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
   values are compared. An order comparison counts as a number comparison only when both operands
-  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. The same facts decide a
+  coercion of the tested value: `x ? Boolean(x) : d`, `x ? !!x : d`, `if (x) return Boolean(x)` and
+  `x && Boolean(x)` are always `true` (in the other branch, always `false`), so either the coercion
+  or the test is wrong; the message says to use the value itself or fix the test. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
   `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
@@ -1168,9 +1363,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   comparison: `count > 0`, `index !== -1`, `items.length > 0`, `id !== undefined` for an optional
   number, and `value ?? fallback` for a default. A union that mixes a number with another type
   (`string | number`) is reported too. Strings, objects, `any`/`unknown` and nullable booleans and
-  strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
-  `allowNullableBoolean`, `allowAny`): a nullable boolean is only wrong when `false` carries a
-  meaning of its own, so it is left out for now rather than reported everywhere. Not reported: a
+  strings stay allowed here (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`): `nitpicker/no-presence-truthiness` reports the part of those
+  that is a presence test, as notes. Not reported: a
   link of a sort comparator chain (`a.rank - b.rank || a.name.localeCompare(b.name)`, a `compare...`
   call), when the chain ends in another comparison rather than a literal; a bit test
   (`flags & MASK`); an operand whose `||` chain falls back to `0` (`count || 0`, `(ready && count) ||
@@ -1180,6 +1375,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same. When `0` must take the same path as a missing value, add an exception for the rule. In the
   JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
   and is not reported.
+- `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
+  findings print as design notes and never fail the change): an optional string
+  (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
+  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
+  `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
+  `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
+  Write `x !== undefined`, `x != null`, `typeof x === 'string'`, or `x ?? d` for a default. Not
+  reported: a plain `string` or `boolean`, a string union of non-empty literals, `x || ''` and
+  `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
+  which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
+  path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
+  from JSDoc and inference (`checkJs`).
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
@@ -1292,3 +1500,8 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
+- The "no limit" integer overflow that the Java, Kotlin and Go presets report (`Integer.MAX_VALUE` plus an offset
+  becoming a negative index) has no counterpart in the TypeScript and JavaScript presets: numbers are doubles, so a
+  sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
+  sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
+  reported.

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { depthFirst } from './traversal.mjs';
 
@@ -9,6 +9,15 @@ export function pathInside(root, relative) {
     return undefined;
   }
   return full;
+}
+
+export function isStrictlyInside(parent, candidate) {
+  const relative = path.relative(parent, candidate);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+export function readTextIfExists(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
 export function firstFileIn(root, names) {
@@ -37,7 +46,11 @@ export function ancestorDirectories(directory) {
   return found;
 }
 
-export function* filesUnder(root, { skipDirectory = () => false, includeLinks = false } = {}) {
+function skipNoDirectory(_absolute, _entry) {
+  return false;
+}
+
+export function* filesUnder(root, { skipDirectory = skipNoDirectory, includeLinks = false } = {}) {
   function children(frame) {
     if (frame.entry && (!frame.entry.isDirectory() || skipDirectory(frame.absolute, frame.entry)))
       return [];

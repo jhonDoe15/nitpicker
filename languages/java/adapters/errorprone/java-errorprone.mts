@@ -2,11 +2,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
-import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
+import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mts';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
+import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
-import { sourceReader } from './lombok/source-text.mjs';
+import { isClosedByUsing } from './reactive/closed-supplier.mjs';
+import { compiledSources, sourceReader } from './lombok/source-text.mjs';
+import { withoutFluentCalls } from './fluent/fluent-returns.mjs';
 import { errorProneChecks } from './checks/checks-docs.mts';
 import type { ErrorProneChecks } from './checks/checks-shape.mts';
 import { callUntyped } from '../typed/java-values.mts';
@@ -45,18 +48,20 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   const { diagnostics, crashes } = splitCrashes(report);
   const readSource: unknown = sourceReader(context.reportRoot);
   const checks = errorProneChecks();
+  const exempted = withoutExemptCode(diagnostics, readSource, checks);
+  const reportRoots = projectReportRoots(context.reportRoot, context['modules']);
   const ingested = callUntyped(
     ingestErrorProne,
-    withoutExemptCode(diagnostics, readSource, checks),
+    withoutFluentReturns(exempted, reportRoots, readSource),
     {
       resolvePath: (file: string) => lintedPath(file, placement),
       guava: guavaRead(manifest, testRoots),
     },
   );
   return [
-    ...listOf(fieldOf(ingested, 'findings')).map((finding) =>
-      withExceptionRoute(fieldsOf(finding), testRoots, checks),
-    ),
+    ...listOf(fieldOf(ingested, 'findings'))
+      .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
+      .map((finding) => withExceptionRoute(fieldsOf(finding), testRoots, checks)),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];
@@ -152,10 +157,31 @@ function withoutExemptCode(
         !(
           isClassExempt(diagnostic, checks.classExemptions) ||
           isIntegrationTestName(diagnostic) ||
-          isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file'))))
+          isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file')))) ||
+          isClosedByUsing(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file'))))
         ),
     ),
   );
+}
+
+function projectReportRoots(reportRoot: string, modules: unknown): string[] {
+  const others = listOf(modules)
+    .map((module) => fieldOf(module, 'reportRoot'))
+    .filter((root) => typeof root === 'string');
+  return [...new Set([reportRoot, ...textsOf(others)])];
+}
+
+function withoutFluentReturns(
+  json: string,
+  reportRoots: readonly string[],
+  readSource: unknown,
+): string {
+  const diagnostics: unknown = JSON.parse(json);
+  if (!Array.isArray(diagnostics)) {
+    return json;
+  }
+  const sources = [...new Set(reportRoots.flatMap((root) => textsOf(compiledSources(root))))];
+  return JSON.stringify(callUntyped(withoutFluentCalls, diagnostics, { sources, readSource }));
 }
 
 function withExceptionRoute(

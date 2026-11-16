@@ -3,16 +3,16 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
-import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
-import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
+import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mts';
+import { writePitFailure } from '../../builds/pit-failure/pit-failure.mts';
 import {
   writeSkippedTests,
   writeUnmutatedFailures,
-} from '../../builds/pit-failure/pit-skipped.mjs';
-import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
-import { pitRunTargets } from '../module/pit-scope.mjs';
+} from '../../builds/pit-failure/pit-skipped.mts';
+import { classFiles, pitClasspath, pitTests } from '../maven-tests.mts';
+import { pitRunTargets } from '../module/pit-scope.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, listOf, numberOr, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, numberOr, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
 
 type PitOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
@@ -154,7 +154,7 @@ export function runPit(options: PitOptions): void {
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
   const report = path.join(pitDir, 'mutations.xml');
-  if (listOf(classFiles(module['outputDirectory'])).length === 0) {
+  if (classFiles(textOf(module['outputDirectory'])).length === 0) {
     return;
   }
   const targets = textsOf(callUntyped(pitRunTargets, options['module'], options['scope']));

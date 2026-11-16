@@ -58,8 +58,9 @@ is rejected with an error.
 Everything else becomes an explicit `unsupported` node and makes the result partial: loops,
 `finally`, `switch`, `await`, `async` and generator functions, optional chains and calls, `null`,
 `typeof`, `instanceof`, `??`, arithmetic, spread, computed member calls, nested binding patterns,
-rest elements, closures, comma and `void` expressions, labeled statements, module-level `let` or
-`var`, and every mutating form other than a property `=` (local reassignment, `+=`, `||=`, `&&=`,
+computed destructuring keys, rest elements, closures, comma and `void` expressions, labeled
+statements, module-level `let` or `var`, and every mutating form other than a property `=` (local
+reassignment, `+=`, `||=`, `&&=`,
 `??=`, `++`, `--`, `delete`, and an assignment used as an expression). The locals and parameters an
 unsupported node writes or declares become fresh unknown values. When it writes a property or
 contains a call, all facts are widened and input fields lose their declared domains and fixed
@@ -178,14 +179,15 @@ describes the real dependency, or code that a contract replaces.
 
 ## Real operation: `lookUpCachedReport`
 
-`core/diff/cache/findings-cache.mjs` (`lookUpCachedReport`), analyzed unchanged. Reviewed protocol:
+`core/diff/cache/findings-cache.mts` (`lookUpCachedReport`), analyzed unchanged. Reviewed protocol:
 
-- `resolveAnalyzerMetadata(analyzer, context)` resolves the version and configuration hash of
-  `analyzer`. It may throw after updating only the version, so a throw is `ambiguous`, not a
-  definite no-write.
-- `cache.read(analyzer)` never throws (the findings cache catches its own failures) and returns
+- `resolvedAnalyzerMetadata(analyzer, context)` resolves the version and configuration
+  hash of `analyzer` and returns them as a metadata object. It does not write to `analyzer`. It
+  may throw after resolving only the version, so a throw is `ambiguous`, not a definite
+  no-resolution.
+- `cache.read(analyzer, metadata)` never throws (the findings cache catches its own failures) and returns
   `undefined` or one opaque report.
-- `cache.read(A)` requires a successful `resolveAnalyzerMetadata(A)` earlier in the same
+- `cache.read(A)` requires a successful `resolvedAnalyzerMetadata(A)` earlier in the same
   invocation. Resolving another object does not satisfy it. This is a supplied protocol requirement,
   not one inferred from names; it says nothing about metadata resolved before the invocation.
 
@@ -287,7 +289,7 @@ spike set out not to build.
 - The prerequisite requires a matching effect inside the analyzed invocation; it does not establish
   the absence of earlier state.
 - One real operation with one supplied contract. `writeStoredFile` in
-  `core/diff/cache/cache-stores.mjs` still exists but is not covered here: it needs process globals
+  `core/diff/cache/cache-stores.mts` still exists but is not covered here: it needs process globals
   and path identity that the oracle would have to compare by value.
 - Cross-service composition is out of scope.
 

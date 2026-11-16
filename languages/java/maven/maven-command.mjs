@@ -8,6 +8,7 @@ import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mjs';
+import { describeProcessEnd } from '../../../shared/processes/process-failure.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
@@ -15,10 +16,16 @@ const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
-export const TEST_RERUNS_OFF = [
-  '-Dsurefire.rerunFailingTestsCount=0',
-  '-Dfailsafe.rerunFailingTestsCount=0',
-];
+const RERUN_SETTINGS = ['surefire', 'failsafe'];
+
+export function testRerunArguments(values = {}) {
+  return RERUN_SETTINGS.map(
+    (plugin) =>
+      `-D${plugin}.rerunFailingTestsCount=${String(values[`${plugin}.rerunFailingTestsCount`] ?? 0)}`,
+  );
+}
+
+export const TEST_RERUNS_OFF = testRerunArguments();
 const MAVEN_NOISE = [
   /^\[ERROR\]\s*$/u,
   /^\[ERROR\] -> \[Help \d+\]/u,
@@ -102,12 +109,27 @@ export function runMaven({
   if (result.status !== 0) {
     const output = `${result.stdout}\n${result.stderr}`;
     throw withCompileErrors(
-      new Error(`Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`),
+      new Error(mavenFailureMessage(result, projectRoot, output)),
       output,
       projectRoot,
     );
   }
   return result.stdout;
+}
+
+function mavenFailureMessage(result, projectRoot, output) {
+  return typeof result.signal === 'string'
+    ? describeProcessEnd('Maven', result, {
+        where: projectRoot,
+        detail: output.trim() === '' ? '' : mavenErrorSummary(output),
+      })
+    : `Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`;
+}
+
+function javaFailureMessage(tool, result, detail) {
+  return typeof result.signal === 'string'
+    ? describeProcessEnd(tool, result, { detail })
+    : `${tool} failed with exit code ${String(result.status)}: ${detail || 'no diagnostic output'}`;
 }
 
 export function javaCommand(name) {
@@ -170,9 +192,7 @@ export function runJava({
         .filter((line) => line.trim() !== '' && !JVM_NOISE.test(line))
         .slice(0, MAX_ERROR_LINES)
         .join('\n');
-      const failure = new Error(
-        `${tool} failed with exit code ${String(result.status)}: ${detail}`,
-      );
+      const failure = new Error(javaFailureMessage(tool, result, detail));
       throw Object.defineProperty(failure, 'output', {
         value: `${result.stderr}\n${result.stdout}`,
       });

@@ -1,0 +1,90 @@
+def context = project.ext.nitpickerKotlinJvmTarget
+def reportDir = context.reportDir
+def pinned = context.pinned
+def testsFailed = context.testsFailed
+def target = context.target
+def mainClasses = context.mainClasses
+def sourceRoots = context.sourceRoots
+def shared = context.shared
+
+def testTask = tasks.findByName("${target.name}Test")
+if (!(testTask instanceof Test)) {
+    return
+}
+pluginManager.apply('jacoco')
+jacoco { toolVersion = pinned.jacoco }
+if (testsFailed) {
+    testTask.enabled = false
+}
+testTask.extensions.findByType(JacocoTaskExtension)?.with {
+    includes = []
+    excludes = []
+    excludeClassLoaders = []
+}
+
+tasks.register('nitpickerJacoco', JacocoReport) {
+    group = 'nitpicker'
+    dependsOn testTask
+    executionData(testTask)
+    classDirectories.setFrom(mainClasses)
+    sourceDirectories.setFrom(sourceRoots)
+    reports {
+        xml.required = true
+        xml.outputLocation = reportDir.map { it.file('jacoco.xml') }
+        html.required = false
+        csv.required = false
+    }
+    onlyIf { !testsFailed && testTask.enabled }
+}
+
+tasks.named('nitpickerJava') {
+    dependsOn 'nitpickerJacoco'
+    doLast {
+        if (gradle.taskGraph.hasTask(testTask)) {
+            copy {
+                from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml', 'nitpicker-containers.json' }
+                into reportDir.get().dir("test-results/${testTask.name}")
+            }
+        }
+    }
+}
+
+if (!shared.mutationOff) {
+    project.ext.nitpickerPitContext = shared.pitContext
+    project.apply from: new File(shared.initScriptDir, 'pit/pit-scope.gradle')
+    project.apply from: new File(shared.initScriptDir, 'pit/pit-process.gradle')
+    project.apply from: new File(shared.initScriptDir, 'pit/pit-retry.gradle')
+    project.apply from: new File(shared.initScriptDir, 'pit/pit-task.gradle')
+    project.ext.nitpickerPitConfigurations(shared.pinned)
+
+    def pitDir = reportDir.map { it.dir('pit') }
+    def mutatedClassDirs = { mainClasses.files }
+    def kotlinSources = { sourceRoots.collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files } }
+    def testClassNames = { project.ext.nitpickerPitTestClasses(testTask, null) }
+    def scopedTargets = { project.ext.nitpickerScopedPitTargets(mutatedClassDirs().findAll { it.exists() }, kotlinSources()) }
+    def hasMutants = { mutatedClassDirs().any { it.exists() && it.list()?.length } }
+    project.ext.nitpickerRegisterPit([
+        name         : 'nitpickerPitRun',
+        source       : testTask,
+        dependsOn    : [testTask.name, context.mainCompileTask],
+        classDirs    : mutatedClassDirs,
+        sourceDirs   : { sourceRoots },
+        reportDir    : { pitDir.get() },
+        tests        : testClassNames,
+        scopedTargets: scopedTargets,
+        failureSuffix: { '' },
+        enabled      : { !testsFailed && !project.ext.nitpickerSkippedByBuild(testTask) && hasMutants() && !testClassNames().isEmpty() && scopedTargets() != [] },
+    ])
+    tasks.register('nitpickerPit') {
+        group = 'nitpicker'
+        dependsOn 'nitpickerPitRun'
+        doLast {
+            def report = pitDir.get().file('mutations.xml').asFile
+            if (!report.exists()) {
+                report.parentFile.mkdirs()
+                report.text = '<mutations/>'
+            }
+        }
+    }
+    tasks.named('nitpickerJava') { dependsOn 'nitpickerPit' }
+}

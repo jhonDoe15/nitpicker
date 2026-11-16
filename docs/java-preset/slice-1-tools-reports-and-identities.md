@@ -20,6 +20,24 @@ Notes on the glue in `java-reports.mts`:
   (`demo/Bad.java`); JaCoCo writes package-relative paths. All become project-relative
   (`src/main/java/demo/Bad.java`). `manifest.json` lists the project's source roots, and a relative
   report path is attached to the root where the file exists.
+- **Files PMD could not process.** PMD still writes a report when it fails on some files (exit code 5)
+  and lists each failure in `runs[0].invocations[0].toolExecutionNotifications`, with the file and the
+  exception text. Each one becomes a `pmd/processing-error` finding on that file with the first line of
+  the exception, so a file with no PMD findings is not read as clean. It is a descriptive notice and not
+  a tool error: PMD's own type-resolution bugs fail the same files on every run, and a tool error would
+  keep the gate red for a cause the project cannot fix. The finding has the same identity on both sides, so
+  a file PMD fails on in both snapshots is listed in a full run and is not a new finding in a comparison;
+  a file that fails only on head is new. The findings of that file are not removed from either side.
+  Both the Gradle and the Maven build read the report the same way.
+- **Keys built from a runtime value.** PMD's `HardCodedCryptoKey` reports any key that contains a string
+  literal, so `new SecretKeySpec((timestamp + "\n" + secret).getBytes(), ...)` is reported although the
+  secret is configured. `crypto-keys/crypto-key-filter.mjs` reads the source at the finding (PMD points
+  at the literal), takes the key expression (the first argument of `new SecretKeySpec(...)`, or the
+  initializer of the variable the literal is assigned to) and drops the finding when it holds a method
+  parameter, a field or local that is not a constant or only literals, a member of another object, or a
+  call other than the conversions that keep a literal a literal (`getBytes`, `toCharArray`, a Base64 or
+  hex `decode`, `valueOf`, `substring` and similar). Names in capitals count as constants. A key made only
+  of literals and constants is still reported. The Kotlin preset reads the same report for its Java files.
 - **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
   (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
   ingester's `fp:` identity path is used and the line is never involved. The alternative, the
@@ -72,6 +90,37 @@ locking style, a private final `ReentrantLock` taken right before `try` and rele
 no longer pins its carrier inside `synchronized` (JEP 491). Security rules find hardcoded
 cryptographic keys and IVs in main code; a constant IV that decrypts an existing format takes a path
 exception. Each rule's message names the one allowed form and ends with the exception route.
+
+**Rules added by PMD 7.16.0.** The `errorprone` and `bestpractices` categories gained five rules. Two
+are on, with Gradle and Maven and for the Java sources of the Kotlin preset alike (one ruleset serves
+all of them), and three stay off:
+
+- `ExhaustiveSwitchHasDefault` runs on switch expressions and on switch statements that use a type
+  pattern, a record pattern or `case null`. A classic or arrow switch statement keeps its `default`:
+  Error Prone's `MissingDefault` and Checkstyle's `MissingSwitchDefault` ask for one there, so the
+  rule skips statements with `violationSuppressXPath` and the three never contradict each other. A
+  switch expression needs no `default` to compile, so dropping it makes the compiler flag a constant
+  or permitted subtype added later. Error Prone's `UnnecessaryDefaultInEnumSwitch` is off, so no
+  other tool reports the same switch. A combined `case null, default` label is skipped too: the
+  `default` is what handles `null` there.
+- `UnnecessaryWarningSuppression` reports a `@SuppressWarnings` value that silences nothing. The one
+  accepted marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")`, and this rule finds it left on
+  a method that no longer needs native SQL. Any other PMD value is already `pmd/InlineSuppression`,
+  which stands for this rule on the same line (an overlap pair). PMD does not see `// NOPMD`,
+  because the run uses a suppress marker no code contains. The rule is only right when every rule
+  that could fire runs together, which holds because nitpicker passes all its PMD rulesets to one
+  run.
+- `ImplicitFunctionalInterface` stays off. A port or use-case interface with one method that classes
+  implement is a common, valid design, and `@FunctionalInterface` on it would say that lambdas are
+  intended; the rule cannot tell the two apart, so it would flag real projects, among them the
+  Spring fixtures of this repository.
+- `ReplaceJavaUtilDate` and `ReplaceJavaUtilCalendar` stay off. The forbiddenapis `legacy-date-time`
+  signature bans `Date`, `Calendar`, `GregorianCalendar`, `TimeZone` and `SimpleDateFormat` in every
+  declaration and call, with the `java.time` replacement and the `toInstant()` conversion in its
+  message. The PMD rules match only the declared type of a field, parameter or local and `new`: a
+  second finding on the declaration line of a local, next to the one forbiddenapis puts on its first
+  use (the line overlap rule does not join two lines), and one more on a local that is never used. A
+  `Date` kept in a generic argument is missed by both.
 
 Four rules of these categories are narrowed where their default flags code that has no other form
 (see "PMD rules tuned by nitpicker" below).

@@ -21,6 +21,20 @@ Part of the [Java preset guide](../java-preset.md).
   path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
   type may permit classes in another package. Test sources compile on the class path, without the
   descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Why it is a separate compile.** Error Prone runs as its own javac pass on both build tools, not
+  inside the project's compile. The pass uses `-XDcompilePolicy=simple` and
+  `--should-stop=ifError=FLOW`, so javac goes on through flow analysis (where Error Prone's checks
+  run) even when an earlier phase reported an error, and the diagnostics come back as a structured
+  report. Its classes go to a throwaway directory and are never used. Attaching Error Prone to the
+  project's own compile instead would need the findings to come from compiler diagnostics, the
+  project's Error Prone arguments to keep their precedence, error-level checks not to fail the
+  project's own build, and, on Maven, which has no user property for `compilerArgs` or
+  `annotationProcessorPaths`, a build extension or a POM rewrite. That is a redesign for the few
+  seconds the pass costs per module (5.8 to 6.0 s in total over the three modules of the Maven
+  multi-module fixture, in a run of about 29 s), and Error Prone's own analysis would run either
+  way. Gradle and Maven therefore behave the same: one compile for the build, one analysis pass for
+  Error Prone. On Maven the pass runs side by side with the module's other tools (PMD, SpotBugs,
+  Checkstyle, the format check, structure metrics, jdeps), so it adds little to the wall time.
 - **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
   reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
   per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
@@ -28,6 +42,12 @@ Part of the [Java preset guide](../java-preset.md).
   `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
   Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
   class around it, innermost first.
+- **Fix runs.** `--fix` runs the same task and the same runner with two more `--errorprone-flag=`
+  lines, `-XepPatchChecks:<checks>` and `-XepPatchLocation:<folder>`. Error Prone then runs only
+  the named checks and writes `error-prone.patch` into the folder. The runner appends a folder per
+  compile (one per arguments file, and one more for the Lombok pass) so that the compiles of the
+  main and test sources do not overwrite each other's patch. See
+  [Error Prone fixes](../usage.md#error-prone-fixes).
 - **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
   the `BugPattern: <Check>` it came from; the runner then turns that check off with
   `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
@@ -50,8 +70,9 @@ Part of the [Java preset guide](../java-preset.md).
   (with `--enable-preview`, always that JDK); otherwise it takes the installed JDK closest to 21
   from the `JAVA_HOME_<N>_X64`/`_ARM64` variables of hosted CI, the `jdkHome` entries of
   `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm` and `/Library/Java/JavaVirtualMachines`, so a
-  project on JDK 17 keeps working wherever a JDK 21 is installed. With none it fails before
-  anything compiles, naming the JDK it needs and where it looked; a missing `java` is reported as
+  project on JDK 17 keeps working wherever a JDK 21 is installed. With none Error Prone is skipped
+  alone, with a `tool-skipped` tool error that names the JDK it needs and where it looked; a
+  missing `java` is reported as
   `java not found`.
 - **Language level and options.** The runner mirrors the project's own form: `--release <n>` when
   the build uses `release`, `-source <n> -target <n>` when it uses source and target compatibility
@@ -135,7 +156,16 @@ Part of the [Java preset guide](../java-preset.md).
   Prone matches subpackages too), so ignoring the result of any of the project's own methods
   fails, in main and test code, test-only packages included. The message asks to use the result
   or make the method return void; a value dropped on purpose can still be assigned to
-  `var unused = ...` (PMD's unused-variable rules skip names starting with `unused`).
+  `var unused = ...` (PMD's unused-variable rules skip names starting with `unused`). A fluent
+  method is the exception, as with Error Prone's `@CanIgnoreReturnValue`: when every declaration
+  with the called name and parameter count, in the compiled sources of every module of the
+  project (main, test and generated, such as OpenAPI DTOs), returns only `this`, `(T) this` or a
+  `self()` that does, calling it as a statement is not reported
+  (`adapters/errorprone/fluent/fluent-returns.mjs`). A record component counts as a zero-argument
+  declaration that returns a value. A method with another return, an overload with the same name
+  and count that returns something else, or one without compiled source (a library or a class
+  file, and Lombok-generated chain setters and `@Builder` methods) keeps Error Prone's own
+  decision.
 - **NullAway.** Main sources only: a test that passes `null` on purpose to check the failure is
   legitimate. `AnnotatedPackages` is the project's main packages: its code is non-null unless
   marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway
@@ -197,6 +227,15 @@ Part of the [Java preset guide](../java-preset.md).
   on Lombok's generated code, and `UnnecessarilyFullyQualified`, `UnrecognisedJavadocTag`,
   `MissingBraces`, `MissingSummary` and `MultiVariableDeclaration`, which then report generated
   code at the annotation or field. The other sources keep every check, and the run does not fail.
+- **Reactor `using`.** `StreamResourceLeak` looks only for try-with-resources.
+  `adapters/errorprone/reactive/` drops its diagnostic when the flagged call is the resource
+  supplier of `Flux.using` or `Mono.using` (a lambda whose body is that expression, or a block that
+  only returns it) and the cleanup argument closes the stream: `BaseStream::close`,
+  `Stream::close`, `AutoCloseable::close` or another type's `::close`, or a lambda that calls
+  `close()` on its parameter. For `usingWhen` the resource is any publisher built around the call
+  and one of the async cleanups must close. A cleanup that does not close, a bound reference
+  such as `holder::close`, a stream opened in the mapper or outside `using`, and a source that
+  does not use Reactor's `Flux` or `Mono` keep the finding.
 - **Overlaps.** Where Error Prone, PMD, SpotBugs or Checkstyle report the same issue, it is
   reported once: every tool stays on, and after policy a finding is dropped only while the finding
   that stands for it (its primary, in the same line, member, Javadoc comment, class, field or
@@ -224,7 +263,8 @@ Part of the [Java preset guide](../java-preset.md).
   suggested-fix stability, one finding with a stable identity for a repeated diagnostic),
   `adapters/errorprone/java-errorprone.test.mjs` (paths, source roots, missing report, the
   exceptions route on test findings of certain bugs too, JDK forms without Guava, Lombok-generated
-  diagnostics),
+  diagnostics, streams closed by `Flux.using`),
+  `adapters/errorprone/reactive/closed-supplier.test.mjs` (which suppliers and cleanups count),
   `adapters/errorprone/exemptions/class-exemptions.test.mjs` (which class annotations spare which
   checks), `adapters/overlaps/static-overlaps.test.mjs` (each pair drops its secondary in its scope
   and not outside it, and the table has no cycle), `resolved-overlaps.test.mjs` (the cross-tool
@@ -416,6 +456,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
   line of the parameter or the brace of a clause laid out over several lines still meets one on
   the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
+- `variable`: the same file, line and variable, the variable being the first quoted name in the
+  messages (PMD's `UnusedLocalVariable` and `UnusedAssignment` both quote it), so two variables
+  declared on one line stay separate findings.
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -625,6 +668,9 @@ The pairs:
 - line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 - line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
 - line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
+- variable: `pmd/UnusedLocalVariable` over `pmd/UnusedAssignment`
+- line: `checkstyle/FileTabCharacter` over `checkstyle/Indentation`
+- line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
 
 ## Standard streams and the `main` method
 

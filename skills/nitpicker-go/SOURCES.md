@@ -86,6 +86,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
   `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
   cause of slow endpoints.
+- **HTTP value rules.** `http-value-case` and `hand-split-http-header` read header values through
+  `net/http` `Header.Get`, so a header name is never reported (it is case-insensitive there); a method
+  and a parsed `Scheme` are left out because the first is case-sensitive and `url.Parse` lowercases the
+  second.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
@@ -102,6 +106,17 @@ than the others, and this skill teaches its rules before an agent writes Go.
   is a condition only when its body does not fail itself and nothing after it asserts; and the loop
   decisions of #587 (constant counts and non-empty literal tables are fine; a table's cases run as
   `t.Run` subtests, the subtest form of the Go wiki's table-driven tests).
+- **Copied constants (#1045).** The copied-constant rule of the other presets (#720, #721) as
+  `copied-constant-in-test`. Go names constants in MixedCaps, so instead of an `UPPER_SNAKE` filter it
+  counts the package-level constants of the package under test and the exported constants of the
+  module's packages a test file imports, resolved through type information. An `iota` group holds
+  ordinals, not contract values, so its constants are left out.
+- **Tests that run production code, used options and entry points (#1046).** The shared
+  `no-production-runtime`, `unused-option` and `public-alternative-bypass` rules in Go's forms: test
+  files reach production code through imports and same-package names; Go's optional inputs are
+  options-struct fields and functional options (the pattern of the Go blog's "Self-referential
+  functions and the design of options" and Uber's style guide); and the only Go re-export is an
+  exported type alias, since `internal/` already closes a package to outside importers.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.
@@ -144,7 +159,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
   project's own `GOFLAGS=-race`). `atomic` costs a little speed and keeps the arithmetic exact.
 - **CRAP from the same profile.** The cyclomatic complexity comes from the metrics program (each
   `if`, loop, case and `&&`/`||`), and the coverage is the lower of the statement and branch outcome
-  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mjs`). A
+  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mts`). A
   function's statements and branch points are picked by position (inside its braces, outside its
   literals), not by name, since a file can hold several `init` functions.
 - **A crashed test binary measures nothing.** A test binary that panics, times out or calls
@@ -302,6 +317,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
+- **A fix plan for near-duplicates.** The Go preset has no `near-duplicate` check (it has no near-duplicate
+  trees), so there is nothing to plan; `duplicates/duplicate-clone` keeps its own plan.
 
 ## Review findings
 
@@ -413,3 +430,9 @@ Two adversarial reviews of go-critic changed these rules:
 - **Overlaps settled**: exhaustive keeps a one-case enum switch over singleCaseSwitch, QF1012
   keeps the writes it reports over preferFprint, and revive's `useless-fallthrough` keeps the
   tagged switches over emptyFallthrough, which still covers untagged ones.
+
+## Near-duplicate extraction
+
+Go has no `near-duplicate` rule and no `--fix` recipes yet, so there is nothing to extract.
+
+The same holds for a `partial-run` pair: no recipe extracts the shared statements in Go, and the finding keeps its fix plan.

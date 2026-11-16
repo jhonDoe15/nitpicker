@@ -31,7 +31,7 @@ import {
   pricingClass,
 } from '../test-support/wide-sources.mjs';
 import { runJavaDiff } from '../../java-diff.mts';
-import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

@@ -16,6 +16,10 @@ export const COMMANDS: readonly Row[] = [
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
   ['nitpicker changelog', 'Print what changed in a version, from the changelog of the package.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
+  [
+    'nitpicker show',
+    'Print the summary of the last run again, filtered, without running anything.',
+  ],
   ['nitpicker explain', 'Print what the rule reference says about the rules named.'],
   ['nitpicker rules', 'List the rules the preset of the project reports.'],
 ];
@@ -23,9 +27,23 @@ export const COMMANDS: readonly Row[] = [
 export const FLAGS: readonly Row[] = [
   ['--all', 'Report every finding in the checkout, with no baseline.'],
   ['--base <ref>', 'Compare against this ref instead of the detected base.'],
-  ['--fix', 'Apply ESLint and Prettier fixes to the changed files, then compare.'],
+  [
+    '--fix',
+    'Apply the fixers of the preset to the changed files, then compare (--all --rule: every file).',
+  ],
+  [
+    '--dry-run',
+    'With --fix: write fix.patch and fixes.json to the output folder and change no file.',
+  ],
+  [
+    '--verify <narrow|full>',
+    'With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
+  ],
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
-  ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
+  [
+    '--rule <substring>',
+    'List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
+  ],
   ['--details', 'Print every new and held finding with its full message.'],
   ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
@@ -72,7 +90,7 @@ const AGGREGATE_USAGE =
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
-  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
+  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
@@ -81,8 +99,9 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   CACHE_PUBLISH_USAGE,
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
+  'nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]',
   'nitpicker explain <tool/rule>...',
-  'nitpicker rules [--preset <name>] [--tool <name>]',
+  'nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
 ];
 
 function table(rows: readonly Row[]): string {
@@ -140,7 +159,8 @@ export function usageText({
     `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n` +
     'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).\n' +
     'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read\n' +
-    'new-findings.json (--all: findings.json) first, then report.txt.\n\n' +
+    'new-findings.json (--all: findings.json) first, then report.txt. nitpicker show prints the last\n' +
+    'run again, filtered by --rule or --path, without running it.\n\n' +
     `Examples:\n${examples(analyzers)}` +
     'Paths limit the findings shown and gate the run; the analysis still covers the whole project.\n\n' +
     `Start a new project with nitpicker init.${reference}\n`

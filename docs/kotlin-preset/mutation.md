@@ -36,7 +36,8 @@ what is left out. The ingester finds a class's source file under both kinds of s
 PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
 built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
 not enough. A comparison mutates the lines the change wrote and the classes its changed tests use,
-as for Java (see [Mutation in a comparison](../java-preset/mutation-in-a-comparison.md)).
+as for Java, in multi-project Gradle and multi-module Maven builds too (see
+[Mutation in a comparison](../java-preset/mutation-in-a-comparison.md)).
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](structure-limits.md)) writes a

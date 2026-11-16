@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { isProfileKey, parseProperties, parseYaml } from './spring-config-parser.mjs';
 import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
@@ -43,13 +43,22 @@ function configFileNames(directory) {
   );
 }
 
+function directoryKey(absolute) {
+  return valueOr(path.resolve(absolute), () => realpathSync(absolute));
+}
+
 export function readSpringDocuments(projectRoot, resourceRoots) {
-  return resourceRoots.flatMap((root) => {
-    const directory = root.replaceAll('\\', '/').replace(/\/+$/, '');
-    return [directory, joinPosix(directory, 'config')].flatMap((relative) =>
-      directoryDocuments(projectRoot, relative),
-    );
-  });
+  const seen = new Set();
+  return resourceRoots
+    .flatMap((root) => {
+      const directory = path.posix.normalize(root.replaceAll('\\', '/')).replace(/\/+$/, '');
+      return [directory, path.posix.normalize(joinPosix(directory, 'config'))];
+    })
+    .filter((relative) => {
+      const key = directoryKey(path.resolve(projectRoot, relative));
+      return !seen.has(key) && seen.add(key);
+    })
+    .flatMap((relative) => directoryDocuments(projectRoot, relative));
 }
 
 function directoryDocuments(projectRoot, relative) {
@@ -60,11 +69,12 @@ function directoryDocuments(projectRoot, relative) {
 }
 
 function fileDocuments(absoluteDirectory, relativePath, name) {
-  const [, fileProfile, extension] = CONFIG_FILE.exec(name);
   const text = readText(path.join(absoluteDirectory, name));
-  if (text === undefined) {
-    return [];
-  }
+  return text === undefined ? [] : textDocuments(text, relativePath, name);
+}
+
+function textDocuments(text, relativePath, name) {
+  const [, fileProfile, extension] = CONFIG_FILE.exec(name);
   const parsed = extension === 'properties' ? parseProperties(text) : parseYaml(text);
   return parsed.map((document) => ({
     path: relativePath,

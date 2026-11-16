@@ -2,6 +2,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { collectJavaFindings } from '../../java-diff.mts';
+import { overlapPairs } from '../static-overlaps.mts';
 
 export const PROBE_FILE = path.resolve(import.meta.dirname, '../fixtures/probe-findings.json');
 const PROJECT = path.resolve(import.meta.dirname, '../../fixtures/gradle-project');
@@ -18,6 +19,11 @@ const EXTRA_MAVEN_DEPENDENCIES = [
     '<version>4.13.2</version><scope>test</scope></dependency>',
 ];
 const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone', 'forbiddenapis']);
+const MESSAGE_RULES = new Set(
+  overlapPairs()
+    .filter(({ scope }) => scope === 'variable')
+    .flatMap(({ primary, secondary }) => [...primary, ...secondary]),
+);
 
 export function readProbe(file = PROBE_FILE) {
   return JSON.parse(readFileSync(file, 'utf8'));
@@ -60,13 +66,14 @@ function writeProject(root, sources, build) {
   writeBuild(root, build);
 }
 
-function fixtureEntry({ tool, rule, path: file, location, symbol }) {
+function fixtureEntry({ tool, rule, path: file, location, symbol, message }) {
   return {
     tool,
     rule,
     path: file,
     ...(location?.line === undefined ? {} : { line: location.line }),
     ...(tool === 'spotbugs' && symbol !== undefined ? { symbol } : {}),
+    ...(MESSAGE_RULES.has(`${tool}/${rule}`) && message !== undefined ? { message } : {}),
   };
 }
 

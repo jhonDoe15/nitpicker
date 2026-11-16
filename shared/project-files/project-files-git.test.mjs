@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mts';
 import { projectFilePaths } from './project-files.mjs';
-import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mts';
 import {
   ageTree,
   useProjectFixtures,
-} from '../../core/diff/git/test-support/projects/project-fixtures.mjs';
+} from '../../core/diff/git/test-support/projects/project-fixtures.mts';
 
 const { temporaryRoot, gitProject, tracedGit } = useProjectFixtures();
 

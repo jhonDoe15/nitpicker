@@ -37,7 +37,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       result.newEnforceable
         .filter((finding) => finding.tool === 'archunit')
         .map((finding) => finding.identity)
-        .sort(),
+        .sort((left, right) => left.localeCompare(right)),
     ).toEqual(['demo.Stamp', 'demo.Stamp$Inner']);
   }, 180_000);
 });

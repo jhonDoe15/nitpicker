@@ -37,7 +37,9 @@ import { withBranchSourceHashes } from './source-hashes.mts';
 import {
   type ReportedAssertion,
   firstLine,
+  missingEnvironmentHints,
   missingSetupHints,
+  mockPinHeadline,
   timeoutText,
   unhandledErrors,
   unhandledErrorText,
@@ -48,6 +50,10 @@ import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 const COULD_NOT_RUN = 'could not run';
 
+function notLoaded(failures: readonly Failure[]): Failure[] {
+  return failures.filter(({ name }) => name === COULD_NOT_RUN);
+}
+
 function hasEntries<T>(list: readonly T[]): list is readonly [T, ...T[]] {
   return list.length > 0;
 }
@@ -56,9 +62,12 @@ function isCoverageReport(value: unknown): value is CoverageReport {
   return typeof value === 'object' && value !== null;
 }
 
+type MockPin = { readonly mockPin: boolean };
+
 export function coverageFailureFindings(
   options: QualityAreaOptions,
   { report, result, runnerName, precedingCommands }: ProjectTestRun,
+  { mockPin }: MockPin = { mockPin: false },
 ): Finding[] {
   const failures = testFailures(report, options.projectRoot);
   const [firstFailure] = failures;
@@ -88,6 +97,7 @@ export function coverageFailureFindings(
         runnerName,
         precedingCommands,
         snapshot: ran ? options.snapshot : undefined,
+        mockPin: ran && mockPin,
       }),
       anchor: testsFailAnchor(options.snapshot),
     }),
@@ -222,27 +232,36 @@ function failureEntry({ file, name, assertion }: Failure): string {
 export function formatTestFailures(
   report: TestReport | undefined,
   projectRoot: string,
-  { runnerName, precedingCommands, snapshot }: FailureContext = {},
+  { runnerName, precedingCommands, snapshot, mockPin }: FailureContext & MockPin = {
+    mockPin: false,
+  },
 ): string {
   if (snapshot === 'base') {
-    return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
+    const failures = testFailures(report, projectRoot);
+    return [
+      testsFailOnBase(failures.map(failureEntry)),
+      ...missingEnvironmentHints(notLoaded(failures)),
+    ].join('\n');
   }
-  return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
-    '\n',
-  );
+  return [
+    failureText(report, projectRoot, { runnerName, mockPin }),
+    ...precedingNote(precedingCommands),
+  ].join('\n');
 }
 
 function failureText(
   report: TestReport | undefined,
   projectRoot: string,
-  runnerName: string | undefined,
+  { runnerName, mockPin }: FailureContext & MockPin,
 ): string {
   const failures = testFailures(report, projectRoot);
   const failedCount =
     typeof report?.numFailedTests === 'number' && Number.isInteger(report.numFailedTests)
       ? Math.max(report.numFailedTests, failures.length)
       : failures.length;
-  const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
+  const headline = mockPin
+    ? mockPinHeadline(failedCount, runnerName)
+    : testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
     return `${headline.slice(0, -1)}; the report named no test.`;
   }
@@ -252,6 +271,7 @@ function failureText(
       failures.map(({ assertion, ...failure }) => ({ ...failure, message: assertion })),
     ),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
+    ...missingEnvironmentHints(notLoaded(failures)),
   ].join('\n');
 }
 

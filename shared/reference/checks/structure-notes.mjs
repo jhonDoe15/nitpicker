@@ -51,6 +51,7 @@ export const STRUCTURE_NOTES = {
   ],
   'decided-condition': [
     'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
+    'The same holds for a coercion of the tested value inside the branch the test decides (`x ? Boolean(x) : d`, `bool(x)` under `if x:`): it is always true there, so either the coercion or the test is wrong.',
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
@@ -95,7 +96,7 @@ export const STRUCTURE_NOTES = {
     'Remove the key from the repository, rotate it, and load it from a secret store or the environment.',
   ],
   'committed-binary': [
-    'A committed archive or compiled binary (`gradle-wrapper.jar` is allowed).',
+    'A committed archive or compiled binary (`gradle-wrapper.jar` and a tarball that a package.json dependency spec names are allowed).',
     'Binaries bloat the history, cannot be reviewed and go stale.',
     'Remove the file; fetch or build it in the build instead.',
   ],
@@ -183,6 +184,11 @@ export const STRUCTURE_NOTES = {
     'Two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants.',
     'A grouping repeated in several places is a rule of its own; a new constant has to be added to every copy.',
     'Give the type one function that answers the question, and call it from each place.',
+  ],
+  'field-limit-mismatch': [
+    'A bounded string column (`VARCHAR(n)` in a schema or migration, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern (`@Size`, `@Pattern`, `@Digits`, zod, class-validator, pydantic, Go `validate` tags) that admits more than the column holds; or an OpenAPI or JSON Schema `maxLength`, `minLength` or `maximum` that differs from the validation of the same field. A generated DTO counts the spec as its validation.',
+    'Input that passes validation then fails at the database as a 500 instead of a 400, or the published contract accepts values the server rejects. Fields are matched by entity or table name and field name; a column wider than its validation is never reported.',
+    'Give the field a validation bound equal to the column width (`@Size(max = 30)`, `.max(30)`, `Field(max_length=30)`, `validate:"max=30"`) and make the spec state the same bounds; only fields whose limits changed are reported on a change.',
   ],
   'foreign-state-decision': [
     'Two or more functions outside a class with behaviour that branch on the same 2 or more of its fields.',

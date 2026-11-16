@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../paths/checkout-module.mjs';
 import { LANGUAGES, RULES } from '../policy.mjs';
 import { FACT_RULE_LANGUAGES } from '../project-rules/fact-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
@@ -8,7 +9,7 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
 const GO_REGISTERED_FACT_RULES_ONLY = {
-  file: 'languages/go/adapters/facts/go-fact-findings.mjs',
+  file: 'languages/go/adapters/facts/go-fact-findings.mts',
   evidence: /const registered = registeredFactRules\(LANGUAGE\)/u,
 };
 const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
@@ -31,9 +32,13 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   },
   go: {
     ...GO_FACT_RULES_NOT_RUN,
+    'type-only-production-dependency': {
+      file: 'languages/go/adapters/test-runtime/go-test-runtime.mts',
+      evidence: /kind: EDGE_KINDS\.RUNTIME/u,
+    },
     'domain-imports-framework-context': {
-      file: 'languages/go/adapters/domain/go-domain-libraries.mjs',
-      evidence: /const WHOLE_PACKAGE_RULES = \[\n {2}\[RULE_IDS\.domainImportsClient/u,
+      file: 'languages/go/adapters/domain/go-domain-libraries.mts',
+      evidence: /const WHOLE_PACKAGE_RULES[^=]*= \[\n {2}\[RULE_IDS\.domainImportsClient/u,
     },
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',
@@ -121,7 +126,9 @@ describe('the enforcedBy column of every catalogued rule', () => {
         name: `${language} ${ruleId}`,
         enforced: RULES.find(({ id }) => id === ruleId).enforcedBy[language],
         emitted: emitters[language].get(ruleId).length > 0,
-        evidenceHeld: evidence.test(readFileSync(path.join(repositoryRoot, file), 'utf8')),
+        evidenceHeld: evidence.test(
+          readFileSync(checkoutModulePath(path.join(repositoryRoot, file)), 'utf8'),
+        ),
       })),
     );
     expect(documented.map(({ name, enforced }) => [name, enforced])).toEqual(

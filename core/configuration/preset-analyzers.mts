@@ -4,8 +4,8 @@ import {
   type ProfiledAnalyzer,
   analyzersOf,
 } from '../../shared/values/analyzers.mts';
-import type { NitpickerConfig } from './config-types.mts';
-import { configureAnalyzers } from './configure-analyzers.mjs';
+import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import { configureAnalyzers } from './configure-analyzers.mts';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';

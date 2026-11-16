@@ -1,6 +1,6 @@
-import { readCpdFindings } from './cpd-duplicates.mjs';
-import { readDependencyFindings } from './dependencies.mjs';
-import { readForbiddenApiFindings } from './forbidden-apis.mjs';
+import { readCpdFindings } from './cpd-duplicates.mts';
+import { readDependencyFindings } from './dependencies.mts';
+import { readForbiddenApiFindings } from './forbidden-apis.mts';
 import { readLintFindings } from './javac-lint.mjs';
 import { liesInProject } from '../builds/module-path.mjs';
 import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
@@ -18,8 +18,15 @@ export function readGuardFindings(reports: GuardReports): unknown[] {
   const { reportRoot, projectRoot, manifest, module, locate } = reports;
   const sourceRoots = textsOf(fieldOf(manifest, 'sourceRoots'));
   const findings: readonly unknown[] = [
-    ...listOf(callUntyped(readLintFindings, reportRoot, { projectRoot, sourceRoots, module })),
-    ...listOf(readForbiddenApiFindings(reportRoot, { locate, projectRoot })),
+    ...listOf(
+      callUntyped(readLintFindings, reportRoot, {
+        projectRoot,
+        sourceRoots,
+        testRoots: textsOf(fieldOf(manifest, 'testSourceRoots')),
+        module,
+      }),
+    ),
+    ...listOf(callUntyped(readForbiddenApiFindings, reportRoot, { locate, projectRoot })),
     ...listOf(
       callUntyped(readCpdFindings, reportRoot, {
         projectRoot,

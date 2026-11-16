@@ -1,9 +1,13 @@
 import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
+import { IO_POLICY_FILES } from '../eslint-plugin/rules/support/io-policy-files.mjs';
+import { REQUEST_TEXT_POLICY_FILES } from '../eslint-plugin/rules/request-text/request-text-policy-files.mjs';
 import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/collection-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
+import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/origins/http-policy-files.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
+import { CONVENTION_POLICY_FILES } from './conventions/convention-policy-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
@@ -11,6 +15,9 @@ export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
+  ...REQUEST_TEXT_POLICY_FILES,
+  ...IO_POLICY_FILES,
+  ...HTTP_VALUE_POLICY_FILES,
   ...LIFECYCLE_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
@@ -156,10 +163,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/modules/no-module-level-let.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-production-console.mjs',
   'languages/typescript/preset/eslint-plugin/rules/naming/file-name-casing.mjs',
-  'languages/typescript/conventions/file-name-casing.mjs',
-  'languages/typescript/conventions/type-import-style.mjs',
-  'languages/typescript/conventions/measures/assertion-helpers.mjs',
-  'languages/typescript/conventions/measures/detached-work-runners.mjs',
+  ...CONVENTION_POLICY_FILES,
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',

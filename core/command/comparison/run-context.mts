@@ -1,10 +1,10 @@
 import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
-import { resolveCacheStore } from '../../diff/cache/cache-stores.mjs';
+import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
@@ -51,7 +51,7 @@ export function acceptanceOf(
 
 export function resolveRunCacheStore(
   cli: Pick<ComparisonCli, 'currentProjectRoot' | 'environment' | 'options' | 'stderr'>,
-): unknown {
+): CacheStore | undefined {
   const { store, warnings } = resolveCacheStore({
     projectRoot: cli.currentProjectRoot,
     environment: cli.environment,

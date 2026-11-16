@@ -16,11 +16,16 @@ import { withoutFollowedImports } from './imports/followed-imports.mts';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
 import { withJavaColumns } from './reporting/columns/java-columns.mts';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { withTestsFailures } from './red-base/tests-failed.mts';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mts';
+import {
+  notAffectedFindings,
+  withChangedFiles,
+} from '../builds/change-scope/affected/changed-files.mts';
 import { buildFindings } from './collect/build-findings.mts';
 import {
   type JavaFinding,
@@ -72,9 +77,13 @@ export function collectJavaReport(
   options: JavaRunOptions = {},
 ): { readonly findings: readonly JavaFinding[]; readonly imports: unknown } {
   const projectRoot = path.resolve(root);
-  const plan = mutationPlanOf(projectRoot, options);
-  const { findings: collected, imports, testsFailures } = buildFindings(projectRoot, plan.options);
-  const findings = plan.findings(collected);
+  const plan = mutationPlanOf(projectRoot, withChangedFiles(options, projectRoot));
+  const built = buildFindings(projectRoot, plan.options);
+  const { findings: collected, imports, testsFailures, notAffected } = built;
+  const findings = [
+    ...plan.findings(collected),
+    ...notAffectedFindings(notAffected, options.policy),
+  ];
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
   const columns: unknown = withJavaColumns(findings, {
@@ -143,17 +152,26 @@ function collectBothSnapshots({
             baselineRoot: path.join(baseWorktree, projectRelativePath),
           });
           const notes = findingsOf(testFailuresOf({ findings: collectedBase }));
-          return {
+          return skippedToolsLeftOut({
             notes,
             baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
             headFindings,
-          };
+          });
         },
       );
       return compared;
     },
   );
   return snapshotsOf(snapshots);
+}
+
+function skippedToolsLeftOut(snapshots: ComparedSnapshots): ComparedSnapshots {
+  const kept = callUntyped(withoutSkippedTools, snapshots);
+  return {
+    notes: snapshots.notes,
+    baseFindings: findingsOf(fieldOf(kept, 'baseFindings')),
+    headFindings: findingsOf(fieldOf(kept, 'headFindings')),
+  };
 }
 
 function withEnforceable(outcome: Outcome): EnforcedOutcome {

@@ -6,6 +6,10 @@ import { isInMutationScope, pathInside } from '../typed/mutation.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { diffAgainstBase } from '../runners/mutation-scope.mts';
 import {
+  type NameStatus,
+  nameStatusEntries,
+} from '../../../../../core/tooling/git/name-status.mts';
+import {
   type ResolutionProject,
   isFile,
   projectCompilerOptions,
@@ -16,28 +20,19 @@ import {
 export const MAX_TESTED_MODULES = 10;
 const UNCHANGED_CONTENT = /^[CR]100$/u;
 
-type NameStatus = { readonly status: string; readonly from: string; readonly to: string };
-
 type ImportedSources = { readonly direct: string[]; readonly reExported: string[] };
 
 export type TestedModules = { readonly modules: string[]; readonly skipped: string[] };
 
-function nameStatusEntries(output: string): NameStatus[] {
-  return output
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const [status = '', from = '', to = from] = line.split('\t');
-      return { status, from, to };
-    })
-    .filter(({ status }) => !UNCHANGED_CONTENT.test(status));
+function changedEntries(output: string): NameStatus[] {
+  return nameStatusEntries(output).filter(({ status }) => !UNCHANGED_CONTENT.test(status));
 }
 
 function changedTestPaths(
   options: QualityAreaOptions,
   layout: Layout,
 ): { readonly head: string[]; readonly base: string[] } {
-  const entries = nameStatusEntries(diffAgainstBase(options, '--name-status'));
+  const entries = changedEntries(diffAgainstBase(options, '--name-status'));
   return {
     head: entries
       .filter(({ status, to }) => status !== 'D' && layout.isTestFile(to))
