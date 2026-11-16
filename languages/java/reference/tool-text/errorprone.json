@@ -24,6 +24,7 @@
     "AlmostJavadoc": {
       "severity": "WARNING",
       "summary": "This comment contains Javadoc or HTML tags, but isn't started with a double asterisk (/**); is it meant to be Javadoc?",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/AlmostJavadoc"
     },
     "AlreadyChecked": {
@@ -49,6 +50,7 @@
     "AnnotateFormatMethod": {
       "severity": "WARNING",
       "summary": "This method uses a pair of parameters as a format string and its arguments, but the enclosing method wasn't annotated. Doing so gives compile-time rather than run-time protection against malformed format strings.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/AnnotateFormatMethod"
     },
     "AnnotationMirrorToString": {
@@ -139,6 +141,7 @@
     "AssertionFailureIgnored": {
       "severity": "WARNING",
       "summary": "This assertion throws an AssertionError if it fails, which will be caught by an enclosing try block.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/AssertionFailureIgnored"
     },
     "AssignmentExpression": {
@@ -209,6 +212,7 @@
     "AvoidCommonTypeNames": {
       "severity": "WARNING",
       "summary": "Never reuse class names from java.lang",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/AvoidCommonTypeNames"
     },
     "AvoidObjectArrays": {
@@ -229,6 +233,7 @@
     "BadComparable": {
       "severity": "WARNING",
       "summary": "Possible sign flip from narrowing conversion",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/BadComparable"
     },
     "BadImport": {
@@ -239,6 +244,7 @@
     "BadInstanceof": {
       "severity": "WARNING",
       "summary": "instanceof used in a way that is equivalent to a null check.",
+      "tags": "Simplification",
       "url": "https://errorprone.info/bugpattern/BadInstanceof"
     },
     "BadShiftAmount": {
@@ -279,6 +285,7 @@
     "BinderIdentityRestoredDangerously": {
       "severity": "WARNING",
       "summary": "A call to Binder.clearCallingIdentity() should be followed by Binder.restoreCallingIdentity() in a finally block. Otherwise the wrong Binder identity may be used by subsequent code.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/BinderIdentityRestoredDangerously"
     },
     "BindingToUnqualifiedCommonType": {
@@ -299,6 +306,7 @@
     "BoxedPrimitiveConstructor": {
       "severity": "WARNING",
       "summary": "valueOf or autoboxing provides better time and space performance",
+      "tags": "Performance",
       "url": "https://errorprone.info/bugpattern/BoxedPrimitiveConstructor"
     },
     "BoxedPrimitiveEquality": {
@@ -404,6 +412,7 @@
     "ClassCanBeStatic": {
       "severity": "WARNING",
       "summary": "Inner class is non-static but does not reference enclosing class",
+      "tags": "Performance,Style",
       "url": "https://errorprone.info/bugpattern/ClassCanBeStatic"
     },
     "ClassInitializationDeadlock": {
@@ -419,11 +428,13 @@
     "ClassNamedLikeTypeParameter": {
       "severity": "SUGGESTION",
       "summary": "This class's name looks like a Type Parameter.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/ClassNamedLikeTypeParameter"
     },
     "ClassNewInstance": {
       "severity": "WARNING",
       "summary": "Class.newInstance() bypasses exception checking; prefer getDeclaredConstructor().newInstance()",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/ClassNewInstance"
     },
     "CloseableProvides": {
@@ -449,6 +460,7 @@
     "CollectionUndefinedEquality": {
       "severity": "WARNING",
       "summary": "This type does not have well-defined equals behavior.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/CollectionUndefinedEquality"
     },
     "CollectorShouldNotUseState": {
@@ -514,6 +526,7 @@
     "ConstantField": {
       "severity": "SUGGESTION",
       "summary": "Fields with CONSTANT_CASE names should be both static and final",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/ConstantField"
     },
     "ConstantOverflow": {
@@ -544,6 +557,7 @@
     "DateFormatConstant": {
       "severity": "WARNING",
       "summary": "DateFormat is not thread-safe, and should not be used as a constant field.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/DateFormatConstant"
     },
     "DeadException": {
@@ -569,6 +583,7 @@
     "DefaultCharset": {
       "severity": "WARNING",
       "summary": "Implicit use of the platform default charset, which can result in differing behaviour between JVM executions or incorrect behavior if the encoding of the data source doesn't match expectations.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/DefaultCharset"
     },
     "DefaultLocale": {
@@ -599,6 +614,7 @@
     "DifferentNameButSame": {
       "severity": "WARNING",
       "summary": "This type is referred to in different ways within this file, which may be confusing.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/DifferentNameButSame"
     },
     "DirectInvocationOnMock": {
@@ -649,6 +665,7 @@
     "DoubleCheckedLocking": {
       "severity": "WARNING",
       "summary": "Double-checked locking on non-volatile fields is unsafe",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/DoubleCheckedLocking"
     },
     "DuplicateAssertion": {
@@ -704,6 +721,7 @@
     "EmptyCatch": {
       "severity": "WARNING",
       "summary": "Caught exceptions should not be ignored",
+      "tags": "Style",
       "url": "https://google.github.io/styleguide/javaguide.html#s6.2-caught-exceptions"
     },
     "EmptyIf": {
@@ -734,11 +752,13 @@
     "EqualsGetClass": {
       "severity": "WARNING",
       "summary": "Prefer instanceof to getClass when implementing Object#equals. Note that this may be a behaviour change.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/EqualsGetClass"
     },
     "EqualsHashCode": {
       "severity": "ERROR",
       "summary": "Classes that override equals should also override hashCode.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/EqualsHashCode"
     },
     "EqualsIncompatibleType": {
@@ -759,6 +779,7 @@
     "EqualsNull": {
       "severity": "ERROR",
       "summary": "The contract of Object.equals() states that for any non-null reference value x, x.equals(null) should return false. If x is null, a NullPointerException is thrown. Consider replacing equals() with the == operator.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/EqualsNull"
     },
     "EqualsReference": {
@@ -774,6 +795,7 @@
     "EqualsUsingHashCode": {
       "severity": "WARNING",
       "summary": "Implementing #equals by just comparing hashCodes is fragile. Hashes collide frequently, and this will lead to false positives in #equals.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/EqualsUsingHashCode"
     },
     "EqualsWrongThing": {
@@ -864,6 +886,7 @@
     "Finally": {
       "severity": "WARNING",
       "summary": "If you return or throw from a finally, then values returned or thrown from the try-catch block will be ignored. Consider using try-with-resources instead.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/Finally"
     },
     "FloatCast": {
@@ -874,11 +897,13 @@
     "FloatingPointAssertionWithinEpsilon": {
       "severity": "WARNING",
       "summary": "This fuzzy equality check is using a tolerance less than the gap to the next number. You may want a less restrictive tolerance, or to assert equality.",
+      "tags": "Simplification",
       "url": "https://errorprone.info/bugpattern/FloatingPointAssertionWithinEpsilon"
     },
     "FloatingPointLiteralPrecision": {
       "severity": "WARNING",
       "summary": "Floating point literal loses precision",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/FloatingPointLiteralPrecision"
     },
     "FloggerArgumentToString": {
@@ -974,11 +999,13 @@
     "FragmentInjection": {
       "severity": "WARNING",
       "summary": "Classes extending PreferenceActivity must implement isValidFragment such that it does not unconditionally return true to prevent vulnerability to fragment injection attacks.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/FragmentInjection"
     },
     "FragmentNotInstantiable": {
       "severity": "WARNING",
       "summary": "Subclasses of Fragment must be instantiable via Class#newInstance(): the class must be public, static and have a public nullary constructor",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/FragmentNotInstantiable"
     },
     "FromTemporalAccessor": {
@@ -999,6 +1026,7 @@
     "FutureReturnValueIgnored": {
       "severity": "WARNING",
       "summary": "Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/FutureReturnValueIgnored"
     },
     "FutureTransformAsync": {
@@ -1029,6 +1057,7 @@
     "GetClassOnEnum": {
       "severity": "WARNING",
       "summary": "Calling getClass() on an enum may return a subclass of the enum type",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/GetClassOnEnum"
     },
     "GuardedBy": {
@@ -1074,6 +1103,7 @@
     "ICCProfileGetInstance": {
       "severity": "WARNING",
       "summary": "This method searches the class path for the given file, prefer to read the file and call getInstance(byte[]) or getInstance(InputStream)",
+      "tags": "Performance",
       "url": "https://errorprone.info/bugpattern/ICCProfileGetInstance"
     },
     "IdentifierName": {
@@ -1114,6 +1144,7 @@
     "ImmutableAnnotationChecker": {
       "severity": "WARNING",
       "summary": "Annotations should always be immutable",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/ImmutableAnnotationChecker"
     },
     "ImmutableEnumChecker": {
@@ -1169,6 +1200,7 @@
     "InconsistentHashCode": {
       "severity": "WARNING",
       "summary": "Including fields in hashCode which are not compared in equals violates the contract of hashCode.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/InconsistentHashCode"
     },
     "InconsistentOverloads": {
@@ -1204,6 +1236,7 @@
     "InheritDoc": {
       "severity": "WARNING",
       "summary": "Invalid use of @inheritDoc.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/InheritDoc"
     },
     "InitializeInline": {
@@ -1254,6 +1287,7 @@
     "InlineMeInliner": {
       "severity": "WARNING",
       "summary": "Callers of this API should be inlined.",
+      "tags": "JavaInlineMe",
       "url": "https://errorprone.info/bugpattern/InlineMeInliner"
     },
     "InlineMeSuggester": {
@@ -1274,6 +1308,7 @@
     "InputStreamSlowMultibyteRead": {
       "severity": "WARNING",
       "summary": "Please also override int read(byte[], int, int), otherwise multi-byte reads from this input stream are likely to be slow.",
+      "tags": "Performance",
       "url": "https://errorprone.info/bugpattern/InputStreamSlowMultibyteRead"
     },
     "InsecureCryptoUsage": {
@@ -1304,6 +1339,7 @@
     "IntLongMath": {
       "severity": "WARNING",
       "summary": "Expression of type int may overflow before being assigned to a long",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/IntLongMath"
     },
     "InterfaceWithOnlyStatics": {
@@ -1369,6 +1405,7 @@
     "InvalidThrowsLink": {
       "severity": "WARNING",
       "summary": "Don't use {@link} or {@code} in @throws tags; mention the exception name directly (e.g., @throws IOException, not @throws {@link IOException}).",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/InvalidThrowsLink"
     },
     "InvalidTimeZoneID": {
@@ -1399,6 +1436,7 @@
     "IterableAndIterator": {
       "severity": "WARNING",
       "summary": "Class should not implement both `Iterable` and `Iterator`",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/IterableAndIterator"
     },
     "IterablePathParameter": {
@@ -1634,6 +1672,7 @@
     "LockNotBeforeTry": {
       "severity": "WARNING",
       "summary": "Calls to Lock#lock should be immediately followed by a try block which releases the lock.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/LockNotBeforeTry"
     },
     "LockOnBoxedPrimitive": {
@@ -1649,6 +1688,7 @@
     "LogicalAssignment": {
       "severity": "WARNING",
       "summary": "Assignment where a boolean expression was expected; use == if this assignment wasn't expected or add parentheses for clarity.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/LogicalAssignment"
     },
     "LongDoubleConversion": {
@@ -1739,6 +1779,7 @@
     "MissingBraces": {
       "severity": "SUGGESTION",
       "summary": "The Google Java Style Guide requires braces to be used with if, else, for, do and while statements, even when the body is empty or contains only a single statement.",
+      "tags": "Style",
       "url": "https://google.github.io/styleguide/javaguide.html#s4.1.1-braces-always-used"
     },
     "MissingCasesInEnumSwitch": {
@@ -1764,11 +1805,13 @@
     "MissingOverride": {
       "severity": "WARNING",
       "summary": "method overrides method in supertype; expected @Override",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/MissingOverride"
     },
     "MissingRefasterAnnotation": {
       "severity": "WARNING",
       "summary": "The Refaster template contains a method without any Refaster annotations",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/MissingRefasterAnnotation"
     },
     "MissingRuntimeRetention": {
@@ -1804,6 +1847,7 @@
     "MixedArrayDimensions": {
       "severity": "SUGGESTION",
       "summary": "C-style array declarations should not be used",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/MixedArrayDimensions"
     },
     "MixedDescriptors": {
@@ -1869,6 +1913,7 @@
     "MultiVariableDeclaration": {
       "severity": "SUGGESTION",
       "summary": "Variable declarations should declare only one variable",
+      "tags": "Style",
       "url": "https://google.github.io/styleguide/javaguide.html#s4.8.2.1-variables-per-declaration"
     },
     "MultimapKeys": {
@@ -1889,6 +1934,7 @@
     "MultipleTopLevelClasses": {
       "severity": "SUGGESTION",
       "summary": "Source files should not contain multiple top-level class declarations",
+      "tags": "Style",
       "url": "https://google.github.io/styleguide/javaguide.html#s3.4.1-one-top-level-class"
     },
     "MultipleUnaryOperatorsInMethodCall": {
@@ -1929,6 +1975,7 @@
     "NarrowingCompoundAssignment": {
       "severity": "WARNING",
       "summary": "Compound assignments may hide dangerous casts",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/NarrowingCompoundAssignment"
     },
     "NegativeBoolean": {
@@ -1969,6 +2016,7 @@
     "NonAtomicVolatileUpdate": {
       "severity": "WARNING",
       "summary": "This update of a volatile variable is non-atomic",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/NonAtomicVolatileUpdate"
     },
     "NonCanonicalStaticImport": {
@@ -1999,6 +2047,7 @@
     "NonOverridingEquals": {
       "severity": "WARNING",
       "summary": "equals method doesn't override Object.equals",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/NonOverridingEquals"
     },
     "NonRuntimeAnnotation": {
@@ -2019,6 +2068,7 @@
     "NullAway": {
       "severity": "WARNING",
       "summary": "Nullability type error.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/NullAway"
     },
     "NullNeedsCastForVarargs": {
@@ -2039,6 +2089,7 @@
     "NullableConstructor": {
       "severity": "WARNING",
       "summary": "Constructors should not be annotated with @Nullable since they cannot return null",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/NullableConstructor"
     },
     "NullableOnContainingClass": {
@@ -2054,11 +2105,13 @@
     "NullablePrimitive": {
       "severity": "WARNING",
       "summary": "Nullness annotations should not be used for primitive types since they cannot be null",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/NullablePrimitive"
     },
     "NullablePrimitiveArray": {
       "severity": "WARNING",
       "summary": "@Nullable type annotations should not be used for primitive types since they cannot be null",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/NullablePrimitiveArray"
     },
     "NullableTypeParameter": {
@@ -2069,6 +2122,7 @@
     "NullableVoid": {
       "severity": "WARNING",
       "summary": "void-returning methods should not be annotated with nullness annotations, since they cannot return null",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/NullableVoid"
     },
     "NullableWildcard": {
@@ -2079,6 +2133,7 @@
     "ObjectEqualsForPrimitives": {
       "severity": "WARNING",
       "summary": "Avoid unnecessary boxing by using plain == for primitive types.",
+      "tags": "Performance",
       "url": "https://errorprone.info/bugpattern/ObjectEqualsForPrimitives"
     },
     "ObjectToString": {
@@ -2094,6 +2149,7 @@
     "OperatorPrecedence": {
       "severity": "WARNING",
       "summary": "Use grouping parenthesis to make the operator precedence explicit",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/OperatorPrecedence"
     },
     "OptionalEquality": {
@@ -2169,6 +2225,7 @@
     "PackageLocation": {
       "severity": "SUGGESTION",
       "summary": "Package names should match the directory they are declared in",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/PackageLocation"
     },
     "ParameterComment": {
@@ -2224,6 +2281,7 @@
     "PreconditionsInvalidPlaceholder": {
       "severity": "ERROR",
       "summary": "Preconditions only accepts the %s placeholder in error message strings",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/PreconditionsInvalidPlaceholder"
     },
     "PreferInstanceofOverGetKind": {
@@ -2324,11 +2382,13 @@
     "QualifierOrScopeOnInjectMethod": {
       "severity": "WARNING",
       "summary": "Qualifiers/Scope annotations on @Inject methods don't have any effect. Move the qualifier annotation to the binding location.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/QualifierOrScopeOnInjectMethod"
     },
     "QualifierWithTypeUse": {
       "severity": "WARNING",
       "summary": "Injection frameworks currently don't understand Qualifiers in TYPE_PARAMETER or TYPE_USE contexts.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/QualifierWithTypeUse"
     },
     "RandomCast": {
@@ -2384,6 +2444,7 @@
     "RedundantSetterCall": {
       "severity": "ERROR",
       "summary": "A field was set twice in the same chained expression.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/RedundantSetterCall"
     },
     "RedundantThrows": {
@@ -2399,6 +2460,7 @@
     "ReferenceEquality": {
       "severity": "WARNING",
       "summary": "Comparison using reference equality instead of value equality",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/ReferenceEquality"
     },
     "RefersToDaggerCodegen": {
@@ -2409,6 +2471,7 @@
     "RemoveUnusedImports": {
       "severity": "SUGGESTION",
       "summary": "Unused imports",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/RemoveUnusedImports"
     },
     "RequiredModifiers": {
@@ -2434,6 +2497,7 @@
     "ReturnFromVoid": {
       "severity": "WARNING",
       "summary": "Void methods should not have a @return tag.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/ReturnFromVoid"
     },
     "ReturnMissingNullable": {
@@ -2519,6 +2583,7 @@
     "ShortCircuitBoolean": {
       "severity": "WARNING",
       "summary": "Prefer the short-circuiting boolean operators && and || to & and |.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/ShortCircuitBoolean"
     },
     "ShouldHaveEvenArgs": {
@@ -2549,6 +2614,7 @@
     "StaticGuardedByInstance": {
       "severity": "WARNING",
       "summary": "Writes to static fields should not be guarded by instance locks",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/StaticGuardedByInstance"
     },
     "StaticMockMember": {
@@ -2564,6 +2630,7 @@
     "StaticQualifiedUsingExpression": {
       "severity": "ERROR",
       "summary": "A static variable or method should be qualified with a class name, not expression",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/StaticQualifiedUsingExpression"
     },
     "StreamResourceLeak": {
@@ -2574,6 +2641,7 @@
     "StreamToIterable": {
       "severity": "WARNING",
       "summary": "Using stream::iterator creates a one-shot Iterable, which may cause surprising failures.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/StreamToIterable"
     },
     "StreamToString": {
@@ -2639,6 +2707,7 @@
     "SuperCallToObjectMethod": {
       "severity": "WARNING",
       "summary": "`super.equals(obj)` and `super.hashCode()` are often bugs when they call the methods defined in `java.lang.Object`",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/SuperCallToObjectMethod"
     },
     "SuppressWarningsDeprecated": {
@@ -2649,6 +2718,7 @@
     "SuppressWarningsWithoutExplanation": {
       "severity": "WARNING",
       "summary": "Use of @SuppressWarnings should be accompanied by a comment describing why the warning is safe to ignore.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/SuppressWarningsWithoutExplanation"
     },
     "SwigMemoryLeak": {
@@ -2659,6 +2729,7 @@
     "SwitchDefault": {
       "severity": "SUGGESTION",
       "summary": "The default case of a switch should appear at the end of the last statement group",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/SwitchDefault"
     },
     "SymbolToString": {
@@ -2669,6 +2740,7 @@
     "SynchronizeOnNonFinalField": {
       "severity": "WARNING",
       "summary": "Synchronizing on non-final fields is not safe: if the field is ever updated, different threads may end up locking on different objects.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/SynchronizeOnNonFinalField"
     },
     "SystemConsoleNull": {
@@ -2684,6 +2756,7 @@
     "SystemOut": {
       "severity": "WARNING",
       "summary": "Production code should not print to standard out or standard error. Standard out and standard error should only be used for debugging.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/SystemOut"
     },
     "TemporalAccessorGetChronoField": {
@@ -2709,6 +2782,7 @@
     "ThreadBuilderNameWithPlaceholder": {
       "severity": "ERROR",
       "summary": "Thread.Builder.name() does not accept placeholders (e.g., %d or %s). threadBuilder.name(String) accepts a constant name and threadBuilder.name(String, int) accepts a constant name _prefix_ and an initial counter value.",
+      "tags": "LikelyError",
       "url": "https://errorprone.info/bugpattern/ThreadBuilderNameWithPlaceholder"
     },
     "ThreadJoinLoop": {
@@ -2804,16 +2878,19 @@
     "TruthAssertExpected": {
       "severity": "WARNING",
       "summary": "The actual and expected values appear to be swapped, which results in poor assertion failure messages. The actual value should come first.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/TruthAssertExpected"
     },
     "TruthConstantAsserts": {
       "severity": "WARNING",
       "summary": "Truth Library assert is called on a constant.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/TruthConstantAsserts"
     },
     "TruthContainsExactlyElementsInUsage": {
       "severity": "WARNING",
       "summary": "containsExactly is preferred over containsExactlyElementsIn when creating new iterables.",
+      "tags": "Refactoring",
       "url": "https://errorprone.info/bugpattern/TruthContainsExactlyElementsInUsage"
     },
     "TruthGetOrDefault": {
@@ -2829,6 +2906,7 @@
     "TryFailRefactoring": {
       "severity": "SUGGESTION",
       "summary": "Prefer assertThrows to try/fail",
+      "tags": "Refactoring",
       "url": "https://errorprone.info/bugpattern/TryFailRefactoring"
     },
     "TryFailThrowable": {
@@ -2849,6 +2927,7 @@
     "TypeNameShadowing": {
       "severity": "WARNING",
       "summary": "Type parameter declaration shadows another named type",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/TypeNameShadowing"
     },
     "TypeParameterNaming": {
@@ -2864,11 +2943,13 @@
     "TypeParameterShadowing": {
       "severity": "WARNING",
       "summary": "Type parameter declaration overrides another type parameter already declared",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/TypeParameterShadowing"
     },
     "TypeParameterUnusedInFormals": {
       "severity": "WARNING",
       "summary": "Declaring a type parameter that is only used in the return type is a misuse of generics: operations on the type parameter are unchecked, it hides unsafe casts at invocations of the method, and it interacts badly with method overload resolution.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/TypeParameterUnusedInFormals"
     },
     "TypeToString": {
@@ -2879,6 +2960,7 @@
     "URLEqualsHashCode": {
       "severity": "WARNING",
       "summary": "Avoid hash-based containers of java.net.URL--the containers rely on equals() and hashCode(), which cause java.net.URL to make blocking internet connections.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/URLEqualsHashCode"
     },
     "UndefinedEquals": {
@@ -3029,6 +3111,7 @@
     "UnnecessaryStaticImport": {
       "severity": "SUGGESTION",
       "summary": "Using static imports for types is unnecessary",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/UnnecessaryStaticImport"
     },
     "UnnecessaryStringBuilder": {
@@ -3064,6 +3147,7 @@
     "UnsafeReflectiveConstructionCast": {
       "severity": "WARNING",
       "summary": "Prefer `asSubclass` instead of casting the result of `newInstance`, to detect classes of incorrect type before invoking their constructors. This way, if the class is of the incorrect type, it will throw an exception before invoking its constructor.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/UnsafeReflectiveConstructionCast"
     },
     "UnsafeWildcard": {
@@ -3074,6 +3158,7 @@
     "UnsynchronizedOverridesSynchronized": {
       "severity": "WARNING",
       "summary": "Unsynchronized method overrides a synchronized method.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/UnsynchronizedOverridesSynchronized"
     },
     "UnusedAnonymousClass": {
@@ -3089,6 +3174,7 @@
     "UnusedException": {
       "severity": "WARNING",
       "summary": "This catch block catches an exception and re-throws another, but swallows the caught exception rather than setting it as a cause. This can make debugging harder.",
+      "tags": "Style",
       "url": "https://errorprone.info/bugpattern/UnusedException"
     },
     "UnusedLabel": {
@@ -3179,16 +3265,19 @@
     "WaitNotInLoop": {
       "severity": "WARNING",
       "summary": "Because of spurious wakeups, Object.wait() and Condition.await() must always be called in a loop",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/WaitNotInLoop"
     },
     "WakelockReleasedDangerously": {
       "severity": "WARNING",
       "summary": "On Android versions < P, a wakelock acquired with a timeout may be released by the system before calling `release`, even after checking `isHeld()`. If so, it will throw a RuntimeException. Please wrap in a try/catch block.",
+      "tags": "FragileCode",
       "url": "https://errorprone.info/bugpattern/WakelockReleasedDangerously"
     },
     "WildcardImport": {
       "severity": "SUGGESTION",
       "summary": "Wildcard imports, static or otherwise, should not be used",
+      "tags": "Style",
       "url": "https://google.github.io/styleguide/javaguide.html?cl=head#s3.3.1-wildcard-imports"
     },
     "WrongOneof": {

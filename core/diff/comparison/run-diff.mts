@@ -204,6 +204,7 @@ function runAndCombine(context: RunContext): DiffReport {
     policies: { base: baseSetup.headPolicy, head: settings.headPolicy },
     acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
+    labels: settings.labels,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,

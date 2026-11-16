@@ -1,5 +1,6 @@
 import {
   HELD_NOTE,
+  LABEL_SENTENCE,
   NARROWED_SENTENCE,
   NO_PIPE,
   numbered,
@@ -14,7 +15,7 @@ const EXIT_ROWS: readonly (readonly [string, string])[] = [
   [
     '0',
     'Completed with no new enforceable findings. Done, unless the run was narrowed with ' +
-      '`--analyzer` or `--quick`.',
+      '`--analyzer`, `--quick` or `--label`.',
   ],
   [
     '1',
@@ -74,6 +75,7 @@ function runIt(fixers: string): string {
       'cannot be combined with `--base`, sharding or `--defer-exit`, and takes `--fix` only with ' +
       '`--rule`.',
     '`--rule <substring>` lists the findings whose rule matches, after the summary.',
+    LABEL_SENTENCE,
     '`npx nitpicker show` prints the summary of the last run again without running anything. ' +
       'Add `--rule <substring>`, `--path <file or folder>` or `--details` to read one rule, one ' +
       'folder or the full messages instead of running again. It names the run it shows and warns ' +
