@@ -11,7 +11,7 @@ import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
-import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
+import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 
 type Finding = ReportEntry;
 
@@ -58,13 +58,9 @@ export type QualitySnapshot = {
   readonly toolErrors: Finding[];
 };
 
-const withPolicyFile: (
-  headPolicy: object,
-  run: (headPolicyFile: unknown) => SnapshotRun,
-) => SnapshotRun = withHeadPolicyFile;
-const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
-  withSharedUnusedDirectives;
-const withoutOverlaps: (run: SnapshotRun) => SnapshotRun = withoutCrossToolOverlaps;
+const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
+  withHeadPolicyFile;
+const withoutOverlaps: <Run>(run: Run) => Run = withoutCrossToolOverlaps;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
 function sortKey(value: unknown): string {
@@ -84,7 +80,7 @@ type HeadRunRequest = {
 
 function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
   return withoutOverlaps(
-    reconcileDirectives(
+    withSharedUnusedDirectives(
       withPolicyFile(headPolicy, (headPolicyFile) =>
         runAnalyzers({
           analyzers,

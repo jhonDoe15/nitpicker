@@ -1,8 +1,8 @@
-import { eslintRule, lazyRecipe } from './lazy-recipe.mjs';
+import { eslintRule, lazyRecipe } from './lazy-recipe.mts';
 
 const TEST_PLACEMENT = './moves/test-placement.mjs';
 
-function structureRule(rule) {
+function structureRule(rule: string) {
   return { tool: 'structure', rule };
 }
 

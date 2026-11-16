@@ -10,7 +10,7 @@ import {
   selectedCodeFixes,
   type CodeFix,
   type SourceText,
-} from './typed/code-fix-views.mts';
+} from './code-fix-rules.mts';
 
 type Edit = { readonly start: number; readonly end: number; readonly text: string };
 type Group = {

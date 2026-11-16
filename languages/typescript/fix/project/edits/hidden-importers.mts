@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
-import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { fieldOf, stringsIn } from '../../../../../shared/values/readers.mts';
 
 const ts = typescriptApi();
 const TEMPLATE_EXTENSIONS = ['.vue', '.svelte', '.astro', '.mdx', '.md'];
@@ -29,19 +29,6 @@ export function templateImporterProblem(projectRoot: string, target: string): st
     : `${path.relative(projectRoot, found).split(path.sep).join('/')} may import the module`;
 }
 
-function strings(value: unknown): string[] {
-  const found: string[] = [];
-  const pending: unknown[] = [value];
-  for (const item of pending) {
-    if (typeof item === 'string') {
-      found.push(item);
-    } else if (item !== null && typeof item === 'object') {
-      pending.push(...Object.values(fieldsOf(item)));
-    }
-  }
-  return found;
-}
-
 export function packageEntryProblem(projectRoot: string, target: string): string | undefined {
   const file = path.join(projectRoot, 'package.json');
   const manifest: unknown = ts.parseConfigFileTextToJson(
@@ -49,7 +36,7 @@ export function packageEntryProblem(projectRoot: string, target: string): string
     ts.sys.readFile(file) ?? '{}',
   ).config;
   const wanted = target.replace(EXTENSION, '');
-  const listed = PACKAGE_KEYS.flatMap((key) => strings(fieldOf(manifest, key))).map((value) =>
+  const listed = PACKAGE_KEYS.flatMap((key) => stringsIn(fieldOf(manifest, key))).map((value) =>
     path.posix.normalize(value).replace(EXTENSION, ''),
   );
   return listed.includes(wanted) ? 'package.json names the module as an entry point' : undefined;
