@@ -5,9 +5,7 @@ const NAME = 'name';
 const VERSION_SUFFIX = /^v\d+$/u;
 
 function packageNameOf(importPath: string): string {
-  const parts = importPath.split('/');
-  const last = parts.at(-1) ?? importPath;
-  const parent = parts.at(-2);
+  const [last = importPath, parent] = importPath.split('/').toReversed();
   return VERSION_SUFFIX.test(last) && parent !== undefined ? parent : last;
 }
 

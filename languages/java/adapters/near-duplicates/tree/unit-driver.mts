@@ -6,7 +6,6 @@ import type {
   FileScope,
   Language,
   Names,
-  ShapeNode,
   Unit,
   UnitRoot,
 } from '../jvm-types.mts';

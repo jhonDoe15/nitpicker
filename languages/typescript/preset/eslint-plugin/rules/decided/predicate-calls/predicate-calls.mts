@@ -13,7 +13,7 @@ import {
 } from '../../typed/syntax-views.mts';
 import { inside, rangeKey } from '../syntax.mts';
 
-type Helper = {
+type PredicateHelper = {
   readonly name: string;
   readonly params: readonly string[];
   readonly body: TSESTree.Expression;
@@ -38,7 +38,7 @@ function variableAt(
     ?.set.get(name);
 }
 
-function valueOf(init: TSESTree.Expression | null): FunctionNode | undefined {
+function valueOf(init: TSESTree.VariableDeclarator['init']): FunctionNode | undefined {
   return init?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     init?.type === AST_NODE_TYPES.FunctionExpression
     ? init
@@ -89,7 +89,7 @@ function readsOnlyKnown(fn: FunctionNode, { sourceCode, site }: Context): boolea
   );
 }
 
-function helperOf(call: TSESTree.CallExpression, context: Context): Helper | undefined {
+function helperOf(call: TSESTree.CallExpression, context: Context): PredicateHelper | undefined {
   const { callee } = call;
   if (callee.type !== AST_NODE_TYPES.Identifier || call.optional) {
     return undefined;
@@ -131,16 +131,19 @@ function tagged(base: Term, range: Range | undefined, helper: HelperNote): Term 
   return note;
 }
 
-function innerExpansions(helper: Helper, context: Context): [TSESTree.CallExpression, Helper][] {
+function innerExpansions(
+  helper: PredicateHelper,
+  context: Context,
+): [TSESTree.CallExpression, PredicateHelper][] {
   return [...inside(helper.body)].filter(isCallExpression).flatMap((call) => {
     const inner = helperOf(call, context);
     return inner === undefined ? [] : [[call, inner]];
   });
 }
 
-function withInner(helper: Helper, context: Context): Term {
+function withInner(helper: PredicateHelper, context: Context): Term {
   const byRange = new Map(
-    innerExpansions(helper, context).map(([call, inner]): [string, Helper] => [
+    innerExpansions(helper, context).map(([call, inner]): [string, PredicateHelper] => [
       rangeKey(call.range),
       inner,
     ]),

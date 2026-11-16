@@ -145,7 +145,7 @@ export function fixJvm(settings: JvmSettings): FixOutcome {
   const outcomes = formatSteps(resolved, formatted, comparison.mergeBaseSha);
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
-    ...(recipes.fixedFindings === undefined ? {} : { fixedFindings: recipes.fixedFindings }),
+    fixedFindings: recipes.fixedFindings,
     toolErrors: [patch, recipes, ...outcomes].flatMap(({ toolErrors }) => toolErrors),
     notes: [...notesOf([patch, recipes, ...outcomes]), ...linkNote(links)],
   };

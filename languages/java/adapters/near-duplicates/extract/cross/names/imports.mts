@@ -94,7 +94,7 @@ function codeAndTags(text: string): string[] {
 }
 
 function mentions(name: string, texts: readonly string[]): boolean {
-  return wordIn(name, texts, '(?<![.\\w$])');
+  return wordIn(name, texts, /(?<![.\w$])/u);
 }
 
 export function unusedImports(

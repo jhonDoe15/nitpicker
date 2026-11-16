@@ -162,7 +162,7 @@ export function readRealInside(
 export const resolveInside: (root: string, relative: string) => string | undefined =
   untypedResolveInside;
 
-export function wordIn(name: string, texts: readonly string[], before: string): boolean {
-  const word = new RegExp(`${before}${escapeRegExp(name)}(?![\\w$])`, 'u');
+export function wordIn(name: string, texts: readonly string[], before: RegExp): boolean {
+  const word = new RegExp(`${before.source}${escapeRegExp(name)}(?![\\w$])`, 'u');
   return texts.some((text) => word.test(text));
 }

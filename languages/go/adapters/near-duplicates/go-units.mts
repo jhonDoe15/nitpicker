@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Node } from 'web-tree-sitter';
-import type { Converted, ShapeNode } from '../../../java/adapters/near-duplicates/jvm-types.mts';
+import type { Converted } from '../../../java/adapters/near-duplicates/jvm-types.mts';
 import { EXPRESSIONS } from './tree/expressions.mts';
 import {
   at,

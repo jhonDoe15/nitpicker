@@ -12,7 +12,6 @@ import {
   textOf,
   typeNode,
 } from '../tree/nodes.mts';
-import { placedWithSnippet } from '../jvm-views.mts';
 import { callOf, operatorText } from './calls.mts';
 import { bodyOf } from './statements.mts';
 
