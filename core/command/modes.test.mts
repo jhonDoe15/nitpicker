@@ -10,6 +10,7 @@ import { finding, findingLine, policy } from '../diff/execution/test-support/ana
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { linkSentence } from './test-support/report-readers.mts';
 import type { FixtureRepository } from './test-support/fixture-types.mts';
 import { fieldOf, listOf, parseJson } from '../../shared/values/readers.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
