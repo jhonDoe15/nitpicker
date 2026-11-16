@@ -202,10 +202,10 @@ const HEADER = 'package demo;\n\nimport java.util.ArrayList;\nimport java.util.L
 export function family(
   first: string,
   second: string,
-  options: { ext?: string; shape?: boolean } = {},
+  options: { ext?: string; loop?: 'for' | 'while' } = {},
 ): RecipeSource[] {
-  const { ext = '', shape = false } = options;
-  const body = shape ? SCAN_WHILE : SCAN;
+  const { ext = '', loop = 'for' } = options;
+  const body = loop === 'while' ? SCAN_WHILE : SCAN;
   return [
     {
       path: `src/main/java/demo/${first}.java`,

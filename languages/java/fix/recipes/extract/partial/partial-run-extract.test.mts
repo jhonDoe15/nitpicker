@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applied } from '../test-support/sources.mts';
+import { applied, plannedEdits } from '../test-support/sources.mts';
 import {
   headerMethod,
   headerPair,
@@ -12,11 +12,12 @@ import { javaExtractPartialRunRecipe as recipe } from './partial-run-extract.mts
 const PATH = 'src/main/java/demo/Align.java';
 
 function plan(text: string) {
-  const { fixes, notes = [] } = recipe.plan({
-    files: [{ path: PATH, text }],
-    projectRoot: '/nonexistent',
-  });
-  return { fixes, notes, after: fixes.length === 0 ? text : applied(text, fixes[0]?.edits ?? []) };
+  const { fixes, notes } = plannedEdits(recipe, { path: PATH, text });
+  return {
+    fixes,
+    notes,
+    after: fixes.length === 0 ? text : applied(text, fixes[0]?.edits ?? []),
+  };
 }
 
 describe('javaExtractPartialRunRecipe', () => {
@@ -74,7 +75,7 @@ describe('javaExtractPartialRunRecipe', () => {
     const inits = ['new String[1]', 'new String[] {"q", "r"}'];
     const arrayed = headerPair().map((method, index) =>
       method
-        .replace('Map<String', `String tags[] = ${inits[index]};\n        Map<String`)
+        .replace('Map<String', `String tags[] = ${String(inits[index])};\n        Map<String`)
         .replace('< limit', '< limit + tags.length'),
     );
     const { after } = plan(partialClassOf(...arrayed));
@@ -132,12 +133,12 @@ describe('javaExtractPartialRunRecipe', () => {
     const methods = [
       validationMethod('int', 'first', {
         message: 'name is required',
-        binds: false,
+        trimmed: 'unbound',
         after: '        return name.length() + age;',
       }),
       validationMethod('int', 'second', {
         message: 'new name is required',
-        binds: false,
+        trimmed: 'unbound',
         after: '        int total = name.length() * age;\n        return total;',
       }),
     ];

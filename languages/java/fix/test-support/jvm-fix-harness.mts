@@ -1,17 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
+import type { FixOutcome } from '../../../../core/fix/typed/fix-types.mts';
+import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import type { FakeJvmTools } from './fake-jvm-tools.mts';
+import type { FakeJvmTools, RecordedLaunch } from './fake-jvm-tools.mts';
 import { javaFixOptions } from './fix-options.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
@@ -27,10 +28,6 @@ export const TOOLS_PROPERTY = '-Pnitpicker.fix.tools=';
 type Files = Readonly<Record<string, string>>;
 type Repository = { readonly root: string };
 type FixPolicy = { readonly headPolicy?: object; readonly config?: object };
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
 
 export function linkSentence(key: string): string {
   return textOf(callUntyped(untypedLinkSentence, key));
@@ -48,7 +45,7 @@ export function fix(
   repository: Repository,
   tools: FakeJvmTools,
   { headPolicy = {}, config = { preset: 'java' } }: FixPolicy = {},
-) {
+): FixOutcome {
   return fixWorkingTree(
     javaFixOptions({
       root: repository.root,
@@ -60,10 +57,10 @@ export function fix(
 }
 
 export function read(repository: Repository, name: string): string {
-  return readFileSync(path.join(repository.root, name), 'utf8');
+  return readFileSync(textOf(containedPath(repository.root, name)), 'utf8');
 }
 
-export function launchOf({ launches }: FakeJvmTools, index = 0) {
+export function launchOf({ launches }: FakeJvmTools, index = 0): Omit<RecordedLaunch, 'cwd'> {
   const found = launches[index];
   if (found === undefined) {
     throw new Error(`no launch ${String(index)}`);

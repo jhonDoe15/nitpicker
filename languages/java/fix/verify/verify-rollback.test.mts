@@ -1,19 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  fixtureGit,
-  useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mts';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { defineRecipes } from '../../../../core/fix/test-support/engine-views.mts';
 import type { RecipeSpec } from '../../../../core/fix/test-support/engine-views.mts';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
 import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import { fakeJvmTools } from '../test-support/fake-jvm-tools.mts';
 import { javaFixOptions } from '../test-support/fix-options.mts';
+import { topic } from '../test-support/jvm-fix-harness.mts';
 
-const { createGitRepository, temporaryRoot } = useGitFixtures();
 const JAVA = 'src/main/java/demo';
 const KT = 'src/main/kotlin/demo';
 const BUILDS = {
@@ -98,14 +93,6 @@ function sources(directory: string, extension: string): Files {
   );
 }
 
-function topicRepository(base: Files, changes: Files): { readonly root: string } {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
-  const repository = createGitRepository(base, { baseRef: 'base' });
-  fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
-  writeFiles(repository.root, changes);
-  return repository;
-}
-
 function fixTopic({
   base,
   changes,
@@ -115,7 +102,7 @@ function fixTopic({
   readonly changes: Files;
   readonly config: object;
 }): Run {
-  const repository = topicRepository(base, changes);
+  const repository = topic(base, changes);
   const result = fixWorkingTree(
     javaFixOptions({
       root: repository.root,
@@ -185,7 +172,7 @@ describe('--fix verifies the recipes it applied', () => {
   });
   it('verifies nothing when no recipe applied', () => {
     const analyze = vi.fn();
-    const repository = topicRepository(BUILDS.gradle, {
+    const repository = topic(BUILDS.gradle, {
       [`${JAVA}/Plain.java`]: 'class Plain {}\n',
     });
 

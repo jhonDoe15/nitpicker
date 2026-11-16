@@ -1,6 +1,6 @@
 import { symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mts';
 import {
   GOOGLE_COORDINATES,
@@ -15,6 +15,10 @@ import {
   toolsProperty,
   topic,
 } from './test-support/jvm-fix-harness.mts';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('--fix for Kotlin', () => {
   const kotlin = { preset: 'kotlin', kotlin: { formatter: 'ktlint' } };

@@ -1,23 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
-import { applied } from '../test-support/sources.mts';
+import { appliedPlan } from '../test-support/sources.mts';
 import { compileStatus, javacAvailable } from '../test-support/javac.mts';
 
 const PATH = 'src/main/java/demo/Wide.java';
 
 function plan(text: string) {
-  const { fixes, notes = [] } = recipe.plan({
-    files: [{ path: PATH, text }],
-    projectRoot: '/nonexistent',
-  });
-  return {
-    fixes,
-    notes,
-    after: applied(
-      text,
-      fixes.flatMap(({ edits }) => edits),
-    ),
-  };
+  return appliedPlan(recipe, { path: PATH, text });
 }
 
 function reasons({ notes }: { notes: readonly string[] }) {

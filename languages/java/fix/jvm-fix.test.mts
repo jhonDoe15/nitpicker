@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mts';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mts';
@@ -20,6 +20,10 @@ import {
 
 const MAVEN = { 'pom.xml': '<project/>\n' };
 const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}\//u;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('--fix for Java', () => {
   it('formats the changed Java files with google-java-format and leaves the rest alone', () => {

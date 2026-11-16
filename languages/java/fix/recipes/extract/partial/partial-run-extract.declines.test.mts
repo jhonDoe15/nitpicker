@@ -21,7 +21,7 @@ function planned(text: string, path = PATH) {
 }
 
 function note(line: number, reason: string): string[] {
-  return [`--fix left ${PATH}:${line} near-duplicate: ${reason}`];
+  return [`--fix left ${PATH}:${String(line)} near-duplicate: ${reason}`];
 }
 
 function spans(text: string, [first, last]: readonly [string, string]): Span[] {
@@ -166,7 +166,7 @@ describe('javaExtractPartialRunRecipe declines', () => {
     const methods = ['first', 'second'].map((name) =>
       validationMethod('int', name, {
         message: `${name} needs a name`,
-        binds: false,
+        trimmed: 'unbound',
         after: '        throw new IllegalStateException("unreachable");',
       }),
     );

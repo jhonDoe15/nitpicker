@@ -9,7 +9,7 @@ const LOOP = `        Map<String, String> headers = new TreeMap<>();
         List<String> names = new ArrayList<>(headers.keySet());`;
 
 type HeaderOptions = { before?: string; after: string; loop?: string };
-type ValidationOptions = { message: string; after: string; binds?: boolean };
+type ValidationOptions = { message: string; after: string; trimmed?: 'bound' | 'unbound' };
 
 export function headerMethod(type: string, name: string, options: HeaderOptions): string {
   const { before = '', after, loop = LOOP } = options;
@@ -40,8 +40,8 @@ function checks(message: string): string {
 }
 
 export function validationMethod(type: string, name: string, options: ValidationOptions): string {
-  const { message, after, binds = true } = options;
-  const bound = binds ? '\n        String trimmed = name.trim().toLowerCase();' : '';
+  const { message, after, trimmed = 'bound' } = options;
+  const bound = trimmed === 'bound' ? '\n        String trimmed = name.trim().toLowerCase();' : '';
   return `    ${type} ${name}(String name, int age) {\n${checks(message)}${bound}\n${after}\n    }\n`;
 }
 

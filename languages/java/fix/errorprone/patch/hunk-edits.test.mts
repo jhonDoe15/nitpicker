@@ -65,7 +65,7 @@ describe('hunkEdit', () => {
   it('applies a second time only if the old lines are back', () => {
     const once = applied(SOURCE, OVERRIDE);
 
-    expect(once).toBeDefined();
+    expect(typeof once).toBe('string');
     expect(hunkEdit(once ?? '', OVERRIDE)).toBeUndefined();
   });
 

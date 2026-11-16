@@ -1,25 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { repositoryBlocks, resolutionSettings } from './project-repositories.mts';
 
-const roots: string[] = [];
+const { tree: project, cleanup } = temporaryTrees('nitpicker-repositories-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-repositories-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+afterEach(cleanup);
 
 const GROOVY_SETTINGS = `pluginManagement {
   repositories { gradlePluginPortal() }
