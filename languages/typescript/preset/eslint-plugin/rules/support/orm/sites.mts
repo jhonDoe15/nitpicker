@@ -1,8 +1,15 @@
-import { callChain } from './chains.mts';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { callChain, type CallChain, type OrmKind, type OrmSite } from './chains.mts';
 import { builderSite } from './builders.mts';
 import { modelSite } from './models.mts';
 
-export function ormSite(call, kind, orms) {
+export type FoundSite = OrmSite & { readonly chain: CallChain };
+
+export function ormSite(
+  call: TSESTree.Node,
+  kind: OrmKind,
+  orms: readonly string[],
+): FoundSite | undefined {
   if (orms.length === 0) {
     return undefined;
   }

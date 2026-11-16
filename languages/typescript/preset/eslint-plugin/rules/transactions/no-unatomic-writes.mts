@@ -1,11 +1,19 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { nameOf } from '../typed/node-views.mts';
+import type { FunctionNode } from '../typed/syntax-views.mts';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { estreeCallView } from '../support/io/call-views.mts';
 import { isEstreeConsumed } from '../support/flow/consumed.mts';
 import { ormSite } from '../support/orm/sites.mts';
 import { rootNode } from '../support/orm/chains.mts';
-import { clientOrigin, mentionsTransaction, transactionCallback } from './clients.mts';
+import {
+  clientOrigin,
+  mentionsTransaction,
+  transactionCallback,
+  type ClientScope,
+} from './clients.mts';
 import { inExclusiveBranches } from './exclusive-branches.mts';
-import { isTransactionalUnit, unitWrites } from './writes-in-units.mts';
+import { isTransactionalUnit, unitWrites, type OrmCall } from './writes-in-units.mts';
 
 const OPTIONS_INDEX = new Map([
   ['create', 1],
@@ -23,20 +31,28 @@ const WHAT_TO_DO = [
   '(`upsert`, `insert ... on conflict`).',
 ].join(' ');
 
-function sequelizeEscapes(found, { context, fn }) {
+function sequelizeEscapes(found: OrmCall, { context, fn }: ClientScope): boolean {
   const { site, call } = found;
-  const options = call.arguments[OPTIONS_INDEX.get(site.chain.steps.at(-1).name)];
+  const method = site.chain.steps.at(-1)?.name;
+  const index = method === undefined ? undefined : OPTIONS_INDEX.get(method);
+  const options = index === undefined ? undefined : call.arguments[index];
   if (mentionsTransaction(call.arguments, context, fn)) {
     return false;
   }
-  const open =
-    options === undefined ||
-    (options.type === 'ObjectExpression' &&
-      options.properties.every((property) => property.type === 'Property'));
-  return open && !options?.properties?.some((property) => property.key?.name === 'transaction');
+  if (options === undefined) {
+    return true;
+  }
+  return (
+    options.type === AST_NODE_TYPES.ObjectExpression &&
+    options.properties.every((property) => property.type === AST_NODE_TYPES.Property) &&
+    !options.properties.some(
+      (property) =>
+        property.type === AST_NODE_TYPES.Property && nameOf(property.key) === 'transaction',
+    )
+  );
 }
 
-function escapes(found, scope) {
+function escapes(found: OrmCall, scope: ClientScope): boolean {
   const { site, call } = found;
   const { context, fn } = scope;
   if (site.orm === 'mikro') {
@@ -46,15 +62,17 @@ function escapes(found, scope) {
     return sequelizeEscapes(found, scope);
   }
   const root = rootNode(call);
-  const origin = root?.type === 'Identifier' ? clientOrigin(root, scope) : 'this';
+  const origin = root?.type === AST_NODE_TYPES.Identifier ? clientOrigin(root, scope) : 'this';
   return (
     root !== undefined &&
-    ['this', 'other'].includes(origin) &&
+    (origin === 'this' || origin === 'other') &&
     !mentionsTransaction(call.arguments, context, fn)
   );
 }
 
-function conflictingPair(writes) {
+function conflictingPair(
+  writes: readonly OrmCall[],
+): { readonly first: OrmCall; readonly second: OrmCall } | undefined {
   for (const [index, second] of writes.entries()) {
     const first = writes
       .slice(0, index)
@@ -70,7 +88,11 @@ function conflictingPair(writes) {
   return undefined;
 }
 
-export const rule = {
+type Options = readonly [
+  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
+];
+
+export const rule: TSESLint.RuleModule<'escaped' | 'separate', Options> = {
   meta: {
     type: 'problem',
     docs: {
@@ -105,21 +127,21 @@ export const rule = {
     if (orms.length === 0) {
       return {};
     }
-    function checkEscape(call) {
+    function checkEscape(call: TSESTree.CallExpression): void {
       const fn = isEstreeConsumed(call) ? transactionCallback(call) : undefined;
       const site = fn === undefined ? undefined : ormSite(call, 'write', orms);
-      if (site !== undefined && escapes({ site, call }, { context, fn })) {
+      if (site !== undefined && fn !== undefined && escapes({ site, call }, { context, fn })) {
         context.report({
           node: call,
           messageId: 'escaped',
           data: {
-            client: estreeCallView(call).label,
-            opener: estreeCallView(fn.parent).label,
+            client: estreeCallView(call, undefined).label,
+            opener: estreeCallView(fn.parent, undefined).label,
           },
         });
       }
     }
-    function checkUnit(fn) {
+    function checkUnit(fn: FunctionNode): void {
       if (
         !opensTransactions ||
         estreeRunsWithCaller(fn) ||
@@ -133,8 +155,8 @@ export const rule = {
           node: pair.second.call,
           messageId: 'separate',
           data: {
-            first: estreeCallView(pair.first.call).label,
-            second: estreeCallView(pair.second.call).label,
+            first: estreeCallView(pair.first.call, undefined).label,
+            second: estreeCallView(pair.second.call, undefined).label,
           },
         });
       }

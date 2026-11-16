@@ -1,9 +1,15 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { estreeCallView } from '../support/io/call-views.mts';
 import { decidedWrite, unitReads } from './check-then-write.mts';
+import type { FunctionNode } from '../typed/syntax-views.mts';
 import { isTransactionalUnit, unitWrites } from './writes-in-units.mts';
 
-export const rule = {
+type Options = readonly [
+  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
+];
+
+export const rule: TSESLint.RuleModule<'race', Options> = {
   meta: {
     type: 'suggestion',
     docs: {
@@ -35,7 +41,7 @@ export const rule = {
     if (orms.length === 0 || !opensTransactions) {
       return {};
     }
-    function checkUnit(fn) {
+    function checkUnit(fn: FunctionNode): void {
       if (estreeRunsWithCaller(fn) || isTransactionalUnit(fn, context.sourceCode.visitorKeys)) {
         return;
       }
@@ -46,7 +52,7 @@ export const rule = {
           context.report({
             node: write.call,
             messageId: 'race',
-            data: { read: estreeCallView(read.call).label },
+            data: { read: estreeCallView(read.call, undefined).label },
           });
         }
       }

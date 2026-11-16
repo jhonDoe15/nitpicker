@@ -1,5 +1,7 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { typeServices } from '../../security/security-values.mts';
+import type TypeScript from 'typescript';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { ts } from '../../typed/typescript-views.mts';
+import { typeServices, type Context } from '../../security/security-values.mts';
 
 const LOOSE_TYPES = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
 const COLUMN_DECORATORS = new Set([
@@ -20,7 +22,7 @@ const COLUMN_DECORATORS = new Set([
   'Unique',
 ]);
 
-function decoratorNames(declaration) {
+function decoratorNames(declaration: TypeScript.Declaration): string[] {
   const decorators = ts.canHaveDecorators(declaration) ? (ts.getDecorators(declaration) ?? []) : [];
   return decorators.map(({ expression }) => {
     const callee = ts.isCallExpression(expression) ? expression.expression : expression;
@@ -28,13 +30,13 @@ function decoratorNames(declaration) {
   });
 }
 
-function isColumn(declaration) {
+function isColumn(declaration: TypeScript.Declaration): boolean {
   const isProperty = ts.isPropertyDeclaration(declaration) || ts.isPropertySignature(declaration);
   const names = decoratorNames(declaration);
   return isProperty && (names.length === 0 || names.some((name) => COLUMN_DECORATORS.has(name)));
 }
 
-export function isModelField(context, awaited, name) {
+export function isModelField(context: Context, awaited: TSESTree.Node, name: string): boolean {
   const services = typeServices(context);
   if (services === undefined) {
     return false;

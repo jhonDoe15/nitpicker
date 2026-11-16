@@ -1,22 +1,33 @@
-import { heldScope, callsWithin } from '../effects/held-scopes.mts';
-import { isEstreeConsumed } from '../support/flow/consumed.mts';
-import { childrenOf } from '../loops/loop-shapes.mts';
-import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
+import { callsWithin, heldScope } from '../effects/held-scopes.mts';
+import { childrenOf } from '../loops/loop-shapes.mts';
+import type { Context } from '../security/security-values.mts';
+import { isEstreeConsumed } from '../support/flow/consumed.mts';
 import { rootNode } from '../support/orm/chains.mts';
-import { ormSite } from '../support/orm/sites.mts';
+import { ormSite, type FoundSite } from '../support/orm/sites.mts';
+import { ancestorsOf, nameOf, type VisitorKeys } from '../typed/node-views.mts';
+import type { FunctionNode } from '../typed/syntax-views.mts';
 import { openerCallback } from './clients.mts';
+
+const { DefinitionType } = TSESLint.Scope;
+
+export type OrmCall = { readonly call: TSESTree.CallExpression; readonly site: FoundSite };
 
 const TRANSACTION_NAMES =
   /^(?:tx|trx|txn|t|manager|em|runner|queryRunner|transaction|entityManager)$/u;
 const BEGINNERS = new Set(['begin', 'beginTransaction', 'startTransaction']);
 const TRANSACTIONAL_DECORATORS = new Set(['Transactional', 'Transaction']);
 
-function mentionsTransactionName(args, visitorKeys) {
+function mentionsTransactionName(
+  args: readonly TSESTree.Node[],
+  visitorKeys: VisitorKeys,
+): boolean {
   const pending = [...args];
   for (const node of pending) {
-    const named = node.type === 'Identifier' && TRANSACTION_NAMES.test(node.name);
-    const keyed = node.type === 'Property' && TRANSACTION_NAMES.test(node.key.name ?? '');
+    const named = node.type === AST_NODE_TYPES.Identifier && TRANSACTION_NAMES.test(node.name);
+    const keyed =
+      node.type === AST_NODE_TYPES.Property && TRANSACTION_NAMES.test(nameOf(node.key) ?? '');
     if (named || keyed) {
       return true;
     }
@@ -25,51 +36,70 @@ function mentionsTransactionName(args, visitorKeys) {
   return false;
 }
 
-function rootIsParameter(call, context) {
+function rootIsParameter(call: TSESTree.Node, context: Context): boolean {
   const root = rootNode(call);
   const definition =
-    root?.type === 'Identifier' ? findVariable(context, root, root.name)?.defs[0] : undefined;
-  return definition?.type === 'Parameter';
+    root?.type === AST_NODE_TYPES.Identifier
+      ? findVariable(context, root, root.name)?.defs[0]
+      : undefined;
+  return definition?.type === DefinitionType.Parameter;
 }
 
-function inFallbackBlock(call) {
+function inFallbackBlock(call: TSESTree.Node): boolean {
   return ancestorsOf(call).some(
     (ancestor) =>
-      ancestor.type === 'CatchClause' ||
-      (ancestor.type === 'TryStatement' &&
+      ancestor.type === AST_NODE_TYPES.CatchClause ||
+      (ancestor.type === AST_NODE_TYPES.TryStatement &&
         ancestor.finalizer !== null &&
         ancestor.finalizer.range[0] <= call.range[0]),
   );
 }
 
-function beginsTransaction(unit, visitorKeys) {
-  return callsWithin(unit.body, visitorKeys).some(
-    (call) =>
-      call.type === 'CallExpression' &&
-      call.callee.type === 'MemberExpression' &&
-      BEGINNERS.has(call.callee.property.name),
-  );
+function beginsTransaction(unit: FunctionNode, visitorKeys: VisitorKeys): boolean {
+  return callsWithin(unit.body, visitorKeys).some((call) => {
+    if (call.type !== AST_NODE_TYPES.CallExpression) {
+      return false;
+    }
+    const name =
+      call.callee.type === AST_NODE_TYPES.MemberExpression
+        ? nameOf(call.callee.property)
+        : undefined;
+    return name !== undefined && BEGINNERS.has(name);
+  });
 }
 
-export function isTransactionalUnit(unit, visitorKeys) {
-  const decorators = unit.parent?.decorators ?? [];
-  return (
-    decorators.some((decorator) =>
-      TRANSACTIONAL_DECORATORS.has(decorator.expression.callee?.name ?? decorator.expression.name),
-    ) || beginsTransaction(unit, visitorKeys)
-  );
+function hasTransactionalDecorator(unit: FunctionNode): boolean {
+  const { parent } = unit;
+  const decorators = 'decorators' in parent ? parent.decorators : [];
+  return decorators.some(({ expression }) => {
+    const name = nameOf(
+      expression.type === AST_NODE_TYPES.CallExpression ? expression.callee : expression,
+    );
+    return name !== undefined && TRANSACTIONAL_DECORATORS.has(name);
+  });
 }
 
-function isOutsideTransaction(call, context) {
+export function isTransactionalUnit(unit: FunctionNode, visitorKeys: VisitorKeys): boolean {
+  return hasTransactionalDecorator(unit) || beginsTransaction(unit, visitorKeys);
+}
+
+function isOutsideTransaction(call: TSESTree.Node, context: Context): boolean {
   return (
     openerCallback(call) === undefined && heldScope('transaction', call, context) === undefined
   );
 }
 
-export function unitWrites(body, context, orms) {
+export function unitWrites(
+  body: TSESTree.Node,
+  context: Context,
+  orms: readonly string[],
+): OrmCall[] {
   const { visitorKeys } = context.sourceCode;
   return callsWithin(body, visitorKeys)
-    .filter((call) => call.type === 'CallExpression' && isEstreeConsumed(call))
+    .filter(
+      (call): call is TSESTree.CallExpression =>
+        call.type === AST_NODE_TYPES.CallExpression && isEstreeConsumed(call),
+    )
     .flatMap((call) => {
       const site = ormSite(call, 'write', orms);
       const free =

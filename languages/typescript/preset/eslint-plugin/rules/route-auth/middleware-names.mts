@@ -1,3 +1,6 @@
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { nameOf } from '../typed/node-views.mts';
+
 const FASTIFY_OPTIONS = new Set([
   'preHandler',
   'onRequest',
@@ -6,36 +9,40 @@ const FASTIFY_OPTIONS = new Set([
   'beforeHandler',
 ]);
 
-export function middlewareName(node) {
+export function middlewareName(node: TSESTree.Node): string | undefined {
   const pending = [node];
   for (const current of pending) {
-    if (current.type === 'Identifier') {
+    if (current.type === AST_NODE_TYPES.Identifier) {
       return current.name;
     }
-    if (current.type === 'MemberExpression' && !current.computed) {
-      return current.property.name;
+    if (current.type === AST_NODE_TYPES.MemberExpression && !current.computed) {
+      return nameOf(current.property);
     }
-    if (current.type === 'CallExpression') {
+    if (current.type === AST_NODE_TYPES.CallExpression) {
       pending.push(current.callee);
     }
   }
   return undefined;
 }
 
-function nestedItems(item) {
-  if (item.type === 'ArrayExpression') {
+function nestedItems(item: TSESTree.Node): TSESTree.Node[] | undefined {
+  if (item.type === AST_NODE_TYPES.ArrayExpression) {
     return item.elements.filter((element) => element !== null);
   }
-  if (item.type === 'ObjectExpression') {
+  if (item.type === AST_NODE_TYPES.ObjectExpression) {
     return item.properties
-      .filter((property) => property.type === 'Property' && FASTIFY_OPTIONS.has(property.key.name))
+      .filter(
+        (property): property is TSESTree.Property =>
+          property.type === AST_NODE_TYPES.Property &&
+          FASTIFY_OPTIONS.has(nameOf(property.key) ?? ''),
+      )
       .map((property) => property.value);
   }
   return undefined;
 }
 
-export function middlewareIn(arg) {
-  const names = [];
+export function middlewareIn(arg: TSESTree.Node): string[] {
+  const names: string[] = [];
   const pending = [arg];
   for (const item of pending) {
     const nested = nestedItems(item);

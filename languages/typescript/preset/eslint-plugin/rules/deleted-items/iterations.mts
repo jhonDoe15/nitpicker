@@ -1,6 +1,22 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
+import { ts } from '../typed/typescript-views.mts';
 import { isHelperName } from '../queries/soft-delete/columns.mts';
-import { assignsFlag, flagOf, mentionsFlag } from './flags.mts';
+import { assignsFlag, flagOf, mentionsFlag, type Flag } from './flags.mts';
+
+type Callback = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
+type Parts = {
+  readonly node: TypeScript.Node;
+  readonly body: TypeScript.Node;
+  readonly receiver: TypeScript.Expression;
+  readonly kind: string;
+};
+export type Iteration = {
+  readonly node: TypeScript.Node;
+  readonly kind: string;
+  readonly flag: Flag;
+  readonly guarded: boolean;
+  readonly type: string;
+};
 
 const CALLBACK_METHODS = new Set([
   'map',
@@ -15,28 +31,26 @@ const CALLBACK_METHODS = new Set([
   'flatMap',
 ]);
 
-const CALLBACK_KINDS = [ts.SyntaxKind.ArrowFunction, ts.SyntaxKind.FunctionExpression];
-
-function isCallbackFunction(node) {
-  return node !== undefined && CALLBACK_KINDS.includes(node.kind);
+function isCallbackFunction(node: TypeScript.Node | undefined): node is Callback {
+  return node !== undefined && (ts.isArrowFunction(node) || ts.isFunctionExpression(node));
 }
 
-function unparenthesized(node) {
-  const pending = [node];
-  for (const current of pending) {
-    if (ts.isParenthesizedExpression(current)) {
-      pending.push(current.expression);
-    }
+function unparenthesized(node: TypeScript.Expression): TypeScript.Expression {
+  let current = node;
+  while (ts.isParenthesizedExpression(current)) {
+    current = current.expression;
   }
-  return pending.at(-1);
+  return current;
 }
 
-function isHelperReference(node) {
-  const name = ts.isPropertyAccessExpression(node) ? node.name.text : node.text;
-  return (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) && isHelperName(name);
+function isHelperReference(node: TypeScript.Expression): boolean {
+  if (ts.isPropertyAccessExpression(node)) {
+    return isHelperName(node.name.text);
+  }
+  return ts.isIdentifier(node) && isHelperName(node.text);
 }
 
-function callsHelperOn(body, elementName) {
+function callsHelperOn(body: TypeScript.Node, elementName: string | undefined): boolean {
   const pending = [body];
   for (const node of pending) {
     const helper = ts.isCallExpression(node) && isHelperReference(node.expression);
@@ -50,7 +64,7 @@ function callsHelperOn(body, elementName) {
   return false;
 }
 
-function callGuards(call, name) {
+function callGuards(call: TypeScript.CallExpression, name: string): boolean {
   const { expression } = call;
   const method = ts.isPropertyAccessExpression(expression) ? expression.name.text : undefined;
   const callback = call.arguments.find(isCallbackFunction);
@@ -62,7 +76,7 @@ function callGuards(call, name) {
   );
 }
 
-function receiverGuards(receiver, name) {
+function receiverGuards(receiver: TypeScript.Expression, name: string): boolean {
   const pending = [unparenthesized(receiver)];
   for (const current of pending) {
     if (!ts.isCallExpression(current)) {
@@ -79,11 +93,15 @@ function receiverGuards(receiver, name) {
   return false;
 }
 
-function isArray(checker, type) {
+function isArray(checker: TypeScript.TypeChecker, type: TypeScript.Type): boolean {
   return checker.isArrayType(type) || checker.isTupleType(type);
 }
 
-function describe(checker, element, parts) {
+function describe(
+  checker: TypeScript.TypeChecker,
+  element: TypeScript.ParameterDeclaration | TypeScript.VariableDeclaration,
+  parts: Parts,
+): Iteration | undefined {
   const type = checker.getTypeAtLocation(element);
   const flag = flagOf(checker, checker.getNonNullableType(type), element);
   if (flag === undefined) {
@@ -107,16 +125,20 @@ function describe(checker, element, parts) {
   };
 }
 
-function callbackIteration(checker, node) {
+function callbackIteration(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.CallExpression,
+): Iteration | undefined {
   const { expression } = node;
   const callback = node.arguments[0];
-  const isCandidate =
-    ts.isPropertyAccessExpression(expression) &&
-    CALLBACK_METHODS.has(expression.name.text) &&
-    isCallbackFunction(callback) &&
-    callback.parameters.length > 0 &&
-    isArray(checker, checker.getTypeAtLocation(expression.expression));
-  if (!isCandidate) {
+  const [parameter] = isCallbackFunction(callback) ? callback.parameters : [];
+  if (
+    !ts.isPropertyAccessExpression(expression) ||
+    !CALLBACK_METHODS.has(expression.name.text) ||
+    !isCallbackFunction(callback) ||
+    parameter === undefined ||
+    !isArray(checker, checker.getTypeAtLocation(expression.expression))
+  ) {
     return undefined;
   }
   const parts = {
@@ -125,28 +147,39 @@ function callbackIteration(checker, node) {
     receiver: expression.expression,
     kind: expression.name.text,
   };
-  return describe(checker, callback.parameters[0], parts);
+  return describe(checker, parameter, parts);
 }
 
-function loopIteration(checker, node) {
+function loopIteration(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.ForOfStatement,
+): Iteration | undefined {
   const declaration = ts.isVariableDeclarationList(node.initializer)
     ? node.initializer.declarations[0]
     : undefined;
-  const isCandidate = declaration !== undefined && ts.isIdentifier(declaration.name);
+  if (declaration === undefined || !ts.isIdentifier(declaration.name)) {
+    return undefined;
+  }
   const parts = { node, body: node.statement, receiver: node.expression, kind: 'for...of' };
-  return isCandidate ? describe(checker, declaration, parts) : undefined;
+  return describe(checker, declaration, parts);
 }
 
-function iterationAt(checker, node) {
+function iterationAt(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): Iteration | undefined {
   if (ts.isCallExpression(node)) {
     return callbackIteration(checker, node);
   }
   return ts.isForOfStatement(node) ? loopIteration(checker, node) : undefined;
 }
 
-export function iterationsIn(sourceFile, checker) {
-  const found = [];
-  const pending = [sourceFile];
+export function iterationsIn(
+  sourceFile: TypeScript.SourceFile,
+  checker: TypeScript.TypeChecker,
+): Iteration[] {
+  const found: Iteration[] = [];
+  const pending: TypeScript.Node[] = [sourceFile];
   for (const node of pending) {
     const iteration = iterationAt(checker, node);
     if (iteration !== undefined) {

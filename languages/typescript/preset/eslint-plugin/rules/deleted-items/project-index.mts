@@ -1,25 +1,43 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
+import { ts } from '../typed/typescript-views.mts';
 import { flagOf } from './flags.mts';
-import { iterationsIn } from './iterations.mts';
+import { iterationsIn, type Iteration } from './iterations.mts';
+
+type Entry = {
+  readonly name: string;
+  alias: string | undefined;
+  total: number;
+  guarded: number;
+  readonly helpers: Map<string, number>;
+};
+export type Followed = {
+  readonly name: string;
+  readonly alias: string | undefined;
+  readonly helper: string | undefined;
+  readonly share: number;
+};
 
 const MIN_ITERATIONS = 5;
 const MIN_SHARE = 0.8;
 const TEST_PATH =
   /(?:^|\/)(?:test|tests|__tests__|__mocks__|test-support|e2e|fixtures|__fixtures__)\/|\.(?:test|spec)\.[^/]+$/u;
-const fileIterations = new WeakMap();
-const indexes = new WeakMap();
+const fileIterations = new WeakMap<TypeScript.SourceFile, Iteration[]>();
+const indexes = new WeakMap<TypeScript.Program, Map<string, Entry>>();
 
-export function iterationsOf(sourceFile, checker) {
+export function iterationsOf(
+  sourceFile: TypeScript.SourceFile,
+  checker: TypeScript.TypeChecker,
+): Iteration[] {
   return cachedValue(fileIterations, sourceFile, () => iterationsIn(sourceFile, checker));
 }
 
-function isProjectSource(file) {
+function isProjectSource(file: TypeScript.SourceFile): boolean {
   const name = file.fileName.replaceAll('\\', '/');
   return !(file.isDeclarationFile || name.includes('/node_modules/') || TEST_PATH.test(name));
 }
 
-function calleeName(call) {
+function calleeName(call: TypeScript.CallExpression): string | undefined {
   const { expression } = call;
   if (ts.isIdentifier(expression)) {
     return expression.text;
@@ -27,9 +45,20 @@ function calleeName(call) {
   return ts.isPropertyAccessExpression(expression) ? expression.name.text : undefined;
 }
 
-function narrowedHelper(call, checker) {
+function isReference(type: TypeScript.Type): type is TypeScript.TypeReference {
+  return (
+    'objectFlags' in type &&
+    typeof type.objectFlags === 'number' &&
+    (type.objectFlags & ts.ObjectFlags.Reference) !== 0
+  );
+}
+
+function narrowedHelper(
+  call: TypeScript.CallExpression,
+  checker: TypeScript.TypeChecker,
+): { readonly key: string; readonly name: string } | undefined {
   const type = checker.getTypeAtLocation(call);
-  if (!checker.isArrayType(type)) {
+  if (!checker.isArrayType(type) || !isReference(type)) {
     return undefined;
   }
   const [element] = checker.getTypeArguments(type);
@@ -38,8 +67,12 @@ function narrowedHelper(call, checker) {
   return flag?.narrowed && name !== undefined ? { key: flag.key, name } : undefined;
 }
 
-function recordHelpers(sourceFile, checker, entries) {
-  const pending = [sourceFile];
+function recordHelpers(
+  sourceFile: TypeScript.SourceFile,
+  checker: TypeScript.TypeChecker,
+  entries: Map<string, Entry>,
+): void {
+  const pending: TypeScript.Node[] = [sourceFile];
   for (const node of pending) {
     const helper = ts.isCallExpression(node) ? narrowedHelper(node, checker) : undefined;
     if (helper !== undefined) {
@@ -50,13 +83,13 @@ function recordHelpers(sourceFile, checker, entries) {
   }
 }
 
-function buildIndex(program) {
+function buildIndex(program: TypeScript.Program): Map<string, Entry> {
   const checker = program.getTypeChecker();
   const files = program.getSourceFiles().filter(isProjectSource);
-  const entries = new Map();
+  const entries = new Map<string, Entry>();
   for (const file of files) {
     for (const { flag, guarded } of iterationsOf(file, checker)) {
-      const entry = entries.get(flag.key) ?? {
+      const entry: Entry = entries.get(flag.key) ?? {
         name: flag.name,
         alias: undefined,
         total: 0,
@@ -75,7 +108,7 @@ function buildIndex(program) {
   return entries;
 }
 
-export function followedFlag(program, key) {
+export function followedFlag(program: TypeScript.Program, key: string): Followed | undefined {
   const entry = cachedValue(indexes, program, buildIndex).get(key);
   const follows =
     entry !== undefined &&
@@ -84,7 +117,7 @@ export function followedFlag(program, key) {
   if (!follows) {
     return undefined;
   }
-  const best = [...entry.helpers].reduce(
+  const best = [...entry.helpers].reduce<[string, number] | undefined>(
     (top, each) => (top === undefined || each[1] > top[1] ? each : top),
     undefined,
   );

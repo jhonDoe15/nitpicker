@@ -1,7 +1,8 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import { typeServices } from '../security/security-values.mts';
-import { followedFlag, iterationsOf } from './project-index.mts';
+import { followedFlag, iterationsOf, type Followed } from './project-index.mts';
 
-function allowedForms(followed) {
+function allowedForms(followed: Followed): string {
   const forms = [`a guard on \`${followed.name}\``];
   if (followed.helper !== undefined) {
     forms.push(`the helper \`${followed.helper}\``);
@@ -12,7 +13,11 @@ function allowedForms(followed) {
   return forms.join(', ');
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<
+  'unguarded',
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {

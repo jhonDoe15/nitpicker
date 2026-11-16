@@ -1,5 +1,7 @@
-import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { typeServices } from '../../security/security-values.mts';
+import type TypeScript from 'typescript';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { ts } from '../../typed/typescript-views.mts';
+import { typeServices, type Context } from '../../security/security-values.mts';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 
 const HOOK_NAME =
@@ -10,10 +12,13 @@ const HOOK_METHODS = /^(?:addHook|before\w+|after\w+)$/u;
 const SUBSCRIBED = new Set(['listenTo', 'getSubscribedEntities']);
 const HINT =
   /EventSubscriber|EntitySubscriberInterface|addHook|\.(?:before|after)[A-Z]|hooks\s*:|version\s*:/u;
-const indexes = new WeakMap();
+type Index = { readonly names: Set<string>; global: boolean };
+export type HookStatus = 'unknown' | 'plain' | 'hooked' | 'clean';
+
+const indexes = new WeakMap<TypeScript.Program, Index>();
 const MAX_BASES = 3;
 
-function decoratorName(decorator) {
+function decoratorName(decorator: TypeScript.Decorator): string | undefined {
   const { expression } = decorator;
   const callee = ts.isCallExpression(expression) ? expression.expression : expression;
   return ts.isIdentifier(callee) ? callee.text : undefined;
@@ -21,7 +26,7 @@ function decoratorName(decorator) {
 
 const CASCADE_OPTIONS = new Set(['cascade', 'orphanRemoval', 'orphanedRowAction']);
 
-function isOptionHooked(property) {
+function isOptionHooked(property: TypeScript.ObjectLiteralElementLike): boolean {
   if (!ts.isPropertyAssignment(property)) {
     return false;
   }
@@ -33,7 +38,7 @@ function isOptionHooked(property) {
   );
 }
 
-function declaresVersion(decorator) {
+function declaresVersion(decorator: TypeScript.Decorator): boolean {
   const { expression } = decorator;
   const options = ts.isCallExpression(expression) ? expression.arguments : [];
   return options.some(
@@ -42,7 +47,7 @@ function declaresVersion(decorator) {
   );
 }
 
-function isHookDecorator(decorator) {
+function isHookDecorator(decorator: TypeScript.Decorator): boolean {
   const name = decoratorName(decorator);
   return (
     name !== undefined &&
@@ -50,14 +55,14 @@ function isHookDecorator(decorator) {
   );
 }
 
-function memberHooked(member) {
+function memberHooked(member: TypeScript.ClassElement): boolean {
   const decorators = ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : [];
   return decorators.some(isHookDecorator);
 }
 
-function returnedNames(method) {
-  const names = [];
-  function visit(node) {
+function returnedNames(method: TypeScript.MethodDeclaration): string[] {
+  const names: string[] = [];
+  function visit(node: TypeScript.Node): void {
     if (ts.isReturnStatement(node) && node.expression !== undefined) {
       const value = node.expression;
       const items = ts.isArrayLiteralExpression(value) ? [...value.elements] : [value];
@@ -71,9 +76,9 @@ function returnedNames(method) {
   return names;
 }
 
-function isSubscriber(node) {
+function isSubscriber(node: TypeScript.ClassDeclaration): boolean {
   const decorated = (ts.getDecorators(node) ?? []).some((each) =>
-    SUBSCRIBERS.has(decoratorName(each)),
+    SUBSCRIBERS.has(decoratorName(each) ?? ''),
   );
   const implemented = (node.heritageClauses ?? []).some((clause) =>
     clause.types.some((type) => SUBSCRIBERS.has(type.expression.getText())),
@@ -81,10 +86,10 @@ function isSubscriber(node) {
   return decorated || implemented;
 }
 
-function noteSubscriber(node, index) {
-  const lookup = node.members.find(
-    (member) => ts.isMethodDeclaration(member) && SUBSCRIBED.has(member.name.getText()),
-  );
+function noteSubscriber(node: TypeScript.ClassDeclaration, index: Index): void {
+  const lookup = node.members
+    .filter(ts.isMethodDeclaration)
+    .find((member) => SUBSCRIBED.has(member.name.getText()));
   const names = lookup === undefined ? [] : returnedNames(lookup);
   if (names.length === 0) {
     index.global = true;
@@ -94,26 +99,25 @@ function noteSubscriber(node, index) {
   }
 }
 
-function noteCall(node, index) {
+function noteCall(node: TypeScript.CallExpression, index: Index): void {
   const callee = node.expression;
-  const isHookCall =
-    ts.isPropertyAccessExpression(callee) &&
-    HOOK_METHODS.test(callee.name.text) &&
-    ts.isIdentifier(callee.expression);
-  const init = ts.isPropertyAccessExpression(callee) && callee.name.text === 'init';
+  if (!ts.isPropertyAccessExpression(callee) || !ts.isIdentifier(callee.expression)) {
+    return;
+  }
+  const isHookCall = HOOK_METHODS.test(callee.name.text);
   const configured =
-    init &&
+    callee.name.text === 'init' &&
     node.arguments.some(
       (argument) =>
         ts.isObjectLiteralExpression(argument) && /hooks|version/u.test(argument.getText()),
     );
-  if ((isHookCall || configured) && ts.isIdentifier(callee.expression)) {
+  if (isHookCall || configured) {
     index.names.add(callee.expression.text);
   }
 }
 
-function scan(sourceFile, index) {
-  function visit(node) {
+function scan(sourceFile: TypeScript.SourceFile, index: Index): void {
+  function visit(node: TypeScript.Node): void {
     if (ts.isClassDeclaration(node) && isSubscriber(node)) {
       noteSubscriber(node, index);
     }
@@ -125,9 +129,9 @@ function scan(sourceFile, index) {
   visit(sourceFile);
 }
 
-function programIndex(program) {
+function programIndex(program: TypeScript.Program): Index {
   return cachedValue(indexes, program, () => {
-    const index = { names: new Set(), global: false };
+    const index: Index = { names: new Set<string>(), global: false };
     for (const file of program.getSourceFiles()) {
       if (
         !file.isDeclarationFile &&
@@ -141,7 +145,10 @@ function programIndex(program) {
   });
 }
 
-function baseDeclaration(checker, declaration) {
+function baseDeclaration(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration,
+): TypeScript.ClassDeclaration | undefined {
   const clause = declaration.heritageClauses?.find(
     (each) => each.token === ts.SyntaxKind.ExtendsKeyword,
   );
@@ -150,7 +157,10 @@ function baseDeclaration(checker, declaration) {
   return symbol?.declarations?.find(ts.isClassDeclaration);
 }
 
-function classHooked(checker, declaration) {
+function classHooked(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration,
+): boolean {
   const chain = [declaration];
   for (const current of chain.slice(0, MAX_BASES)) {
     const base = baseDeclaration(checker, current);
@@ -163,7 +173,14 @@ function classHooked(checker, declaration) {
 
 const LOOSE_TYPES = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
 
-function rowClass(services, awaited) {
+function rowClass(
+  services: NonNullable<ReturnType<typeof typeServices>>,
+  awaited: TSESTree.Node,
+): {
+  readonly checker: TypeScript.TypeChecker;
+  readonly declaration: TypeScript.ClassDeclaration | undefined;
+  readonly loose: boolean;
+} {
   const checker = services.program.getTypeChecker();
   const type = services.getTypeAtLocation(awaited);
   const element = checker.getIndexTypeOfType(type, ts.IndexKind.Number);
@@ -174,7 +191,7 @@ function rowClass(services, awaited) {
   return { checker, declaration, loose };
 }
 
-export function hookStatus(context, awaited) {
+export function hookStatus(context: Context, awaited: TSESTree.Node): HookStatus {
   const services = typeServices(context);
   if (services === undefined) {
     return 'unknown';
@@ -188,6 +205,8 @@ export function hookStatus(context, awaited) {
   }
   const index = programIndex(services.program);
   const hooked =
-    index.global || index.names.has(declaration.name?.text) || classHooked(checker, declaration);
+    index.global ||
+    (declaration.name !== undefined && index.names.has(declaration.name.text)) ||
+    classHooked(checker, declaration);
   return hooked ? 'hooked' : 'clean';
 }

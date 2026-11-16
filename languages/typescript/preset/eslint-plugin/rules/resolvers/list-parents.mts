@@ -1,5 +1,6 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { typeServices } from '../security/security-values.mts';
+import type TypeScript from 'typescript';
+import { typeServices, type Context } from '../security/security-values.mts';
+import { ts } from '../typed/typescript-views.mts';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 
 const SCHEMA_DECORATORS = new Set([
@@ -13,11 +14,11 @@ const SCHEMA_DECORATORS = new Set([
 ]);
 const LIST_HINT = /(?:=>|:)\s*\[\s*[A-Za-z_]/u;
 const SDL_LIST = /:\s*\[\s*([A-Za-z_]\w*)\s*(?:!\s*)?\]/gu;
-const programNames = new WeakMap();
-const fileNames = new WeakMap();
-const parsedFiles = new WeakMap();
+const programNames = new WeakMap<TypeScript.Program, Set<string>>();
+const fileNames = new WeakMap<TypeScript.SourceFile, Set<string>>();
+const parsedFiles = new WeakMap<object, TypeScript.SourceFile>();
 
-function isSchemaDecoratorCall(arrow) {
+function isSchemaDecoratorCall(arrow: TypeScript.ArrowFunction): boolean {
   const call = arrow.parent;
   return (
     ts.isCallExpression(call) &&
@@ -28,14 +29,14 @@ function isSchemaDecoratorCall(arrow) {
   );
 }
 
-function listElement(node) {
+function listElement(node: TypeScript.ArrayLiteralExpression): string[] {
   const [only] = node.elements;
   return node.elements.length === 1 && only !== undefined && ts.isIdentifier(only)
     ? [only.text]
     : [];
 }
 
-function decoratedListNames(node) {
+function decoratedListNames(node: TypeScript.Node): string[] {
   if (!(ts.isArrowFunction(node) && isSchemaDecoratorCall(node))) {
     return [];
   }
@@ -43,7 +44,7 @@ function decoratedListNames(node) {
   return ts.isArrayLiteralExpression(body) ? listElement(body) : [];
 }
 
-function literalText(node) {
+function literalText(node: TypeScript.Node): string | undefined {
   if (ts.isStringLiteralLike(node)) {
     return node.text;
   }
@@ -52,14 +53,16 @@ function literalText(node) {
     : undefined;
 }
 
-function sdlListNames(node) {
+function sdlListNames(node: TypeScript.Node): string[] {
   const text = literalText(node);
-  return text === undefined ? [] : [...text.matchAll(SDL_LIST)].map((match) => match[1]);
+  return text === undefined
+    ? []
+    : [...text.matchAll(SDL_LIST)].flatMap((match) => (match[1] === undefined ? [] : [match[1]]));
 }
 
-function collect(sourceFile) {
-  const names = new Set();
-  function visit(node) {
+function collect(sourceFile: TypeScript.SourceFile): Set<string> {
+  const names = new Set<string>();
+  function visit(node: TypeScript.Node): void {
     for (const name of [...decoratedListNames(node), ...sdlListNames(node)]) {
       names.add(name);
     }
@@ -69,7 +72,7 @@ function collect(sourceFile) {
   return names;
 }
 
-function isCandidate(sourceFile) {
+function isCandidate(sourceFile: TypeScript.SourceFile): boolean {
   return (
     !sourceFile.isDeclarationFile &&
     !sourceFile.fileName.includes('/node_modules/') &&
@@ -77,11 +80,11 @@ function isCandidate(sourceFile) {
   );
 }
 
-function namesOfFile(sourceFile) {
+function namesOfFile(sourceFile: TypeScript.SourceFile): Set<string> {
   return cachedValue(fileNames, sourceFile, collect);
 }
 
-function namesOfProgram(program) {
+function namesOfProgram(program: TypeScript.Program): Set<string> {
   return cachedValue(
     programNames,
     program,
@@ -95,14 +98,14 @@ function namesOfProgram(program) {
   );
 }
 
-function parsedCurrentFile(context) {
+function parsedCurrentFile(context: Context): TypeScript.SourceFile {
   const { ast, text } = context.sourceCode;
   return cachedValue(parsedFiles, ast, () =>
     ts.createSourceFile(context.filename, text, ts.ScriptTarget.Latest, true),
   );
 }
 
-export function isListParent(name, context) {
+export function isListParent(name: string, context: Context): boolean {
   const services = typeServices(context);
   const names =
     services === undefined

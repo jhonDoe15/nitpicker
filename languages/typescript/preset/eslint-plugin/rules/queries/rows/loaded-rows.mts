@@ -1,38 +1,48 @@
-import { ancestorsOf } from '../../analysis/ancestry.mjs';
-import { staticKey, unwrapped } from '../../security/security-values.mts';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { staticKey, unwrapped, type Context } from '../../security/security-values.mts';
+import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
 import { callChain } from '../query-calls.mts';
 import { homeOf, outerOf } from '../result-uses.mts';
+
+export type LoadedRows = {
+  readonly reads: TSESTree.Node[];
+  readonly home: TSESTree.Node | undefined;
+};
 
 const PROJECTIONS = new Set(['select', 'columns', 'attributes', 'fields']);
 const DRIZZLE_SELECTS = new Set(['select', 'selectDistinct']);
 
-function isGuardRead(read) {
+function isGuardRead(read: TSESTree.Node): boolean {
   const outer = outerOf(read);
   const member = outer.parent;
+  if (member === undefined) {
+    return false;
+  }
   const isLength =
-    member.type === 'MemberExpression' &&
+    member.type === AST_NODE_TYPES.MemberExpression &&
     member.object === outer &&
     !member.computed &&
-    member.property.name === 'length';
+    nameOf(member.property) === 'length';
   const path = [member, ...ancestorsOf(member)];
   const test = path.find(
-    (node, index) => node.parent?.type === 'IfStatement' && node.parent.test === node && index >= 0,
+    (node) => node.parent?.type === AST_NODE_TYPES.IfStatement && node.parent.test === node,
   );
   return isLength && test !== undefined;
 }
 
-export function loadedRows(context, awaited) {
+export function loadedRows(context: Context, awaited: TSESTree.Node): LoadedRows | undefined {
   const outer = outerOf(awaited);
   const declarator = outer.parent;
-  if (declarator.type !== 'VariableDeclarator' || declarator.init !== outer) {
+  if (declarator?.type !== AST_NODE_TYPES.VariableDeclarator || declarator.init !== outer) {
     return { reads: [outer], home: homeOf(outer) };
   }
-  if (declarator.id.type !== 'Identifier') {
+  if (declarator.id.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
   const [variable] = context.sourceCode.getDeclaredVariables(declarator);
-  const writes = variable.references.filter((reference) => reference.isWrite());
-  const reads = variable.references
+  const references = variable?.references ?? [];
+  const writes = references.filter((reference) => reference.isWrite());
+  const reads = references
     .filter((reference) => reference.isRead())
     .map((reference) => reference.identifier);
   return writes.length === 1
@@ -40,33 +50,33 @@ export function loadedRows(context, awaited) {
     : undefined;
 }
 
-export function singleRead(context, node) {
+export function singleRead(context: Context, node: TSESTree.Node): TSESTree.Node | undefined {
   const outer = outerOf(node);
   const declarator = outer.parent;
-  if (declarator.type !== 'VariableDeclarator' || declarator.init !== outer) {
+  if (declarator?.type !== AST_NODE_TYPES.VariableDeclarator || declarator.init !== outer) {
     return outer;
   }
-  if (declarator.id.type !== 'Identifier') {
+  if (declarator.id.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
   const [variable] = context.sourceCode.getDeclaredVariables(declarator);
-  const reads = variable.references.filter((reference) => reference.isRead());
-  return reads.length === 1 && variable.references.length === 2 ? reads[0].identifier : undefined;
+  const reads = variable?.references.filter((reference) => reference.isRead()) ?? [];
+  return reads.length === 1 && variable?.references.length === 2 ? reads[0]?.identifier : undefined;
 }
 
-function hasProjectionKey(argument) {
+function hasProjectionKey(argument: TSESTree.CallExpressionArgument | undefined): boolean {
   const target = argument === undefined ? undefined : unwrapped(argument);
   return (
-    target?.type === 'ObjectExpression' &&
-    target.properties.some((property) => PROJECTIONS.has(staticKey(property)))
+    target?.type === AST_NODE_TYPES.ObjectExpression &&
+    target.properties.some((property) => PROJECTIONS.has(staticKey(property) ?? ''))
   );
 }
 
-export function isProjection(query) {
+export function isProjection(query: TSESTree.CallExpression): boolean {
   const drizzle = callChain(query).some(
     (call) =>
-      call.callee.type === 'MemberExpression' &&
-      DRIZZLE_SELECTS.has(call.callee.property.name) &&
+      call.callee.type === AST_NODE_TYPES.MemberExpression &&
+      DRIZZLE_SELECTS.has(nameOf(call.callee.property) ?? '') &&
       call.arguments.length > 0,
   );
   return drizzle || query.arguments.some(hasProjectionKey);

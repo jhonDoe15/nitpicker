@@ -80,7 +80,7 @@ function inspect(
   return { helpers };
 }
 
-function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined {
+export function remoteIn(scope: FanOutScope, worker: Worker): Found | undefined {
   const seen = new Set<FunctionNode>();
   const pending: Entry[] = [{ worker, depth: 0, origin: undefined }];
   for (const entry of pending) {
