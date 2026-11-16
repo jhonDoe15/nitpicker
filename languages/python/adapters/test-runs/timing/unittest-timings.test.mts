@@ -3,12 +3,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../../metrics/python-helpers.mts';
-import { UNITTEST_SCRIPT } from '../../execution/python-test-runner.mjs';
-import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mjs';
+import { UNITTEST_SCRIPT } from '../../execution/python-test-runner.mts';
+import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mts';
 import { readJunit } from '../../test-support/views/test-views.mts';
 import { readSlowTestFindings } from '../../typed/report/report-views.mts';
-import { retimeSlowTests } from './slow-retime.mjs';
+import { retimeSlowTests } from './slow-retime.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { retimeContext } from './test-support/retime-context.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
@@ -82,20 +83,20 @@ describe.skipIf(!pythonUsable())('unittest timing outcomes and runtime selection
     const original = readJunit(options.reportRoot)[0];
     expect(original?.runtimeId).toBe('test_outcomes.Outcomes.test_pass');
     retimeSlowTests(
-      {
-        ...options,
-        snapshot: 'head',
-        project: { testRunner: 'unittest' },
+      retimeContext({
+        projectRoot: options.projectRoot,
+        reportRoot: options.reportRoot,
+        runner: 'unittest',
         testSeconds: { unitTestSeconds: -1 },
         launcher: {
+          description: 'test',
           launch: (_tool: string, args: readonly string[]) => ({
             command: 'python3',
             args,
             env: {},
           }),
         },
-        env: {},
-      },
+      }),
       { testsRan: true },
     );
     const rerun = readJunit(options.reportRoot, RERUN_REPORT);

@@ -34,7 +34,7 @@
   "languages/python/adapters/test-results/console-capture.e2e.test.mts": 7,
   "languages/python/adapters/test-results/console-outcomes.e2e.test.mts": 5,
   "languages/python/adapters/test-runs/retries/single-attempt.e2e.test.mts": 6,
-  "languages/python/fix/e2e/python-fix-recipe.e2e.test.mjs": 10,
+  "languages/python/fix/e2e/python-fix-recipe.e2e.test.mts": 10,
   "languages/python/fix/e2e/python-fix.e2e.test.mts": 35,
   "languages/python/ruff/ruff-groups.e2e.test.mts": 1,
   "languages/python/ruff/ruff-pitfalls.e2e.test.mts": 1,

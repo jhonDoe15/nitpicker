@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropGeneratedFindings } from './generated-files.mjs';
+import { dropGeneratedFindings } from './generated-files.mts';
 import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 

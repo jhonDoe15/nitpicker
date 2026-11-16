@@ -2,10 +2,10 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { untrackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
-import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mts';
 import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mts';
 import { readPythonFindings } from './python-reports.mts';
-import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mjs';
+import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mts';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,

@@ -16,8 +16,8 @@ import { validateSpringOptions } from '../../languages/java/adapters/spring-arch
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
-} from '../../languages/python/adapters/configuration/python-config.mjs';
-import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mjs';
+} from '../../languages/python/adapters/configuration/python-config.mts';
+import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mts';
 import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { validateTools } from './tool-settings.mts';
 import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';

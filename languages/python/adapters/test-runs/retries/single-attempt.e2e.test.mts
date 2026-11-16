@@ -7,7 +7,7 @@ import {
   write,
   useRepositories,
 } from '../../e2e/test-support/python-e2e-support.mts';
-import { PYTEST_SCRIPT } from '../../execution/python-test-runner.mjs';
+import { PYTEST_SCRIPT } from '../../execution/python-test-runner.mts';
 
 const { removeRepositories, repository } = useRepositories();
 

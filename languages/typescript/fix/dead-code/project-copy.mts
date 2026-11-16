@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, realpathSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { projectFilesUnder } from '../../adapters/typed/tooling.mts';
-import { containedPath } from '../typed/fix-views.mts';
+import { containedPath } from '../../../../core/fix/typed/fix-views.mts';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 

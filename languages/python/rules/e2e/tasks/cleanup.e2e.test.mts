@@ -4,7 +4,7 @@ import { createRuleChecker } from '../../test-support/python-rule-harness.mts';
 import { ingestRulesReport } from '../../../ingest/rules-report.mts';
 import { applyPythonExceptions } from '../../../adapters/configuration/python-exceptions.mts';
 import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
-import { applyRuleHints } from '../../rule-hints.mjs';
+import { applyRuleHints } from '../../rule-hints.mts';
 
 const applyHints: (findings: readonly IngestedFinding[]) => IngestedFinding[] = applyRuleHints;
 const { outcomes, describeRules, itOutcomes } = useScripts({

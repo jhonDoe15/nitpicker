@@ -5,7 +5,7 @@ import {
   endsEarly,
   runUnlessSkipped,
   withoutSkipped,
-} from './apply.mjs';
+} from './apply.mts';
 
 const analyzers = [{ name: 'a' }, { name: 'b' }, { name: 'c' }];
 const settled = { policyChanges: [], policyLoosenings: [] };

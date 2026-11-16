@@ -3,36 +3,39 @@ import {
   blockStartingIn as untypedBlockStartingIn,
   comparePositions as untypedComparePositions,
   parseCoverProfile as untypedParseCoverProfile,
-} from '../branch-coverage/coverage-profile.mjs';
+} from '../branch-coverage/coverage-profile.mts';
 import {
   directoryOf as untypedDirectoryOf,
   goPackages as untypedGoPackages,
-} from '../facts/go-packages.mjs';
+} from '../facts/go-packages.mts';
 import {
   moduleFileText as untypedModuleFileText,
   readGoModule as untypedReadGoModule,
-} from '../execution/go-module.mjs';
-import { execute as untypedExecute } from '../execution/go-process.mjs';
+} from '../execution/go-module.mts';
+import { execute as untypedExecute } from '../execution/go-process.mts';
 import {
   buildFlags as untypedBuildFlags,
   readVetFindings as untypedReadVetFindings,
-} from '../build/go-vet.mjs';
+} from '../build/go-vet.mts';
 import {
   inspectBaseline as untypedInspectBaseline,
   readInspect as untypedReadInspect,
-} from '../structure/go-inspect.mjs';
+} from '../structure/go-inspect.mts';
 import {
   readTestRun as untypedReadTestRun,
   testRunFindings as untypedTestRunFindings,
-} from '../tests/go-test.mjs';
-import { parseTestEvents as untypedParseTestEvents } from '../tests/test-events.mjs';
-import { readRaceCheck as untypedReadRaceCheck } from '../race/race-run.mjs';
+} from '../tests/go-test.mts';
+import { parseTestEvents as untypedParseTestEvents } from '../tests/test-events.mts';
+import { readRaceCheck as untypedReadRaceCheck } from '../race/race-run.mts';
 import {
   parseRaces as untypedParseRaces,
   raceFindings as untypedRaceFindings,
   raceNotCheckedFinding as untypedRaceNotCheckedFinding,
   raceOnlyFailureFinding as untypedRaceOnlyFailureFinding,
-} from '../race/race-reports.mjs';
+} from '../race/race-reports.mts';
+import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
+import { fieldOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
+import { isRow } from './row-readers.mts';
 import type {
   CoverBlock,
   CoverProfile,
@@ -40,16 +43,14 @@ import type {
   GoPackages,
   InspectReport,
   Position,
+  ProcessResult,
+  RaceAccess,
+  RaceCheck,
+  RaceReport,
   TestRun,
 } from '../go-types.mts';
 
-export type RaceCheck = {
-  readonly checked: boolean;
-  readonly reason?: string;
-  readonly raceOnly?: readonly { readonly id: string; readonly package: string }[];
-};
-type ProcessResult = { stdout?: string; stderr?: string; error?: Error };
-type RaceAccess = readonly { readonly [field: string]: unknown }[];
+export type { RaceCheck };
 
 const comparePositions: (left: Position, right: Position) => number = untypedComparePositions;
 const parseCoverProfile: (text: string, modulePath: string | undefined) => CoverProfile =
@@ -68,15 +69,43 @@ const readGoModule: (projectRoot: string) => { module: string | undefined } | un
   untypedReadGoModule;
 const moduleFileText: (root: string | undefined, file: string) => string | undefined =
   untypedModuleFileText;
-const execute: (
+function processResultOf(value: unknown): ProcessResult {
+  const stdout = fieldOf(value, 'stdout');
+  const stderr = fieldOf(value, 'stderr');
+  const status = fieldOf(value, 'status');
+  const error = fieldOf(value, 'error');
+  return {
+    ...(typeof stdout === 'string' ? { stdout } : {}),
+    ...(typeof stderr === 'string' ? { stderr } : {}),
+    ...(typeof status === 'number' || status === null ? { status } : {}),
+    ...(error instanceof Error ? { error } : {}),
+  };
+}
+
+function execute(
   context: object,
   command: readonly string[],
   options?: { timeout?: number },
-) => ProcessResult = untypedExecute;
-const buildFlags: (settings: object) => string[] = untypedBuildFlags;
-const readVetFindings: (context: object) => FindingRow[] = untypedReadVetFindings;
+): ProcessResult {
+  return processResultOf(call(untypedExecute, context, command, options));
+}
+
+function buildFlags(settings: object): string[] {
+  return textsOf(call(untypedBuildFlags, settings));
+}
+
+function readVetFindings(context: object): FindingRow[] {
+  return listOf(call(untypedReadVetFindings, context)).filter(isRow);
+}
+
+function isInspectReport(value: unknown): value is InspectReport {
+  return Array.isArray(fieldOf(value, 'files'));
+}
 const readInspect: (reportRoot: string) => InspectReport = untypedReadInspect;
-const inspectBaseline: (context: object) => InspectReport | undefined = untypedInspectBaseline;
+function inspectBaseline(context: object): InspectReport | undefined {
+  const report = call(untypedInspectBaseline, context);
+  return isInspectReport(report) ? report : undefined;
+}
 const readTestRun: (reportRoot: string) => TestRun = untypedReadTestRun;
 const testRunFindings: (
   run: Pick<TestRun, 'failures' | 'testsRan' | 'buildFailures'>,
@@ -87,9 +116,8 @@ const readRaceCheck: (reportRoot: string) => RaceCheck = untypedReadRaceCheck;
 const parseRaces: (
   text: string,
   module: { root: string; path: string | undefined },
-) => RaceAccess[] = untypedParseRaces;
-const raceFindings: (reports: readonly { accesses: RaceAccess; test: string }[]) => FindingRow[] =
-  untypedRaceFindings;
+) => RaceAccess[][] = untypedParseRaces;
+const raceFindings: (reports: readonly RaceReport[]) => FindingRow[] = untypedRaceFindings;
 const raceNotCheckedFinding: (reason: string | undefined) => FindingRow =
   untypedRaceNotCheckedFinding;
 const raceOnlyFailureFinding: (packageName: string, tests: readonly string[]) => FindingRow =

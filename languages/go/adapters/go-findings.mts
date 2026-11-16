@@ -2,7 +2,7 @@ import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-polic
 import { goCouplingFindings } from './coupling/go-coupling.mts';
 import { goDomainFindings } from './domain/go-domain.mts';
 import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mts';
-import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
+import { GO_LINT_TOOLS } from './configuration/go-config.mts';
 import { goStructureFindings } from './structure/go-structure.mts';
 import { goSlowTestFindings } from './tests/go-slow-tests.mts';
 import { goCoverageFindings } from './branch-coverage/go-coverage.mts';
