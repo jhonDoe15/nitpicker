@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { isReference, ts } from '../typed/typescript-views.mts';
 import { flagOf } from './flags.mts';
 import { iterationsIn, type Iteration } from './iterations.mts';
 
@@ -43,14 +43,6 @@ function calleeName(call: TypeScript.CallExpression): string | undefined {
     return expression.text;
   }
   return ts.isPropertyAccessExpression(expression) ? expression.name.text : undefined;
-}
-
-function isReference(type: TypeScript.Type): type is TypeScript.TypeReference {
-  return (
-    'objectFlags' in type &&
-    typeof type.objectFlags === 'number' &&
-    (type.objectFlags & ts.ObjectFlags.Reference) !== 0
-  );
 }
 
 function narrowedHelper(

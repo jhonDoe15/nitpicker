@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { type MemberCall } from '../events/emitter-creations.mts';
 import { childrenOf } from '../loops/loop-shapes.mts';
 import { importedBindings, type ImportedBinding } from '../security/imported-names.mts';
 import { nameOf, type VisitorKeys } from '../typed/node-views.mts';
@@ -12,8 +13,7 @@ export type Facts = {
   readonly isAuth: boolean;
   readonly isPublic: boolean;
 };
-export type NestHandler = Facts & { readonly node: TSESTree.MethodDefinition };
-export type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
+type NestHandler = Facts & { readonly node: TSESTree.MethodDefinition };
 type ClassNode = TSESTree.ClassDeclaration | TSESTree.ClassExpression;
 
 const VERBS = new Set(['Get', 'Post', 'Put', 'Patch', 'Delete', 'All', 'Options', 'Head']);
@@ -73,7 +73,7 @@ export function walk(
   }
 }
 
-export function isNamedCall(node: MaybeNode, name: string): node is MemberCall {
+function isNamedCall(node: MaybeNode, name: string): node is MemberCall {
   return (
     node?.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&

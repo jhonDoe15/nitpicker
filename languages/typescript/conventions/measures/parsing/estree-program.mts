@@ -5,7 +5,7 @@ import { childrenOf } from '../../../preset/eslint-plugin/rules/loops/loop-shape
 import { isNode, type VisitorKeys } from '../../../preset/eslint-plugin/rules/typed/node-views.mts';
 
 export type ParsedProgram = { readonly ast: TSESTree.Program; readonly visitorKeys: VisitorKeys };
-export type UnparsableProgram = {
+type UnparsableProgram = {
   readonly kind: 'unparsable';
   readonly ast?: undefined;
   readonly visitorKeys?: undefined;

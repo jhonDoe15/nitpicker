@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type JSONSchema, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import { callsWithin, heldScope } from '../effects/held-scopes.mts';
 import { childrenOf } from '../loops/loop-shapes.mts';
@@ -13,6 +13,20 @@ import { openerCallback } from './clients.mts';
 const { DefinitionType } = TSESLint.Scope;
 
 export type OrmCall = { readonly call: TSESTree.CallExpression; readonly site: FoundSite };
+export type WriteOptions = readonly [
+  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
+];
+
+export const WRITE_OPTIONS_SCHEMA: JSONSchema.JSONSchema4[] = [
+  {
+    type: 'object',
+    properties: {
+      orms: { type: 'array', items: { type: 'string' } },
+      opensTransactions: { type: 'boolean' },
+    },
+    additionalProperties: false,
+  },
+];
 
 const TRANSACTION_NAMES =
   /^(?:tx|trx|txn|t|manager|em|runner|queryRunner|transaction|entityManager)$/u;

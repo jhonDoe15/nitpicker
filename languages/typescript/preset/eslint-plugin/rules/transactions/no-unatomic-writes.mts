@@ -13,7 +13,13 @@ import {
   type ClientScope,
 } from './clients.mts';
 import { inExclusiveBranches } from './exclusive-branches.mts';
-import { isTransactionalUnit, unitWrites, type OrmCall } from './writes-in-units.mts';
+import {
+  isTransactionalUnit,
+  unitWrites,
+  WRITE_OPTIONS_SCHEMA,
+  type OrmCall,
+  type WriteOptions,
+} from './writes-in-units.mts';
 
 const OPTIONS_INDEX = new Map([
   ['create', 1],
@@ -88,26 +94,13 @@ function conflictingPair(
   return undefined;
 }
 
-type Options = readonly [
-  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
-];
-
-export const rule: TSESLint.RuleModule<'escaped' | 'separate', Options> = {
+export const rule: TSESLint.RuleModule<'escaped' | 'separate', WriteOptions> = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Run related database writes in one transaction and write through the open one',
     },
-    schema: [
-      {
-        type: 'object',
-        properties: {
-          orms: { type: 'array', items: { type: 'string' } },
-          opensTransactions: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
-    ],
+    schema: WRITE_OPTIONS_SCHEMA,
     messages: {
       escaped: [
         'This writes through `{{client}}` inside the transaction opened by `{{opener}}`, so the write',

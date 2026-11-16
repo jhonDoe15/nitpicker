@@ -61,11 +61,10 @@ function lookupIn(context: Context, io: Io, body: readonly Invocation[]): Lookup
       return effect;
     }
     const helpers = depth < MAX_HELPER_DEPTH ? calls.map((call) => io.helperOf(call)) : [];
-    for (const helper of helpers) {
-      if (helper !== undefined) {
-        pending.push({ calls: callsOf({ fn: helper, root: helper }), depth: depth + 1 });
-      }
-    }
+    const frames = helpers
+      .filter((helper) => helper !== undefined)
+      .map((helper) => ({ calls: callsOf({ fn: helper, root: helper }), depth: depth + 1 }));
+    pending.push(...frames);
   }
   return undefined;
 }

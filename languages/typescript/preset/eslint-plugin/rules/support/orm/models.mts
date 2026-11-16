@@ -130,6 +130,13 @@ function receiverOf({ root, steps }: CallChain): Receiver {
   return steps.length >= 2 && previous !== undefined ? previous : { name: root, args: undefined };
 }
 
+type ModelQuery = {
+  readonly chain: CallChain;
+  readonly method: ChainStep;
+  readonly kind: OrmKind;
+  readonly orms: readonly string[];
+};
+
 function argumentTable(node: TSESTree.Node | undefined): string | undefined {
   if (node?.type === AST_NODE_TYPES.Identifier && MODEL_NAME.test(node.name)) {
     return tableKey(node.name);
@@ -145,12 +152,7 @@ function argumentTable(node: TSESTree.Node | undefined): string | undefined {
     : undefined;
 }
 
-function prisma(
-  chain: CallChain,
-  method: ChainStep,
-  kind: OrmKind,
-  orms: readonly string[],
-): OrmSite | undefined {
+function prisma({ chain, method, kind, orms }: ModelQuery): OrmSite | undefined {
   const { root, steps } = chain;
   const model = steps.at(PENULTIMATE);
   const client = steps.length >= PRISMA_MIN_STEPS ? steps.at(ANTEPENULTIMATE)?.name : root;
@@ -167,12 +169,7 @@ function prisma(
     : undefined;
 }
 
-function repository(
-  chain: CallChain,
-  method: ChainStep,
-  kind: OrmKind,
-  orms: readonly string[],
-): OrmSite | undefined {
+function repository({ chain, method, kind, orms }: ModelQuery): OrmSite | undefined {
   const receiver = receiverOf(chain);
   const orm = ['typeorm', 'mikro'].find(
     (each) => orms.includes(each) && stepIn(methodsOf(each, kind), method),
@@ -193,12 +190,7 @@ function repository(
     : undefined;
 }
 
-function sequelize(
-  chain: CallChain,
-  method: ChainStep,
-  kind: OrmKind,
-  orms: readonly string[],
-): OrmSite | undefined {
+function sequelize({ chain, method, kind, orms }: ModelQuery): OrmSite | undefined {
   const receiver = receiverOf(chain);
   const name = receiver.name ?? '';
   const isModel = (MODEL_NAME.test(name) && !GLOBAL_OBJECTS.has(name)) || name.endsWith('Model');
@@ -217,9 +209,6 @@ export function modelSite(
   if (method === undefined) {
     return undefined;
   }
-  return (
-    prisma(chain, method, kind, orms) ??
-    repository(chain, method, kind, orms) ??
-    sequelize(chain, method, kind, orms)
-  );
+  const query = { chain, method, kind, orms };
+  return prisma(query) ?? repository(query) ?? sequelize(query);
 }

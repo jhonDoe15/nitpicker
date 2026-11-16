@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts } from '../typed/typescript-views.mts';
+import { isReference, ts } from '../typed/typescript-views.mts';
 import { decoratorNames } from '../contracts/decorators.mts';
 import { packageOf } from '../contracts/infrastructure-types.mts';
 import { findInType } from '../contracts/type-walk.mts';
@@ -125,14 +125,6 @@ function entityName(
   }
   const model = typeArgumentsOf(checker, type)[MONGOOSE_DOC_TYPE]?.getSymbol();
   return model === undefined || model.name.startsWith('__') ? symbol.name : model.name;
-}
-
-function isReference(type: TypeScript.Type): type is TypeScript.TypeReference {
-  return (
-    'objectFlags' in type &&
-    typeof type.objectFlags === 'number' &&
-    (type.objectFlags & ts.ObjectFlags.Reference) !== 0
-  );
 }
 
 function typeArgumentsOf(
