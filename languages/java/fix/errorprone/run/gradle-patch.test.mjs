@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { OWN_CHECKS_DIRECTORY } from '../own/own-checks.mjs';
-import { gradleArguments, patchFlags, runGradlePatch } from './gradle-patch.mjs';
+import { OWN_CHECKS_DIRECTORY } from '../own/own-checks.mts';
+import { gradleArguments, patchFlags, runGradlePatch } from './gradle-patch.mts';
 
 const directories = [];
 

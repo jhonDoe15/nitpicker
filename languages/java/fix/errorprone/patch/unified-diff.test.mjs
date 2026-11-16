@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseUnifiedDiff } from './unified-diff.mjs';
+import { parseUnifiedDiff } from './unified-diff.mts';
 
 function headerOf(hunk) {
   const { oldStart, oldCount, newStart, newCount } = hunk;

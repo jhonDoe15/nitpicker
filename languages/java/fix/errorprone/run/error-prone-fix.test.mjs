@@ -7,7 +7,7 @@ import {
 } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
-import { patchChecks } from '../checks/error-prone-checks.mjs';
+import { patchChecks } from '../checks/error-prone-checks.mts';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { fakeErrorPronePatch, patchChecksOf } from '../../test-support/fake-error-prone-patch.mjs';
 import { fakeJvmTools } from '../../test-support/fake-jvm-tools.mjs';

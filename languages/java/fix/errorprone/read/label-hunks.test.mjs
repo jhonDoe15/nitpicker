@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseUnifiedDiff } from '../patch/unified-diff.mjs';
-import { labelHunks, labelOf } from './label-hunks.mjs';
+import { parseUnifiedDiff } from '../patch/unified-diff.mts';
+import { labelHunks, labelOf } from './label-hunks.mts';
 
 function hunkAt(start) {
   return parseUnifiedDiff(`--- a\n+++ a\n@@ -${start},1 +${start},1 @@\n-x\n+y\n`)[0].hunks[0];

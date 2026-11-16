@@ -7,8 +7,8 @@ import {
   patchChecks,
   REVIEW_CHECKS,
   SAFE_CHECKS,
-} from './error-prone-checks.mjs';
-import { ownChecksOf } from '../own/own-checks.mjs';
+} from './error-prone-checks.mts';
+import { ownChecksOf } from '../own/own-checks.mts';
 
 const CHECKS = JSON.parse(
   readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),

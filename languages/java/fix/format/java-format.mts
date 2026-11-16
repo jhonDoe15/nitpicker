@@ -1,21 +1,17 @@
-import { containedPath } from '../../../core/fix/common/contained-path.mjs';
-import { failureText } from '../../../core/fix/common/fix-command.mjs';
-import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
-import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
-import { callUntyped } from '../adapters/typed/java-values.mts';
-import { fieldOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { failureText } from '../../../../core/fix/common/fix-command.mjs';
+import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
+import { JAVAC_EXPORTS } from '../../maven/maven-lint.mjs';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import {
+  type FormatterPlan,
   readWorkspaceFile,
   runFormatterJar,
   withWorkspace,
   writeWorkspaceFile,
 } from './formatter-run.mts';
 
-type JavaFormatterPlan = {
-  readonly label: string;
-  readonly operation: string;
-  readonly tools: Readonly<Record<string, unknown>>;
-};
 type JavaFormatRequest = {
   readonly style: string;
   readonly flags?: readonly string[];
@@ -39,7 +35,7 @@ export function javaFormatterPlan(
   style: string,
   pinned: unknown,
   version: unknown,
-): JavaFormatterPlan | undefined {
+): FormatterPlan | undefined {
   const formatter = formatterOf(style);
   return formatter === undefined
     ? undefined
@@ -48,7 +44,7 @@ export function javaFormatterPlan(
         operation: OPERATION,
         tools: {
           'java-format': {
-            coordinates: callUntyped(fieldOf(formatter, 'coordinates'), pinned, version),
+            coordinates: textOf(callUntyped(fieldOf(formatter, 'coordinates'), pinned, version)),
             transitive: true,
           },
         },

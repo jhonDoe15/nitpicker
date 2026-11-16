@@ -2,12 +2,32 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runFixCommand } from '../../../../../core/fix/common/fix-command.mjs';
 import { gradleTarget } from '../../../adapters/gradle-wrapper/gradle-command.mjs';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { OWN_CHECKS_DIRECTORY, usesOwnChecks } from '../own/own-checks.mjs';
+import { INIT_SCRIPT as untypedInitScript } from '../../../builds/java-build.mjs';
+import { callUntyped } from '../../../adapters/typed/java-values.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { type Environment, configuredTool } from '../../tools/tool-classpath.mts';
+import { OWN_CHECKS_DIRECTORY, usesOwnChecks } from '../own/own-checks.mts';
+
+export type PatchRun = {
+  readonly projectRoot: string;
+  readonly environment?: Environment | undefined;
+  readonly executeFixCommand: unknown;
+  readonly work: string;
+  readonly flags: readonly string[];
+  readonly checks: readonly string[];
+};
+export type PatchRoots = { readonly patchRoot: string; readonly reportRoot: string };
 
 const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+const INIT_SCRIPT: string = untypedInitScript;
 
-export function patchFlags({ checks, patchRoot }) {
+export function patchFlags({
+  checks,
+  patchRoot,
+}: {
+  readonly checks: readonly string[];
+  readonly patchRoot: string;
+}): string[] {
   return [
     `-XepPatchChecks:${checks.join(',')}`,
     `-XepPatchLocation:${patchRoot}`,
@@ -15,13 +35,19 @@ export function patchFlags({ checks, patchRoot }) {
   ];
 }
 
-export function gradleArguments({ settingsFile, reportRoot, initScript = INIT_SCRIPT }) {
+export function gradleArguments({
+  settingsFile,
+  reportRoot,
+}: {
+  readonly settingsFile: string;
+  readonly reportRoot: string;
+}): string[] {
   return [
     ...GRADLE_FLAGS,
     `-Pnitpicker.reportDir=${reportRoot}`,
     `-Pnitpicker.errorprone.settings=${settingsFile}`,
     '-I',
-    initScript,
+    INIT_SCRIPT,
     'nitpickerErrorProne',
   ];
 }
@@ -33,25 +59,25 @@ export function runGradlePatch({
   work,
   flags,
   checks,
-}) {
+}: PatchRun): PatchRoots {
   const patchRoot = path.join(work, 'patches');
   const reportRoot = path.join(work, 'reports');
   mkdirSync(patchRoot, { recursive: true });
   mkdirSync(reportRoot, { recursive: true });
   const settingsFile = path.join(work, 'errorprone-settings.json');
   writeFileSync(settingsFile, JSON.stringify([...flags, ...patchFlags({ checks, patchRoot })]));
-  const target = gradleTarget({
+  const target = callUntyped(gradleTarget, {
     projectRoot,
-    configured: environment.NITPICKER_GRADLE || undefined,
+    configured: configuredTool(environment, 'NITPICKER_GRADLE'),
     args: gradleArguments({ settingsFile, reportRoot }),
   });
-  runFixCommand({
+  callUntyped(runFixCommand, {
     operation: 'error-prone-patch',
-    command: target.command,
-    args: target.args,
+    command: fieldOf(target, 'command'),
+    args: fieldOf(target, 'args'),
     cwd: projectRoot,
     acceptedStatuses: [0],
-    shell: target.shell,
+    shell: fieldOf(target, 'shell'),
     executeFixCommand,
   });
   return { patchRoot, reportRoot };

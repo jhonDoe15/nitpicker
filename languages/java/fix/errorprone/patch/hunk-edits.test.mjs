@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { changedLines, hunkEdit, locateHunk } from './hunk-edits.mjs';
-import { parseUnifiedDiff } from './unified-diff.mjs';
+import { changedLines, hunkEdit, locateHunk } from './hunk-edits.mts';
+import { parseUnifiedDiff } from './unified-diff.mts';
 
 function hunkOf(body, header = '@@ -1,1 +1,1 @@') {
   return parseUnifiedDiff(`--- a\n+++ a\n${header}\n${body}`)[0].hunks[0];

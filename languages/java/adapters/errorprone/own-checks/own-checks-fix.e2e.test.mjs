@@ -8,7 +8,7 @@ import {
 } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
-import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mjs';
+import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mts';
 
 const TIMEOUT = 180_000;
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

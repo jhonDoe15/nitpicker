@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { LEFT_OUT_CHECKS, REVIEW_CHECKS, SAFE_CHECKS } from '../checks/error-prone-checks.mjs';
+import { LEFT_OUT_CHECKS, REVIEW_CHECKS, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
 import {
   OWN_CHECKS,
   OWN_CHECKS_DIRECTORY,
@@ -9,7 +9,7 @@ import {
   ownChecksOf,
   ownRule,
   usesOwnChecks,
-} from './own-checks.mjs';
+} from './own-checks.mts';
 
 const SOURCES = path.join(OWN_CHECKS_DIRECTORY, 'nitpicker', 'fix');
 const SERVICES = path.join(

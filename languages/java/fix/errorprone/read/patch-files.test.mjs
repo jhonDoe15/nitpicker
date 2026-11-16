@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readDiagnostics, readPatches } from './patch-files.mjs';
+import { readDiagnostics, readPatches } from './patch-files.mts';
 
 const roots = [];
 
