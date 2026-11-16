@@ -51,9 +51,6 @@ without `--label`.
    finding or a compile error) is rolled back and named under "Fix notes"; `--fix --verify full`
    checks with the whole gate. To clear one rule across the whole project, run
    `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in `nitpicker.legacy.json`.
-   For a finding no recipe fixes, read its plan in `fix-plans.json` (same folder): the target lines,
-   the context and the steps. Follow the steps; they are done when the finding named in `doneWhen`
-   stops.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`, `--quick` or `--label`: the summary
      then says `Ran only: ...`, `Only findings labeled ...` or names the skipped checks, and you run
