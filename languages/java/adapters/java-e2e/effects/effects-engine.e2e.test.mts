@@ -256,7 +256,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(
       run.report.violations
         .filter((violation) => violation.rule === 'JobLoopWithoutItemIsolation')
-        .map((violation) => `${violation.method} ${violation.job}`),
+        .map((violation) => `${violation.method} ${violation.job ?? ''}`),
     ).toEqual([
       'Jobs.closeAll @Scheduled',
       'Jobs.closeUntilFailure @Scheduled',
@@ -270,7 +270,9 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(
       run.report.violations
         .filter((violation) => violation.rule === 'SoftDeleteFilterMissing')
-        .map((violation) => `${violation.method} ${violation.entity}.${violation.column}`),
+        .map(
+          (violation) => `${violation.method} ${violation.entity ?? ''}.${violation.column ?? ''}`,
+        ),
     ).toEqual(['Trash.leaked Parcel.deletedAt']);
   });
 
@@ -278,7 +280,9 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(
       run.report.violations
         .filter((violation) => violation.rule === 'DeletedItemInMemory')
-        .map((violation) => `${violation.method} ${violation.entity}.${violation.flag}`),
+        .map(
+          (violation) => `${violation.method} ${violation.entity ?? ''}.${violation.flag ?? ''}`,
+        ),
     ).toEqual(['Rooms.unguarded Bed.deletedAt']);
   });
 
@@ -286,7 +290,10 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(
       run.report.violations
         .filter((violation) => violation.rule === 'HandlerWithoutAuth')
-        .map((violation) => `${violation.method} ${violation.declared}/${violation.total}`),
+        .map(
+          (violation) =>
+            `${violation.method} ${String(violation.declared)}/${String(violation.total)}`,
+        ),
     ).toEqual(['Handlers.open 22/24', 'Handlers.composed 22/24']);
   });
 
