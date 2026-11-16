@@ -30,6 +30,7 @@ import { probeSlips } from './slips/probe.mjs';
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const MAX_CHECKS = 200;
 const VERDICTS = new Set(['true', 'false']);
+const VALUE_PART = 'value';
 const TOGETHER = 'the conditions before it decide it together';
 
 function reasonFor(facts, query, { verdict, solver }) {
@@ -84,7 +85,7 @@ function collectSlips(scan, root, facts) {
 }
 
 function decide(scan, node, { facts, part, query }) {
-  const seen = part === 'value' ? scan.coerced : scan.checked;
+  const seen = part === VALUE_PART ? scan.coerced : scan.checked;
   const isReported = scan.found.some((reported) => reported.node === node);
   if (query === undefined || seen.has(node) || isReported || seen.size >= MAX_CHECKS) {
     return undefined;
@@ -110,7 +111,7 @@ function conditionQuery(scan, node) {
 }
 
 function check(scan, node, { facts, part = 'condition', query = conditionQuery(scan, node) }) {
-  if (part !== 'value') {
+  if (part !== VALUE_PART) {
     collectSlips(scan, node, facts);
   }
   const decision = scan.slipsOnly ? undefined : decide(scan, node, { facts, part, query });
@@ -155,7 +156,11 @@ function checkCoercions(scan, root, facts) {
     return;
   }
   for (const site of coercionSites(root, scan.scope)) {
-    check(scan, site.node, { facts: [...facts, ...site.facts], part: 'value', query: site.query });
+    check(scan, site.node, {
+      facts: [...facts, ...site.facts],
+      part: VALUE_PART,
+      query: site.query,
+    });
   }
 }
 
