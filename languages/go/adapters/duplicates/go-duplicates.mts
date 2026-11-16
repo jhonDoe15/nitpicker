@@ -8,7 +8,7 @@ import {
   GO_SKIPPED_FOLDERS,
   skippedFolderGlobs as untypedSkippedFolderGlobs,
 } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
-import { duplicateFindings as untypedDuplicateFindings } from '../../../java/adapters/metrics/java-duplicates.mjs';
+import { duplicateFindings } from '../../../java/adapters/metrics/java-duplicates.mts';
 import { readInspect } from '../structure/go-inspect.mts';
 import { isRow } from '../typed/row-readers.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
@@ -48,7 +48,7 @@ export function duplicates(context: GoContext): void {
 
 export function readGoDuplicateFindings(reportRoot: string, projectRoot: string): FindingRow[] {
   return listOf(
-    untypedDuplicateFindings(readDuplicateClones(reportRoot, SYNTAX), {
+    duplicateFindings(readDuplicateClones(reportRoot, SYNTAX), {
       reportRoot,
       reportFile: DUPLICATES_REPORT,
       projectRoot,

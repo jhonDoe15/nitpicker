@@ -9,8 +9,8 @@ import {
   SPRING_ARCH_FIXTURE,
   SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
-} from '../../adapters/spring/__tests__/spring-arch-project.mjs';
-import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mjs';
+} from '../../adapters/spring/__tests__/spring-arch-project.mts';
+import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mts';
 import {
   useMavenPresetProject,
   enabled,

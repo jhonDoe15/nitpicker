@@ -2,7 +2,7 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
-- `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
+- `languages/java/adapters/reporting/java-reports.test.mts`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
 - `languages/java/adapters/review-rules/*.test.mjs` and `messages/wait-advice.test.mjs`: fast,
   always on. The enum filter, the test-only class check and the Awaitility advice.
@@ -22,7 +22,7 @@ Part of the [Java preset guide](../java-preset.md).
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.
-  `pit-targets.e2e.test.mjs` runs `nitpickerPit` on a project whose packages sit under `org.acme`
+  `pit-targets.e2e.test.mts` runs `nitpickerPit` on a project whose packages sit under `org.acme`
   and a class directly in `org`, and checks that PIT starts and mutates every class.
 - The conformance suite (`npm run test:conformance`) already covers the comparison itself. The
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings

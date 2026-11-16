@@ -35,7 +35,7 @@ public final class OrderNumbers {
   passed around; the JPA mapping annotations (`@Entity`, `@Id`, `@Column`) are not in the client
   list, so a domain model annotated for JPA is fine. jdeps does not tell
   `UUID.randomUUID()` from `UUID.fromString(...)` (both use the class `UUID`), so that call is found
-  in the domain sources, with comments and strings blanked out (`adapters/domain/random-sources.mjs`,
+  in the domain sources, with comments and strings blanked out (`adapters/domain/random-sources.mts`,
   also `import static java.util.UUID.randomUUID` and Kotlin's `kotlin.uuid.Uuid.random()`).
 - **One finding per cause.** `domain-imports-adapter` is one finding per domain file and adapter
   file, identity `domain-adapter:<adapter file>`; the library rules one per domain file and library

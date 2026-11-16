@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../../../../../../core/diff/git/test-support/git-repository.mts';
 import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mjs';
 import { withoutGeneratedSources } from '../../../../generated/generated-sources.mjs';
 import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
@@ -11,6 +11,8 @@ import type { Loose } from '../../test-support/loose-facts.mts';
 import { argument, file, fn, klass, parameter } from '../../test-support/loose-facts.mts';
 import { forward, params } from './forwarding-support.mts';
 import { METHOD_ALIAS_RULE, methodAliasFindings } from './method-aliases.mjs';
+
+const { temporaryRoot } = useGitFixtures();
 
 const sum = (overrides: Loose = {}) =>
   fn('sum', { owner: 'Cart', parameters: params('items'), returnType: 'Int', ...overrides });
@@ -214,14 +216,6 @@ describe('method alias in Kotlin', () => {
 });
 
 describe('method alias identity and generated sources', () => {
-  const roots: string[] = [];
-
-  afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
   const identitiesFor = (line: number) =>
     findingsFor([sum({ line: 1 }), total({ line })]).map(({ identity }) => identity);
 
@@ -250,8 +244,7 @@ describe('method alias identity and generated sources', () => {
   });
 
   it('drops findings in generated sources with the other findings of the Kotlin preset', () => {
-    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-alias-')));
-    roots.push(root);
+    const root = temporaryRoot('nitpicker-kotlin-alias-');
     const generated = 'build/generated/ksp/main/kotlin/demo/Cart.kt';
     const header = 'src/main/kotlin/demo/Header.kt';
     const handWritten = 'src/main/kotlin/demo/Hand.kt';

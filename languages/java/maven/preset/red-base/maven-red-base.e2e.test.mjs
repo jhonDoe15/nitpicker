@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../../../adapters/java-diff.mts';
-import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mjs';
-import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
+import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mts';
+import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mts';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 

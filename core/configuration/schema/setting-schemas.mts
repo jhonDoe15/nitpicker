@@ -4,7 +4,7 @@ import {
   BINARY_NAME,
   SPRING_KEYS,
   SPRING_ROLES,
-} from '../../../languages/java/adapters/spring-arch/spring-roles.mjs';
+} from '../../../languages/java/adapters/spring-arch/spring-roles.mts';
 import {
   HISTORY_KEYS,
   HISTORY_THRESHOLD_KEYS,

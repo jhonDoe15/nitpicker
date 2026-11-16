@@ -97,7 +97,9 @@ function sourceJavaOf(value: unknown): SourceJava | undefined {
     : undefined;
 }
 
-export function sourceJava(modules: readonly DesignModule[]): string | undefined {
+export function sourceJava(
+  modules: readonly Pick<DesignModule, 'sourceJava'>[],
+): string | undefined {
   return modules
     .map((module) => sourceJavaOf(module.sourceJava))
     .filter((source) => source !== undefined)

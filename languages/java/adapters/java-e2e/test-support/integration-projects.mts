@@ -1,0 +1,75 @@
+import type { JavaFinding } from '../../typed/java-values.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
+import { cpSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll } from 'vitest';
+
+const fixtures = path.join(import.meta.dirname, '../../fixtures');
+const failsafeFixture = path.join(import.meta.dirname, '../../../maven/fixtures/failsafe');
+
+export const INTEGRATION_POLICY = { testSeconds: { integrationTestSeconds: -1 } };
+export const INTEGRATION_FIXTURES = fixtures;
+export const FAILSAFE_FIXTURE = failsafeFixture;
+export const FULL_COVERAGE = ['line-coverage 100% (3/3)'];
+export const WITHOUT_FAREWELL = [
+  'line-coverage 66.67% (2/3)',
+  'Method demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String; is not covered',
+];
+
+export function useIntegrationProjects(): (
+  fixture: string,
+  options?: { sources: boolean },
+) => string {
+  const temporary: string[] = [];
+
+  afterAll(() => {
+    for (const root of temporary.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  return function projectOf(
+    fixture: string,
+    { sources }: { sources: boolean } = { sources: false },
+  ): string {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-integration-e2e-'));
+    temporary.push(root);
+    cpSync(fixture, root, { recursive: true });
+    if (sources) {
+      cpSync(path.join(failsafeFixture, 'src'), path.join(root, 'src'), { recursive: true });
+    }
+    return root;
+  };
+}
+
+export function moveIntegrationTest(project: string): void {
+  mkdirSync(path.join(project, 'src/integrationTest/java/demo'), { recursive: true });
+  renameSync(
+    path.join(project, 'src/test/java/demo/GreeterIT.java'),
+    path.join(project, 'src/integrationTest/java/demo/GreeterIT.java'),
+  );
+}
+
+export function comparable(findings: readonly JavaFinding[]): string[] {
+  return findings
+    .filter(({ tool }) => tool !== 'test-runtime')
+    .map((finding) => JSON.stringify(finding))
+    .sort();
+}
+
+export function slowTests(findings: readonly JavaFinding[]): string[] {
+  return findings
+    .filter(({ tool, rule }) => tool === 'test-runtime' && rule === 'slow-test')
+    .map(({ path: file, message }) => `${file}: ${textOf(textOf(message).split(' took ')[0])}`);
+}
+
+export function coverage(findings: readonly JavaFinding[]): unknown[] {
+  return findings.filter(({ tool }) => tool === 'jacoco').map(({ message }) => message);
+}
+
+export function mutations(findings: readonly JavaFinding[]): string[] {
+  return findings
+    .filter(({ tool }) => tool === 'pit')
+    .map(({ rule, identity }) => `${rule} ${textOf(identity)}`);
+}
