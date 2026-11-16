@@ -3,23 +3,24 @@ import { parseEffect } from '../effects/subject.mts';
 import type { RuleHint } from '../hint-types.mts';
 
 const WRITE = '<write>';
+const FUNCTION = '<function>';
 
 function outsideDescribe(subject: string): string {
   const { path, fields } = parseEffect(subject);
   const [write = WRITE, block = '<transaction>'] = fields;
-  return `\`${path[0] ?? '<function>'}\` writes with \`${write}\` inside \`${block}\` through a session, connection or database alias that is not the block's: the write is not part of the transaction and commits or rolls back on its own`;
+  return `\`${path[0] ?? FUNCTION}\` writes with \`${write}\` inside \`${block}\` through a session, connection or database alias that is not the block's: the write is not part of the transaction and commits or rolls back on its own`;
 }
 
 function splitDescribe(subject: string): string {
   const { path, fields } = parseEffect(subject);
   const [first = WRITE, second = WRITE] = fields;
-  return `\`${path[0] ?? '<function>'}\` writes with \`${first}\` and then with \`${second}\` outside one transaction: a crash or a concurrent request between the writes leaves half-written state`;
+  return `\`${path[0] ?? FUNCTION}\` writes with \`${first}\` and then with \`${second}\` outside one transaction: a crash or a concurrent request between the writes leaves half-written state`;
 }
 
 function raceDescribe(subject: string): string {
   const { path, fields } = parseEffect(subject);
   const [read = '<read>', write = WRITE] = fields;
-  return `\`${path[0] ?? '<function>'}\` reads with \`${read}\` and decides on \`${write}\` outside a transaction and without a lock: two callers can both pass the check before either writes`;
+  return `\`${path[0] ?? FUNCTION}\` reads with \`${read}\` and decides on \`${write}\` outside a transaction and without a lock: two callers can both pass the check before either writes`;
 }
 
 export const RELATED_WRITE_HINTS: readonly RuleHint[] = [

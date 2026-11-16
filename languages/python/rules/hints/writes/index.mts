@@ -1,6 +1,5 @@
 import { ROUTE_AUTH_HINTS } from '../auth/route-auth.mts';
-import { DELETED_ITEM_HINTS } from '../deletion/deleted-items.mts';
-import { SOFT_DELETE_HINTS } from '../deletion/soft-delete.mts';
+import { DELETED_ITEM_HINTS, SOFT_DELETE_HINTS } from '../deletion/deletion-hints.mts';
 import { JOB_HINTS } from '../jobs/jobs.mts';
 import { DUAL_WRITE_HINTS } from './dual-write.mts';
 import { RELATED_WRITE_HINTS } from './related-writes.mts';
