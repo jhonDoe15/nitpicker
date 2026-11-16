@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { ASSERTION_WRAPPERS, outermostOf } from '../../typed/syntax-views.mts';
 import { findVariable, stringValue, type SourceContext } from '../constant-resolution.mts';
+import { followedChain } from './value-chain.mts';
 
 type Wrapper =
   | TSESTree.TSAsExpression
@@ -73,14 +74,7 @@ function nextInChain(context: SourceContext, node: TSESTree.Node): TSESTree.Node
 }
 
 function valueChain(context: SourceContext, node: TSESTree.Node): TSESTree.Node[] {
-  const chain = [node];
-  for (const current of chain) {
-    const next = chain.length < MAX_CHAIN_LENGTH ? nextInChain(context, current) : undefined;
-    if (next !== undefined) {
-      chain.push(next);
-    }
-  }
-  return chain;
+  return followedChain(node, (current) => nextInChain(context, current), MAX_CHAIN_LENGTH);
 }
 
 function isGlobalNamed(

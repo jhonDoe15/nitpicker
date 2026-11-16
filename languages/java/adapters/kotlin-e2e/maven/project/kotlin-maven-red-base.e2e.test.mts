@@ -4,7 +4,7 @@ import {
   addRedBaseBranches,
   createRepository,
   redBaseCases,
-} from '../../../red-base/test-support/red-base-cases.mjs';
+} from '../../../red-base/test-support/red-base-cases.mts';
 import { kotlinE2eEnabled } from '../__tests__/kotlin-maven-project.mts';
 
 const KOTLIN_BAD = `package demo

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   KOTLIN_EFFECTS,
   KOTLIN_EFFECTS_FIXTURE,
-} from '../../effects/test-support/effects-projects.mjs';
+} from '../../effects/test-support/effects-projects.mts';
 import { kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
 import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';

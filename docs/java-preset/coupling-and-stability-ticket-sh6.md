@@ -16,7 +16,7 @@ Part of the [Java preset guide](../java-preset.md).
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   `nitpickerJdeps` task lives in `languages/java/gradle/nitpicker.init.gradle`.
-- **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
+- **Conversion.** `languages/java/adapters/metrics/java-coupling.mts` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
   the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
@@ -49,9 +49,9 @@ Part of the [Java preset guide](../java-preset.md).
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.
-- **Tests.** `languages/java/adapters/metrics/java-coupling.test.mjs` (parsing, metrics, stability edges, the
-  neutral report through the shared rule), `java-stability.test.mjs` (feature packages in Java and
-  Kotlin), `java-reports.test.mjs` (glue), two gated e2e cases (a package depending on a less stable
+- **Tests.** `languages/java/adapters/metrics/java-coupling.test.mts` (parsing, metrics, stability edges, the
+  neutral report through the shared rule), `java-stability.test.mts` (feature packages in Java and
+  Kotlin), `java-reports.test.mts` (glue), two gated e2e cases (a package depending on a less stable
   package fails; the same violation on the base stays baselined), and
-  `java-preset-stability.e2e.test.mjs` (a new feature that reuses three others passes on Gradle and
+  `java-preset-stability.e2e.test.mts` (a new feature that reuses three others passes on Gradle and
   Maven, and fails per package without feature folders).

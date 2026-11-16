@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
-import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from './kotlin-options.mjs';
+import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from './kotlin-options.mts';
 
 function exceptionFor(rule: string) {
   return {

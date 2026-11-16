@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { followedChain } from '../../analysis/globals/value-chain.mts';
 import { nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 
@@ -77,14 +78,11 @@ function constInitOf(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node
 }
 
 function aliasChain(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node[] {
-  const chain = [unwrapped(node)];
-  for (const current of chain) {
-    const alias = chain.length <= MAX_ALIASES ? constInitOf(sourceCode, current) : undefined;
-    if (alias !== undefined) {
-      chain.push(alias);
-    }
-  }
-  return chain;
+  return followedChain(
+    unwrapped(node),
+    (current) => constInitOf(sourceCode, current),
+    MAX_ALIASES + 1,
+  );
 }
 
 function aliasTarget(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node {

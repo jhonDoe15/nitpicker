@@ -27,3 +27,12 @@ export function indentedBy(text, prefix) {
 export function withLineEndingOf(source, text) {
   return source.includes('\r\n') ? text.replaceAll(/\r?\n/gu, '\r\n') : text;
 }
+
+export function withReplacements(text, replacements) {
+  return replacements
+    .toSorted((left, right) => right.start - left.start)
+    .reduce(
+      (changed, { start, end, text: name }) => changed.slice(0, start) + name + changed.slice(end),
+      text,
+    );
+}

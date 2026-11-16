@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mts';
-import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mts';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -16,8 +16,8 @@ import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';
-import { withEffectsFindings } from '../effects/effects-findings.mjs';
-import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { withEffectsFindings } from '../effects/effects-findings.mts';
+import { readJavaStructureFindings } from '../metrics/java-structure.mts';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';
 import { readClassLimitFindings } from '../size/class-limits.mts';
 import { modulesUnitLocator, sourceTextReader } from './function-locator.mjs';

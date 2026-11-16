@@ -26,7 +26,7 @@ export function withoutFollowedImports<T extends JavaFinding>(
 ): readonly T[] {
   const allowAll = fieldOf(conventions, JAVA_WILDCARD_IMPORTS) === 'wildcard';
   const allowStaticInTests = fieldOf(conventions, JAVA_TEST_STATIC_IMPORTS) === 'wildcard';
-  if (!allowAll && !allowStaticInTests) {
+  if (!(allowAll || allowStaticInTests)) {
     return findings;
   }
   return findings.filter((finding) => {
