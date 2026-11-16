@@ -5,7 +5,7 @@ import { type Revision, placeFile } from '../files/place-file.mts';
 import { planPeers } from '../peers/peer-plan.mts';
 import type { PlacedFile } from '../init-report.mts';
 import type { InitProject, Peers } from '../init-types.mts';
-import type { Member, ProjectEntry } from './monorepo-layout.mts';
+import type { Member, ProjectEntry } from './monorepo-types.mts';
 
 export type MemberSetup = {
   readonly member: Member;

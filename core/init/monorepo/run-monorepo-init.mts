@@ -6,7 +6,7 @@ import { hasProjectFile } from '../support/inside-project.mts';
 import { placeRootConfig, setUpMember } from './monorepo-files.mts';
 import { type MonorepoPlaced, renderMonorepoReport } from './monorepo-report.mts';
 import { placeMonorepoWorkflow } from './monorepo-workflow.mts';
-import type { MonorepoLayout } from './monorepo-layout.mts';
+import type { MonorepoLayout } from './monorepo-types.mts';
 
 type Request = {
   readonly root: string;

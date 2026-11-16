@@ -7,7 +7,7 @@ import {
   peerLines,
   skillsOf,
 } from '../init-report.mts';
-import type { MonorepoLayout } from './monorepo-layout.mts';
+import type { MonorepoLayout } from './monorepo-types.mts';
 import type { MemberSetup } from './monorepo-files.mts';
 
 export type MonorepoPlaced = {
