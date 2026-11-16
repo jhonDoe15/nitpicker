@@ -152,6 +152,7 @@ function fileChanges({ filePath, added, hunks }, sources, projectRelativePath) {
     deletions: hunks.filter(({ head }) => head.count === 0).map(({ head }) => head.start),
     hunks: hunks.map(({ base, head }) => [base.start, base.count, head.start, head.count]),
     carried: aligned?.carried ?? [],
+    ...(aligned === undefined ? {} : { sources }),
   };
 }
 

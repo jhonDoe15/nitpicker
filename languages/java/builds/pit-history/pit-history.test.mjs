@@ -9,7 +9,7 @@ import {
   pitHistoryArguments,
   pitHistoryOf,
   pitHistoryProperties,
-} from './pit-history.mjs';
+} from './pit-history.mts';
 
 const roots = [];
 const BUILD = { 'pom.xml': '<project/>', 'lib/build.gradle': "plugins { id 'java' }" };
@@ -149,10 +149,11 @@ describe('pitHistoryArguments', () => {
     expect(pitHistoryArguments(history, path.join(head, 'lib', 'target'))).toEqual([]);
   });
 
-  it('names the same history directory as the Gradle init script', () => {
+  it('names the same history directory as the Gradle PIT task', () => {
     const recordedName = `file("${PIT_HISTORY_DIRECTORY}/\${source.name}.history")`;
+    const pitTask = path.join(path.dirname(INIT_SCRIPT), 'pit', 'pit-task.gradle');
 
-    expect(readFileSync(INIT_SCRIPT, 'utf8').includes(recordedName)).toBe(true);
+    expect(readFileSync(pitTask, 'utf8').includes(recordedName)).toBe(true);
   });
 
   it('ignores a module whose build directory lies outside the base snapshot', () => {

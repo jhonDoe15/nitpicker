@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import {
   availabilityNotices,
   coChangeNotices,
@@ -5,17 +9,20 @@ import {
 import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
 import { declaredSourceRoots } from '../../../languages/java/adapters/notices/declared-roots.mjs';
-import { pythonOutsideRootsNotices } from '../../../languages/python/adapters/notices/outside-roots-notice.mjs';
+import {
+  type OutsideProject,
+  pythonOutsideRootsNotices,
+} from '../../../languages/python/adapters/notices/outside-roots-notice.mts';
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
-import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
+import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
 import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
 import {
   LAYOUT_ROOT_KEYS,
   unmatchedLayoutRootNotices,
 } from '../../../shared/notices/layout-roots-notice.mjs';
 
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
 
 type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };
@@ -23,7 +30,8 @@ type Describer = (changedFiles: readonly string[], context?: NoticeContext) => r
 type Notices<Options> = (changedFiles: readonly string[], options: Options) => readonly string[];
 
 const jvmNotices: Notices<object> = jvmOutsideRootsNotices;
-const pythonNotices: Notices<object> = pythonOutsideRootsNotices;
+const renamedRuleNotices: (config: unknown) => readonly string[] = kotlinRuleAliasNotices;
+const pythonNotices: Notices<OutsideProject> = pythonOutsideRootsNotices;
 const typescriptNotices: Notices<unknown> = outsideRootsNotices;
 const layoutNotices: (layout: unknown, files: unknown) => readonly string[] =
   unmatchedLayoutRootNotices;
@@ -33,22 +41,31 @@ const coChangeNoticesOf: (request: {
   readonly ref: unknown;
   readonly changedPaths: readonly string[];
 }) => readonly string[] = coChangeNotices;
-const sourceRootsOf: (projectRoot: string, declared: unknown) => unknown = detectSourceRoots;
+const sourceRootsOf: (projectRoot: string, declared: unknown) => readonly string[] =
+  detectSourceRoots;
 const layoutRootKeys: readonly string[] = LAYOUT_ROOT_KEYS;
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
+
+function rawConfig(projectRoot: string): unknown {
+  const file = path.join(projectRoot, CONFIG_FILE_NAME);
+  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+}
 
 function jvmDescriber(
   config: NitpickerConfig,
   headPolicy: unknown,
   projectRoot: string,
 ): Describer {
-  return (changedFiles) =>
-    jvmNotices(changedFiles, {
+  const renamed = renamedRuleNotices(rawConfig(projectRoot));
+  return (changedFiles) => [
+    ...renamed,
+    ...jvmNotices(changedFiles, {
       preset: config.preset,
       exclude: fieldOf(headPolicy, 'exclude'),
       declaredRoots: declaredSourceRoots(projectRoot),
-    });
+    }),
+  ];
 }
 
 function languageDescriber(
@@ -64,7 +81,7 @@ function languageDescriber(
       pythonNotices(changedFiles, {
         projectRoot,
         sourceRoots: sourceRootsOf(projectRoot, fieldOf(config.python, 'sourceRoots')),
-        exclude: fieldOf(headPolicy, 'exclude'),
+        exclude: textsOf(fieldOf(headPolicy, 'exclude')),
         isTestFile: testFileMatcher(projectRoot),
       });
   }

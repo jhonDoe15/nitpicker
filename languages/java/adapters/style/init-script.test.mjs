@@ -43,8 +43,9 @@ describe('the Gradle init script node runner', () => {
       `throw new GradleException("\${failure}: could not run \${nodeCommand}: \${error.message}")`,
       '}',
       "def log = process.inputStream.getText('UTF-8')",
-      'if (process.waitFor() != 0) {',
-      `throw new GradleException("\${failure}: \${log.trim()}")`,
+      'def exit = process.waitFor()',
+      'if (exit != 0) {',
+      `throw new GradleException("\${failure}: \${processFailure(nodeCommand, exit, log)}")`,
       '}',
       '}',
     ]);
@@ -56,15 +57,23 @@ describe('the Gradle init script and the formatter style', () => {
     expect(linesContaining("nitpickerArgument('nitpicker.java.")).toEqual([
       "def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'",
       "def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'",
+      "def javaFormatterVersion = nitpickerArgument('nitpicker.java.formatterVersion')",
+      "def javaFormatterFlags = (nitpickerArgument('nitpicker.java.formatterFlags') ?: '').toString().split(',').findAll { it }",
     ]);
   });
 
-  it('puts the palantir jar on the formatter classpath for palantir, the google jar unless none', () => {
+  it('runs a formatter only for the styles nitpicker has one for, not for none or spring', () => {
+    expect(linesContaining('def javaFormatterRuns')).toEqual([
+      "def javaFormatterRuns = !(javaStyle in ['none', 'spring'])",
+    ]);
+  });
+
+  it('puts the palantir jar on the formatter classpath for palantir, the google jar when one runs', () => {
     expect(blockStartingWith("if (javaStyle == 'palantir') {")).toEqual([
       "if (javaStyle == 'palantir') {",
-      'nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"',
-      "} else if (javaStyle != 'none') {",
-      'nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"',
+      `nitpickerFormat "com.palantir.javaformat:palantir-java-format:\${javaFormatterVersion ?: pinned.palantirJavaFormat}"`,
+      '} else if (javaFormatterRuns) {',
+      `nitpickerFormat "com.google.googlejavaformat:google-java-format:\${javaFormatterVersion ?: pinned.googleJavaFormat}"`,
       '}',
     ]);
   });
@@ -75,7 +84,7 @@ describe('the Gradle init script and the formatter style', () => {
       "group = 'nitpicker'",
       'classpath = configurations.nitpickerFormat',
       "mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'",
-      "enabled = javaStyle != 'none'",
+      'enabled = javaFormatterRuns',
       'onlyIf {',
       'if (!javaFiles().isEmpty()) {',
       'return true',
@@ -93,7 +102,7 @@ describe('the Gradle init script and the formatter style', () => {
       'doFirst {',
       'reportDir.get().asFile.mkdirs()',
       "standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)",
-      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)",
+      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFormatterFlags + javaFiles()*.absolutePath)",
       '}',
       'doLast {',
       'def exit = executionResult.get().exitValue',
@@ -117,8 +126,8 @@ describe('the Gradle init script and the formatter style', () => {
   });
 
   it('writes an empty format report when no formatter runs, and when the formatter did not run', () => {
-    expect(blockStartingWith("if (javaStyle == 'none' || !formatReport.exists()) {")).toEqual([
-      "if (javaStyle == 'none' || !formatReport.exists()) {",
+    expect(blockStartingWith('if (!javaFormatterRuns || !formatReport.exists()) {')).toEqual([
+      'if (!javaFormatterRuns || !formatReport.exists()) {',
       "formatReport.text = ''",
       '}',
     ]);
@@ -142,5 +151,14 @@ describe('the Gradle init script and the formatter style', () => {
     expect(linesContaining("writeRules('checkstyle-config', plan)")).toEqual([
       "writeRules('checkstyle-config', plan)",
     ]);
+  });
+
+  it('pins the retry count of the test-retry and Develocity extensions from the head settings', () => {
+    expect(linesContaining('nitpicker.tests.settings')).toHaveLength(1);
+    expect(linesContaining('def maxRetries =')).toEqual([
+      'def maxRetries = testRetrySettings().maxRetries ?: 0',
+    ]);
+    expect(linesContaining('retry.maxRetries = maxRetries')).toHaveLength(1);
+    expect(linesContaining('.each(pinTestRetries)')).toHaveLength(1);
   });
 });

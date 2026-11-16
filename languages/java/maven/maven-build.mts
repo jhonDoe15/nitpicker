@@ -3,92 +3,61 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { readReactor } from './maven-project.mjs';
-import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
-import { missingLauncherVersions } from './maven-tests.mjs';
-import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { archunitTool, formatTool, resolveTools } from './maven-tools.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
+import { missingLauncherVersions } from './maven-tests.mts';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
+import {
+  checkstyleIndentation,
+  javaFormatterFlags,
+  javaFormatterSettings,
+} from '../adapters/style/java-style.mjs';
+import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
-import { processorTool } from './errorprone/maven-errorprone.mts';
+import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
-import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
-import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
+import { kotlinSetup } from './kotlin/kotlin-setup.mts';
+import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
+import { effectsOptions } from '../adapters/effects/effects-options.mjs';
+import { dependencyFile } from './quick/maven-build-arguments.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
-import { buildOrSkipTests, jacocoExecFiles } from './quick/maven-test-phase.mts';
-import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
-import {
-  type JavaEnvironment,
-  type JavaPolicy,
-  callUntyped,
-} from '../adapters/typed/java-values.mts';
+import { mavenScope } from './reactor/maven-scope.mjs';
+import { reactorRootFor } from './reactor/reactor-root.mjs';
+import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
+import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { type JavaPolicy, callUntyped } from '../adapters/typed/java-values.mts';
 import {
   type Classpaths,
   type Dependency,
   type MavenModule,
+  classpathsOf,
+  dependencyOf,
   mavenModuleOf,
+  scopeOf,
 } from './typed/maven-values.mts';
+import type {
+  MavenRun,
+  AnalyzeRequest,
+  ToolsRequest,
+  MavenPresetOptions,
+  MavenPresetRun,
+  Prepared,
+  ReadModules,
+  PrepareRequest,
+} from './typed/maven-build-types.mts';
 
-type MavenRun = {
-  readonly projectRoot: string;
-  readonly maven: string | undefined;
-  readonly spawn: unknown;
-  readonly timeoutMs: number | undefined;
-  readonly pinned: unknown;
-  readonly quick: boolean;
-};
-type AnalyzedModule = {
-  readonly module: MavenModule;
-  readonly classpaths: Classpaths;
-};
-type AnalyzeRequest = MavenRun & {
-  readonly analyzed: readonly AnalyzedModule[];
-  readonly policy: JavaPolicy;
-  readonly kotlin: unknown;
-  readonly work: string;
-  readonly pitDeadline: number | undefined;
-  readonly tools: unknown;
-  readonly configs: unknown;
-  readonly since: number;
-  readonly project: unknown;
-  readonly testsSkipped: boolean;
-};
-type ToolsRequest = {
-  readonly modules: readonly MavenModule[];
-  readonly analyzed: readonly AnalyzedModule[];
-  readonly policy: JavaPolicy;
-  readonly pinned: unknown;
-  readonly kotlin: unknown;
-};
-type MavenPresetOptions = {
-  readonly maven?: string | undefined;
-  readonly policy?: JavaPolicy | undefined;
-  readonly configs?: unknown;
-  readonly environment?: JavaEnvironment | undefined;
-  readonly spawn?: unknown;
-  readonly timeoutMs?: number | undefined;
-  readonly pitDeadline?: number | undefined;
-};
-type MavenPresetRun = {
-  readonly moduleDirs: string[];
-  readonly testsFailures: unknown[];
-  readonly formatAdvice: unknown;
-};
-
-const CLOCK_SLACK_MS = 2000;
-
-function dependencyFile(work: string, module: MavenModule): string {
-  const [groupId = '', artifactId = ''] = module.coordinates.split(':');
-  return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
-}
+const REPORT_CLOCK_SKEW_MS = 2000;
 
 function readClasspaths(
   work: string,
   module: MavenModule,
 ): Classpaths & { readonly dependencies: readonly Dependency[] } {
-  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
-  return { ...moduleClasspaths(module, dependencies), dependencies };
+  const file = textOf(callUntyped(dependencyFile, work, module));
+  const listed: unknown = parseDependencyList(readFileSync(file, 'utf8'));
+  const dependencies = listOf(listed).map(dependencyOf);
+  return { ...classpathsOf(callUntyped(moduleClasspaths, module, dependencies)), dependencies };
 }
 
 function guardProject(
@@ -112,26 +81,18 @@ function staleOutputs(module: MavenModule): string[] {
   ];
 }
 
-function readModules({
-  projectRoot,
-  maven,
-  work,
-  spawn,
-  timeoutMs,
-}: MavenRun & { readonly work: string }): {
-  readonly modules: MavenModule[];
-  readonly effectivePom: unknown;
-} {
-  const effectivePom = callUntyped(readEffectivePom, {
-    projectRoot,
-    maven,
-    work,
-    spawn,
-    timeoutMs,
-  });
-  const modules = listOf(callUntyped(readReactor, projectRoot, effectivePom))
-    .map(mavenModuleOf)
-    .filter((module) => module.packaging !== 'pom');
+function readModules(
+  { projectRoot, mavenRoot, maven, spawn, timeoutMs }: MavenRun,
+  { work, changedFiles }: { readonly work: string; readonly changedFiles: unknown },
+): ReadModules {
+  const pomRequest = { projectRoot: mavenRoot, maven, work, spawn, timeoutMs };
+  const effectivePom = callUntyped(readEffectivePom, pomRequest);
+  const reactor = listOf(callUntyped(readReactor, mavenRoot, effectivePom)).map(mavenModuleOf);
+  const built = reactor.filter((module) => module.packaging !== 'pom');
+  const scope = scopeOf(
+    callUntyped(mavenScope, { modules: reactor, projectRoot, mavenRoot, changedFiles }),
+  );
+  const modules = scope.reported.filter((module) => module.packaging !== 'pom');
   if (modules.length === 0) {
     throw new Error(
       `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
@@ -143,12 +104,20 @@ function readModules({
   for (const module of modules) {
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
-  return { modules, effectivePom };
+  return { modules, built, scope, effectivePom };
 }
 
-function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeRequest): unknown[] {
+function analyzeAll({
+  analyzed,
+  policy,
+  kotlin,
+  work,
+  effectsOptions: moduleEffects,
+  ...shared
+}: AnalyzeRequest): unknown[] {
   const indentation: unknown = checkstyleIndentation(policy.conventions);
-  const style = { javaStyle: policy.javaStyle, indentation };
+  const formatterFlags: unknown = javaFormatterFlags(policy.conventions);
+  const style = { javaStyle: policy.javaStyle, indentation, formatterFlags };
   const springRoles: unknown = writeSpringRoles(policy['springRoles'], work);
   const springRules: unknown = writeSpringRuleset(shared.projectRoot, work);
   return analyzed
@@ -158,6 +127,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeReques
         module,
         classpaths,
         style,
+        retriesPass: usesConfigRetries(policy['toolPrecedence']),
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: fieldOf(kotlin, 'options'),
         spring: policy['spring'],
@@ -165,9 +135,14 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeReques
         springRoles,
         springRules,
         mutationScope: policy['mutationScope'],
+        effectsOptions: moduleEffects,
       }),
     )
     .filter((failure) => failure !== undefined);
+}
+
+function formatterVersion(policy: JavaPolicy): unknown {
+  return fieldOf(javaFormatterSettings(policy.conventions), 'version');
 }
 
 function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest): unknown[] {
@@ -175,18 +150,46 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest)
     ...modules
       .map((module): unknown => processorTool(module['compiler']))
       .filter((tool) => tool !== undefined),
-    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned)),
+    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, formatterVersion(policy))),
     ...listOf(fieldOf(kotlin, 'extraTools')),
     ...listOf(callUntyped(archunitTool, buildRunsArchRules(policy, analyzed), pinned)),
+    ...listOf(callUntyped(effectsTool, pinned)),
   ];
 }
 
-function assertMavenPreset(preset: string | undefined): void {
+function requireMavenPreset(preset: string | undefined): void {
   if (preset !== undefined && !MAVEN_PRESETS.includes(preset)) {
     throw new Error(
       `The ${preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
     );
   }
+}
+
+function presetTools(run: MavenRun, request: ToolsRequest): unknown {
+  return callUntyped(resolveTools, {
+    ...run,
+    projectRoot: run.mavenRoot,
+    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(request.analyzed),
+    extraTools: extraTools(request),
+  });
+}
+
+function prepare(run: MavenRun, { policy, environment, configs, work }: PrepareRequest): Prepared {
+  const { modules, built, scope, effectivePom } = readModules(run, {
+    work,
+    changedFiles: policy['changedFiles'],
+  });
+  const setup = { ...run, policy, modules: built, effectivePom, work, environment };
+  const kotlin = callUntyped(kotlinSetup, setup);
+  const since = Date.now() - REPORT_CLOCK_SKEW_MS;
+  const build = { ...run, projectRoot: run.mavenRoot, selection: scope.selection, work };
+  const timedOut = buildOrSkipTests(
+    { ...build, modules: built, reruns: testReruns(configs) },
+    policy,
+  );
+  const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
+  const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
+  return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
 }
 
 function presetInWork(
@@ -202,44 +205,45 @@ function presetInWork(
   }: MavenPresetOptions,
   work: string,
 ): MavenPresetRun {
-  const pinned: unknown = readPinnedTools();
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
-  const { modules, effectivePom } = readModules({ ...run, work });
-  const setup = { ...run, policy, modules, effectivePom, work, environment };
-  const kotlin = callUntyped(kotlinSetup, setup);
-  const since = Date.now() - CLOCK_SLACK_MS;
-  const timedOut = buildOrSkipTests({ ...run, work, modules }, policy);
-  const analyzed = modules.map((module) => ({
-    module,
-    classpaths: readClasspaths(work, module),
-  }));
-  const tools = callUntyped(resolveTools, {
-    ...run,
-    launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
-    extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
+  const other = policy.snapshot === 'base' ? policy.policyRoot : policy.baselineRoot;
+  const run: MavenRun = {
+    projectRoot,
+    mavenRoot: textOf(callUntyped(reactorRootFor, projectRoot, other)),
+    maven,
+    spawn,
+    timeoutMs,
+    pinned: readPinnedTools(),
+    quick: policy.quick === true,
+    mutationOff: policy['mutationOff'] === true,
+  };
+  const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {
+    policy,
+    environment,
+    configs,
+    work,
   });
   const testsFailures = analyzeAll({
     ...run,
+    ...prepared,
     testsSkipped: timedOut.length > 0,
     pitDeadline,
-    analyzed,
-    tools,
     configs,
-    since,
     policy,
     kotlin,
     work,
-    project: guardProject(projectRoot, policy, modules),
+    effectsOptions: effectsOptions(projectRoot),
+    project: guardProject(projectRoot, policy, built),
   });
   return {
     moduleDirs: modules.map((module) => module.basedir),
     testsFailures: [...testsFailures, ...timedOut],
     formatAdvice: fieldOf(fieldOf(kotlin, 'options'), 'advice'),
+    notAffected: scope.notAffected,
   };
 }
 
 export function runMavenPreset(projectRoot: string, options: MavenPresetOptions): MavenPresetRun {
-  assertMavenPreset(options.policy?.preset);
+  requireMavenPreset(options.policy?.preset);
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
     return presetInWork(projectRoot, options, work);

@@ -16,6 +16,7 @@ checkout of the repository links to `main`. Findings about your code are explain
 - [Tests](#tests)
 - [TypeScript and JavaScript](#typescript-and-javascript)
 - [Python](#python)
+- [Go](#go)
 - [Java and Kotlin](#java-and-kotlin)
 - [Platforms](#platforms)
 
@@ -52,7 +53,7 @@ checkout and `base` is the merge base.
 ### Invalid arguments
 
 **Symptom.** `nitpicker failed: Unknown argument: --foo`, `--base requires a value`,
-`--fix cannot be combined with --all`, `--all cannot be combined with --base`,
+`--fix --all rewrites the whole project, so it needs the rule to fix`, `--all cannot be combined with --base`,
 `--shard-count and --shard-index must be provided together`,
 `NITPICKER_MAX_PARALLEL must be a positive integer`, `Unknown cache command`, and similar. Exit code 2.
 
@@ -62,7 +63,7 @@ Nothing was analyzed.
 **Fix.** Run `nitpicker --help` for the accepted forms, or read the
 [command line reference](usage.md#command-line). The combinations that are refused:
 
-- `--all` cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
+- `--all` cannot be combined with `--base`, sharding or `--defer-exit`, and `--fix --all` needs `--rule <tool/rule>`.
 - `--shard-count` and `--shard-index` go together, and `--analyzer` cannot be combined with them.
 - `--shard-count` cannot exceed the number of independent analyzer groups, and `--shard-index` must be
   a whole number from 0 to `--shard-count` minus 1.
@@ -393,6 +394,13 @@ JavaScript, the runner's own command with coverage (`vitest run --coverage`, `je
 Python, the project's test runner under `coverage run`; for Java and Kotlin, `./gradlew test` or
 `mvn test`. The message shows the first failures, with the runner's output.
 
+When a test file fails to load with a message that reads like missing configuration (`Invalid env`, a
+missing environment variable), the message ends with a hint. The cause is usually a git-ignored file such as `.env`: both
+snapshots are built from git, so ignored files are not in them. Export the variables in the
+environment that runs nitpicker; both snapshots inherit it (see
+[Test environment](usage.md#test-environment)). Mutation testing then reports `mutation skipped`
+instead of a second error.
+
 ### Tests fail on the base
 
 **Symptom.** A note, not a tool error: `Tests fail on the base:` (or `Tests fail on the base in
@@ -412,7 +420,9 @@ compile failure, a non-zero exit that names no test, a timeout), there is nothin
 fails, because there is no base result to hold it against: test that code or split it. A change that
 removes tests gets no help from the red base, and a `tests-removed` note says so. When the base tests
 did not run, rebase or merge the base branch once it is green, or compare against a passing ref with
-`--base <ref>`; if the failure is flaky, rerun. `nitpicker --all` has no baseline. See
+`--base <ref>`; if the failure is flaky, rerun. If the base fails on missing configuration (`Invalid env`), the
+cause is an ignored `.env` file that the base checkout does not have: export the variables in the
+environment that runs nitpicker (see [Test environment](usage.md#test-environment)). `nitpicker --all` has no baseline. See
 [A base whose tests fail](usage.md#a-base-whose-tests-fail).
 
 ### The test runner ran no tests
@@ -655,6 +665,11 @@ Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the 
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
 
+A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
+killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)
+...Warning` lines) are left out of the message, so they are not mistaken for the cause. Run fewer jobs
+at once with `NITPICKER_MAX_PARALLEL` or give the job more memory.
+
 **Fix.** The message ends with the tool's own output: run the same tool in the project
 (`npx prettier --check .`, `npx eslint .`, `npx tsc --noEmit`, the project's test command with
 coverage) and fix what it reports. When only nitpicker fails, rerun the analyzer alone with
@@ -756,6 +771,73 @@ set `"disable": ["mutation"]`. On native Windows mutmut does not run; see
 [Windows and WSL](#windows-and-wsl). See also
 [mutation testing for Python](python-preset.md#slice-6-mutation-testing).
 
+## Go
+
+### Go is missing from the PATH
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-missing`: `go was not found on the
+PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH`, or `go version could not
+run: <message>`.
+
+**Cause.** Every step of the Go preset starts with `go version`. The `go` that nitpicker runs is the
+one on the `PATH` of the process that started it, which is not always the one your shell has: a CI
+job that has not installed Go, an editor or a Git hook that starts with a shorter `PATH`.
+
+**Fix.** Install Go (https://go.dev/dl/) or add its `bin` folder to the `PATH` of the process that
+runs nitpicker, for example with `actions/setup-go` in GitHub Actions, and check that `go version`
+works from there. The project's `GOTOOLCHAIN`, `GOFLAGS` and `GOPROXY` apply to every Go command
+nitpicker runs. See [the Go preset](go-preset.md#selection).
+
+### A Go module does not load
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-mod-tidy-failed`, `go-list-failed`,
+`go-env-failed` or `go-inspect-failed`: `go mod exited 1: <output>` or `go list exited 1: <output>`,
+where the output names a `go.mod` that cannot be parsed, a module that cannot be found, or a package
+that cannot be loaded.
+
+**Cause.** The `go` command could not resolve the module of the snapshot: a `go.mod` with a syntax
+error or a `go` line newer than the installed toolchain, a requirement that cannot be downloaded
+(no network, a private module without `GOPRIVATE`, a `GOFLAGS=-mod=vendor` without a `vendor`
+folder), or a `go.sum` that does not match. The base snapshot is a checkout of the merge base, so a
+`go.mod` that only the head repairs fails on the base.
+
+**Fix.** Run the command from the message in the project (`go mod tidy -diff`, `go list ./...`) and
+fix what it prints. Download the modules before nitpicker runs in CI (`go mod download`) and set
+`GOPRIVATE` and the credentials for private modules. When the `go` line asks for a newer Go than the
+one installed, install it or leave `GOTOOLCHAIN` at its default so `go` fetches it.
+
+### `go vet` or `go test` fails to run
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-vet-failed` or `go-test-failed`:
+`go vet exited 1: <output>` or `go test exited 1: <output>`, where the output holds no diagnostic or
+failing test that nitpicker can read.
+
+**Cause.** `go vet -json ./...` and `go test -json ./...` ran but ended without a result nitpicker
+can use: the module does not load (see [A Go module does not load](#a-go-module-does-not-load)), a
+build tag set that excludes every file, a package that fails to build in a way that has no file
+position, or an environment problem such as a read-only module cache or no disk space. A test that
+fails normally is not this error: it is reported as a failing test, see [Tests fail](#tests-fail).
+
+**Fix.** Run the command from the message in the project with the same `GOFLAGS` and build tags
+(`go.buildTags` in `nitpicker.config.json` is passed as `-tags`) and fix what it prints. When the
+timeout is the cause, see [An analyzer times out](#an-analyzer-times-out).
+
+### A pinned Go tool fails to build
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-tool-install-failed`,
+`go-lint-build-failed` or `go-inspect-build-failed`. The message starts with the failed command, `go install`
+or `go build`, then `exited` with its status and the command's output.
+
+**Cause.** nitpicker builds gofumpt, goimports, deadcode and its own lint and inspect programs once
+into the cache (`~/.cache/nitpicker`, or `nitpicker` under `XDG_CACHE_HOME`). The pinned gofumpt and goimports need
+Go 1.26 or later and the lint program needs Go 1.27. With an older `go` and `GOTOOLCHAIN=local` the build
+fails; so does a build with no network or no access to the module proxy.
+
+**Fix.** Use a `go` of the required version, or leave `GOTOOLCHAIN` at its default so an older `go`
+downloads the newer toolchain for the build. Make the module proxy reachable (`GOPROXY`) the first time,
+and keep the cache between CI runs. A project that pins the formatter with a `tool` directive in its
+`go.mod` runs its own version instead, see [the Go preset](go-preset.md#selection).
+
 ## Java and Kotlin
 
 ### The Gradle build fails
@@ -777,6 +859,11 @@ build does not support, a plugin that needs a network the runner does not have, 
 the merge base, so check it out to reproduce. A runner without network access needs the Gradle
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
+
+A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
+output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
+give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
+SIGKILL`, with the same remedy.
 
 ### The Maven build fails
 
@@ -870,10 +957,21 @@ time that is left and is not started with less than a minute left.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
-keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
-inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
+keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs inside the analysis
+command and gets the time left of `NITPICKER_GRADLE_TIMEOUT_MINUTES` after a one minute reserve for the
+reports (and never past the same two minute cut before the analyzer's deadline). When that time runs out
+nitpicker stops PIT and its minion JVMs, and the module reports a `pit-failure` tool error while the other
+findings are kept (also when the build is cancelled, PIT is stopped; on a Gradle daemon running Java 8 only
+the main PIT process can be stopped, not its minion JVMs). When the whole Gradle command times out, nitpicker
+reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure,
+read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
+
+To run the Java or Kotlin gate without mutation testing when PIT is too slow for the project, add
+`"mutation"` to `disable` in `nitpicker.config.json`. PIT then runs on neither the base nor the head,
+no mutation findings are reported, and the run says on stderr that the config turned mutation off.
+Everything else (tests, coverage, CRAP and the other tools) still runs. `--quick` also skips mutation,
+but drops tests and coverage too.
 
 ### Error Prone cannot find a JDK
 

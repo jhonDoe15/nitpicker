@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { ingestArchunit } from '../../../ingest/archunit.mjs';
+import { ingestArchunit } from '../../../ingest/archunit.mts';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../../builds/module-path.mjs';
 import { readSpringArchFindings } from '../../spring-arch/spring-arch.mjs';

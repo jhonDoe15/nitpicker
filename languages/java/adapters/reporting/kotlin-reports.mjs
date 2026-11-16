@@ -34,6 +34,7 @@ import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mj
 import { readKotlinNotes } from './kotlin-notes.mjs';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
 import { springRoots } from '../spring/transactions/transaction-filters.mjs';
+import { withoutTransactionalCallers } from '../spring/transactions/transactional-callers.mjs';
 import { withoutSpringCoveredReads } from '../spring/configuration/covered-reads.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -124,11 +125,6 @@ export function kotlinGeneratedFilter({ reportRoot }) {
   }
 }
 
-function leftToFanOut(calls) {
-  return ({ rule, path: file, location }) =>
-    rule !== 'IoCallInLoop' || !calls.has(`${file}:${String(location?.line)}`);
-}
-
 function reviewViews(context) {
   const { reportRoot, manifest, projectRoot, modules, kotlinBuild, foreignKeys } = context;
   const assertionHelpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
@@ -154,9 +150,7 @@ export function readKotlinFindings(context, crapLimit) {
           spring: manifest.spring === true,
           testRoots,
         }),
-        ...readKotlinSourceFindings(projectRoot, manifest, runners).filter(
-          leftToFanOut(fanOut.calls),
-        ),
+        ...readKotlinSourceFindings(projectRoot, manifest, runners),
         ...fanOut.findings,
         ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
       ]),
@@ -187,7 +181,14 @@ export function readKotlinFindings(context, crapLimit) {
     ]),
     context.classLimits,
   );
-  return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });
+  return withoutTransactionFindings(findings, { projectRoot, roots: springRoots(context) });
+}
+
+function withoutTransactionFindings(findings, options) {
+  return withoutTransactionalCallers(
+    withoutTransactionAwareCacheWrites(findings, options),
+    options,
+  );
 }
 
 function subjectOf(text) {

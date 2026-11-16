@@ -5,7 +5,8 @@ Part of the [Java preset guide](../java-preset.md).
 The formatter owns layout, and nitpicker follows the formatter the project uses. The
 `java.formatter` convention is `google` (google-java-format, the default), `palantir`
 (palantir-java-format, Apache-2.0, pinned like google-java-format and resolved the same way on Gradle
-and Maven) or `none` (no format check). It comes, in this order, from:
+and Maven), `spring` (Spring Java Format, which the build runs and nitpicker does not) or `none` (no
+format check, and nitpicker's layout checks stay on). It comes, in this order, from:
 
 1. A pin in `"conventions": { "java.formatter": "..." }`.
 2. The build files, with no opt-in: Spotless `googleJavaFormat()` or `palantirJavaFormat()` in
@@ -14,7 +15,10 @@ and Maven) or `none` (no format check). It comes, in this order, from:
    version catalog. `googleJavaFormat().aosp()`, `.style("AOSP")` and a `<style>aosp</style>` read as
    google-java-format with 4 spaces; `palantirJavaFormat().style("GOOGLE")` reads as google (with
    `"AOSP"`, google with 4 spaces); `eclipse()` and `prettier()` in a Spotless `java` block read as
-   `none`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
+   `none`. `io.spring.javaformat:spring-javaformat-maven-plugin` in the `<build><plugins>` of a pom (not only
+   in `pluginManagement`) and the `io.spring.javaformat` Gradle plugin applied (`id`, `apply plugin`,
+   or a version catalog plugin; a dependency on its Checkstyle rules or `apply false` does not
+   count) read as `spring`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
    `gradle/*.versions.toml` catalogs, the convention plugins under `buildSrc/` and `build-logic/`
    (`.gradle`, `.gradle.kts`, `.kt`, `.groovy`) and every `pom.xml` of the project (module and parent
    poms), at most 200 files, shallowest first. Files under `src/`, `node_modules`, `build`,
@@ -38,7 +42,34 @@ any opt-in; the Kotlin preset does the same for the ktfmt style its build names.
 Checkstyle config, detekt, `.editorconfig`, `ruff.toml`) are read only once their tool lists
 `"project"`.
 
-The build files are read from the same snapshot as the measured conventions: the merge base in a
+The version and options the build file pins for a Spotless formatter are followed the same way, on
+Gradle (Groovy and Kotlin DSL) and Maven (`spotless-maven-plugin`): `palantirJavaFormat("2.90.0")` and
+`googleJavaFormat("1.17.0")` (or `<version>` in the Maven step) select that release from Maven Central
+instead of the one nitpicker pins, and `formatJavadoc` and `reflowLongStrings` are applied as Spotless
+reads them. Spotless defaults apply when the step does not set them: Javadoc is formatted for
+google-java-format and left as written for palantir-java-format, and long strings are not reflowed for
+either, so nitpicker passes `--skip-reflowing-long-strings` (and `--skip-javadoc-formatting` for
+google-java-format with `formatJavadoc(false)`). The printed line says what was followed, for example
+`Java formatter: palantir-java-format, version 2.90.0, Javadoc left as written, long strings not
+reflowed (from your build file)`. Options that cannot be honoured fall back and say so in that line:
+palantir-java-format's command line cannot format Javadoc, so `formatJavadoc(true)` prints `Javadoc
+formatting (formatJavadoc) is not checked`; a google-java-format release older than 1.8 has no skip
+flags, so none are passed. A version or option that is a variable is resolved when it is simple: a
+`libs.versions.*` entry of `gradle/libs.versions.toml`, a `gradle.properties` key, a local `def` or
+`val` string, `"$name"`, or a Maven `${property}` of the POMs. When it cannot be read, the run prints
+`Could not read the Java formatter version (...) in build.gradle; using the version nitpicker pins`, and
+an option it cannot read counts as not set (`using the Spotless default`) and never as enabled. Only
+the steps in the `java` block of `spotless` count (a `format 'docs', { ... }` block for other targets
+is ignored); the version and options come from one declaration, and a run says when two declarations
+disagree and which one it used. Steps of other plugins (`com.palantir.java-format`, a version catalog
+entry) carry no version, and the pinned release runs. palantir-java-format has accepted
+`--skip-reflowing-long-strings` in every release published to Maven Central, so it needs no version
+guard. A
+`java.formatter` pin in `nitpicker.config.json` ignores the build file's version and options. `--fix`
+formats with the same release and flags. The Kotlin preset's Java sources are handled the same way.
+
+The build files are read from the same snapshot as the measured conventions, the formatter version and
+options included: the merge base in a
 comparison (so a pull request that adds `palantirJavaFormat()` is still judged at the limits of its
 base, and starts being judged at 120 once it is merged), the checked-out tree for `--all`, and the
 pull request's own tree only when the base has no Java sources yet. The Checkstyle config below is
@@ -82,13 +113,21 @@ ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so 
 `line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
 sources of a kotlin-preset project too. They come from the head policy file at run time, and the
 function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
-(`google`, `aosp`, `palantir` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
+(`google`, `aosp`, `palantir`, `spring` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
 as `javaStyle`.
 
+Spring Java Format is a formatter the build enforces and nitpicker does not run, so `spring` runs no
+format check and takes the layout side of `google`: the same Checkstyle suppressions
+(`checkstyle-suppressions.xml`, which keeps `RightCurly` and `LeftCurly` out of the way of its
+`}` newline `else {` style) and no Error Prone `AnnotationPosition`, which wants the annotation after
+the modifiers where Spring puts `@Nullable` first (`formatter-owned.mjs` in
+`languages/java/adapters/errorprone/layout/`). `nitpicker --fix` leaves the Java files alone and says
+to run the build's own apply goal or format task. A declared `spring` fixes the indentation at tabs and the line length at 120, as palantir fixes
+them at 4 spaces and 120. Spotless `eclipse()` and `prettier()` projects stay `none`.
+
 A badly formatted file is one `google-java-format`, `google-java-format --aosp` or
-`palantir-java-format` finding (the one that ran), not hundreds. Its message gives the command that
-fixes the file (`google-java-format --replace <Java files>`, with `--aosp`, or `palantir-java-format
---palantir --replace <Java files>`) and says how to pin `conventions.java.formatter` (`"google"`,
+`palantir-java-format` finding (the one that ran), not hundreds. Its message asks for `nitpicker --fix`,
+which formats the changed files with that formatter, and says how to pin `conventions.java.formatter` (`"google"`,
 `"palantir"` or `"none"`) in nitpicker.config.json when it is not your formatter. The Checkstyle
 checks that only restate the formatter's layout are suppressed in both styles (`Indentation`,
 `CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
@@ -126,4 +165,4 @@ The style reaches Gradle as the command-line property `-Pnitpicker.java.style=ao
 other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
 same policy file, so a change of style in the same pull request does not fail the files it makes
 differ. The Maven run resolves only the formatter jar its style needs (google-java-format, or
-palantir-java-format, or neither for `none`).
+palantir-java-format, or neither for `none` and `spring`).

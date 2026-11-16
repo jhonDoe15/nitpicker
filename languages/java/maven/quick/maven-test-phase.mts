@@ -4,19 +4,20 @@ import {
   collectArchunitResults,
   collectTestResults,
   runJacocoReport,
-} from '../maven-tests.mjs';
+} from '../maven-tests.mts';
 import { runPit } from '../pit/maven-pit.mts';
-import { runMaven, TEST_RERUNS_OFF } from '../maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from '../maven-command.mjs';
 import { springAotSkip } from '../spring/arch-rules-gate.mts';
 import { isTestsTimeout, timedOutTests } from '../../adapters/red-base/tests-failed.mts';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
 import { lifecycleArgs } from '../maven-project.mjs';
-import { MAVEN_PLUGINS, jacocoPlugin } from '../maven-tools.mjs';
-import { relativeTo } from '../module/module-paths.mjs';
+import { jacocoPlugin } from '../maven-tools.mjs';
+import { relativeTo } from '../module/module-paths.mts';
 import { moduleName } from '../../builds/test-failures.mjs';
 import { type JavaPolicy, callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
+import { dependencyListArguments, PROJECT_CHECKS_OFF } from './maven-build-arguments.mjs';
 
 type BuildRequest = {
   readonly projectRoot: string;
@@ -27,6 +28,8 @@ type BuildRequest = {
   readonly quick: boolean;
   readonly work: string;
   readonly modules: readonly MavenModule[];
+  readonly reruns?: readonly string[] | undefined;
+  readonly selection?: readonly string[] | undefined;
 };
 type PhaseOptions = Readonly<Record<string, unknown>>;
 type GoalRequest = {
@@ -67,21 +70,12 @@ export function jacocoExecFiles(module: MavenModule): string[] {
 }
 
 function moduleNameOf(module: MavenModule, projectRoot: unknown): unknown {
-  return moduleName(relativeTo(projectRoot, module.basedir));
+  return moduleName(relativeTo(textOf(projectRoot), module.basedir));
 }
-
-const PROJECT_CHECKS_OFF = [
-  '-Dcheckstyle.skip=true',
-  '-Dpmd.skip=true',
-  '-Dcpd.skip=true',
-  '-Dspotbugs.skip=true',
-  '-Dspotless.check.skip=true',
-  '-Dktlint.skip=true',
-  '-Ddetekt.skip=true',
-];
 
 export function readTestRuns(context: PhaseOptions): TestRuns {
   const { module, reportDir, since, isArchunit, testRuntime } = context;
+  const retriesPass = context['retriesPass'];
   if (context['quick'] === true || context['testsSkipped'] === true) {
     callUntyped(collectArchunitResults, { module, reportDir, since, isArchunit });
     return { testsRan: false, failure: undefined };
@@ -91,6 +85,7 @@ export function readTestRuns(context: PhaseOptions): TestRuns {
     reportDir,
     since,
     isArchunit,
+    retriesPass,
     moduleName: moduleNameOf(mavenModuleOf(module), context['projectRoot']),
   });
   callUntyped(requireTestngRun, { module, since, isArchunit, testRuntime });
@@ -108,6 +103,9 @@ export function runCoverageTools(options: PhaseOptions): void {
   callUntyped(runJacocoReport, { module, reportDir, tools, execFiles, since, testsRan, ...run });
   const history = options['pitHistory'];
   const scope = { projectRoot: options['projectRoot'], mutationScope: options['mutationScope'] };
+  if (options['mutationOff'] === true) {
+    return;
+  }
   callUntyped(runPit, {
     ...{ module, reportDir, tools, classpaths, isArchunit, configs, history, scope, ...run },
     deadline: options['pitDeadline'],
@@ -123,6 +121,8 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  selection = [],
+  reruns = textsOf(TEST_RERUNS_OFF),
 }: BuildRequest): void {
   callUntyped(runMaven, {
     projectRoot,
@@ -131,15 +131,13 @@ export function buildAndTest({
     timeoutMs,
     args: [
       '--quiet',
+      ...selection,
       ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
-      `${textOf(MAVEN_PLUGINS.dependency)}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
-      '-DoutputAbsoluteArtifactFilename=true',
-      '-DappendOutput=false',
+      ...textsOf(callUntyped(dependencyListArguments, work)),
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
-      ...TEST_RERUNS_OFF,
+      ...reruns,
       ...PROJECT_CHECKS_OFF,
       ...textsOf(callUntyped(springAotSkip, modules)),
     ],
@@ -157,4 +155,9 @@ export function buildOrSkipTests(build: BuildRequest, policy: JavaPolicy): unkno
     buildAndTest({ ...build, quick: true });
     return [timedOutTests(fieldOf(error, 'timedOut'))];
   }
+}
+
+export function testReruns(configs: unknown): string[] {
+  const values = fieldOf(fieldOf(configs, 'tests'), 'arguments');
+  return textsOf(callUntyped(testRerunArguments, values));
 }

@@ -7,6 +7,8 @@ import { createToolContext, mutationVersions, toolVersions } from './python-tool
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
 import { FACTS_TOOL } from './facts/python-facts.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -16,7 +18,7 @@ const MUTATION_TIMEOUT_MS = 70 * 60 * 1000;
 const MUTATION_SHARD_WEIGHT = 90;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
-const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
+const runnerPath = checkoutModulePath(path.join(import.meta.dirname, 'python-runner.mjs'));
 const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
 
 function importedRunnerFiles() {
@@ -28,7 +30,7 @@ function importedRunnerFiles() {
 
 function pythonResourceFiles() {
   return readdirSync(pythonRoot, { recursive: true })
-    .filter((file) => !file.endsWith('.test.mjs'))
+    .filter((file) => !/\.test\.m[jt]s$/u.test(file))
     .filter((file) => !file.split(path.sep).some((folder) => TEST_ONLY_FOLDERS.has(folder)))
     .filter((file) => path.extname(file) !== '')
     .map((file) => path.join(pythonRoot, file));
@@ -85,6 +87,7 @@ function pythonInvocation(settings, part) {
 function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
@@ -120,6 +123,7 @@ function pythonAnalyzer(settings, probes) {
 function mutationAnalyzer(settings, probes) {
   return {
     name: MUTATION_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
       resolveVersion(liveProjectRoot, mutationVersions, { settings, probes }),

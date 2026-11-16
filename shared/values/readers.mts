@@ -1,3 +1,5 @@
+export type Fields = Readonly<Record<string, unknown>>;
+
 export function parseJson(text: string): unknown {
   return JSON.parse(text);
 }
@@ -18,7 +20,7 @@ export function fieldOf(value: unknown, key: string): unknown {
   return typeof value === 'object' && value !== null ? Reflect.get(value, key) : undefined;
 }
 
-export function fieldsOf(value: unknown): Readonly<Record<string, unknown>> {
+export function fieldsOf(value: unknown): Fields {
   return typeof value === 'object' && value !== null
     ? Object.fromEntries(Object.entries(value))
     : {};
@@ -34,4 +36,25 @@ export function objectOf(value: unknown): object | undefined {
 
 export function listOf(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function stringsIn(value: unknown): string[] {
+  const found: string[] = [];
+  const pending: unknown[] = [value];
+  for (const item of pending) {
+    if (typeof item === 'string') {
+      found.push(item);
+    } else if (typeof item === 'object' && item !== null) {
+      pending.push(...Object.values(fieldsOf(item)));
+    }
+  }
+  return found;
 }

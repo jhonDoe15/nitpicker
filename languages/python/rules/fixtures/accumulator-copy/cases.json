@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "accumulator-copy",
+    "mention": "itertools.chain",
+    "subject": "merged|merged + [...]|loop"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "accumulator-copy",
+    "mention": "[*acc, item]",
+    "subject": "merged|merged + [...]|loop"
+  }
+]

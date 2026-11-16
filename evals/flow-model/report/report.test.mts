@@ -155,19 +155,19 @@ describe('flowDiff', () => {
 
   it('shows an inverted guard in the real lookup as a changed guard and swapped outcomes', () => {
     const { lookup } = diffs();
-    const resolved = '../execution/run-analyzers.mjs#resolveAnalyzerMetadata:resolved';
+    const resolved = '../execution/report/analyzer-metadata.mts#resolvedAnalyzerMetadata:resolved';
 
     expect(pick(lookup, ['changedFunctions', 'violations', 'outcomes'])).toEqual({
       changedFunctions: ['lookUpCachedReport'],
       violations: { added: [], removed: [] },
       outcomes: {
         removed: [
-          `${resolved} > cache.read:hit => return { kind: hit, report: cache.read#2 }`,
-          `${resolved} > cache.read:miss => return { kind: miss }`,
+          `${resolved} > cache.read:hit => return { kind: hit, report: cache.read#2, metadata: undefined }`,
+          `${resolved} > cache.read:miss => return { kind: miss, metadata: undefined }`,
         ],
         added: [
-          `${resolved} > cache.read:hit => return { kind: miss }`,
-          `${resolved} > cache.read:miss => return { kind: hit, report: undefined }`,
+          `${resolved} > cache.read:hit => return { kind: miss, metadata: undefined }`,
+          `${resolved} > cache.read:miss => return { kind: hit, report: undefined, metadata: undefined }`,
         ],
       },
     });

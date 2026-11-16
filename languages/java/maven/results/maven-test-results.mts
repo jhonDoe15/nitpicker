@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_RESULTS_DIRECTORY } from '../../adapters/test-times/slow-tests.mjs';
-import { pitTests, suiteNameOf, testReportDirectories } from '../maven-tests.mjs';
+import { pitTests, suiteNameOf, testReportDirectories } from '../maven-tests.mts';
 import { freshReports } from '../../builds/test-failures.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
@@ -49,9 +49,9 @@ function freshOutputs(directory: string, since: number, isArchunit: IsArchunit):
 }
 
 function reportDirectories(module: unknown): [string, string][] {
-  return listOf(testReportDirectories(module)).map((entry) => {
-    const [task, directory] = textsOf(entry);
-    return [task ?? '', directory ?? ''];
+  return testReportDirectories({
+    surefireReports: textOf(fieldOf(module, 'surefireReports')),
+    failsafeReports: textOf(fieldOf(module, 'failsafeReports')),
   });
 }
 

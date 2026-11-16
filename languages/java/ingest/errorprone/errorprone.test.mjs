@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { hashIdentity } from '../../../../shared/ingest/common.mjs';
-import { ingestErrorProne } from './errorprone.mjs';
+import { ingestErrorProne } from './errorprone.mts';
 
 const REPORT = readFileSync(path.join(import.meta.dirname, '../fixtures/errorprone.json'), 'utf8');
 

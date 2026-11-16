@@ -7,10 +7,14 @@ import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mts';
 import { readJavaFindings as readFindings } from '../reporting/java-reports.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
-import { javaLineLength, javaStyle, javaStyleProperties } from './java-style.mjs';
+import {
+  javaLineLength,
+  javaStyle,
+  javaStyleProperties,
+  NOT_YOUR_JAVA_FORMATTER,
+} from './java-style.mjs';
 
-const NOT_YOUR_FORMATTER =
-  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
+const NOT_YOUR_FORMATTER = NOT_YOUR_JAVA_FORMATTER;
 const roots = [];
 
 afterEach(() => {
@@ -32,8 +36,27 @@ describe('javaStyleProperties', () => {
 
     expect(properties('aosp')).toEqual(['-Pnitpicker.java.style=aosp']);
     expect(properties('palantir')).toEqual(['-Pnitpicker.java.style=palantir']);
+    expect(properties('spring')).toEqual(['-Pnitpicker.java.style=spring']);
     expect(properties('google')).toEqual([]);
     expect(properties(undefined)).toEqual([]);
+  });
+
+  it('passes the version and flags the build file declares for the formatter', () => {
+    const conventions = {
+      'java.formatter': 'palantir',
+      'java.formatterVersion': '2.90.0',
+      'java.formatterOptions': ['skipJavadocFormatting', 'skipReflowingLongStrings'],
+    };
+
+    expect(javaStyleProperties({ javaStyle: 'palantir', conventions })).toEqual([
+      '-Pnitpicker.java.formatterVersion=2.90.0',
+      '-Pnitpicker.java.formatterFlags=--skip-reflowing-long-strings',
+      '-Pnitpicker.java.style=palantir',
+    ]);
+    expect(javaStyleProperties({ javaStyle: 'none', conventions })).toEqual([
+      '-Pnitpicker.java.style=none',
+      '-Pnitpicker.java.indentation=2',
+    ]);
   });
 
   it('passes the indentation along when no formatter runs, for the Checkstyle checks', () => {
@@ -291,13 +314,13 @@ describe('the format finding', () => {
     expect(format({})).toEqual([
       [
         unformatted,
-        `File is not formatted with google-java-format. Run nitpicker --fix, or format it with google-java-format --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+        `File is not formatted with google-java-format. Run \`nitpicker --fix\` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand. ${NOT_YOUR_FORMATTER}`,
       ],
     ]);
     expect(format({ javaStyle: 'aosp' })).toEqual([
       [
         unformatted,
-        `File is not formatted with google-java-format --aosp. Run nitpicker --fix, or format it with google-java-format --aosp --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+        `File is not formatted with google-java-format --aosp. Run \`nitpicker --fix\` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand. ${NOT_YOUR_FORMATTER}`,
       ],
     ]);
   });
@@ -311,7 +334,7 @@ describe('the format finding', () => {
     expect(found.map(({ path: file, message }) => [file, message])).toEqual([
       [
         unformatted,
-        `File is not formatted with palantir-java-format. Run nitpicker --fix, or format it with palantir-java-format --palantir --replace <Java files>. ${NOT_YOUR_FORMATTER}`,
+        `File is not formatted with palantir-java-format. Run \`nitpicker --fix\` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand. ${NOT_YOUR_FORMATTER}`,
       ],
     ]);
   });

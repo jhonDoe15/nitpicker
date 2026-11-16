@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { byCodeUnits, listedProjectFiles } from '../../../../core/scope/mutation-scope.mjs';
+import { isMultiModule, repositoryChangeKey } from './affected/changed-files.mts';
 import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mts';
 import type { ChangedTests, ComparisonRoots } from './comparison-changes.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
@@ -17,6 +18,7 @@ type TestedSources = { readonly sources: string[]; readonly capped: string[] };
 type ChangedTestsRequest = {
   readonly touchedPaths: readonly string[];
   readonly headRoot: string;
+  readonly mergeBaseSha?: string | undefined;
   readonly quick?: unknown;
 };
 
@@ -135,13 +137,15 @@ function contentDigest(root: string, file: string): string {
 export function changedTestsKey({
   touchedPaths,
   headRoot,
+  mergeBaseSha,
   quick,
 }: ChangedTestsRequest): string | undefined {
+  const scope = isMultiModule(headRoot) ? repositoryChangeKey(headRoot, mergeBaseSha) : undefined;
   const tests = touchedPaths.filter(isJvmTestPath).toSorted(byCodeUnits);
-  if (quick === true) {
+  if (quick === true || (scope !== undefined && touchedPaths.length === 0)) {
     return undefined;
   }
   const digests = tests.map((file): [string, string] => [file, contentDigest(headRoot, file)]);
   const onHead = digests.filter(([, digest]) => digest !== 'absent').map(([file]) => file);
-  return JSON.stringify({ tests: digests, reached: reachedFrom(headRoot, onHead) });
+  return JSON.stringify({ tests: digests, reached: reachedFrom(headRoot, onHead), scope });
 }

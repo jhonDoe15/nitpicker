@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mts';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';
@@ -204,6 +204,30 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
       'hygiene/files/start-scripts.mjs',
+      'hygiene/limits/classes/declarations.mjs',
+      'hygiene/limits/classes/field-facts.mjs',
+      'hygiene/limits/classes/go-structs.mjs',
+      'hygiene/limits/classes/jvm-classes.mjs',
+      'hygiene/limits/classes/python-classes.mjs',
+      'hygiene/limits/classes/typescript-classes.mjs',
+      'hygiene/limits/columns/changelog-columns.mjs',
+      'hygiene/limits/columns/column-facts.mjs',
+      'hygiene/limits/columns/drizzle-columns.mjs',
+      'hygiene/limits/columns/prisma-columns.mjs',
+      'hygiene/limits/columns/sql-columns.mjs',
+      'hygiene/limits/compare.mjs',
+      'hygiene/limits/field-limits.mjs',
+      'hygiene/limits/messages.mjs',
+      'hygiene/limits/request-bound.mjs',
+      'hygiene/limits/scanning/facts.mjs',
+      'hygiene/limits/scanning/names.mjs',
+      'hygiene/limits/scanning/pattern-length.mjs',
+      'hygiene/limits/scanning/scan.mjs',
+      'hygiene/limits/spec/generators.mjs',
+      'hygiene/limits/spec/openapi-limits.mjs',
+      'hygiene/limits/validators/bounds.mjs',
+      'hygiene/limits/validators/schema-objects.mjs',
+      'hygiene/limits/validators/spring-validator.mjs',
       'hygiene/migrations/hardcoded-names.mjs',
       'hygiene/migrations/migration-files.mjs',
       'hygiene/migrations/migration-order.mjs',

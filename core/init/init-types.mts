@@ -22,6 +22,7 @@ export type InitProject = {
   readonly typeChecker?: string;
   readonly tool?: string;
   readonly buildTool?: string;
+  readonly settings?: Readonly<Record<string, unknown>>;
   readonly javaSources?: unknown;
 };
 
@@ -33,6 +34,9 @@ export type Peers = {
   readonly command?: string;
   readonly advice?: string;
   readonly requirements?: string;
+  readonly absent?: readonly string[];
+  readonly outdated?: readonly string[];
+  readonly blockers?: readonly string[];
 };
 
 export type WorkflowContext = {

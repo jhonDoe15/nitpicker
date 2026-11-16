@@ -36,6 +36,42 @@ export function blankComments(text) {
   );
 }
 
+export function withoutNested(text, open, close) {
+  let depth = 0;
+  return text
+    .split('')
+    .filter((character) => {
+      depth += character === open ? 1 : 0;
+      const kept = depth === 0;
+      depth -= character === close ? 1 : 0;
+      return kept && character !== close;
+    })
+    .join('');
+}
+
+export function withoutGenerics(text) {
+  return withoutNested(text, '<', '>');
+}
+
+function blankedBlocks(text, keeps) {
+  let depth = 0;
+  let kept = '';
+  for (const character of text) {
+    depth -= character === '}' ? 1 : 0;
+    kept += keeps(depth, character) ? character : ' ';
+    depth += character === '{' ? 1 : 0;
+  }
+  return kept;
+}
+
+export function blankBlockBodies(text) {
+  return blankedBlocks(text, (depth) => depth === 0);
+}
+
+export function blankBlocks(text) {
+  return blankedBlocks(text, (depth, character) => depth === 0 && character !== '}');
+}
+
 export function pathInside(base, relative) {
   const root = path.resolve(base);
   const full = path.resolve(root, relative);

@@ -3,7 +3,11 @@ import type { NodeToolResult } from '../../static-checks/shared.mts';
 
 export type RunnerName = 'vitest' | 'jest' | 'node' | 'mocha';
 
-export type Rerun = { readonly files: readonly string[]; readonly namePattern: string };
+export type Rerun = {
+  readonly files: readonly string[];
+  readonly namePattern?: string | undefined;
+  readonly withoutMockPin: boolean;
+};
 
 export type TestOptions = QualityAreaOptions & { readonly rerun?: Rerun | undefined };
 

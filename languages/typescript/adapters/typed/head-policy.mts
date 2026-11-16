@@ -6,6 +6,10 @@ import {
   usesLayeredPrettier as untypedUsesLayeredPrettier,
 } from '../../preset/head-policy.mjs';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../../preset/tool-configs.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+
+export const globMatcher: (pattern: string) => { test(value: string): boolean } =
+  untypedGlobMatcher;
 
 export type EslintToolSettings = { readonly engine?: string };
 
@@ -26,6 +30,9 @@ export type Layout = {
   readonly isSourceFile: (relativePath: string) => boolean;
   readonly isRunnableTestFile: (relativePath: string) => boolean;
   readonly isTestFile: (relativePath: string) => boolean;
+  readonly isTestFixture: (file: string, name?: string) => boolean;
+  readonly testGlobs: readonly string[];
+  readonly entryPoints?: readonly string[];
   readonly testRoots: readonly string[];
   readonly sourceGlobs: readonly string[];
   readonly sourceTestDirectoryGlobs: readonly string[];
@@ -44,5 +51,8 @@ export const prettierPrecedence: () => readonly string[] = untypedPrettierPreced
 
 export const usesLayeredPrettier: () => boolean = untypedUsesLayeredPrettier;
 
-export const layoutTransformFor: (policyFileName: string, layout: Layout) => unknown =
-  untypedLayoutTransformFor;
+export const layoutTransformFor: (
+  policyFileName: string,
+  layout: Layout,
+  options?: { readonly projectRootFiles: boolean },
+) => unknown = untypedLayoutTransformFor;

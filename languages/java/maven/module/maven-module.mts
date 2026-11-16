@@ -1,15 +1,16 @@
 import path from 'node:path';
 import { runFormat } from '../format/maven-format.mts';
 import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mjs';
-import { archunitMatcher } from '../maven-tests.mjs';
+import { archunitMatcher } from '../maven-tests.mts';
 import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
-import { runErrorProne } from '../errorprone/maven-errorprone.mts';
+import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
-import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
+import { analyzeKotlinModule } from '../kotlin/kotlin-module.mts';
 import { runGuards } from '../guards/maven-guards.mts';
+import { runEffects } from '../effects/maven-effects.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
 import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mts';
@@ -83,15 +84,16 @@ function runSourceTools(options: ModuleOptions): void {
       auxClasspath: fieldOf(kotlin, 'auxClasspath'),
     }),
     sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
-    sourceTask(runFormat, FORMAT_URL, { ...base, javaStyle: fieldOf(style, 'javaStyle') }),
+    sourceTask(runFormat, FORMAT_URL, {
+      ...base,
+      javaStyle: fieldOf(style, 'javaStyle'),
+      formatterFlags: fieldOf(style, 'formatterFlags'),
+    }),
     sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
   ];
-  callUntyped(runToolsConcurrently, tasks, {
-    spawn: options['spawn'],
-    concurrent: options['quick'] === true,
-  });
+  callUntyped(runToolsConcurrently, tasks, { spawn: options['spawn'] });
 }
 
 function analyzeSources(options: ModuleOptions): unknown {
@@ -101,6 +103,7 @@ function analyzeSources(options: ModuleOptions): unknown {
   });
   runSourceTools({ ...options, kotlin: { ...fieldsOf(kotlin), spring: options['spring'] } });
   callUntyped(runGuards, options, options['project']);
+  callUntyped(runEffects, { ...options, options: options['effectsOptions'] });
   runArchitecture({ ...options, module: fieldOf(kotlin, 'coverageModule') });
   return kotlin;
 }

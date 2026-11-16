@@ -119,9 +119,15 @@ JPA and Spring Data:
 - Index every foreign key in the Flyway or Liquibase migration that adds it:
   `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
   PostgreSQL does not create one (`foreign-key-index`).
-- Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
-  that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
-  `collectList()`. Query text is constant (a text block) and
+- Give every field that is written from a request a validation bound at or below its column width
+  (`@Size(max = 30)` for a `VARCHAR(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
+- Filter, count, sort and total in the query, not on the rows a repository method returned
+  (`findAll()`, `findAllById`, a `@Query` method, a page's content): no `size()`, `isEmpty()` or
+  `count()` (use a count or exists query), no `filter`/`anyMatch` on stored fields (a where
+  clause), no `sorted(comparing(Row::getX))` (order by or a `Sort` argument), no `mapToLong(...)
+.sum()`, `reduce` or `groupingBy(..., counting())` (an aggregate `@Query`), reactive `Flux`
+  forms included. Mapping rows to DTOs is fine. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
   the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
@@ -134,6 +140,10 @@ Tests:
 - `@SpringBootTest` is for integration and component tests that use the context (an injected bean,
   `MockMvc`, `WebTestClient`, `TestRestTemplate`). Unit-test a class by creating it with `new`, and
   test one layer with a slice such as `@WebMvcTest` or `@DataJpaTest` (`SpringUnusedContext`).
+- Text from a search or filter field is trimmed before it reaches a repository finder (`findBy...StartingWith`,
+  `Containing`, `Like`, `IgnoreCase`, `Equals`) or a query parameter: `lastName.strip()` in the handler, or one
+  `StringTrimmerEditor` registered in an `@InitBinder` of a `@ControllerAdvice` for every controller, since a
+  padded `" Davis"` finds nothing (`spring/untrimmed-request-text`).
 
 `application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, including
 the ones your tests activate with `@ActiveProfiles` or have a file for under `src/test/resources`,

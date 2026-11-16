@@ -4,8 +4,8 @@ import { ingestCrap } from '../../../ingest/crap.mjs';
 import { ingestJacoco } from '../../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../../ingest/pit.mts';
 import { ingestJacocoBranches } from '../../../ingest/coverage-reports/jacoco-branches.mts';
-import { pitFailureFindings } from '../../../builds/pit-failure/pit-failure.mjs';
-import { pitSkippedFindings } from '../../../builds/pit-failure/pit-skipped.mjs';
+import { pitFailureFindings } from '../../../builds/pit-failure/pit-failure.mts';
+import { pitSkippedFindings } from '../../../builds/pit-failure/pit-skipped.mts';
 import { firstProjectFile } from '../../../../../shared/conventions/read-inside.mjs';
 import { archunitFindings, springArchFindings } from '../archunit/archunit-findings.mts';
 import { javaMethodText } from '../../metrics/java-structure.mjs';
@@ -108,12 +108,18 @@ export function branchFindings(context: ModuleContext, jacoco: unknown): Finding
   return findingsIn(branches);
 }
 
-export function coverageFindings(context: ModuleContext, crapLimit: unknown): Findings {
+export function coverageFindings(
+  context: ModuleContext,
+  crapLimit: unknown,
+  structureSkipped = false,
+): Findings {
   return [
     ...ifTested(context['jacoco'], (report) => jacocoFindings(context, report)),
     ...findingsFrom(archunitFindings, context),
     ...findingsFrom(springArchFindings, context),
-    ...ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit)),
-    ...(context.quick ? [] : pitFindings(context)),
+    ...(structureSkipped
+      ? []
+      : ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit))),
+    ...(context.quick || context['mutationOff'] === true ? [] : pitFindings(context)),
   ];
 }

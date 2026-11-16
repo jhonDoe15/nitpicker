@@ -3,18 +3,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mts';
-import { captureOutput } from '../../../core/diff/reporting/test-support/output-capture.mjs';
-import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
+import { captureOutput } from '../../../core/diff/reporting/test-support/output-capture.mts';
+import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mts';
 import { createHistoryAnalyzers } from '../analyzers.mjs';
 import { CO_CHANGE_ADVICE } from './findings.mjs';
-import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mts';
 import { resolveHeadPolicy } from '../../head-policy.mjs';
 import {
   edit,
   importHistory,
   SOURCE_FILES,
   useHistoryRepositories,
-} from '../../../core/diff/git/test-support/history-repository.mjs';
+} from '../../../core/diff/git/test-support/history-repository.mts';
 import { checkoutModuleUrl } from '../../paths/checkout-module.mjs';
 
 const { historyRepository } = useHistoryRepositories();

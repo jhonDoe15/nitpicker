@@ -2,13 +2,13 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mts';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import { usesJpa } from './spring-config-files.mjs';
 import {
@@ -91,6 +91,38 @@ describe('readSpringConfigFindings', () => {
         resourceRoots: ['conf'],
       }),
     ).toEqual([openInView('conf/config/application.properties')]);
+  });
+
+  it('reads a config file once when resource roots overlap or repeat', () => {
+    const root = project({
+      'src/main/resources/application.properties': 'spring.jpa.open-in-view=true',
+      'src/main/resources/config/application.properties': 'spring.jpa.open-in-view=true',
+    });
+    const resourceRoots = [
+      'src/main/resources',
+      'src/main/resources/',
+      './src/main/resources',
+      'src/main/resources/../resources',
+      'src/main/resources/config',
+    ];
+
+    expect(
+      readSpringConfigFindings(root, { sourceRoots, resourceRoots }).map((item) => [
+        item.path,
+        item.identity,
+      ]),
+    ).toEqual([
+      ['src/main/resources/application.properties', 'spring.jpa.openinview'],
+      ['src/main/resources/config/application.properties', 'spring.jpa.openinview'],
+    ]);
+  });
+
+  it('reads a file once when the root is the project and a root names its config folder', () => {
+    const root = project({ 'config/application.properties': 'spring.jpa.open-in-view=true' });
+
+    expect(
+      readSpringConfigFindings(root, { sourceRoots, resourceRoots: ['.', 'config', './config'] }),
+    ).toEqual([openInView('config/application.properties', 1)]);
   });
 
   it('skips files it cannot read', () => {

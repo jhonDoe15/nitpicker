@@ -23,10 +23,10 @@ import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
 import { applyRuleMessages } from '../messages/rule-messages.mjs';
 import { readGuardFindings } from './index.mts';
-import { coveredByCpd } from './cpd-duplicates.mjs';
+import { coveredByCpd } from './cpd-duplicates.mts';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mts';
-import { readCpdFindings } from './cpd-duplicates.mjs';
+import { readCpdFindings } from './cpd-duplicates.mts';
 import { readLintFindings } from './javac-lint.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
@@ -78,6 +78,8 @@ const GUARD_RULES = new Set([
   'ConstantName',
   'MagicNumber',
   'VisibilityModifier',
+  'ExhaustiveSwitchHasDefault',
+  'UnnecessaryWarningSuppression',
 ]);
 
 function markedFiles(root) {

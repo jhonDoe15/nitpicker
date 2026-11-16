@@ -14,6 +14,8 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { lstatSync } from 'node:fs';
 import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { describeProcessEnd } from '../../../../../shared/processes/process-failure.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 
 type NodeToolSpawn = {
   readonly options: QualityAreaOptions;
@@ -31,6 +33,7 @@ type NodeToolInvocation = NodeToolSpawn & {
 };
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
+const policyModulePath: (file: string) => string = checkoutModulePath;
 
 export const TRUSTED_TOOL_ROOT: string = PACKAGE_ROOT;
 
@@ -54,8 +57,7 @@ export function runNodeTool({
 }: NodeToolInvocation): SpawnSyncReturns<string> {
   const result = spawnNodeTool(invocation);
   if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${invocation.options.kind} exited with ${String(result.status)}: ${detail}`);
+    throw new Error(describeProcessEnd(invocation.options.kind, result));
   }
   return result;
 }
@@ -68,7 +70,7 @@ function nodeToolPaths(
   }: Pick<NodeToolSpawn, 'relativeToolPath' | 'absoluteToolPath'>,
 ): string[] {
   if (absoluteToolPath !== undefined) {
-    return [absoluteToolPath];
+    return [policyModulePath(absoluteToolPath)];
   }
   if (relativeToolPath === undefined) {
     return [];
@@ -121,7 +123,7 @@ export async function importPolicyModule(
   suffix = '',
 ): Promise<unknown> {
   const loaded: unknown = await import(
-    `${pathToFileURL(path.join(options.policyRoot, relativePath)).href}${suffix}`
+    `${pathToFileURL(policyModulePath(path.join(options.policyRoot, relativePath))).href}${suffix}`
   );
   return loaded;
 }

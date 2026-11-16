@@ -3,7 +3,7 @@ import type { EslintOptions } from '../arguments.mts';
 import {
   testEnvironmentNotices as untypedTestEnvironmentNotices,
   testEnvironmentsFor as untypedTestEnvironmentsFor,
-} from '../../../preset/test-environment/resolve-environment.mjs';
+} from '../../../preset/test-environment/resolve-environment.mts';
 
 export type EslintFinding = Finding & {
   allowedForm?: string;
@@ -28,6 +28,7 @@ export type EslintMessage = {
   readonly column?: unknown;
   readonly endLine?: unknown;
   readonly endColumn?: unknown;
+  readonly chainUses?: number;
 };
 
 type EslintResult = { readonly filePath?: unknown; readonly messages?: unknown };

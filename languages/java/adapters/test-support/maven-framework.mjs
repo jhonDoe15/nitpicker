@@ -6,17 +6,17 @@ import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../maven/configuration/maven-classpaths.mts';
+} from '../../maven/configuration/maven-classpaths.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,
   collectTestResults,
   junitLauncherVersion,
   runJacocoReport,
-} from '../../maven/maven-tests.mjs';
+} from '../../maven/maven-tests.mts';
 import { runPit } from '../../maven/pit/maven-pit.mts';
 import { copyTestResults } from '../../maven/results/maven-test-results.mts';
-import { ingestArchunit } from '../../ingest/archunit.mjs';
+import { ingestArchunit } from '../../ingest/archunit.mts';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../ingest/pit.mts';
 import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';

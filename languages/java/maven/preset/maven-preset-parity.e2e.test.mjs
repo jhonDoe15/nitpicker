@@ -6,7 +6,7 @@ import { analyzeJavaSnapshot } from '../../adapters/java-runner.mts';
 import {
   LIBRARY_CALLS,
   LIBRARY_CALLS_TEST,
-} from '../../adapters/kotlin-e2e/test-support/kotlin-branch-coverage-data.mjs';
+} from '../../adapters/kotlin-e2e/test-support/kotlin-branch-coverage-data.mts';
 import {
   useMavenPresetProject,
   enabled,

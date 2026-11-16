@@ -1,8 +1,8 @@
 import type { Finding } from '../../static-checks/shared.mts';
-import type { QualityAreaOptions } from '../typed/area-types.mts';
+import type { QualityAreaOptions, TextOutput } from '../typed/area-types.mts';
 import { runNodeTool, parseReportJson } from '../typed/tooling.mts';
 import path from 'node:path';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import {
   COVERAGE_REPORT_PATH,
   coverageFailureFindings,
@@ -14,6 +14,7 @@ import { withFunctionSourceHashes } from '../reporting/source-hashes.mts';
 import { readLayout } from '../../typed/head-policy.mts';
 import { readSlowTestFindings } from '../../slow-tests/slow-tests.mts';
 import { runProjectTests } from '../../test-runners/run-project-tests.mts';
+import { passesWithoutMockPin } from '../../test-runners/mock-pin-rerun.mts';
 import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mts';
 import {
   TESTS_FAILED_SKIPPED_RULE,
@@ -35,20 +36,39 @@ export function runPolicyTests(options: QualityAreaOptions): Finding[] {
   return [];
 }
 
-export async function runCoverage(options: QualityAreaOptions): Promise<Finding[]> {
+export async function runCoverage(
+  options: QualityAreaOptions,
+  output: TextOutput,
+): Promise<Finding[]> {
   const run = await runProjectTests(options);
   if (run.failed) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
-    return coverageFailureFindings(options, run);
+    const mockPin = await passesWithoutMockPin(options, run, output);
+    return coverageFailureFindings(options, run, { mockPin });
   }
   if (run.report.numTotalTests === 0) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, run.runnerName)];
   }
+  keepCoverageReport(options);
   return [
     ...readCoverageFindings(options, run.report),
     ...(await readSlowTestFindings(options, run.report)),
   ];
+}
+
+function keepCoverageReport(options: QualityAreaOptions): void {
+  const directory = options.keepCoverageReport;
+  const source = path.join(options.projectRoot, COVERAGE_REPORT_PATH);
+  if (directory === undefined || directory === '' || !existsSync(source)) {
+    return;
+  }
+  const target = path.resolve(directory, `${options.snapshot}-coverage-final.json`);
+  if (path.relative(directory, target).startsWith('..')) {
+    return;
+  }
+  mkdirSync(directory, { recursive: true });
+  copyFileSync(source, target);
 }
 
 function noTestsRanFinding(options: QualityAreaOptions, runnerName: string): Finding {

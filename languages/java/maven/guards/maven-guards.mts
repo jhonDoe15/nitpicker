@@ -9,10 +9,10 @@ import { runJavacLint } from '../../builds/lint/javac-lint-runner.mts';
 import { runDependencies } from './maven-dependencies.mts';
 import { runCpd } from './maven-pmd.mts';
 import { guardCompiler } from '../errorprone/maven-compiler.mjs';
-import { processorPath } from '../errorprone/maven-errorprone.mts';
+import { processorPath } from '../errorprone/maven-errorprone.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
 
 type GuardContext = Readonly<Record<string, unknown>> & { readonly reportDir: string };
@@ -72,6 +72,26 @@ export function lintPlan(
     workDirectory: path.join(lintDirectory, 'work'),
     cacheDirectory: lintDirectory,
     spawn: context['spawn'],
+    test: testLintPlan(context, module),
+  };
+}
+
+function testLintPlan(
+  context: GuardContext,
+  module: MavenModule,
+): Readonly<Record<string, unknown>> {
+  const classpath = textsOf(fieldOf(context['classpaths'], 'testCompile'));
+  const compiler = module['compiler'];
+  return {
+    sources: javaFiles(textsOf(module['testSourceRoots'])),
+    generatedSources: [path.join(module.buildDirectory, 'generated-test-sources/test-annotations')],
+    classDirectory: module['testOutputDirectory'],
+    classpath: [module['outputDirectory'], ...classpath],
+    processorPath: callUntyped(processorPath, classpath, compiler, context['tools']),
+    compiler: callUntyped(guardCompiler, {
+      ...fieldsOf(compiler),
+      ...fieldsOf(fieldOf(compiler, 'test')),
+    }),
   };
 }
 

@@ -33,6 +33,7 @@ import {
   callUntyped,
   javaPolicyOf,
 } from './typed/java-values.mts';
+import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
 
 type Budget = TimeBudget;
 type JavaSnapshotOptions = {
@@ -121,7 +122,7 @@ export function analyzeJavaSnapshot(
       return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
     }
     const preset = policy?.preset ?? 'java';
-    const rule = failureRule(error, projectRoot);
+    const rule = failureRule(error, projectRoot, policy?.['buildTool']);
     return {
       findings: [
         {
@@ -168,14 +169,16 @@ function isInternalError(error: unknown): boolean {
   return INTERNAL_ERRORS.some((type) => error instanceof type);
 }
 
-function failureRule(error: unknown, projectRoot: string): string {
+function failureRule(error: unknown, projectRoot: string, buildTool: unknown): string {
   if (hasFailures(error)) {
     return TESTS_FAILED_RULE;
   }
   if (isInternalError(error)) {
     return INTERNAL_ERROR_RULE;
   }
-  return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+  return detectJavaBuild(projectRoot, buildTool) === 'maven'
+    ? MAVEN_FAILURE_RULE
+    : GRADLE_FAILURE_RULE;
 }
 
 function failureMessage(error: unknown, rule: string, preset: string): string {
@@ -219,13 +222,5 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(runJava(runnerArguments))}\n`);
 }
 
-if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
-  try {
-    main(process.argv.slice(2));
-  } catch (error) {
-    process.stderr.write(
-      `Java differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
+const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };
+process.exitCode = runAdapterMain(entry, process) ?? process.exitCode;

@@ -10,7 +10,7 @@ import {
   SCRIPT_SKIPPED_FOLDERS,
   withSkippedFolders,
 } from '../../../core/tooling/jscpd/skipped-folders.mjs';
-import { projectLibs } from './modules/tsconfig-files.mjs';
+import { projectLibs, projectRootFiles } from './modules/tsconfig-files.mjs';
 import {
   POLICY_COMPILER_OPTIONS,
   TYPESCRIPT_ONLY_OPTIONS,
@@ -129,7 +129,11 @@ const REWRITES = new Map([
 
 const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', STRYKER_TSCONFIG]);
 
-export function layoutTransformFor(policyFileName, layout, { strictMutants = true } = {}) {
+export function layoutTransformFor(
+  policyFileName,
+  layout,
+  { strictMutants = true, projectRootFiles: withRootFiles = false } = {},
+) {
   const name = policyFileName.split('/').at(-1);
   const rewrite = REWRITES.get(name);
   const layoutTransform = rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
@@ -147,7 +151,11 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
       const layered =
         name === STRYKER_TSCONFIG
           ? projectLayeredMutationTsconfig(extended, { strictMutants, layout })
-          : projectLayeredTsconfig(extended, JSON.parse(text), { layout, projectDirectory });
+          : projectLayeredTsconfig(extended, JSON.parse(text), {
+              layout,
+              projectDirectory,
+              withRootFiles,
+            });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
     const rewritten = withProjectStrictness(
@@ -209,12 +217,19 @@ const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noUncheckedIndexedAccess',
 ]);
 
-const ANALYSIS_OPTIONS = { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true };
+const ANALYSIS_OPTIONS = {
+  allowJs: true,
+  isolatedDeclarations: false,
+  noCheck: false,
+  noEmit: true,
+  skipLibCheck: true,
+};
 
 function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   return {
     extends: extended,
     compilerOptions: {
+      isolatedDeclarations: false,
       noCheck: false,
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
@@ -224,9 +239,10 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   };
 }
 
-function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
+function projectLayeredTsconfig(extended, base, { layout, projectDirectory, withRootFiles }) {
   const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
+  const rootFiles = withRootFiles ? projectRootFiles(projectDirectory, extended) : [];
   const lib = libsWithEndToEndDom(
     projectLibs(projectDirectory, extended),
     projectDirectory,
@@ -241,6 +257,7 @@ function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
       ...javascriptOptions,
       ...(lib === undefined ? {} : { lib }),
     },
+    ...(rootFiles.length === 0 ? {} : { files: rootFiles }),
     include: layered.include,
     exclude: layered.exclude,
   };

@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { runFormat } from './format/maven-format.mts';
@@ -237,7 +237,7 @@ describe('maven tools', () => {
 });
 
 describe('runFormat', () => {
-  function formatTokens(javaStyle, keep) {
+  function formatTokens(javaStyle, keep, formatterFlags) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-format-'));
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
@@ -255,7 +255,7 @@ describe('runFormat', () => {
     mkdirSync(reportDir);
     const module = { basedir: root, sourceRoots: [path.dirname(source)], testSourceRoots: [] };
     const tools = { format: ['google.jar'], 'format-palantir': ['palantir.jar'] };
-    runFormat({ module, reportDir, tools, javaStyle });
+    runFormat({ module, reportDir, tools, javaStyle, formatterFlags });
     return readFileSync(path.join(reportDir, 'format.txt'), 'utf8').split('\n').filter(keep);
   }
 
@@ -270,6 +270,16 @@ describe('runFormat', () => {
     expect(formatArguments('aosp')).toEqual(['"--aosp"', '"--dry-run"']);
     expect(formatArguments('google')).toEqual(['"--dry-run"']);
     expect(formatArguments(undefined)).toEqual(['"--dry-run"']);
+  });
+
+  it('passes the formatter options the build file declares, before the files', () => {
+    expect(
+      formatTokens(
+        'google',
+        (token) => token.startsWith('"--') && !token.startsWith('"--add-exports'),
+        ['--skip-javadoc-formatting', '--skip-reflowing-long-strings'],
+      ),
+    ).toEqual(['"--skip-javadoc-formatting"', '"--skip-reflowing-long-strings"', '"--dry-run"']);
   });
 
   it('runs palantir-java-format from its own jar, and nothing when no formatter runs', () => {
@@ -358,7 +368,19 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
     expect(run.rulesets.slice(3).every((file) => path.dirname(file) === run.reportDir)).toBe(true);
-    expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
+    expect(run.mainRules).toEqual([
+      shipped('pmd-main-ruleset.xml'),
+      `${shipped('pmd-main-ruleset.xml')}/IoCallInLoop`,
+      shipped('spring-ruleset.xml'),
+    ]);
+    expect(
+      readFileSync(path.join(run.reportDir, 'pmd-main.xml'), 'utf8')
+        .split('\n')
+        .filter((line) => line.includes('IoCallInLoop')),
+    ).toEqual([
+      `  <rule ref="${shipped('pmd-main-ruleset.xml')}"><exclude name="IoCallInLoop"/></rule>`,
+      `  <rule ref="${shipped('pmd-main-ruleset.xml')}/IoCallInLoop"><properties><property name="springData" value="true"/></properties></rule>`,
+    ]);
     expect(run.testRules).toEqual([
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
@@ -378,7 +400,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   it('takes the Spring rule set written for the project when it names annotations of its own', () => {
     const own = path.join(tmpdir(), 'spring-ruleset-project.xml');
 
-    expect(pmdRun(true, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml'), own]);
+    expect(pmdRun(true, own).mainRules.at(-1)).toBe(own);
     expect(pmdRun(false, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml')]);
   });
 

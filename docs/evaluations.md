@@ -58,7 +58,7 @@ never falls back to the project's own tests:
   file name. Gradle gets `--tests <package.Class>` for each; Maven gets the simple names in `-Dtest`.
   Which tool runs is decided by `detectJavaBuild` (`languages/java/builds/java-build.mjs`), the same
   function the gate uses: a `pom.xml` without a Gradle build file is Maven, and with both, `mvnw`
-  without `gradlew` is Maven and anything else is Gradle.
+  without `gradlew` is Maven and anything else is Gradle (unless `java.buildTool` is set).
 
 An acceptance run that exceeds its 30-minute budget ends the run with the outcome `acceptance-timeout`
 (`acceptance.timedOut` in the record), not `acceptance-failed`.
@@ -295,6 +295,77 @@ Runs of one case and tier must not share a number, because the park agent names 
 `<case>-<tier>-<run>.json`. A number that is not a whole number of 1 or more, or a `--case` that no
 case has, is an error before anything runs. When several runners install packages on one machine, start the installs one at
 a time and give each runner its own `npm_config_cache`: parallel installs into one cache corrupt it.
+
+## Fix plans: measured effect
+
+Fix plans (`fix-plans.json`, see the usage guide) are meant to save an agent the search for the code,
+the context and the allowed form. Two measurements checked whether they do.
+
+**Sample.** The TypeScript `strict-clean` fixture, plus one commit that adds a receipt feature: a
+23-statement function with magic numbers and `let`, two printers that are near-duplicates, and tests
+with weak assertions. The gate reports lint, size, near-duplicate, branch coverage, surviving mutant
+and test-only export findings. The task: make the gate exit 0 without exceptions or turned-off
+checks, and keep the printed receipts the same. A hidden test checked the printed output after each
+run, and a final gate run checked the result.
+
+**Agent.** Claude Sonnet as a coding agent, one fresh session per run, with the TypeScript skill as
+its guide. In the runs without plans, a wrapper removed `fix-plans.json` and the plan lines from the
+report, and the guide's sentence about plans. Tokens are input, cache writes, cache reads and
+output, summed over the session.
+
+| Setup                                            | Plans                          | Runs | Tokens per run (mean) |
+| ------------------------------------------------ | ------------------------------ | ---: | --------------------: |
+| Without plans                                    | hidden                         |    4 |               821,000 |
+| Plans in the folder, agent not told to read them | per finding                    |    3 |               772,000 |
+| Agent told to read the plans                     | per finding (67 plans, 93 KB)  |    2 |               981,000 |
+| Agent told to read the plans                     | per function (17 plans, 34 KB) |    2 |               975,000 |
+
+Every run reached green with the receipts unchanged. One more run with per-function plans spent 8.6
+million tokens, nearly all of it polling a gate run it had started in the background, and is left out.
+
+**What it showed.**
+
+- The plans did not lower the cost on this sample. Runs fell between 587,000 and 1,079,000 tokens in
+  every group, so the differences are within the spread between runs. Agents that read the plans
+  spent more, because the file itself is large.
+- Agents that were not told to read the plans never opened them, even with the guide pointing there.
+- Agents called the near-duplicate and size plans useful, and the mutant and branch plans generic:
+  the finding messages already said what to test.
+- The first measurement found plans for each mutant (51 of 67), steps that repeated a sentence, and
+  test-file suggestions beside the source although the project keeps its tests in `test/`. Plans are
+  now grouped per function and point at the test file that already imports the code.
+
+**Second measurement, a harder sample.** A project with eight features (catalog, cart, money,
+pricing, shipping, customers, invoices and checkout), feature `index` barrels, and tests kept in
+`test/<feature>/` folders that reach the code through the composition root. One commit adds
+shipping costs, loyalty discounts and invoices: 152 findings across eight files, among them a
+near-duplicate across two features, functions over the statement and parameter limits, and mutants
+and branches whose tests sit in a test file named after another module. The task and the checks
+were the same as above, with a hidden test over 300 orders. In the runs with plans, the summary
+printed one line for each plan that adds to its finding: the test file for the mutants and branches
+of each function, and the function to extract from the near-duplicate with what each copy passes.
+
+| Agent         | Setup                     | Runs | Turns | Gate runs | Tokens per run (mean) | Range               |
+| ------------- | ------------------------- | ---: | ----- | --------- | --------------------: | ------------------- |
+| Claude Sonnet | Without plans             |    4 | 9-11  | 2-4       |               560,000 | 510,000-636,000     |
+| Claude Sonnet | Plan lines in the summary |    4 | 9-15  | 3-5       |               733,000 | 496,000-931,000     |
+| Claude Haiku  | Without plans             |    4 | 17-31 | 3-4       |             1,890,000 | 1,362,000-2,757,000 |
+| Claude Haiku  | Plan lines in the summary |    4 | 15-23 | 3         |             1,680,000 | 1,086,000-2,182,000 |
+
+Every run reached green with the output unchanged, and no agent opened `fix-plans.json`. The smaller
+agent was included to see whether plans help an agent that needs more turns. With Sonnet the runs
+with plan lines cost more on average, and with Haiku about 11% less, but in both the difference is
+smaller than the spread between runs of one setup (one Haiku run without plans took 31 turns).
+Agents read all the changed files at once, rewrote them in a few large edits, and put the new tests
+in files of their own choosing, so the plan lines had little left to save.
+
+**What changed.** Plans did not reliably lower the cost on either sample or with either agent, so
+nitpicker does not claim they do, and the summary keeps one count line instead of the plan lines.
+The plans stay in `fix-plans.json` for tools and for agents that look up one finding, since the file holds what the
+messages do not: why a recipe declined, the copies and arguments of a near-duplicate, and the test
+file. That lookup is now more accurate: a test that reaches the code through other modules (such as
+a test of the composition root) counts, a test that calls the function wins a tie, and a new test
+file goes into the existing test folder named like the feature.
 
 ## Shortcut detectors
 
@@ -603,3 +674,16 @@ no such step.
 E7 also made the gate-tampering detector treat `nitpicker.config.json` and `nitpicker.legacy.json` as
 gate configuration files. Before, only script configs (`nitpicker.config.js` and similar) matched, so
 the real config and inventory could be edited without a report.
+
+## Python skill pages: scenario re-run
+
+The Python skill ships `beyond-the-gate.md` and `editing-existing-code.md` like the other presets.
+After they were added, the Python scenarios were re-run with
+`NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config vitest.config.mts evals/scenarios -t python`:
+the reference solutions of `python-bugfix-bill-split`, `python-library-overdue-fines` and
+`python-pressure-legacy-parser` pass the quick gate, and every Python cheating overlay still gets
+the outcome, finding and detector categories its case records (2 files, 7 tests passed). This
+check needs no model call, so it shows that the fixtures, the references and the gate still agree
+with the skill; it does not measure how an agent behaves with the new pages. That needs the agent
+runs described above (`--tier sonnet-skill`), which require model access and have not been recorded
+for these pages yet.

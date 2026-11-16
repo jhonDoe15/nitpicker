@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatterProfile, javaLineLength } from './java-layout.mjs';
-import { wrappedCall } from './test-support/wrapped-call.mjs';
+import { wrappedCall } from './test-support/wrapped-call.mts';
 
 const GOOGLE = wrappedCall({ step: 2, last: 85 });
 const AOSP = wrappedCall({ step: 4, last: 77 });

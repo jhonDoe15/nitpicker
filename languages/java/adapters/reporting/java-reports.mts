@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
-import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mts';
 import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
@@ -16,6 +16,7 @@ import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';
+import { withEffectsFindings } from '../effects/effects-findings.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';
 import { readClassLimitFindings } from '../size/class-limits.mts';
@@ -24,7 +25,7 @@ import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mts';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mts';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mjs';
 import {
@@ -36,6 +37,12 @@ import {
   ifTested,
 } from './test-coverage/coverage-findings.mts';
 import { withJavaCountRatchets } from './counts/java-counts.mts';
+import {
+  CHECKSTYLE_SKIPPED,
+  STRUCTURE_SKIPPED,
+  skippedFiles,
+  skippedToolFindings,
+} from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
@@ -80,18 +87,34 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
     : [];
 }
 
+function skippedSet(reportRoot: unknown): ReadonlySet<unknown> {
+  const files: unknown = callUntyped(skippedFiles, reportRoot);
+  return files instanceof Set ? files : new Set();
+}
+
 function readModuleFindings(context: ModuleContext, crapLimit: unknown): Findings {
   const { reportRoot, projectRoot, kotlin } = context;
   const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
-  return [
+  const skipped = skippedSet(reportRoot);
+  const structureSkipped = skipped.has(STRUCTURE_SKIPPED);
+  const findings = [
+    ...findingsFrom(skippedToolFindings, {
+      reportRoot,
+      javaStyle: context['javaStyle'],
+      moduleDir: fieldOf(context['module'], 'moduleDir'),
+    }),
     ...findingsFrom(sarifFindings, context),
     ...findingsFrom(readErrorProneFindings, context),
     ...findingsFrom(formatFindings, context),
-    ...findingsFrom(checkstyleFindings, context),
-    ...coverageFindings(context, crapLimit),
-    ...findingsFrom(readJavaStructureFindings, reportRoot, projectRoot, context['reactorRoot']),
+    ...(skipped.has(CHECKSTYLE_SKIPPED) ? [] : findingsFrom(checkstyleFindings, context)),
+    ...coverageFindings(context, crapLimit, structureSkipped),
+    ...(structureSkipped
+      ? []
+      : findingsFrom(readJavaStructureFindings, reportRoot, projectRoot, context['reactorRoot'])),
     ...findingsFrom(readDocCommentFindings, { projectRoot, manifest: context[MANIFEST], kotlin }),
-    ...findingsFrom(readClassLimitFindings, reportRoot, context['classLimits']),
+    ...(structureSkipped
+      ? []
+      : findingsFrom(readClassLimitFindings, reportRoot, context['classLimits'])),
     ...ifTested(context['jacoco'], (report) => branchFindings(context, report)),
     ...(kotlin ? findingsFrom(readKotlinFindings, context, crapLimit) : []),
     ...findingsFrom(readGuardFindings, {
@@ -100,6 +123,7 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
     }),
     ...findingsFrom(testRunFindings, context, { reportRoot, projectRoot, testRoots }),
   ];
+  return listOf(callUntyped(withEffectsFindings, context, findings));
 }
 
 function reportingOf(options: Options, module: unknown, preset: string): Options {
@@ -142,6 +166,7 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
     ...run,
     kotlin: preset === KOTLIN && fieldOf(moduleManifest, KOTLIN) === true,
     quick: options['quick'] === true,
+    mutationOff: options['mutationOff'] === true,
     ...reportingOf(options, module, preset),
     mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, preset),
   };

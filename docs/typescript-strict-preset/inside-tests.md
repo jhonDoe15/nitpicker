@@ -434,6 +434,8 @@ hop, and type-only imports do not count.
   rule reports this: `no-floating-promises`, `no-unused-expressions` and `expect-expect` read other
   shapes. JavaScript projects have no type checker in the preset, so the rule does not apply there;
   Python does not need it, since a dropped callable is legal and common there.
+- `@typescript-eslint/no-unused-vars` takes the same `_` marker in test files as in production code: a parameter that only gives a function its arity, such as `(_state, _props) => ({})`, is not reported.
+- `vitest/expect-expect` needs an `expect`, `assert`, `expectTypeOf` or `assertType` call in every test, except in `*.test-d.*` and `*.spec-d.*` files (Vitest's type-test files): there the compiler is the assertion, so a test that only has to compile, or carries a `// @ts-expect-error`, passes.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
   Assertions inside loops are `nitpicker/no-assertion-in-loop`.
@@ -448,6 +450,14 @@ hop, and type-only imports do not count.
   is the way to leave a file out. Neither
   Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
   `jest.useRealTimers()`) in `afterEach`.
+- A test that creates a spy once (in `beforeAll` or a `describe` body) and asserts on it in later
+  tests passes in the project and fails under the pin. When the coverage run has failing tests on
+  Vitest or Jest, nitpicker reruns only those test files once without the pin (the project's own
+  `restoreMocks` setting applies). If they then pass, the `tests-failed` message says the tests fail
+  only because of the `restoreMocks` pin and gives the fix: create the spy in `beforeEach` or
+  inside the test. Coverage, CRAP and mutation are still skipped for that run: the pin is the one way
+  tests run, so a pass without it is not a result nitpicker can measure. Tests that also fail
+  without the pin keep the plain failure message.
 
 - `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
   `console.error` or `console.warn` output the base run did not print fails, with the message and

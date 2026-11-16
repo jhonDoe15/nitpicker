@@ -11,7 +11,7 @@ type ToolTask = {
   readonly name: string;
   readonly options: Readonly<Record<string, unknown>>;
 };
-type RunMode = { readonly spawn?: unknown; readonly concurrent: boolean };
+type RunMode = { readonly spawn?: unknown };
 
 const SUPERVISOR_URL = textOf(
   checkoutModuleUrl(new URL('tool-supervisor.mjs', import.meta.url)).href,
@@ -45,11 +45,8 @@ function runInProcesses(tasks: readonly ToolTask[]): readonly unknown[] {
   return listOf(outcomes);
 }
 
-export function runToolsConcurrently(
-  tasks: readonly ToolTask[],
-  { spawn, concurrent }: RunMode,
-): void {
-  if (!concurrent || spawn !== undefined) {
+export function runToolsConcurrently(tasks: readonly ToolTask[], { spawn }: RunMode = {}): void {
+  if (spawn !== undefined) {
     for (const task of tasks) {
       task.run({ ...task.options, spawn });
     }

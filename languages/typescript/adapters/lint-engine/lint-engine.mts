@@ -1,11 +1,12 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { toolBinaryPath } from '../typed/tooling.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import { readHeadPolicy } from '../typed/head-policy.mts';
 import {
   LINT_CONFIG,
   TEST_ENVIRONMENTS_VARIABLE,
-} from '../../preset/test-environment/resolve-environment.mjs';
+} from '../../preset/test-environment/resolve-environment.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';
@@ -13,6 +14,10 @@ import type { TestEnvironments } from '../eslint/typed/engine.mts';
 import { type LintEngineOptions, projectLayerValue, troubleshootingError } from './typed/tools.mts';
 import { type CollectedRun, spawnCollected } from '../oxlint/oxlint-process.mts';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mts';
+import {
+  describeProcessEnd,
+  failureDetail,
+} from '../../../../shared/processes/process-failure.mjs';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;
@@ -99,7 +104,7 @@ async function runEslintCli(
     [
       invocation.eslintCliPath,
       '--config',
-      path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs'),
+      fileURLToPath(checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url))),
       '--format',
       'json',
       '--no-color',
@@ -140,11 +145,11 @@ function assertEslintCompleted(
     throw result.error;
   }
   if (result.status !== 0 && result.status !== 1) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    const detail = failureDetail(result) || 'no diagnostic output';
     const incompatible = incompatiblePackageMessage(detail, { cwd: projectRoot });
     if (incompatible !== undefined) {
       throw new Error(incompatible);
     }
-    throw new Error(`ESLint exited with ${String(result.status)}: ${detail}`);
+    throw new Error(describeProcessEnd('ESLint', result));
   }
 }

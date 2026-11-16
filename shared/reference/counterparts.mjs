@@ -3,11 +3,13 @@ import { anchorOf } from './entry.mjs';
 const SPRING_PAGE = 'docs/rules/java-nitpicker.md';
 const PAGES = {
   java: { label: 'Java and Kotlin', path: 'docs/rules/java-pmd.md', tool: 'pmd' },
+  jvm: { label: 'Java and Kotlin', path: SPRING_PAGE, tool: 'pmd' },
   typescript: {
     label: 'TypeScript and JavaScript',
     path: 'docs/rules/typescript-nitpicker.md',
     tool: 'eslint',
   },
+  spring: { label: 'Spring', path: SPRING_PAGE, tool: 'spring', prefix: 'spring/' },
   python: { label: 'Python', path: 'docs/rules/python-nitpicker.md', tool: 'python-rules' },
   go: { label: 'Go', path: 'docs/go-preset.md', anchor: 'own-rules' },
 };
@@ -28,6 +30,38 @@ const GROUPS = [
     python: 'unindexed-foreign-key',
     go: 'go-rules/unindexed-foreign-key',
   },
+  {
+    java: 'HttpValueCase',
+    typescript: 'nitpicker/no-raw-http-value',
+    python: 'http-value-case',
+    go: 'go-rules/http-value-case',
+  },
+  {
+    java: 'HandSplitHttpHeader',
+    typescript: 'nitpicker/no-raw-http-value',
+    python: 'hand-split-http-header',
+    go: 'go-rules/hand-split-http-header',
+  },
+  {
+    jvm: 'CopiedConstantInTest',
+    typescript: 'nitpicker/no-copied-constant',
+    python: 'copied-constant-in-test',
+    go: 'go-rules/copied-constant-in-test',
+  },
+  {
+    spring: 'untrimmed-request-text',
+    typescript: 'nitpicker/no-untrimmed-request-text',
+    python: 'untrimmed-request-text',
+    go: 'go-rules/untrimmed-request-text',
+  },
+  {
+    typescript: 'nitpicker/no-presence-truthiness',
+    python: 'presence-truthiness',
+  },
+  {
+    jvm: 'MaxValueOverflow',
+    go: 'go-rules/max-value-overflow',
+  },
 ];
 
 function spring(rule) {
@@ -47,15 +81,28 @@ function link(language, rule) {
   };
 }
 
+function entryName(language, rule) {
+  const { tool, prefix = '' } = PAGES[language];
+  return tool === 'pmd' ? `pmd/${rule}` : `${prefix}${rule}`;
+}
+
 function groupEntries(group) {
   const languages = Object.keys(PAGES).filter((language) => group[language] !== undefined);
   return languages.map((language) => [
-    language === 'java' ? `pmd/${group.java}` : group[language],
+    entryName(language, group[language]),
     languages.filter((other) => other !== language).map((other) => link(other, group[other])),
   ]);
 }
 
-const COUNTERPARTS = new Map([
+function mergedEntries(entries) {
+  const merged = new Map();
+  for (const [rule, links] of entries) {
+    merged.set(rule, [...(merged.get(rule) ?? []), ...links]);
+  }
+  return merged;
+}
+
+const COUNTERPARTS = mergedEntries([
   ['nitpicker/no-orm-schema-sync', [spring('ddl-auto')]],
   ['nitpicker/no-orm-query-logging', [spring('unsafe-diagnostics')]],
   ['orm-schema-sync', [spring('ddl-auto')]],

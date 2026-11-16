@@ -1,9 +1,11 @@
+import { realpathSync } from 'node:fs';
 import {
   DIFF_ALGORITHM,
   parseChangedLines,
 } from '../../../../core/diff/git/patches/changed-lines.mjs';
 import { GitCommandError, runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
+import { type NameStatus, nameStatusEntries } from '../../../../core/tooling/git/name-status.mts';
 import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../../shared/values/readers.mts';
 
@@ -15,30 +17,49 @@ export type ComparisonChanges = {
   readonly tests: ChangedTests;
   readonly renames: [string, string][];
 };
-type NameStatus = { readonly status: string; readonly from: string; readonly to: string };
 
 const UNCHANGED_CONTENT = /^[CR]100$/u;
-const DIFF_OPTIONS = ['--find-renames', '--relative', '--no-color', '--no-ext-diff'];
+const DIFF_OPTIONS = ['--find-renames', '--no-color', '--no-ext-diff'];
 
-function diffBetween(roots: ComparisonRoots, format: readonly string[]): string {
+type RootsPolicy = {
+  readonly snapshot?: unknown;
+  readonly policyRoot?: string | undefined;
+  readonly baselineRoot?: string | undefined;
+};
+export type DiffPaths = 'project' | 'repository';
+
+function sameDirectory(left: string, right: string): boolean {
+  return realpathSync.native(left) === realpathSync.native(right);
+}
+
+export function comparisonRoots(
+  projectRoot: string,
+  policy: RootsPolicy,
+): ComparisonRoots | undefined {
+  if (policy.snapshot === 'base') {
+    const head = policy.policyRoot;
+    return head === undefined || sameDirectory(head, projectRoot)
+      ? undefined
+      : { base: projectRoot, head };
+  }
+  return policy.baselineRoot === undefined
+    ? undefined
+    : { base: policy.baselineRoot, head: projectRoot };
+}
+
+function diffBetween(
+  roots: ComparisonRoots,
+  format: readonly string[],
+  paths: DiffPaths = 'project',
+): string {
   return textOf(
     diffFromBase({
       runGit,
       baselineRoot: roots.base,
       projectRoot: roots.head,
-      args: [...format, ...DIFF_OPTIONS],
+      args: [...format, ...DIFF_OPTIONS, ...(paths === 'project' ? ['--relative'] : [])],
     }),
   );
-}
-
-function nameStatusEntries(output: string): NameStatus[] {
-  return output
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const [status = '', from = '', to = from] = line.split('\t');
-      return { status, from, to };
-    });
 }
 
 function renamedSources(entries: readonly NameStatus[]): [string, string][] {
@@ -99,4 +120,17 @@ export function readComparisonChanges(roots: ComparisonRoots): ComparisonChanges
     tests: changedTests(entries),
     renames: renamedSources(entries),
   };
+}
+
+export function readChangedFiles(roots: ComparisonRoots, paths?: DiffPaths): string[] | undefined {
+  try {
+    return nameStatusEntries(diffBetween(roots, ['--name-status'], paths)).flatMap(
+      ({ from, to }) => [...new Set([from, to])],
+    );
+  } catch (error) {
+    if (error instanceof GitCommandError) {
+      return undefined;
+    }
+    throw error;
+  }
 }

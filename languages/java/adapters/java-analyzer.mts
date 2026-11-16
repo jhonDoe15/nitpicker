@@ -26,6 +26,7 @@ type Invocation = { readonly command: string; readonly args: string[]; readonly 
 type JavaAnalyzer = {
   readonly name: string;
   readonly publishesModuleImports: boolean;
+  readonly switchableParts: readonly string[];
   readonly version: string;
   readonly resolveVersion: () => string;
   readonly configurationHash: string;
@@ -33,6 +34,7 @@ type JavaAnalyzer = {
   readonly reportedTools: readonly unknown[];
   readonly timeoutMs: number;
   readonly comparisonKey: unknown;
+  readonly inputs: unknown;
   readonly createInvocation: (context: InvocationContext) => Invocation;
 };
 
@@ -40,6 +42,7 @@ const sourcePath: (file: string) => string = checkoutModulePath;
 const closureOf: (files: readonly string[], root: string) => Map<string, string> = importClosure;
 const javaBinary: (name: string) => string = javaCommand;
 import { HEAD_TESTS_TOOL } from './red-base/tests-failed.mts';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = sourcePath(path.join(import.meta.dirname, 'java-runner.mjs'));
@@ -50,6 +53,7 @@ const ENTRY_FILES = [
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const DESIGN_DIRECTORY = 'languages/java/gradle/design';
+const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -68,6 +72,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/dependency-tasks.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/tool-jdk.gradle',
+  'languages/java/gradle/tasks/analysis/effects-task.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/builds/tools/tool-commands.json',
   'languages/java/builds/tools/tool-commands.mjs',
@@ -78,8 +83,14 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/pit/pit-scope.gradle',
+  'languages/java/gradle/pit/pit-process.gradle',
+  'languages/java/gradle/affected/affected-projects.gradle',
   'languages/java/gradle/pit/pit-retry.gradle',
+  'languages/java/gradle/pit/pit-task.gradle',
+  'languages/java/gradle/kotlin/kotlin-detekt.gradle',
+  'languages/java/gradle/kotlin/kotlin-format.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
+  'languages/java/gradle/kotlin/kotlin-multiplatform-tests.gradle',
   'languages/java/gradle/kotlin/kotlin-source-modules.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
@@ -110,6 +121,10 @@ function configurationContents(): Map<string, string> {
     recursive: true,
     encoding: 'utf8',
   });
+  const effects = readdirSync(path.join(packageRoot, EFFECTS_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
   return closureOf(
     [
       ...ENTRY_FILES,
@@ -117,6 +132,7 @@ function configurationContents(): Map<string, string> {
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
       ...javaSources(DESIGN_DIRECTORY, design),
+      ...javaSources(EFFECTS_DIRECTORY, effects),
     ],
     packageRoot,
   );
@@ -166,7 +182,9 @@ export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   let runtimeVersion: string | undefined;
   return {
     name: kotlin ? 'kotlin' : 'java',
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
+    switchableParts: ['mutation'],
     version: readPinnedVersions(),
     resolveVersion: () => {
       runtimeVersion ??= javaRuntimeVersion();

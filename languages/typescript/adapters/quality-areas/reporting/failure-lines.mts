@@ -7,6 +7,7 @@ import {
   stripAnsi,
   valuesInMessage,
 } from '../typed/reporting.mts';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
 export type ReportedAssertion = {
   readonly status?: unknown;
@@ -96,6 +97,30 @@ export function missingSetupHints(failures: readonly { readonly assertion: strin
   return setupHints
     .filter(({ pattern }) => failures.some(({ assertion }) => pattern.test(assertion)))
     .map(({ hint }) => hint.join(' '));
+}
+
+const MISSING_ENVIRONMENT = new RegExp(
+  [
+    String.raw`\b(?:invalid|missing) (?:required )?env(?:ironment)?\b`,
+    String.raw`\benv(?:ironment)? (?:var(?:iable)?s? )?(?:is |are )?(?:missing|required|not set|undefined)`,
+  ].join('|'),
+  'iu',
+);
+const MISSING_VARIABLE =
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+ (?:is|are) (?:required|missing|not set|undefined)\b/u;
+const ENVIRONMENT_HINT = [
+  'Hint: the tests need environment variables that are not set.',
+  'Ignored files such as `.env` are not in the snapshots; export the variables in the shell that runs nitpicker.',
+].join(' ');
+
+export function missingEnvironmentHints(
+  failures: readonly { readonly assertion: string }[],
+): string[] {
+  return failures.some(
+    ({ assertion }) => MISSING_ENVIRONMENT.test(assertion) || MISSING_VARIABLE.test(assertion),
+  )
+    ? [ENVIRONMENT_HINT]
+    : [];
 }
 
 const TIMEOUT_MARKER = 'STACK_TRACE_ERROR';
@@ -220,4 +245,15 @@ export function assertionDetails(
   const values = detailValues(details[0]) ?? valuesInMessage(stripAnsi(message ?? ''));
   const line = lineInFile(message, testFile, projectRoot) ?? assertion.location?.line;
   return { ...(typeof line === 'number' && Number.isInteger(line) ? { line } : {}), ...values };
+}
+
+export function mockPinHeadline(count: number, runnerName: string | undefined): string {
+  const verb = count === 1 ? 'test fails' : 'tests fail';
+  const setting = runnerName === RUNNER_NAMES.jest ? '`--restoreMocks`' : '`restoreMocks: true`';
+  return [
+    `${String(count)} ${verb} only because nitpicker pins ${setting} for the coverage run;`,
+    'the same tests pass without it, so coverage, CRAP and mutation were skipped.',
+    'Create the spy in `beforeEach` or inside the test instead of once in `beforeAll`',
+    'or a `describe` body, and rerun:',
+  ].join(' ');
 }

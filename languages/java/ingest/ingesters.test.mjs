@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
-import { ingestArchunit } from './archunit.mjs';
+import { ingestArchunit } from './archunit.mts';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mts';

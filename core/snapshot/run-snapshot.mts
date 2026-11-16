@@ -1,41 +1,24 @@
-import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
+import {
+  analyzerMetadata as metadataOf,
+  analyzerName as nameOf,
+} from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
+import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
-import { fieldOf } from '../../shared/values/readers.mts';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
+import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
+import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 
-type Finding = {
-  readonly tool?: string | undefined;
-  readonly path?: string | undefined;
-  readonly rule?: string | undefined;
-  readonly identity?: string | undefined;
-  readonly classification?: string | undefined;
-  readonly message?: unknown;
-};
-
-type AnalyzerRequest = Readonly<
-  Record<
-    | 'analyzers'
-    | 'projectRoot'
-    | 'policyRoot'
-    | 'toolRoot'
-    | 'snapshot'
-    | 'baselineRoot'
-    | 'baselineMovesFile'
-    | 'liveProjectRoot'
-    | 'headPolicyFile'
-    | 'mutationScope'
-    | 'logRoot'
-    | 'runTasks',
-    unknown
-  >
->;
+type Finding = ReportEntry;
 
 type Scope = unknown;
 
-type AnalyzerRun = {
-  readonly reports: ReadonlyMap<unknown, { readonly findings?: readonly Finding[] }>;
+type SnapshotRun = {
+  readonly reports: ReadonlyMap<string, { readonly findings: readonly Finding[] }>;
   readonly toolErrors: Finding[];
+  readonly metadata: MetadataMap;
 };
 
 type SnapshotRequest = {
@@ -47,7 +30,7 @@ type SnapshotRequest = {
   readonly startedAt?: number;
   readonly headPolicy?: object | undefined;
   readonly scope: Scope;
-  readonly setupErrors?: readonly Finding[];
+  readonly setupErrors?: readonly object[];
   readonly [option: string]: unknown;
 };
 
@@ -72,18 +55,51 @@ export type QualitySnapshot = {
   readonly toolErrors: Finding[];
 };
 
-const withPolicyFile: (
-  headPolicy: object,
-  run: (headPolicyFile: unknown) => AnalyzerRun,
-) => AnalyzerRun = withHeadPolicyFile;
-const runAll: (request: AnalyzerRequest) => AnalyzerRun = runAnalyzers;
-const metadataOf: (analyzer: unknown, property: string) => unknown = analyzerMetadata;
-const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
-const inScope: (findingPath: string | undefined, scope: Scope) => boolean = isInScope;
+const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
+  withHeadPolicyFile;
+const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
+const withoutOverlaps: <Run>(run: Run) => Run = withoutCrossToolOverlaps;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
+
+function sortKey(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
 
 function isEnforceable(finding: Finding): boolean {
   return finding.classification === 'enforceable';
+}
+
+type HeadRunRequest = {
+  readonly analyzers: readonly unknown[];
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly toolRoot: unknown;
+  readonly liveProjectRoot: string;
+  readonly headPolicy: object;
+  readonly scope: Scope;
+  readonly execution: Readonly<Record<string, unknown>>;
+};
+
+function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
+  return withoutOverlaps(
+    withSharedUnusedDirectives(
+      withPolicyFile(headPolicy, (headPolicyFile) =>
+        runAnalyzers({
+          analyzers,
+          ...roots,
+          headPolicyFile,
+          snapshot: 'head',
+          mutationScope: fieldOf(scope, 'paths'),
+          baselineRoot: execution['baselineRoot'],
+          baselineMovesFile: execution['baselineMovesFile'],
+          logRoot: execution['logRoot'],
+          runTasks: execution['runTasks'],
+          ...execution,
+        }),
+      ),
+      analyzers,
+    ),
+  );
 }
 
 export function runQualitySnapshot({
@@ -98,30 +114,28 @@ export function runQualitySnapshot({
   setupErrors = [],
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors: runErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
-    runAll({
-      analyzers,
-      projectRoot,
-      policyRoot,
-      toolRoot,
-      liveProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      mutationScope: fieldOf(scope, 'paths'),
-      baselineRoot: execution['baselineRoot'],
-      baselineMovesFile: execution['baselineMovesFile'],
-      logRoot: execution['logRoot'],
-      runTasks: execution['runTasks'],
-      ...execution,
-    }),
-  );
+  const {
+    reports,
+    toolErrors: runErrors,
+    metadata,
+  } = headRun({
+    analyzers,
+    projectRoot,
+    policyRoot,
+    toolRoot,
+    liveProjectRoot,
+    headPolicy,
+    scope,
+    execution,
+  });
 
-  const toolErrors = [...setupErrors, ...runErrors];
+  const toolErrors = [...entriesOf(setupErrors), ...runErrors];
   const { findings, tools, outside } = collectSnapshotFindings({
     analyzers,
     reports,
     toolErrors,
     scope,
+    metadata,
   });
 
   return {
@@ -179,10 +193,10 @@ function overallStatusFor({
 function sortFindings(entries: Finding[]): Finding[] {
   return entries.sort(
     (left, right) =>
-      (left.tool ?? '').localeCompare(right.tool ?? '') ||
-      (left.path ?? '').localeCompare(right.path ?? '') ||
-      (left.rule ?? '').localeCompare(right.rule ?? '') ||
-      (left.identity ?? '').localeCompare(right.identity ?? ''),
+      sortKey(left.tool).localeCompare(sortKey(right.tool)) ||
+      sortKey(left.path).localeCompare(sortKey(right.path)) ||
+      sortKey(left.rule).localeCompare(sortKey(right.rule)) ||
+      sortKey(left['identity']).localeCompare(sortKey(right['identity'])),
   );
 }
 
@@ -197,14 +211,17 @@ function toSnapshotToolError(finding: Finding): Finding & { readonly snapshot: s
 }
 
 function summarizeAnalyzer(
-  analyzer: unknown,
-  name: unknown,
+  {
+    analyzer,
+    name,
+    metadata,
+  }: { readonly analyzer: unknown; readonly name: unknown; readonly metadata: MetadataMap },
   analyzerFindings: readonly Finding[],
 ): ToolSummary {
   return {
     name,
-    version: metadataOf(analyzer, 'version'),
-    configurationHash: metadataOf(analyzer, 'configurationHash'),
+    version: metadataOf(analyzer, 'version', metadata),
+    configurationHash: metadataOf(analyzer, 'configurationHash', metadata),
     total: analyzerFindings.length,
     enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
       .length,
@@ -218,7 +235,12 @@ function collectSnapshotFindings({
   reports,
   toolErrors,
   scope,
-}: AnalyzerRun & { readonly analyzers: readonly unknown[]; readonly scope: Scope }): {
+  metadata,
+}: SnapshotRun & {
+  readonly analyzers: readonly unknown[];
+  readonly scope: Scope;
+  readonly metadata: MetadataMap;
+}): {
   readonly findings: Finding[];
   readonly tools: ToolSummary[];
   readonly outside: number;
@@ -228,7 +250,7 @@ function collectSnapshotFindings({
   let outside = 0;
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
-    const reported = reports.get(fieldOf(analyzer, 'name'))?.findings ?? [];
+    const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
     toolErrors.push(
       ...reported
         .filter((finding) => finding.classification === 'tool-error')
@@ -238,7 +260,7 @@ function collectSnapshotFindings({
     const analyzerFindings = analyzed.filter((finding) => inScope(finding.path, scope));
     outside += analyzed.length - analyzerFindings.length;
     findings.push(...analyzerFindings);
-    tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
+    tools.push(summarizeAnalyzer({ analyzer, name, metadata }, analyzerFindings));
   }
 
   return { findings, tools, outside };

@@ -3,7 +3,7 @@
 Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
-  (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
+  (120 columns, 4 spaces) or Spring Java Format (120 columns, tabs, run by the build, not by nitpicker). Indent like the files around you (nitpicker follows the project's
   formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so let
   `npx nitpicker --fix` format it rather than fixing layout by hand. With no formatter, nitpicker still reports unused
   imports and bad indentation or whitespace; in a tab-indented project it checks neither tabs nor
@@ -32,6 +32,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!c) B else A` (and `c ? b : a`, not `!c ? a : b`); `!(a || b)`, not `!a && !b`. These stay:
   `if (a != b)` with an else, an else-if chain, and `!(a < b)` on a `float` or `double` (NaN).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
+- Remove a `@SuppressWarnings("PMD.SpringDataNativeQuery")` the method no longer
+  needs (`pmd/UnnecessaryWarningSuppression`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
   It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
