@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
-import { TRANSACTIONS_CONVENTION, projectOpensTransactions } from './transactions.mjs';
+import { TRANSACTIONS_CONVENTION, projectOpensTransactions } from './transactions.mts';
 
 const accepts = (_definition, file) => !/\.test\.|^test\//u.test(file);
 

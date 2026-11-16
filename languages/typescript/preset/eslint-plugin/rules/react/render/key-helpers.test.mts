@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { rule } from './react-no-random-key.mjs';
+import { rule } from './react-no-random-key.mts';
 import { createReactRuleTester } from '../test-support/tester.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-key-helpers-'));

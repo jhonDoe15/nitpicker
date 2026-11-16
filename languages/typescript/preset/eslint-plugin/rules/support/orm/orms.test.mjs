@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ormsOf } from './orms.mjs';
+import { ormsOf } from './orms.mts';
 
 describe('ormsOf', () => {
   it('names the ORMs a project depends on', () => {

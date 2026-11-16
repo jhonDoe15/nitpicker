@@ -1,6 +1,6 @@
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-query-per-parent.mjs';
+import { rule } from './no-query-per-parent.mts';
 
 const STORE = [
   "import { Repository } from 'typeorm';",

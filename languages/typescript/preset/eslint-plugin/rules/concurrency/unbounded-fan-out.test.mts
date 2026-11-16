@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './unbounded-fan-out.mjs';
+import { rule } from './unbounded-fan-out.mts';
 
 const tester = typescriptRuleTester();
 const unbounded = [{ messageId: 'unbounded' }];

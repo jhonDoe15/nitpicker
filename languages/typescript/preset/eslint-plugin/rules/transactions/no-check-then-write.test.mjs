@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-check-then-write.mjs';
+import { rule } from './no-check-then-write.mts';
 
 const ALL = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize'];
 

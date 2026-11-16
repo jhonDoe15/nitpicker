@@ -1,5 +1,5 @@
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-unguarded-deleted-items.mjs';
+import { rule } from './no-unguarded-deleted-items.mts';
 
 const TYPES = [
   'export interface Item { id: string; isDeleted: boolean; label: string }',

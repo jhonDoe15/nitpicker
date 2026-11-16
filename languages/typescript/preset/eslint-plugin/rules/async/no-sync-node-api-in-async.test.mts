@@ -1,13 +1,13 @@
 import type { RuleTester } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-sync-node-api-in-async.mjs';
-import { SYNC_FAMILIES } from './sync-node-apis.mjs';
+import { rule } from './no-sync-node-api-in-async.mts';
+import { SYNC_FAMILIES, type SyncFamily } from './sync-node-apis.mts';
 
 type CaseRow = [string, Exclude<RuleTester.InvalidTestCase['errors'], number>];
 
 const tester = typescriptRuleTester();
-const families: { modules: Set<string>; alternative: (api: string) => string }[] = SYNC_FAMILIES;
+const families: readonly SyncFamily[] = SYNC_FAMILIES;
 const alternativeOf = (module: string, api: string) =>
   families.find((family) => family.modules.has(module))?.alternative(api);
 const blocking = (api: string, module = 'fs', context = 'an async function') => [

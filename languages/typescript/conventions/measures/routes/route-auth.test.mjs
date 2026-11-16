@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
-import { ROUTE_AUTH_CONVENTION, routeAuthEntries } from './route-auth.mjs';
+import { ROUTE_AUTH_CONVENTION, routeAuthEntries } from './route-auth.mts';
 
 const accepts = (_definition, file) => !/\.test\.|^test\//u.test(file);
 

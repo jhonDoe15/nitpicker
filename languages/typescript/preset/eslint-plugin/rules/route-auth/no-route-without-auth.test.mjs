@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-route-without-auth.mjs';
+import { rule } from './no-route-without-auth.mts';
 
 const common = "import { Controller, Get, Post } from '@nestjs/common';\n";
 const SHAPE = ['nest__Authenticated__permission'];

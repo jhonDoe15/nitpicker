@@ -1,6 +1,6 @@
 import { typedIoProject } from '../../../test-support/projects/typed-io-project.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-lookup-per-element.mjs';
+import { rule } from './no-lookup-per-element.mts';
 
 const RX =
   'import { from, of, defer, mergeMap, concatMap, switchMap, flatMap, bufferCount, toArray, map, take, tap, filter } from "rxjs";\n';

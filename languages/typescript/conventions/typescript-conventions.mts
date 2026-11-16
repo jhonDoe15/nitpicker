@@ -4,9 +4,9 @@ import { ASSERTION_HELPERS_CONVENTION } from './measures/assertion-functions.mts
 import { DATA_CONVENTIONS } from './measures/data-conventions.mts';
 import { DETACHED_WORK_RUNNERS_CONVENTION } from './measures/detached-work-runners.mts';
 import { JSX_CONVENTIONS as UNTYPED_JSX_CONVENTIONS } from './measures/jsx-conventions.mjs';
-import { SOFT_DELETE_FILTERS_CONVENTION as UNTYPED_SOFT_DELETE_FILTERS_CONVENTION } from './measures/database/soft-delete-filters.mjs';
-import { TRANSACTIONS_CONVENTION as UNTYPED_TRANSACTIONS_CONVENTION } from './measures/database/transactions.mjs';
-import { ROUTE_AUTH_CONVENTION as UNTYPED_ROUTE_AUTH_CONVENTION } from './measures/routes/route-auth.mjs';
+import { SOFT_DELETE_FILTERS_CONVENTION as UNTYPED_SOFT_DELETE_FILTERS_CONVENTION } from './measures/database/soft-delete-filters.mts';
+import { TRANSACTIONS_CONVENTION as UNTYPED_TRANSACTIONS_CONVENTION } from './measures/database/transactions.mts';
+import { ROUTE_AUTH_CONVENTION as UNTYPED_ROUTE_AUTH_CONVENTION } from './measures/routes/route-auth.mts';
 import { PRETTIER_CONVENTIONS } from './typed/convention-views.mts';
 import { TYPE_IMPORT_CONVENTION } from './type-import-style.mts';
 

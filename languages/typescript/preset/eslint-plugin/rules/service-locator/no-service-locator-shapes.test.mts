@@ -4,8 +4,8 @@ import path from 'node:path';
 import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import { afterAll, describe, expect, it } from 'vitest';
 import { strictConfig as untypedStrictConfig } from '../../../eslint-config/strict.mts';
-import { rule } from './no-service-locator.mjs';
-import { rootFileMatcher } from './root-files.mjs';
+import { locatorListeners, rule, type LocatorScope } from './no-service-locator.mts';
+import { rootFileMatcher } from './root-files.mts';
 import {
   MAIL,
   createLocatorProject,
@@ -207,17 +207,18 @@ tester.run('no-service-locator helpers of every shape', rule, {
   ],
 });
 
-function contextFor(code: string, options: unknown[] = []) {
+function scopeFor(code: string, options: LocatorScope['options'] = []): LocatorScope {
   const source = ts.createSourceFile('src/orders.ts', code, ts.ScriptTarget.Latest);
-  const program = {
-    getSourceFiles: () => [source],
-    getSourceFile: () => source,
-    isSourceFileFromExternalLibrary: () => false,
-    getTypeChecker: () => ({}),
-    getCompilerOptions: () => ({}),
-    getCurrentDirectory: () => '/',
+  const host = ts.createCompilerHost({});
+  host.getSourceFile = (fileName) => (fileName === 'src/orders.ts' ? source : undefined);
+  const program = ts.createProgram(['src/orders.ts'], { noLib: true, types: [] }, host);
+  return {
+    filename: 'src/orders.ts',
+    options,
+    program,
+    tsNodeOf: () => source,
+    report: () => undefined,
   };
-  return { filename: 'src/orders.ts', options, sourceCode: { parserServices: { program } } };
 }
 
 function severityOf(config: unknown): unknown {
@@ -261,12 +262,16 @@ describe('no-service-locator options and scope', () => {
     const message =
       'nitpicker/no-service-locator: the "compositionRootPattern" option "(" is not a valid regular expression (Invalid regular expression: /(?:(?:^|/)(?:main/(?:(?:main|server|composition-root)\\.[cm]?[jt]sx?|composition-root/.+)|src/(?:main|server|composition-root)\\.[cm]?[jt]sx?)$)|(?:()/: Unterminated group). Fix the pattern in the rule options.';
 
-    expect(() => rule.create(contextFor('', [{ compositionRootPattern: '(' }]))).toThrow(message);
+    expect(() => locatorListeners(scopeFor('', [{ compositionRootPattern: '(' }]))).toThrow(
+      message,
+    );
   });
 
   it('skips the whole-program work when no file imports a container library', () => {
-    expect(Object.keys(rule.create(contextFor("import { get } from 'lodash';")))).toEqual([]);
-    expect(Object.keys(rule.create(contextFor("import { container } from 'tsyringe';")))).toEqual([
+    expect(Object.keys(locatorListeners(scopeFor("import { get } from 'lodash';")))).toEqual([]);
+    expect(
+      Object.keys(locatorListeners(scopeFor("import { container } from 'tsyringe';"))),
+    ).toEqual([
       'CallExpression',
       'NewExpression',
       'MemberExpression',

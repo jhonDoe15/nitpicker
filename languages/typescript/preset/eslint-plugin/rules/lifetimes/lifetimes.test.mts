@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noTaskOutlivingResource } from './no-task-outliving-resource.mjs';
+import { rule as noTaskOutlivingResource } from './no-task-outliving-resource.mts';
 
 type Build = (body: string) => { filename: string; code: string };
 

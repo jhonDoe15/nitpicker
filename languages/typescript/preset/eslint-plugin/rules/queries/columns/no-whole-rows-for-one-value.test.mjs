@@ -1,5 +1,5 @@
 import { typedIoProject } from '../../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-whole-rows-for-one-value.mjs';
+import { rule } from './no-whole-rows-for-one-value.mts';
 
 const STORE = [
   "import { Entity, Column } from 'typeorm';",

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-repeated-string-literal.mjs';
+import { rule } from './no-repeated-string-literal.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/orders/order-labels.ts';

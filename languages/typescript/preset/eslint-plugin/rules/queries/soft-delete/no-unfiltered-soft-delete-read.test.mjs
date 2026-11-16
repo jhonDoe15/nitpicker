@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-unfiltered-soft-delete-read.mjs';
+import { rule } from './no-unfiltered-soft-delete-read.mts';
 
 const ORMS = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize', 'mikro'];
 const COLUMN = ['asset__deletedAt'];

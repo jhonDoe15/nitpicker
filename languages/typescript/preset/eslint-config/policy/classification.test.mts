@@ -9,7 +9,7 @@ import { lintFixture } from '../typed/lint-fixture.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mts';
 import { UNUSED_PARAMETER_ADVICE } from './unused-parameters.mts';
-import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mjs';
+import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mts';
 
 const layout = defaultResolvedLayout;
 

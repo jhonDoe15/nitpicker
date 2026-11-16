@@ -2,11 +2,11 @@ import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import { isStrictlyInside } from '../../../shared/filesystem.mjs';
 import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
-import { isStrictlyInside } from '../../../shared/filesystem.mjs';
 import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mjs';
 
 const DIRECTORY = 'directory';

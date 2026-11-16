@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../../shared/head-policy.mjs';
 import { ruleModule, typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './file-name-casing.mjs';
+import { rule } from './file-name-casing.mts';
 
 const ruleTester = typescriptRuleTester();
 const roots: string[] = [];

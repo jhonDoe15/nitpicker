@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-accumulating-spread.mjs';
+import { rule } from './no-accumulating-spread.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/adapters/ledger.ts';
