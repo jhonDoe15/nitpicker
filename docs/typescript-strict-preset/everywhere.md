@@ -439,7 +439,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
   `findLast`, `findLastIndex`, the mapping function of `Array.from(items, fn)`, and a
-  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mjs` classifies them:
+  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mts` classifies them:
   with the type checker first, a call whose receiver type or declaration comes from a database
   package (`pg`, `mysql2`, `mongodb`, `mongoose`, `redis`, `ioredis`, `typeorm`, `sequelize`,
   `knex`, `drizzle-orm`, `@prisma/client`, `better-sqlite3`, `@aws-sdk/client-dynamodb` and
@@ -878,6 +878,15 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
   `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
   contradicting-constant forms. Kotlin has no counterpart yet.
+- `nitpicker/shorter-boolean-logic` (production and test files of both presets): an `&&`/`||`
+  condition with at most 6 distinct operands, none with an effect or able to fail, that a truth
+  table or the solver proves equal to a condition with fewer operands. It prints the shorter form
+  from the original operands in their order: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)`
+  is `a`, `(x >= 0 && x < 10) || (x >= 10 && x < 20)` is `x >= 0 && x < 20`. An operand that guards a
+  later one (a null check before a member read, bounds before an index) or that TypeScript narrows
+  on stays, a float comparison is never negated into another, a value that is not a boolean counts
+  only as the test of an `if`, loop or ternary, and an operand that the operands before it decide is
+  left to `nitpicker/no-decided-condition`.
 - Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
   and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
   `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
@@ -1284,14 +1293,23 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   condition that the guards before it in the same function already decide. Reported: an `if`,
   `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
   always true or always false given an earlier `if` that returned, threw, broke or continued, the
-  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  `if` or `else` branch it sits in, the test of the loop it sits in, the `case` of a `switch` over a variable it sits in, an earlier `node:assert` call (`assert(c)`, `assert.ok(c)`, `assert.strictEqual(x, literal)`) or call of a project function with an `asserts c` signature, the branch of a ternary it sits in, a function it
+  sits in (for names that are never reassigned), a `const`/`let` initialised or assigned a literal
+  until it is written again, or the operands before it in
   the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
   decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
   `catch` parameter); a fact that reads a member is dropped on any member write and on any call
   that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
   variable written elsewhere, an import or an unresolved global is dropped on such a call. The
   conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
-  values are compared. An order comparison counts as a number comparison only when both operands
+  values are compared; the type checker tells it that `.length` (of a string, array or typed array),
+  `.size` (of a `Map` or `Set`) and the result of `indexOf`, `lastIndexOf`, `findIndex` and
+  `search` are whole numbers (at least 0, and at least -1), that `Math.abs(x)` is not negative and
+  that `Math.random()` is in `[0, 1)`. A call of a module-level function (a declaration, or a
+  `const` arrow or function expression) whose body is a single `return` of a side-effect-free
+  expression is read as that expression with the arguments bound, through at most 2 levels and
+  never through recursion, and the message names the helper; methods, helpers that read a variable
+  the call site does not see and helpers in other files stay opaque. An order comparison counts as a number comparison only when both operands
   are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. The same facts decide a
   coercion of the tested value: `x ? Boolean(x) : d`, `x ? !!x : d`, `if (x) return Boolean(x)` and
   `x && Boolean(x)` are always `true` (in the other branch, always `false`), so either the coercion
@@ -1511,7 +1529,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same project or anonymous type check on each named step.
   `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
-  `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
+  `eslint-plugin/rules/analysis/mutation/mutating-methods.mts`.
 - `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`
   on a parameter that is optional, defaulted to `undefined` or `null`, or typed
   `| undefined` / `| null`, when its type also has a falsy value that is not absent (`number`,
@@ -1587,7 +1605,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
   `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
   range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
-  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mts`. `regexp/no-super-linear-move` is
   off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
   from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a

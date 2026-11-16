@@ -1,8 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mjs';
+import type { Range } from '../analysis/logic/term-views.mts';
 import { chainOf, depthFirst, isNode } from '../typed/node-views.mts';
 import { isFunction } from '../typed/syntax-views.mts';
 
 export { isFunction };
+
+export const rangeKey: (range: Range) => string = untypedRangeKey;
 
 const SKIPPED = new Set(['parent', 'loc', 'range', 'tokens', 'comments']);
 

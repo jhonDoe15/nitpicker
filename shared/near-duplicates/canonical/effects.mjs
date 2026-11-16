@@ -75,13 +75,15 @@ export function isStable(node, escaping) {
 
 export function escapingNames(tree) {
   const lambdas = nodesOf(tree).filter((node) => node.kind === 'lambda');
-  return new Set(
-    lambdas.flatMap((lambda) =>
-      nodesOf(lambda)
-        .filter(isBound)
-        .map((name) => name.value),
-    ),
+  const captured = lambdas.flatMap((lambda) =>
+    nodesOf(lambda)
+      .filter(isBound)
+      .map((name) => name.value),
   );
+  const addressed = nodesOf(tree)
+    .filter((node) => isBound(node) && node.addressTaken === true)
+    .map((name) => name.value);
+  return new Set([...captured, ...addressed]);
 }
 
 function targetRole(node, index, role) {

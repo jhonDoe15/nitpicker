@@ -63,6 +63,10 @@ export function fields(node: Node, name: string): Node[] {
   return node.childrenForFieldName(name).filter(isNode);
 }
 
+export function operatorOf(source: Node): string | undefined {
+  return field(source, 'operator')?.type;
+}
+
 export function textOf(node: Node): string {
   return node.text.replaceAll(/\s+/gu, '');
 }

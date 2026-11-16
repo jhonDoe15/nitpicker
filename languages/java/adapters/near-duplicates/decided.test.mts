@@ -83,11 +83,13 @@ describe('decided-condition on Java', () => {
       '    if (k > 2) { return 2; }',
       '    while (items.isEmpty()) { k++; }',
       '    if (k > 2) { return 5; }',
-      '    return n + 1 > n ? 1 : 0;',
+      '    return items.size();',
       '  }',
     );
 
-    expect(decided(text)).toEqual([]);
+    expect(decided(text)).toEqual([
+      '11: `k > 2` is always false here: `k` is set to `0` on line 10, so the code it guards never runs',
+    ]);
   });
 
   it('keeps one identity per condition text so line moves do not count as new', () => {
@@ -135,6 +137,7 @@ describe('decided-condition on Java', () => {
 
     expect(decided(text)).toEqual([
       "5: `c == 97` is always true here: it is inside the `if (c == 'a')` on line 5",
+      '9: `a > 9223372036854775807L` is always false here: line 8 returns when `a > 9223372036854775806L` is true, so the code it guards never runs',
     ]);
   });
 });
@@ -168,7 +171,9 @@ describe('decided-condition on Kotlin', () => {
       '}',
     ].join('\n');
 
-    expect(decided(text, 'src/main/kotlin/shop/Rules.kt')).toEqual([]);
+    expect(decided(text, 'src/main/kotlin/shop/Rules.kt')).toEqual([
+      '3: `seen > 0` is always false here: `seen` is set to `0` on line 2, so the code it guards never runs',
+    ]);
   });
 
   it('forgets a field after a member write and keeps a Double name apart from an Int one', () => {

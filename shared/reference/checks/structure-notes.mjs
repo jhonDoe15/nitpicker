@@ -47,7 +47,7 @@ export const STRUCTURE_NOTES = {
   'near-duplicate': [
     'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, sharing a run of statements, or the same logic written another way.',
     'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
-    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
+    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types, and Go functions that differ only in the number type, are a type-specialized family and are not reported.',
   ],
   'decided-condition': [
     'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
@@ -55,10 +55,25 @@ export const STRUCTURE_NOTES = {
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
+  'shorter-condition': [
+    'A condition with an exactly equivalent form that has fewer operands: an operand that a later one implies, two operands that merge (complement, absorption, adjacent or overlapping ranges).',
+    'The longer condition says the same thing twice; agents repeat range checks and guards more than people do.',
+    'Write the printed shorter form. The message prints it from the original operands, in order, and names the operand that makes the other redundant.',
+  ],
   'duplicate-branch': [
-    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
+    'Two arms of one branch (an `if` chain, a ternary, a `switch`, a `select` or a `when`) with the same body; report-only, the same statements at the start or end of every arm, adjacent guards that end in a jump with one body (one `a || b`), and a nested `if`/`else` that repeats the outer `else` (one `a && b`).',
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
     'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
+  ],
+  'result-slip': [
+    'A comparison that cannot test what it was written for: a sign-only result (`compareTo`, `localeCompare`) compared with a value other than 0, or an index search tested with `> 0`.',
+    'A comparator may return any positive or negative number, and `indexOf(x) > 0` skips a match at position 0; both pass most tests and fail on the first unlucky input.',
+    'Compare the result with 0, or test `>= 0` (or use a containment check).',
+  ],
+  'integer-slip': [
+    'Integer arithmetic that gives the wrong answer for some inputs a solver can name: a difference compared with 0 or returned from a comparator (it overflows), `Math.abs` of a value that can be the smallest integer used as an index or bucket, and a remainder compared with a positive value on a value that can be negative (Kotlin).',
+    'These pass tests on small numbers and fail on a large or negative input, with a wrong order, a negative index or a missed match.',
+    'Compare the operands (`Integer.compare`), use `Math.floorMod`, or compare the remainder with 0.',
   ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',

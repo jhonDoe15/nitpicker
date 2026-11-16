@@ -41,6 +41,7 @@ function convertedTree<Extra extends object>(
     },
     name: (text, source) => ({ ...at('name', source), ...nameNode(text, names) }),
     method: (text, source) => ({ ...at('name', source), ...methodNode(text, names) }),
+    unstable: (text) => (names.scope.unstable.has(text) ? { unstable: true } : {}),
   };
   for (const source of [...depthFirst(root, codeChildren)].toReversed()) {
     const convert = language.converters[source.type];
@@ -90,5 +91,10 @@ export function languageUnits<Extra extends object>(
 ): Unit[] {
   const scope = language.fileScope(program);
   const units = unitRoots(program, scope, language).map((root) => unitOf(root, scope, language));
-  return uniqueNames(units).map((unit) => ({ id: `${file}#${unit.name}`, file, ...unit }));
+  const imports = {
+    names: [...new Set(scope.imported.values())],
+    stars: scope.stars,
+    classes: scope.classes,
+  };
+  return uniqueNames(units).map((unit) => ({ id: `${file}#${unit.name}`, file, imports, ...unit }));
 }

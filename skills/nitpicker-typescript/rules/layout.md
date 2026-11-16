@@ -30,7 +30,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   4 changed values, a shared run of 3 or more statements, or the same logic written another way, such as a loop and the call that replaces it) fails too: extract one function that
   takes the changed values as parameters. Two arms of an `if` chain, a ternary or a `switch` with
   the same body (`duplicate-branch`, renamed locals count as equal) fail: merge them, or change the
-  arm that was meant to differ.
+  arm that was meant to differ. `localeCompare(x) === 1` compares a sign-only result with a value
+  other than 0, and `indexOf(x) > 0` misses a match at position 0 (`result-slip`): compare with 0,
+  test `>= 0` or use `includes`.
 - The gate fails unlisted, unused and unresolved dependencies, production imports of a
   `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
   names the fix. Don't add an `exceptions` entry to get past one: stop and ask.

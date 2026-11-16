@@ -27,10 +27,14 @@ function qualifiedText(node: Node): string {
   return node.text.replaceAll(/\s+/gu, '');
 }
 
-function importEntry(declaration: Node): [string, string] {
+function importEntries(declaration: Node): [string, string][] {
   const [path, alias] = codeChildren(declaration);
   const text = qualifiedText(present(path));
-  return [alias?.text ?? text.slice(text.lastIndexOf('.') + 1), text];
+  const name = alias?.text ?? text.slice(text.lastIndexOf('.') + 1);
+  return [
+    [name, text],
+    [`#${name}()`, text],
+  ];
 }
 
 function importsOf(program: Node): Map<string, string> {
@@ -38,7 +42,7 @@ function importsOf(program: Node): Map<string, string> {
     codeChildren(program)
       .filter((child) => child.type === 'import')
       .filter((declaration) => !declaration.children.some((child) => child.type === '*'))
-      .map(importEntry),
+      .flatMap(importEntries),
   );
 }
 
@@ -47,8 +51,26 @@ function packageOf(program: Node): string {
   return header === undefined ? '' : qualifiedText(present(codeChildren(header)[0]));
 }
 
+function starsOf(program: Node): string[] {
+  return codeChildren(program)
+    .filter((child) => child.type === 'import' && child.children.some((part) => part.type === '*'))
+    .map((child) => qualifiedText(present(codeChildren(child)[0])));
+}
+
+function classesOf(program: Node): string[] {
+  return [...depthFirst(program, codeChildren)]
+    .filter((node) => node.type === 'class_declaration' || node.type === 'object_declaration')
+    .map((node) => codeChildren(node).find((child) => child.type === 'identifier')?.text)
+    .filter((name): name is string => name !== undefined);
+}
+
 export function fileScope(program: Node): FileScope {
-  return { imported: importsOf(program), packageName: packageOf(program) };
+  return {
+    imported: importsOf(program),
+    packageName: packageOf(program),
+    stars: starsOf(program),
+    classes: classesOf(program),
+  };
 }
 
 function nameOf(declaration: Node): string | undefined {
@@ -64,21 +86,31 @@ function isPropertyParameter(parameter: Node): boolean {
   return parameter.children.some((child) => child.type === 'val' || child.type === 'var');
 }
 
-type Members = { properties: string[]; functions: string[] };
+type Members = { properties: string[]; functions: string[]; unstable: string[] };
+
+function isUnstableProperty(member: Node): boolean {
+  const parts = codeChildren(member);
+  const delegate = parts.find((part) => part.type === 'property_delegate');
+  return (
+    parts.some((part) => part.type === 'getter') ||
+    parts.some((part) => part.type === 'modifiers' && /@Volatile\b/u.test(part.text)) ||
+    (delegate !== undefined && !/^by\s+lazy\b/u.test(delegate.text))
+  );
+}
+
+function namesOf(declarations: readonly Node[]): string[] {
+  return declarations.map(nameOf).filter((name): name is string => Boolean(name));
+}
 
 function memberNames(members: readonly Node[]): Members {
-  const properties = members
-    .filter((member) => member.type === 'property_declaration')
-    .map(nameOf)
-    .filter((name): name is string => Boolean(name));
+  const declared = members.filter((member) => member.type === 'property_declaration');
+  const properties = namesOf(declared);
+  const unstable = namesOf(declared.filter(isUnstableProperty));
   const entries = members
     .filter((member) => member.type === 'enum_entry')
     .map((member) => present(codeChildren(member)[0]).text);
-  const functions = members
-    .filter((member) => member.type === 'function_declaration')
-    .map(nameOf)
-    .filter((name): name is string => Boolean(name));
-  return { properties: [...properties, ...entries], functions };
+  const functions = namesOf(members.filter((member) => member.type === 'function_declaration'));
+  return { properties: [...properties, ...entries], functions, unstable };
 }
 
 function companionMembers(body: Node): Node[] {
@@ -107,15 +139,20 @@ export function classMembers(declaration: Node): Members {
         present(codeChildren(parameter).find((child) => child.type === 'identifier')).text,
     );
   const members = body === undefined ? [] : [...codeChildren(body), ...companionMembers(body)];
-  const { properties, functions } = memberNames(members);
-  return { properties: [...constructorParameters, ...properties], functions };
+  const { properties, functions, unstable } = memberNames(members);
+  return { properties: [...constructorParameters, ...properties], functions, unstable };
 }
 
 export function memberScope(
   outer: ClassScope,
   { qualifier, members }: { qualifier: string; members: Members },
 ): ClassScope {
+  const own = new Set(members.properties);
   return {
+    unstable: new Set([
+      ...[...outer.unstable].filter((name) => !own.has(name)),
+      ...members.unstable,
+    ]),
     fields: new Map([
       ...outer.fields,
       ...members.properties.map((name): [string, string] => [name, `${qualifier}#${name}`]),
@@ -128,9 +165,13 @@ export function memberScope(
 }
 
 export function topLevelScope(program: Node, { packageName }: FileScope): ClassScope {
-  const { properties, functions } = memberNames(codeChildren(program));
+  const members = memberNames(codeChildren(program));
   return memberScope(
-    { fields: new Map<string, string>(), methods: new Map<string, string>() },
-    { qualifier: packageName, members: { properties, functions } },
+    {
+      fields: new Map<string, string>(),
+      methods: new Map<string, string>(),
+      unstable: new Set<string>(),
+    },
+    { qualifier: packageName, members },
   );
 }

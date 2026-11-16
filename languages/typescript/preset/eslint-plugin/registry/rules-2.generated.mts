@@ -52,6 +52,7 @@ import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/re
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
 import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
+import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
 import { rule as ruleSimplerBooleanLogic } from '../rules/control/simpler-boolean-logic.mts';
 import { rule as ruleStrictBooleanExpressions } from '../rules/wrapped/strict-boolean-expressions.mts';
 import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-catch-logging.mts';
@@ -118,6 +119,7 @@ export const partRules = {
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'settle-pending-on-close': ruleSettlePendingOnClose,
+  'shorter-boolean-logic': ruleShorterBooleanLogic,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,
