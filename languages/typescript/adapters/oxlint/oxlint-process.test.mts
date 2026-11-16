@@ -3,7 +3,6 @@ import { spawnCollected, withEngineHint } from './oxlint-process.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
-
 describe('the engine hint on an oxlint failure', () => {
   it('suggests the ESLint engine when the failure may be the engine', () => {
     expect(withEngineHint('oxlint crashed')).toBe(
