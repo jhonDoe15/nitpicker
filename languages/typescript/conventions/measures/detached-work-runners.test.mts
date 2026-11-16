@@ -6,7 +6,7 @@ import {
 import {
   DETACHED_WORK_RUNNERS_CONVENTION,
   detachedWorkRunnerNames,
-} from './detached-work-runners.mjs';
+} from './detached-work-runners.mts';
 import { detectedFor } from '../typed/convention-views.mts';
 
 const definition = DETACHED_WORK_RUNNERS_CONVENTION;

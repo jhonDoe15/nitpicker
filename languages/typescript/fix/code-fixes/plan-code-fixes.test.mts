@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import cases from './fixtures/code-fix-cases.json' with { type: 'json' };
-import { candidateFiles, codeFixes, codeName, selectedCodeFixes } from './typed/code-fix-views.mts';
+import { candidateFiles, codeFixes, codeName, selectedCodeFixes } from './code-fix-rules.mts';
 import { useCodeFixProjects } from './test-support/code-fix-project.mts';
 
 const fixes = useCodeFixProjects();
