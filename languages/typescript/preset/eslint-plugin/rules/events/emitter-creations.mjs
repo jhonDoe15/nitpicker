@@ -1,4 +1,4 @@
-import { memoized } from '../../../../../../shared/values/memoized.mjs';
+import { memoized } from '../../../../../../shared/values/caching/memoized.mjs';
 import { chainOf } from '../analysis/ancestry.mjs';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction, isModuleValue } from '../security/imported-names.mjs';
