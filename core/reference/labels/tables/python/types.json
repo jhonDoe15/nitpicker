@@ -1,0 +1,20 @@
+{
+  "basedpyright/<rule>": ["bug"],
+  "basedpyright/reportDeprecated": ["maintainability"],
+  "basedpyright/reportMissingImports": ["bug"],
+  "basedpyright/reportMissingModuleSource": ["bug"],
+  "dependencies/no-dev-dependency-in-production": ["bug"],
+  "dependencies/unlisted-dependency": ["bug"],
+  "dependencies/unused-dependency": ["simplification"],
+  "import-linter/contract-broken": ["maintainability"],
+  "mutmut/mutant-ignored": ["tests"],
+  "mypy/<error code>": ["bug"],
+  "mypy/deprecated": ["maintainability"],
+  "mypy/import-not-found": ["bug"],
+  "mypy/import-untyped": ["bug"],
+  "mypy/unused-ignore": ["simplification"],
+  "pyright/<rule>": ["bug"],
+  "pyright/reportDeprecated": ["maintainability"],
+  "pyright/reportMissingImports": ["bug"],
+  "pyright/reportMissingModuleSource": ["bug"]
+}

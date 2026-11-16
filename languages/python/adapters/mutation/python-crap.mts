@@ -4,7 +4,7 @@ import type { PythonFunctionEntry, Roots } from '../../ingest/typed/coverage-typ
 import {
   functionText as untypedFunctionText,
   testFileMatcher,
-} from '../analysis/python-sources.mjs';
+} from '../analysis/python-sources.mts';
 
 const functionText: (
   sources: Map<string, string[]>,

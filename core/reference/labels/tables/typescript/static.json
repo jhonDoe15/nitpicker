@@ -1,0 +1,18 @@
+{
+  "dependency-architecture/domain-does-not-import-adapters": ["maintainability"],
+  "dependency-architecture/domain-does-not-import-id-libraries": ["maintainability"],
+  "dependency-architecture/domain-does-not-import-module-state": ["maintainability"],
+  "dependency-architecture/domain-does-not-import-network-or-database-clients": ["maintainability"],
+  "dependency-architecture/domain-does-not-import-node-io": ["maintainability"],
+  "dependency-architecture/domain-does-not-import-the-logger": ["maintainability"],
+  "dependency-architecture/domain-does-not-reach-io-through-shared": ["maintainability"],
+  "dependency-architecture/feature-internals-only-through-index": ["maintainability"],
+  "dependency-architecture/features-do-not-import-composition-root": ["maintainability"],
+  "dependency-architecture/features-do-not-import-other-feature-internals": ["maintainability"],
+  "dependency-architecture/no-import-outside-roots": ["maintainability"],
+  "dependency-architecture/no-production-cycles": ["maintainability"],
+  "dependency-architecture/no-production-to-test": ["maintainability"],
+  "dependency-architecture/shared-does-not-import-features": ["maintainability"],
+  "prettier-format/prettier/prettier": ["style"],
+  "typescript-typecheck/TS<code>": ["bug"]
+}

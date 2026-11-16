@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ASSERT_NEVER_ARM, assertNeverArmLines, javascriptPattern } from './exhaustive-match.mjs';
+import { ASSERT_NEVER_ARM, assertNeverArmLines, javascriptPattern } from './exhaustive-match.mts';
 
 const source = (...rows: string[]) => rows.join('\n');
 

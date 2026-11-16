@@ -92,7 +92,7 @@ the source root detection already does.
   `true` always does). import-linter 1.12 or newer is supported (the first with `--no-cache`); the
   startup logo is not suppressed because `--no-logo` only exists from 2.14, and the parser skips
   it. It has no machine-readable output, so the text report is parsed
-  (`languages/python/ingest/import-linter.mjs`, tested on real output of the forbidden, layers,
+  (`languages/python/ingest/import-linter.mts`, tested on real output of the forbidden, layers,
   independence, protected and acyclic contracts): every import chain in the `Broken contracts`
   section is one enforceable `contract-broken` finding, tool `import-linter`, on the file of the
   chain's first module with the line of its first import, identity

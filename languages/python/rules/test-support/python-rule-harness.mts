@@ -8,14 +8,15 @@ import {
   readAllowances,
   readRegexSites,
   readTestFiles,
-} from '../../adapters/analysis/python-ast-rules.mjs';
+} from '../../adapters/analysis/python-ast-rules.mts';
 import { ruffFindings, typeFindings } from '../../adapters/python-reports.mts';
-import { RUFF_REPORT, lint } from '../../adapters/python-tools.mjs';
-import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
-import { applyRuleHints } from '../rule-hints.mjs';
-import { detectLibraries, type DEFAULT_LIBRARIES } from '../libraries/project-libraries.mjs';
-import { pytestStyle } from '../libraries/pytest-style.mjs';
-import { toolContext, type ToolContext } from './python-rule-scripts.mts';
+import { RUFF_REPORT, lint } from '../../adapters/python-tools.mts';
+import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mts';
+import { applyRuleHints } from '../rule-hints.mts';
+import { detectLibraries, type DEFAULT_LIBRARIES } from '../libraries/project-libraries.mts';
+import { pytestStyle } from '../libraries/pytest-style.mts';
+import { toolContext } from './python-rule-scripts.mts';
+import type { ToolContext } from '../../adapters/typed/context/tool-context-types.mts';
 import type { RuleCaseInput } from './python-rule-cases.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 
@@ -26,12 +27,8 @@ export type RuleVerdict = {
 };
 type Side = 'banned' | 'allowed';
 type Collector = (context: ToolContext, roots: readonly string[]) => IngestedFinding[];
-type Allowances = { readonly supportFiles: readonly string[]; readonly allowed: readonly never[] };
 
 const readTests: (reportRoot: string) => readonly string[] = readTestFiles;
-const readAllowed: (reportRoot: string) => Allowances = readAllowances;
-const runTypeCheck: (context: unknown) => void = typeCheck;
-const runLint: (context: unknown) => void = lint;
 const readLibraries: (root: string) => typeof DEFAULT_LIBRARIES = detectLibraries;
 const styleOf: (root: string) => object = pytestStyle;
 const withHints: (
@@ -57,12 +54,12 @@ function read(reportRoot: string, name: string): string {
 const COLLECTORS: Record<string, Collector> = {
   ruff: (context, roots) => {
     checkRules(context);
-    runLint(context);
+    lint(context);
     return ruffFindings(readJson(read(context.reportRoot, RUFF_REPORT)), {
       roots,
       projectRoot: context.projectRoot,
       testFiles: readTests(context.reportRoot),
-      ...readAllowed(context.reportRoot),
+      ...readAllowances(context.reportRoot),
     });
   },
   'python-rules': (context) => {
@@ -73,7 +70,7 @@ const COLLECTORS: Record<string, Collector> = {
     ];
   },
   type: (context, roots) => {
-    runTypeCheck(context);
+    typeCheck(context);
     return typeFindings(readTypeReport(read(context.reportRoot, TYPES_REPORT)), roots);
   },
 };

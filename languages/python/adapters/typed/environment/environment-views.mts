@@ -4,19 +4,9 @@ import {
   detectEnvironment as untypedDetect,
   openEnvironment as untypedOpen,
   openSnapshotEnvironment as untypedSnapshot,
-} from '../../execution/python-environment.mjs';
-import { baseEnvironment as untypedBase } from '../../execution/environments/base/base-environment.mjs';
-
-type LaunchSpec = {
-  readonly command: string;
-  readonly args: readonly string[];
-  readonly env: Readonly<Record<string, string | undefined>>;
-};
-
-export type Launcher = {
-  readonly description: string;
-  launch(tool: string, args: readonly string[]): LaunchSpec;
-};
+} from '../../execution/python-environment.mts';
+import type { Launcher } from './launcher-types.mts';
+import { baseEnvironment as untypedBase } from '../../execution/environments/base/base-environment.mts';
 
 type SnapshotOptions = {
   readonly projectRoot: string;

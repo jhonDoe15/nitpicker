@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fieldOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { DUPLICATES_TOOL } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { jscpdVersion } from './test-support/views/tools-test-views.mts';
-import { PYTEST_PROBE } from './execution/python-test-runner.mjs';
-import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
+import { PYTEST_PROBE } from './execution/python-test-runner.mts';
+import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mts';
 import { stubCallsLog } from './test-support/runs/calls-log.mts';
 import { installFakeToolchain } from './test-support/fake-toolchain.mts';
 import {
@@ -14,7 +14,7 @@ import {
   createPythonAnalyzers,
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
-} from './python-analyzer.mjs';
+} from './python-analyzer.mts';
 import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot: scratchRoot } = useGitFixtures();
@@ -100,7 +100,7 @@ describe('Python analyzer', () => {
 
     const required = [
       'languages/python/ruff/nitpicker-ruff.toml',
-      'languages/python/adapters/execution/python-test-runner.mjs',
+      'languages/python/adapters/execution/python-test-runner.mts',
       'languages/python/ingest/coverage-reports/coverage-json.mts',
       'shared/ingest/sarif.mjs',
       'shared/policy.mjs',
