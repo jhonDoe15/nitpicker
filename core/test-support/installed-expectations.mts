@@ -121,6 +121,7 @@ export function expectedDirtyOutput(): string {
 Quality gate summary
 ✖ 3 new enforceable violations
   by area: format 2 · lint 1
+  by label: bug 1 · style 2 (focus with --label <label>)
   prettier-format/prettier/prettier: ${PRETTIER_MESSAGE}
     src/main/example.ts:1, 3
   eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}

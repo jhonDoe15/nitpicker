@@ -29,7 +29,11 @@ project, so it takes as long as a full run; finish with the plain run below.
 While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
 read the printed skipped list for what it left out. `--analyzer <name>` runs one analyzer only,
 which is faster still. A run narrowed with `--quick` or `--analyzer` is never a pass: finish with
-the full run below, without them.
+the full run below, without them. To focus on one kind of finding, add `--label <label>`
+(repeatable; `performance`, `bug`, `simplification`, `maintainability` and more,
+`npx nitpicker --help` lists them): it runs only the checks that can report it and lists only those
+findings. A focused run is never a pass either: the summary says `Only findings labeled ...`; finish
+without `--label`.
 
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
    Failing tests are a tool error that names them; coverage and CRAP then come only from the tests
@@ -50,9 +54,9 @@ the full run below, without them.
    the context and the steps. Follow the steps; they are done when the finding named in `doneWhen`
    stops.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer` or `--quick`: the summary then says
-     `Ran only: ...` or names the skipped checks, and you run the gate again without them before you
-     finish.
+   - 0: done, unless you narrowed the run with `--analyzer`, `--quick` or `--label`: the summary
+     then says `Ran only: ...`, `Only findings labeled ...` or names the skipped checks, and you run
+     the gate again without them before you finish.
    - 1: fix the failing tests the summary leads with, every new finding (printed as
      `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Re-read the files `--fix`
      changed before editing them. Then rerun.

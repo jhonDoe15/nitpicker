@@ -14,6 +14,7 @@ const DEFAULTS = {
   quick: false,
   staged: false,
   analyzerNames: [],
+  labelNames: [],
   ruleFilters: [],
   deferExit: false,
   paths: [],
@@ -62,7 +63,7 @@ describe('--quick and --staged arguments', () => {
     const flagged = text.split('\n').filter((line) => /--(?:quick|staged)\b/u.test(line));
 
     expect(flagged.map((line) => line.trim().split(/\s{2,}/u)[0])).toEqual([
-      '[--rule <substring>]... [--details] [--json] [--quick] [--staged]',
+      '[--rule <substring>]... [--label <label>]... [--details] [--json] [--quick] [--staged]',
       '--quick',
       '--staged',
     ]);
