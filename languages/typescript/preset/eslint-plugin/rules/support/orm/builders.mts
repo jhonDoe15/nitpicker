@@ -174,7 +174,9 @@ function queryBuilderTable(
 function queryBuilder({ steps }: CallChain, kind: OrmKind): OrmSite | undefined {
   const index = steps.findIndex((step) => step.name === 'createQueryBuilder');
   const last = steps.at(-1)?.name;
-  const write = steps.findIndex((step) => stepIn(QUERY_BUILDER_WRITES, step) && step.args !== undefined);
+  const write = steps.findIndex(
+    (step) => stepIn(QUERY_BUILDER_WRITES, step) && step.args !== undefined,
+  );
   if (index === -1) {
     return undefined;
   }

@@ -130,8 +130,8 @@ export function staleEntity(
   return stale ? entity?.name : undefined;
 }
 
-function isFreshRead(init: TSESTree.Node | null | undefined): boolean {
-  const value = init === null || init === undefined ? undefined : unwrapped(init);
+function isFreshRead(init: TSESTree.Node | undefined): boolean {
+  const value = init === undefined ? undefined : unwrapped(init);
   const call = value?.type === AST_NODE_TYPES.AwaitExpression ? unwrapped(value.argument) : value;
   if (call?.type !== AST_NODE_TYPES.CallExpression) {
     return false;
@@ -159,7 +159,7 @@ export function unchangedEntity(
     variable === undefined ||
     declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
     !contains(region, declarator) ||
-    !isFreshRead(declarator.init)
+    !isFreshRead(declarator.init ?? undefined)
   ) {
     return undefined;
   }

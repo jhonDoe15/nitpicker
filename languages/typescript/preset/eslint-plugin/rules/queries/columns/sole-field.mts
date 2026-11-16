@@ -10,7 +10,7 @@ function returnedValue(callback: FunctionNode): TSESTree.Node | undefined {
       ? body.body[0]
       : undefined;
   const value = single?.type === AST_NODE_TYPES.ReturnStatement ? single.argument : body;
-  return value === null || value === undefined || value.type === AST_NODE_TYPES.BlockStatement
+  return value === null || value.type === AST_NODE_TYPES.BlockStatement
     ? undefined
     : unwrapped(value);
 }
