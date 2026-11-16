@@ -5,6 +5,12 @@ import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { regexpRules } from '../regexp/regexp-rules.mts';
 import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
+  learnedOptions,
+  learnedRules,
+  type LearnedConfig,
+  type LearnedOptions,
+} from './learned-options.mts';
+import {
   SECURITY_RULES,
   httpClientOptions,
   securityRules,
@@ -12,7 +18,7 @@ import {
   type SecurityFacts,
 } from './security-facts.mts';
 
-export type PolicyOptions = {
+export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
   readonly routeHandlers?: unknown;
   readonly security?: Partial<SecurityFacts> | undefined;
@@ -136,7 +142,8 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
 function productionGuardRules({
   react,
   security,
-}: {
+  ...learned
+}: LearnedOptions & {
   readonly react: boolean;
   readonly security: Partial<SecurityFacts> | undefined;
 }): RuleEntries {
@@ -148,11 +155,18 @@ function productionGuardRules({
     'nitpicker/no-io-in-loop': 'error',
     'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-lazy-relation-in-loop': 'error',
+    'nitpicker/no-lookup-per-element': 'error',
+    'nitpicker/no-query-per-parent': 'error',
     'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-whole-rows-for-one-value': 'error',
     'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-stale-retry-after-conflict': 'error',
     'nitpicker/no-dual-write': 'error',
+    'nitpicker/no-unisolated-job-loop': 'error',
+    'nitpicker/no-unguarded-deleted-items': 'error',
     'nitpicker/no-in-memory-query': 'error',
+    'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
     'nitpicker/no-orm-query-logging': 'error',
     'nitpicker/no-orm-schema-sync': 'error',
@@ -169,6 +183,7 @@ function productionGuardRules({
     'nitpicker/promise-wait-deadline': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     'nitpicker/unbounded-reactive-fan-out': 'error',
+    ...learnedRules(learned),
     ...securityRules({ react, security }),
   };
 }
@@ -205,6 +220,24 @@ function securitySupportOff(): Linter.Config {
   };
 }
 
+function productionRulesConfig(options: PolicyOptions): Linter.Config {
+  return {
+    languageOptions: { parser: tseslint.parser },
+    plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
+    rules: {
+      ...productionRules({
+        react: options.react === true,
+        routeHandlers: options.routeHandlers === true,
+      }),
+      ...productionGuardRules({
+        react: options.react === true,
+        security: options.security,
+        ...learnedOptions(options),
+      }),
+    },
+  };
+}
+
 export function productionPolicyConfigFor(
   layout: PolicyLayout,
   options: PolicyOptions = {},
@@ -214,18 +247,7 @@ export function productionPolicyConfigFor(
     ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
   };
   return [
-    {
-      ...production,
-      languageOptions: { parser: tseslint.parser },
-      plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
-      rules: {
-        ...productionRules({
-          react: options.react === true,
-          routeHandlers: options.routeHandlers === true,
-        }),
-        ...productionGuardRules({ react: options.react === true, security: options.security }),
-      },
-    },
+    { ...production, ...productionRulesConfig(options) },
     securitySupportOff(),
     {
       files: [...layout.sourceGlobs],

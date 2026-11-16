@@ -12,6 +12,27 @@ const config = [
   ...strictSyntaxConfigFor(defaultResolvedLayout),
 ];
 
+const databaseConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    databaseWrites: { orms: ['typeorm'], opensTransactions: true },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
+const routeAuthConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    routeAuth: { entries: ['nest__Authenticated__permission'] },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
+const softDeleteConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    softDeleteFilters: { orms: ['kysely'], filters: ['asset__helper__withDefaultVisibility'] },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
 function casesIn(filename: string) {
   return function policyCase(name: string, banned: string, allowed: string): FailureMessageCase {
     return { name: `policy: ${name}`, config, filename, banned, allowed };
@@ -98,6 +119,68 @@ export const policyFailureMessageCases: FailureMessageCase[] = [
     'dual write names the relay',
     "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
     'relay',
+  ),
+  {
+    ...adapterCase(
+      'writes outside the transaction name passing its manager down',
+      'export class Store { async run(o) { await this.orderRepository.save(o); await this.itemRepository.save(o); } }',
+      'one transaction',
+    ),
+    config: databaseConfig,
+  },
+  {
+    ...adapterCase(
+      'a write through an outside repository names the callback parameter',
+      'export class Store { async run(o) { await this.dataSource.transaction(async (manager) => { await this.roleRepository.save(o); }); } }',
+      'callback parameter',
+    ),
+    config: databaseConfig,
+  },
+  {
+    ...adapterCase(
+      'a read without the soft-delete filter names the project helper',
+      "export function reads(db) { return db.selectFrom('asset').selectAll().execute(); }",
+      'withDefaultVisibility',
+    ),
+    config: softDeleteConfig,
+  },
+  {
+    ...adapterCase(
+      'a route without the project auth decorator names it',
+      "import { Controller, Get } from '@nestjs/common'; @Controller('orders') export class Orders { @Get() list() { return []; } }",
+      '@Authenticated({ permission })',
+    ),
+    config: routeAuthConfig,
+  },
+  adapterCase(
+    'resolver map query names the DataLoader',
+    "import { ApolloServer } from '@apollo/server';\nconst typeDefs = `type Query { views: [View!]! }`;\nconst resolvers = { View: { owner: (view) => ownerRepository.findOne(view.ownerId) } };\nexport const server = new ApolloServer({ typeDefs, resolvers });",
+    'DataLoader',
+  ),
+  adapterCase(
+    'reactive lookup per element names the batched query',
+    "import { from, concatMap } from 'rxjs';\nexport const owners = (ids: string[]) => from(ids).pipe(concatMap((id) => from(ownerRepository.findOne(id))));",
+    'one batched query',
+  ),
+  adapterCase(
+    'rows loaded only to be deleted name deleteMany',
+    "import { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\nexport async function purge() { const rows = await prisma.order.findMany({ where: { status: 'old' } }); await prisma.order.deleteMany({ where: { id: { in: rows.map((row) => row.id) } } }); }",
+    'deleteMany',
+  ),
+  adapterCase(
+    'count compared with zero names findFirst',
+    "import { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\nexport async function taken(name: string) { return (await prisma.user.count({ where: { name } })) > 0; }",
+    'findFirst',
+  ),
+  adapterCase(
+    'stale retry after a version conflict names the re-read',
+    "import pRetry from 'p-retry';\nimport { OptimisticLockVersionMismatchError } from 'typeorm';\nexport async function rename(orderRepo, order) { await pRetry(() => orderRepo.save(order), { shouldRetry: (error) => error instanceof OptimisticLockVersionMismatchError }); }",
+    'findOneByOrFail',
+  ),
+  adapterCase(
+    'a job loop names catching the failure per item',
+    "import { Cron } from '@nestjs/schedule'; export class Job { @Cron('* * * * *') async run(items) { for (const item of items) { await this.itemRepository.save(item); } } }",
+    'per item',
   ),
   adapterCase(
     'Promise wrapper names Promise.resolve',

@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mts';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 import { ancestorsOf } from '../typed/node-views.mts';
@@ -53,11 +53,11 @@ const LOOPS = new Set<string>([
   AST_NODE_TYPES.DoWhileStatement,
 ]);
 
-function outerOf(node: TSESTree.Node): TSESTree.Node {
+export function outerOf(node: TSESTree.Node): TSESTree.Node {
   return outermostOf(node, TYPE_WRAPPERS);
 }
 
-function homeOf(node: TSESTree.Node): MaybeNode {
+export function homeOf(node: TSESTree.Node): MaybeNode {
   return ancestorsOf(node).find(
     (ancestor) => isFunctionNode(ancestor) || ancestor.type === AST_NODE_TYPES.Program,
   );
@@ -80,16 +80,30 @@ function crossesRepeat(read: TSESTree.Node, home: MaybeNode): boolean {
   );
 }
 
-export function resultSite(context: Context, node: TSESTree.Node): MaybeNode {
+export type ResultBinding = {
+  readonly outer: TSESTree.Node;
+  readonly declarator: TSESTree.VariableDeclarator | undefined;
+  readonly variable: TSESLint.Scope.Variable | undefined;
+};
+
+export function resultBinding(context: Context, node: TSESTree.Node): ResultBinding {
   const outer = outerOf(node);
   const declarator = outer.parent;
   if (declarator?.type !== AST_NODE_TYPES.VariableDeclarator || declarator.init !== outer) {
+    return { outer, declarator: undefined, variable: undefined };
+  }
+  const [variable] =
+    declarator.id.type === AST_NODE_TYPES.Identifier
+      ? context.sourceCode.getDeclaredVariables(declarator)
+      : [];
+  return { outer, declarator, variable };
+}
+
+export function resultSite(context: Context, node: TSESTree.Node): MaybeNode {
+  const { outer, declarator, variable } = resultBinding(context, node);
+  if (declarator === undefined) {
     return outer;
   }
-  if (declarator.id.type !== AST_NODE_TYPES.Identifier) {
-    return undefined;
-  }
-  const [variable] = context.sourceCode.getDeclaredVariables(declarator);
   if (variable === undefined) {
     return undefined;
   }

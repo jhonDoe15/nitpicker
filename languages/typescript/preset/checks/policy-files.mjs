@@ -7,12 +7,14 @@ import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/orig
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
+import { RULE_BACKED_MEASURE_FILES } from '../../conventions/measures/parsing/rule-backed-measures.mjs';
 import { PLUGIN_RULE_FILES } from './plugin-rules/plugin-rule-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
+  ...RULE_BACKED_MEASURE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
   ...REQUEST_TEXT_POLICY_FILES,
@@ -40,6 +42,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/logic/logic-rules.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/policy/security-facts.mjs',
+  'languages/typescript/preset/eslint-config/policy/learned-options.mjs',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/eslint-config/strict-adapters.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-declarations.mjs',

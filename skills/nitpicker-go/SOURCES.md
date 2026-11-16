@@ -86,6 +86,18 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
   `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
   cause of slow endpoints.
+- **Resolvers (#799).** `query-per-parent-resolver` reads the list parent from Go types (a slice of it
+  in a struct field or a resolver result) instead of the GraphQL schema files, and reports only a query
+  that uses the parent, so a count that ignores the parent or a singular parent stays quiet. The
+  convention-measuring rules (#754, #1220, #758), the optimistic-lock retry rule (#739) and the future
+  rules (#796) are not built for Go; `docs/go-preset.md` says why.
+- **Transactions (#791).** `writes-without-transaction` and `write-outside-transaction` read the
+  table from the statement text or the gorm model and stay quiet when either is unknown, so
+  independent or dynamic writes are not guessed at; a gorm `*DB` passed in or kept in a local
+  variable may already be the transaction and is not counted.
+- **Jobs (#804).** `failing-item-stops-job` follows the error of the call that the loop makes (the
+  same database and HTTP calls as `io-in-loop`), so a loop that returns on a parse error or enqueues
+  through a project helper is not read; only functions a scheduler or queue registers count.
 - **HTTP value rules.** `http-value-case` and `hand-split-http-header` read header values through
   `net/http` `Header.Get`, so a header name is never reported (it is case-insensitive there); a method
   and a parsed `Scheme` are left out because the first is case-sensitive and `url.Parse` lowercases the

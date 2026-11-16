@@ -43,6 +43,35 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`effects/RetryWithoutIdempotency`).
 - Database and broker: never write a row and publish a message in one function; write the message to an outbox table
   in the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
+- Check, then write: when a read decides a write (`if (users.existsByEmail(e)) error(...)`, a count against a
+  limit, `repo.findByEmail(e) ?: repo.save(...)`), make it atomic: read with `@Lock` inside a transaction, a
+  `@Version` property, an upsert or a unique constraint (`effects/CheckThenWriteWithoutLock`). Two or more
+  repository writes in one public function need `@Transactional` (`pmd/SpringMultiWriteWithoutTransaction`).
+- GraphQL fields: a `@SchemaMapping` or `@DgsData` function of a non-root type runs once per parent, so it never calls
+  a repository or client itself; use `@BatchMapping` or a `DataLoader` (`effects/GraphqlFieldPerParent`).
+- Reactive pipelines: never look up each element of a list inside `Flux.fromIterable(items).flatMap(...)`; fetch all
+  elements with one call and join in memory (`effects/ReactiveLookupPerElement`).
+- Bulk changes: never load rows only to set the same value on each and save them, or to delete them; use one
+  `@Modifying @Query` update or delete, or `deleteAllInBatch` (`effects/RowsChangedInMemory`).
+- Reads: never load whole entities to read one column (`findByTeam(id).map { it.email }`; select a projection) or to
+  test existence (`countByEmail(e) > 0`, `findByEmail(e) != null`; use `existsByEmail`)
+  (`effects/EntityLoadedForOneColumn`, `effects/EntityLoadedForExistence`).
+- Optimistic-lock retries: read the row by id and apply the change inside the retried scope (`Mono.defer`, the loop
+  body, or a `@Retryable` method that takes the id); never resend the object that conflicted (`effects/RetryWithStaleObject`).
+- Async methods: do not return `immediateFuture`/`completedFuture` of a database or HTTP call made on the calling thread
+  (submit it to an executor or make the method synchronous), and do not wait with `.get()`/`.join()` on `fooAsync()` when
+  `foo()` exists (`effects/AsyncMethodDoesBlockingWork`, `effects/WaitOnAsyncTwin`).
+- Jobs: in a `@Scheduled` function, a batch `@KafkaListener`, a `@SqsListener` or a Quartz `execute`, catch the failure
+  of each item inside the loop (`try`/`catch` or `runCatching`) or enqueue one job per item, so one failing item does
+  not skip the rest (`effects/JobLoopWithoutItemIsolation`).
+- Soft delete: a read of an entity with a `deletedAt`, `deleted` or `archived` property repeats the condition the
+  project's other reads use, or the entity carries `@SQLRestriction` (or `@Where`, `@FilterDef`)
+  (`effects/SoftDeleteFilterMissing`).
+- Soft delete in memory: a loop over an entity's collection (`basket.items`) skips the deleted items the way the
+  project's other loops do, or the collection carries `@SQLRestriction`, `@Where` or `@Filter`
+  (`effects/DeletedItemInMemory`).
+- Auth: a route handler function carries the authorization annotation the project's other handlers carry, on the
+  function or the controller (`effects/HandlerWithoutAuth`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

@@ -119,18 +119,56 @@ Database calls per element are left to the per-item I/O rules (`io-in-loop` in t
 `go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
-In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather` and task
-groups (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
+In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather`, task
+groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
+
+Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
+SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
+statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
+column are left alone, and a loop of per-row deletes stays with `io-in-loop`.
+
+Rows read for less: `row-for-one-column` and `row-for-existence` in the Python preset report rows that a Django or
+SQLAlchemy query loads whole only to read one known column (`[u.email for u in User.objects.filter(...)]`) or only to test
+for existence (`.count() > 0`, `.first() is not None`); `values_list`, `select(User.email)` and `.exists()` are the
+allowed forms, and relationships, properties and already narrowed queries stay quiet.
+
+Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()` or `flush()` that a retry loop, a
+`tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
+(`session.get`, `refresh`, a query); the row is read by id inside each attempt.
 
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
+`resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
 and a message publish in one function, without an outbox). They live in
 `languages/python/rules/{accumulators,orm,transactions,retries,dual_write}/` and read the effect kinds of
 `languages/python/rules/kinds/`; the [Python preset](../docs/python-preset.md) lists what each recognizes.
+
+Python related-write rules: `related-writes-without-transaction` (two writes to different models, or two writes
+committed separately, with no `transaction.atomic()` or `session.begin()` around them), `write-outside-transaction`
+(a write inside a transaction block through a session or database alias that is not the block's) and
+`check-then-write-race` (a read of a model that decides a create of the same model, without a lock, an atomic form
+or a transaction). They live in `languages/python/rules/related_writes/`.
+
+Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
+command that does database or remote I/O per item with no `try` around one item, so the first failing item
+stops the rest). It lives in `languages/python/rules/jobs/`.
+
+Python soft-delete rule: `soft-delete-filter-missing` (a Django or SQLAlchemy read of a model with a soft-delete or
+visibility column that skips the filter or helper at least 80% of the project's reads of that model apply, with at
+least five reads counted). It lives in `languages/python/rules/soft_delete/`.
+
+Python deleted-item rule: `deleted-item-filter-missing` (a loop, comprehension or lookup over an annotated collection of
+items that carry a deletion flag that skips the guard, helper or narrowed type that at least 80% of the project's
+iterations over that item type use, with at least five iterations counted). It lives in
+`languages/python/rules/deleted_items/`.
+
+Python route auth rule: `route-without-auth` (a FastAPI route, a Django REST framework view or a Flask route without
+the auth requirement, a `Depends(...)`, `permission_classes` or login decorator, that at least 90% of the project's
+handlers declare, with at least five handlers counted). It lives in `languages/python/rules/route_auth/`.
 
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
@@ -218,6 +256,16 @@ preset runs the same rule. A call that takes a whole chunk, a paging or polling 
 publish are left alone. A remote call inside `Promise.all` is the fan-out rule's, so no call is reported
 twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-in-loop` in the Go preset.
 
+Field resolvers: the Go preset reports a gqlgen field resolver of a list parent that queries once per parent without
+a dataloader (`go-rules/query-per-parent-resolver`).
+
+Related writes: the Go preset reports two writes on different tables in one function with no transaction
+(`go-rules/writes-without-transaction`, `database/sql`, sqlx, pgx and gorm) and a write through the outer
+handle inside a function that has an open transaction (`go-rules/write-outside-transaction`).
+
+Scheduled and queue jobs: the Go preset reports a loop in a robfig/cron, gocron, asynq or machinery job that returns,
+panics or exits on the first failing database or HTTP call of an item (`go-rules/failing-item-stops-job`).
+
 Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
 accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
@@ -246,6 +294,64 @@ Dual writes: `nitpicker/no-dual-write` (production source, in `eslint-lint`, typ
 that writes to the database and publishes a broker message at separate calls, since a crash between them
 loses or duplicates the message; the outbox table or relay is the allowed form. An outbox relay (publish a
 row read from the database, then mark it sent) is not reported.
+
+GraphQL field resolvers: `nitpicker/no-query-per-parent` (production source, in `eslint-lint`, type-aware)
+reports a database or remote call made by a NestJS `@ResolveField`, type-graphql `@FieldResolver` or resolver-map
+field function (Apollo Server, Mercurius, graphql-yoga) whose parent type is returned as a list somewhere in the
+schema: N parents cost N queries. The allowed forms are a DataLoader, a request-scoped cache and data already on
+the parent; a parent type that is only returned alone is not reported.
+
+Reactive lookups: `nitpicker/no-lookup-per-element` (production source, in `eslint-lint`, type-aware) reports an
+RxJS `mergeMap`, `concatMap`, `switchMap`, `exhaustMap` or `flatMap` over `from(items)` whose function makes a
+database or remote call per element, directly or through a helper: fetch the rows in one batched query and join them in
+memory. A grouping operator before the lookup (`bufferCount`, `toArray`) and a fixed collection are not reported.
+
+Rows saved back: `nitpicker/no-loaded-rows-saved-back` (production source, in `eslint-lint`, type-aware) reports
+query rows (TypeORM, Prisma, Sequelize, MikroORM, Drizzle) loaded only to assign constants to a field of every row
+and save them back (`save(rows)`, `bulkCreate`, `flush()`), to `remove(rows)`, or to pass their ids to a delete or an
+update; one `update`, `updateMany` or `delete` statement does it without loading anything. Entities with hooks,
+subscribers or a version column, and loops that read the row or call functions, are not reported.
+
+Whole rows for one value: `nitpicker/no-whole-rows-for-one-value` (production source, in `eslint-lint`, type-aware
+for the column form) reports query rows (TypeORM, Prisma, Sequelize, MikroORM) loaded only to map them to one
+declared column, a `count` only compared with zero or one, and a `findOne`/`findFirst` result only used as a
+condition: select the column, or ask `exists`/`findFirst` with `select`. A query that already selects, a paged
+query and rows used another way are not reported.
+
+Optimistic-lock retries: `nitpicker/no-stale-retry-after-conflict` (production source, in `eslint-lint`) reports a
+TypeORM `save` inside a retry that names `OptimisticLockVersionMismatchError` (p-retry, async-retry,
+exponential-backoff, cockatiel or a hand-written loop) when it saves an entity loaded before the retried scope, or
+one re-read inside it but saved without the change re-applied. Re-read by id and re-apply the change inside the
+retried scope.
+Related writes: `nitpicker/no-unatomic-writes` (production source, in `eslint-lint`) reports, for projects on
+TypeORM, Prisma, Drizzle, Kysely, Knex, Sequelize or MikroORM, a write inside a transaction callback that goes
+through a client or repository other than the callback's parameter, and, where the project opens transactions
+somewhere, a function that awaits writes to two different tables with no transaction. The finding names the
+writes and the allowed forms (one transaction with its manager passed down, an atomic statement).
+`nitpicker/no-check-then-write` is the report-only form: a read of a table that decides a write to it with
+no transaction, lock or atomic statement.
+
+Job loops: `nitpicker/no-unisolated-job-loop` (production source, in `eslint-lint`, type-aware) reports a `for...of`
+loop in a scheduled or queue job (NestJS `@Cron`/`@Interval`/`@Timeout`/`@Process`/`@Processor`, BullMQ
+`WorkerHost.process` and `Worker`, Agenda `define`, node-cron `schedule`) whose body awaits a database or remote
+call with no `try`/`catch` around it, so one failing item stops the rest. A `try`/`catch` per item, one queued
+job per item and `Promise.allSettled` are the allowed forms.
+
+Soft-delete filters: `nitpicker/no-unfiltered-soft-delete-read` (production source, in `eslint-lint`) reports a changed
+Kysely, Knex, TypeORM, Drizzle, Prisma, Sequelize or MikroORM read or join of a table whose reads mostly (80%, at
+least five reads, measured at the merge base) apply a soft-delete or visibility column or helper and that does not.
+The finding names the column and the project's helper; a project with no majority is not reported.
+
+Deleted items in memory: `nitpicker/no-unguarded-deleted-items` (production source, in `eslint-lint`, type-aware) reports
+a changed loop or inline array callback over items that carry a deleted or visibility flag (`isDeleted`, `deleted`,
+`deletedAt`, `archived`, `hidden`, `isVisible`) when at least 80% of such iterations in the project (at least five) skip
+flagged items and this one does not. The finding names the flag and the project's guard form: a helper such as
+`getNonDeletedElements` or a narrowed type such as `NonDeleted<T>`.
+
+Route auth: `nitpicker/no-route-without-auth` (production source, in `eslint-lint`) reports a NestJS handler that lacks the
+auth decorator shape almost every handler declares (90%, for example `@Authenticated({ permission })`), or, when no
+shape has a majority but some handlers use a guard and there is no global guard, a handler with no guard and no public
+marker; an Express or Fastify route registered without the auth middleware most routes use is reported the same way.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

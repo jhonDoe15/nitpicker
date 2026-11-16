@@ -1442,6 +1442,20 @@
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
+              },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
               "prettier.jsxQuotes": {
                 "description": "JSX attribute quotes: \"double\" (double (\"\")), \"single\" (single ('')).",
                 "enum": ["double", "single"]
@@ -1682,6 +1696,20 @@
               },
               "typescript.detachedWorkRunners": {
                 "description": "Detached-work runners: the names of the functions that run detached work and handle its rejection.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
+              },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               }
@@ -2384,6 +2412,19 @@
                             "effects/RemoteCallUnderLock",
                             "effects/RetryWithoutIdempotency",
                             "effects/DualWriteWithoutOutbox",
+                            "effects/GraphqlFieldPerParent",
+                            "effects/ReactiveLookupPerElement",
+                            "effects/RowsChangedInMemory",
+                            "effects/EntityLoadedForOneColumn",
+                            "effects/EntityLoadedForExistence",
+                            "effects/RetryWithStaleObject",
+                            "effects/CheckThenWriteWithoutLock",
+                            "effects/AsyncMethodDoesBlockingWork",
+                            "effects/WaitOnAsyncTwin",
+                            "effects/JobLoopWithoutItemIsolation",
+                            "effects/SoftDeleteFilterMissing",
+                            "effects/DeletedItemInMemory",
+                            "effects/HandlerWithoutAuth",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

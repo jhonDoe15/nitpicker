@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 19,
+      classes: 59,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -167,6 +167,134 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
 
   it('reports copies on every step', () => {
     expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
+  });
+
+  it.each([
+    [
+      'reports resolvers of a parent list that query once per parent, and leaves batch and root fields',
+      'GraphqlFieldPerParent',
+      [
+        'Graphql.direct',
+        'Graphql.throughHelper',
+        'Graphql.price',
+        'Graphql.federated',
+        'Graphql.nested',
+        'Graphql.withContext',
+      ],
+    ],
+    [
+      'reports lookups per element of an in-memory collection in a reactive pipeline',
+      'ReactiveLookupPerElement',
+      [
+        'Reactive.byReference',
+        'Reactive.byLambda',
+        'Reactive.byHelper',
+        'Reactive.fromArray',
+        'Reactive.remote',
+        'Reactive.limitedDatabase',
+      ],
+    ],
+    [
+      'reports rows loaded to be changed or deleted in memory, and skips lifecycle, other calls and other uses',
+      'RowsChangedInMemory',
+      [
+        'Jobs.execute',
+        'Updates.forEachThenSave',
+        'Updates.loopThenSave',
+        'Updates.dirtyChecking',
+        'Updates.deleteAllRows',
+        'Updates.deleteEach',
+        'Updates.collectionTableUpdate',
+      ],
+    ],
+    [
+      'reports retries that resend an object read outside the retried scope',
+      'RetryWithStaleObject',
+      ['Stale.resend', 'Stale.captured', 'Stale.loop', 'Stale.loopBeforeLoop', 'Stale.annotated'],
+    ],
+    [
+      'reports a check that decides a write unless a lock, a version column or another repository guards it',
+      'CheckThenWriteWithoutLock',
+      ['Races.reserve', 'Races.claim'],
+    ],
+  ])('%s', (_title, rule, methods) => {
+    expect(methodsOf(run.report, rule)).toEqual(methods);
+  });
+
+  it('reports entities loaded for one column or for existence, and leaves computed, transient and reused loads', () => {
+    expect(methodsOf(run.report, 'EntityLoadedForOneColumn')).toEqual([
+      'Projected.emails',
+      'Projected.lambdaEmails',
+      'Projected.looped',
+    ]);
+    expect(
+      methodsOf(run.report, 'EntityLoadedForExistence').filter((method) =>
+        method.startsWith('Projected.'),
+      ),
+    ).toEqual([
+      'Projected.taken',
+      'Projected.exists',
+      'Projected.named',
+      'Projected.atLeastOne',
+      'Projected.none',
+    ]);
+  });
+
+  it('reports async methods that block and waits on a method that has a synchronous twin', () => {
+    expect(methodsOf(run.report, 'AsyncMethodDoesBlockingWork')).toEqual([
+      'Waits.guava',
+      'Waits.completed',
+    ]);
+    expect(methodsOf(run.report, 'WaitOnAsyncTwin')).toEqual([
+      'Waits.waits',
+      'Waits.joins',
+      'Waits.unchecked',
+    ]);
+  });
+
+  it('reports a job that loops over items without isolating each one, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'JobLoopWithoutItemIsolation')
+        .map((violation) => `${violation.method} ${violation.job ?? ''}`),
+    ).toEqual([
+      'Jobs.closeAll @Scheduled',
+      'Jobs.closeUntilFailure @Scheduled',
+      'Jobs.onBatch @KafkaListener',
+      'Jobs.onMessages @SqsListener',
+      'Jobs.execute Quartz Job',
+    ]);
+  });
+
+  it('reports a read that skips the soft-delete filter most reads of the entity apply, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'SoftDeleteFilterMissing')
+        .map(
+          (violation) => `${violation.method} ${violation.entity ?? ''}.${violation.column ?? ''}`,
+        ),
+    ).toEqual(['Trash.leaked Parcel.deletedAt']);
+  });
+
+  it('reports a loop over soft-deletable items that skips the flag the other loops check, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'DeletedItemInMemory')
+        .map(
+          (violation) => `${violation.method} ${violation.entity ?? ''}.${violation.flag ?? ''}`,
+        ),
+    ).toEqual(['Rooms.unguarded Bed.deletedAt']);
+  });
+
+  it('reports a route handler without the authorization the other handlers declare, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'HandlerWithoutAuth')
+        .map(
+          (violation) =>
+            `${violation.method} ${String(violation.declared)}/${String(violation.total)}`,
+        ),
+    ).toEqual(['Handlers.open 22/24', 'Handlers.composed 22/24']);
   });
 
   it('reports lazy access per element only', () => {

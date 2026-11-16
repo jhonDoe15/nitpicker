@@ -197,9 +197,12 @@ def check(context):
                 found.append(finding(context.path, RULE, subject, node))
             continue
         submitted = scope.submitted_effects(node)
+        loop = enclosing_loop(node, context.parents)
         effects = submitted or scope.effects(node)
-        loop = enclosing_loop(node, context.parents) if effects else None
-        if loop is None:
+        if loop is not None and not effects:
+            submitted = spawned_per_item(node, loop, scope)
+            effects = submitted
+        if loop is None or not effects:
             continue
         concurrent = bool(submitted) or is_concurrent(node, loop, context)
         kind = reported_kind(effects, concurrent)
@@ -210,6 +213,19 @@ def check(context):
         subject = subject_of(effects, kind, concurrent)
         found.append(finding(context.path, RULE, subject, node))
     return found
+
+
+def spawned_per_item(call, loop, scope):
+    parts = scope.spawn_parts(call)
+    if parts is None:
+        return {}
+    names = {
+        n.id
+        for argument in parts[1]
+        for n in ast.walk(argument)
+        if isinstance(n, ast.Name)
+    }
+    return scope.spawned_effects(parts[0]) if names & loop_variables(loop) else {}
 
 
 def skipped_loop(call, loop, scope, context, verdicts):

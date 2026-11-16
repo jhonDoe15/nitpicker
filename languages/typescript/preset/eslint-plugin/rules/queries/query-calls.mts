@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mts';
 import { DRIZZLE, moduleScope, type OrmBinding } from '../database/orm-modules.mts';
 import { memberName, staticKey, unwrapped, type Context } from '../security/security-values.mts';
+import { type MemberCall } from '../events/emitter-creations.mts';
 import { chainOf } from '../typed/node-views.mts';
 
 export type QueryScope = {
@@ -9,7 +10,6 @@ export type QueryScope = {
   readonly families: Set<string>;
   readonly orm: boolean;
 };
-type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
 
 const LIST_QUERIES = new Set<string | undefined>([
   'find',
@@ -47,7 +47,7 @@ function isMemberCall(node: TSESTree.Node): node is MemberCall {
   return isCall(node) && node.callee.type === AST_NODE_TYPES.MemberExpression;
 }
 
-function callChain(node: TSESTree.Node): TSESTree.CallExpression[] {
+export function callChain(node: TSESTree.Node): TSESTree.CallExpression[] {
   return chainOf<TSESTree.Node>(unwrapped(node), (current) =>
     isMemberCall(current) ? unwrapped(current.callee.object) : undefined,
   ).filter(isCall);
@@ -93,7 +93,7 @@ function memberNameOf(step: TSESTree.Node): string | undefined {
   return step.type === AST_NODE_TYPES.MemberExpression ? memberName(step) : undefined;
 }
 
-function receiverNames(receiver: TSESTree.Node): string[] {
+export function receiverNames(receiver: TSESTree.Node): string[] {
   const steps = chainOf<TSESTree.Node>(unwrapped(receiver), (current) => {
     if (current.type === AST_NODE_TYPES.CallExpression) {
       return unwrapped(current.callee);
@@ -105,7 +105,7 @@ function receiverNames(receiver: TSESTree.Node): string[] {
     .filter((name): name is string => name !== undefined);
 }
 
-function isRepositoryLike(names: readonly string[]): boolean {
+export function isRepositoryLike(names: readonly string[]): boolean {
   const [last] = names;
   return (
     (last !== undefined && MODEL_NAME.test(last)) ||
@@ -123,12 +123,16 @@ function isPaged(call: TSESTree.CallExpression): boolean {
   return keys.some((key) => PAGES.has(key)) || namesOf(call).some((name) => PAGES.has(name));
 }
 
-function isListQuery(scope: QueryScope, call: MemberCall): boolean {
+export function isOrmCall(
+  scope: QueryScope,
+  call: MemberCall,
+  methods: ReadonlySet<string | undefined> = LIST_QUERIES,
+): boolean {
   const names = receiverNames(call.callee.object);
   const prisma = names.some((name) => PRISMA_NAME.test(name));
   const textual = stringValue(unwrapped(call.arguments[0])) !== undefined;
   return (
-    LIST_QUERIES.has(memberName(call.callee)) &&
+    methods.has(memberName(call.callee)) &&
     !textual &&
     (scope.orm || prisma) &&
     isRepositoryLike(names)
@@ -145,5 +149,5 @@ export function isQueryResult(scope: QueryScope, node: TSESTree.Node): boolean {
   if (call.arguments.some((argument) => isFunctionNode(unwrapped(argument))) || isPaged(call)) {
     return false;
   }
-  return isListQuery(scope, call) || isDrizzleSelect(scope, call);
+  return isOrmCall(scope, call) || isDrizzleSelect(scope, call);
 }

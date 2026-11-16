@@ -454,6 +454,18 @@ describe('withoutCoveredLines', () => {
     ]);
   });
 
+  it('drops a reactive lookup finding when the PMD fan-out rule reports a line of its operator', () => {
+    const findings = [
+      at('pmd', 'UnboundedReactiveFanOut', 4),
+      at('effects', 'ReactiveLookupPerElement', 4),
+      at('effects', 'ReactiveLookupPerElement', 9, 8),
+    ];
+
+    expect(withoutCoveredLines(findings).filter(({ tool }) => tool === 'effects')).toEqual([
+      at('effects', 'ReactiveLookupPerElement', 9, undefined),
+    ]);
+  });
+
   it('drops PMD loop findings on calls the engine exempts, unless an owned call shares the line', () => {
     const findings = [
       at('pmd', 'IoCallInLoop', 3),
