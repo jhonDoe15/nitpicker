@@ -11,7 +11,7 @@ import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mj
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
-import { javaRouteRule } from './java-policy.mjs';
+import { javaRouteRule } from './java-policy.mts';
 import { withoutFollowedImports } from './imports/followed-imports.mts';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
@@ -19,7 +19,7 @@ import { withJavaColumns } from './reporting/columns/java-columns.mts';
 import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { withTestsFailures } from './red-base/tests-failed.mts';
-import { isJavaTouchedRule } from './touched-rules.mjs';
+import { isJavaTouchedRule } from './touched-rules.mts';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mts';
 import {

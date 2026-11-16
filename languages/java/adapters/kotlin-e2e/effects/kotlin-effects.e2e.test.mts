@@ -7,7 +7,7 @@ import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import {
   KOTLIN_EFFECTS,
   KOTLIN_EFFECTS_FIXTURE,
-} from '../../effects/test-support/effects-projects.mjs';
+} from '../../effects/test-support/effects-projects.mts';
 import {
   effectsSummary,
   loadConfig,

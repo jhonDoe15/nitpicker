@@ -6,7 +6,7 @@ import java.util.Set;
 /**
  * Prints every check of the Error Prone jar on the classpath, one per line: its name, its default
  * severity, {@code on} or {@code off} by default, and all its names joined with commas, tab-separated.
- * checks-catalog.e2e.test.mjs compares checks.json with it.
+ * checks-catalog.e2e.test.mts compares checks.json with it.
  */
 public final class BugCheckers {
 

@@ -1,0 +1,69 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { failingTestsOf } from './failing-tests.mts';
+
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const FAILING = [
+  '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds">',
+  '<failure message="expected: &lt;4&gt; but was: &lt;3&gt;"/></testcase></testsuite>',
+].join('');
+const PASSING = '<testsuite name="shop.CartTest"><testcase name="adds"/></testsuite>';
+
+function gradleRun(modules: Readonly<Record<string, string>>): {
+  root: string;
+  reportBase: string;
+} {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-failing-tests-'));
+  roots.push(root);
+  const reportBase = path.join(root, 'reports');
+  mkdirSync(reportBase, { recursive: true });
+  const listed = Object.entries(modules).map(([dir, suite]) => {
+    const results = path.join(root, dir, 'build/test-results/test');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(results, 'TEST-shop.CartTest.xml'), suite);
+    return { dir, results: [results] };
+  });
+  writeFileSync(path.join(reportBase, 'test-results.json'), JSON.stringify(listed));
+  return { root, reportBase };
+}
+
+describe('failingTestsOf', () => {
+  it('names the failing tests of each module like the Maven build does', () => {
+    const { reportBase } = gradleRun({ '': FAILING, core: FAILING, api: PASSING });
+
+    const failing = {
+      tests: ['shop.CartTest.adds: expected: <4> but was: <3>'],
+      details: [
+        {
+          name: 'shop.CartTest.adds',
+          message: 'expected: <4> but was: <3>',
+          expected: '4',
+          received: '3',
+        },
+      ],
+    };
+
+    expect(failingTestsOf({ reportBase, since: 0, retriesPass: false })).toEqual([
+      { module: '.', ...failing },
+      { module: 'core', ...failing },
+    ]);
+  });
+
+  it('is empty when no test failed or the run wrote no list', () => {
+    const { root, reportBase } = gradleRun({ core: PASSING });
+
+    expect([
+      failingTestsOf({ reportBase, since: 0, retriesPass: false }),
+      failingTestsOf({ reportBase: path.join(root, 'none'), since: 0, retriesPass: false }),
+    ]).toEqual([[], []]);
+  });
+});

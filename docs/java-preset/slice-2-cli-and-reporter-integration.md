@@ -127,11 +127,11 @@ Part of the [Java preset guide](../java-preset.md).
   pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
   missing binary, `--all`, the same cases for both builds. The Gradle fake runs in the test process: `runFakeGradle({ args, cwd })`
   (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
-  is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
+  is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mts`),
   passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
   path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
   exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
-  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
+  `gradle-process.test.mts`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
   runs on the Gradle build; the process wiring does not depend on the build). The Maven preset takes the same
   `spawn` option: `runMavenPreset` passes it to `runMaven`, `runJava` and the direct `jar`, `jdeps` and `java -version`
   calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mts`) answers the fake `mvn`

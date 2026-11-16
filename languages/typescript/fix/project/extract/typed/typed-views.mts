@@ -21,6 +21,7 @@ import {
   dedentedToLeast as untypedDedentedToLeast,
   indentedBy as untypedIndentedBy,
   withLineEndingOf as untypedWithLineEndingOf,
+  withReplacements as untypedWithReplacements,
 } from '../../../../../../shared/fix/recipes/extract/text.mjs';
 import { statementWindows as untypedStatementWindows } from '../../../../../../shared/fix/recipes/extract/windows.mjs';
 import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
@@ -89,6 +90,10 @@ const collected: (
 ) => { readonly fixes: ProjectFix[]; readonly notes: string[] } = untypedCollected;
 
 const dedentedToLeast: (text: string) => string = untypedDedentedToLeast;
+const withReplacements: (
+  text: string,
+  replacements: readonly { readonly start: number; readonly end: number; readonly text: string }[],
+) => string = untypedWithReplacements;
 
 const indentedBy: (text: string, prefix: string) => string = untypedIndentedBy;
 
@@ -106,6 +111,7 @@ export {
   collected,
   declineNote,
   dedentedToLeast,
+  withReplacements,
   helperNameFor,
   indentedBy,
   nameHoles,
