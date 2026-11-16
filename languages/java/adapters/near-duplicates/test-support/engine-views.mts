@@ -37,14 +37,10 @@ export const findNearDuplicates: (
   options?: { readonly refuted: Refusal[] },
 ) => NearFinding[] = untypedFindNearDuplicates;
 
-const nearDuplicateFindingsOf: (
+export const nearDuplicateFindings: (
   units: readonly Unit[],
-  options: RuleOptions & { readonly roleOf: undefined; readonly files: undefined },
+  options: RuleOptions,
 ) => RuleFinding[] = untypedNearDuplicateFindings;
-
-export function nearDuplicateFindings(units: readonly Unit[], options: RuleOptions): RuleFinding[] {
-  return nearDuplicateFindingsOf(units, { ...options, roleOf: undefined, files: undefined });
-}
 
 export const decidedConditionFindings: (
   units: readonly Unit[],

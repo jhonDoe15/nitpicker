@@ -101,7 +101,6 @@ export type FixStatusSources = {
   readonly recipes: readonly RecipeListing[];
   readonly formatters: readonly PresetRule[];
   readonly selected?: readonly PresetRule[];
-  readonly plans: readonly PresetRule[];
 };
 
 export function concatenated(...lists: readonly (readonly unknown[])[]): unknown[] {

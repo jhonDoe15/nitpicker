@@ -7,16 +7,13 @@ import {
   fixStatusFor as typedFixStatusFor,
   withFixStatus,
 } from './fix-status.mts';
-import { FIX_PLAN_RULES } from './fix-plan-rules.mts';
-import { matcherOf, presetRules, recipeListings } from './status-types.mts';
+import { matcherOf, recipeListings } from './status-types.mts';
 import type { Fields } from './status-types.mts';
-import type { FixStatusSources, PresetRule } from '../typed/fix-types.mts';
-import { readReferenceEntries as untypedReadReferenceEntries } from '../../../shared/reference/store.mjs';
+import type { FixStatusSources } from '../typed/fix-types.mts';
 import { ruleEntry as untypedRuleEntry } from '../../../shared/reference/entry.mjs';
 import { fixText as untypedFixText } from '../../../shared/reference/fix-status.mjs';
-import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
-const readReferenceEntries: () => readonly Fields[] = untypedReadReferenceEntries;
 const ruleEntry: (fields: { readonly tool: string; readonly rule: string } & Fields) => Fields =
   untypedRuleEntry;
 const fixText: (entry: Fields, presets: readonly string[]) => string = untypedFixText;
@@ -42,11 +39,8 @@ function recipe(id: string, fields: Partial<RecipeSpec> = {}): RecipeSpec {
   };
 }
 
-function sources(
-  recipes: readonly RecipeSpec[],
-  plans: readonly PresetRule[] = [],
-): FixStatusSources {
-  return { recipes: defineRecipes(recipes), formatters: [], plans };
+function sources(recipes: readonly RecipeSpec[]): FixStatusSources {
+  return { recipes: defineRecipes(recipes), formatters: [] };
 }
 
 describe('fixStatusFor', () => {
@@ -74,16 +68,6 @@ describe('fixStatusFor', () => {
     expect(fixStatusFor(family, 'java', own)).toBe('automatic');
   });
 
-  it('shows a fix plan only where no recipe fixes the rule, and automatic over it', () => {
-    const plans = [{ tool: 'checkstyle', rule: 'Demo', presets: ['java'] }];
-
-    expect(fixStatusFor(entry('checkstyle', 'Demo'), 'java', sources([], plans))).toBe('plan');
-    expect(fixStatusFor(entry('checkstyle', 'Demo'), 'kotlin', sources([], plans))).toBe('none');
-    expect(fixStatusFor(entry('checkstyle', 'Demo'), 'java', sources([recipe('d')], plans))).toBe(
-      'automatic',
-    );
-  });
-
   it('is automatic for a rule a tool fixer fixes in the preset', () => {
     const fixed = entry('eslint', 'curly', { fixableIn: ['java'] });
 
@@ -93,34 +77,6 @@ describe('fixStatusFor', () => {
 });
 
 describe('the registered fixers', () => {
-  it('lists the rules of the fix plan builders', () => {
-    const found = presetRules(FIX_PLAN_RULES).find(
-      ({ tool, rule }) => tool === 'structure' && rule === 'function-lines-limit',
-    );
-
-    expect(found?.presets).toEqual(['typescript', 'javascript', 'java', 'kotlin', 'python', 'go']);
-    expect(fieldOf(withFixStatus(entry('structure', 'function-lines-limit')), 'fix')).toEqual({
-      java: 'plan',
-      kotlin: 'plan',
-    });
-  });
-
-  it('marks every rule of a plan builder with a plan in each of its presets, unless a fix beats it', () => {
-    const unmarked = readReferenceEntries()
-      .filter((candidate) =>
-        presetRules(FIX_PLAN_RULES).some(
-          ({ tool, rule }) =>
-            tool === fieldOf(candidate, 'tool') && rule === fieldOf(candidate, 'rule'),
-        ),
-      )
-      .filter((candidate) =>
-        Object.values(fieldsOf(fieldOf(withFixStatus(candidate), 'fix'))).includes('none'),
-      )
-      .map((candidate) => fieldOf(candidate, 'id'));
-
-    expect(unmarked).toEqual([]);
-  });
-
   it('gives every recipe rule an automatic or review status in the reference', () => {
     const rule = recipeListings(ALL_RECIPES)[0]?.rules[0];
     const found = withFixStatus(entry(textOf(rule?.tool), textOf(rule?.rule)), DEFAULT_FIX_SOURCES);
@@ -174,9 +130,6 @@ describe('fixText', () => {
     expect(fixText(found, ['java', 'kotlin'])).toBe('Automatic in Java, none in Kotlin.');
     expect(fixText(review, ['java'])).toBe(
       'With `nitpicker --fix --rule checkstyle/Demo`: `--fix` alone skips the rewrite, because it needs a review.',
-    );
-    expect(fixText({ fix: { java: 'plan' } }, ['java'])).toBe(
-      'Fix plan: nitpicker writes the steps for the finding, and `--fix` does not rewrite the code.',
     );
   });
 });

@@ -30,7 +30,7 @@ import { textOf, textsOf } from '../../../shared/values/readers.mts';
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
 export { noChangesReport } from '../comparison/results.mts';
-export { fixPlansFor, outputRootFor, writeDiffReports } from '../reporting/reporters.mts';
+export { outputRootFor, writeDiffReports } from '../reporting/reporters.mts';
 export { resolveMetadata, resolvedExpectations } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
