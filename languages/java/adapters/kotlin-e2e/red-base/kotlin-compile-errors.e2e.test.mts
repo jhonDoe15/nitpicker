@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
-import { createRepository } from '../../red-base/test-support/red-base-cases.mjs';
-import { compileErrorCases } from '../../red-base/test-support/compile-error-cases.mjs';
+import { createRepository } from '../../red-base/test-support/red-base-cases.mts';
+import { compileErrorCases } from '../../red-base/test-support/compile-error-cases.mts';
 
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 

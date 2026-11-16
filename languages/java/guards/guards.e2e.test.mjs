@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
-import { runJavaDuplicates, readDuplicateFindings } from '../adapters/metrics/java-duplicates.mjs';
+import { runJavaDuplicates, readDuplicateFindings } from '../adapters/metrics/java-duplicates.mts';
 import {
   readReportModules,
   readMainCheckstyle,
@@ -24,7 +24,7 @@ import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
 import { applyRuleMessages } from '../messages/rule-messages.mjs';
 import { readGuardFindings } from './index.mts';
 import { coveredByCpd } from './cpd-duplicates.mts';
-import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import { readCouplingFindings } from '../adapters/metrics/java-coupling.mts';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mts';
 import { readCpdFindings } from './cpd-duplicates.mts';
 import { readLintFindings } from './javac-lint.mjs';

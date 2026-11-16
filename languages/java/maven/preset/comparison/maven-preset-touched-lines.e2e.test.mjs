@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe } from 'vitest';
 import { runJavaDiff } from '../../../adapters/java-diff.mts';
-import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mts';
 import {
   TOUCHED_BASE,
   TOUCHED_HEAD,

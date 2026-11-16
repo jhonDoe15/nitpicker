@@ -5,7 +5,7 @@ import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { collectJavaFindings } from '../../kotlin-e2e/test-support/views/kotlin-e2e-views.mts';
 import { textsOf } from '../../../../../shared/values/readers.mts';
 import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
-import { fakeGradleRun } from '../../test-support/in-process-gradle.mjs';
+import { fakeGradleRun } from '../../test-support/in-process-gradle.mts';
 import { kotlinProjects } from '../test-support/kotlin-project.mts';
 import {
   kotlinGradleArguments,

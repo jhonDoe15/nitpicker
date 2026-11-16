@@ -30,7 +30,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   (`pit-generated.test.mjs`), and the real PIT 1.17.4 report of the measurement project with the
   facts of its sources (`kotlin-measurement.test.mjs`: the counts of the unfiltered report, the 45
   mutants left out by rule and the 14 that stay, listed one by one).
-  `languages/java/adapters/reporting/kotlin-generated-filter.test.mjs` reads the mutation facts of a
+  `languages/java/adapters/reporting/kotlin-generated-filter.test.mts` reads the mutation facts of a
   report directory: a good report, the empty report of a module without Kotlin files, a missing
   one and unusable ones. `languages/java/adapters/kotlin/report-names/kotlin-report-contract.test.mts`
   fails when the no-Kotlin-files branch of a build tool lacks one of the three reports.
@@ -43,9 +43,9 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   the Gradle arguments (including `--no-configuration-cache`).
 - `languages/java/adapters/kotlin/kotlin-metrics.test.mts`: structure findings, the JaCoCo method selection
   (facade, accessor, lambda, `$default`, nested function) and the CRAP score and ratchet on recorded
-  data; `java-coupling.test.mjs` (Kotlin classes, file modules, stability direction) and the CLI tests
+  data; `java-coupling.test.mts` (Kotlin classes, file modules, stability direction) and the CLI tests
   with the fake `gradle` (structure ratchet, a clone found by jscpd).
-- `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
+- `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mts`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
 - `languages/java/adapters/kotlin/rules/kotlin-rules.test.mts`, `kotlin-suppressions.test.mts`: every case of
   `kotlin/rules/test-support/kotlin-rule-cases.mts` gets its message from the recorded detekt text and must name the
@@ -53,9 +53,9 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
 - `languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mts` (its Java twin is
-  `java-e2e/red-base/java-red-base.e2e.test.mjs`, under `NITPICKER_JAVA_E2E=1`): a base whose tests
+  `java-e2e/red-base/java-red-base.e2e.test.mts`, under `NITPICKER_JAVA_E2E=1`): a base whose tests
   fail and a head that repairs them. See "A base whose tests fail" in `usage.md`.
-  `red-base/tests-failed.test.mjs` covers the rerun with a fake Gradle.
+  `red-base/tests-failed.test.mts` covers the rerun with a fake Gradle.
 - `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mts`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle, an Android SDK (`ANDROID_HOME` or
   `ANDROID_SDK_ROOT`, set on GitHub's Ubuntu runners) and network access

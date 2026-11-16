@@ -11,7 +11,7 @@ import {
   JAVA_EFFECTS_FIXTURE,
   JAVA_LOOP_LINES,
   loopLines,
-} from '../../../adapters/effects/test-support/effects-projects.mjs';
+} from '../../../adapters/effects/test-support/effects-projects.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

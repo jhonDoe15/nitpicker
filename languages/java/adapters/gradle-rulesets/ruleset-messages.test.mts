@@ -1,0 +1,72 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { configurationFiles } from '../java-analyzer.mts';
+
+const packageRoot = path.resolve(import.meta.dirname, '../../../..');
+const RULESETS = configurationFiles().filter((file) => file.endsWith('-ruleset.xml'));
+const PMD_VARIABLE = /\$\{(?:className|methodName|variableName|packageName)\}/gu;
+
+function attribute(attributes: string, name: string): string | undefined {
+  return new RegExp(String.raw`\b${name}="([^"]*)"`, 'u').exec(attributes)?.[1];
+}
+
+function messages(file: string): { name: string | undefined; message: string }[] {
+  const text = readFileSync(path.join(packageRoot, file), 'utf8');
+  return [...text.matchAll(/<rule\b([^>]*)>/gu)].flatMap(([, attributes = '']) => {
+    const message = attribute(attributes, 'message')?.replaceAll('&quot;', '"');
+    return message === undefined
+      ? []
+      : [
+          {
+            name: attribute(attributes, 'name') ?? attribute(attributes, 'ref')?.split('/').at(-1),
+            message,
+          },
+        ];
+  });
+}
+
+function withoutQuotes(message: string): string {
+  return message.replaceAll("''", '').replaceAll("'{'", '').replaceAll(PMD_VARIABLE, '');
+}
+
+describe.each(RULESETS)('%s messages go through MessageFormat', (file) => {
+  const rules = messages(file);
+
+  it('has messages to check, including the ones that override a PMD rule', () => {
+    expect(rules.length).toBeGreaterThan(0);
+  });
+
+  it('never leaves a single apostrophe, which MessageFormat would swallow', () => {
+    const swallowed = rules.filter(({ message }) => withoutQuotes(message).includes("'"));
+    expect(swallowed.map(({ name }) => name)).toEqual([]);
+  });
+
+  it('quotes every brace except the {0} argument and the variables PMD fills in', () => {
+    const unquoted = rules.filter(({ message }) => /\{(?!0\})/.test(withoutQuotes(message)));
+    expect(unquoted.map(({ name }) => name)).toEqual([]);
+  });
+});
+
+describe('nitpicker messages on PMD rules it references', () => {
+  it('are checked like the messages of its own rules', () => {
+    const overridden = [
+      'AvoidFieldNameMatchingMethodName',
+      'AvoidLiteralsInIfCondition',
+      'AssignmentInOperand',
+      'GuardLogStatement',
+      'SimplifyBooleanReturns',
+      'SimplifyBooleanExpressions',
+      'SimplifiedTernary',
+      'SimplifyConditional',
+      'CollapsibleIfStatements',
+      'LogicInversion',
+      'ConfusingTernary',
+    ];
+    const names = RULESETS.flatMap((file) => messages(file).map(({ name }) => name));
+
+    expect(names.filter((name) => name !== undefined && overridden.includes(name))).toEqual(
+      overridden,
+    );
+  });
+});

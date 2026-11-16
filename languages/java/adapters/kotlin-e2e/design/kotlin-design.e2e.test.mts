@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { kotlinDesignBundle, validateFacts } from '../test-support/views/kotlin-e2e-views.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
-import { DEEP_CHAIN } from '../../test-support/kotlin/kotlin-metrics-sources.mjs';
+import { DEEP_CHAIN } from '../../test-support/kotlin/kotlin-metrics-sources.mts';
 import {
   prepareCompiler,
   runPsiProgram,
