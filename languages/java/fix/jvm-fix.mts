@@ -37,7 +37,7 @@ import { errorPronePatch } from './errorprone/run/error-prone-step.mjs';
 import { errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mjs';
 import { JVM_RECIPES } from './recipes/jvm-recipes.mjs';
 import { SPRING_CONFIG_FILE } from './recipes/spring/config/config-targets.mjs';
-import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
+import { resolveToolClasspaths } from './tools/tool-classpath.mts';
 import { callUntyped } from '../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
