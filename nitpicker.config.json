@@ -46,7 +46,7 @@
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mts",
       "languages/typescript/preset/coding-standards/check.mts",
       "languages/typescript/preset/project-tools/config-loader.mts",
-      "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
+      "languages/java/adapters/gradle-wrapper/test-support/build-tree.mts"
     ]
   },
   "exclude": [
@@ -92,7 +92,7 @@
     {
       "rule": "nitpicker/no-unsafe-path-join",
       "paths": [
-        "languages/java/adapters/test-times/slow-tests.mjs",
+        "languages/java/adapters/test-times/slow-tests.mts",
         "languages/java/builds/project-wide.mts"
       ],
       "reason": "These readers join the report directory nitpicker itself created, the file names the build tools wrote into it, and the source roots the build reported for the project under analysis; none of them comes from user input or from the code under analysis."

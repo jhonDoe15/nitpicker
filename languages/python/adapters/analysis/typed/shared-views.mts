@@ -1,5 +1,5 @@
 import type { Dirent } from 'node:fs';
-import { duplicateFindings as untypedDuplicateFindings } from '../../../../java/adapters/metrics/java-duplicates.mjs';
+import { duplicateFindings as untypedDuplicateFindings } from '../../../../java/adapters/metrics/java-duplicates.mts';
 import {
   readStructureFindings as untypedStructureFindings,
   sourceLines as untypedSourceLines,

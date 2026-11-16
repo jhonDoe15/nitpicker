@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   FAREWELL,
   GREETER_TEST,
-} from '../../../../languages/java/adapters/java-e2e/test-support/java-preset-data.mjs';
+} from '../../../../languages/java/adapters/java-e2e/test-support/java-preset-data.mts';
 import {
   GREETER_HI,
   GREETER_HI_TEST,

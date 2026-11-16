@@ -1,4 +1,4 @@
-import { mainMethodLines } from '../../review-rules/source-declarations.mjs';
+import { mainMethodLines } from '../../review-rules/source-declarations.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 

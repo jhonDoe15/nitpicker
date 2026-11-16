@@ -1,5 +1,6 @@
 import { chainOf } from '../ancestry.mjs';
 import { findVariable, stringValue } from '../constant-resolution.mjs';
+import { followedChain } from './value-chain.mjs';
 
 const PROCESS_MODULES = new Set(['process', 'node:process']);
 const GLOBAL_OBJECTS = ['globalThis', 'global', 'window', 'self'];
@@ -54,14 +55,7 @@ function nextInChain(context, node) {
 }
 
 function valueChain(context, node) {
-  const chain = [node];
-  for (const current of chain) {
-    const next = chain.length < MAX_CHAIN_LENGTH ? nextInChain(context, current) : undefined;
-    if (next !== undefined) {
-      chain.push(next);
-    }
-  }
-  return chain;
+  return followedChain(node, (current) => nextInChain(context, current), MAX_CHAIN_LENGTH);
 }
 
 function isGlobalNamed(context, node, names) {

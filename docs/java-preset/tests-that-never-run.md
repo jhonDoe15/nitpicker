@@ -25,7 +25,7 @@ a Kotest spec) and it is not abstract, an interface or an annotation.
 
 Every message ends with the shared exception sentence, naming
 `{ "rule": "test-runtime/test-not-run", "paths": ["<file>"], "reason": "..." }`. Tests:
-`adapters/test-runs/unrun-tests.test.mjs`, the Gradle `multi-project` fixture (an
+`adapters/test-runs/unrun-tests.test.mts`, the Gradle `multi-project` fixture (an
 `integrationTest` source set without a test task) and the Maven `multi-module` fixture (an `*IT`
 class in a module without Failsafe).
 
@@ -65,4 +65,4 @@ directly or through test helpers and base classes, reference a main class of any
   base class that comes from a library jar (not from a module of the build) and starts a framework
   context is not seen, so such a test is reported. A test that extends a base class which declares
   the tests, and declares none itself, is not judged. Tests:
-  `adapters/test-runtime/test-runtime-findings.test.mjs`.
+  `adapters/test-runtime/test-runtime-findings.test.mts`.
