@@ -12,12 +12,13 @@ const PACKAGE_ORMS = new Map([
 ]);
 const MIKRO_SCOPE = '@mikro-orm/';
 
-export function ormsOf(dependencyNames) {
-  const orms = dependencyNames.flatMap((name) => {
+export function ormsOf(dependencyNames: readonly string[]): string[] {
+  const orms = dependencyNames.flatMap((name): string[] => {
     if (name.startsWith(MIKRO_SCOPE)) {
       return ['mikro'];
     }
-    return PACKAGE_ORMS.has(name) ? [PACKAGE_ORMS.get(name)] : [];
+    const orm = PACKAGE_ORMS.get(name);
+    return orm === undefined ? [] : [orm];
   });
   return [...new Set(orms)].toSorted((left, right) => left.localeCompare(right));
 }

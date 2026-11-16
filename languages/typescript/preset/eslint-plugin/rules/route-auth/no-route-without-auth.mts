@@ -1,3 +1,4 @@
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { nestFacts, routeFacts } from './handlers.mts';
 import { shapeLabel } from './shapes.mts';
 
@@ -6,16 +7,21 @@ const FALLBACK = 'fallback';
 const OPEN_ON_PURPOSE =
   'An exception fits a route that is open on purpose (a health check, a login, a webhook).';
 
-function followedBy(entries) {
-  const followed = new Map();
+function followedBy(entries: readonly string[]): Map<string, string> {
+  const followed = new Map<string, string>();
   for (const entry of entries) {
-    const [framework, ...rest] = entry.split(SEPARATOR);
+    const [framework = '', ...rest] = entry.split(SEPARATOR);
     followed.set(framework, rest.join(SEPARATOR));
   }
   return followed;
 }
 
-export const rule = {
+type Options = [{ readonly entries?: readonly string[] }?];
+
+export const rule: TSESLint.RuleModule<
+  'missingShape' | 'missingGuard' | 'missingMiddleware',
+  Options
+> = {
   meta: {
     type: 'problem',
     docs: {
@@ -55,8 +61,8 @@ export const rule = {
       return {};
     }
     const { visitorKeys } = context.sourceCode;
-    function checkNest(program) {
-      const shape = followed.get('nest');
+    function checkNest(program: TSESTree.Program): void {
+      const shape = followed.get('nest') ?? '';
       for (const handler of nestFacts(program, visitorKeys).handlers) {
         if (handler.isPublic) {
           continue;
@@ -72,8 +78,8 @@ export const rule = {
         }
       }
     }
-    function checkRoutes(program) {
-      const middleware = followed.get('route');
+    function checkRoutes(program: TSESTree.Program): void {
+      const middleware = followed.get('route') ?? '';
       for (const route of routeFacts(program, visitorKeys).routes) {
         if (!(route.isPublic || route.shapes.has(middleware))) {
           context.report({

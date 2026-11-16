@@ -1,5 +1,6 @@
-import { isQueryResult, queryScope } from '../query-calls.mts';
-import { hookStatus } from './entity-hooks.mts';
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
+import { isQueryResult, queryScope, type QueryScope } from '../query-calls.mts';
+import { hookStatus, type HookStatus } from './entity-hooks.mts';
 import { isProjection, loadedRows } from './loaded-rows.mts';
 import { DELETE, UPDATE, writeShape } from './row-writes.mts';
 
@@ -7,14 +8,18 @@ const EXCEPTION =
   'An exception fits only when the model has hooks, subscribers, a version column or a cascade that a bulk statement skips.';
 const CLASS_FAMILIES = ['typeorm', 'sequelize', 'mikro-orm'];
 
-function isHookFree(scope, status) {
+function isHookFree(scope: QueryScope, status: HookStatus): boolean {
   if (status === 'unknown') {
     return !CLASS_FAMILIES.some((family) => scope.families.has(family));
   }
   return status !== 'hooked';
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<
+  typeof UPDATE | typeof DELETE,
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {
@@ -36,7 +41,8 @@ export const rule = {
           return;
         }
         const rows = loadedRows(context, node);
-        const query = node.argument.type === 'CallExpression' ? node.argument : undefined;
+        const query =
+          node.argument.type === AST_NODE_TYPES.CallExpression ? node.argument : undefined;
         const found =
           rows === undefined || query === undefined || isProjection(query)
             ? undefined

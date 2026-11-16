@@ -1,24 +1,32 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { callsWithin } from '../effects/held-scopes.mts';
 import { importedBindings } from '../security/imported-names.mts';
 import { enclosingLoop } from '../loops/loop-shapes.mts';
+import type { Context } from '../security/security-values.mts';
 import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mts';
 import { isListParent } from './list-parents.mts';
+import { nameOf } from '../typed/node-views.mts';
+import type { Callback } from '../typed/syntax-views.mts';
 import { resolverSite } from './resolver-sites.mts';
+
+type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 
 const LOADER_WORDS = /loader|cache/iu;
 const LOADER_METHODS = new Set(['load', 'loadMany']);
 
-function namesOf(call) {
-  const names = [];
-  const pending = [call.callee];
+function namesOf(call: Call): string[] {
+  const names: string[] = [];
+  const pending: TSESTree.Node[] = [
+    call.type === AST_NODE_TYPES.CallExpression ? call.callee : call.tag,
+  ];
   for (const current of pending) {
-    if (current.type === 'MemberExpression') {
-      names.push(current.computed ? '' : current.property.name);
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
+      names.push(current.computed ? '' : (nameOf(current.property) ?? ''));
       pending.push(current.object);
-    } else if (current.type === 'CallExpression') {
+    } else if (current.type === AST_NODE_TYPES.CallExpression) {
       pending.push(current.callee);
     } else {
-      names.push(current.type === 'Identifier' ? current.name : '');
+      names.push(current.type === AST_NODE_TYPES.Identifier ? current.name : '');
     }
   }
   return names;
@@ -27,7 +35,7 @@ function namesOf(call) {
 const PRISMA_BATCHED = new Set(['findUnique', 'findUniqueOrThrow']);
 const PRISMA_NAME = /prisma/iu;
 
-function isPrismaBatched(call, context) {
+function isPrismaBatched(call: Call, context: Context): boolean {
   const names = namesOf(call);
   const prisma =
     names.some((name) => PRISMA_NAME.test(name)) ||
@@ -37,12 +45,12 @@ function isPrismaBatched(call, context) {
   return prisma && names.some((name) => PRISMA_BATCHED.has(name));
 }
 
-function isBatched(call) {
-  const [method, ...owners] = namesOf(call);
+function isBatched(call: Call): boolean {
+  const [method = '', ...owners] = namesOf(call);
   return LOADER_METHODS.has(method) || owners.some((name) => LOADER_WORDS.test(name));
 }
 
-function reportedCalls(context, fn) {
+function reportedCalls(context: Context, fn: Callback): Call[] {
   return callsWithin(fn.body, context.sourceCode.visitorKeys).filter((call) => {
     const effect = ioEffect(call, context);
     const outer = chainOuterCall(call);
@@ -57,7 +65,11 @@ function reportedCalls(context, fn) {
   });
 }
 
-export const rule = {
+export const rule: TSESLint.RuleModule<
+  'perParent',
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {
@@ -76,17 +88,20 @@ export const rule = {
     },
   },
   create(context) {
-    function check(node) {
+    function check(node: TSESTree.MethodDefinition | TSESTree.Property): void {
       const site = resolverSite(context.sourceCode, node);
       if (site === undefined || !isListParent(site.parent, context)) {
         return;
       }
       for (const call of reportedCalls(context, site.fn)) {
-        const { path } = ioEffect(call, context);
+        const effect = ioEffect(call, context);
+        if (effect === undefined) {
+          continue;
+        }
         context.report({
           node: call,
           messageId: 'perParent',
-          data: { callee: describePath(path), parent: site.parent },
+          data: { callee: describePath(effect.path), parent: site.parent },
         });
       }
     }

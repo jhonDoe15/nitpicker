@@ -1,31 +1,35 @@
-import { ancestorsOf, contains } from '../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { ancestorsOf, contains, type Ranged } from '../typed/node-views.mts';
 
-const EXITS = new Set(['ReturnStatement', 'ThrowStatement']);
+const EXITS = new Set<string>([AST_NODE_TYPES.ReturnStatement, AST_NODE_TYPES.ThrowStatement]);
 
-export function endsInExit(branch) {
-  const last = branch?.type === 'BlockStatement' ? branch.body.at(-1) : branch;
-  return last !== undefined && EXITS.has(last.type);
+export function endsInExit(branch: TSESTree.Node | null | undefined): boolean {
+  const last = branch?.type === AST_NODE_TYPES.BlockStatement ? branch.body.at(-1) : branch;
+  return last !== undefined && last !== null && EXITS.has(last.type);
 }
 
-function commonAncestor(left, right) {
+function commonAncestor(left: TSESTree.Node, right: TSESTree.Node): TSESTree.Node | undefined {
   const outer = new Set(ancestorsOf(left));
   return ancestorsOf(right).find((ancestor) => outer.has(ancestor));
 }
 
-function branchesOf(node) {
-  if (node.type === 'IfStatement' || node.type === 'ConditionalExpression') {
+function branchesOf(node: TSESTree.Node): (TSESTree.Node | null)[] {
+  if (
+    node.type === AST_NODE_TYPES.IfStatement ||
+    node.type === AST_NODE_TYPES.ConditionalExpression
+  ) {
     return [node.consequent, node.alternate];
   }
-  if (node.type === 'SwitchStatement') {
+  if (node.type === AST_NODE_TYPES.SwitchStatement) {
     return node.cases;
   }
-  return node.type === 'TryStatement' ? [node.block, node.handler] : [];
+  return node.type === AST_NODE_TYPES.TryStatement ? [node.block, node.handler] : [];
 }
 
-function exitsBefore(earlier, later) {
+function exitsBefore(earlier: TSESTree.Node, later: Ranged): boolean {
   return ancestorsOf(earlier).some(
     (node) =>
-      node.type === 'IfStatement' &&
+      node.type === AST_NODE_TYPES.IfStatement &&
       node.range[1] <= later.range[0] &&
       [node.consequent, node.alternate].some(
         (branch) => branch !== null && contains(branch, earlier) && endsInExit(branch),
@@ -33,7 +37,7 @@ function exitsBefore(earlier, later) {
   );
 }
 
-export function inExclusiveBranches(left, right) {
+export function inExclusiveBranches(left: TSESTree.Node, right: TSESTree.Node): boolean {
   const [earlier, later] = left.range[0] <= right.range[0] ? [left, right] : [right, left];
   if (exitsBefore(earlier, later)) {
     return true;
@@ -42,7 +46,7 @@ export function inExclusiveBranches(left, right) {
   if (ancestor === undefined) {
     return false;
   }
-  const branches = branchesOf(ancestor).filter(Boolean);
+  const branches = branchesOf(ancestor).filter((branch) => branch !== null);
   const leftBranch = branches.find((branch) => contains(branch, left));
   const rightBranch = branches.find((branch) => contains(branch, right));
   return leftBranch !== undefined && rightBranch !== undefined && leftBranch !== rightBranch;

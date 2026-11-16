@@ -1,10 +1,17 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { findVariable } from '../analysis/constant-resolution.mts';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findVariable, isFunctionNode } from '../analysis/constant-resolution.mts';
+import type { OpenerFunction } from '../effects/scopes/scope-types.mts';
 import { childrenOf } from '../loops/loop-shapes.mts';
+import type { Context } from '../security/security-values.mts';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { callChain, rootNode } from '../support/orm/chains.mts';
+import { ancestorsOf, nameOf } from '../typed/node-views.mts';
+import type { FunctionNode } from '../typed/syntax-views.mts';
 
-const FUNCTIONS = new Set(['ArrowFunctionExpression', 'FunctionExpression', 'FunctionDeclaration']);
+export type ClientOrigin = 'transaction' | 'parameter' | 'other';
+export type ClientScope = { readonly context: Context; readonly fn: FunctionNode };
+
+const { DefinitionType } = TSESLint.Scope;
 const TRANSACTION = 'transaction';
 const OTHER = 'other';
 const OPENERS = new Set([
@@ -18,22 +25,27 @@ const OPENERS = new Set([
 ]);
 const MAX_DEPTH = 4;
 
-function isOpenerCall(call, fn) {
-  if (call.type !== 'CallExpression' || !call.arguments.includes(fn)) {
+function isOpenerFunction(fn: FunctionNode): fn is OpenerFunction {
+  const call = fn.parent;
+  if (
+    call.type !== AST_NODE_TYPES.CallExpression ||
+    !call.arguments.some((argument) => argument === fn)
+  ) {
     return false;
   }
   const { callee } = call;
-  const name = callee.type === 'MemberExpression' ? callee.property.name : callee.name;
-  if (OPENERS.has(name)) {
+  const isMember = callee.type === AST_NODE_TYPES.MemberExpression;
+  const name = nameOf(isMember ? callee.property : callee);
+  if (name !== undefined && OPENERS.has(name)) {
     return true;
   }
-  const opened = name === 'execute' && callee.type === 'MemberExpression';
+  const opened = name === 'execute' && isMember;
   return opened && callChain(callee.object).steps.some((step) => step.name === TRANSACTION);
 }
 
-export function openerCallback(node) {
-  for (const fn of ancestorsOf(node).filter((ancestor) => FUNCTIONS.has(ancestor.type))) {
-    if (isOpenerCall(fn.parent, fn)) {
+export function openerCallback(node: TSESTree.Node): OpenerFunction | undefined {
+  for (const fn of ancestorsOf(node).filter(isFunctionNode)) {
+    if (isOpenerFunction(fn)) {
       return fn;
     }
     if (!estreeRunsWithCaller(fn)) {
@@ -43,24 +55,27 @@ export function openerCallback(node) {
   return undefined;
 }
 
-export function transactionCallback(node) {
+export function transactionCallback(node: TSESTree.Node): OpenerFunction | undefined {
   const fn = openerCallback(node);
-  return fn?.params.length > 0 ? fn : undefined;
+  return fn !== undefined && fn.params.length > 0 ? fn : undefined;
 }
 
-export function clientOrigin(identifier, { context, fn }) {
+export function clientOrigin(
+  identifier: TSESTree.Identifier,
+  { context, fn }: ClientScope,
+): ClientOrigin {
   const pending = [identifier];
   for (const current of pending) {
     const definition = findVariable(context, current, current.name)?.defs[0];
-    if (definition?.type === 'Parameter') {
+    if (definition?.type === DefinitionType.Parameter) {
       return definition.node === fn ? TRANSACTION : 'parameter';
     }
-    const init = definition?.type === 'Variable' ? definition.node.init : undefined;
+    const init = definition?.type === DefinitionType.Variable ? definition.node.init : undefined;
     if (init === undefined || init === null || pending.length > MAX_DEPTH) {
       return OTHER;
     }
     const root = rootNode(init);
-    if (root?.type !== 'Identifier') {
+    if (root?.type !== AST_NODE_TYPES.Identifier) {
       return OTHER;
     }
     pending.push(root);
@@ -68,10 +83,17 @@ export function clientOrigin(identifier, { context, fn }) {
   return OTHER;
 }
 
-export function mentionsTransaction(args, context, fn) {
+export function mentionsTransaction(
+  args: readonly TSESTree.Node[],
+  context: Context,
+  fn: FunctionNode,
+): boolean {
   const pending = [...args];
   for (const node of pending) {
-    if (node.type === 'Identifier' && clientOrigin(node, { context, fn }) === TRANSACTION) {
+    if (
+      node.type === AST_NODE_TYPES.Identifier &&
+      clientOrigin(node, { context, fn }) === TRANSACTION
+    ) {
       return true;
     }
     pending.push(...childrenOf(node, context.sourceCode.visitorKeys));

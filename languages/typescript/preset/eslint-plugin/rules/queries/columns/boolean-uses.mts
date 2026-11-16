@@ -1,3 +1,4 @@
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { unwrapped } from '../../security/security-values.mts';
 import { outerOf } from '../result-uses.mts';
 
@@ -18,55 +19,71 @@ const MIRRORED = new Map([
   ['>=', '<='],
   ['<=', '>='],
 ]);
-const TESTS = new Set([
-  'IfStatement',
-  'WhileStatement',
-  'DoWhileStatement',
-  'ConditionalExpression',
-]);
+type Test =
+  | TSESTree.IfStatement
+  | TSESTree.WhileStatement
+  | TSESTree.DoWhileStatement
+  | TSESTree.ConditionalExpression;
 
-function isAbsent(node) {
-  const target = unwrapped(node);
+function isTest(node: TSESTree.Node): node is Test {
   return (
-    (target.type === 'Literal' && target.raw === 'null') ||
-    (target.type === 'Identifier' && target.name === 'undefined')
+    node.type === AST_NODE_TYPES.IfStatement ||
+    node.type === AST_NODE_TYPES.WhileStatement ||
+    node.type === AST_NODE_TYPES.DoWhileStatement ||
+    node.type === AST_NODE_TYPES.ConditionalExpression
   );
 }
 
-function otherSide(binary, outer) {
+function isAbsent(node: TSESTree.Node): boolean {
+  const target = unwrapped(node);
+  return (
+    (target.type === AST_NODE_TYPES.Literal && target.raw === 'null') ||
+    (target.type === AST_NODE_TYPES.Identifier && target.name === 'undefined')
+  );
+}
+
+function otherSide(binary: TSESTree.BinaryExpression, outer: TSESTree.Node): TSESTree.Node {
   return binary.left === outer ? binary.right : binary.left;
 }
 
-export function isBooleanUse(site) {
+export function isBooleanUse(site: TSESTree.Node): boolean {
   const outer = outerOf(site);
   const { parent } = outer;
-  if (TESTS.has(parent.type) && parent.test === outer) {
+  if (parent === undefined) {
+    return false;
+  }
+  if (isTest(parent) && parent.test === outer) {
     return true;
   }
-  if (parent.type === 'UnaryExpression') {
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
     return parent.operator === '!';
   }
   const isBoolean =
-    parent.type === 'CallExpression' &&
-    parent.callee.type === 'Identifier' &&
+    parent.type === AST_NODE_TYPES.CallExpression &&
+    parent.callee.type === AST_NODE_TYPES.Identifier &&
     parent.callee.name === 'Boolean' &&
     parent.arguments[0] === outer;
   const absent =
-    parent.type === 'BinaryExpression' &&
+    parent.type === AST_NODE_TYPES.BinaryExpression &&
     EQUALITY.has(parent.operator) &&
     isAbsent(otherSide(parent, outer));
   return isBoolean || absent;
 }
 
-export function isCountTest(site) {
+export function isCountTest(site: TSESTree.Node): boolean {
   const outer = outerOf(site);
   const { parent } = outer;
-  if (parent.type !== 'BinaryExpression') {
+  if (parent?.type !== AST_NODE_TYPES.BinaryExpression) {
     return isBooleanUse(site);
   }
   const other = unwrapped(otherSide(parent, outer));
   const operator =
     parent.left === outer ? parent.operator : (MIRRORED.get(parent.operator) ?? parent.operator);
   const tested = COUNT_TESTS.get(operator);
-  return other.type === 'Literal' && tested !== undefined && tested.includes(other.value);
+  return (
+    other.type === AST_NODE_TYPES.Literal &&
+    tested !== undefined &&
+    typeof other.value === 'number' &&
+    tested.includes(other.value)
+  );
 }

@@ -1,6 +1,11 @@
-import { wordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
-import { isClientName } from './builders.mts';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { TSESTree } from '@typescript-eslint/utils';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { isClientName, stepIn } from './builders.mts';
+import type { CallChain, ChainStep, OrmKind, OrmSite } from './chains.mts';
 import { tableKey } from './table-names.mts';
+
+const wordsOf: (name: string) => string[] = untypedWordsOf;
 
 const UPSERT = 'upsert';
 const UPDATE = 'update';
@@ -9,7 +14,7 @@ const PENULTIMATE = -2;
 const ANTEPENULTIMATE = -3;
 const PRISMA_MIN_STEPS = 3;
 
-const METHODS = {
+const METHODS: Readonly<Record<string, Readonly<Record<OrmKind, ReadonlySet<string>>>>> = {
   prisma: {
     write: new Set([
       'create',
@@ -114,40 +119,63 @@ const GLOBAL_OBJECTS = new Set([
 ]);
 const MODEL_NAME = /^[A-Z]/u;
 
-function argumentTable(node) {
-  if (node?.type === 'Identifier' && MODEL_NAME.test(node.name)) {
+type Receiver = Pick<ChainStep, 'name' | 'args'>;
+
+function methodsOf(orm: string, kind: OrmKind): ReadonlySet<string> {
+  return METHODS[orm]?.[kind] ?? new Set();
+}
+
+function receiverOf({ root, steps }: CallChain): Receiver {
+  const previous = steps.at(PENULTIMATE);
+  return steps.length >= 2 && previous !== undefined ? previous : { name: root, args: undefined };
+}
+
+function argumentTable(node: TSESTree.Node | undefined): string | undefined {
+  if (node?.type === AST_NODE_TYPES.Identifier && MODEL_NAME.test(node.name)) {
     return tableKey(node.name);
   }
-  if (node?.type === 'NewExpression' && node.callee.type === 'Identifier') {
+  if (
+    node?.type === AST_NODE_TYPES.NewExpression &&
+    node.callee.type === AST_NODE_TYPES.Identifier
+  ) {
     return tableKey(node.callee.name);
   }
-  return node?.type === 'Literal' && typeof node.value === 'string'
+  return node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string'
     ? tableKey(node.value)
     : undefined;
 }
 
-function prisma({ root, steps }, kind, orms) {
-  const method = steps.at(-1);
+function prisma(
+  chain: CallChain,
+  method: ChainStep,
+  kind: OrmKind,
+  orms: readonly string[],
+): OrmSite | undefined {
+  const { root, steps } = chain;
   const model = steps.at(PENULTIMATE);
-  const client = steps.length >= PRISMA_MIN_STEPS ? steps.at(ANTEPENULTIMATE).name : root;
+  const client = steps.length >= PRISMA_MIN_STEPS ? steps.at(ANTEPENULTIMATE)?.name : root;
   const modelName = model?.name;
   const isModel =
     model?.args === undefined && typeof modelName === 'string' && !modelName.startsWith('$');
-  const matches = orms.includes('prisma') && METHODS.prisma[kind].has(method.name);
+  const matches = orms.includes('prisma') && stepIn(methodsOf('prisma', kind), method);
   return matches &&
     method.args !== undefined &&
     isModel &&
     isClientName(client) &&
-    !/^[A-Z]/u.test(model.name)
-    ? { orm: 'prisma', table: tableKey(model.name) }
+    !MODEL_NAME.test(modelName)
+    ? { orm: 'prisma', table: tableKey(modelName) }
     : undefined;
 }
 
-function repository({ root, steps }, kind, orms) {
-  const method = steps.at(-1);
-  const receiver = steps.length >= 2 ? steps.at(PENULTIMATE) : { name: root, args: undefined };
+function repository(
+  chain: CallChain,
+  method: ChainStep,
+  kind: OrmKind,
+  orms: readonly string[],
+): OrmSite | undefined {
+  const receiver = receiverOf(chain);
   const orm = ['typeorm', 'mikro'].find(
-    (each) => orms.includes(each) && METHODS[each][kind].has(method.name),
+    (each) => orms.includes(each) && stepIn(methodsOf(each, kind), method),
   );
   if (orm === undefined || method.args === undefined || receiver.name === undefined) {
     return undefined;
@@ -157,26 +185,41 @@ function repository({ root, steps }, kind, orms) {
     return isGetter ? { orm, table: argumentTable(receiver.args[0]) } : undefined;
   }
   const last = wordsOf(receiver.name).at(-1);
-  if (REPOSITORY_WORDS.has(last)) {
+  if (last !== undefined && REPOSITORY_WORDS.has(last)) {
     return { orm, table: tableKey(receiver.name) };
   }
-  return MANAGER_WORDS.has(last) ? { orm, table: argumentTable(method.args[0]) } : undefined;
+  return last !== undefined && MANAGER_WORDS.has(last)
+    ? { orm, table: argumentTable(method.args[0]) }
+    : undefined;
 }
 
-function sequelize({ root, steps }, kind, orms) {
-  const method = steps.at(-1);
-  const receiver = steps.length >= 2 ? steps.at(PENULTIMATE) : { name: root, args: undefined };
+function sequelize(
+  chain: CallChain,
+  method: ChainStep,
+  kind: OrmKind,
+  orms: readonly string[],
+): OrmSite | undefined {
+  const receiver = receiverOf(chain);
   const name = receiver.name ?? '';
   const isModel = (MODEL_NAME.test(name) && !GLOBAL_OBJECTS.has(name)) || name.endsWith('Model');
-  const matches = orms.includes('sequelize') && METHODS.sequelize[kind].has(method.name);
+  const matches = orms.includes('sequelize') && stepIn(methodsOf('sequelize', kind), method);
   return matches && method.args !== undefined && receiver.args === undefined && isModel
     ? { orm: 'sequelize', table: tableKey(name) }
     : undefined;
 }
 
-export function modelSite(chain, kind, orms) {
-  if (chain.steps.length === 0) {
+export function modelSite(
+  chain: CallChain,
+  kind: OrmKind,
+  orms: readonly string[],
+): OrmSite | undefined {
+  const method = chain.steps.at(-1);
+  if (method === undefined) {
     return undefined;
   }
-  return prisma(chain, kind, orms) ?? repository(chain, kind, orms) ?? sequelize(chain, kind, orms);
+  return (
+    prisma(chain, method, kind, orms) ??
+    repository(chain, method, kind, orms) ??
+    sequelize(chain, method, kind, orms)
+  );
 }

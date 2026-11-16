@@ -1,4 +1,5 @@
-import { codeLines } from '../../layout-measures.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { codeLines } from '../../typed/measure-views.mts';
 
 const OPENERS = [
   String.raw`\.\s*\$?transaction\s*\(`,
@@ -21,11 +22,11 @@ export const TRANSACTIONS_CONVENTION = {
   measure: opensTransaction,
 };
 
-export function projectOpensTransactions(conventions = {}) {
-  return conventions[TRANSACTIONS_CONVENTION.id] === 'used';
+export function projectOpensTransactions(conventions: object = {}): boolean {
+  return fieldOf(conventions, TRANSACTIONS_CONVENTION.id) === 'used';
 }
 
-function opensTransaction(text) {
+function opensTransaction(text: string): string | undefined {
   const opens = OPENS_TRANSACTION.test(codeLines(text).join('\n'));
   return opens ? 'used' : undefined;
 }

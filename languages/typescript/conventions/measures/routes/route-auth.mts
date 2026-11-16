@@ -1,5 +1,20 @@
+import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { nestFacts, routeFacts } from '../../../preset/eslint-plugin/rules/route-auth/handlers.mts';
 import { parseProgram } from '../parsing/estree-program.mts';
+
+type Evidence = {
+  readonly shapes: ReadonlySet<string>;
+  readonly isAuth: boolean;
+  readonly isPublic: boolean;
+};
+type Counts = Readonly<Record<string, number>>;
+type Sums = {
+  h: number;
+  a: number;
+  p: number;
+  g: number;
+  readonly shapes: Map<string, { s: number; sp: number }>;
+};
 
 const MIN_HANDLERS = 10;
 const MIN_FALLBACK_HANDLERS = 5;
@@ -25,11 +40,11 @@ export const ROUTE_AUTH_CONVENTION = {
   choose: followedAuth,
 };
 
-export function routeAuthEntries(conventions = {}) {
-  return conventions[ROUTE_AUTH_CONVENTION.id] ?? [];
+export function routeAuthEntries(conventions: object = {}): string[] {
+  return textsOf(fieldOf(conventions, ROUTE_AUTH_CONVENTION.id));
 }
 
-function handlerEvidence(framework, handlers) {
+function handlerEvidence(framework: string, handlers: readonly Evidence[]): string[] {
   return handlers.slice(0, MAX_HANDLERS_PER_FILE).flatMap((handler, index) => {
     const at = `#${String(index + 1)}`;
     return [
@@ -44,7 +59,7 @@ function handlerEvidence(framework, handlers) {
   });
 }
 
-function authEvidence(text, file) {
+function authEvidence(text: string, file: string): string[] {
   const program = HINT.test(text) ? parseProgram(text, file) : undefined;
   if (program === undefined || program.ast === undefined) {
     return [];
@@ -58,8 +73,14 @@ function authEvidence(text, file) {
   ];
 }
 
-function totals(counts, framework) {
-  const sums = { h: 0, a: 0, p: 0, g: 0, shapes: new Map() };
+function addTotal(sums: Sums, kind: string | undefined, count: number): void {
+  if (kind === 'h' || kind === 'a' || kind === 'p' || kind === 'g') {
+    sums[kind] += count;
+  }
+}
+
+function totals(counts: Counts, framework: string): Sums {
+  const sums: Sums = { h: 0, a: 0, p: 0, g: 0, shapes: new Map() };
   for (const [key, count] of Object.entries(counts)) {
     const match = /^(h|a|p|g|s|sp):([a-z]+)(?::([^#]+))?(?:#\d+)?$/u.exec(key);
     if (match === null || match[2] !== framework) {
@@ -67,17 +88,19 @@ function totals(counts, framework) {
     }
     const [, kind, , shape] = match;
     if (shape === undefined) {
-      sums[kind] += count;
+      addTotal(sums, kind, count);
       continue;
     }
     const entry = sums.shapes.get(shape) ?? { s: 0, sp: 0 };
-    entry[kind] += count;
+    if (kind === 's' || kind === 'sp') {
+      entry[kind] += count;
+    }
     sums.shapes.set(shape, entry);
   }
   return sums;
 }
 
-function followedFor(framework, counts) {
+function followedFor(framework: string, counts: Counts): string[] {
   const sums = totals(counts, framework);
   if (sums.g > 0) {
     return [];
@@ -100,6 +123,6 @@ function followedFor(framework, counts) {
   return guardsMostly && sums.h >= MIN_FALLBACK_HANDLERS ? ['nest__fallback'] : [];
 }
 
-function followedAuth(counts) {
+function followedAuth(counts: Counts): string[] {
   return FRAMEWORKS.flatMap((framework) => followedFor(framework, counts));
 }

@@ -1,8 +1,11 @@
-import { ancestorsOf, contains, variableNamed } from '../../analysis/ancestry.mjs';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { ModuleScope } from '../../database/orm-modules.mts';
 import { callsWithin } from '../../effects/held-scopes.mts';
 import { isRepositoryLike, receiverNames } from '../../queries/query-calls.mts';
-import { unwrapped } from '../../security/security-values.mts';
+import { unwrapped, type Context } from '../../security/security-values.mts';
 import { calleeOrigin, callEffects } from '../../support/io-effects.mts';
+import { ancestorsOf, contains, nameOf, variableNamed } from '../../typed/node-views.mts';
+import { isFunction } from '../../typed/syntax-views.mts';
 
 export const CONFLICT = 'OptimisticLockVersionMismatchError';
 
@@ -12,26 +15,35 @@ const FIND = /^find/u;
 const TRANSACTION_OPENERS = new Set(['transaction', 'transactional', 'runInTransaction']);
 const REFRESHES = new Set(['reload', 'refresh']);
 
-function openerName(call) {
+function openerName(call: TSESTree.CallExpression): string | undefined {
   const { callee } = call;
-  return callee.type === 'MemberExpression' ? callee.property.name : callee.name;
+  return nameOf(callee.type === AST_NODE_TYPES.MemberExpression ? callee.property : callee);
 }
 
-function isTransactionManager(receiver) {
-  if (receiver.type !== 'Identifier') {
+function isOpenerCall(node: TSESTree.Node | undefined): boolean {
+  if (node?.type !== AST_NODE_TYPES.CallExpression) {
+    return false;
+  }
+  const name = openerName(node);
+  return name !== undefined && TRANSACTION_OPENERS.has(name);
+}
+
+function isTransactionManager(receiver: TSESTree.Node): boolean {
+  if (receiver.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
   return ancestorsOf(receiver).some(
     (node) =>
-      /Function/u.test(node.type) &&
-      node.params[0]?.name === receiver.name &&
-      node.parent?.type === 'CallExpression' &&
-      TRANSACTION_OPENERS.has(openerName(node.parent)),
+      isFunction(node) && nameOf(node.params[0]) === receiver.name && isOpenerCall(node.parent),
   );
 }
 
-function isTypeormReceiver(call, context) {
-  const receiver = unwrapped(call.callee).object;
+function isTypeormReceiver(
+  call: TSESTree.CallExpression,
+  callee: TSESTree.MemberExpression,
+  context: Context,
+): boolean {
+  const { object: receiver } = callee;
   return (
     isRepositoryLike(receiverNames(receiver)) ||
     isTransactionManager(receiver) ||
@@ -39,83 +51,120 @@ function isTypeormReceiver(call, context) {
   );
 }
 
-export function isSave(call, context, scope) {
+export function isSave(
+  call: TSESTree.CallExpression,
+  context: Context,
+  scope: ModuleScope,
+): boolean {
   const callee = unwrapped(call.callee);
   return (
     scope.families.has('typeorm') &&
-    callee.type === 'MemberExpression' &&
+    callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
     callee.property.name === 'save' &&
-    isTypeormReceiver(call, context)
+    isTypeormReceiver(call, callee, context)
   );
 }
 
-function entityOf(call) {
-  for (const argument of call.arguments.map(unwrapped)) {
-    if (argument.type === 'Identifier' && !MODEL_NAME.test(argument.name)) {
+function spreadIdentifier(argument: TSESTree.Node): TSESTree.Identifier | undefined {
+  if (argument.type !== AST_NODE_TYPES.ObjectExpression) {
+    return undefined;
+  }
+  const spread = argument.properties.find(
+    (property): property is TSESTree.SpreadElement =>
+      property.type === AST_NODE_TYPES.SpreadElement,
+  );
+  return spread?.argument.type === AST_NODE_TYPES.Identifier ? spread.argument : undefined;
+}
+
+function entityOf(call: TSESTree.CallExpression): TSESTree.Identifier | undefined {
+  for (const argument of call.arguments.map((each) => unwrapped(each))) {
+    if (argument.type === AST_NODE_TYPES.Identifier && !MODEL_NAME.test(argument.name)) {
       return argument;
     }
-    const spread =
-      argument.type === 'ObjectExpression'
-        ? argument.properties.find((property) => property.type === 'SpreadElement')
-        : undefined;
-    if (spread?.argument.type === 'Identifier') {
-      return spread.argument;
+    const spread = spreadIdentifier(argument);
+    if (spread !== undefined) {
+      return spread;
     }
   }
   return undefined;
 }
 
-function writtenInside(variable, region) {
+function writtenInside(variable: TSESLint.Scope.Variable, region: TSESTree.Node): boolean {
   return variable.references.some(
     (reference) => reference.isWrite() && !reference.init && contains(region, reference.identifier),
   );
 }
 
-function isRefresh(call) {
+function isRefresh(call: TSESTree.CallExpression | TSESTree.TaggedTemplateExpression): boolean {
+  if (call.type !== AST_NODE_TYPES.CallExpression) {
+    return false;
+  }
   const { callee } = call;
-  return callee.type === 'MemberExpression' && REFRESHES.has(callee.property.name);
+  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
+    return false;
+  }
+  const name = nameOf(callee.property);
+  return name !== undefined && REFRESHES.has(name);
 }
 
-function readsInside(context, region) {
+function readsInside(context: Context, region: TSESTree.Node): boolean {
   return callsWithin(region, context.sourceCode.visitorKeys).some((call) => {
     const effects = callEffects(call, context);
     return isRefresh(call) || (effects.has('database') && !effects.has('write'));
   });
 }
 
-export function staleEntity(context, call, region) {
+export function staleEntity(
+  context: Context,
+  call: TSESTree.CallExpression,
+  region: TSESTree.Node,
+): string | undefined {
   const entity = entityOf(call);
   const variable = entity === undefined ? undefined : variableNamed(context.sourceCode, entity);
   const declared = variable?.defs[0]?.name;
-  const outside = declared !== undefined && !contains(region, declared);
-  const stale = outside && !writtenInside(variable, region) && !readsInside(context, region);
-  return stale ? entity.name : undefined;
+  if (variable === undefined || declared === undefined || contains(region, declared)) {
+    return undefined;
+  }
+  const stale = !writtenInside(variable, region) && !readsInside(context, region);
+  return stale ? entity?.name : undefined;
 }
 
-function isFreshRead(init) {
+function isFreshRead(init: TSESTree.Node | null | undefined): boolean {
   const value = init === null || init === undefined ? undefined : unwrapped(init);
-  const call = value?.type === 'AwaitExpression' ? unwrapped(value.argument) : value;
+  const call = value?.type === AST_NODE_TYPES.AwaitExpression ? unwrapped(value.argument) : value;
+  if (call?.type !== AST_NODE_TYPES.CallExpression) {
+    return false;
+  }
+  const { callee } = call;
   return (
-    call?.type === 'CallExpression' &&
-    call.callee.type === 'MemberExpression' &&
-    FIND.test(call.callee.property.name ?? '')
+    callee.type === AST_NODE_TYPES.MemberExpression && FIND.test(nameOf(callee.property) ?? '')
   );
 }
 
-export function unchangedEntity(context, call, region) {
-  const argument = unwrapped(call.arguments.find((each) => each.type === 'Identifier') ?? call);
-  const variable =
-    argument.type === 'Identifier' ? variableNamed(context.sourceCode, argument) : undefined;
+export function unchangedEntity(
+  context: Context,
+  call: TSESTree.CallExpression,
+  region: TSESTree.Node,
+): string | undefined {
+  const argument = unwrapped(
+    call.arguments.find((each) => each.type === AST_NODE_TYPES.Identifier) ?? call,
+  );
+  if (argument.type !== AST_NODE_TYPES.Identifier) {
+    return undefined;
+  }
+  const variable = variableNamed(context.sourceCode, argument);
   const declarator = variable?.defs[0]?.node;
-  const fresh =
-    declarator?.type === 'VariableDeclarator' &&
-    contains(region, declarator) &&
-    isFreshRead(declarator.init);
-  const others = fresh
-    ? variable.references.filter(
-        (reference) => reference.identifier !== argument && reference.identifier !== declarator.id,
-      )
-    : [];
-  return fresh && others.length === 0 ? argument.name : undefined;
+  if (
+    variable === undefined ||
+    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    !contains(region, declarator) ||
+    !isFreshRead(declarator.init)
+  ) {
+    return undefined;
+  }
+  const others = variable.references.filter(
+    (reference) => reference.identifier !== argument && reference.identifier !== declarator.id,
+  );
+  return others.length === 0 ? argument.name : undefined;
 }

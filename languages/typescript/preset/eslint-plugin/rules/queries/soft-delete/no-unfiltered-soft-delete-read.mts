@@ -1,21 +1,24 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import { isEstreeConsumed } from '../../support/flow/consumed.mts';
-import { filtersByTable } from './columns.mts';
-import { readMentions } from './read-mentions.mts';
+import { filtersByTable, type TableFilter } from './columns.mts';
+import { readMentions, type TableEntry } from './read-mentions.mts';
 
-function isGuarded(entry, filter) {
+function isGuarded(entry: TableEntry, filter: TableFilter): boolean {
   return (
     [...entry.columns.keys()].some((key) => filter.columns.has(key)) ||
     [...entry.helpers].some((helper) => filter.helpers.has(helper))
   );
 }
 
-function filterText(filter) {
+function filterText(filter: TableFilter): string {
   const columns = [...filter.columns.values()].map((column) => `\`${column}\``);
   const helpers = [...filter.helpers].map((helper) => `the helper \`${helper}\``);
   return [...columns, ...helpers].join(' or ');
 }
 
-export const rule = {
+type Options = [{ readonly orms?: readonly string[]; readonly filters?: readonly string[] }?];
+
+export const rule: TSESLint.RuleModule<'unfiltered', Options> = {
   meta: {
     type: 'problem',
     docs: {
@@ -54,14 +57,17 @@ export const rule = {
           : undefined;
         const missing = mentions?.acknowledged
           ? undefined
-          : mentions?.tables.find(
-              (entry) => byTable.has(entry.table) && !isGuarded(entry, byTable.get(entry.table)),
-            );
+          : mentions?.tables.flatMap((entry) => {
+              const filter = entry.table === undefined ? undefined : byTable.get(entry.table);
+              return entry.table !== undefined && filter !== undefined && !isGuarded(entry, filter)
+                ? [{ table: entry.table, filter }]
+                : [];
+            })[0];
         if (missing !== undefined) {
           context.report({
             node: call,
             messageId: 'unfiltered',
-            data: { table: missing.table, filter: filterText(byTable.get(missing.table)) },
+            data: { table: missing.table, filter: filterText(missing.filter) },
           });
         }
       },

@@ -1,9 +1,19 @@
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { importedBindings } from '../security/imported-names.mts';
-import { childrenOf } from '../loops/loop-shapes.mts';
-import { middlewareIn, middlewareName } from './middleware-names.mts';
-import { decoratorInfo, isAuthName } from './shapes.mts';
+import { nameOf, type VisitorKeys } from '../typed/node-views.mts';
+import { isCallback } from '../typed/syntax-views.mts';
+import { middlewareIn } from './middleware-names.mts';
+import { walk, type Bindings, type Facts, type MaybeNode, type MemberCall } from './nest-facts.mts';
+import { isAuthName } from './shapes.mts';
 
-const VERBS = new Set(['Get', 'Post', 'Put', 'Patch', 'Delete', 'All', 'Options', 'Head']);
+export { nestFacts, type NestHandler } from './nest-facts.mts';
+export type Route = Facts & { readonly node: TSESTree.CallExpression };
+
+type RouteState = {
+  readonly receivers: Set<string>;
+  readonly scoped: Map<string, string[]>;
+};
+
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'all', 'options', 'head']);
 const ROUTER_MODULES = ['express', 'fastify', 'koa-router', '@koa/router', 'restify', 'hono'];
 const FACTORIES = new Set(['express', 'Router', 'fastify', 'Fastify', 'Hono', 'createServer']);
@@ -32,203 +42,130 @@ const OPEN_WORDS = [
   String.raw`oauth\w*`,
 ];
 const OPEN_PATH = new RegExp(`(?:^|[/_-])(?:${OPEN_WORDS.join('|')})(?:$|[/_.-])`, 'u');
-const NEST_COMMON = '@nestjs/common';
 
-function isNestDecorator(decorator, name, bindings) {
-  const expression =
-    decorator.expression.type === 'CallExpression'
-      ? decorator.expression.callee
-      : decorator.expression;
-  return (
-    expression.type === 'Identifier' &&
-    expression.name === name &&
-    bindings.get(name)?.module === NEST_COMMON
-  );
+function receiverName(callee: TSESTree.MemberExpression): string | undefined {
+  return callee.object.type === AST_NODE_TYPES.Identifier ? callee.object.name : undefined;
 }
 
-function describeHandler(method, classDecorators) {
-  const decorators = [...(method.decorators ?? []), ...classDecorators].map(decoratorInfo);
-  return {
-    node: method,
-    shapes: new Set(decorators.filter((each) => each.isAuth).map((each) => each.shape)),
-    isAuth: decorators.some((each) => each.isAuth),
-    isPublic: decorators.some((each) => each.isPublic),
-  };
-}
-
-function controllerHandlers(klass, bindings) {
-  const isController = (klass.decorators ?? []).some((each) =>
-    isNestDecorator(each, 'Controller', bindings),
-  );
-  if (!isController) {
-    return [];
-  }
-  const classDecorators = klass.decorators;
-  return klass.body.body
-    .filter((member) => member.type === 'MethodDefinition')
-    .filter((member) =>
-      (member.decorators ?? []).some((each) =>
-        [...VERBS].some((verb) => isNestDecorator(each, verb, bindings)),
-      ),
-    )
-    .map((member) => describeHandler(member, classDecorators));
-}
-
-function walk(program, visitorKeys, visit) {
-  const pending = [program];
-  for (const node of pending) {
-    visit(node);
-    pending.push(...childrenOf(node, visitorKeys));
-  }
-}
-
-function isNamedCall(node, name) {
-  return (
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    node.callee.property.name === name
-  );
-}
-
-function appliesAuthMiddleware(node) {
-  if (!isNamedCall(node, 'forRoutes')) {
-    return false;
-  }
-  const chain = [node.callee.object];
-  for (const link of chain) {
-    if (isNamedCall(link, 'exclude')) {
-      chain.push(link.callee.object);
-    }
-  }
-  const current = chain.at(-1);
-  return (
-    isNamedCall(current, 'apply') &&
-    current.arguments.some((arg) => isAuthName(middlewareName(arg)))
-  );
-}
-
-export function nestFacts(program, visitorKeys) {
-  const bindings = importedBindings(program);
-  const handlers = [];
-  let global = false;
-  walk(program, visitorKeys, (node) => {
-    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
-      handlers.push(...controllerHandlers(node, bindings));
-    }
-    global ||= node.type === 'Identifier' && node.name === 'APP_GUARD';
-    global ||=
-      node.type === 'MemberExpression' &&
-      !node.computed &&
-      node.property.name === 'useGlobalGuards';
-    global ||= appliesAuthMiddleware(node);
-  });
-  return { handlers, global };
-}
-
-function receiverName(callee) {
-  return callee.object.type === 'Identifier' ? callee.object.name : undefined;
-}
-
-function isPath(node) {
-  const text = node?.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
+function isPath(node: MaybeNode): boolean {
+  const text =
+    node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string'
+      ? node.value
+      : undefined;
   return text !== undefined && /^(?:\/|\*|$)/u.test(text);
 }
 
-function isFrameworkModule(module) {
+function isFrameworkModule(module: string): boolean {
   return ROUTER_MODULES.includes(module) || module.startsWith('@fastify/');
 }
 
-function unwrapped(node) {
+function unwrapped(node: MaybeNode): MaybeNode {
   const pending = [node];
   for (const current of pending) {
-    if (current?.type === 'AwaitExpression' || current?.type === 'TSAsExpression') {
+    if (current?.type === AST_NODE_TYPES.TSAsExpression) {
       pending.push(current.expression);
     }
   }
   return pending.at(-1);
 }
 
-function calleeRoot(callee) {
+function calleeRoot(callee: TSESTree.Node): TSESTree.Identifier | undefined {
   const pending = [callee];
   for (const current of pending) {
-    if (current.type === 'MemberExpression') {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
       pending.push(current.object);
     }
   }
   const root = pending.at(-1);
-  return root.type === 'Identifier' ? root : undefined;
+  return root?.type === AST_NODE_TYPES.Identifier ? root : undefined;
 }
 
-function calleeLeaf(callee) {
-  return callee.type === 'MemberExpression' ? callee.property.name : callee.name;
+function calleeLeaf(callee: TSESTree.Node): string | undefined {
+  return callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : nameOf(callee);
 }
 
-function isRouterFactory(init, bindings) {
-  const call = unwrapped(init);
-  if (call?.type !== 'CallExpression' && call?.type !== 'NewExpression') {
+function isRouterFactory(init: MaybeNode | null, bindings: Bindings): boolean {
+  const call = unwrapped(init ?? undefined);
+  if (call?.type !== AST_NODE_TYPES.CallExpression && call?.type !== AST_NODE_TYPES.NewExpression) {
     return false;
   }
-  const module = bindings.get(calleeRoot(call.callee)?.name)?.module;
+  const root = calleeRoot(call.callee);
+  const module = root === undefined ? undefined : bindings.get(root.name)?.module;
   return (
-    module !== undefined && isFrameworkModule(module) && FACTORIES.has(calleeLeaf(call.callee))
+    module !== undefined &&
+    isFrameworkModule(module) &&
+    FACTORIES.has(calleeLeaf(call.callee) ?? '')
   );
 }
 
-function isTypedReceiver(node) {
-  const name = node.typeAnnotation?.typeAnnotation?.typeName?.name;
-  return node.type === 'Identifier' && FRAMEWORK_TYPES.has(name);
+function isTypedReceiver(node: TSESTree.Node): node is TSESTree.Identifier {
+  const reference =
+    node.type === AST_NODE_TYPES.Identifier ? node.typeAnnotation?.typeAnnotation : undefined;
+  return (
+    reference?.type === AST_NODE_TYPES.TSTypeReference &&
+    FRAMEWORK_TYPES.has(nameOf(reference.typeName) ?? '')
+  );
 }
 
-function collectSyntax(program, visitorKeys, bindings) {
-  const calls = [];
-  const receivers = new Set();
+function collectSyntax(
+  program: TSESTree.Program,
+  visitorKeys: VisitorKeys,
+  bindings: Bindings,
+): { readonly calls: TSESTree.CallExpression[]; readonly receivers: Set<string> } {
+  const calls: TSESTree.CallExpression[] = [];
+  const receivers = new Set<string>();
   walk(program, visitorKeys, (node) => {
-    const declared = node.type === 'VariableDeclarator' && node.id.type === 'Identifier';
-    if (declared && isRouterFactory(node.init, bindings)) {
+    if (
+      node.type === AST_NODE_TYPES.VariableDeclarator &&
+      node.id.type === AST_NODE_TYPES.Identifier &&
+      isRouterFactory(node.init, bindings)
+    ) {
       receivers.add(node.id.name);
     }
     if (isTypedReceiver(node)) {
       receivers.add(node.name);
     }
-    if (node.type === 'CallExpression') {
+    if (node.type === AST_NODE_TYPES.CallExpression) {
       calls.push(node);
     }
   });
   return { calls: calls.toSorted((left, right) => left.range[0] - right.range[0]), receivers };
 }
 
-function isFunction(node) {
-  return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression';
-}
-
-function registersPlugin(call, receivers) {
-  const callee = call.callee;
+function registersPlugin(call: MemberCall, receivers: ReadonlySet<string>): string | undefined {
+  const { callee } = call;
   const plugin = call.arguments[0];
-  const registers = callee.property.name === 'register' && receivers.has(receiverName(callee));
-  return registers && isFunction(plugin) && plugin.params[0]?.type === 'Identifier'
+  const receiver = receiverName(callee);
+  const registers =
+    nameOf(callee.property) === 'register' && receiver !== undefined && receivers.has(receiver);
+  return registers && isCallback(plugin) && plugin.params[0]?.type === AST_NODE_TYPES.Identifier
     ? plugin.params[0].name
     : undefined;
 }
 
-function isRouteHandler(node) {
-  return node !== undefined && node.type !== 'Literal' && node.type !== 'ObjectExpression';
+function isRouteHandler(node: MaybeNode): boolean {
+  return (
+    node !== undefined &&
+    node.type !== AST_NODE_TYPES.Literal &&
+    node.type !== AST_NODE_TYPES.ObjectExpression
+  );
 }
 
-function isOpenPath(node) {
-  return node?.type === 'Literal' && OPEN_PATH.test(String(node.value).toLowerCase());
+function isOpenPath(node: MaybeNode): boolean {
+  return node?.type === AST_NODE_TYPES.Literal && OPEN_PATH.test(String(node.value).toLowerCase());
 }
 
-function routeOf(node, { receivers, scoped }) {
+function routeOf(node: MemberCall, { receivers, scoped }: RouteState): Route | undefined {
   const { callee } = node;
   const receiver = receiverName(callee);
-  const method = callee.property.name;
+  const method = nameOf(callee.property) ?? '';
   const isScope = method === 'use' || method === 'addHook';
   const isRoute =
     HTTP_METHODS.has(method) &&
     node.arguments.length >= 2 &&
     isPath(node.arguments[0]) &&
     isRouteHandler(node.arguments.at(-1));
-  if (!(receivers.has(receiver) && (isScope || isRoute))) {
+  if (receiver === undefined || !receivers.has(receiver) || !(isScope || isRoute)) {
     return undefined;
   }
   const candidates = isScope ? node.arguments : node.arguments.slice(0, -1);
@@ -248,17 +185,21 @@ function routeOf(node, { receivers, scoped }) {
   };
 }
 
-export function routeFacts(program, visitorKeys) {
+export function routeFacts(
+  program: TSESTree.Program,
+  visitorKeys: VisitorKeys,
+): { readonly routes: Route[] } {
   const bindings = importedBindings(program);
   if (![...bindings.values()].some(({ module }) => isFrameworkModule(module))) {
     return { routes: [] };
   }
   const { calls, receivers } = collectSyntax(program, visitorKeys, bindings);
-  const state = { receivers, scoped: new Map() };
+  const state: RouteState = { receivers, scoped: new Map() };
   const members = calls.filter(
-    (node) => node.callee.type === 'MemberExpression' && !node.callee.computed,
+    (node): node is MemberCall =>
+      node.callee.type === AST_NODE_TYPES.MemberExpression && !node.callee.computed,
   );
-  const routes = [];
+  const routes: (Route | undefined)[] = [];
   for (const node of members) {
     const plugin = registersPlugin(node, receivers);
     if (plugin !== undefined) {

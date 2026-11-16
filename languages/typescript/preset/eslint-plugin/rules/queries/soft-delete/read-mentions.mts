@@ -1,8 +1,10 @@
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { childrenOf } from '../../loops/loop-shapes.mts';
-import { firstString } from '../../support/orm/chains.mts';
-import { ormSite } from '../../support/orm/sites.mts';
+import { firstString, type ChainStep } from '../../support/orm/chains.mts';
+import { ormSite, type FoundSite } from '../../support/orm/sites.mts';
 import { tableKey } from '../../support/orm/table-names.mts';
+import type { VisitorKeys } from '../../typed/node-views.mts';
 import {
   COLUMN_IN_TEXT,
   columnKey,
@@ -10,6 +12,11 @@ import {
   isColumn,
   isHelperName,
 } from './columns.mts';
+
+type Mention = { readonly prefix: string | undefined; readonly column: string };
+type Joined = { readonly table: string | undefined; readonly alias: string | undefined };
+export type TableEntry = Joined & { columns: Map<string, string>; helpers: Set<string> };
+export type Mentions = { readonly tables: TableEntry[]; readonly acknowledged: boolean };
 
 const JOINS = new Set(['join', 'innerJoin', 'leftJoin', 'rightJoin', 'fullJoin', 'leftOuterJoin']);
 const RELATION_KEYS = new Set([
@@ -22,60 +29,67 @@ const RELATION_KEYS = new Set([
   'orderBy',
 ]);
 
-function aliasOf(text) {
+function aliasOf(text: string | undefined): string | undefined {
   const match = /^\s*[\w.]+\s+(?:as\s+)?(\w+)\s*$/iu.exec(text ?? '');
   return match?.[1];
 }
 
-function joinedTable(step) {
+function joinedTable(step: ChainStep): Joined | undefined {
   const [first, second] = step.args ?? [];
   const text = firstString(step.args);
   if (text !== undefined) {
-    const dotted = text.split(/\s+/u)[0].includes('.');
+    const dotted = (text.split(/\s+/u)[0] ?? '').includes('.');
     return dotted
       ? undefined
       : { table: tableKey(text), alias: aliasOf(text) ?? stringValue(second) };
   }
-  const named = first?.type === 'Identifier' ? first.name : undefined;
+  const named = first?.type === AST_NODE_TYPES.Identifier ? first.name : undefined;
   return named === undefined ? undefined : { table: tableKey(named), alias: named };
 }
 
-function builderAlias(steps) {
+function builderAlias(steps: readonly ChainStep[]): string | undefined {
   const [first, second] = steps.find((step) => step.name === 'createQueryBuilder')?.args ?? [];
   return stringValue(first) ?? stringValue(second);
 }
 
-function tablesOf(site) {
+function tablesOf(site: FoundSite): TableEntry[] {
   const { steps } = site.chain;
   const alias = builderAlias(steps) ?? aliasOf(firstString(steps.find((step) => step.args)?.args));
-  const joined = steps.filter((step) => JOINS.has(step.name)).map(joinedTable);
-  return [{ table: site.table, alias }, ...joined.filter(Boolean)].map((each) => ({
+  const joined = steps
+    .filter((step) => JOINS.has(step.name ?? ''))
+    .map(joinedTable)
+    .filter((each): each is Joined => each !== undefined);
+  return [{ table: site.table, alias }, ...joined].map((each) => ({
     ...each,
     columns: new Map(),
     helpers: new Set(),
   }));
 }
 
-function nameOf(node) {
-  if (node.type === 'Identifier') {
+function nameOf(node: TSESTree.Node): string | undefined {
+  if (node.type === AST_NODE_TYPES.Identifier) {
     return node.name;
   }
-  if (node.type === 'MemberExpression' && !node.computed) {
+  if (node.type === AST_NODE_TYPES.MemberExpression && !node.computed) {
     return node.property.name;
   }
-  return node.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
+  return node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string'
+    ? node.value
+    : undefined;
 }
 
-function isLoneColumnArgument(node, text) {
+function isLoneColumnArgument(node: TSESTree.Node, text: string): boolean {
   const isFirstArgument =
-    node.parent?.type === 'CallExpression' && node.parent.arguments[0] === node;
+    node.parent?.type === AST_NODE_TYPES.CallExpression && node.parent.arguments[0] === node;
   return isFirstArgument && isColumn(text.trim());
 }
 
-function textMentions(node) {
+function textMentions(node: TSESTree.Node): Mention[] {
   const text =
     stringValue(node) ??
-    (node.type === 'TemplateLiteral' ? node.quasis.map((q) => q.value.raw).join('?') : undefined);
+    (node.type === AST_NODE_TYPES.TemplateLiteral
+      ? node.quasis.map((q) => q.value.raw).join('?')
+      : undefined);
   if (text === undefined) {
     return [];
   }
@@ -84,43 +98,57 @@ function textMentions(node) {
   }
   return [...text.matchAll(COLUMN_IN_TEXT)]
     .filter((match) => match[1] !== undefined || match[3] !== undefined)
-    .map((match) => ({ prefix: match[1], column: match[2] }));
+    .flatMap((match) => (match[2] === undefined ? [] : [{ prefix: match[1], column: match[2] }]));
 }
 
-function columnMentions(node) {
-  if (node.type === 'Property' && isColumn(nameOf(node.key))) {
-    return [{ prefix: undefined, column: nameOf(node.key) }];
+function columnMentions(node: TSESTree.Node): Mention[] {
+  if (node.type === AST_NODE_TYPES.Property) {
+    const column = nameOf(node.key);
+    return column !== undefined && isColumn(column) ? [{ prefix: undefined, column }] : [];
   }
-  if (node.type === 'MemberExpression' && !node.computed && isColumn(node.property.name)) {
-    return [{ prefix: nameOf(node.object), column: node.property.name }];
+  if (node.type === AST_NODE_TYPES.MemberExpression && !node.computed) {
+    const { name } = node.property;
+    return isColumn(name) ? [{ prefix: nameOf(node.object), column: name }] : [];
   }
   return [];
 }
 
-function helperNames(node) {
-  if (node.type !== 'CallExpression') {
+function helperNames(node: TSESTree.Node): string[] {
+  if (node.type !== AST_NODE_TYPES.CallExpression) {
     return [];
   }
-  return [node.callee, ...node.arguments]
-    .filter((callee) => callee.type !== 'Literal' && isHelperName(nameOf(callee)))
-    .map(nameOf);
+  return [node.callee, ...node.arguments].flatMap((callee) => {
+    const name = callee.type === AST_NODE_TYPES.Literal ? undefined : nameOf(callee);
+    return name !== undefined && isHelperName(name) ? [name] : [];
+  });
 }
 
-function acknowledges(node) {
-  if (node.type === 'Identifier') {
+function acknowledges(node: TSESTree.Node): boolean {
+  if (node.type === AST_NODE_TYPES.Identifier) {
     return isAcknowledgement(node.name);
   }
-  return node.type === 'Property' && isAcknowledgement(nameOf(node.key));
+  return node.type === AST_NODE_TYPES.Property && isAcknowledgement(nameOf(node.key));
 }
 
-function collect(root, visitorKeys) {
-  const mentions = [];
-  const helpers = new Set();
+function isRelationKey(node: TSESTree.Node): boolean {
+  if (node.type !== AST_NODE_TYPES.Property) {
+    return false;
+  }
+  const name = nameOf(node.key);
+  return name !== undefined && RELATION_KEYS.has(name);
+}
+
+function collect(
+  root: TSESTree.Node,
+  visitorKeys: VisitorKeys,
+): { mentions: Mention[]; helpers: Set<string>; acknowledged: boolean } {
+  const mentions: Mention[] = [];
+  const helpers = new Set<string>();
   let acknowledged = false;
   const pending = [root];
   for (const node of pending) {
     mentions.push(...textMentions(node));
-    if (node.type === 'Property' && RELATION_KEYS.has(nameOf(node.key))) {
+    if (isRelationKey(node)) {
       continue;
     }
     mentions.push(...columnMentions(node));
@@ -133,7 +161,11 @@ function collect(root, visitorKeys) {
   return { mentions, helpers, acknowledged };
 }
 
-export function readMentions(call, orms, visitorKeys) {
+export function readMentions(
+  call: TSESTree.Node,
+  orms: readonly string[],
+  visitorKeys: VisitorKeys,
+): Mentions | undefined {
   const site = ormSite(call, 'read', orms);
   if (site === undefined || site.table === undefined) {
     return undefined;
@@ -148,6 +180,9 @@ export function readMentions(call, orms, visitorKeys) {
         : tables.find((each) => each.alias === prefix || each.table === keyed);
     owner?.columns.set(columnKey(column), column);
   }
-  tables[0].helpers = helpers;
+  const [primary] = tables;
+  if (primary !== undefined) {
+    primary.helpers = helpers;
+  }
   return { tables, acknowledged };
 }

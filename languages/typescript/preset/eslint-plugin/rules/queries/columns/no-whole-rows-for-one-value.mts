@@ -1,10 +1,15 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import { queryScope } from '../query-calls.mts';
 import { COLUMN, EXISTENCE, columnUse, existenceUse } from './column-uses.mts';
 
 const EXCEPTION =
   'An exception fits only when the rows are used elsewhere too or the model has no cheaper query.';
 
-export const rule = {
+export const rule: TSESLint.RuleModule<
+  typeof COLUMN | typeof EXISTENCE,
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {

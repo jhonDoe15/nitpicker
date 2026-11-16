@@ -1,21 +1,27 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { childrenOf } from '../loops/loop-shapes.mts';
 import { describePath } from '../support/io-effects.mts';
+import type { VisitorKeys } from '../typed/node-views.mts';
 import { isIsolated, itemWork, settlesAll } from './item-loops.mts';
 import { jobKind } from './job-handlers.mts';
 
-const FUNCTIONS = new Set(['FunctionExpression', 'ArrowFunctionExpression']);
+const FUNCTIONS = new Set<string>([
+  AST_NODE_TYPES.FunctionExpression,
+  AST_NODE_TYPES.ArrowFunctionExpression,
+]);
 
-function isFixedList(loop) {
+function isFixedList(loop: TSESTree.ForOfStatement): boolean {
   return (
-    loop.right.type === 'ArrayExpression' && loop.right.elements.every((e) => e?.type === 'Literal')
+    loop.right.type === AST_NODE_TYPES.ArrayExpression &&
+    loop.right.elements.every((element) => element?.type === AST_NODE_TYPES.Literal)
   );
 }
 
-function loopsIn(body, visitorKeys) {
-  const loops = [];
+function loopsIn(body: TSESTree.Node, visitorKeys: VisitorKeys): TSESTree.ForOfStatement[] {
+  const loops: TSESTree.ForOfStatement[] = [];
   const pending = [body];
   for (const node of pending) {
-    if (node.type === 'ForOfStatement') {
+    if (node.type === AST_NODE_TYPES.ForOfStatement) {
       loops.push(...(isFixedList(node) ? [] : [node]));
     } else {
       pending.push(...childrenOf(node, visitorKeys).filter((child) => !FUNCTIONS.has(child.type)));
@@ -24,7 +30,31 @@ function loopsIn(body, visitorKeys) {
   return loops;
 }
 
-export const rule = {
+function check(
+  context: TSESLint.RuleContext<'unisolated', []>,
+  fn: TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression,
+): void {
+  const job = jobKind(fn, context.sourceCode.ast);
+  if (job === undefined) {
+    return;
+  }
+  for (const loop of loopsIn(fn.body, context.sourceCode.visitorKeys)) {
+    const [first] = itemWork(loop, context).filter(({ call }) => !isIsolated(call, loop));
+    if (first !== undefined && !settlesAll(loop, context)) {
+      context.report({
+        node: loop,
+        messageId: 'unisolated',
+        data: { job, work: describePath(first.path) },
+      });
+    }
+  }
+}
+
+export const rule: TSESLint.RuleModule<
+  'unisolated',
+  [],
+  { readonly requiresTypeChecking: boolean }
+> = {
   meta: {
     type: 'problem',
     docs: {
@@ -45,22 +75,9 @@ export const rule = {
     },
   },
   create(context) {
-    function check(fn) {
-      const job = jobKind(fn, context.sourceCode.ast);
-      if (job === undefined) {
-        return;
-      }
-      for (const loop of loopsIn(fn.body, context.sourceCode.visitorKeys)) {
-        const work = itemWork(loop, context).filter(({ call }) => !isIsolated(call, loop));
-        if (work.length > 0 && !settlesAll(loop, context)) {
-          context.report({
-            node: loop,
-            messageId: 'unisolated',
-            data: { job, work: describePath(work[0].path) },
-          });
-        }
-      }
-    }
-    return { FunctionExpression: check, ArrowFunctionExpression: check };
+    return {
+      FunctionExpression: (node) => check(context, node),
+      ArrowFunctionExpression: (node) => check(context, node),
+    };
   },
 };
