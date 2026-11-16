@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { pathsOutsideProject } from '../../java-e2e/test-support/project-paths.mjs';
+import { pathsOutsideProject } from '../../java-e2e/test-support/project-paths.mts';
 import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
 import { byText } from '../../../../../shared/text-order/by-text.mjs';
 import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';

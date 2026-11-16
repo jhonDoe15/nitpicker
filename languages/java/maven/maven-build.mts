@@ -13,7 +13,7 @@ import {
 } from '../adapters/style/java-style.mjs';
 import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
-import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
