@@ -10,7 +10,6 @@ import {
 import { javaExtractPartialRunRecipe as recipe } from './partial-run-extract.mts';
 
 type Span = { readonly start: number; readonly end: number };
-type Forced = { readonly methods: readonly string[]; readonly runs: readonly Span[] };
 
 const PATH = 'src/main/java/demo/Align.java';
 const NAMES = ['headerNames', 'headerCount'];

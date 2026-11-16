@@ -42,9 +42,10 @@ export function recordCaptures(
   facts: readonly Fact[],
   flow: FlowContext,
 ): void {
+  const { captured } = flow;
   for (const expression of expressions) {
     for (const node of [...outsideFunctions(expression)].filter(isFunction)) {
-      flow.captured.set(node, carried(facts, node, flow));
+      captured.set(node, carried(facts, node, flow));
     }
   }
 }

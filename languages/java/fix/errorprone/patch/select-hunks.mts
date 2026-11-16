@@ -31,7 +31,7 @@ function importedName(text: string): string | undefined {
 }
 
 function usedIn(name: string, texts: readonly string[]): boolean {
-  return wordIn(name, texts, '(?<![\\w$])');
+  return wordIn(name, texts, /(?<![\w$])/u);
 }
 
 function keptAdditions(hunk: Hunk, keptTexts: readonly string[]): Hunk | undefined {

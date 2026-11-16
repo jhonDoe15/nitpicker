@@ -265,7 +265,7 @@ export const STATEMENTS: GoConverters = {
   break_statement: (source) => labelledAt('break', source, codeChildren(source)[0]),
   continue_statement: (source) => labelledAt('continue', source, codeChildren(source)[0]),
   fallthrough_statement: (source) => grouped('fallthrough', source),
-  goto_statement: (source) => grouped(`goto:${codeChildren(source)[0]?.text}`, source),
+  goto_statement: (source) => grouped(`goto:${codeChildren(source)[0]?.text ?? ''}`, source),
   go_statement: simple('go'),
   defer_statement: simple('defer'),
   labeled_statement: (source, context) => {

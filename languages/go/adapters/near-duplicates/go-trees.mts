@@ -24,7 +24,7 @@ export function readGoUnits(projectRoot: string, files: readonly string[]): GoUn
     timeout: TIMEOUT_MS,
   });
   if (result.status !== 0) {
-    const reason = result.error?.message ?? result.stderr.trim().split('\n').at(-1);
+    const reason = result.error?.message ?? result.stderr.trim().split('\n').at(-1) ?? 'no output';
     throw new Error(`Reading Go syntax trees for near-duplicate detection failed: ${reason}`);
   }
   const units: unknown = JSON.parse(result.stdout);

@@ -1,7 +1,8 @@
-import type {
-  ParserServices,
-  ParserServicesWithTypeInformation,
-  TSESTree,
+import {
+  AST_NODE_TYPES,
+  type ParserServices,
+  type ParserServicesWithTypeInformation,
+  type TSESTree,
 } from '@typescript-eslint/utils';
 import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
@@ -29,7 +30,7 @@ export function booleanParts(
   }
   const known = new Set(
     [...inside(root)]
-      .filter((node) => node.type !== 'Literal' && isBooleanTyped(node, services))
+      .filter((node) => node.type !== AST_NODE_TYPES.Literal && isBooleanTyped(node, services))
       .map(({ range }) => rangeKey(range)),
   );
   return ({ term }) => term.range !== undefined && known.has(rangeKey(term.range));
