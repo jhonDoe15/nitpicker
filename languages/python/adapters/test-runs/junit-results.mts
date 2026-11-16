@@ -1,13 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  childrenNamed as untypedChildren,
-  parseXml as untypedParse,
-} from '../../../../shared/ingest/common.mjs';
-import type { JunitFailure, JunitTestCase, XmlElement } from './typed/run-types.mts';
-
-const childrenNamed: (element: XmlElement, name: string) => XmlElement[] = untypedChildren;
-const parseXml: (text: string) => XmlElement = untypedParse;
+import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import type { JunitFailure, JunitTestCase } from './typed/run-types.mts';
 
 export const JUNIT_REPORT = 'pytest-junit.xml';
 export const RERUN_REPORT = 'rerun-junit.xml';

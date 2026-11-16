@@ -1,10 +1,3 @@
-export type XmlElement = {
-  readonly name: string;
-  readonly attrs: Readonly<Record<string, string | undefined>>;
-  readonly children: readonly XmlElement[];
-  readonly text?: string;
-};
-
 export type JunitFailure = {
   readonly line?: number | undefined;
   readonly message?: string | undefined;
