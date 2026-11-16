@@ -12,7 +12,7 @@ Every message names the allowed form and the exception that keeps code that is r
 classpath has Spring) run on test sources only, through the generated `pmd-tests.xml` that
 excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-ruleset.xml` with Spring)
 run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
-The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
+The init script and `maven/maven-lint.mts` generate both, so the scopes are the same on both
 builds. The main-only set holds PMD's `security` category, since tests encrypt with fixed keys, the API
 design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `ForwardingMethodAlias`, `SingularAndPluralMember`, `ServiceLocatorLookup`, `TriStateBoolean`, `BooleanFlagParameter`,
 `ParameterMutation`, `CompatibilityShim`, `LegacyCalendarApi`) and `timeout-abandons-operation`: like the TypeScript

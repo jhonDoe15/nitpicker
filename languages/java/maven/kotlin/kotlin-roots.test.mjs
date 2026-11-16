@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readReactor } from '../maven-project.mjs';
+import { readReactor } from '../maven-project.mts';
 
 const roots = [];
 const NONE_OPENED = { annotations: [], presets: [] };

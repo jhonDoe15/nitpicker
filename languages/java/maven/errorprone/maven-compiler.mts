@@ -1,16 +1,28 @@
-import { childAt, childrenAt, childrenNamed } from '../../../../shared/ingest/common.mjs';
-import { textAt } from '../configuration/pom-elements.mjs';
+import {
+  type XmlElement,
+  childAt,
+  childrenAt,
+  childrenNamed,
+} from '../../../../shared/values/xml.mts';
+import type { CompilerLevel, CompilerSettings } from './compiler-types.mts';
+import { textAt } from '../configuration/pom-elements.mts';
 
 const COMPILER = 'maven-compiler-plugin';
 const UNRESOLVED = /\$\{/u;
 
-function compilerPlugin(project) {
+type Setting = (name: string, property: string) => string | undefined;
+type GuardCompiler = CompilerLevel & {
+  readonly encoding: string | undefined;
+  readonly args: string[];
+};
+
+function compilerPlugin(project: XmlElement): XmlElement | undefined {
   return childrenAt(project, 'build', 'plugins', 'plugin').find(
     (candidate) => textAt(candidate, 'artifactId') === COMPILER,
   );
 }
 
-function compilerConfigurations(plugin, executionId) {
+function compilerConfigurations(plugin: XmlElement | undefined, executionId: string): XmlElement[] {
   const execution = childrenAt(plugin, 'executions', 'execution').find(
     (candidate) => textAt(candidate, 'id') === executionId,
   );
@@ -19,12 +31,16 @@ function compilerConfigurations(plugin, executionId) {
   );
 }
 
-function defaultLevel(pluginVersion) {
+function defaultLevel(pluginVersion: string | undefined): string | undefined {
   const major = Number((pluginVersion ?? '3').split('.')[0]);
   return major >= 4 ? undefined : '8';
 }
 
-function managedVersion(project, groupId, artifactId) {
+function managedVersion(
+  project: XmlElement,
+  groupId: string | undefined,
+  artifactId: string | undefined,
+): string | undefined {
   const declared = childrenAt(project, 'dependencyManagement', 'dependencies', 'dependency').find(
     (dependency) =>
       textAt(dependency, 'groupId') === groupId && textAt(dependency, 'artifactId') === artifactId,
@@ -32,7 +48,7 @@ function managedVersion(project, groupId, artifactId) {
   return declared === undefined ? undefined : textAt(declared, 'version');
 }
 
-function processorCoordinates(project, entry) {
+function processorCoordinates(project: XmlElement, entry: XmlElement): string {
   const groupId = textAt(entry, 'groupId');
   const artifactId = textAt(entry, 'artifactId');
   const version = textAt(entry, 'version') ?? managedVersion(project, groupId, artifactId);
@@ -50,7 +66,10 @@ function processorCoordinates(project, entry) {
   );
 }
 
-function processorPaths(project, configurations) {
+function processorPaths(
+  project: XmlElement,
+  configurations: readonly XmlElement[],
+): string[] | undefined {
   const paths = configurations
     .map((configuration) => childAt(configuration, 'annotationProcessorPaths'))
     .find((element) => element !== undefined);
@@ -59,8 +78,8 @@ function processorPaths(project, configurations) {
     : childrenNamed(paths, 'path').map((entry) => processorCoordinates(project, entry));
 }
 
-function settingOf(project, configurations) {
-  return function setting(name, property) {
+function settingOf(project: XmlElement, configurations: readonly XmlElement[]): Setting {
+  return function setting(name: string, property: string): string | undefined {
     return [
       ...configurations.map((configuration) => textAt(configuration, name)),
       textAt(project, 'properties', property),
@@ -68,7 +87,11 @@ function settingOf(project, configurations) {
   };
 }
 
-function argumentsOf(configurations, setting) {
+function isArgument(argument: string | undefined): argument is string {
+  return argument !== undefined && argument !== '';
+}
+
+function argumentsOf(configurations: readonly XmlElement[], setting: Setting): string[] {
   const listed = configurations
     .map((configuration) => childrenAt(configuration, 'compilerArgs', 'arg'))
     .find((args) => args.length > 0);
@@ -79,19 +102,23 @@ function argumentsOf(configurations, setting) {
   const args = [
     ...(listed ?? []).map((argument) => argument.text?.trim()),
     ...(single ?? '').split(/\s+/u),
-  ].filter((argument) => argument !== undefined && argument !== '');
+  ].filter(isArgument);
   return preview && !args.includes('--enable-preview') ? [...args, '--enable-preview'] : args;
 }
 
-function levelSetting(setting, test, name) {
-  const testName = `test${name[0].toUpperCase()}${name.slice(1)}`;
+function levelSetting(setting: Setting, test: boolean, name: string): string | undefined {
+  const testName = `test${name.slice(0, 1).toUpperCase()}${name.slice(1)}`;
   return (
     (test ? setting(testName, `maven.compiler.${testName}`) : undefined) ??
     setting(name, `maven.compiler.${name}`)
   );
 }
 
-function levelOf(setting, test, pluginVersion) {
+function levelOf(
+  setting: Setting,
+  test: boolean,
+  pluginVersion: string | undefined,
+): CompilerLevel {
   const configured = {
     release: levelSetting(setting, test, 'release'),
     source: levelSetting(setting, test, 'source'),
@@ -104,7 +131,7 @@ function levelOf(setting, test, pluginVersion) {
   return { release: undefined, source: fallback, target: fallback };
 }
 
-export function compilerSettings(project) {
+export function compilerSettings(project: XmlElement): CompilerSettings {
   const plugin = compilerPlugin(project);
   const pluginVersion = textAt(plugin, 'version');
   const configurations = compilerConfigurations(plugin, 'default-compile');
@@ -126,6 +153,12 @@ export function compilerSettings(project) {
   };
 }
 
-export function guardCompiler({ release, source, target, encoding, compilerArgs }) {
+export function guardCompiler({
+  release,
+  source,
+  target,
+  encoding,
+  compilerArgs,
+}: CompilerSettings): GuardCompiler {
   return { release, source, target, encoding, args: compilerArgs };
 }
