@@ -9,10 +9,10 @@ import {
   validateProjectRelativePath,
   validateFactRuleSettings,
 } from '../../shared/config.mjs';
-import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
-import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mts';
+import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
 import { validateJavaBuildSetting } from '../../languages/java/builds/build-tool/build-tool-setting.mjs';
-import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mjs';
+import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mts';
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,

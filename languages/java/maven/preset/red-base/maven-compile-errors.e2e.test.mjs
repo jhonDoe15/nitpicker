@@ -1,9 +1,9 @@
 import { cpSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { describe } from 'vitest';
-import { createRepository } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
-import { compileErrorCases } from '../../../adapters/red-base/test-support/compile-error-cases.mjs';
-import { runGitIn } from '../../../adapters/test-support/gradle-e2e.mjs';
+import { createRepository } from '../../../adapters/red-base/test-support/red-base-cases.mts';
+import { compileErrorCases } from '../../../adapters/red-base/test-support/compile-error-cases.mts';
+import { runGitIn } from '../../../adapters/test-support/gradle-e2e.mts';
 
 const pom = path.join(import.meta.dirname, '../../fixtures/single');
 

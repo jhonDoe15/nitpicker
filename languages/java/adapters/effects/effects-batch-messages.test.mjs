@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readEffectsFindings } from './effects-findings.mjs';
+import { readEffectsFindings } from './effects-findings.mts';
 
 const roots = [];
 

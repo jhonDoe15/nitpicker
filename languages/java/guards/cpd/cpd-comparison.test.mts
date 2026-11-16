@@ -4,8 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { readDuplicateFindings } from '../../adapters/metrics/java-duplicates.mjs';
+import { readDuplicateFindings } from '../../adapters/metrics/java-duplicates.mts';
 import { coveredByCpd, readCpdFindings } from '../cpd-duplicates.mts';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 const MAIN_A = 'src/main/java/demo/A.java';
@@ -20,10 +21,12 @@ const roots: string[] = [];
 type Reports = Readonly<Record<string, string>>;
 type Changes = Readonly<Record<string, unknown>>;
 
-const readDuplicates: (
+function readDuplicates(
   reportRoot: string,
   options: { reportFile: string; skip: ReturnType<typeof coveredByCpd> },
-) => unknown = readDuplicateFindings;
+): unknown {
+  return callUntyped(readDuplicateFindings, reportRoot, options);
+}
 const parseReport: (value: unknown, name: string) => { findings: readonly unknown[] } =
   parseAnalyzerReport;
 const compare: (input: {

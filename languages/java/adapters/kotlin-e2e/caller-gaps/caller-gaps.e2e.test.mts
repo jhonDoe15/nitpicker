@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
+import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mts';
 import { gradle, kotlinE2eEnabled } from '../__tests__/kotlin-e2e-project.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 
