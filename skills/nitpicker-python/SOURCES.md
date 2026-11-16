@@ -77,14 +77,6 @@ case (`ruff rule <code>` gives the reason ruff states for each). There are three
   RUF017, RUF022, RUF023 (comments inside the list), RUF026, RUF028, RUF030, RUF033, RUF053, RUF057,
   RUF064, RUF102, UP031, FURB192, PLW1510 (display only).
 
-## Fix plans for near-duplicates
-
-`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
-fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
-It gives the signature of the function to extract (the parameters of the first copy, then one
-parameter for each value that differs), the arguments each copy passes, the nearest shared folder
-that the layout allows (`layout.sharedRoots`, else a `shared` package), or the nearest common package when both modules are in one feature and why no recipe made the change. Names are snake case. The Python findings print the tool `facts`, and the plan builder knows the rule under that name too. Python has no extraction recipe, and the plan says so for a pair in one file. The names it picks avoid every name in the two copies.
-
 ## Writing the output
 
 `ruff check --fix` runs per file over stdin and the engine writes the result, so a file that
@@ -145,6 +137,6 @@ Declined: nothing in the recipes of issue 788 is declined without a precise reas
 
 No recipe extracts the shared function of a `near-duplicate` pair in Python. The extraction needs the
 parameter and return types of the new function, and the Python recipes see only text. The finding
-keeps its fix plan.
+stays.
 
-The same holds for a `partial-run` pair: no recipe extracts the shared statements in Python, and the finding keeps its fix plan.
+The same holds for a `partial-run` pair: no recipe extracts the shared statements in Python, and the finding stays.

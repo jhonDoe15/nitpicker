@@ -51,12 +51,8 @@ const EVALUATORS = {
       baselineFile: options.baselineFile,
       acrossPackages: options.siblingCopiesAcrossPackages === true,
     }),
-  'near-duplicate': ({ facts, context, options }) =>
-    nearDuplicateFindings(facts.nearDuplicateUnits, {
-      ...context,
-      roleOf: layoutRoles(options),
-      files: (facts.modules ?? []).map(({ file }) => file),
-    }),
+  'near-duplicate': ({ facts, context }) =>
+    nearDuplicateFindings(facts.nearDuplicateUnits, context),
   'decided-condition': ({ facts, context }) =>
     decidedConditionFindings(facts.nearDuplicateUnits, context),
   'duplicate-branch': ({ facts, context }) =>
