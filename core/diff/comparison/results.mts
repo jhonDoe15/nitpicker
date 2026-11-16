@@ -4,6 +4,7 @@ import {
   policyDigest,
   policyFindings,
 } from '../reporting/review/policy-findings.mts';
+import type { DeclaredMoves } from './moved-names/declared/move-types.mts';
 import { attachFixes } from './fixes/attach-fixes.mts';
 import {
   type AnalyzerOutcome,
@@ -61,6 +62,7 @@ export type CombineRequest = ReportContext & {
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly baseToHeadPackages?: Moves | undefined;
+  readonly baseToHeadDeclared?: DeclaredMoves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
   readonly policies?: { readonly base?: unknown; readonly head?: unknown } | undefined;
 };

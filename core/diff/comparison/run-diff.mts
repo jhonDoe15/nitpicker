@@ -190,6 +190,7 @@ function runAndCombine(context: RunContext): DiffReport {
     baseToHeadRenames: layout.moves.files,
     baseToHeadDirectories: layout.moves.directories,
     baseToHeadPackages: layout.moves.packages,
+    baseToHeadDeclared: layout.moves.declared,
     touchedCode: layout.touchedCode,
     comparison,
     startedAt,

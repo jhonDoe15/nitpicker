@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
@@ -16,8 +16,11 @@ import {
   TYPESCRIPT_ONLY_OPTIONS,
   extendedProjectTsconfig,
   projectStrictOverrides,
+  solutionCompilerOptions,
+  solutionRootDir,
   strictCompilerOptions,
 } from './project-configs/typescript/typescript-project-options.mjs';
+import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
@@ -150,7 +153,7 @@ export function layoutTransformFor(
     if (extended !== undefined) {
       const layered =
         name === STRYKER_TSCONFIG
-          ? projectLayeredMutationTsconfig(extended, { strictMutants, layout })
+          ? projectLayeredMutationTsconfig(extended, { strictMutants, layout, projectDirectory })
           : projectLayeredTsconfig(extended, JSON.parse(text), {
               layout,
               projectDirectory,
@@ -225,10 +228,11 @@ const ANALYSIS_OPTIONS = {
   skipLibCheck: true,
 };
 
-function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
+function projectLayeredMutationTsconfig(extended, { strictMutants, layout, projectDirectory }) {
   return {
     extends: extended,
     compilerOptions: {
+      ...solutionCompilerOptions(projectDirectory, layout),
       isolatedDeclarations: false,
       noCheck: false,
       skipLibCheck: true,
@@ -237,6 +241,20 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
       ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
     },
   };
+}
+
+function shippedQualityTsconfig() {
+  return JSON.parse(
+    readFileSync(new URL('defaults/tsconfig.quality.json', import.meta.url), 'utf8'),
+  );
+}
+
+export function filesLeftOutsideRootDir(projectDirectory, layout, base = shippedQualityTsconfig()) {
+  return filesOutsideRootDir(
+    projectDirectory,
+    layoutTsconfig(base, layout),
+    solutionRootDir(projectDirectory, layout),
+  );
 }
 
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory, withRootFiles }) {
@@ -251,6 +269,7 @@ function projectLayeredTsconfig(extended, base, { layout, projectDirectory, with
   return {
     extends: extended,
     compilerOptions: {
+      ...solutionCompilerOptions(projectDirectory, layout),
       ...ANALYSIS_OPTIONS,
       ...strictCompilerOptions(layout.javascript),
       ...strictOverrides(layout),
@@ -259,6 +278,6 @@ function projectLayeredTsconfig(extended, base, { layout, projectDirectory, with
     },
     ...(rootFiles.length === 0 ? {} : { files: rootFiles }),
     include: layered.include,
-    exclude: layered.exclude,
+    exclude: [...layered.exclude, ...filesLeftOutsideRootDir(projectDirectory, layout, base)],
   };
 }

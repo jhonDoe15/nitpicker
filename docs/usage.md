@@ -350,6 +350,21 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
+- **Moves**: a file that git sees as a rename keeps its findings as unchanged, also when the
+  move only changes its `package` and import lines. A finding follows the class or module name,
+  the package, the Gradle project path (`:lib` follows a moved `lib` folder) and the Maven module
+  folder of the moved code. For Java, Kotlin, Groovy and Scala the package comes from the `package`
+  line of the old and the new file, so a default package, a Kotlin package that omits the folder
+  root and a file moved with its `package` line unchanged are read right; a top-level Python
+  module (`tax.py` to `shop/tax.py`) follows its path. A package is the same package after a move
+  only when every file of it moved to one new package or folder, and at least two files moved. When
+  only some files moved, the files that stayed keep the old package and the moved ones are a
+  different package, so a package-level finding that moves with them may be new. A Gradle project
+  or Maven module follows its folder only when every file under the folder moved to the same new
+  folder, and the old project path or folder is kept when the head still reports it. A message
+  that names a class of a moved package (an unused import, an Error Prone or kotlinc warning) stays
+  unchanged when the head message differs only in the moved class names; a different class of the
+  same name is new.
 - **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
   adds or edits on the head side, so every surviving mutant it reports is new. When the change
   edits or deletes a test, the production modules that test imports are mutated whole on head, and
@@ -4113,9 +4128,15 @@ the file is compared instead (`stryker project config changed: stryker.config.mj
 #### TypeScript compiler options (typescript and javascript presets)
 
 The type check always extends the project's `tsconfig.json` (with the JavaScript preset, a
-`jsconfig.json` when there is no `tsconfig.json`; for a solution config, the referenced config that
-includes a source root), so its `paths`, `jsx`, module resolution and other settings apply without an
-opt-in. What `tools.typescript.precedence` decides is who wins for nitpicker's strict options:
+`jsconfig.json` when there is no `tsconfig.json`; for a solution config, one referenced config), so
+its `paths`, `jsx`, module resolution and other settings apply without an opt-in. A solution config
+(`"files": []` plus `references`, also through nested solution configs) resolves to the referenced
+config that covers the most source and test files, then the most test files, then the first in
+reference order, so test files keep their test-runner `types` and `jsx`. The `types` (and `lib`) of
+the other referenced configs are merged in, and `rootDir`, `composite`, `outDir` and `tsBuildInfoFile`
+are not inherited, so production files keep what they need. When the chosen config has a `rootDir`, files outside it (such as a root `vitest.config.ts`) are left out of the check and the note says so. The run prints one line, such as
+`TypeScript: solution tsconfig.json resolved to tsconfig.spec.json (it includes the test files; types merged from tsconfig.build.json)`,
+to say which config it used. What `tools.typescript.precedence` decides is who wins for nitpicker's strict options:
 `strict` and its family (`noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`,
 `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`,
 `useUnknownInCatchVariables`, `alwaysStrict`), `noImplicitReturns`, `noFallthroughCasesInSwitch`,
@@ -4179,7 +4200,7 @@ what it sets over it whatever the config says:
 
 | Runner      | Read without the opt-in                                                                                                                                                                                                                                                | Set by nitpicker                                                                                                                                                                                                                                                                |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest      | the first `vitest.config.*` or `vite.config.*`: environment, setup files, aliases, plugins, `include` and `exclude` (nitpicker's are added), `projects`, and, while `tools.tests.timeouts` is not set, a `hookTimeout` or an inline project's `testTimeout` above 10 s | `retry: 0`, `allowOnly: false`, `restoreMocks: true`, `bail: 0`, `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no snapshot writes, the test timeout, `dir`, the reporters, the worker count and the whole `coverage` block                               |
+| Vitest      | the first `vitest.config.*` or `vite.config.*`: environment, setup files, aliases, plugins, `include` (nitpicker's patterns are added only when the config has no `projects` and no `include`; a project's own `include` or `projects` replaces the layout and test-root patterns, so `layout.testRoots: ["spec"]` with `include: ["src/**/*.test.ts"]` does not run `spec`), `exclude` (nitpicker's are added), `projects`, and, while `tools.tests.timeouts` is not set, a `hookTimeout` or an inline project's `testTimeout` above 10 s | `retry: 0`, `allowOnly: false`, `restoreMocks: true`, `bail: 0`, `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no snapshot writes, the test timeout, `dir`, the reporters, the worker count and the whole `coverage` block                               |
 | Jest        | the config Jest itself resolves (`jest.config.*`, the `jest` key in `package.json`, or the test script's `--config`): transforms, environment, setup files, module mapping, `projects`, `testMatch`, `testPathIgnorePatterns` and `bail`                               | `--ci`, `--restoreMocks`, `--passWithNoTests` (a run with no test is reported on its own), `--testTimeout`, the worker count, the JSON report, and the coverage options: the babel provider, `collectCoverageFrom` and no thresholds                                            |
 | Mocha       | `.mocharc.*` or the `mocha` key in `package.json` (`require`, `ui`, `extension`, `node-option` and the rest), and the test script's options                                                                                                                            | the test files, `--timeout`, `--retries 0`, `--no-bail`, `--no-forbid-only`, the JSON reporter and V8 coverage; the script's `--bail`, `--forbid-only`, `--reporter`, `--timeout`, `--retries` and watch options are dropped, and so are the rc file's `bail` and `forbid-only` |
 | `node:test` | no config file; the test script's options                                                                                                                                                                                                                              | the test files, the reporter, `--test-timeout`, `--test-concurrency` and V8 coverage; the script's `--test-only`, watch, reporter, timeout, concurrency, shard, coverage and snapshot-update options are dropped                                                                |
