@@ -32,8 +32,7 @@ const DETEKT_NEWEST_JDK = 21;
 const DETEKT_OLDEST_JDK = 17;
 const JAVA = 'java';
 const SEARCHED =
-  'JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or ' +
-  '/Library/Java/JavaVirtualMachines';
+  'JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or /Library/Java/JavaVirtualMachines';
 
 export function chooseErrorProneJdk({
   project,

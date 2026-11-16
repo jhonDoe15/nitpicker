@@ -56,16 +56,18 @@ const CHECKSTYLE = 'checkstyle';
 const CHECKSTYLE_XML = 'checkstyle.xml';
 const GOOGLE_CHECKS = 'google_checks.xml';
 
-function bundledGoogleChecks(checkstyleJar: string, spawn: JavaSpawn): string {
+function bundledGoogleChecks(checkstyleJar: string | undefined, spawn: JavaSpawn): string {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-'));
   try {
-    const result = spawn(javaCommand('jar'), ['xf', checkstyleJar, GOOGLE_CHECKS], {
+    const result = spawn(javaCommand('jar'), ['xf', checkstyleJar ?? '', GOOGLE_CHECKS], {
       cwd: directory,
       encoding: 'utf8',
     });
     const file = path.join(directory, GOOGLE_CHECKS);
     if (result.status !== 0 || !existsSync(file)) {
-      throw new Error(`could not read ${GOOGLE_CHECKS} from ${checkstyleJar}: ${result.stderr}`);
+      throw new Error(
+        `could not read ${GOOGLE_CHECKS} from ${String(checkstyleJar)}: ${result.stderr}`,
+      );
     }
     return readFileSync(file, 'utf8');
   } finally {
@@ -84,9 +86,6 @@ function checkstyleSetup(
   const jar = (tools[CHECKSTYLE] ?? []).find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  if (jar === undefined) {
-    throw new Error(`checkstyle-${pinned.checkstyle}.jar is not among the Checkstyle tools`);
-  }
   const bundled = textOf(nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync)));
   const unformatted = fieldOf(style, 'javaStyle') === 'none';
   const declared = fieldsOf(fieldOf(configs, CHECKSTYLE));
