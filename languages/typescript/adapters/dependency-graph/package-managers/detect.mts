@@ -12,9 +12,10 @@ const LOCKFILE_ORDER = [
 ];
 
 const LOCKFILE_NAMES = LOCKFILE_ORDER.flatMap(({ files }) => files);
+const MANIFEST = 'package.json';
 
 export const DEPENDENCY_MANIFESTS = [
-  'package.json',
+  MANIFEST,
   ...LOCKFILE_NAMES,
   'pnpm-workspace.yaml',
   '.npmrc',
@@ -50,10 +51,20 @@ function ancestorsToRepository(start: string): string[] {
   return [path.resolve(start)];
 }
 
+function declaresWorkspaces(directory: string): boolean {
+  if (existsSync(containedPath(directory, 'pnpm-workspace.yaml'))) {
+    return true;
+  }
+  const workspaces = fieldOf(parsedManifest(readProjectText(directory, MANIFEST)), 'workspaces');
+  return Array.isArray(workspaces) || Array.isArray(fieldOf(workspaces, 'packages'));
+}
+
 export function managerRoot(projectRoot: string): string {
-  const holder = ancestorsToRepository(projectRoot).find((directory) =>
-    LOCKFILE_NAMES.some((file) => existsSync(containedPath(directory, file))),
-  );
+  const ancestors = ancestorsToRepository(projectRoot);
+  const holder =
+    ancestors.find((directory) =>
+      LOCKFILE_NAMES.some((file) => existsSync(containedPath(directory, file))),
+    ) ?? ancestors.find(declaresWorkspaces);
   return holder ?? path.resolve(projectRoot);
 }
 
@@ -66,7 +77,7 @@ function parsedManifest(text: string): unknown {
 }
 
 function declaredPackageManager(root: string): { name?: string; version?: string } | undefined {
-  const text = readProjectText(root, 'package.json');
+  const text = readProjectText(root, MANIFEST);
   const manifest = parsedManifest(text);
   const field =
     fieldOf(manifest, 'kind') === 'malformed-json'

@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { lintFixture } from '../failure-messages/test-support/harness.mts';
-import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
-import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
-import { rule as noThrow } from './rules/errors/no-throw.mjs';
-import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
+import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mts';
+import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mts';
+import { rule as noThrow } from './rules/errors/no-throw.mts';
+import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mts';
 
 const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

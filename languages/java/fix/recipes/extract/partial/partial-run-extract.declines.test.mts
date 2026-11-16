@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { forcedPartial as untypedForcedPartial } from '../../../../adapters/near-duplicates/test-support/forced-partial.mjs';
+import { forcedPartial } from '../../../../adapters/near-duplicates/test-support/forced-partial.mts';
 import {
   headerMethod,
   headerPair,
@@ -12,7 +12,6 @@ import { javaExtractPartialRunRecipe as recipe } from './partial-run-extract.mts
 type Span = { readonly start: number; readonly end: number };
 type Forced = { readonly methods: readonly string[]; readonly runs: readonly Span[] };
 
-const forcedPartial: (text: string, options: Forced) => Promise<unknown> = untypedForcedPartial;
 const PATH = 'src/main/java/demo/Align.java';
 const NAMES = ['headerNames', 'headerCount'];
 

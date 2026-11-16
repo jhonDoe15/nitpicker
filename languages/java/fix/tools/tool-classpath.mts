@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { failureText, fixSpawn, runFixCommand } from '../../../../core/fix/common/fix-command.mjs';
@@ -8,6 +8,7 @@ import {
   cacheDirectory,
   dependency,
   missing,
+  publishDirectory,
   readClasspaths,
   resolveToolSet,
   toolsKey,
@@ -113,27 +114,34 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
   if (textsOf(missing(cached)).length === 0) {
     return cached;
   }
-  const sources = writeResolutionBuild(projectRoot, directory);
-  const target = callUntyped(gradleTarget, {
-    projectRoot,
-    configured: configuredTool(environment, 'NITPICKER_GRADLE'),
-    args: gradleToolArguments(tools, directory),
-  });
-  const result = callUntyped(runFixCommand, {
-    operation: 'fix-tools',
-    command: fieldOf(target, 'command'),
-    args: fieldOf(target, 'args'),
-    cwd: directory,
-    acceptedStatuses: [0],
-    shell: fieldOf(target, 'shell'),
-    timeout: TOOL_RESOLUTION_TIMEOUT_MS,
-    executeFixCommand,
-    describe: (failed: unknown) =>
-      `${textOf(failureText(failed))} (${resolutionHint(directory, sources)})`,
-  });
-  const classpaths = parseToolClasspaths(textOf(fieldOf(result, 'stdout')));
-  storeClasspaths(directory, classpaths);
-  return classpaths;
+  const staging = mkdtempSync(`${directory}.staging-`);
+  try {
+    const sources = writeResolutionBuild(projectRoot, staging);
+    const target = callUntyped(gradleTarget, {
+      projectRoot,
+      configured: configuredTool(environment, 'NITPICKER_GRADLE'),
+      args: gradleToolArguments(tools, staging),
+    });
+    const result = callUntyped(runFixCommand, {
+      operation: 'fix-tools',
+      command: fieldOf(target, 'command'),
+      args: fieldOf(target, 'args'),
+      cwd: staging,
+      acceptedStatuses: [0],
+      shell: fieldOf(target, 'shell'),
+      timeout: TOOL_RESOLUTION_TIMEOUT_MS,
+      executeFixCommand,
+      describe: (failed: unknown) =>
+        `${textOf(failureText(failed))} (${resolutionHint(directory, sources)})`,
+    });
+    const classpaths = parseToolClasspaths(textOf(fieldOf(result, 'stdout')));
+    storeClasspaths(staging, classpaths);
+    rmSync(directory, { recursive: true, force: true });
+    callUntyped(publishDirectory, staging, directory);
+    return classpaths;
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 function resolveWithMaven({

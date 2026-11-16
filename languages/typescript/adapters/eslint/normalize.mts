@@ -67,6 +67,7 @@ const ts = typescriptApi();
 const REPORT_ONLY_RULES = new Set([
   'nitpicker/no-presence-truthiness',
   'nitpicker/promise-wait-deadline',
+  'nitpicker/no-check-then-write',
 ]);
 
 export function normalizeEslintResults({

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { messageOf } from '../../typed/eslint-report.mts';
-import { containedPath } from '../../typed/fix-views.mts';
+import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
 import { suggestionRules, type LintMessage } from '../typed/suggestion-views.mts';
 
 const TSCONFIG = {

@@ -1,6 +1,6 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { rule } from './naming-convention.mjs';
+import { rule } from './naming-convention.mts';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const OPTIONS = [

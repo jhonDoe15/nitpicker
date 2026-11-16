@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-unindexed-foreign-key.mjs';
+import { rule } from './no-unindexed-foreign-key.mts';
 import { schemaProject } from './test-support/schema-projects.mts';
 
 function manifest(dependencies: string[]) {

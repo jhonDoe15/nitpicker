@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { giveEachInstantiationItsOwnIdentity, startIdentityScope } from './recursion-identity.mjs';
+import { giveEachInstantiationItsOwnIdentity, startIdentityScope } from './recursion-identity.mts';
 
 function programOf(code: string) {
   const file = 'grid.ts';

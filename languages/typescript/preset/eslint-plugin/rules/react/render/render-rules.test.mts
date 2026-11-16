@@ -1,6 +1,6 @@
-import { rule as reactNoDirectDom } from './react-no-direct-dom.mjs';
-import { rule as reactNoEffectEventHandling } from './react-no-effect-event-handling.mjs';
-import { rule as reactNoRandomKey } from './react-no-random-key.mjs';
+import { rule as reactNoDirectDom } from './react-no-direct-dom.mts';
+import { rule as reactNoEffectEventHandling } from './react-no-effect-event-handling.mts';
+import { rule as reactNoRandomKey } from './react-no-random-key.mts';
 import { createReactRuleTester, filename } from '../test-support/tester.mts';
 
 const tester = createReactRuleTester();

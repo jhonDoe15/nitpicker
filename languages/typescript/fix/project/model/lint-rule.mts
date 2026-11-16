@@ -1,6 +1,6 @@
-import { type ESLint, Linter } from 'eslint';
+import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../../preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../../preset/eslint-plugin/index.mts';
 import type { LintMessage, Project } from '../typed/project-types.mts';
 
 export type LintSettings = {
@@ -14,18 +14,6 @@ type LintConfig = {
   readonly options: readonly unknown[];
   readonly typed: boolean;
 };
-
-function isPlugin(value: unknown): value is ESLint.Plugin {
-  return typeof value === 'object' && value !== null && 'rules' in value;
-}
-
-function nitpickerPlugin(): ESLint.Plugin {
-  const plugin: unknown = nitpickerRules;
-  if (!isPlugin(plugin)) {
-    throw new TypeError('The nitpicker ESLint plugin does not load');
-  }
-  return plugin;
-}
 
 function offsetOf(text: string, line: number, column: number): number {
   const starts = [0, ...Array.from(text.matchAll(/\n/gu), (match) => match.index + 1)];
@@ -43,7 +31,7 @@ function configFor(project: Project, { ruleId, options, typed }: LintConfig): Li
         parserOptions: typed ? { programs: [project.program] } : {},
       },
       linterOptions: { reportUnusedDisableDirectives: 'off' },
-      plugins: { nitpicker: nitpickerPlugin() },
+      plugins: { nitpicker: nitpickerRules },
       rules: { [`nitpicker/${ruleId}`]: ['error', ...options] },
     },
   ];

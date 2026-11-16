@@ -1,16 +1,16 @@
 import type { ESLint, Linter } from 'eslint';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
-import { nitpickerRules as untypedNitpickerRules } from '../eslint-plugin/index.mjs';
+import { nitpickerRules as untypedNitpickerRules } from '../eslint-plugin/index.mts';
 import { errorWrappingPolicy as untypedErrorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mts';
 import { strictPresetConfig as untypedStrictPresetConfig } from '../eslint-config/strict.mts';
 import {
   UNUSED_PARAMETERS as untypedUnusedParameters,
   usesRouteHandlerFramework as untypedUsesRouteHandlerFramework,
   productionLayoutConfigFor as untypedProductionLayoutConfigFor,
-} from '../eslint-config/policy/production-policy.mjs';
+} from '../eslint-config/policy/production-policy.mts';
 import { applyRuleExceptions as untypedApplyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { logicConfigFor as untypedLogicConfigFor } from '../eslint-config/logic/logic-rules.mts';
-import { untypedJavascriptConfig as javascriptWithoutTypesConfig } from '../eslint-config/policy/untyped-javascript.mjs';
+import { untypedJavascriptConfig as javascriptWithoutTypesConfig } from '../eslint-config/policy/untyped-javascript.mts';
 import {
   applyJavascriptDialect as untypedApplyJavascriptDialect,
   scriptRuleEntries as untypedScriptRuleEntries,
@@ -28,7 +28,7 @@ import { testHonestyConfigFor as untypedTestHonestyConfigFor } from '../eslint-c
 import { setupFilesIn as untypedSetupFilesIn } from '../eslint-config/test-honesty/setup-files.mts';
 import { stubRestoresIn as untypedStubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mts';
 import { readDependencyNames as untypedReadDependencyNames } from '../eslint-config/scope-support.mjs';
-import { securityFactsFor as untypedSecurityFactsFor } from '../eslint-config/policy/security-facts.mjs';
+import { securityFactsFor as untypedSecurityFactsFor } from '../eslint-config/policy/security-facts.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import {
   i18nScopeConfigFor as untypedI18nScopeConfigFor,
@@ -51,6 +51,10 @@ import { fileNameRuleOptions as untypedFileNameRuleOptions } from '../../convent
 import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
 import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';
 import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mts';
+import { routeAuthEntries as untypedRouteAuthEntries } from '../../conventions/measures/routes/route-auth.mts';
+import { softDeleteFilterEntries as untypedSoftDeleteFilterEntries } from '../../conventions/measures/database/soft-delete-filters.mts';
+import { projectOpensTransactions as untypedProjectOpensTransactions } from '../../conventions/measures/database/transactions.mts';
+import { ormsOf as untypedOrmsOf } from '../eslint-plugin/rules/support/orm/orms.mts';
 import {
   testEnvironmentConfigFor as untypedTestEnvironmentConfigFor,
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,
@@ -68,6 +72,15 @@ export type StrictOptions = {
   readonly security: SecurityFacts;
   readonly frameworkDefaultExports: readonly string[];
   readonly detachedWorkRunners: readonly string[];
+  readonly databaseWrites: {
+    readonly orms: readonly string[];
+    readonly opensTransactions: boolean;
+  };
+  readonly routeAuth: { readonly entries: readonly string[] };
+  readonly softDeleteFilters: {
+    readonly orms: readonly string[];
+    readonly filters: readonly string[];
+  };
 };
 
 export type PresetLayout = Layout & {
@@ -160,6 +173,12 @@ export const assertionFunctionNames: (conventions: Conventions) => string[] =
   untypedAssertionFunctionNames;
 export const detachedWorkRunnerNames: (conventions: Conventions) => string[] =
   untypedDetachedWorkRunnerNames;
+export const routeAuthEntries: (conventions: Conventions) => string[] = untypedRouteAuthEntries;
+export const softDeleteFilterEntries: (conventions: Conventions) => string[] =
+  untypedSoftDeleteFilterEntries;
+export const projectOpensTransactions: (conventions: Conventions) => boolean =
+  untypedProjectOpensTransactions;
+export const ormsOf: (dependencies: readonly string[]) => string[] = untypedOrmsOf;
 export const precedenceLayers: (precedence: string[] | undefined) => {
   readonly usesProject: boolean;
 } = untypedPrecedenceLayers;

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defineRecipes as untypedDefineRecipes } from '../../../../../core/fix/engine/recipes.mjs';
 import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
-import type { RecipeResult } from '../../../../../core/fix/typed/fix-pipeline.mts';
+import type { RecipeResult } from '../../../../../core/fix/typed/fix-views.mts';
 import type { FixFile, FixRecipe } from '../../../../../core/fix/typed/fix-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';

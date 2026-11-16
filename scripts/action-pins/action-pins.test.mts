@@ -27,6 +27,52 @@ describe('repository action pins', () => {
 
     expect(fieldsOf(step?.['with'])?.['cache-provider']).toBe('basic');
   });
+
+  it.each(['java', 'kotlin'])(
+    '%s restores the Gradle dependency cache and saves it from main',
+    (language) => {
+      const workflow: unknown = parse(
+        readFileSync(path.join(repositoryRoot, `.github/workflows/${language}-e2e.yml`), 'utf8'),
+      );
+      const steps = listOf(
+        fieldsOf(fieldsOf(fieldsOf(workflow)?.['jobs'])?.[`${language}-shard`])?.['steps'],
+      ).map((entry) => fieldsOf(entry) ?? {});
+      const pathOf = (inputs: unknown) => {
+        const text = fieldsOf(inputs)?.['path'];
+        return typeof text === 'string' ? text : '';
+      };
+      const stepUsing = (prefix: string, pathText = '') =>
+        steps.find(
+          ({ uses, with: inputs }) =>
+            typeof uses === 'string' &&
+            uses.startsWith(prefix) &&
+            pathOf(inputs).includes(pathText),
+        );
+      const restore = fieldsOf(stepUsing('actions/cache/restore@', 'modules-2')?.['with']);
+      const save = stepUsing('actions/cache/save@', 'modules-2');
+
+      const expression = (text: string) => ['$', '{{ ', text, ' }}'].join('');
+      const prefix = `${language}-gradle-${expression('runner.os')}-${expression('matrix.shard')}-`;
+      const hash = expression("hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')");
+      const onMain = [
+        '!cancelled()',
+        "github.ref == 'refs/heads/main'",
+        "github.event_name != 'pull_request'",
+        "steps.gradle-cache.outputs.cache-hit != 'true'",
+      ].join(' && ');
+
+      expect(restore).toEqual({
+        path: '~/.gradle/caches/modules-2\n~/.gradle/caches/jars-*\n',
+        key: `${prefix}${hash}`,
+        'restore-keys': `${prefix}\n`,
+      });
+      expect(save?.['if']).toBe(expression(onMain));
+      expect(
+        fieldsOf(stepUsing('gradle/actions/setup-gradle@')?.['with'])?.['cache-disabled'],
+      ).toBe(expression("github.event_name != 'pull_request'"));
+      expect(fieldsOf(stepUsing('actions/setup-java@')?.['with'])?.['cache']).toBeUndefined();
+    },
+  );
 });
 
 describe('action reference validation', () => {

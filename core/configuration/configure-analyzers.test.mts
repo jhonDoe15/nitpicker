@@ -5,9 +5,9 @@ import {
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
   createPythonAnalyzers,
-} from '../../languages/python/adapters/python-analyzer.mjs';
+} from '../../languages/python/adapters/python-analyzer.mts';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
-import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
+import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mts';
 import { configureAnalyzers } from './configure-analyzers.mts';
 import { analyzersOf, type Analyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf } from '../../shared/values/readers.mts';

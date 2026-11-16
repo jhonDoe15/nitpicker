@@ -10,8 +10,7 @@ import { metricChange } from './console/metric-values.mts';
 import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
-import { planSection } from '../../../shared/fix-plans/render.mjs';
-import { scopeLine } from '../../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import {
@@ -26,6 +25,7 @@ type Summary = ReportData['summary'];
 const stagedLinesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly unknown[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const projectLinesOf: (summary: unknown) => readonly string[] = projectLine;
 const docsUrl: (relativePath: string, anchor: undefined, root: unknown) => unknown = repositoryUrl;
 const helpUri: (links: ReferenceLinks, finding: ReportEntry) => unknown = helpUriFor;
 const links: () => ReferenceLinks = referenceLinks;
@@ -37,7 +37,6 @@ const activeAndClean: (
 ) => { readonly active: unknown[]; readonly clean: number } = splitTools;
 const isActive: (tool: unknown) => boolean = isActiveDiffTool;
 const cleanLineOf: (clean: number) => string = cleanLine;
-const plansSection: (plans: unknown) => string[] = planSection;
 
 function field(value: unknown, key: string): string {
   return textOf(fieldOf(value, key));
@@ -56,7 +55,6 @@ export function renderTextReport(
   ];
   lines.push(...failingFirstLines('New', report.newFindings));
   lines.push(...ruleReferenceLines(report.newFindings, reference));
-  lines.push(...plansSection(report.fixPlans ?? []));
   appendHeldSection(lines, report.unchangedFindings);
   lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
   appendMetricSection(lines, report.changedMetrics);
@@ -69,6 +67,7 @@ function summaryLines(report: ReportData): unknown[] {
   const { summary } = report;
   return [
     'Nitpicker quality diff',
+    ...projectLinesOf(summary),
     `Base ref: ${field(summary, 'requestedBaseRef')}`,
     `Merge base: ${field(summary, 'mergeBaseSha')}`,
     `Head: ${field(summary, 'headSha')}`,

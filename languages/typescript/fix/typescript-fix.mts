@@ -4,20 +4,19 @@ import {
   withHeadPolicyFile as untypedWithHeadPolicyFile,
 } from '../preset/head-policy.mjs';
 import { resolveLayoutFor as untypedResolveLayoutFor } from '../preset/layout.mjs';
-import { splitByEncoding as untypedSplitByEncoding } from '../../../core/fix/common/fix-files.mjs';
-import { undecodableNote as untypedUndecodableNote } from '../../../core/fix/common/fix-notes.mjs';
-import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
 import {
-  type Bytes,
-  type RecipeResult,
   changedFiles,
   collectFixFiles,
   linkNote,
   readBytes,
   rewrittenPaths,
   runRecipes,
+  SHARED_RECIPES,
   sharedInputs,
-} from '../../../core/fix/typed/fix-pipeline.mts';
+  splitByEncoding,
+  undecodableNote,
+} from '../../../core/fix/typed/fix-views.mts';
+import type { Bytes, RecipeResult } from '../../../core/fix/typed/fix-views.mts';
 import type {
   FixFile,
   FixOutcome,
@@ -57,15 +56,8 @@ const withHeadPolicyFile: (
   run: (policyFile: string) => FixOutcome,
 ) => FixOutcome = untypedWithHeadPolicyFile;
 const resolveLayoutFor: (policy: HeadPolicy) => Layout = untypedResolveLayoutFor;
-const splitByEncoding: (
-  projectRoot: string,
-  files: readonly FixFile[],
-) => { readonly files: readonly FixFile[]; readonly undecodable: readonly string[] } =
-  untypedSplitByEncoding;
-const undecodableNote: (paths: readonly string[]) => string[] = untypedUndecodableNote;
 const typescriptRecipes: readonly unknown[] = TYPESCRIPT_RECIPES;
 const sharedRecipes: readonly unknown[] = SHARED_RECIPES;
-
 function isManifest(name: string): boolean {
   return /(?:^|\/)package\.json$/u.test(name);
 }

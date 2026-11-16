@@ -1,5 +1,5 @@
 import { typedTsProject } from '../../../test-support/projects/typed-ts-project.mts';
-import { rule } from './no-cached-rejection.mjs';
+import { rule } from './no-cached-rejection.mts';
 
 const { tester, write } = typedTsProject('nitpicker-cached-rejection-');
 

@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { Parser } from 'web-tree-sitter';
+import { Parser, type Node } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { isText } from '../../../../shared/values/readers.mts';
-import { loadGrammar } from './grammar/load-grammar.mjs';
-import { kotlinUnits } from './kotlin/units.mjs';
-import { javaExtractions } from './extract/file-extractions.mjs';
-import { javaUnits } from './tree/units.mjs';
+import { loadGrammar } from './grammar/load-grammar.mts';
+import { kotlinUnits } from './kotlin/units.mts';
+import { javaExtractions } from './extract/file-extractions.mts';
+import { javaUnits } from './tree/units.mts';
 
 type TreesRequest = {
   readonly root: string;
@@ -13,7 +13,7 @@ type TreesRequest = {
   readonly texts: Readonly<Record<string, string>> | undefined;
   readonly mode: string;
 };
-type UnitsOf = (program: unknown, file: string) => unknown;
+type UnitsOf = (program: Node, file: string) => unknown;
 type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
 const GRAMMARS = {

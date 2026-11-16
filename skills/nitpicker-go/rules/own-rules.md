@@ -92,6 +92,19 @@ the allowed form and ends with its exception entry.
   concurrently under an errgroup with `SetLimit`. Inside one transaction, prepare the statement
   once and execute it per item. A loop over a fixed list (migrations), a retry loop over a count, a
   loop over a channel and a loop that stops at the first success are fine.
+- A gqlgen field resolver of a list parent does not query per parent
+  (`go-rules/query-per-parent-resolver`): a method such as `func (r *viewResolver) Owner(ctx, obj *View)`
+  that queries by `obj.OwnerID` costs one query per list item. Load through a batched dataloader, or read
+  what the parent already carries. A parent that is only returned alone is fine.
+- Related writes go through one transaction (`go-rules/writes-without-transaction`,
+  `go-rules/write-outside-transaction`): two writes on different tables in one function belong in
+  `db.BeginTx` (gorm `db.Transaction`) with every write on the `tx`, or in the caller's transaction
+  passed in. A write through the outer `db` while a `tx` is open runs outside the transaction. A
+  write that must survive a rollback (an audit row) is the exception.
+- One failing item does not stop a scheduled or queue job (`go-rules/failing-item-stops-job`): in a
+  robfig/cron, gocron, asynq or machinery job, a loop over tenants or accounts that calls the database
+  or a remote service records the error per item and continues (`errors.Join`, a failed-items slice),
+  or enqueues one task per item. A job that must be retried as a whole is the exception.
 
 ## Literals, comments and methods
 

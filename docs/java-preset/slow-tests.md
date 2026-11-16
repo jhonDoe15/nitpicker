@@ -54,6 +54,6 @@ Part of the [Java preset guide](../java-preset.md).
   and the exception hint in the message names the project-relative path. `readModuleFindings`
   passes each module's path (`modulePath`, `builds/module-path.mjs`), empty for a single module at the
   project root; a Gradle build reads from the project root and passes none.
-- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
+- **Tests.** `adapters/test-times/slow-tests.test.mts` (sample Gradle, Surefire and Failsafe XML,
   module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
   and the multi-module and `failsafe` Maven e2e fixtures.

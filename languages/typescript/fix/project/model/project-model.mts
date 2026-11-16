@@ -6,7 +6,7 @@ import {
   resolveLayoutFor as untypedResolveLayoutFor,
   toPosix as untypedToPosix,
 } from '../../../preset/layout.mjs';
-import { configFileGlobsFor as untypedConfigFileGlobsFor } from '../../../preset/eslint-config/policy/production-policy.mjs';
+import { configFileGlobsFor as untypedConfigFileGlobsFor } from '../../../preset/eslint-config/policy/production-policy.mts';
 import type { FixContext, FixInputs, FixLayout, Project } from '../typed/project-types.mts';
 
 type ProjectSettings = {

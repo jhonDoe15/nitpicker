@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "job-item-failure-stops-run",
+    "mention": "enqueue one task per item",
+    "subject": "sync_all|requests.post()|Celery task"
+  }
+]

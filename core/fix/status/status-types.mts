@@ -1,5 +1,5 @@
 import { type Fields, fieldOf, textOf, textsOf } from '../../../shared/values/readers.mts';
-import type { PresetRule, RecipeListing, RuleMatcher } from '../typed/fix-types.mts';
+import type { RecipeListing, RuleMatcher } from '../typed/fix-types.mts';
 
 export type { Fields, RecipeListing };
 
@@ -13,16 +13,8 @@ export type Notes = {
   };
 };
 
-function isPresetRules(value: unknown): value is readonly PresetRule[] {
-  return Array.isArray(value);
-}
-
 function isRecipeListings(value: unknown): value is readonly RecipeListing[] {
   return Array.isArray(value);
-}
-
-export function presetRules(value: unknown): readonly PresetRule[] {
-  return isPresetRules(value) ? value : [];
 }
 
 export function recipeListings(value: unknown): readonly RecipeListing[] {

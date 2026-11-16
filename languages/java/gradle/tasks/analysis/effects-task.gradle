@@ -44,6 +44,7 @@ tasks.register('nitpickerEffects') {
     dependsOn tasks.named('classes')
     inputs.files(fileTree(effectsDirectory) { include '**/*.java' }).withPropertyName('engine')
     inputs.files(sourceSets.main.output.classesDirs, sourceSets.main.compileClasspath).withPropertyName('classes')
+    inputs.files(sourceSets.main.resources).withPropertyName('resources')
     inputs.files(configurations.nitpickerEffects).withPropertyName('asm')
     inputs.property('options', providers.provider { effectsOptions().join(',') })
     inputs.property('jdk', "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}")
@@ -102,7 +103,9 @@ tasks.register('nitpickerEffects') {
                 (entry.directory || entry.name.endsWith('.jar'))
         }
         def compileFiles = sourceSets.main.compileClasspath.files.findAll { it.exists() }
+        def resourceDirs = [sourceSets.main.output.resourcesDir].findAll { it != null && it.exists() }
         input.text = (mainClasses.collect { "main ${it.absolutePath}" } +
+            resourceDirs.collect { "resources ${it.absolutePath}" } +
             compileFiles.collect { "classpath ${it.absolutePath}" } +
             compileFiles.findAll(inBuild).collect { "dependency ${it.absolutePath}" } +
             effectsOptions().collect { "option ${it}" })

@@ -1,4 +1,4 @@
-import { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
+import { writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
 import { runStamp } from '../reporting/run-stamp/run-stamp.mjs';
 import path from 'node:path';
@@ -38,7 +38,6 @@ const captureTree: CaptureHead = captureWorkingTree;
 type ReportPlace = { readonly projectPath: string; readonly repositoryRoot: string };
 const writeReports: (outputRoot: string, report: DiffReport, location: ReportPlace) => unknown =
   writeDiffReports;
-const plansFor: (report: DiffReport, location: ReportPlace) => unknown[] = fixPlansFor;
 const withPolicyFile: <T>(policy: unknown, operation: (file: unknown) => T) => T =
   withHeadPolicyFile;
 const stampOf: (request: {
@@ -54,12 +53,11 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
-  Object.assign(report.summary, stamp, partialRunOf(settings.partialRun));
-  const location = {
-    projectPath: settings.projectRelativePath,
-    repositoryRoot: settings.repositoryRoot,
-  };
-  report.fixPlans = plansFor(report, location);
+  const projectPath = settings.projectRelativePath;
+  Object.assign(report.summary, stamp, partialRunOf(settings.partialRun), {
+    projectPath: projectPath.replaceAll(path.sep, '/'),
+  });
+  const location = { projectPath, repositoryRoot: settings.repositoryRoot };
   report.text = writeReports(settings.outputRoot, report, location);
   return report;
 }
@@ -192,6 +190,7 @@ function runAndCombine(context: RunContext): DiffReport {
     baseToHeadRenames: layout.moves.files,
     baseToHeadDirectories: layout.moves.directories,
     baseToHeadPackages: layout.moves.packages,
+    baseToHeadDeclared: layout.moves.declared,
     touchedCode: layout.touchedCode,
     comparison,
     startedAt,

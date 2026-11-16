@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaStyleProperties } from '../style/java-style.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
-import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
+import { writeSpringRoles } from '../spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mts';
 import { effectsProperties } from '../effects/effects-options.mjs';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mts';

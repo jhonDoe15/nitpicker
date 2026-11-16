@@ -12,5 +12,13 @@ public interface CrudRepository<T, ID> extends Repository<T, ID> {
 
   <S extends T> S save(S entity);
 
+  <S extends T> List<S> saveAll(Iterable<S> entities);
+
   void delete(T entity);
+
+  void deleteAll(Iterable<? extends T> entities);
+
+  long count();
+
+  boolean existsById(ID id);
 }

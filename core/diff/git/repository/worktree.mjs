@@ -61,24 +61,42 @@ export function withTemporaryWorktree(repositoryRoot, { commitSha, warn }, opera
   );
 }
 
-export function withNamedTemporaryWorktree(
-  repositoryRoot,
-  { commitSha, directoryName, warn },
-  operation,
-) {
+function addWorktree(repositoryRoot, { commitSha, directoryName }) {
   const temporaryRoot = mkdtempSync(path.join(realTemporaryDirectory(), TEMPORARY_WORKTREE_PREFIX));
   const worktreeRoot = path.join(temporaryRoot, directoryName);
   const added = attempt(() =>
     runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]),
   );
-  const outcome = added.ok ? attempt(() => operation(worktreeRoot)) : added;
-  const cleanupError = removeWorktree(repositoryRoot, {
-    worktreeRoot,
-    temporaryRoot,
-    created: added.ok,
-  });
-  const warning =
-    cleanupError === undefined ? undefined : leftoverWarning(temporaryRoot, cleanupError);
+  function remove() {
+    const cleanupError = removeWorktree(repositoryRoot, {
+      worktreeRoot,
+      temporaryRoot,
+      created: added.ok,
+    });
+    return cleanupError === undefined ? undefined : leftoverWarning(temporaryRoot, cleanupError);
+  }
+  return { added, worktreeRoot, temporaryRoot, remove };
+}
+
+export function addTemporaryWorktree(repositoryRoot, { commitSha, directoryName }) {
+  const worktree = addWorktree(repositoryRoot, { commitSha, directoryName });
+  if (!worktree.added.ok) {
+    worktree.remove();
+    throw worktree.added.error;
+  }
+  return worktree;
+}
+
+export function withNamedTemporaryWorktree(
+  repositoryRoot,
+  { commitSha, directoryName, warn },
+  operation,
+) {
+  const worktree = addWorktree(repositoryRoot, { commitSha, directoryName });
+  const outcome = worktree.added.ok
+    ? attempt(() => operation(worktree.worktreeRoot))
+    : worktree.added;
+  const warning = worktree.remove();
   if (!outcome.ok) {
     attempt(() => {
       if (warning !== undefined) {

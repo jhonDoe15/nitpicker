@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noModuleLevelMutableState } from './no-module-level-mutable-state.mjs';
-import { rule as noProcessAccess } from './no-process-access-outside-composition-root.mjs';
-import { rule as noShellStringCommand } from './no-shell-string-command.mjs';
-import { rule as noUnknownMainFolder } from './no-unknown-main-folder.mjs';
-import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mjs';
-import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester, ruleModule } from '../../test-support/rule-tester.mts';
+import { rule as noModuleLevelMutableState } from './no-module-level-mutable-state.mts';
+import { rule as noProcessAccess } from './no-process-access-outside-composition-root.mts';
+import { rule as noShellStringCommand } from './no-shell-string-command.mts';
+import { rule as noUnknownMainFolder } from './no-unknown-main-folder.mts';
+import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mts';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();
 const adapter = '/repo/src/main/features/a/adapters/x.ts';
@@ -212,7 +212,7 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
   ],
 });
 
-tester.run('no-shell-string-command', withoutFixes(noShellStringCommand), {
+tester.run('no-shell-string-command', withoutFixes(ruleModule(noShellStringCommand)), {
   valid: [
     { code: 'import { execFile } from "node:child_process"; execFile("ls", [dir]);' },
     { code: 'import { exec } from "node:child_process"; exec("ls -la");' },

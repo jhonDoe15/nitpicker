@@ -4,13 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
-import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
+import { seedMutantsFromBase } from './python-mutation-reuse.mts';
+import { createToolContext } from '../test-support/typed/tool-context.mts';
+import type { Launcher } from '../typed/environment/launcher-types.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const roots: string[] = [];
 
 type Files = Readonly<Record<string, string>>;
-type Row = Readonly<Record<string, unknown>>;
 
 const templates = new Map<string, string>();
 const environment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
@@ -106,20 +107,35 @@ function scenario({
   return { baselineRoot, projectRoot: path.join(head, prefix) };
 }
 
-const launcherOf = (command: string) => ({
+const launcherOf = (command: string): Launcher => ({
+  description: 'the test',
   launch: (_tool: string, args: readonly string[]) => ({ command, args, env: {} }),
 });
 const launcher = launcherOf('python3');
 
-function seed(setup: Row, overrides: Row = {}) {
+type Setup = { readonly baselineRoot: string; readonly projectRoot: string };
+type Overrides = {
+  readonly launcher?: Launcher;
+  readonly sourceRoots?: string[];
+  readonly snapshot?: string;
+  readonly baselineRoot?: string | undefined;
+  readonly projectRoot?: string;
+};
+
+function seed(setup: Setup, overrides: Overrides = {}) {
+  const { launcher: chosen = launcher, sourceRoots = ['src'], ...rest } = overrides;
+  const roots = { ...setup, ...rest };
   return seedMutantsFromBase({
-    snapshot: 'head',
-    project: { sourceRoots: ['src'] },
-    launcher,
+    ...createToolContext({
+      projectRoot: roots.projectRoot,
+      liveRoot: roots.projectRoot,
+      baselineRoot: roots.baselineRoot,
+      snapshot: roots.snapshot ?? 'head',
+      reportRoot: temporaryRoot(),
+      settings: { sourceRoots, environment: 'path' },
+    }),
+    launcher: chosen,
     env: {},
-    reportRoot: temporaryRoot(),
-    ...setup,
-    ...overrides,
   });
 }
 
@@ -253,8 +269,8 @@ describe('reusing the base mutation results on head', () => {
     const setup = scenario({ changes: { 'tests/test_a.py': 'x = 1\n', 'src/a.py': 'y = 1\n' } });
     const lenient = scenario({ changes: { 'tools/run.py': 'x = 1\n' } });
 
-    expect(seed(setup, { project: { sourceRoots: ['.'] } })).toBe(false);
-    expect(seed(lenient, { project: { sourceRoots: ['.'] } })).toBe(true);
+    expect(seed(setup, { sourceRoots: ['.'] })).toBe(false);
+    expect(seed(lenient, { sourceRoots: ['.'] })).toBe(true);
   });
 
   it('does nothing on base, without a base directory, or when the base left no results', () => {

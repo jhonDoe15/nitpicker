@@ -16,13 +16,13 @@ const GO_FACT_RULES_NOT_RUN = Object.fromEntries(
   ['exported-name-collision'].map((rule) => [rule, GO_REGISTERED_FACT_RULES_ONLY]),
 );
 const JVM_RUNTIME_EDGES_ONLY = {
-  file: 'languages/java/adapters/test-runtime/test-graph.mjs',
+  file: 'languages/java/adapters/test-runtime/test-graph.mts',
   evidence: /kind: EDGE_KINDS\.RUNTIME/u,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   java: {
     'public-alternative-bypass': {
-      file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
+      file: 'languages/java/adapters/reuse/jvm-reuse-facts.mts',
       evidence: /kotlin \? kotlinEntryPointFindings/u,
     },
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
@@ -41,7 +41,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
       evidence: /const WHOLE_PACKAGE_RULES[^=]*= \[\n {2}\[RULE_IDS\.domainImportsClient/u,
     },
     'inheritance-depth-limit': {
-      file: 'languages/go/adapters/configuration/go-config.mjs',
+      file: 'languages/go/adapters/configuration/go-config.mts',
       evidence: /Go has no inheritance/u,
     },
   },
@@ -148,7 +148,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found(
         'python',
         'unused-dependency',
-        'languages/python/adapters/dependencies/dependency-findings.mjs',
+        'languages/python/adapters/dependencies/dependency-findings.mts',
       ),
       found(
         'typescript',
@@ -169,7 +169,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       ),
     ]).toEqual([
       ['languages/java/adapters/design/design-findings.mts'],
-      ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
+      ['languages/java/adapters/reuse/jvm-reuse-facts.mts'],
       true,
     ]);
     expect(emitters.kotlin.get('unused-option')).not.toEqual([]);
