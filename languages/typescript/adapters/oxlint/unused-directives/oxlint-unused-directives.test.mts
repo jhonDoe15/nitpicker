@@ -1,12 +1,14 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import type { AnalyzerReport } from '../../../../../shared/values/findings.mts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
-import { withSharedUnusedDirectives } from '../../eslint/merge/unused-directives.mjs';
+import { withSharedUnusedDirectives } from '../../eslint/merge/unused-directives.mts';
 import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 
-const policy = (rule) =>
-  `export default [{ files: ['src/**/*.ts'], rules: { '${rule}': 'error' } }];\n`;
+function policy(rule: string): string {
+  return `export default [{ files: ['src/**/*.ts'], rules: { '${rule}': 'error' } }];\n`;
+}
 const SOURCE = [
   '// eslint-disable-next-line no-debugger',
   'export const a = 1;',
@@ -15,15 +17,16 @@ const SOURCE = [
   '',
 ].join('\n');
 
-let root;
-const reports = new Map();
+let root: string;
+const reports = new Map<string, AnalyzerReport>();
 
 beforeAll(async () => {
   root = createProject('nitpicker-oxlint-unused-', { 'src/a.ts': SOURCE });
-  for (const [name, rule] of [
+  const engines: readonly (readonly [string, string])[] = [
     ['eslint-errors', 'no-debugger'],
     ['eslint-logging', 'no-eval'],
-  ]) {
+  ];
+  for (const [name, rule] of engines) {
     writeFileSync(path.join(root, 'policy.mjs'), policy(rule));
     const value = await lintProject({ root, patterns: ['src/**/*.ts'] });
     reports.set(name, {
@@ -41,7 +44,7 @@ const analyzers = ['eslint-errors', 'eslint-logging'].map((name) => ({
   lintedGlobs: { include: ['src/**/*.ts'], exclude: [] },
 }));
 
-function unused(report) {
+function unused(report: AnalyzerReport) {
   return report.findings.filter(({ rule }) => rule === 'eslint/unused-disable-directive');
 }
 
@@ -54,6 +57,6 @@ describe('unused directives from the oxlint engine', () => {
     const merged = withSharedUnusedDirectives({ reports }, analyzers);
 
     const remaining = [...merged.reports.values()].flatMap(unused);
-    expect(remaining.map(({ location }) => location.line)).toEqual([1]);
+    expect(remaining.map(({ location }) => location?.line)).toEqual([1]);
   });
 });

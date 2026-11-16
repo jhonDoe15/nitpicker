@@ -1,7 +1,13 @@
-import { REVIEW, SAFE } from '../../../../core/fix/engine/safety.mjs';
+import {
+  REVIEW as untypedReview,
+  SAFE as untypedSafe,
+} from '../../../../core/fix/engine/safety.mjs';
+
+const REVIEW: string = untypedReview;
+const SAFE: string = untypedSafe;
 const SUGGESTION_TOOL = 'eslint-lint';
 
-export const suggestionRules = Object.freeze({
+export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   'no-case-declarations': SAFE,
   'no-prototype-builtins': SAFE,
   'no-compare-neg-zero': SAFE,
@@ -20,13 +26,16 @@ export const suggestionRules = Object.freeze({
   '@typescript-eslint/switch-exhaustiveness-check': REVIEW,
 });
 
-export function suggestionName(rule) {
-  return `${SUGGESTION_TOOL}/${rule}`;
+export function suggestionName(rule: string | undefined): string {
+  return `${SUGGESTION_TOOL}/${String(rule)}`;
 }
 
-export function isRuleSelected(rule, selectedRules) {
+export function isRuleSelected(
+  rule: string | undefined,
+  selectedRules: readonly string[],
+): boolean {
   const selected = new Set(selectedRules);
-  const safety = suggestionRules[rule];
+  const safety = rule === undefined ? undefined : suggestionRules[rule];
   if (safety === undefined) {
     return false;
   }
