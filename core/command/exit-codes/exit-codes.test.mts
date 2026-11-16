@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
+import {
+  exactText,
+  maskedDiagnostics,
+} from '../../diff/reporting/test-support/output-expectations.mts';
 import {
   finding,
   findingLine,
@@ -58,21 +61,17 @@ describe('nitpicker CLI', () => {
     const expectedModeOutput: unknown =
       mode === '--all'
         ? [
-            'Nitpicker quality snapshot',
-            'Status: tool-error',
-            'Enforceable findings: 1',
-            'Descriptive findings: 0',
-            'Tool errors: 1',
             '',
-            'Per-tool counts:',
-            'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
-            'crashing-analyzer: total=0 enforceable=0 descriptive=0',
-            '',
-            'Enforceable findings:',
-            'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
-            '',
-            'Tool errors:',
-            `crashing-analyzer (head): ${CRASH}`,
+            'Quality snapshot summary',
+            '✖ 1 enforceable finding',
+            '  fake-quality-analyzer/fixture-rule: Fixture finding',
+            '    src/main/new.ts:1:4',
+            '✖ 1 tool error',
+            `  crashing-analyzer (head): ${CRASH}`,
+            'By analyzer:',
+            '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+            '  1 analyzer ran clean',
+            'Full diagnostics: <path>',
             '',
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
@@ -81,15 +80,16 @@ Quality gate summary
 ✖ 1 new enforceable violation
   fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-✖ 2 tool errors
-  crashing-analyzer (base): ${CRASH}
-  crashing-analyzer (head): ${CRASH}
+✖ 2 tool errors (1 distinct)
+  crashing-analyzer (base and head): ${CRASH}
 Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
       const { exitCode, output } = run({ withFinding: true, withToolError: true });
       expect(exitCode).toBe(1);
-      expect(output.stdoutText).toEqual(expectedModeOutput);
+      expect(mode === '--all' ? maskedDiagnostics(output.stdoutText) : output.stdoutText).toEqual(
+        expectedModeOutput,
+      );
     });
     it.each([
       ['exits 2 for a tool error without findings', false, true, 2],

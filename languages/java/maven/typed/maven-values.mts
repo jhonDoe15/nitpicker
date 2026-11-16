@@ -6,6 +6,11 @@ export type MavenModule = Readonly<Record<string, unknown>> & {
   readonly basedir: string;
   readonly buildDirectory: string;
 };
+export type MavenScope = {
+  readonly reported: MavenModule[];
+  readonly notAffected: string[];
+  readonly selection: string[];
+};
 export type Dependency = {
   readonly groupId: string;
   readonly artifactId: string;
@@ -46,5 +51,13 @@ export function classpathsOf(value: unknown): Classpaths {
     mainRuntime: textsOf(fieldOf(value, 'mainRuntime')),
     testCompile: textsOf(fieldOf(value, 'testCompile')),
     testRuntime: [...listOf(fieldOf(value, 'testRuntime'))],
+  };
+}
+
+export function scopeOf(value: unknown): MavenScope {
+  return {
+    reported: listOf(fieldOf(value, 'reported')).map(mavenModuleOf),
+    notAffected: textsOf(fieldOf(value, 'notAffected')),
+    selection: textsOf(fieldOf(value, 'selection')),
   };
 }

@@ -13,6 +13,10 @@ import {
 } from '../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
+import {
+  colorEnabled as untypedColorEnabled,
+  displayPath as untypedDisplayPath,
+} from '../../shared/messages/terminal/terminal-text.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mts';
@@ -20,6 +24,7 @@ import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mts';
 import { outputRootFor } from '../diff/reporting/reporters.mts';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
+import { runStamp as untypedRunStamp } from '../diff/reporting/run-stamp/run-stamp.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-tests/failing-tests.mts';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
@@ -27,10 +32,15 @@ import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 
+const displayPath: (absolutePath: string) => string = untypedDisplayPath;
+const colorEnabled: (stream: unknown, environment: NodeJS.ProcessEnv) => boolean =
+  untypedColorEnabled;
+
 type SnapshotCli = {
   readonly options: {
     readonly analyzerNames: readonly string[];
     readonly ruleFilters: readonly string[];
+    readonly details: boolean;
     readonly staged: boolean;
     readonly outputRoot?: string;
   };
@@ -71,6 +81,10 @@ const inWorktree: (
   },
   operation: (worktreeRoot: string) => SnapshotReport,
 ) => SnapshotReport = withNamedTemporaryWorktree;
+const runStampOf: (request: {
+  readonly projectRoot: string;
+  readonly outputRoot: string;
+}) => object = untypedRunStamp;
 const capturedTree: Capture = captureWorkingTree;
 const prepareDependencies: (options: {
   readonly projectRoot: string;
@@ -95,6 +109,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     throw new Error('No quality analyzers are configured.');
   }
   clearSnapshotReports(outputRoot);
+  const stamp = runStampOf({ projectRoot: currentProjectRoot, outputRoot });
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
     currentProjectRoot,
@@ -121,6 +136,8 @@ export function runSnapshotCli(cli: SnapshotCli): number {
   addToolErrors(report, cli.additionalToolErrors ?? []);
   Object.assign(
     report.summary,
+    { headSha: capturedSha },
+    stamp,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
     runProfileSummary({ quick: cli.quick, staged: options.staged }),
   );
@@ -146,7 +163,14 @@ function writeSnapshotOutcome(
 ): number {
   const { stdout, jsonOutput } = cli;
   if (jsonOutput === undefined) {
-    stdout.write(textOf(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt'))));
+    stdout.write(
+      renderSnapshotConsoleSummary(report, {
+        diagnosticsPath: displayPath(path.join(outputRoot, 'report.txt')),
+        color: colorEnabled(stdout, cli.environment),
+        details: cli.options.details,
+        projectRoot: cli.currentProjectRoot,
+      }),
+    );
   }
   stdout.write(textOf(renderSnapshotRuleFilterSection(report, cli.options.ruleFilters)));
   writeGithubOutput({

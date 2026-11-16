@@ -33,7 +33,7 @@ def ranked(cursor: object, order: Literal["asc", "desc"]) -> None:
 def find(session: object, name: str | None, age: int | None) -> object:
     conditions: list[str] = []
     params: dict[str, object] = {}
-    if name:
+    if name is not None:
         conditions.append("name = :name")
         params["name"] = name
     if age is not None:

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { GitCommandError, runGit } from '../diff/git/repository/command.mjs';
 import { commitTreeOverHead } from '../diff/git/repository/git.mjs';
+import type { CaptureHead } from '../diff/comparison/snapshots/run-types.mts';
 import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mts';
 
 function stagedRunNotice(projectRoot: string, indexFile: string | undefined): string {
@@ -22,8 +23,6 @@ export function withIndexFile<Cli extends { readonly environment: NodeJS.Process
   const { GIT_INDEX_FILE: indexFile = detached['GIT_INDEX_FILE'] } = cli.environment;
   return { ...cli, indexFile };
 }
-
-export type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
 
 type StagedRun = {
   readonly options: { readonly staged: boolean };

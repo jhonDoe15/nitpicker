@@ -58,6 +58,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
   the column), with an index or primary key that starts with the column. PostgreSQL does not create one
   (`foreign-key-index`).
+- Give every field written from a request a validation bound at or below its column width
+  (`Field(max_length=30)` for `String(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to
+  the validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Join at most one collection into a query: `joinedload(Order.lines)` next to to-one relations, and
   `selectinload(Order.payments)` for the other collections (`multiple-collection-joins`).
 - Index every foreign key: `index=True` on a SQLAlchemy `mapped_column(ForeignKey(...))` or SQLModel

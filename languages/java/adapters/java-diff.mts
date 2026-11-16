@@ -22,6 +22,10 @@ import { withTestsFailures } from './red-base/tests-failed.mts';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mts';
+import {
+  notAffectedFindings,
+  withChangedFiles,
+} from '../builds/change-scope/affected/changed-files.mts';
 import { buildFindings } from './collect/build-findings.mts';
 import {
   type JavaFinding,
@@ -73,9 +77,13 @@ export function collectJavaReport(
   options: JavaRunOptions = {},
 ): { readonly findings: readonly JavaFinding[]; readonly imports: unknown } {
   const projectRoot = path.resolve(root);
-  const plan = mutationPlanOf(projectRoot, options);
-  const { findings: collected, imports, testsFailures } = buildFindings(projectRoot, plan.options);
-  const findings = plan.findings(collected);
+  const plan = mutationPlanOf(projectRoot, withChangedFiles(options, projectRoot));
+  const built = buildFindings(projectRoot, plan.options);
+  const { findings: collected, imports, testsFailures, notAffected } = built;
+  const findings = [
+    ...plan.findings(collected),
+    ...notAffectedFindings(notAffected, options.policy),
+  ];
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
   const columns: unknown = withJavaColumns(findings, {

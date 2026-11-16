@@ -25,6 +25,7 @@ export type JavaReport = {
   readonly findings: readonly JavaFinding[];
   readonly imports: unknown;
   readonly testsFailures?: unknown;
+  readonly notAffected?: unknown;
 };
 
 export function budgetOf(value: unknown): TimeBudget {

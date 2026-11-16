@@ -1,0 +1,74 @@
+def shared = gradle.ext.nitpickerAffected
+def changedFilesArgument = shared.argument
+def analysisRoot = shared.analysisRoot.canonicalFile.toPath()
+def sourceRootPrefix = 'src/'
+
+def targetPathOf = { dependency ->
+    try {
+        dependency.path
+    } catch (MissingPropertyException ignored) {
+        dependency.dependencyProject.path
+    }
+}
+
+gradle.projectsEvaluated {
+    if (gradle.parent != null || changedFilesArgument == null) {
+        return
+    }
+    def changed = new groovy.json.JsonSlurper().parse(new File(changedFilesArgument.toString()), 'UTF-8')
+    def everyProject = gradle.rootProject.allprojects.toList()
+    def analyzed = everyProject.findAll { it.tasks.findByName('nitpickerJava') != null }
+    def byDepth = everyProject.sort { -it.projectDir.canonicalPath.length() }
+    def extraRoots = analyzed.collectMany { project ->
+        def sets = project.extensions.findByName('sourceSets')
+        def directories = sets == null ? [] : sets.collectMany { it.allSource.srcDirs }
+        directories.findAll { !it.canonicalFile.toPath().startsWith(project.projectDir.canonicalFile.toPath()) }
+            .collect { [dir: it.canonicalFile.toPath(), project: project] }
+    }
+    def everything = changed.isEmpty()
+    def changedPaths = [] as Set
+    changed.each { String relative ->
+        def file = analysisRoot.resolve(relative).normalize()
+        def extra = extraRoots.find { file.startsWith(it.dir) }
+        def owner = extra != null ? extra.project : byDepth.find { file.startsWith(it.projectDir.canonicalFile.toPath()) }
+        if (owner == null ||
+                (extra == null && owner == gradle.rootProject && !relative.startsWith(sourceRootPrefix))) {
+            everything = true
+        } else {
+            changedPaths << owner.path
+        }
+    }
+    if (everything) {
+        return
+    }
+    def dependents = [:].withDefault { [] as Set }
+    everyProject.each { project ->
+        project.configurations.each { configuration ->
+            configuration.dependencies.findAll { it instanceof org.gradle.api.artifacts.ProjectDependency }.each {
+                dependents[targetPathOf(it)] << project.path
+            }
+        }
+    }
+    def affected = new LinkedHashSet(changedPaths)
+    def pending = new ArrayDeque(changedPaths)
+    while (!pending.isEmpty()) {
+        dependents[pending.removeFirst()].each { if (affected.add(it)) { pending.add(it) } }
+    }
+    def skipped = analyzed.findAll { !affected.contains(it.path) }
+    skipped.each { project ->
+        project.tasks.named('nitpickerJava').configure {
+            enabled = false
+            setDependsOn([])
+        }
+    }
+    def skippedPaths = skipped*.path as Set
+    shared.javaModules.removeAll { skippedPaths.contains(it.path) }
+    shared.notAffected.addAll(skippedPaths)
+    if (shared.reportBase) {
+        def names = skipped.findAll { it.projectDir.canonicalFile.toPath().startsWith(analysisRoot) }
+            .collect { shared.relativeToRoot(it.projectDir) ?: '.' }.sort()
+        def report = new File(shared.reportBase.toString(), 'not-affected.json')
+        report.parentFile.mkdirs()
+        report.text = groovy.json.JsonOutput.toJson(names)
+    }
+}

@@ -3,6 +3,7 @@ import { key } from '../../logic/terms.mjs';
 import { isIntegerType } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { depthFirst } from '../../traversal.mjs';
+import { coercionSites } from './coercions.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames, namesOf } from './facts.mjs';
 import { conditionChecks } from './flow.mjs';
 
@@ -70,16 +71,17 @@ function armFacts(scan, earlier = []) {
   return facts;
 }
 
-function check(scan, node, { facts, part = 'condition' }) {
-  const query = conditionTerm(node, scan.scope);
-  if (query === undefined || scan.checked.has(node) || scan.checked.size >= MAX_CHECKS) {
+function check(scan, node, { facts, part = 'condition', query = conditionTerm(node, scan.scope) }) {
+  const seen = part === 'value' ? scan.coerced : scan.checked;
+  const isReported = scan.found.some((reported) => reported.node === node);
+  if (query === undefined || seen.has(node) || isReported || seen.size >= MAX_CHECKS) {
     return false;
   }
   const known = relevantFacts(facts, namesOf(node));
   if (known.length === 0) {
     return false;
   }
-  scan.checked.add(node);
+  seen.add(node);
   const verdict = solveFacts(
     known.map(({ term }) => term),
     query,
@@ -114,6 +116,12 @@ function checkChain(scan, node, facts) {
   }
 }
 
+function checkCoercions(scan, root, facts) {
+  for (const site of coercionSites(root, scan.scope)) {
+    check(scan, site.node, { facts: [...facts, ...site.facts], part: 'value', query: site.query });
+  }
+}
+
 function integerNames(tree) {
   const declared = nodesOf(tree).filter(
     (node) => DECLARING.has(node.kind) && node.children[1]?.kind === 'name',
@@ -142,7 +150,7 @@ function bodiesOf(tree) {
 export function decidedConditions(tree, { looseBooleans = false } = {}) {
   const scope = { integers: integerNames(tree), looseBooleans };
   const flow = { scope, mutable: mutableNames(tree), effects: new WeakMap() };
-  const scan = { scope, flow, found: [], checked: new Set() };
+  const scan = { scope, flow, found: [], checked: new Set(), coerced: new Set() };
   const checks = bodiesOf(tree).flatMap((body) => conditionChecks(body.children, flow));
   for (const found of checks) {
     const sites =
@@ -150,6 +158,7 @@ export function decidedConditions(tree, { looseBooleans = false } = {}) {
     for (const site of sites) {
       checkChain(scan, site.node, [...found.facts, ...armFacts(scan, site.earlier)]);
     }
+    checkCoercions(scan, found.condition ?? found.expression, found.facts);
   }
   return scan.found.toSorted((left, right) => left.node.start - right.node.start);
 }

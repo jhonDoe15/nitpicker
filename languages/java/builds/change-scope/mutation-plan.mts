@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
-import { realpathSync } from 'node:fs';
 import { isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
-import { readComparisonChanges } from './comparison-changes.mts';
+import { type LineRange, comparisonRoots, readComparisonChanges } from './comparison-changes.mts';
 import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mts';
-import type { ComparisonRoots, LineRange } from './comparison-changes.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
 import type { JavaRunOptions } from '../../adapters/typed/java-run-options.mts';
 
@@ -21,25 +19,6 @@ const MUTATION_TOOL = 'pit';
 const SUMMARY_RULE = 'mutation-summary';
 const NAMED_CAPPED = 3;
 const DIGEST_LENGTH = 16;
-
-function sameDirectory(left: string, right: string): boolean {
-  return realpathSync.native(left) === realpathSync.native(right);
-}
-
-function comparisonRoots(projectRoot: string, policy: JavaPolicy): ComparisonRoots | undefined {
-  if (policy.quick === true || policy['mutationOff'] === true) {
-    return undefined;
-  }
-  if (policy.snapshot === 'base') {
-    const head = policy.policyRoot;
-    return head === undefined || sameDirectory(head, projectRoot)
-      ? undefined
-      : { base: projectRoot, head };
-  }
-  return policy.baselineRoot === undefined
-    ? undefined
-    : { base: policy.baselineRoot, head: projectRoot };
-}
 
 function withinScope(files: readonly string[], mutationScope: unknown): string[] {
   return files.filter((file) => isInMutationScope(file, mutationScope) === true);
@@ -69,7 +48,10 @@ export function comparisonMutationPlan(
   projectRoot: string,
   policy: JavaPolicy = {},
 ): MutationPlan | undefined {
-  const roots = comparisonRoots(projectRoot, policy);
+  const roots =
+    policy.quick === true || policy['mutationOff'] === true
+      ? undefined
+      : comparisonRoots(projectRoot, policy);
   if (roots === undefined) {
     return undefined;
   }

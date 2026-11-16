@@ -9,6 +9,7 @@ import {
   inModuleOf,
   jdepsEdges,
   jvmReuseOf,
+  maxValueFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
   outerClassOf,
@@ -261,6 +262,7 @@ export function projectWideReport(
     ...reuse.findings,
     ...roundTripFindings(projectRoot, { projects, kotlin, policy }),
     ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
+    ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

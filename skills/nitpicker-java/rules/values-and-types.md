@@ -30,6 +30,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
+  host, cookie name or file extension before comparing it (`toLowerCase(Locale.ROOT)`, `equalsIgnoreCase`) and
+  parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `MediaType.parseMediaTypes`,
+  `ContentDisposition.parse` or `HttpCookie.parse` instead of `split(",")` or `split(";")`
+  (`pmd/HttpValueCase`, `pmd/HandSplitHttpHeader`). `getHeader` and `HttpHeaders` ignore the case of the
+  name; a library that is itself the parser takes an exception.
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
@@ -82,9 +88,17 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
+  classifier never return `null` (they throw on it): filter the nulls first, map them
+  (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
+  (`pmd/NullMapValue`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
+  `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
+  negative index or bound. Compare without adding (`width >= length - start`), widen first
+  (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
