@@ -1,5 +1,5 @@
 import type { Linter } from 'eslint';
-import { applyJavascriptDialect as untypedApplyJavascriptDialect } from '../../../../javascript/preset/eslint-dialect.mjs';
+import { applyJavascriptDialect as untypedApplyJavascriptDialect } from '../../../../javascript/preset/eslint-dialect.mts';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   resolveHeadPolicy as untypedResolveHeadPolicy,
@@ -24,7 +24,7 @@ export const readLayout: () => PolicyLayout = untypedReadLayout;
 export const readHeadPolicy: () => HeadPolicy = untypedReadHeadPolicy;
 
 export const applyJavascriptDialect: (
-  entries: readonly Linter.Config[],
+  entries: Linter.Config[],
   policy: { readonly preset?: string; readonly exceptions?: unknown[] },
 ) => Linter.Config[] = untypedApplyJavascriptDialect;
 

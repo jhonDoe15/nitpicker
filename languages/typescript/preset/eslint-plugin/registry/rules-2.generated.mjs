@@ -1,3 +1,5 @@
+import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mjs';
+import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mjs';
@@ -19,6 +21,7 @@ import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordere
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mjs';
+import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mjs';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mjs';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
@@ -61,6 +64,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mjs';
 
 export const partRules = {
+  'no-test-retry': ruleNoTestRetry,
+  'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unatomic-writes': ruleNoUnatomicWrites,
@@ -82,6 +87,7 @@ export const partRules = {
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
+  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,

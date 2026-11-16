@@ -66,6 +66,7 @@ import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-lo
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mjs';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mjs';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
+import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mjs';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mjs';
@@ -73,6 +74,7 @@ import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/n
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mjs';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mjs';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
@@ -96,8 +98,6 @@ import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-o
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mjs';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mjs';
 import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mjs';
-import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mjs';
-import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -169,6 +169,7 @@ export const partRules = {
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
   'no-production-console': ruleNoProductionConsole,
@@ -176,6 +177,7 @@ export const partRules = {
   'no-promise-chain': ruleNoPromiseChain,
   'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
@@ -199,6 +201,4 @@ export const partRules = {
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
   'no-test-helpers-in-source': ruleNoTestHelpersInSource,
-  'no-test-retry': ruleNoTestRetry,
-  'no-throw': ruleNoThrow,
 };

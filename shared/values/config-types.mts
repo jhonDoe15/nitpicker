@@ -57,16 +57,26 @@ export type NitpickerConfig = {
   readonly [field: string]: unknown;
 };
 
-export type ConventionDefinition = {
+type ConventionBase = {
   readonly id: string;
-  readonly kind?: string;
   readonly label: string;
+  readonly files: readonly string[];
+  readonly scope?: string;
+};
+
+type NamesConvention = ConventionBase & {
+  readonly kind: string;
+  readonly namesMeaning?: string;
+  readonly options?: undefined;
+};
+
+export type ChoiceConvention = ConventionBase & {
+  readonly kind?: undefined;
   readonly options: readonly string[];
   readonly optionLabels?: Readonly<Record<string, string>>;
   readonly unit?: string;
   readonly range?: string;
   readonly valuePattern?: RegExp;
-  readonly namesMeaning?: string;
-  readonly files: readonly string[];
-  readonly scope?: string;
 };
+
+export type ConventionDefinition = NamesConvention | ChoiceConvention;

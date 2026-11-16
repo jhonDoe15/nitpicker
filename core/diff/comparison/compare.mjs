@@ -18,10 +18,11 @@ export function compareFindings({
   headFindings,
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
+  baseToHeadPackages = new Map(),
   touchedCode,
   unknownOnBase,
 }) {
-  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
+  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories, baseToHeadPackages);
   const { baseByKey, headByKey } = indexSnapshots({
     baseFindings,
     headFindings,

@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { matchesRule, overlapPairs, withoutOverlaps } from './static-overlaps.mts';
 import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
+
+const OVERLAP_PAIRS = overlapPairs();
 
 const PROBE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/probe-findings.json'), 'utf8'),
@@ -191,10 +193,7 @@ describe('overlaps on the probe project', () => {
         ['errorprone/AnnotationPosition', 'pmd/CompatibilityShim', 'spotbugs/SS_SHOULD_BE_STATIC'],
       ],
       ['V1Style.java:9', ['errorprone/LongLiteralLowerCaseSuffix', 'spotbugs/SS_SHOULD_BE_STATIC']],
-      [
-        'V3Unused.java:5',
-        ['checkstyle/MagicNumber', 'pmd/UnusedAssignment', 'pmd/UnusedLocalVariable'],
-      ],
+      ['V3Unused.java:5', ['checkstyle/MagicNumber', 'pmd/UnusedLocalVariable']],
       ['V3Unused.java:6', ['checkstyle/MagicNumber', 'pmd/UnusedAssignment']],
     ]);
   });
@@ -284,7 +283,9 @@ describe('the overlap list in docs/java-preset.md', () => {
       .map(guideText)
       .join('\n')
       .split('\n')
-      .filter((line) => /^- (?:line|member|javadoc|catch|class|field|file): `/u.test(line));
+      .filter((line) =>
+        /^- (?:line|member|javadoc|catch|class|field|file|variable): `/u.test(line),
+      );
 
     expect(documented).toStrictEqual(
       OVERLAP_PAIRS.map(

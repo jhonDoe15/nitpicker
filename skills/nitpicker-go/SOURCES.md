@@ -98,6 +98,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **Jobs (#804).** `failing-item-stops-job` follows the error of the call that the loop makes (the
   same database and HTTP calls as `io-in-loop`), so a loop that returns on a parse error or enqueues
   through a project helper is not read; only functions a scheduler or queue registers count.
+- **HTTP value rules.** `http-value-case` and `hand-split-http-header` read header values through
+  `net/http` `Header.Get`, so a header name is never reported (it is case-insensitive there); a method
+  and a parsed `Scheme` are left out because the first is case-sensitive and `url.Parse` lowercases the
+  second.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,

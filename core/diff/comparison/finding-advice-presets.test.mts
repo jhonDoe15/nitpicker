@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
 import { applyRuleHints as applyRuleHintsJs } from '../../../languages/python/rules/rule-hints.mjs';
 import { withRuleMessage as withRuleMessageJs } from '../../../languages/java/messages/rule-messages.mjs';
-import { ingestErrorProne as ingestErrorProneJs } from '../../../languages/java/ingest/errorprone/errorprone.mjs';
+import { ingestErrorProne as ingestErrorProneJs } from '../../../languages/java/ingest/errorprone/errorprone.mts';
 import { withKotlinRuleMessage as withKotlinRuleMessageJs } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
 import { messagesFor, ratchetedFinding } from '../../../shared/rules/file-limits.mjs';
 import { exceptionHint as exceptionHintJs } from '../../../shared/rules/exceptions.mjs';
