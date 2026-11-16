@@ -15,13 +15,17 @@ export function withoutMutants(summaries: readonly string[]): string[] {
   return summaries.filter((summary) => !summary.startsWith('mutmut '));
 }
 
+function isCountLine(row: string): boolean {
+  return row.startsWith('  by area: ') || row.startsWith('  by label: ');
+}
+
 export function reportedGroups(text: string): string[][] {
   const lines = text.split('\n');
   const start = lines.findIndex((line) => line.startsWith('✖ '));
   const section = lines.slice(start + 1);
   const end = section.findIndex((line) => !line.startsWith('  '));
   const groups: string[][] = [];
-  for (const line of section.slice(0, end).filter((row) => !row.startsWith('  by area: '))) {
+  for (const line of section.slice(0, end).filter((row) => !isCountLine(row))) {
     if (line.startsWith('    ')) {
       groups.at(-1)?.push(line.trim());
     } else {

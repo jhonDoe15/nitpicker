@@ -63,6 +63,22 @@ function quickAnalyzer(analyzer: ProfiledAnalyzer): ProfiledAnalyzer {
   return analyzer;
 }
 
+export function withoutTestRun(analyzers: readonly ProfiledAnalyzer[]): {
+  readonly analyzers: readonly ProfiledAnalyzer[];
+  readonly skipped: readonly string[];
+} {
+  const changed = analyzers.filter(
+    (analyzer) =>
+      analyzer.custom !== true && analyzer.quick !== true && QUICK_SKIPPED_TOOLS.has(analyzer.name),
+  );
+  return {
+    analyzers: analyzers.map((analyzer) =>
+      changed.includes(analyzer) ? quickAnalyzer(analyzer) : analyzer,
+    ),
+    skipped: [...new Set(changed.flatMap(({ name }) => QUICK_SKIPPED_TOOLS.get(name) ?? []))],
+  };
+}
+
 function isSkipped(analyzer: ProfiledAnalyzer): boolean {
   return analyzer.custom !== true && QUICK_SKIPPED_ANALYZERS.includes(analyzer.name);
 }
@@ -76,7 +92,7 @@ function skippedChecks(analyzers: readonly ProfiledAnalyzer[]): string[] {
   ];
 }
 
-function withDependencies(
+export function withDependencies(
   analyzers: readonly ProfiledAnalyzer[],
   names: readonly string[],
 ): ProfiledAnalyzer[] {

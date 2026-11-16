@@ -135,6 +135,7 @@ function presetAllowedFacts(entry) {
 export function entryFacts(entry) {
   const printed = printedTools(entry).map((tool) => `\`${tool}/${entry.rule}\``);
   const textFacts = [
+    ['Labels', entry.labels?.join(', ')],
     [
       'Printed as',
       printed.length > 1 || entry.pattern !== undefined || FAMILY_TOOLS.has(entry.tool)

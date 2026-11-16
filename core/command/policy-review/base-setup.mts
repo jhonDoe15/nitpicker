@@ -12,9 +12,9 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { applyRunProfile } from '../../quick/profile.mts';
+import { applyRunProfile, withoutTestRun } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
-import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
+import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type {
@@ -146,6 +146,12 @@ function withoutTimeouts(config: NitpickerConfig): NitpickerConfig {
   return Object.fromEntries(Object.entries(config).filter(([key]) => key !== ANALYZER_TIMEOUT_KEY));
 }
 
+function sameMode(base: ProfiledAnalyzer, head: Analyzer): ProfiledAnalyzer {
+  return head['quick'] === true && base.quick !== true
+    ? (withoutTestRun([base]).analyzers[0] ?? base)
+    : base;
+}
+
 function measuredBase({
   baseConfig,
   headConfig,
@@ -160,18 +166,18 @@ function measuredBase({
     objectOf(headPolicy),
   );
   const configured = new Map(
-    analyzersOf(
-      applyRunProfile(
-        configureAll(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
-        { ...profile, analyzerNames: [] },
-      ).analyzers,
-    ).map((analyzer) => [analyzer.name, analyzer]),
+    applyRunProfile(
+      configureAll(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
+      { ...profile, analyzerNames: [] },
+    ).analyzers.map((analyzer) => [analyzer.name, analyzer]),
   );
   const timeouts = objectOf(headConfig[ANALYZER_TIMEOUT_KEY]);
   return {
     analyzers: analyzers.map((analyzer) => {
       const found = configured.get(analyzer.name);
-      return found === undefined ? analyzer : configuredTimeout(found, timeouts);
+      return found === undefined
+        ? analyzer
+        : configuredTimeout(sameMode(found, analyzer), timeouts);
     }),
     headPolicy: baseHeadPolicy,
     configOverrides: describeConfigOverrides(measured),

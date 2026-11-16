@@ -11,6 +11,11 @@ export const QUICK_SENTENCE =
 export const NARROWED_SENTENCE =
   '`--analyzer <name>` runs one analyzer only, which is faster still. A run narrowed with ' +
   '`--quick` or `--analyzer` is never a pass: finish with the full run below, without them.';
+export const LABEL_SENTENCE =
+  'To focus on one kind of finding, add `--label <label>` (repeatable; `performance`, `bug`, ' +
+  '`simplification`, `maintainability` and more, `npx nitpicker --help` lists them): it runs ' +
+  'only the checks that can report it and lists only those findings. A focused run is never a ' +
+  'pass either: the summary says `Only findings labeled ...`; finish without `--label`.';
 export const NO_PIPE =
   'as a background command you wait on, without a pipe: you need its exit code. Wait for it: do ' +
   'not start a second run or kill it';

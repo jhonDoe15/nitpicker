@@ -12,6 +12,7 @@ import { planCountLines } from '../../../shared/fix-plans/render.mjs';
 import { quickLines } from '../../quick/summary.mts';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
+import { labelCountLine } from '../../labels/label-filter.mts';
 import { skippedLines, unaffectedLine } from '../skipping/lines.mts';
 import { snapshotToolLines } from './console/snapshot-tools.mts';
 import { failingTestLines } from './failing-tests/failing-tests.mts';
@@ -145,7 +146,7 @@ function renderGateSummary(
       policyCount: violations.filter(isPolicyFinding).length,
       snapshot,
     },
-    { color, details },
+    { color, details, labelCounts: labelCountLine(report.summary) },
   );
   lines.push(
     ...reviewSummaryLines(consolePolicySummary(report), (text) =>
@@ -226,7 +227,15 @@ function failing(text: string, color: boolean): string {
 function appendViolationSummary(
   lines: string[],
   summary: ViolationSummary,
-  { color, details }: { readonly color: boolean; readonly details: boolean },
+  {
+    color,
+    details,
+    labelCounts,
+  }: {
+    readonly color: boolean;
+    readonly details: boolean;
+    readonly labelCounts: readonly string[];
+  },
 ): void {
   const { violations } = summary;
   lines.push(violationHeadline(summary, color));
@@ -234,6 +243,7 @@ function appendViolationSummary(
   if (counts !== undefined) {
     lines.push(`  by area: ${counts}`);
   }
+  lines.push(...labelCounts);
   if (!details) {
     lines.push(
       ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], { color })),
