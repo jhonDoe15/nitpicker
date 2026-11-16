@@ -1,12 +1,14 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { rootIdentifier } from '../lifecycles/scope/close-owners.mts';
 import { importedBindings } from '../security/imported-names.mts';
 import { nameOf, type VisitorKeys } from '../typed/node-views.mts';
 import { isCallback } from '../typed/syntax-views.mts';
 import { middlewareIn } from './middleware-names.mts';
-import { walk, type Bindings, type Facts, type MaybeNode, type MemberCall } from './nest-facts.mts';
+import { type MemberCall } from '../events/emitter-creations.mts';
+import { walk, type Bindings, type Facts, type MaybeNode } from './nest-facts.mts';
 import { isAuthName } from './shapes.mts';
 
-export { nestFacts, type NestHandler } from './nest-facts.mts';
+export { nestFacts } from './nest-facts.mts';
 export type Route = Facts & { readonly node: TSESTree.CallExpression };
 
 type RouteState = {
@@ -69,17 +71,6 @@ function unwrapped(node: MaybeNode): MaybeNode {
   return pending.at(-1);
 }
 
-function calleeRoot(callee: TSESTree.Node): TSESTree.Identifier | undefined {
-  const pending = [callee];
-  for (const current of pending) {
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      pending.push(current.object);
-    }
-  }
-  const root = pending.at(-1);
-  return root?.type === AST_NODE_TYPES.Identifier ? root : undefined;
-}
-
 function calleeLeaf(callee: TSESTree.Node): string | undefined {
   return callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : nameOf(callee);
 }
@@ -89,7 +80,7 @@ function isRouterFactory(init: MaybeNode | null, bindings: Bindings): boolean {
   if (call?.type !== AST_NODE_TYPES.CallExpression && call?.type !== AST_NODE_TYPES.NewExpression) {
     return false;
   }
-  const root = calleeRoot(call.callee);
+  const root = rootIdentifier(call.callee);
   const module = root === undefined ? undefined : bindings.get(root.name)?.module;
   return (
     module !== undefined &&

@@ -5,6 +5,12 @@ import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { regexpRules } from '../regexp/regexp-rules.mts';
 import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
+  learnedOptions,
+  learnedRules,
+  type LearnedConfig,
+  type LearnedOptions,
+} from './learned-options.mts';
+import {
   SECURITY_RULES,
   httpClientOptions,
   securityRules,
@@ -12,22 +18,10 @@ import {
   type SecurityFacts,
 } from './security-facts.mts';
 
-type DatabaseWrites = { readonly orms: readonly string[]; readonly opensTransactions: boolean };
-type SoftDeleteFilters = { readonly orms: readonly string[]; readonly filters: readonly string[] };
-type RouteAuth = { readonly entries: readonly string[] };
-type LearnedOptions = {
-  readonly databaseWrites: DatabaseWrites;
-  readonly softDeleteFilters: SoftDeleteFilters;
-  readonly routeAuth: RouteAuth;
-};
-
-export type PolicyOptions = {
+export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
   readonly routeHandlers?: unknown;
   readonly security?: Partial<SecurityFacts> | undefined;
-  readonly databaseWrites?: DatabaseWrites | undefined;
-  readonly softDeleteFilters?: SoftDeleteFilters | undefined;
-  readonly routeAuth?: RouteAuth | undefined;
 };
 
 export type PolicyLayout = {
@@ -148,9 +142,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
 function productionGuardRules({
   react,
   security,
-  databaseWrites,
-  softDeleteFilters,
-  routeAuth,
+  ...learned
 }: LearnedOptions & {
   readonly react: boolean;
   readonly security: Partial<SecurityFacts> | undefined;
@@ -171,12 +163,8 @@ function productionGuardRules({
     'nitpicker/no-retry-without-idempotency': 'error',
     'nitpicker/no-stale-retry-after-conflict': 'error',
     'nitpicker/no-dual-write': 'error',
-    'nitpicker/no-unatomic-writes': ['error', databaseWrites],
-    'nitpicker/no-check-then-write': ['error', databaseWrites],
     'nitpicker/no-unisolated-job-loop': 'error',
-    'nitpicker/no-unfiltered-soft-delete-read': ['error', softDeleteFilters],
     'nitpicker/no-unguarded-deleted-items': 'error',
-    'nitpicker/no-route-without-auth': ['error', routeAuth],
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
@@ -195,6 +183,7 @@ function productionGuardRules({
     'nitpicker/promise-wait-deadline': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     'nitpicker/unbounded-reactive-fan-out': 'error',
+    ...learnedRules(learned),
     ...securityRules({ react, security }),
   };
 }
@@ -231,11 +220,21 @@ function securitySupportOff(): Linter.Config {
   };
 }
 
-function learnedOptions(options: PolicyOptions): LearnedOptions {
+function productionRulesConfig(options: PolicyOptions): Linter.Config {
   return {
-    databaseWrites: options.databaseWrites ?? { orms: [], opensTransactions: false },
-    softDeleteFilters: options.softDeleteFilters ?? { orms: [], filters: [] },
-    routeAuth: options.routeAuth ?? { entries: [] },
+    languageOptions: { parser: tseslint.parser },
+    plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
+    rules: {
+      ...productionRules({
+        react: options.react === true,
+        routeHandlers: options.routeHandlers === true,
+      }),
+      ...productionGuardRules({
+        react: options.react === true,
+        security: options.security,
+        ...learnedOptions(options),
+      }),
+    },
   };
 }
 
@@ -248,22 +247,7 @@ export function productionPolicyConfigFor(
     ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
   };
   return [
-    {
-      ...production,
-      languageOptions: { parser: tseslint.parser },
-      plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
-      rules: {
-        ...productionRules({
-          react: options.react === true,
-          routeHandlers: options.routeHandlers === true,
-        }),
-        ...productionGuardRules({
-          react: options.react === true,
-          security: options.security,
-          ...learnedOptions(options),
-        }),
-      },
-    },
+    { ...production, ...productionRulesConfig(options) },
     securitySupportOff(),
     {
       files: [...layout.sourceGlobs],

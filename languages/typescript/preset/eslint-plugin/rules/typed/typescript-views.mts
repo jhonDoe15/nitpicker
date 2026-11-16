@@ -28,3 +28,11 @@ export function aliasedSymbolAt(
 export function isType(value: unknown): value is TypeScript.Type {
   return typeof value === 'object' && value !== null && 'flags' in value && 'getSymbol' in value;
 }
+
+export function isReference(type: TypeScript.Type): type is TypeScript.TypeReference {
+  return (
+    'objectFlags' in type &&
+    typeof type.objectFlags === 'number' &&
+    (type.objectFlags & ts.ObjectFlags.Reference) !== 0
+  );
+}

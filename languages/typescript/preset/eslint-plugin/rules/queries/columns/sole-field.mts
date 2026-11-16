@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { isFunctionNode } from '../../analysis/constant-resolution.mts';
 import { memberName, unwrapped } from '../../security/security-values.mts';
 import type { FunctionNode } from '../../typed/syntax-views.mts';
 
@@ -39,4 +40,23 @@ export function soleField(callback: FunctionNode): string | undefined {
     return undefined;
   }
   return only.key.type === AST_NODE_TYPES.Identifier ? only.key.name : undefined;
+}
+
+export type MappedField = { readonly call: TSESTree.CallExpression; readonly field: string };
+
+export function mappedField(read: TSESTree.Node): MappedField | undefined {
+  const member = read.parent;
+  const call = member?.parent;
+  if (
+    member?.type !== AST_NODE_TYPES.MemberExpression ||
+    member.object !== read ||
+    memberName(member) !== 'map' ||
+    call?.type !== AST_NODE_TYPES.CallExpression ||
+    call.callee !== member
+  ) {
+    return undefined;
+  }
+  const [callback] = call.arguments;
+  const field = isFunctionNode(callback) ? soleField(callback) : undefined;
+  return field === undefined ? undefined : { call, field };
 }

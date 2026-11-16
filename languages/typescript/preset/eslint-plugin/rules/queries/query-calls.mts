@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, stringValue } from '../analysis/constant-resolution.mts';
 import { DRIZZLE, moduleScope, type OrmBinding } from '../database/orm-modules.mts';
 import { memberName, staticKey, unwrapped, type Context } from '../security/security-values.mts';
+import { type MemberCall } from '../events/emitter-creations.mts';
 import { chainOf } from '../typed/node-views.mts';
 
 export type QueryScope = {
@@ -9,7 +10,6 @@ export type QueryScope = {
   readonly families: Set<string>;
   readonly orm: boolean;
 };
-export type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
 
 const LIST_QUERIES = new Set<string | undefined>([
   'find',

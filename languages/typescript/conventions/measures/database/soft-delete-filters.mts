@@ -48,6 +48,11 @@ function addGuard(guards: Guards, { table, identity, name }: Guard, count: numbe
   guards.set(table, byIdentity);
 }
 
+function guardOf(table: string, type: string | undefined, spelling: string): Guard {
+  const identity = type === 'col' ? `col:${columnKey(spelling)}` : `fn:${spelling}`;
+  return { table, identity, name: spelling };
+}
+
 function tally(counts: Counts): {
   readonly reads: Map<string, number>;
   readonly guards: Guards;
@@ -66,13 +71,12 @@ function tally(counts: Counts): {
     } else if (kind === 'read') {
       reads.set(table, (reads.get(table) ?? 0) + count);
     } else if (kind !== undefined) {
-      const spelling = name ?? '';
-      const identity = type === 'col' ? `col:${columnKey(spelling)}` : `fn:${spelling}`;
-      addGuard(guards, { table, identity, name: spelling }, count);
+      addGuard(guards, guardOf(table, type, name ?? ''), count);
     }
   }
   return { reads, guards, automatic };
 }
+
 function followedFilters(counts: Counts): string[] {
   const { reads, guards, automatic } = tally(counts);
   return [...guards]

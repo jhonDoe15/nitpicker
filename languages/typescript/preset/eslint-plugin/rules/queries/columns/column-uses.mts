@@ -1,8 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode } from '../../analysis/constant-resolution.mts';
-import { memberName, unwrapped, type Context } from '../../security/security-values.mts';
-import { isOrmCall, isQueryResult, type MemberCall, type QueryScope } from '../query-calls.mts';
-import { soleField } from './sole-field.mts';
+import { unwrapped, type Context } from '../../security/security-values.mts';
+import { type MemberCall } from '../../events/emitter-creations.mts';
+import { isOrmCall, isQueryResult, type QueryScope } from '../query-calls.mts';
+import { mappedField, type MappedField } from './sole-field.mts';
 import { isIdsWrite } from '../rows/row-writes.mts';
 import { isModelField } from './model-fields.mts';
 import { isBooleanUse, isCountTest } from './boolean-uses.mts';
@@ -27,24 +28,9 @@ function isMemberCall(node: TSESTree.Node): node is MemberCall {
   );
 }
 
-function mappedColumn(
-  read: TSESTree.Node,
-): { readonly call: TSESTree.CallExpression; readonly field: string } | undefined {
-  const member = read.parent;
-  const call = member?.parent;
-  if (
-    member?.type !== AST_NODE_TYPES.MemberExpression ||
-    member.object !== read ||
-    memberName(member) !== 'map' ||
-    call?.type !== AST_NODE_TYPES.CallExpression ||
-    call.callee !== member ||
-    call.arguments.length !== 1
-  ) {
-    return undefined;
-  }
-  const [callback] = call.arguments;
-  const field = isFunctionNode(callback) ? soleField(callback) : undefined;
-  return field === undefined ? undefined : { call, field };
+function mappedColumn(read: TSESTree.Node): MappedField | undefined {
+  const mapped = mappedField(read);
+  return mapped?.call.arguments.length === 1 ? mapped : undefined;
 }
 
 export function columnUse(

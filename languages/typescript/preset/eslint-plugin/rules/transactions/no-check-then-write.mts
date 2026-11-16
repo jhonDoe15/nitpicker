@@ -3,29 +3,21 @@ import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { estreeCallView } from '../support/io/call-views.mts';
 import { decidedWrite, unitReads } from './check-then-write.mts';
 import type { FunctionNode } from '../typed/syntax-views.mts';
-import { isTransactionalUnit, unitWrites } from './writes-in-units.mts';
+import {
+  isTransactionalUnit,
+  unitWrites,
+  WRITE_OPTIONS_SCHEMA,
+  type WriteOptions,
+} from './writes-in-units.mts';
 
-type Options = readonly [
-  { readonly orms?: readonly string[]; readonly opensTransactions?: boolean }?,
-];
-
-export const rule: TSESLint.RuleModule<'race', Options> = {
+export const rule: TSESLint.RuleModule<'race', WriteOptions> = {
   meta: {
     type: 'suggestion',
     docs: {
       description:
         'Do not let a read decide a write to the same table without a lock or an atomic statement',
     },
-    schema: [
-      {
-        type: 'object',
-        properties: {
-          orms: { type: 'array', items: { type: 'string' } },
-          opensTransactions: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
-    ],
+    schema: WRITE_OPTIONS_SCHEMA,
     messages: {
       race: [
         'This writes after `{{read}}` decided it with no transaction or lock, so two concurrent callers can',

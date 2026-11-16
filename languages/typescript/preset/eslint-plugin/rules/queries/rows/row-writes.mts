@@ -1,11 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { callsWithin } from '../../effects/held-scopes.mts';
-import { isFunctionNode } from '../../analysis/constant-resolution.mts';
 import { memberName, staticKey, unwrapped, type Context } from '../../security/security-values.mts';
 import { callChain, isRepositoryLike, receiverNames } from '../query-calls.mts';
 import { singleRead, type LoadedRows } from './loaded-rows.mts';
 import { assignsOnly, loopOf } from './assignments.mts';
-import { soleField } from '../columns/sole-field.mts';
+import { mappedField } from '../columns/sole-field.mts';
 
 export const UPDATE = 'update';
 export const DELETE = 'delete';
@@ -136,19 +135,7 @@ function removeShape(rows: LoadedRows, query: TSESTree.CallExpression): WriteSha
 }
 
 function idsOf(read: TSESTree.Node): TSESTree.CallExpression | undefined {
-  const member = read.parent;
-  const call = member?.parent;
-  if (
-    member?.type !== AST_NODE_TYPES.MemberExpression ||
-    member.object !== read ||
-    memberName(member) !== 'map' ||
-    call?.type !== AST_NODE_TYPES.CallExpression ||
-    call.callee !== member
-  ) {
-    return undefined;
-  }
-  const [callback] = call.arguments;
-  return isFunctionNode(callback) && soleField(callback) !== undefined ? call : undefined;
+  return mappedField(read)?.call;
 }
 
 function chainNames(call: TSESTree.CallExpression): (string | undefined)[] {
