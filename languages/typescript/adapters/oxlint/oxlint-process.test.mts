@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { spawnCollected, withCompileCache, withEngineHint } from './oxlint-process.mts';
+import { spawnCollected, withEngineHint } from './oxlint-process.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
-const CACHE_DIRECTORY: unknown = expect.stringMatching(/nitpicker-node-compile-cache$/u);
 
 describe('the engine hint on an oxlint failure', () => {
   it('suggests the ESLint engine when the failure may be the engine', () => {
@@ -18,16 +17,6 @@ describe('the engine hint on an oxlint failure', () => {
       'oxlint planning failed: nitpicker.config.json "exceptions" name unknown rules: formatjs/enforce-id';
 
     expect(withEngineHint(detail)).toBe(detail);
-  });
-});
-
-describe('the oxlint subprocess environment', () => {
-  it('reuses compiled modules across the planning and lint processes unless the caller chose a cache', () => {
-    expect(withCompileCache({ PATH: '/bin' })).toEqual({
-      NODE_COMPILE_CACHE: CACHE_DIRECTORY,
-      PATH: '/bin',
-    });
-    expect(withCompileCache({ NODE_COMPILE_CACHE: '/cache' })['NODE_COMPILE_CACHE']).toBe('/cache');
   });
 });
 
