@@ -27,77 +27,26 @@ import { mavenScope } from './reactor/maven-scope.mjs';
 import { reactorRootFor } from './reactor/reactor-root.mjs';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
-import {
-  type JavaEnvironment,
-  type JavaPolicy,
-  callUntyped,
-} from '../adapters/typed/java-values.mts';
+import { type JavaPolicy, callUntyped } from '../adapters/typed/java-values.mts';
 import {
   type Classpaths,
   type Dependency,
   type MavenModule,
-  type MavenScope,
   classpathsOf,
   dependencyOf,
   mavenModuleOf,
   scopeOf,
 } from './typed/maven-values.mts';
-
-type MavenRun = {
-  readonly projectRoot: string;
-  readonly mavenRoot: string;
-  readonly maven: string | undefined;
-  readonly spawn: unknown;
-  readonly timeoutMs: number | undefined;
-  readonly pinned: unknown;
-  readonly quick: boolean;
-  readonly mutationOff: boolean;
-};
-type AnalyzedModule = {
-  readonly module: MavenModule;
-  readonly classpaths: Classpaths;
-};
-type AnalyzeRequest = MavenRun & {
-  readonly analyzed: readonly AnalyzedModule[];
-  readonly policy: JavaPolicy;
-  readonly kotlin: unknown;
-  readonly work: string;
-  readonly pitDeadline: number | undefined;
-  readonly tools: unknown;
-  readonly configs: unknown;
-  readonly since: number;
-  readonly project: unknown;
-  readonly testsSkipped: boolean;
-  readonly effectsOptions: unknown;
-};
-type ToolsRequest = {
-  readonly modules: readonly MavenModule[];
-  readonly analyzed: readonly AnalyzedModule[];
-  readonly policy: JavaPolicy;
-  readonly pinned: unknown;
-  readonly kotlin: unknown;
-};
-type MavenPresetOptions = {
-  readonly maven?: string | undefined;
-  readonly policy?: JavaPolicy | undefined;
-  readonly configs?: unknown;
-  readonly environment?: JavaEnvironment | undefined;
-  readonly spawn?: unknown;
-  readonly timeoutMs?: number | undefined;
-  readonly pitDeadline?: number | undefined;
-};
-type MavenPresetRun = {
-  readonly moduleDirs: string[];
-  readonly testsFailures: unknown[];
-  readonly formatAdvice: unknown;
-  readonly notAffected: string[];
-};
-type ReadModules = {
-  readonly modules: MavenModule[];
-  readonly built: MavenModule[];
-  readonly scope: MavenScope;
-  readonly effectivePom: unknown;
-};
+import type {
+  MavenRun,
+  AnalyzeRequest,
+  ToolsRequest,
+  MavenPresetOptions,
+  MavenPresetRun,
+  Prepared,
+  ReadModules,
+  PrepareRequest,
+} from './typed/maven-build-types.mts';
 
 const REPORT_CLOCK_SKEW_MS = 2000;
 
@@ -225,6 +174,24 @@ function presetTools(run: MavenRun, request: ToolsRequest): unknown {
   });
 }
 
+function prepare(run: MavenRun, { policy, environment, configs, work }: PrepareRequest): Prepared {
+  const { modules, built, scope, effectivePom } = readModules(run, {
+    work,
+    changedFiles: policy['changedFiles'],
+  });
+  const setup = { ...run, policy, modules: built, effectivePom, work, environment };
+  const kotlin = callUntyped(kotlinSetup, setup);
+  const since = Date.now() - REPORT_CLOCK_SKEW_MS;
+  const build = { ...run, projectRoot: run.mavenRoot, selection: scope.selection, work };
+  const timedOut = buildOrSkipTests(
+    { ...build, modules: built, reruns: testReruns(configs) },
+    policy,
+  );
+  const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
+  const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
+  return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
+}
+
 function presetInWork(
   projectRoot: string,
   {
@@ -249,28 +216,18 @@ function presetInWork(
     quick: policy.quick === true,
     mutationOff: policy['mutationOff'] === true,
   };
-  const { modules, built, scope, effectivePom } = readModules(run, {
-    work,
-    changedFiles: policy['changedFiles'],
-  });
-  const setup = { ...run, policy, modules: built, effectivePom, work, environment };
-  const kotlin = callUntyped(kotlinSetup, setup);
-  const since = Date.now() - REPORT_CLOCK_SKEW_MS;
-  const build = { ...run, projectRoot: run.mavenRoot, selection: scope.selection, work };
-  const timedOut = buildOrSkipTests(
-    { ...build, modules: built, reruns: testReruns(configs) },
+  const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {
     policy,
-  );
-  const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
-  const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
+    environment,
+    configs,
+    work,
+  });
   const testsFailures = analyzeAll({
     ...run,
+    ...prepared,
     testsSkipped: timedOut.length > 0,
     pitDeadline,
-    analyzed,
-    tools,
     configs,
-    since,
     policy,
     kotlin,
     work,

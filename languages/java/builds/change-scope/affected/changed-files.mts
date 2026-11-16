@@ -60,7 +60,7 @@ function hidesOutsideChanges(roots: ComparisonRoots, files: readonly string[]): 
   if (existsSync(path.join(roots.head, '.git')) || !isMultiModule(path.dirname(roots.head))) {
     return false;
   }
-  const all = readChangedFiles(roots, { relative: false });
+  const all = readChangedFiles(roots, 'repository');
   return all === undefined || new Set(all).size > new Set(files).size;
 }
 

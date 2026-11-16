@@ -26,7 +26,7 @@ type RootsPolicy = {
   readonly policyRoot?: string | undefined;
   readonly baselineRoot?: string | undefined;
 };
-type DiffScope = { readonly relative?: boolean };
+export type DiffPaths = 'project' | 'repository';
 
 function sameDirectory(left: string, right: string): boolean {
   return realpathSync.native(left) === realpathSync.native(right);
@@ -50,14 +50,14 @@ export function comparisonRoots(
 function diffBetween(
   roots: ComparisonRoots,
   format: readonly string[],
-  { relative = true }: DiffScope = {},
+  paths: DiffPaths = 'project',
 ): string {
   return textOf(
     diffFromBase({
       runGit,
       baselineRoot: roots.base,
       projectRoot: roots.head,
-      args: [...format, ...DIFF_OPTIONS, ...(relative ? ['--relative'] : [])],
+      args: [...format, ...DIFF_OPTIONS, ...(paths === 'project' ? ['--relative'] : [])],
     }),
   );
 }
@@ -122,12 +122,9 @@ export function readComparisonChanges(roots: ComparisonRoots): ComparisonChanges
   };
 }
 
-export function readChangedFiles(
-  roots: ComparisonRoots,
-  options?: DiffScope,
-): string[] | undefined {
+export function readChangedFiles(roots: ComparisonRoots, paths?: DiffPaths): string[] | undefined {
   try {
-    return nameStatusEntries(diffBetween(roots, ['--name-status'], options)).flatMap(
+    return nameStatusEntries(diffBetween(roots, ['--name-status'], paths)).flatMap(
       ({ from, to }) => [...new Set([from, to])],
     );
   } catch (error) {
