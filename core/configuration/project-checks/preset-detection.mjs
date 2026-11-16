@@ -80,8 +80,12 @@ export function scriptProjectPreset(config, projectRoot) {
   return typed ? 'typescript' : 'javascript';
 }
 
+export function hasScriptSources(config, projectRoot) {
+  return projectScripts(config, projectRoot).length > 0;
+}
+
 export function presetToDeclare(config, projectRoot) {
-  return projectScripts(config, projectRoot).length > 0 ? undefined : detectedPreset(projectRoot);
+  return hasScriptSources(config, projectRoot) ? undefined : detectedPreset(projectRoot);
 }
 
 export function javascriptPresetHint(config, projectRoot) {

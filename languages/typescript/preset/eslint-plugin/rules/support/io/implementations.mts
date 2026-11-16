@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type TypeScript from 'typescript';
-import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { readLayout } from '../../typed/policy-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 
@@ -240,7 +240,7 @@ export function implementationsOf(
   if (name === undefined || member === '' || !isBodiless(declaration)) {
     return [];
   }
-  const implementations = memoized(indexes, state.program, () => implementationIndex(state));
+  const implementations = cachedValue(indexes, state.program, () => implementationIndex(state));
   const owner = resolvedSymbol(state.checker, name);
   return (implementations.get(owner) ?? [])
     .map((implementation) => memberFunction(state.checker, implementation, member))

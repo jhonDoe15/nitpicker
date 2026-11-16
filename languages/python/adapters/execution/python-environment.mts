@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { uvWorkspaceOf as untypedUvWorkspaceOf } from '../../../../core/configuration/project-checks/uv-workspace.mjs';
 import type { Launcher } from '../typed/environment/launcher-types.mts';
 import type { EnvironmentSpec } from './environments/typed/environment-types.mts';
 import type { SpawnFunction } from './typed/process-types.mts';
@@ -18,13 +19,13 @@ const POETRY = 'poetry';
 export { environmentError };
 
 const ancestors: (directory: string) => string[] = ancestorDirectories;
+const uvWorkspaceOf: (directory: string) => unknown = untypedUvWorkspaceOf;
 const NAMED_ENVIRONMENTS = ['uv', POETRY, 'path', ...MANAGED_ENVIRONMENTS];
 const LOCKFILE_ENVIRONMENTS: readonly (readonly [string, string])[] = [
   ['uv.lock', 'uv'],
   ['poetry.lock', POETRY],
 ];
 const VENV_DIRECTORY = '.venv';
-const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/m;
 const POETRY_TIMEOUT_MS = 60 * 1000;
 export function detectEnvironment(projectRoot: string, setting?: string): EnvironmentSpec {
   if (setting !== undefined && NAMED_ENVIRONMENTS.includes(setting)) {
@@ -166,13 +167,8 @@ function uvWorkspaceRoot(projectRoot: string): string | undefined {
   return ancestors(projectRoot).find(
     (directory) =>
       existsSync(path.join(directory, 'uv.lock')) &&
-      (directory === projectRoot || declaresUvWorkspace(directory)),
+      (directory === projectRoot || uvWorkspaceOf(directory) !== undefined),
   );
-}
-
-function declaresUvWorkspace(directory: string): boolean {
-  const pyproject = path.join(directory, 'pyproject.toml');
-  return existsSync(pyproject) && UV_WORKSPACE_TABLE.test(readFileSync(pyproject, 'utf8'));
 }
 
 function poetryDirectory(projectRoot: string, spawn: SpawnFunction): string {

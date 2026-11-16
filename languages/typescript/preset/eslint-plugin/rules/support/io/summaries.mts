@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { tsRunsWithCaller } from '../flow/sync-callbacks.mts';
-import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import type { Effects } from './call-tags.mts';
 import {
   calleeDeclaration,
@@ -26,7 +26,7 @@ const publishers = new WeakMap<TypeScript.Program, boolean>();
 const QUOTES = ["'", '"', '`'];
 
 function stateOf(program: TypeScript.Program): SummaryState {
-  return memoized(states, program, () => ({
+  return cachedValue(states, program, () => ({
     program,
     checker: program.getTypeChecker(),
     descriptors: new Map(),
@@ -59,7 +59,7 @@ function callsIn(root: TypeScript.Node): CallNode[] {
 }
 
 function descriptorsOf(state: SummaryState, fn: TsFunction): Resolved[] {
-  return memoized(state.descriptors, fn, () =>
+  return cachedValue(state.descriptors, fn, () =>
     callsIn(fn.body).map((call) => resolveCall(state, call)),
   );
 }
@@ -118,7 +118,7 @@ function summarize(state: SummaryState, roots: readonly TsFunction[]): void {
   for (const budget of BUDGETS) {
     const due = [...levels].filter(([, level]) => level + budget <= MAX_HOPS);
     for (const [fn] of due) {
-      const memo = memoized(state.summaries, fn, () => new Map<number, Effects>());
+      const memo = cachedValue(state.summaries, fn, () => new Map<number, Effects>());
       memo.set(budget, memo.get(budget) ?? evaluated(state, fn, budget));
     }
   }
@@ -134,7 +134,7 @@ function resolvedEffects(state: SummaryState, call: CallNode): Effects {
 
 export function typedCallEffects(call: CallNode, program: TypeScript.Program): Effects {
   const state = stateOf(program);
-  return memoized(state.calls, call, () => resolvedEffects(state, call));
+  return cachedValue(state.calls, call, () => resolvedEffects(state, call));
 }
 
 export { stateOf as programState };
@@ -164,7 +164,7 @@ function mentionsBroker(file: TypeScript.SourceFile, specifiers: readonly string
 }
 
 export function programMayPublish(program: TypeScript.Program): boolean {
-  return memoized(publishers, program, () =>
+  return cachedValue(publishers, program, () =>
     program.getSourceFiles().some((file) => mentionsBroker(file, messagePackages())),
   );
 }

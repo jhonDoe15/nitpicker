@@ -54,11 +54,11 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
-  Object.assign(report.summary, stamp, partialRunOf(settings.partialRun));
-  const location = {
-    projectPath: settings.projectRelativePath,
-    repositoryRoot: settings.repositoryRoot,
-  };
+  const projectPath = settings.projectRelativePath;
+  Object.assign(report.summary, stamp, partialRunOf(settings.partialRun), {
+    projectPath: projectPath.replaceAll(path.sep, '/'),
+  });
+  const location = { projectPath, repositoryRoot: settings.repositoryRoot };
   report.fixPlans = plansFor(report, location);
   report.text = writeReports(settings.outputRoot, report, location);
   return report;

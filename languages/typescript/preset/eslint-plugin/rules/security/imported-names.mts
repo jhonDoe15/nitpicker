@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mts';
-import { memoized } from '../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { chainOf, nameOf } from '../typed/node-views.mts';
 import { DEPTHS, memberName, staticKey, unwrapped, type Context } from './security-values.mts';
 
@@ -151,7 +151,7 @@ function collectedBindings(program: TSESTree.Program): Map<string, ImportedBindi
 }
 
 export function importedBindings(program: TSESTree.Program): Map<string, ImportedBinding> {
-  return memoized(programBindings, program, collectedBindings);
+  return cachedValue(programBindings, program, collectedBindings);
 }
 
 export function isBindCall(

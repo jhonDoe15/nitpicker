@@ -18,6 +18,9 @@ import {
 } from './eslint/policy.mts';
 import type { LinkedPolicyFile } from './typed/tooling.mts';
 import { validatedContainedFile } from './eslint/paths.mts';
+import { detectPackageManager } from './dependency-graph/package-managers/detect.mts';
+import { installedDependencies } from './dependency-graph/installed-dependencies.mts';
+import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mts';
 import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
 import {
@@ -82,7 +85,14 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
 }
 
 function prepareEslint(options: EslintOptions, state: EslintState): LinkedPolicyFile[] {
-  const dependencyRoot = realpathSync(path.join(options.liveProjectRoot, 'node_modules'));
+  const installed: unknown = installedDependencies(options.liveProjectRoot);
+  if (typeof installed !== 'string') {
+    const packageManager = detectPackageManager(options.liveProjectRoot);
+    throw new Error(
+      missingDependenciesMessage(packageManager, path.join(packageManager.root, 'node_modules')),
+    );
+  }
+  const dependencyRoot = realpathSync(installed);
   if (!statSync(dependencyRoot).isDirectory()) {
     throw new Error(`Installed ESLint dependencies are missing at ${dependencyRoot}`);
   }

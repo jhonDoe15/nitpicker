@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
 import {
   bindingsOf,
@@ -34,11 +35,7 @@ export function isMemberCall(call: TSESTree.CallExpression): call is MemberCall 
 
 export function createBindings(program: TSESTree.Program): Bindings {
   const cache = new Map<ReadonlySet<string>, ModuleBindings>();
-  return (modules) => {
-    const cached = cache.get(modules) ?? bindingsOf(program, modules);
-    cache.set(modules, cached);
-    return cached;
-  };
+  return (modules) => cachedValue(cache, modules, (key) => bindingsOf(program, key));
 }
 
 export function importedName(

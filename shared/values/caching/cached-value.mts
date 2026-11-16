@@ -3,7 +3,7 @@ type Memo<Key, Value> = {
   set(key: Key, value: Value): unknown;
 };
 
-export function memoized<Key, Value>(
+export function cachedValue<Key, Value>(
   cache: Memo<Key, Value>,
   key: Key,
   create: (key: Key) => Value,

@@ -18,6 +18,19 @@ describe('folder imports', () => {
       { from: 'src/invoicing/ledger.ts', to: 'src/billing' },
     ]);
   });
+  it('keeps package-name imports that do not lead to source files as package reach', () => {
+    expect(
+      folderImports([
+        { from: 'packages/billing/src/invoice.ts', package: 'packages/tax' },
+        { from: 'packages/billing/src/refund.ts', package: 'packages/tax' },
+        { from: 'packages/billing/src/invoice.ts', package: 'packages/tax' },
+        { from: 'main.ts', package: 'packages/tax' },
+      ]),
+    ).toEqual([
+      { from: 'packages/billing/src/invoice.ts', package: 'packages/tax' },
+      { from: 'packages/billing/src/refund.ts', package: 'packages/tax' },
+    ]);
+  });
   it('publishes the section only when co-change history is enabled', () => {
     expect(moduleImportsSection(IMPORTS, { coChange: true })).toEqual({
       moduleImports: folderImports(IMPORTS),

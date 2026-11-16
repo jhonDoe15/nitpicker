@@ -26,7 +26,7 @@ const CATALOG_FROM_FILE =
   /\b(?:create\s*\(\s*["'](?<named>\w+)["']\s*\)|(?<plain>\w+))\s*\{\s*from\s*\(\s*files\s*\(\s*["'](?<file>[^"']+)["']/gu;
 const INLINE_PLUGIN = /\bplugin\s*\(\s*["'](?<alias>[\w.-]+)["']\s*,\s*["'](?<id>[\w.-]+)["']/gu;
 
-function projectFiles(projectRoot, pattern) {
+export function projectFiles(projectRoot, pattern) {
   const files = filesUnder(projectRoot, {
     skipDirectory: (_absolute, entry) =>
       entry.name.startsWith('.') || SKIPPED_FOLDERS.has(entry.name),

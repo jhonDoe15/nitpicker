@@ -5,7 +5,7 @@ import type { Context } from '../security/security-values.mts';
 import { isOwned } from '../support/flow/scope-owners.mts';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { estreeCallView, type CallView } from '../support/io/call-views.mts';
-import { memoized } from '../../../../../../shared/values/caches/memo.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { ancestorsOf, chainOf, contains, nameOf, type SourceCode } from '../typed/node-views.mts';
 
 import { BEGIN_TEXT, END_TEXT, SCOPES, SQL_METHODS, TRANSACTION } from './scopes/scope-words.mts';
@@ -132,8 +132,8 @@ function branchOf(node: TSESTree.Node, body: TSESTree.Node): Branch | undefined 
 }
 
 function bodyIndex(kind: ScopeKind, body: TSESTree.Node, context: Context): BodyIndex {
-  const perBody = memoized(bodyIndexes, body, () => new Map<ScopeKind, BodyIndex>());
-  return memoized(perBody, kind, () => {
+  const perBody = cachedValue(bodyIndexes, body, () => new Map<ScopeKind, BodyIndex>());
+  return cachedValue(perBody, kind, () => {
     const calls = callsWithin(body, context.sourceCode.visitorKeys);
     const markers = calls.flatMap((call) => {
       const role = markerRole(kind, call, context);
@@ -229,7 +229,7 @@ function rangeScope(index: BodyIndex, node: TSESTree.Node): HeldScope | undefine
     )
     .at(-1);
   return last?.role === BEGINS
-    ? memoized(index.scopes, last.call, () => openScope(index, last.call))
+    ? cachedValue(index.scopes, last.call, () => openScope(index, last.call))
     : undefined;
 }
 
@@ -240,7 +240,7 @@ function callbackScope(
 ): HeldScope | undefined {
   for (const fn of ancestorsOf(node).filter(isFunctionNode)) {
     if (isCallbackOpener(kind, fn, context)) {
-      return memoized(callbackScopes, fn, () => ({
+      return cachedValue(callbackScopes, fn, () => ({
         opener: fn.parent,
         calls: callsWithin(fn.body, context.sourceCode.visitorKeys),
         param: fn.params[0],
