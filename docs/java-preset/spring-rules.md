@@ -39,7 +39,7 @@ Kotlin sources, under the same ids and exception route, from the Kotlin syntax f
 [Kotlin preset: Spring rules](../kotlin-preset/review-rules.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks
 ([below](spring-configuration-files.md)) do not depend on the language and apply to Kotlin projects
-too, and `missing-enable` scans the Kotlin sources.
+too, and `missing-enable` and `untrimmed-request-text` scan the Kotlin sources (`untrimmed-request-text` needs a Spring controller, so a plain Java project has nothing to trim).
 
 **Type laundering (decision).** The Java counterpart of the TypeScript `as` and `any` bans is the unchecked
 conversion, not the checked cast: a cast to a concrete type is checked at run time and is what Java offers
@@ -533,7 +533,7 @@ Error Prone checks fire on the deliberate violations the Spring rule examples ho
 A project whose main compile classpath has `reactor-core` gets nitpicker's Reactor ruleset,
 [`languages/java/gradle/reactor-ruleset.xml`](../languages/java/gradle/reactor-ruleset.xml), in the
 main-only PMD wrapper (`pmd-main.xml`), on Gradle (the init script) and Maven
-(`maven/maven-build.mjs` detects `reactor-core` next to the Spring facts and passes it to `maven/maven-lint.mjs`) alike; a project without Reactor does not run it. Both rules match `Mono`
+(`maven/maven-build.mts` detects `reactor-core` next to the Spring facts and passes it to `maven/maven-lint.mjs`) alike; a project without Reactor does not run it. Both rules match `Mono`
 and `Flux` by PMD type resolution on the auxiliary classpath. A finding prints as `pmd/<rule>`, which is
 also the `rule` of a config exception, and the shared exception sentence is added by the gate.
 

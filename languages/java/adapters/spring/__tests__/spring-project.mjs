@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { sourceTextReader } from '../../reporting/function-locator.mjs';
 import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mjs';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
@@ -142,6 +142,9 @@ const REVIEW_RULES = new Set([
   'LinearLookupInLoop',
   'SortForExtreme',
   'RedundantStreamStep',
+  'NullMapValue',
+  'HttpValueCase',
+  'HandSplitHttpHeader',
   'StreamedRowsCollected',
   'SpringDataFilterInQuery',
   'HardcodedSecret',

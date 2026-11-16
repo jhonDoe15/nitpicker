@@ -30,7 +30,13 @@ function invocationOf(settings, roots) {
 }
 
 export function createEslintAnalyzer(settings) {
-  const { patterns, exclusions, shardWeight = 1, policyFromPackage = false } = settings;
+  const {
+    patterns,
+    exclusions,
+    shardWeight = 1,
+    policyFromPackage = false,
+    colocatedWith,
+  } = settings;
   return {
     name: settings.name,
     version: settings.version,
@@ -39,6 +45,7 @@ export function createEslintAnalyzer(settings) {
     lintedGlobs: { include: patterns, exclude: exclusions },
     timeoutMs: settings.timeoutMs,
     shardWeight,
+    ...(colocatedWith === undefined ? {} : { colocatedWith }),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
     createInvocation(roots) {

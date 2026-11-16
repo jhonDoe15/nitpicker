@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
-import { mergedRoots } from '../../builds/java-modules.mjs';
+import { mergedRoots } from '../../builds/java-modules.mts';
 
 const roots = [];
 

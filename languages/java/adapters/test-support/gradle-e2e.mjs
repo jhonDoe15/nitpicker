@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 
 export const GRADLE_STEP_TIMEOUT_MS = 3 * 60 * 1000;
 const GIT_TIMEOUT_MS = 30_000;
@@ -64,7 +64,7 @@ export function analyzeWithIncludedBuild(fixture, { gradle, policy }) {
       output,
       mutations: output.split('\n').filter((line) => CONFIGURATION_MUTATION.test(line)),
       findings,
-      nested: findings.filter((finding) => PLUGIN_BUILD.test(finding.path ?? '')),
+      nested: findings.filter((finding) => PLUGIN_BUILD.test(finding.path)),
     };
   } finally {
     rmSync(root, { recursive: true, force: true });

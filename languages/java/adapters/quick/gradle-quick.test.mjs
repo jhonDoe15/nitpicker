@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
@@ -57,7 +57,7 @@ function toolsOf(findings) {
 }
 
 describe.each(['java', 'kotlin'])('the %s preset on a Gradle build', (preset) => {
-  it('passes the quick property and the build cache to Gradle only for a quick run', () => {
+  it('passes the build cache to Gradle on every run and the quick property only on a quick run', () => {
     const quick = project();
     const full = project();
 
@@ -65,7 +65,7 @@ describe.each(['java', 'kotlin'])('the %s preset on a Gradle build', (preset) =>
     collect(full, { preset });
 
     expect(quickProperties(quick)).toEqual(['-Pnitpicker.quick=true', '--build-cache']);
-    expect(quickProperties(full)).toEqual([]);
+    expect(quickProperties(full)).toEqual(['--build-cache']);
   });
 
   it('reads no coverage, CRAP or mutation findings from a quick run', () => {

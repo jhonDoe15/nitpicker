@@ -35,6 +35,9 @@ the allowed form and ends with its exception entry.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).
+- Text read from the query string or a form (`r.URL.Query().Get`, `r.FormValue`) is trimmed before it reaches a
+  lookup: wrap the read in `strings.TrimSpace`, best in one helper that reads every query value, since a padded
+  `" Davis"` finds nothing (`go-rules/untrimmed-request-text`).
 - A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
   clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
 - A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
@@ -72,6 +75,11 @@ the allowed form and ends with its exception entry.
   managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
+- Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
+  constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
+  product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison
+  operand. Compare without adding (`width >= len(text)-start`), check the sentinel first
+  (`if width == math.MaxInt { ... }`), or clamp with `min` before the add.
 
 ## HTTP and databases
 
@@ -142,3 +150,9 @@ the allowed form and ends with its exception entry.
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.
 - A goroutine a test starts is waited for before the test returns (`go-rules/unowned-goroutine`).
+- HTTP text is case-insensitive (`go-rules/http-value-case`): compare a header value, a `Host`, a cookie
+  name prefix or a file extension with `strings.EqualFold`, or lowercase it first, and parse
+  structured headers (`go-rules/hand-split-http-header`) with `mime.ParseMediaType` or
+  `http.ParseCookie` instead of `strings.Split(value, ",")`. `Header.Get` canonicalises the name; index
+  `Header` only with a canonical key (`http.CanonicalHeaderKey`). A library that is itself the parser
+  takes an exception. `url.Parse` already lowercases the scheme, so `u.Scheme == "https"` is fine.

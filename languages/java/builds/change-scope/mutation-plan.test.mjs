@@ -6,9 +6,9 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mts';
-import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mjs';
-import { isJvmTestPath } from './jvm-paths.mjs';
-import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mjs';
+import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mts';
+import { isJvmTestPath } from './jvm-paths.mts';
+import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mts';
 
 const MAIN = 'src/main/java/shop';
 const TEST = 'src/test/java/shop';
@@ -243,5 +243,14 @@ describe('JVM test paths', () => {
         changedTestsKey({ touchedPaths: ['README.md'], headRoot: roots.head, quick: false }),
       ),
     ).toEqual({ tests: [], reached: [] });
+  });
+
+  it('gives a comparison without changed tests the key that publishing the base writes', () => {
+    const roots = snapshots();
+    const key = (touchedPaths) =>
+      changedTestsKey({ touchedPaths, headRoot: roots.head, quick: false });
+
+    expect(key([`${MAIN}/Price.java`, 'README.md'])).toBe(key([]));
+    expect(key([])).not.toBe(key([`${TEST}/PriceTest.java`]));
   });
 });
