@@ -12,6 +12,12 @@ type EngineViolation = {
   readonly line: number;
   readonly firstLine: number;
   readonly method: string;
+  readonly job?: string;
+  readonly entity?: string;
+  readonly column?: string;
+  readonly flag?: string;
+  readonly declared?: number;
+  readonly total?: number;
 };
 type EngineFact = {
   readonly fileName: string;

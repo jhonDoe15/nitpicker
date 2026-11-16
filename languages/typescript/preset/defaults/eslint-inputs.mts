@@ -51,6 +51,10 @@ import { fileNameRuleOptions as untypedFileNameRuleOptions } from '../../convent
 import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
 import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';
 import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mts';
+import { routeAuthEntries as untypedRouteAuthEntries } from '../../conventions/measures/routes/route-auth.mts';
+import { softDeleteFilterEntries as untypedSoftDeleteFilterEntries } from '../../conventions/measures/database/soft-delete-filters.mts';
+import { projectOpensTransactions as untypedProjectOpensTransactions } from '../../conventions/measures/database/transactions.mts';
+import { ormsOf as untypedOrmsOf } from '../eslint-plugin/rules/support/orm/orms.mts';
 import {
   testEnvironmentConfigFor as untypedTestEnvironmentConfigFor,
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,
@@ -68,6 +72,15 @@ export type StrictOptions = {
   readonly security: SecurityFacts;
   readonly frameworkDefaultExports: readonly string[];
   readonly detachedWorkRunners: readonly string[];
+  readonly databaseWrites: {
+    readonly orms: readonly string[];
+    readonly opensTransactions: boolean;
+  };
+  readonly routeAuth: { readonly entries: readonly string[] };
+  readonly softDeleteFilters: {
+    readonly orms: readonly string[];
+    readonly filters: readonly string[];
+  };
 };
 
 export type PresetLayout = Layout & {
@@ -160,6 +173,12 @@ export const assertionFunctionNames: (conventions: Conventions) => string[] =
   untypedAssertionFunctionNames;
 export const detachedWorkRunnerNames: (conventions: Conventions) => string[] =
   untypedDetachedWorkRunnerNames;
+export const routeAuthEntries: (conventions: Conventions) => string[] = untypedRouteAuthEntries;
+export const softDeleteFilterEntries: (conventions: Conventions) => string[] =
+  untypedSoftDeleteFilterEntries;
+export const projectOpensTransactions: (conventions: Conventions) => boolean =
+  untypedProjectOpensTransactions;
+export const ormsOf: (dependencies: readonly string[]) => string[] = untypedOrmsOf;
 export const precedenceLayers: (precedence: string[] | undefined) => {
   readonly usesProject: boolean;
 } = untypedPrecedenceLayers;

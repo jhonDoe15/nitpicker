@@ -1,4 +1,5 @@
 import { RULES_TOOL } from '../tool.mts';
+import { NARROW_HINTS, ROW_HINTS } from './row-hints.mts';
 import type { RuleHint } from '../hint-types.mts';
 
 const QUERY_WORK: Readonly<Record<string, string>> = {
@@ -53,4 +54,6 @@ export const PERSISTENCE_HINTS: readonly RuleHint[] = [
     allowed:
       'Ask the database: `.count()` or `.exists()` instead of `len()` or a truth test; `.filter()`/`.exclude()` (Django) or `.where()` (SQLAlchemy) instead of a comprehension, `filter()` or `next()`, and `.filter(...).exists()` instead of `any()` or `all()`; `.order_by()` instead of `sorted()`, `.sort()` or `max(key=)`; `.aggregate()`/`.annotate()` (Django) or `func.sum`/`func.count` with `group_by` (SQLAlchemy) instead of `sum()`, `max()`, `min()` or `Counter`. An exception fits only for a small fixed lookup table that is meant to be loaded whole.',
   },
+  ...ROW_HINTS,
+  ...NARROW_HINTS,
 ];

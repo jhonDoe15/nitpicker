@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "soft-delete-filter-missing",
+    "mention": "the filter the other reads use",
+    "subject": "total_orders|Order|deleted_at|deleted_at|5 of 6"
+  }
+]

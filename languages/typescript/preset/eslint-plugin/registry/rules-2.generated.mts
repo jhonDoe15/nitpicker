@@ -1,9 +1,19 @@
+import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
+import { rule as ruleNoThrow } from '../rules/errors/no-throw.mts';
+import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
+import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
+import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
+import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
+import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
+import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
+import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
+import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
@@ -18,6 +28,7 @@ import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/asser
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
+import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
@@ -53,12 +64,22 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-test-retry': ruleNoTestRetry,
+  'no-throw': ruleNoThrow,
+  'no-tri-state-boolean': ruleNoTriStateBoolean,
+  'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
+  'no-unatomic-writes': ruleNoUnatomicWrites,
+  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
+  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
+  'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
+  'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
   'no-unmapped-exception': ruleNoUnmappedException,
@@ -73,6 +94,7 @@ export const partRules = {
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
+  'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,

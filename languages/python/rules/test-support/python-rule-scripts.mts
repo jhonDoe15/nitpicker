@@ -215,7 +215,7 @@ export function ruleLine(rule: string): (line: number, subject: string) => strin
   return (line, subject) => `${rule}:${String(line)} ${subject}`;
 }
 
-const RELATION_SCHEMA_RULES = ['unindexed-foreign-key', 'eager-relationship'];
+const RELATION_SCHEMA_RULES = ['unindexed-foreign-key', 'eager-relationship', 'row-for-one-column'];
 
 export function useRelationScripts(enabled: boolean): ReturnType<typeof useScripts> {
   return useScripts({ enabled, hidden: RELATION_SCHEMA_RULES });

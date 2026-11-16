@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chainOf, depthFirst, foldTree, whileHolds } from './traversal.mjs';
+import { chainOf, depthFirst, expandsFully, foldTree, whileHolds } from './traversal.mjs';
 
 describe('iterative tree traversal', () => {
   it('visits children before the next sibling in their original order', () => {
@@ -55,5 +55,12 @@ describe('iterative tree traversal', () => {
       combine: (_node, _context, children) => 1 + (children[0] ?? 0),
     });
     expect(depth).toBe(20_001);
+  });
+
+  it('holds only when every node it reaches can be expanded', () => {
+    const tree = { a: ['b', 'c'], b: [], c: ['d'], d: [] };
+
+    expect(expandsFully('a', (node) => tree[node])).toBe(true);
+    expect(expandsFully('a', (node) => (node === 'd' ? undefined : tree[node]))).toBe(false);
   });
 });

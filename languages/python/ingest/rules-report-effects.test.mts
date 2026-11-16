@@ -61,6 +61,66 @@ describe('effect rules report', () => {
       'place|order.save()|notify.delay()|on-commit',
       '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
     ],
+    [
+      'resolver-query-per-parent',
+      'Order.customer|strawberry|database|services.load() > session.get()',
+      'The resolver `customer` of `Order` runs once per parent and sends a database query with `services.load()` (which calls `session.get()`) each time, so a list of N parents costs N queries',
+    ],
+    [
+      'in-memory-update',
+      'Order|status,total|django',
+      '`Order` rows are loaded only to set `status`, `total` to the same value on each and save them back, which one update statement does without loading the rows',
+    ],
+    [
+      'row-for-one-column',
+      'User|email|django',
+      '`User` rows are loaded whole only to read `email` from each, when the query can return just that column',
+    ],
+    [
+      'row-for-existence',
+      'User|first|sqlalchemy',
+      '`User` rows are loaded only to test whether one exists, when an existence query answers it',
+    ],
+    [
+      'stale-retry',
+      'session.commit()|retry loop',
+      '`session.commit()` is retried after a `StaleDataError` in a retry loop that never reads the row again, so every attempt sends the same object with the old version and fails the same way, or, after a rollback, the change is lost',
+    ],
+    [
+      'write-outside-transaction',
+      'place|audit_session.add()|session.begin()',
+      "`place` writes with `audit_session.add()` inside `session.begin()` through a session, connection or database alias that is not the block's: the write is not part of the transaction and commits or rolls back on its own",
+    ],
+    [
+      'related-writes-without-transaction',
+      'place|order.save()|item.save()',
+      '`place` writes with `order.save()` and then with `item.save()` outside one transaction: a crash or a concurrent request between the writes leaves half-written state',
+    ],
+    [
+      'check-then-write-race',
+      'start|Project.objects.filter(...).exists()|Project.objects.create()',
+      '`start` reads with `Project.objects.filter(...).exists()` and decides on `Project.objects.create()` outside a transaction and without a lock: two callers can both pass the check before either writes',
+    ],
+    [
+      'job-item-failure-stops-run',
+      'sync_all|requests.post()|Celery task',
+      '`sync_all` is a Celery task whose loop calls `requests.post()` for each item with no `try` around the work of one item: the first item that raises stops every item after it until the next run, and an item that keeps failing blocks the rest for good',
+    ],
+    [
+      'soft-delete-filter-missing',
+      'count_orders|Order|deleted_at|alive()|9 of 10',
+      "`count_orders` reads `Order` without the filter on `deleted_at` that 9 of 10 of the project's `Order` reads apply (`alive()`): deleted or hidden rows reach the caller",
+    ],
+    [
+      'deleted-item-filter-missing',
+      'count_sku|LineItem|is_deleted|live()|5 of 6',
+      "`count_sku` goes over a collection of `LineItem` without skipping items flagged by `is_deleted`, which 5 of 6 of the project's iterations over `LineItem` do (`live()`): deleted items take part in the result",
+    ],
+    [
+      'route-without-auth',
+      'list_reports|FastAPI|Depends(get_current_user)|9 of 10',
+      "`list_reports` is a FastAPI route handler without the auth requirement that 9 of 10 of the project's handlers declare (`Depends(get_current_user)`): callers it was not meant for can reach it",
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0]?.message).toBe(message);
   });
