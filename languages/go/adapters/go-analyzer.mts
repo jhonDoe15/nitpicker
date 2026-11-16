@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure as untypedImportClosure } from '../../../shared/import-closure.mjs';
-import { hashConfigurationFiles } from '../../../shared/values/configuration-hash.mts';
+import { hashConfigurationFiles } from '../../../shared/input-sets/configuration-hash.mts';
 import { toolVersions } from './execution/go-tools.mts';
 import { GO_LINTER_TOOLS } from './configuration/go-config.mts';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';

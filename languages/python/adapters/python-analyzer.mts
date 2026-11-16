@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure as untypedClosure } from '../../../shared/import-closure.mjs';
-import { hashConfigurationFiles } from '../../../shared/values/configuration-hash.mts';
+import { hashConfigurationFiles } from '../../../shared/input-sets/configuration-hash.mts';
 import { RULES_TOOL } from '../rules/rule-hints.mts';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mts';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mts';
