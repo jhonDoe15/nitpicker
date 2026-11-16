@@ -1,12 +1,7 @@
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
-import { nestFacts, routeFacts } from '../../../preset/eslint-plugin/rules/route-auth/handlers.mts';
-import { parseProgram } from '../parsing/estree-program.mts';
+import { lazyMeasure } from '../parsing/lazy-measure.mts';
+import type { authEvidence as AuthEvidence } from './route-evidence.mts';
 
-type Evidence = {
-  readonly shapes: ReadonlySet<string>;
-  readonly isAuth: boolean;
-  readonly isPublic: boolean;
-};
 type Counts = Readonly<Record<string, number>>;
 type Sums = {
   h: number;
@@ -20,9 +15,12 @@ const MIN_HANDLERS = 10;
 const MIN_FALLBACK_HANDLERS = 5;
 const MIN_SHARE = 0.9;
 const FRAMEWORKS = ['nest', 'route'];
-const HINT = /@Controller|APP_GUARD|useGlobalGuards|forRoutes|express|fastify|koa|hono|restify/u;
-const MAX_HANDLERS_PER_FILE = 400;
 const MIN_TOP_SHARE = 0.5;
+
+const authEvidence: typeof AuthEvidence = lazyMeasure(
+  new URL('route-evidence.mjs', import.meta.url),
+  'authEvidence',
+);
 
 export const ROUTE_AUTH_CONVENTION = {
   id: 'typescript.routeAuth',
@@ -42,35 +40,6 @@ export const ROUTE_AUTH_CONVENTION = {
 
 export function routeAuthEntries(conventions: object = {}): string[] {
   return textsOf(fieldOf(conventions, ROUTE_AUTH_CONVENTION.id));
-}
-
-function handlerEvidence(framework: string, handlers: readonly Evidence[]): string[] {
-  return handlers.slice(0, MAX_HANDLERS_PER_FILE).flatMap((handler, index) => {
-    const at = `#${String(index + 1)}`;
-    return [
-      `h:${framework}${at}`,
-      ...(handler.isAuth ? [`a:${framework}${at}`] : []),
-      ...(handler.isPublic ? [`p:${framework}${at}`] : []),
-      ...[...handler.shapes].flatMap((shape) => [
-        `s:${framework}:${shape}${at}`,
-        ...(handler.isPublic ? [`sp:${framework}:${shape}${at}`] : []),
-      ]),
-    ];
-  });
-}
-
-function authEvidence(text: string, file: string): string[] {
-  const program = HINT.test(text) ? parseProgram(text, file) : undefined;
-  if (program === undefined || program.ast === undefined) {
-    return [];
-  }
-  const nest = nestFacts(program.ast, program.visitorKeys);
-  const routes = routeFacts(program.ast, program.visitorKeys).routes;
-  return [
-    ...handlerEvidence('nest', nest.handlers),
-    ...(nest.global ? ['g:nest'] : []),
-    ...handlerEvidence('route', routes),
-  ];
 }
 
 function addTotal(sums: Sums, kind: string | undefined, count: number): void {

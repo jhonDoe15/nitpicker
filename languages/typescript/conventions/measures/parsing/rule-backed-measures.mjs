@@ -7,4 +7,6 @@ export const RULE_BACKED_MEASURE_FILES = [
   `${MEASURES}/database/transactions.mjs`,
   `${MEASURES}/parsing/estree-program.mjs`,
   `${MEASURES}/routes/route-auth.mjs`,
+  `${MEASURES}/routes/route-evidence.mjs`,
+  `${MEASURES}/parsing/lazy-measure.mjs`,
 ];
