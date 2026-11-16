@@ -8,7 +8,7 @@ import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-value
 import { runJava } from '../programs/java-command.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
-import type { ToolClasspaths } from '../typed/kotlin-types.mts';
+import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
@@ -172,6 +172,12 @@ function compileSets(
   ];
 }
 
+function usesPreview(compiler: CompilerSettings): boolean {
+  return [compiler, compiler.test ?? compiler].some((settings) =>
+    settings.compilerArgs.includes('--enable-preview'),
+  );
+}
+
 function analyze(
   {
     module,
@@ -193,7 +199,10 @@ function analyze(
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
-      processors: [...(tools[ERROR_PRONE] ?? []), ...processorPath(set.classpath, compiler, tools)],
+      processors: [
+        ...resolvedTool(tools, ERROR_PRONE),
+        ...processorPath(set.classpath, compiler, tools),
+      ],
       flags: textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments')),
     }),
   );
@@ -201,11 +210,8 @@ function analyze(
     writeFileSync(report, '[]\n');
     return;
   }
-  const preview = [compiler, compiler.test ?? compiler].some((settings) =>
-    settings.compilerArgs.includes('--enable-preview'),
-  );
   runJava({
-    java: errorProneJava({ preview, spawn, environment }),
+    java: errorProneJava({ preview: usesPreview(compiler), spawn, environment }),
     spawn,
     timeoutMs,
     tool: 'Error Prone',

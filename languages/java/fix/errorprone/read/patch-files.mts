@@ -60,21 +60,23 @@ function patchEntries(patchFile: string, projectRoot: string): Entry<readonly Hu
 }
 
 function reportEntries(reportFile: string, projectRoot: string): Entry<Diagnostic[]>[] {
-  return listOf(JSON.parse(readFileSync(reportFile, 'utf8'))).flatMap(
-    (entry): Entry<Diagnostic[]>[] => {
-      const file = fieldOf(entry, 'file');
-      const name = projectPath(
-        projectRoot,
-        reportFile,
-        file === undefined ? undefined : textOf(file),
-      );
-      const check = CHECK.exec(textOf(fieldOf(entry, 'message') ?? ''))?.[1];
-      const line = fieldOf(entry, 'line');
-      return name === undefined || check === undefined || typeof line !== 'number'
-        ? []
-        : [[name, [{ check, line }]]];
-    },
-  );
+  const report: unknown = JSON.parse(readFileSync(reportFile, 'utf8'));
+  if (!Array.isArray(report)) {
+    throw new TypeError(`${reportFile} does not hold a list of Error Prone diagnostics`);
+  }
+  return listOf(report).flatMap((entry): Entry<Diagnostic[]>[] => {
+    const file = fieldOf(entry, 'file');
+    const name = projectPath(
+      projectRoot,
+      reportFile,
+      file === undefined ? undefined : textOf(file),
+    );
+    const check = CHECK.exec(textOf(fieldOf(entry, 'message') ?? ''))?.[1];
+    const line = fieldOf(entry, 'line');
+    return name === undefined || check === undefined || typeof line !== 'number'
+      ? []
+      : [[name, [{ check, line }]]];
+  });
 }
 
 function grouped<T>(entries: readonly Entry<readonly T[]>[]): Map<string, T[]> {

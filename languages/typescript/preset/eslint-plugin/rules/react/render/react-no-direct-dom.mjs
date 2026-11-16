@@ -74,8 +74,8 @@ function constInitOf(sourceCode, node) {
 
 function aliasChain(sourceCode, node) {
   const chain = [unwrapped(node)];
-  for (let step = 0; step < MAX_ALIASES; step += 1) {
-    const alias = constInitOf(sourceCode, chain.at(-1));
+  for (const index of Array.from({ length: MAX_ALIASES }).keys()) {
+    const alias = constInitOf(sourceCode, chain[index]);
     if (alias === undefined) {
       break;
     }
