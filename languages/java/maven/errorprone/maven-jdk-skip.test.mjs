@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { chooseDetektJdk, noFittingJdk, skipWithoutJdk, structureJava } from './maven-jdk.mjs';
+import { chooseDetektJdk, noFittingJdk, skipWithoutJdk, structureJava } from './maven-jdk.mts';
 
 const roots = [];
 afterEach(() => {

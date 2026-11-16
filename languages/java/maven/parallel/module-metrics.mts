@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { skipWithoutJdk, sourceLevel, structureJava } from '../errorprone/maven-jdk.mjs';
+import { skipWithoutJdk, sourceLevel, structureJava } from '../errorprone/maven-jdk.mts';
 import { STRUCTURE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { relativeTo } from '../module/module-paths.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';

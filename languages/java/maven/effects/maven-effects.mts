@@ -3,17 +3,41 @@ import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { runJava } from '../maven-command.mjs';
-import { minimumJava } from '../errorprone/maven-jdk.mjs';
-import { moduleEffectsOptions } from '../../adapters/effects/effects-options.mjs';
-import { compiledProgram, programSources } from '../programs/helper-programs.mjs';
+import { runJava } from '../programs/java-command.mts';
+import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { ToolClasspaths } from '../typed/kotlin-types.mts';
+import type { Classpaths } from '../typed/maven-values.mts';
+import { minimumJava } from '../errorprone/maven-jdk.mts';
+import { moduleEffectsOptions as untypedModuleEffectsOptions } from '../../adapters/effects/effects-options.mjs';
+import { compiledProgram, programSources } from '../programs/helper-programs.mts';
 
+type EffectsModule = { readonly basedir: string; readonly outputDirectory: string };
+type EffectsContext = {
+  readonly module: EffectsModule;
+  readonly reportDir: string;
+  readonly tools: ToolClasspaths;
+  readonly pinned: { readonly asm: string };
+  readonly classpaths: Classpaths;
+  readonly projectRoot?: string | undefined;
+  readonly options?: readonly string[] | undefined;
+  readonly spawn?: JavaSpawn | undefined;
+  readonly timeoutMs?: number | undefined;
+};
+type EngineRequest = Pick<EffectsContext, 'module' | 'tools' | 'pinned' | 'spawn' | 'timeoutMs'> & {
+  readonly java: string;
+};
+
+const moduleEffectsOptions: (options: readonly string[], moduleDir: string) => string[] =
+  untypedModuleEffectsOptions;
 const EFFECTS_DIRECTORY = path.join(GRADLE_DIRECTORY, 'effects');
 const TOOL = 'The effects engine';
 const NAME = 'effects';
 const RELEASE = 17;
 
-function insideBuild(entry, { module, projectRoot }) {
+function insideBuild(
+  entry: string,
+  { module, projectRoot }: Pick<EffectsContext, 'module' | 'projectRoot'>,
+): boolean {
   const root = path.resolve(projectRoot ?? module.basedir);
   const resolved = path.resolve(entry);
   return (
@@ -23,7 +47,18 @@ function insideBuild(entry, { module, projectRoot }) {
   );
 }
 
-function inputLines({ module, classpaths, options, projectRoot }) {
+function librariesOf(tools: ToolClasspaths): string[] {
+  return (tools['effects'] ?? []).filter((entry) => existsSync(entry));
+}
+
+function inputLines({
+  module,
+  classpaths,
+  options,
+  projectRoot,
+}: Pick<EffectsContext, 'module' | 'classpaths' | 'projectRoot'> & {
+  readonly options: readonly string[];
+}): string[] {
   return [
     ...[module.outputDirectory]
       .filter((entry) => existsSync(entry))
@@ -38,7 +73,7 @@ function inputLines({ module, classpaths, options, projectRoot }) {
   ];
 }
 
-function engineClasses({ module, tools, pinned, spawn, timeoutMs, java }) {
+function engineClasses({ module, tools, pinned, spawn, timeoutMs, java }: EngineRequest): string {
   return compiledProgram({
     tool: TOOL,
     name: NAME,
@@ -46,7 +81,7 @@ function engineClasses({ module, tools, pinned, spawn, timeoutMs, java }) {
     version: pinned.asm,
     root: EFFECTS_DIRECTORY,
     release: RELEASE,
-    libraries: tools.effects.filter((entry) => existsSync(entry)),
+    libraries: librariesOf(tools),
     cwd: module.basedir,
     spawn,
     timeoutMs,
@@ -54,7 +89,7 @@ function engineClasses({ module, tools, pinned, spawn, timeoutMs, java }) {
   });
 }
 
-export function runEffects(context) {
+export function runEffects(context: EffectsContext): void {
   const { module, reportDir, tools, spawn, timeoutMs } = context;
   const output = path.join(reportDir, `${NAME}.json`);
   rmSync(output, { force: true });
@@ -70,7 +105,7 @@ export function runEffects(context) {
     );
     return;
   }
-  const libraries = tools.effects.filter((entry) => existsSync(entry));
+  const libraries = librariesOf(tools);
   const classes = engineClasses({ ...context, java });
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-'));
   try {

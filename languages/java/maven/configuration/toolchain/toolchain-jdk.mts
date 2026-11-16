@@ -1,22 +1,26 @@
 import { readFileSync } from 'node:fs';
-import { childAt, childrenAt, parseXml } from '../../../../../shared/ingest/common.mjs';
-import { executionsOf, pluginsOf } from '../pom-elements.mjs';
-import { existingFile, globalToolchainsFile, userToolchainsFile } from './toolchain-files.mjs';
+import {
+  type XmlElement,
+  childAt,
+  childrenAt,
+  parseXml,
+} from '../../../../../shared/values/xml.mts';
+import type { JdkRequirements, ToolchainContext } from '../../typed/toolchain-types.mts';
+import { executionsOf, pluginsOf } from '../pom-elements.mts';
+import { existingFile, globalToolchainsFile, userToolchainsFile } from './toolchain-files.mts';
 
 const TOOLCHAINS_PLUGIN = 'org.apache.maven.plugins:maven-toolchains-plugin';
 const COMPILER_PLUGIN = 'org.apache.maven.plugins:maven-compiler-plugin';
 
-function valuesOf(element) {
+function valuesOf(element: XmlElement | undefined): Record<string, string> {
   return element === undefined
     ? {}
     : Object.fromEntries(
-        element.children
-          .filter(({ text }) => text !== undefined)
-          .map(({ name, text }) => [name, text]),
+        element.children.flatMap(({ name, text }) => (text === undefined ? [] : [[name, text]])),
       );
 }
 
-export function jdkRequirements(project) {
+export function jdkRequirements(project: XmlElement): JdkRequirements | undefined {
   const plugins = pluginsOf(project);
   const toolchains = plugins.get(TOOLCHAINS_PLUGIN);
   const fromToolchains =
@@ -32,11 +36,11 @@ export function jdkRequirements(project) {
   return Object.keys(found).length === 0 ? undefined : found;
 }
 
-function versionNumbers(version) {
+function versionNumbers(version: string): number[] {
   return version.split('.').map((part) => Number(part));
 }
 
-function compareVersions(left, right) {
+function compareVersions(left: string, right: string): number {
   const [a, b] = [versionNumbers(left), versionNumbers(right)];
   return (
     Array.from(
@@ -48,27 +52,27 @@ function compareVersions(left, right) {
 
 const RANGE = /^([[(])([^,]*),([^\])]*)([\])])$/u;
 
-function versionMatches(required, provided) {
+function versionMatches(required: string, provided: string): boolean {
   const range = RANGE.exec(required);
   if (range === null) {
     return required === provided;
   }
-  const [, open, written, upper, close] = range;
+  const [, open, written = '', upper = '', close] = range;
   const [low, high] = [written.trim(), upper.trim()];
   const aboveLow = low === '' || compareVersions(provided, low) > (open === '[' ? -1 : 0);
   const belowHigh = high === '' || compareVersions(provided, high) < (close === ']' ? 1 : 0);
   return aboveLow && belowHigh;
 }
 
-function provides(entry, required) {
+function provides(entry: XmlElement, required: JdkRequirements): boolean {
   const offered = valuesOf(childAt(entry, 'provides'));
   return Object.entries(required).every(([key, value]) =>
-    key === 'version' ? versionMatches(value, offered.version ?? '') : offered[key] === value,
+    key === 'version' ? versionMatches(value, offered['version'] ?? '') : offered[key] === value,
   );
 }
 
-function interpolated(text, { environment, home }) {
-  return text.replaceAll(/\$\{([^}]+)\}/gu, (match, name) => {
+function interpolated(text: string, { environment, home }: ToolchainContext): string {
+  return text.replaceAll(/\$\{([^}]+)\}/gu, (match, name: string) => {
     if (name === 'user.home') {
       return home;
     }
@@ -76,7 +80,11 @@ function interpolated(text, { environment, home }) {
   });
 }
 
-function jdkHomeIn(file, required, context) {
+function jdkHomeIn(
+  file: string | undefined,
+  required: JdkRequirements,
+  context: ToolchainContext,
+): string | undefined {
   const existing = existingFile(file);
   if (existing === undefined) {
     return undefined;
@@ -90,7 +98,10 @@ function jdkHomeIn(file, required, context) {
   return found === undefined ? undefined : interpolated(found.trim(), context);
 }
 
-export function toolchainJdkHome(required, context) {
+export function toolchainJdkHome(
+  required: JdkRequirements,
+  context: ToolchainContext,
+): string | undefined {
   return (
     jdkHomeIn(userToolchainsFile(context), required, context) ??
     jdkHomeIn(globalToolchainsFile(context), required, context)

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { reactorRootFor, reactorRootOf } from './reactor-root.mjs';
+import { reactorRootFor, reactorRootOf } from './reactor-root.mts';
 
 const roots = [];
 

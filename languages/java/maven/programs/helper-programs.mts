@@ -2,12 +2,29 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../maven-command.mjs';
+import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import { javaCommand, runJava } from './java-command.mts';
 import { cacheDirectory, publishDirectory } from '../maven-tools.mjs';
 
 const PROPERTY_SEPARATOR = ' = ';
 
-function jdkIdentity(tool, spawn, java) {
+type Jdk = { readonly vendor: string; readonly version: string };
+type Program = {
+  readonly tool: string;
+  readonly name: string;
+  readonly sources: readonly string[];
+  readonly version: string;
+  readonly libraries: readonly string[];
+  readonly cwd: string;
+  readonly root?: string | undefined;
+  readonly release?: number | undefined;
+  readonly spawn?: JavaSpawn | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly java?: string | undefined;
+};
+type CacheInput = Pick<Program, 'sources' | 'version' | 'root' | 'release'> & { readonly jdk: Jdk };
+
+function jdkIdentity(tool: string, spawn: JavaSpawn, java: string): Jdk {
   const result = spawn(java, ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
@@ -17,7 +34,7 @@ function jdkIdentity(tool, spawn, java) {
     );
   }
   const lines = `${result.stderr}\n${result.stdout}`.split(/\r?\n/u).map((line) => line.trim());
-  function property(name) {
+  function property(name: string): string {
     const line = lines.find((candidate) => candidate.startsWith(`${name}${PROPERTY_SEPARATOR}`));
     if (line === undefined) {
       throw new Error(`${tool} need the JDK identity, but java reported no ${name}`);
@@ -27,12 +44,14 @@ function jdkIdentity(tool, spawn, java) {
   return { vendor: property('java.vendor'), version: property('java.version') };
 }
 
-function majorOf(version) {
-  const [first, second] = version.split(/[.+_-]/u).map((part) => Number.parseInt(part, 10));
+function majorOf(version: string): number {
+  const [first = Number.NaN, second = Number.NaN] = version
+    .split(/[.+_-]/u)
+    .map((part) => Number.parseInt(part, 10));
   return first === 1 ? second : first;
 }
 
-function requireRelease(tool, jdk, release) {
+function requireRelease(tool: string, jdk: Jdk, release: number | undefined): void {
   if (release !== undefined && !(majorOf(jdk.version) >= release)) {
     throw new Error(
       `${tool} needs JDK ${String(release)} or newer, but java reports ${jdk.version}; point JAVA_HOME at JDK ${String(release)} or newer`,
@@ -40,15 +59,18 @@ function requireRelease(tool, jdk, release) {
   }
 }
 
-export function programSources(directory, { recursive = false } = {}) {
-  return readdirSync(directory, { recursive })
+export function programSources(
+  directory: string,
+  { recursive }: { readonly recursive: boolean },
+): string[] {
+  return readdirSync(directory, { recursive, encoding: 'utf8' })
     .map((entry) => entry.replaceAll('\\', '/'))
     .filter((name) => name.endsWith('.java'))
     .toSorted((left, right) => left.localeCompare(right))
     .map((name) => path.join(directory, name));
 }
 
-function cacheKey({ sources, version, root, jdk, release }) {
+function cacheKey({ sources, version, root, jdk, release }: CacheInput): string {
   const digest = createHash('sha256');
   for (const source of sources) {
     if (root !== undefined) {
@@ -72,7 +94,7 @@ export function compiledProgram({
   spawn = spawnSync,
   timeoutMs,
   java = javaCommand('java'),
-}) {
+}: Program): string {
   const jdk = jdkIdentity(tool, spawn, java);
   requireRelease(tool, jdk, release);
   const cache = cacheDirectory(name);
