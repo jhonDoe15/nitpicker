@@ -1,3 +1,4 @@
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import { residualRecorder, oxlintOptions } from '../test-support/oxlint-runs.mts
 const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
 
 function ruleUrl(path: string) {
-  return JSON.stringify(`${RULES_URL}/${path}`);
+  return JSON.stringify(checkoutModuleUrl(new URL(`${RULES_URL}/${path}`)).href);
 }
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};

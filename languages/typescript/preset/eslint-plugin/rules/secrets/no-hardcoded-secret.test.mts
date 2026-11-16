@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-hardcoded-secret.mjs';
+import { rule } from './no-hardcoded-secret.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/adapters/billing-client.ts';

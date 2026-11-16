@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { rule } from './untested-round-trip.mjs';
+import { rule } from './untested-round-trip.mts';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const roots: string[] = [];

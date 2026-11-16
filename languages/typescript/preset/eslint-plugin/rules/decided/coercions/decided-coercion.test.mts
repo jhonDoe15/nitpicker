@@ -1,6 +1,6 @@
 import { afterAll } from 'vitest';
 import { typedCases, type CaseError } from '../../../test-support/typed-cases.mts';
-import { rule } from '../no-decided-condition.mjs';
+import { rule } from '../no-decided-condition.mts';
 
 const { tester, cleanup, typed } = typedCases('nitpicker-decided-coercion-');
 afterAll(cleanup);

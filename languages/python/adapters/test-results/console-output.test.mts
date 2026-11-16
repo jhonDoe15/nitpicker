@@ -7,8 +7,9 @@ import {
   projectRelative,
   readConsoleReport,
   TEST_CONSOLE_TOOL,
-} from './console-output.mjs';
+} from './console-output.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import type { ConsoleEntry } from './typed/console-types.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
@@ -28,7 +29,7 @@ function isConsoleFinding(value: unknown): value is ConsoleFinding {
   );
 }
 
-function findingsFor(entries: readonly object[], headPolicy = {}): ConsoleFinding[] {
+function findingsFor(entries: readonly ConsoleEntry[], headPolicy = {}): ConsoleFinding[] {
   const findings: unknown = consoleOutputFindings({ entries }, { projectRoot: ROOT, headPolicy });
   return listOf(findings).filter(isConsoleFinding);
 }

@@ -1,33 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type { JsonNull } from '../analysis/typed/python-graph-types.mts';
-import { withEntryPoints as untypedWithEntryPoints } from './python-entry-points.mjs';
+import type { FactsBundle, ModuleFact, Scanned } from '../facts/typed/facts-types.mts';
+import { withEntryPoints } from './python-entry-points.mts';
 
-type Row = Readonly<Record<string, unknown>>;
 type Exported = Readonly<Record<string, readonly string[] | JsonNull>>;
 
-const withEntryPoints: (
-  bundle: { readonly modules: readonly Row[] },
-  scanned: Readonly<Record<string, unknown>>,
-) => { readonly modules: readonly (Row & { readonly file: string })[] } = untypedWithEntryPoints;
-
-function scannedWith(all: Exported) {
+function scannedWith(all: Exported): Scanned {
   return Object.fromEntries(
-    Object.entries(all).map(([file, names]) => [file, { exports: { all: names } }]),
+    Object.entries(all).map(([file, names]) => [
+      file,
+      {
+        imports: [],
+        definitions: [],
+        qualifiedUses: undefined,
+        exports: { all: names, reexports: [] },
+        script: false,
+        docComments: [],
+      },
+    ]),
   );
 }
 
-function fieldsOf(module: Row) {
-  return Object.fromEntries(
-    Object.entries(module).filter(([key]) => key !== 'file' && key !== 'role'),
-  );
+const IGNORED_FIELDS = new Set(['file', 'role', 'entry', 'qualifiedUses']);
+
+function fieldsOf(module: ModuleFact) {
+  return Object.fromEntries(Object.entries(module).filter(([key]) => !IGNORED_FIELDS.has(key)));
 }
 
 function entryModules(files: readonly string[], all: Exported) {
-  const bundle = { modules: files.map((file) => ({ file, role: 'production' })) };
-  return withEntryPoints(bundle, scannedWith(all))
-    .modules.filter((module) => Object.keys(module).length > 2)
-    .map((module) => [module.file, fieldsOf(module)]);
+  const bundle: FactsBundle = {
+    modules: files.map((file) => ({
+      file,
+      role: 'production',
+      entry: false,
+      qualifiedUses: undefined,
+    })),
+    packages: [],
+    definitions: [],
+    imports: [],
+    docComments: [],
+    nearDuplicateUnits: [],
+  };
+  return withEntryPoints(bundle, scannedWith(all)).modules.flatMap((module) => {
+    const fields = fieldsOf(module);
+    return Object.keys(fields).length > 0 ? [[module.file, fields]] : [];
+  });
 }
 
 describe('Python entry points for public-alternative-bypass', () => {

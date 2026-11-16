@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { createScratch } from '../adapters/test-support/scratch.mts';
 import { pythonStyle } from './typed/convention-views.mts';
 
@@ -26,7 +27,7 @@ describe('the Python formatting summary', () => {
     const projectRoot = scratch.write(scratch.directory(), {
       'pyproject.toml': '[tool.black]\nline-length = 88\n\n[tool.ruff.lint]\nselect = ["D"]\n',
     });
-    const linesWith = (tools: object) =>
+    const linesWith = (tools: Exclude<NitpickerConfig['tools'], undefined>) =>
       pythonStyle({ config: { python: { formatter: 'black' }, tools }, projectRoot }).summary({});
     const notice =
       'Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }';

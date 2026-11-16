@@ -1,6 +1,6 @@
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mjs';
-import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mts';
+import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import { joinedWords } from '../../../shared/reference/entry.mjs';
 
 const wordsJoined: (words: readonly string[]) => string = joinedWords;

@@ -36,7 +36,7 @@ Part of the [Java preset guide](../java-preset.md).
   contains them: the statements, control nesting and complexity of a lambda are its own, as in
   TypeScript (`lines` is the physical span, so the lines of a nested unit still count towards the one
   around it). A lambda with an expression body has 1 statement. A field initializer unit has 1 statement.
-- **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `languages/java/adapters/metrics/java-structure.mts` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`;
@@ -44,8 +44,8 @@ Part of the [Java preset guide](../java-preset.md).
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs`, `structure-report.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mts`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
-- **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
+- **Tests.** `java-structure.test.mts` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.

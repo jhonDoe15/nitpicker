@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-forwarding-wrapper.mjs';
+import { rule } from './no-forwarding-wrapper.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-forwarding-wrapper-')));
 writeFileSync(

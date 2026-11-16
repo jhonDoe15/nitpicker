@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScratch } from '../test-support/scratch.mts';
-import { formatterPlan as untypedPlan } from './format-command.mjs';
+import { formatterPlan as untypedPlan } from './format-command.mts';
 
 type Row = Readonly<Record<string, unknown>>;
 

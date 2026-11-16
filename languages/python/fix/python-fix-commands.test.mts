@@ -1,14 +1,15 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScratch } from '../adapters/test-support/scratch.mts';
-import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
+import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mts';
 import {
   blackForceExclude,
   formatStdinCommand,
   lintFixCommands,
   withPythonFixContext,
 } from './typed/fix-views.mts';
-import type { FixToolContext, ProbeInvocation } from './typed/fix-views.mts';
+import type { FixPolicy, FixToolContext, ProbeInvocation } from './typed/fix-views.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 const scratch = createScratch();
 
@@ -19,7 +20,7 @@ const probeFailure = ({ operation }: ProbeInvocation) =>
 
 function inContext<Result>(
   files: Record<string, string>,
-  { config = {}, headPolicy = {} }: { config?: object; headPolicy?: object } = {},
+  { config = {}, headPolicy = {} }: { config?: NitpickerConfig; headPolicy?: FixPolicy } = {},
   use: (context: FixToolContext, projectRoot: string) => Result,
 ): Result {
   const projectRoot = scratch.write(scratch.directory(), files);

@@ -74,7 +74,7 @@ clients whose method names PMD's name list does not match (a Feign interface, Ok
 `newCall(request).execute()`, a gRPC stub). A finding on a line that PMD's `IoCallInLoop` or a
 Spring Data loop rule (`SpringDataNoSaveInLoop`, `SpringDataRowWriteInLoop`,
 `SpringDataSaveInLoopHelper`, `SpringDataNoFlush`) already reports is dropped
-(`withoutCoveredLines` in `languages/java/adapters/effects/effects-findings.mjs`); the engine
+(`withoutCoveredLines` in `languages/java/adapters/effects/effects-findings.mts`); the engine
 reports a call with the lines of its receiver chain, so a chain that PMD reports at its first line
 counts once. The drop happens before exceptions apply, so an exception for the covering rule on
 that path (`pmd/IoCallInLoop`, `pmd/SpringDataNoSaveInLoop`) covers the line for both tools. The

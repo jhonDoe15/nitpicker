@@ -7,9 +7,9 @@ import {
 } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { byCodeUnits } from '../../../../core/scope/mutation-scope.mjs';
 import { affectedModules } from './affected/affected-modules.mjs';
-import { comparisonRoots, readChangedFiles } from './comparison-changes.mjs';
-import { changedTestsKey } from './tested-sources.mjs';
-import { comparisonMutationPlan } from './mutation-plan.mjs';
+import { comparisonRoots, readChangedFiles } from './comparison-changes.mts';
+import { changedTestsKey } from './tested-sources.mts';
+import { comparisonMutationPlan } from './mutation-plan.mts';
 
 const LIB = 'lib/src/main/java/demo/lib';
 const APP = 'app/src/main/java/demo/app';

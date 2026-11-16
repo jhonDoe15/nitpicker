@@ -1,13 +1,12 @@
-import { Linter, type ESLint, type Rule } from 'eslint';
+import { Linter, type ESLint } from 'eslint';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
+import type { TSESLint } from '@typescript-eslint/utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { inReactTestFilesOnly as untypedInReactTestFilesOnly } from './react-test-files.mjs';
-
-type Create = (context: Rule.RuleContext) => Rule.RuleListener;
-const inReactTestFilesOnly: (create: Create) => Create = untypedInReactTestFilesOnly;
+import { ruleModule } from '../../test-support/rule-tester.mts';
+import { inReactTestFilesOnly } from './react-test-files.mts';
 
 const temporaryRoots: string[] = [];
 
@@ -17,7 +16,7 @@ afterEach(() => {
   }
 });
 
-const probe: Rule.RuleModule = {
+const probe: TSESLint.RuleModule<'seen'> = {
   meta: { type: 'problem', schema: [], messages: { seen: 'Seen.' } },
   create: inReactTestFilesOnly((context) => ({
     Program(node) {
@@ -42,7 +41,7 @@ function projectWith(files: Record<string, string>) {
   return root;
 }
 
-const settingsProbe: Rule.RuleModule = {
+const settingsProbe: TSESLint.RuleModule<'seen'> = {
   meta: { type: 'problem', schema: [], messages: { seen: '{{module}}' } },
   create: inReactTestFilesOnly((context) => ({
     Program(node) {
@@ -67,7 +66,12 @@ function lintIn(root: string, code: string, plugin: ESLint.Plugin, rules: Linter
 }
 
 function runsIn(root: string, code: string) {
-  const messages = lintIn(root, code, { rules: { probe } }, { 'demo/probe': 'error' });
+  const messages = lintIn(
+    root,
+    code,
+    { rules: { probe: ruleModule(probe) } },
+    { 'demo/probe': 'error' },
+  );
   return messages.some(({ ruleId }) => ruleId === 'demo/probe');
 }
 
@@ -133,7 +137,7 @@ describe('the React test file detection', () => {
       {
         files: ['**/*.{ts,tsx}'],
         languageOptions: { parser: tseslint.parser },
-        plugins: { demo: { rules: { probe } } },
+        plugins: { demo: { rules: { probe: ruleModule(probe) } } },
         rules: { 'demo/probe': 'error' },
       },
     ];
@@ -148,7 +152,7 @@ describe('the React test file detection', () => {
       {
         files: ['**/*.{ts,tsx}'],
         languageOptions: { parser: tseslint.parser },
-        plugins: { demo: { rules: { probe } } },
+        plugins: { demo: { rules: { probe: ruleModule(probe) } } },
         rules: { 'demo/probe': 'error' },
       },
     ];
@@ -165,8 +169,12 @@ describe('the React test file detection', () => {
       "import { renderPage } from '@/test/render';\nrenderPage(null).getByTestId('a');\n";
     const direct = "import { render } from '@testing-library/react';\n";
     const settingOf = (text: string) =>
-      lintIn(root, text, { rules: { probe: settingsProbe } }, { 'demo/probe': 'error' })[0]
-        ?.message;
+      lintIn(
+        root,
+        text,
+        { rules: { probe: ruleModule(settingsProbe) } },
+        { 'demo/probe': 'error' },
+      )[0]?.message;
     const queries = lintIn(root, code, testingLibraryPlugin, {
       'demo/no-test-id-queries': 'error',
     });

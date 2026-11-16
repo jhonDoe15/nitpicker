@@ -19,8 +19,9 @@ Requirements: Node.js 22.14 or newer (22.19 or newer for a project on TypeScript
 [Type check engine](#type-check-engine); on an older Node.js `nitpicker` stops with exit code 2 and
 names the version it needs), a Git repository, and a project whose dependencies are
 installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
-`nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
-itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
+`nodeLinker: node-modules`) or Bun. In a workspace the `node_modules` of the workspace root serves
+every member that has none of its own, and a missing install names the workspace root. The base's
+own install supports all four managers; nitpicker itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
@@ -197,6 +198,29 @@ init has exit codes of its own:
 | 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                                             |
 | 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Yarn Plug'n'Play, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
 
+#### At the top of a monorepo
+
+Run at the top of a repository with several projects (see [Monorepos](#monorepos)), init sets up
+every project a run there would gate, and prints each one's preset, install command and config
+line under its folder:
+
+- When the top config lists `projects`, or the top declares a workspace or a Gradle composite
+  build, init takes the projects from there and writes no top config. A project gets its own
+  `nitpicker.config.json` only where the run would give it the wrong preset (a JavaScript package
+  in an npm workspace would otherwise get the TypeScript preset) or where it needs a setting (the
+  Java build tool when it has both builds).
+- When the top holds no project file but folders below it do (a `web/package.json`, an
+  `api/pyproject.toml` and a `service/build.gradle`), init writes the top `nitpicker.config.json`
+  with a `projects` list of `{ "path", "preset" }` entries. A top config that lists no projects
+  is left as it is; init prints the diff that adds the list and exits 1.
+- `--ci github` writes one workflow for the whole repository: the setup step of every toolchain
+  the projects need (Node.js, Java, Python) once, the install steps of each project with its
+  `working-directory` (a workspace installs once, at its root), and one nitpicker step at the top
+  with `package: nitpicker@<version>`.
+- It prints the skill of every preset involved, and how settings that several projects share can
+  live in one file their configs name with `extends` (see
+  [Shared config with `extends`](#shared-config-with-extends)).
+
 ### From a GitHub release
 
 A release made by following [the release steps](releasing.md) also attaches the package as a
@@ -233,9 +257,11 @@ other language, `npx nitpicker init` writes the one line it needs (see
 [Set up with `nitpicker init`](#set-up-with-nitpicker-init)).
 
 The project is the nearest directory, up to the repository root, that holds a `package.json` or a
-`nitpicker.config.json`. A repository with several projects, for example a TypeScript `web/` and a
-Java `service/`, runs nitpicker once in each directory, and each reads its own
-`nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
+`nitpicker.config.json`. A Java project needs only that config file, no `package.json`. Run inside
+a package, nitpicker checks that one project. Run at the top of a repository that lists or has
+several projects (a TypeScript `web/` beside a Python `api/` and a Gradle `service/`, or npm, pnpm,
+Yarn, Bun and uv workspaces), it checks the ones your change touches and combines the result: see
+[Monorepos](#monorepos).
 
 ### The fix loop
 
@@ -523,7 +549,13 @@ line; here it is spread out:
   "status": "failed",
   "exitCode": 1,
   "base": { "ref": "origin/main", "source": "remote-head" },
-  "counts": { "failing": 2, "byArea": { "lint": 1, "coverage": 1 }, "reportOnly": 0, "held": 3 },
+  "counts": {
+    "failing": 2,
+    "byArea": { "lint": 1, "coverage": 1 },
+    "byLabel": { "maintainability": 1, "tests": 1 },
+    "reportOnly": 0,
+    "held": 3
+  },
   "findings": [
     {
       "tool": "eslint-lint",
@@ -532,6 +564,7 @@ line; here it is spread out:
       "line": 4,
       "column": 20,
       "message": "No magic number: 3. Name it with a module-level constant.",
+      "labels": ["maintainability"],
       "allowedForm": "Name it with a module-level constant.",
       "exception": {
         "rule": "nitpicker/no-magic-numbers",
@@ -546,6 +579,7 @@ line; here it is spread out:
       "path": "src/main/pricing.ts",
       "line": 4,
       "message": "Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen. Not taken: the true arm of the if at 4:5.",
+      "labels": ["tests"],
       "allowedForm": "Test it, or remove it if it can't happen.",
       "exception": {
         "rule": "changed-branch-coverage",
@@ -571,8 +605,12 @@ line; here it is spread out:
   in the console summary: one entry per function for the mutants no test runs and at most three
   surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts every
   mutant.
-- `counts.byArea` counts the failing findings per area, in the order to fix them. Report-only and
-  held findings are counts only; the files in `reports` list them.
+- `counts.byArea` counts the failing findings per area, in the order to fix them, and
+  `counts.byLabel` per [label](#labels) (a finding with two labels counts under both). Report-only
+  and held findings are counts only; the files in `reports` list them.
+- Each finding has `labels`: its kinds first, then any frameworks (see [Labels](#labels)). A run
+  narrowed with `--label` adds `labels: { selected, hidden }`, where `hidden` counts the new
+  findings it left out.
 - `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
   (such as failing tests) and `headline`, its first line.
 - A comparison run has `base`, `"noChanges": true` when nothing changed since the merge base, and
@@ -615,6 +653,13 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `codequality.json`: the new findings as a GitLab Code Quality report (see
   [GitLab CI](ci.md#gitlab-ci)).
 
+`summary.json` records `projectPath`, the folder of the project the run checked, from the top of
+the repository (`.` for the top itself). The project is the nearest folder with a package.json or
+`nitpicker.config.json`, so a run started inside a nested package (an `e2e/` package, a fixture
+with its own package.json) checks that package. When it is not the top, `report.txt` names it
+in its header (`Project: e2e`), and when it is not the folder the run started in, the console
+prints `Project: <path from the current folder>` first, in comparison, `--all` and `--fix` runs.
+
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
 `report.sarif` and `codequality.json`. Its `report.txt` has the same layout: enforceable findings
@@ -625,12 +670,21 @@ with findings and a count of the analyzers that ran clean, and the path of `repo
 the full list. The exit codes do not change.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
-against the base and any `notices`. A notice is information that never fails the run. Today there is
-one kind: changed code files that lie outside the roots the preset checks. For TypeScript those are
-`layout.sourceRoots` and `layout.testRoots` (move the files under a root or add their folder to
-`layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
-sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
-To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+against the base and any `notices`. A notice is information that never fails the run, and
+`report.txt` lists the same notices. Changed code files that lie outside the roots the preset checks
+get one. For TypeScript those are `layout.sourceRoots` and `layout.testRoots` (move the files under a
+root or add their folder to `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and
+Kotlin, the build's source sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory
+the build file declares). Changed source files in a language the preset does not check get one too,
+for example a TypeScript `frontend/` folder in a Gradle build or a `.java` file in a Python project:
+the TypeScript and JavaScript presets check `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` and
+`.cjs`, `python` checks `.py`, `java` checks `.java`, `kotlin` checks `.java`, `.kt` and `.kts`, and
+`go` checks `.go`. When the files sit in a folder with its own project file (package.json, a
+Python project file, a Gradle or Maven build, `go.mod`), the notice names the `projects` entry that
+gates that folder with its own preset. Hidden, dependency, build output, generated and fixture
+folders, declaration files, tool configs (`*.config.js`, `*.gradle.kts`) and generated files stay
+silent. To leave files unchecked, list them in `exclude`. Choose another directory with
+`--output <dir>`.
 
 The console summary shortens mutation findings: the mutants that no test runs print as one entry
 per function (with their count and lines), and a function prints at most three surviving mutants,
@@ -750,11 +804,11 @@ before metric notes (which also show the metric and its value); an overflow coun
 
 ## Exit codes
 
-| Code | Meaning                                                                                                                                                    |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names.                                          |
-| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored. |
-| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                     |
+| Code | Meaning                                                                                                                                                                                   |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names, and one narrowed with `--label` listed only findings with those labels. |
+| 1    | At least one new enforceable finding (`--all`: any violation), or tests that fail on the head (`--all`: in the checked code), even if a tool also errored.                                |
+| 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide.                                                    |
 
 A failing test on the head is a problem with the change, not with a tool, so it exits 1 like a
 violation, and the console summary leads with it: `✖ 1 test fails; coverage, CRAP and mutation were
@@ -784,7 +838,7 @@ Tests that fail only on the base are a note (see [A base whose tests fail](#a-ba
 A tool error never counts as a pass. [Troubleshooting](troubleshooting.md) gives the cause and the
 fix of each one; a message whose fix takes more than it says links to its entry. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
-(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
+(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule, and so does a [monorepo](#monorepos) run across its projects. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
 A full run can take several minutes. While it runs, nitpicker writes a line to stderr when each
@@ -801,8 +855,8 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 
 ```text
 nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]]
-          [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
-          [--quick] [--staged]
+          [--analyzer <name>]... [--rule <substring>]... [--label <label>]... [--project <path>]...
+          [--jobs <n>] [--details] [--json] [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help] [--version]
 nitpicker init [--agents-md] [--ci github] [--help]
@@ -812,9 +866,10 @@ nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>] [--help]
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
+nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]
 nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]
 nitpicker explain <tool/rule>...
-nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
+nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]
 ```
 
 - `<path>...`: show and gate only the findings in these files or folders; see
@@ -892,10 +947,23 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
+- `--label <label>`: focus the run on findings with this label (repeatable): run only the checks
+  that can report it and list only such findings. See [Labels](#labels) for the labels and how they
+  combine. A focused run is not a pass: run `nitpicker` without `--label` before you finish. Cannot
+  be combined with `--fix` or sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). It
   filters what is listed, not what runs: every analyzer still runs, so use `--analyzer` to run less.
   With `--fix`, it takes full `tool/rule` names and picks the fixes to apply (see
   [Preview and pick fixes](#preview-and-pick-fixes)).
+- `--project <path>`: in a [monorepo](#monorepos), check only this project, whether or not it
+  changed (repeatable). It takes the project folder from the top of the monorepo, a folder
+  relative to the current one, a package name (the `package.json` `name`, the Python project name,
+  the Maven `artifactId` or the Gradle `rootProject.name`), or a quoted glob over folders and names
+  (`--project 'packages/*'`). Inside a project it still picks from the whole monorepo. A value
+  that matches nothing names the closest projects, and a name and a folder that point at different
+  projects are an error. Without a monorepo it is an error.
+- `--jobs <n>`: in a [monorepo](#monorepos), run up to `n` of the selected projects at once (see
+  [Projects at once](#projects-at-once)). The default is a quarter of the CPUs, at least one.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -910,7 +978,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   [Configuration](#configuration)). It is
   for the person reviewing the change, never for a coding agent, so it is honoured only at an
   interactive terminal (stdin and stdout both terminals); in CI, where `CI` is set, a person sets
-  `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead, and that variable is ignored anywhere else. An
+  `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead (several digests joined by commas, as a
+  [monorepo](#monorepos) run prints them), and that variable is ignored anywhere else. An
   ignored acceptance is named on stderr and the run still fails. The digest covers every loosening
   in full and the content (git blob id) of each file it names, and `summary.json` records it as
   `policyDigest`: editing a named file or adding a loosening changes it and fails again. Both also
@@ -944,19 +1013,22 @@ The other commands:
   `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
   changelog has no entry, or an empty one, for that version.
 - `nitpicker explain <tool/rule>...`: print what the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md) says about
-  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  each rule: its labels, the presets and analyzers that report it, why it is on, the allowed form where the
   reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
   (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
   for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
   to list its rules. A name the reference does not know is reported with the closest rules and
   exits 1.
-- `nitpicker rules [--preset <name>] [--tool <name>] [--fixable]`: list the rules, one line each. It
-  lists the preset of the project's `nitpicker.config.json` (`typescript` without a config) and
-  leaves out the rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists
-  another preset in full, `--tool` keeps one tool, and `--fixable` keeps the rules `--fix` fixes
-  (marked `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
+- `nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]`: list the
+  rules, one line each. It lists the preset of the project's `nitpicker.config.json` (`typescript`
+  without a config) and leaves out the rules of analyzers listed in `disable`; `--preset` (or
+  `--preset=<name>`) lists another preset in full, `--tool` keeps one tool, `--label` keeps the
+  rules with these [labels](#labels), and `--fixable` keeps the rules `--fix` fixes (marked
+  `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+- `nitpicker projects`: list the projects of a [monorepo](#monorepos) and the ones a run would
+  check, without running them; see [Plan the projects of a run](#plan-the-projects-of-a-run).
 - `nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]`:
   print the console summary of the last run again, without running any analyzer. It reads the
   reports of the last comparison in `reports/quality/diff/` (or in `--output`), and with `--all`, or
@@ -971,6 +1043,48 @@ The other commands:
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
+
+### Labels
+
+Every rule has labels that say what its findings are about, so you can focus a run on what matters
+to you now. A rule has one or more kinds, and a framework label when it is about one:
+
+| Label             | Findings about                                                           |
+| ----------------- | ------------------------------------------------------------------------ |
+| `bug`             | code that likely behaves wrongly: logic errors, null dereferences, races |
+| `security`        | vulnerabilities, injection, weak crypto, secrets, exposed endpoints      |
+| `performance`     | wasted work: N+1 queries, I/O in loops, costly collections               |
+| `reliability`     | failure handling: timeouts, resource leaks, swallowed errors             |
+| `simplification`  | code that can be simpler: redundant or dead code, needless steps         |
+| `maintainability` | size, complexity, duplication, coupling, architecture and design         |
+| `tests`           | test quality: failing tests, coverage, mutation, assertions              |
+| `style`           | formatting, naming, documentation layout and conventions                 |
+| `spring`          | Spring and Spring Boot                                                   |
+| `react`           | React, JSX and hooks                                                     |
+| `persistence`     | JPA, Spring Data, ORMs, SQL and migrations                               |
+| `async`           | promises, coroutines, reactive streams and executors                     |
+
+`nitpicker --label performance` runs only the analyzers that have a rule with that label (the
+analyzers they depend on, custom analyzers and the ones named with `--analyzer` still run) and lists
+only findings with it. The tests, coverage, CRAP and mutation run only when a label you pick covers
+them, so `--label bug` alone runs a Java, Kotlin or Python build the way `--quick` does. Kinds
+combine with "or" and frameworks narrow them: `--label bug --label performance --label spring` lists
+the bug and performance findings about Spring. The gate, exceptions and the reports work as usual
+on what is listed, and stderr names the checks the label left out.
+
+A focused run is never a pass. The console, `report.txt` and the GitHub step summary print `Only
+findings labeled <labels> (N findings with other labels hidden). Run nitpicker without --label
+before you finish.`, and `summary.json` records `labels: { selected, hidden, message }`. Without
+`--label`, the console adds `by label: bug 2 · style 5 (focus with --label <label>)` under the area
+counts when the failing findings have more than one label. `nitpicker rules --label <label>` lists
+the rules with a label, `nitpicker explain` prints them, the SARIF report sets them as
+`properties.tags` on each rule, and the JSON reports give each finding its `labels`.
+
+Labels come from the [rule reference](#rule-reference): nitpicker's own rules carry them by hand,
+and other tools' rules take them from the tool's own categories (PMD categories, SpotBugs and
+Checkstyle groups, detekt rule sets, ruff linters, Error Prone tags) with hand-picked overrides. A
+finding with no reference entry falls back to its area: format findings are `style`, type errors
+`bug`, the test checks `tests`, and the rest `maintainability`. The Go preset has its own table.
 
 ### Rule reference
 
@@ -1021,9 +1135,11 @@ index with `--staged`) on top of the merge base, the configuration hash and the 
 A full run always runs its head.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
-  `node_modules/.cache/nitpicker` when the project has `node_modules`, else `nitpicker/cache` in the
-  repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or newer), which every worktree shares and
-  Git never lists as untracked. That default covers Java, Kotlin, Python and Go projects. When no
+  `node_modules/.cache/nitpicker` when the project has `node_modules`. A workspace member without a
+  `node_modules` of its own uses the one its dependencies are installed in, inside the repository,
+  under `node_modules/.cache/nitpicker/members/<member path>`. Otherwise the default is
+  `nitpicker/cache` in the repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or
+  newer), which every worktree shares and Git never lists as untracked. That default covers Java, Kotlin, Python and Go projects. When no
   writable folder is found, the run prints one line saying the base side runs every time.
   The Java and Kotlin analyzer version includes the output of `java -version` (from `JAVA_HOME`,
   else the `PATH`), as Python and Go include their interpreter and toolchain versions, so switching
@@ -1350,6 +1466,8 @@ the hash alone.
 | `tools`                  | object                                                                     | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `jscpd` with every preset except `go`, which runs no duplicate-code scan yet; `prettier`, `stryker` (see [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets)), `knip`, `dependency-cruiser`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint", "precedence": ["nitpicker"] } }`; see [Lint engine](#lint-engine) and [ESLint configs](#eslint-configs-typescript-and-javascript-presets); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine), and `precedence`, see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)), `tests` with the TypeScript and JavaScript presets (`{ "tests": { "runner": "jest" } }`; see [Test runners](#test-runners); `precedence`, see [Test runner configs](#test-runner-configs-typescript-and-javascript-presets)), `pmd`, `checkstyle`, `spotbugs`, `errorprone`, `pit` and `tests` (retries only; see [Test retries in the python, java and kotlin presets](#test-retries-in-the-python-java-and-kotlin-presets)) with `java` and `kotlin`, `ktlint`, `ktfmt` and `detekt` with `kotlin`, and `ruff`, `black`, `pyright`, `mypy`, `mutmut`, `coverage` and `tests` (retries only) with `python`, and `gofumpt` and `goimports` with `go` (their options from the project's golangci-lint config; see [Go preset](#go-preset)); any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `history`                | object                                                                     | Every preset; opt-in analysis of the commit history, see [Change history](#change-history). `coChange`: `true` turns on the `change-history` analyzer, which reports modules that keep changing together (`false` or absent: off). Optional, with `coChange` set (`true`, or `false` to keep them while it is off; without `coChange` they are an error): `commits`, how many recent commits to read (whole number from 20 to 2000, default 300); `minSupport`, the commits two modules must share (whole number, at least 2, default 5); `minConfidence`, the share of the less-changed module's commits that must include the other (above 0, at most 1, default 0.6); `maxCommitFiles`, the most files a commit may touch and still count (whole number from 2 to 100, default 30).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `conventions`            | object                                                                     | Pins a style nitpicker otherwise takes from the project. When two conventions are equally valid, nitpicker counts which one most files use and checks with that: a comparison measures the merge base (so a branch cannot flip it), or the branch when the base has no files of that kind yet; `--all` measures the checkout. A tie, or nothing to measure, keeps the preset default, and the run prints what it followed. Java and Kotlin presets (Java sources): `"java.formatter"`, `"google"` (google-java-format, the default), `"palantir"` (palantir-java-format) or `"none"` (no Java format check); `"java.indentation"`, `"2"` (google-java-format), `"4"` (google-java-format `--aosp`; palantir-java-format is always 4) or `"tab"`; `"java.lineLength"`, a whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones; it drives `line-length-limit` for Java files; google-java-format wraps at 100 and palantir-java-format at 120, so a pin that disagrees with a pinned or build-declared formatter is a config error, and with a default or measured one it turns the formatter into `"none"`); `"java.wildcardImports"` `"explicit"`/`"wildcard"` (wildcard turns off Checkstyle `AvoidStarImport` and Error Prone `WildcardImport`); `"java.testStaticImports"` `"explicit"`/`"wildcard"` (the same for `import static ...*` in test sources only); `"java.assertionHelpers"` and `"kotlin.assertionHelpers"`, a list of method names (a helper is followed when it ends tests that have no other assertion in at least three test files and is defined as a method or function in a test or test-support source whose body calls an assertion or throws; PMD's `UnitTestShouldIncludeAssert` and the Kotlin `test-without-assertion` rule then accept it as an assertion; `[]` pins none). Kotlin and Python presets: the `kotlin.*` and `python.*` ids and values are under [Formatter and detekt configs](#formatter-and-detekt-configs-python-and-kotlin-presets); a project's own tool config sets them only when `tools.<tool>.precedence` lists `"project"`. TypeScript and JavaScript presets (Prettier options): `"prettier.quotes"` `"single"`/`"double"`, `"prettier.semicolons"` `"always"`/`"never"`, `"prettier.indentation"` `"2"`/`"4"`/`"tab"`, `"prettier.printWidth"` `"80"`/`"100"`/`"120"` or any number of columns, `"prettier.trailingCommas"` `"all"`/`"es5"`/`"none"`, `"prettier.arrowParens"` `"always"`/`"avoid"`, `"prettier.bracketSpacing"` `"spaced"`/`"tight"`, `"prettier.endOfLine"` `"lf"`/`"crlf"`, `"prettier.jsonIndentation"` `"2"`/`"4"`/`"tab"` and `"prettier.yamlIndentation"` `"2"`/`"4"` (measured from the JSON and YAML files themselves, only the ones the Prettier check covers: JSON at the project root and under the source and test roots, YAML under the source roots; fixtures and generated files do not count). TypeScript preset only (React): `"prettier.jsxQuotes"` `"double"`/`"single"` (Prettier `jsxSingleQuote`, measured from string attribute values in `.tsx`/`.jsx` files) and `"prettier.bracketSameLine"` `"newLine"`/`"sameLine"` (where the `>` of a multi-line opening tag is, compared with its last attribute); and, beyond Prettier, `"typescript.typeImports"` (TypeScript preset only) `"separate"` (`import type { A }`)/`"inline"` (`import { type A }`), which sets the `consistent-type-imports` fix style; `"typescript.detachedWorkRunners"` (TypeScript and JavaScript presets), a list of function names that production code may call with `void` and not await: the project's own runner for fire-and-forget work, whose rejection handling `nitpicker/no-unhandled-void-promise` cannot see. It is never measured (`[]` unless pinned), a name matches the function or method by name alone (`["runDetached"]` covers `runDetached(...)` and `tasks.runDetached(...)`), and adding a name is reported as a policy loosening; and `"kotlin.detachedWorkRunners"` (Kotlin preset), the same for Kotlin: names of functions whose lambda, or of scopes whose launches, handle the failure of the coroutine they start, which `UnhandledRootCoroutine` then skips (never measured, `[]` unless pinned; adding a name is a loosening); and `"typescript.assertionHelpers"` a list of function names (for example `["assertOk", "verifyCalled"]`): a function the project defines in a test file or a `test-support`, `test-utils`, `testing` or `testkit` folder whose body calls `expect` or `assert` (or throws), and that is the last call of a test (`it`, `test` and their `.only`, `.skip`, `.each`, `.for` and similar forms, not hooks or `describe`) containing no `expect` in at least three test files, counts as an assertion for `vitest/expect-expect`, next to `expect`, `assert`, `expectTypeOf` and `assertType`. A pin is a list of plain identifiers (letters, digits, `_`) and replaces the measured list. `"typescript.fileNames"` `"kebab-case"`/`"camelCase"`/`"snake_case"`, the casing `nitpicker/file-name-casing` expects of source and test file names (the part before the first dot, so `foo.min.js` is judged as `foo`). Only files under the source and test roots count; fixtures and generated files neither count nor fail. PascalCase names always pass (components, classes) and cast no vote, as do names that fit every casing (`index`, `utils`, `404`, `fr-CA`), React hook files (a file named `useX` that exports a function or constant named exactly `useX`; `useCase.ts` exporting something else is judged like any other name), Next.js and Remix names (`not-found`, `[id]`, `posts_.$id`, `_app`, `+page`), `*.config.*` files and names with a hash segment (`chunk-3f9a1c2b`). When a folder has at least three other files that vote, their plurality decides for that folder (a tie keeps the project casing); a pin in `conventions` overrides this, so every file follows the pin. |
+| `extends`                | string                                                                     | Path of the `.json` config the project builds on, relative to the file that names it and inside the repository, such as `"../nitpicker.shared.json"`. A chain is allowed, a cycle is an error. Each key the project sets replaces the shared value; objects such as `thresholds` merge by their own keys. See [Shared config with `extends`](#shared-config-with-extends).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `projects`               | (string or { "path", "preset"? })[]                                        | In the config at the top of a monorepo: the project folders (an entry with a `*`, `?` or `{` is a glob for every folder it matches that holds a `package.json`, a Python project file, a Gradle or Maven build file or a `nitpicker.config.json`), each with an optional `preset` for a folder that has no config of its own. `[]` keeps the repository one project. See [Monorepos](#monorepos).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Size thresholds beyond the file limits, all whole numbers that fail only when a change makes the
 code worse than the base: `folderDepth` is the folders below `features/<feature>/<layer>/` in
@@ -1780,12 +1898,16 @@ analyzers already read: `src/billing imports src/invoicing in 3 files`, both dir
 import each other, or that neither imports the other, in which case what they share (a format, a
 constant, a schema) is not visible as a dependency and the first question above is the likely one.
 The imports are those between production files: the TypeScript and JavaScript `coupling` analyzer
-(the dependency-cruiser graph, with path aliases resolved), the Python facts step (its import scan) and
+(the dependency-cruiser graph, with path aliases resolved, and a package-name import of a workspace
+package followed to that package's source file, also when its entry is a build output such as
+`dist/index.js` with the source under `src/`), the Python facts step (its import scan) and
 the Java and Kotlin analyzers (the source references of every module of the Gradle or Maven build).
 A file under a `featureRoots` folder counts for its feature, as for the pair itself. The analyzers
 collect them only when `history.coChange` is on. When none ran or published imports (the `go` preset,
 an analyzer that failed or was turned off with `disable`), the finding says the dependency is
-unknown rather than claiming there is none. The direction is evidence for the reading, not a
+unknown rather than claiming there is none. It says the same when one module imports a workspace
+package that holds the other by name and that import does not lead to a source file (an entry nitpicker
+cannot map back to source). The direction is evidence for the reading, not a
 verdict: an import can be the right shape and still change in step.
 
 Limits: an import that the language analyzer cannot resolve (a dynamic import, reflection,
@@ -2082,6 +2204,385 @@ then get the same deadline in place of their own shorter default. `NITPICKER_GRA
 A timeout is not policy: changing it is not listed as a policy change, and a pull request that
 raises it runs both snapshots with the head's timeouts. A lowered timeout that makes an analyzer
 time out is still a tool error (exit 2).
+
+## Monorepos
+
+One run can gate a repository that holds several projects, each with its own preset: a TypeScript
+`web/`, a Python `api/` and a Gradle `service/`, for example. Nitpicker runs only the projects your
+change touches and combines their results into one summary, one report and one exit code.
+
+### Which runs are monorepo runs
+
+A run fans out to several projects only when the repository says it holds several:
+
+- the `nitpicker.config.json` at the top lists `projects`, or
+- the top declares a workspace: `workspaces` in `package.json` (npm, Yarn, Bun),
+  `pnpm-workspace.yaml`, or a uv workspace in `pyproject.toml` (`[tool.uv.workspace]`, or
+  `workspace = { ... }` under `[tool.uv]`), an Nx workspace (`nx.json` at the top and a
+  `project.json` in each project folder) or an Angular CLI workspace (`angular.json` whose
+  `projects` give a folder of their own in `root`), or a Gradle composite build whose top
+  `settings.gradle(.kts)` has `includeBuild` folders with Java or Kotlin code (each such build is a
+  project; `buildSrc`, `build-logic` and builds with no code are not, and the top build joins only
+  when its settings `include` projects of its own or it has a `src` folder). Lerna, Turborepo, Rush and package-based Nx
+  repositories use npm, pnpm or Yarn workspaces underneath, so they are found the same way. An Nx
+  or Angular project needs no `package.json` of its own; its dependencies come from the top.
+
+Folders that only look like projects do not make a monorepo. A `package.json` with an
+`android/build.gradle`, or a Python package with `examples/*/pyproject.toml`, stays one project and
+runs exactly as it would without this feature. Nitpicker prints one line on stderr that names those
+folders (Python projects, Gradle and Maven builds, and `package.json` folders with TypeScript or
+JavaScript sources, at most ten of them and a count of the rest) and shows the `projects` list that
+would gate each with its own preset. A folder that the top config's `exclude` covers is left out. To
+gate them, list them:
+
+```json
+{ "projects": [".", "android", "examples/demo"] }
+```
+
+A Gradle or Maven folder, a Python project without a uv workspace and any mix of languages always
+need an explicit `projects` list. When the top folder holds no project file at all (a multi-service
+repository with `services/orders/pom.xml`, `services/users/build.gradle` and `web/package.json`),
+the run stops with exit 2 and prints the `nitpicker.config.json` to create at the top, with a
+`{ "path", "preset" }` entry for each project it found.
+
+Where you start the run matters:
+
+- At the top (the folder with `projects` or the workspace declaration), nitpicker gates every
+  project. Nitpicker finds that top from a subfolder too: the nearest folder that holds a
+  `package.json`, a `nitpicker.config.json` or a uv workspace.
+- Inside a project of the monorepo (`cd packages/a`, a CI step with `working-directory`, or
+  `npm run -w`), nitpicker gates that project alone, with the settings the top config gives it, the
+  preset the top gives it and the base of the top config, whether or not the folder has a
+  `package.json` of its own. A change to the set of projects (see below) is a loosening of that run
+  too. `nitpicker aggregate` and `nitpicker cache publish` started there work on that project with
+  the same preset and settings.
+- Inside a folder with its own `package.json` or `nitpicker.config.json` that is not one of the
+  monorepo's projects, nitpicker gates that folder alone, with its own config only, exactly as
+  before.
+
+### Listing the projects
+
+```json
+{
+  "projects": ["web", "api", { "path": "service", "preset": "java" }, "packages/*"]
+}
+```
+
+- An entry is a folder relative to the config, or `{ "path", "preset", "expand", "settings" }`. `.`
+  names the root itself. `settings` holds config settings for that project, layered over its own
+  config (it cannot set `preset`, `projects` or `extends`); they are part of the top config, so
+  they are policy of the project like the rest of it.
+- An entry whose folder declares a workspace of its own (`workspaces` in its `package.json`,
+  `pnpm-workspace.yaml` or a uv workspace) stands for the members of that workspace, the same way a
+  workspace at the top does: `frontend` with `frontend/pnpm-workspace.yaml` gates
+  `frontend/packages/a` and `frontend/packages/b`, and the folder itself joins only when it has
+  sources of its own. The plan line counts them (`3 from frontend/pnpm-workspace.yaml`), a change to
+  the workspace's lockfile or `package.json` runs every member, and an entry's `preset` applies to
+  each member. `"expand": false` keeps the folder one project.
+- An entry with a `*`, `?` or `{` anywhere is a glob. It stands for every folder it matches that
+  holds a `package.json`, an Nx `project.json`, a Python project file (`pyproject.toml`,
+  `setup.py`, `setup.cfg`,
+  `Pipfile` or `requirements.txt`), a Gradle or Maven build file or a `nitpicker.config.json`. A
+  folder inside a match is left out, and so is a module of a Gradle or Maven build: `apps/**` keeps
+  `apps/android` one project, however many modules it has. A folder with its own
+  `settings.gradle(.kts)` is a build of its own, never a module (so `services/*` matches the
+  included builds of a composite), and a Maven folder is a module only when an enclosing `pom.xml`
+  lists it in `<modules>` (in any profile).
+- Each project reads its own `nitpicker.config.json`. A folder without one needs no file when its
+  preset can be detected; the `preset` of an entry declares it. An entry's `preset` that disagrees
+  with the project's own config is an error. Only the config at the top may set `projects`.
+- The config at the top is the base layer of every other project, merged like a file the project
+  `extends` (see below): `exclude`, `exceptions`, `disable`, `thresholds`, `testConsole` and the
+  other settings apply to each project unless its own config sets the same key. `projects`,
+  `extends`, `preset` and `analyzers` are not passed on (a custom analyzer runs in the folder of
+  the project that lists it). Paths in it stay paths from the top: the `exclude` entry
+  `packages/a/src/gen/**` reaches `packages/a` as `src/gen/**`, `{packages/a,libs/b}/src/**`
+  reaches both as `src/**`, and `packages/a/**` reaches `packages/a` as `**`. A pattern that names
+  a project folder itself or a folder above it (`packages/a`, `packages`) matches no file, so it
+  reaches no project, and neither does a path in another project. When the top config declares a
+  `preset`, a project of another language (a Python project under a TypeScript top) takes nothing
+  from it; when it declares none, each project takes every setting its own preset accepts. The top
+  config is policy of every project: it is part of each project's digest, a change to it runs
+  every project, and loosening it is a `policy-loosened` finding that names it.
+- A project may sit inside another one (`.` and `web`, or `web` and `web/sub`). The outer project's
+  run leaves the inner folders out, so each file is gated once.
+- One folder may be listed twice with two presets, for a Java build with a TypeScript app inside
+  it (JHipster's `src/main/webapp`, Vaadin or Hilla's `src/main/frontend`):
+
+  ```json
+  {
+    "projects": [
+      { "path": ".", "preset": "java" },
+      {
+        "path": ".",
+        "preset": "typescript",
+        "settings": { "layout": { "sourceRoots": ["src/main/webapp"] } }
+      }
+    ]
+  }
+  ```
+
+  Each entry is a project of its own, named `<folder>@<preset>` (`.@java`, `.@typescript`) in the
+  plan, the summary, `--project` and its report folder (`_root@typescript`), with its own digest
+  and run lock. A changed file goes to the entry whose preset checks its language (`.java` and
+  `.kt` to the JVM entry, script files to the TypeScript entry), a toolchain file to the entry of
+  its toolchain (`package.json` to TypeScript, `pom.xml` to Java), and any other file to the first
+  entry. The folder's own `nitpicker.config.json` applies to the entry of the preset it declares
+  (or to both when it declares none); the other entry takes its settings from `settings`. A
+  TypeScript or JavaScript entry without `layout` in its `settings` checks `src/main/webapp`,
+  `src/main/frontend` and `frontend`, whichever exist.
+
+- A Git submodule is never a project of the repository around it: a `projects` entry or glob that
+  names one, or a workspace glob that covers one, is an error, and a changed submodule gets a
+  notice (`services/svc is a Git submodule, which this run does not check`) instead of the
+  "outside every project" line. Run nitpicker inside the submodule to gate its own changes.
+- `"projects": []` keeps the repository one project, whatever it holds.
+- Without a list, nitpicker gates the members of the declared workspace and says so
+  (`Monorepo: 3 projects detected`). The root joins them when it has a `package.json` and
+  TypeScript or JavaScript sources of its own, or a `pyproject.toml` with a `[project]` or
+  `[tool.poetry]` table. A uv member is found by any Python project file, `setup.py` included.
+
+A Gradle multi-project build and a Maven reactor are always one project, however many modules they
+hold. A build that mixes Java and Kotlin is one project too; declare `"preset": "kotlin"` for it
+(detection picks `kotlin` only when `.kt` files outnumber `.java` files). Hidden folders,
+`node_modules`, `fixture`, `fixtures`, `vendor`, `third_party`, `test`, `tests`, `docs`, `build`,
+`dist`, `target` and `out` are not searched.
+
+### One base for every project
+
+A monorepo run compares every project with one base: `--base`, else the `base` of the top
+`nitpicker.config.json`, else the default. The same base picks the changed files. A project config
+whose `base` differs from the top one is an error at the top; remove it, or set the same value in
+both.
+
+### Which projects run
+
+Nitpicker compares the files changed against the merge base (plus untracked files) and runs:
+
+- every project that contains a changed file (the deepest project wins when projects nest);
+- every project that depends on a touched one, where its build tool says so: `package.json`
+  dependencies by name, by npm alias (`"ui": "npm:@acme/ui@^1"`) or by `file:`, `link:` and
+  `portal:` path, uv `workspace = true` and `path` sources, Poetry path dependencies, Nx
+  `implicitDependencies` in `project.json`, a `compilerOptions.paths` alias of the project's
+  `tsconfig.json` (its `extends` followed) that the project's sources import and that points into
+  another project, a tsconfig project `references` entry, Gradle `includeBuild`, a Maven
+  `<parent>` or `<module>` outside the build, and a Maven or Gradle dependency on the coordinates
+  another project builds (`groupId:artifactId` of its `pom.xml`, or a static `group` of its Gradle
+  build with `rootProject.name` or the folder name; Gradle dependency strings, substitutions and
+  version catalog aliases the build uses count). Coordinates that build logic computes are not
+  seen. The plan line names the link when it is not a
+  package dependency (`depends on libs/ui (tsconfig paths)`,
+  `depends on libs/common (com.acme:common)`);
+- every project that extends a shared config file that changed (see below);
+- every project, when the top `nitpicker.config.json` or a file it extends changed;
+- every project whose config has an error, so the error is reported;
+- every project of a toolchain whose root file changed at the top of the monorepo: a lockfile or
+  `package.json`, `nx.json` or `angular.json` for JavaScript (and a `tsconfig` anywhere outside the
+  projects), `pyproject.toml`
+  or `uv.lock` for Python, a settings or build file for Java and Kotlin. Such a file in a folder
+  that is not a project, such as `tools/package.json`, runs nothing. A lockfile
+  (`package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock` or `uv.lock`) runs
+  only the projects whose resolved dependencies changed: nitpicker compares the resolved versions
+  of the base and the head lockfile and follows each project's dependencies (its `package.json`,
+  or its uv package) through the lockfile, and the plan line names the change
+  (`pnpm-lock.yaml: lodash 4.17.20 -> 4.17.21`). `gradle/libs.versions.toml` runs only the Gradle
+  projects whose build files use a changed alias (`libs.guava`). A lockfile that cannot be read, a
+  lockfile added or removed, a change of no resolved version, or a project without a manifest runs
+  every project of the toolchain, as any other toolchain file does.
+
+`--project` (repeatable; a folder, package name or quoted glob, see [Command line](#command-line)) runs exactly the named projects, changed or not. `--all` runs every
+project against the whole checkout. `--analyzer <name>` runs the projects that have that analyzer
+and is an error when no project has it. Changed files that belong to no project are listed and not
+checked. With a `projects` list, a new folder that holds a project file but is not listed gets a
+warning on stderr.
+
+```
+Monorepo: 3 projects listed in "projects" of nitpicker.config.json.
+  run  web (typescript): 1 changed file
+  run  api (python): 2 changed files
+  skip 1 project: no changed files (--details lists them)
+== web (typescript) ==
+...
+Monorepo summary: 1 failed, 1 passed, 1 skipped (3 projects)
+  ✖ web (typescript): 2 new enforceable violations
+  ✓ api (python): no new violations
+  - 1 project: no changed files (--details lists them)
+```
+
+The plan and the summary print one line per project that runs and one line per reason for the
+skipped ones; `--details` lists every project, and `summary.json` always does. Projects are listed in
+natural order (`p2` before `p10`). A project that fails to run prints its error once, on stderr in
+its section and in its `report.txt`; its summary line keeps the first line and names that file.
+
+### Plan the projects of a run
+
+`nitpicker projects` prints every project with its preset, where it comes from (the `projects`
+list, a workspace declaration) and whether the change selects it, with the reason. It runs no
+analyzer. It takes `--base`, `--all` and `--project` as a run does, and selects the same projects:
+
+```
+3 projects detected, 2 selected by the change against origin/main:
+  skip packages/docs (typescript; package.json workspaces): no changed files
+  run  packages/ui (typescript; package.json workspaces): 1 changed file
+  run  packages/web (typescript; package.json workspaces): depends on packages/ui
+```
+
+`--json` prints the same as one JSON object: `matrix` holds `{"include": [{"project", "preset"}]}`
+for the selected projects, ready for a CI job matrix, and `projects` holds every project with
+`path`, `preset`, `origin`, `selected` and `reason`. Outside a monorepo it lists the one project.
+
+To run one CI job per selected project, compute the plan in one job and fan out:
+
+```yaml
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: echo "matrix=$(npx nitpicker projects --base origin/main --json | jq -c .matrix)" >> "$GITHUB_OUTPUT"
+  gate:
+    needs: plan
+    if: fromJSON(needs.plan.outputs.matrix).include[0] != null
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - run: npx nitpicker --base origin/main --project ${{ matrix.project }}
+```
+
+A job that runs one project with `--project` still checks the repository policy (see
+[The set of projects is policy](#the-set-of-projects-is-policy)).
+
+### Projects at once
+
+The selected projects run at the same time, up to a quarter of the CPUs (at least one), since each
+project already runs its own analyzers in parallel. `--jobs <n>` sets how many run at once; `--jobs 1`
+runs them one after another. While they run, stderr shows one progress line per step, labelled with
+the project (`nitpicker: [web] head: running 6 analyzers`). Each project's console output is printed
+as one block when it finishes, in the order of the plan, so the console reads the same as a run one
+project at a time, and the summary and exit code are the same. A project runs in its own process
+with its own run lock, report folder and head checkout; the shared Maven and Gradle tool caches are
+filled through a staging folder, so two projects filling them at once do not clash. A
+programmatic run that passes its own analyzers runs its projects one after another.
+
+The selected projects share one checkout of the base: nitpicker adds one git worktree at the merge
+base for the run, and each project reads its base from its own folder inside it. When the base needs
+its own install (its lockfile or manifests differ from the working tree's), the first project under a
+package-manager root installs it and the others under that root reuse it, one install at a time. A
+project that holds another selected project (the root project of a repository with nested projects,
+or two presets on one folder) gets a base checkout of its own, since its analyzers would otherwise see
+the other project's build output, and so does a Gradle project without its own settings file, whose
+build Gradle runs from an enclosing folder. Each project still checks out its own head.
+
+### Reports and exit code
+
+Each project writes its usual reports into `<output>/<project>/` (the root project into `_root/`; a
+project folder named `_root` next to a root project is an error). Reports of a project that is no
+longer listed are removed. The output folder also gets:
+
+- a combined `summary.json` ([format](internals.md#monorepo-summary)) and `report.txt`;
+- a combined `report.sarif` and `report-baseline.sarif` with one run per project (category
+  `nitpicker/<project>/`; the repository policy has `nitpicker-repository/`) and paths from the
+  repository root, for one code scanning upload;
+- a combined `report.junit.xml` with one test suite per project and one for the repository policy,
+  with paths from the repository root.
+
+```yaml
+- run: npx nitpicker --base origin/main
+- uses: github/codeql-action/upload-sarif@v4.39.1
+  if: always()
+  with:
+    sarif_file: reports/quality/diff/report.sarif
+```
+
+The exit code is 1 if any project has new enforceable violations or the repository policy has a
+loosening nobody accepted, else 2 if any project could not complete (it failed to run, or an
+analyzer had a tool error), else 0. A project with violations and tool errors is `failed`, and its
+line says the run is incomplete; `overallStatus` is `tool-error`. `--defer-exit` reports everything
+and exits 0 unless a project could not complete, which still exits 2. A project that fails to run is
+reported as an error and the others still run.
+
+### Shared config with `extends`
+
+A project config can extend a shared file:
+
+```json
+{ "extends": "../nitpicker.shared.json", "thresholds": { "fileLines": 250 } }
+```
+
+`extends` names a `.json` file by a path relative to the file that holds it, inside the repository.
+The file may be a symbolic link when it resolves inside the repository. The shared file may extend
+another file; a cycle is an error, and so is `"extends": null`. The merge is by top-level key: keys
+the project sets replace the shared ones, except that an object (such as `thresholds`) is merged by
+its own keys. `extends` and `projects` are not inherited. A validation error names the file it is
+in, and a project whose config has an error fails with exit code 2.
+
+Lists replace: a project that sets `exceptions` drops the shared ones, so restate the ones it keeps:
+
+```json
+{
+  "extends": "../nitpicker.shared.json",
+  "exceptions": [
+    { "rule": "file-lines-limit", "paths": ["src/tables/**"], "reason": "generated tables" },
+    { "rule": "function-lines-limit", "paths": ["src/parser.ts"], "reason": "one state machine" }
+  ]
+}
+```
+
+Paths in a shared file (`exclude`, `layout.sourceRoots`, exception `paths` and the like) resolve
+against each project that uses it, not against the shared file's folder.
+
+A shared file is policy. Both the base and the head side are read with `extends` resolved, so
+loosening a threshold, adding an exception or an exclude in the shared file is a `policy-loosened`
+finding in every project that uses it, and its text names the shared file (`... (from
+nitpicker.shared.json)`). A change to the shared file runs all of those projects. The findings cache
+key reflects the merged config. Each project carries its own policy digest, which covers the shared
+files it uses. To accept the loosening in all of them, `NITPICKER_ACCEPT_POLICY_CHANGE` takes the
+digests joined by commas, and the monorepo summary prints that line.
+
+### The set of projects is policy
+
+Taking a project out of `projects`, emptying the list, or shrinking the workspace so a folder that
+was gated on its own no longer is, is a `policy-loosened` finding of the repository policy. So is
+moving a project to a folder that no project covers (`git mv packages/b legacy/b` when `projects`
+is `["packages/*"]`): its files show up outside every project. So is a preset changed in a
+`projects` entry: the base side of each project uses the preset the base gave it. The repository
+policy has its own digest, printed in the summary and accepted like the others (add it to the comma
+list). When the projects of the base cannot be read, the run fails closed with a tool error (exit
+code 2) instead of skipping the check.
+
+### Not for the top of a monorepo
+
+- `--shard-count` is refused at the monorepo root; run one CI job per project with `--project`, or
+  shard a project from its own folder.
+- `nitpicker aggregate` and `nitpicker cache publish` work on one project: run them in a project
+  folder.
+- `--json` prints one project's result: read the combined `summary.json` instead, or run `--json`
+  in a project folder.
+- Path arguments narrow one project. A path in a project folder that has its own `package.json` or
+  `nitpicker.config.json` runs that project; a path that belongs to the top folder is refused, so
+  choose whole projects with `--project`.
+- Each refusal says how to gate the repository as one project instead: `"projects": []` in the top
+  `nitpicker.config.json`.
+- `--fix` applies to each project that runs.
+
+In CI, check out the full history so the merge base exists, then run one command:
+
+```yaml
+- uses: actions/checkout@v7.0.1
+  with:
+    fetch-depth: 0
+- run: npx nitpicker --base origin/main
+```
 
 ## Preview and pick fixes
 

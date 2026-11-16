@@ -6,6 +6,8 @@ import { repositoryFindingPath } from '../../git/paths.mjs';
 import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
 import { sarifFixes } from './sarif-fixes.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { type LabelsOf, findingLabeler } from '../../../labels/finding-labels.mts';
+import { areaOf } from '../format/rule-groups/finding-areas.mts';
 
 export type SarifEntry = { readonly finding: ReportEntry; readonly baselineState?: string };
 
@@ -74,7 +76,7 @@ export function toSarifResult(
   };
 }
 
-function sarifRule(finding: ReportEntry, reference: ReferenceLinks): object {
+function sarifRule(finding: ReportEntry, reference: ReferenceLinks, labelsOf: LabelsOf): object {
   const entry = ruleEntry(reference.index(), { tool: finding.tool, rule: finding.rule });
   const helpUri = entry === undefined ? undefined : ruleUrl(entry, reference.root());
   return {
@@ -84,6 +86,7 @@ function sarifRule(finding: ReportEntry, reference: ReferenceLinks): object {
       ? {}
       : { shortDescription: { text: plain(fieldOf(entry, 'summary'), reference.root()) } }),
     ...(helpUri === undefined ? {} : { helpUri }),
+    properties: { tags: [...labelsOf(finding)] },
   };
 }
 
@@ -92,10 +95,11 @@ export function collectSarifRules(
   reference: ReferenceLinks,
 ): object[] {
   const rules = new Map<string, object>();
+  const labelsOf = findingLabeler({ areaOf, index: () => reference.index() });
   for (const finding of findings) {
     const ruleId = ruleIdOf(finding);
     if (!rules.has(ruleId)) {
-      rules.set(ruleId, sarifRule(finding, reference));
+      rules.set(ruleId, sarifRule(finding, reference, labelsOf));
     }
   }
   return [...rules.values()];

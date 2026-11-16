@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { prefixedFinding, readModuleFindings, readModuleReport } from './java-modules.mjs';
+import { prefixedFinding, readModuleFindings, readModuleReport } from './java-modules.mts';
 
 const ROUTE =
   'If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.';

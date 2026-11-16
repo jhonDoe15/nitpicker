@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-undefined-only-env-check.mjs';
+import { rule } from './no-undefined-only-env-check.mts';
 
 const tester = typescriptRuleTester();
 

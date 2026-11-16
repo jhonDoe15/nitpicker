@@ -1,4 +1,4 @@
-import { rule } from './no-string-as-regex.mjs';
+import { rule } from './no-string-as-regex.mts';
 import { typedRegexProject } from './test-support/typed-project.mts';
 
 const { tester, typed, typedJs } = typedRegexProject('nitpicker-string-regex-');

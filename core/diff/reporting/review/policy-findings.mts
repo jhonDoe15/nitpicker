@@ -49,7 +49,9 @@ function acceptedCommit(acceptance: string | undefined): string | undefined {
 
 function acceptsThisRun(acceptance: string, digest: string, headSha: string | undefined): boolean {
   const commit = acceptedCommit(acceptance);
-  return commit === undefined ? acceptance === digest : headSha !== undefined && commit === headSha;
+  return commit === undefined
+    ? acceptance.split(',').includes(digest)
+    : headSha !== undefined && commit === headSha;
 }
 
 export function isPolicyChangeAccepted(

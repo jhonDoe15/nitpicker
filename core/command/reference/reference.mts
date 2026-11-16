@@ -9,6 +9,7 @@ import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import { filterText, labelFilter, matchesFilter } from '../../labels/taxonomy.mts';
 import {
   type Entry,
   type EntryIndex,
@@ -36,10 +37,10 @@ type ReferenceCli = {
   readonly currentProjectRoot?: string | undefined;
 };
 
-type RulesOptions = { preset?: string; tool?: string; fixable: boolean };
+type RulesOptions = { preset?: string; tool?: string; fixable: boolean; labels: string[] };
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
-const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>] [--fixable]\n`;
+const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>] [--label <label>]... [--fixable]\n`;
 const DEFAULT_PRESET = 'typescript';
 const FIRST_SENTENCE = /^.*?[.!?](?=\s|$)/su;
 const INDENT = '  ';
@@ -118,9 +119,10 @@ export function runExplainCommand({ commandArguments, stdout, stderr }: Referenc
   return unknown.length === 0 ? 0 : 1;
 }
 
-const RULES_OPTIONS: ReadonlyMap<string, 'preset' | 'tool'> = new Map([
+const RULES_OPTIONS: ReadonlyMap<string, 'preset' | 'tool' | 'label'> = new Map([
   ['--preset', 'preset'],
   ['--tool', 'tool'],
+  ['--label', 'label'],
 ]);
 const FIXABLE_FLAG = '--fixable';
 const FIXABLE_STATUSES: ReadonlyMap<string, string> = new Map([
@@ -153,14 +155,18 @@ function applyRulesOption(
   if (value === undefined || value === '' || value.startsWith('--')) {
     return `nitpicker: ${flag} requires a value.\n${RULES_USAGE}`;
   }
-  options[property] = value;
+  if (property === 'label') {
+    options.labels.push(value);
+  } else {
+    options[property] = value;
+  }
   return undefined;
 }
 
 function readRulesOptions(
   commandArguments: readonly string[],
 ): { readonly options: RulesOptions; readonly error?: undefined } | { readonly error: string } {
-  const options: RulesOptions = { fixable: false };
+  const options: RulesOptions = { fixable: false, labels: [] };
   const remaining = commandArguments.values();
   for (const argument of remaining) {
     const error = applyRulesOption(options, argument, remaining);
@@ -202,15 +208,17 @@ function summaryLine(entry: Entry, root: string | undefined): string {
 function listedEntries(
   preset: string,
   config: NitpickerConfig,
-  { tool, fixable }: RulesOptions,
+  { tool, fixable, labels }: RulesOptions,
 ): readonly Entry[] {
   const enabled = enabledAnalyzers(preset, config);
+  const filter = labelFilter(labels);
   return readEntries()
     .filter(({ analyzers }) => reportsFor(analyzers[preset], enabled))
     .filter(
       (entry) => tool === undefined || [entry.tool, ...(entry.findingTools ?? [])].includes(tool),
     )
-    .filter((entry) => !fixable || FIXABLE_STATUSES.has(fixStatusOf(entry, preset)));
+    .filter((entry) => !fixable || FIXABLE_STATUSES.has(fixStatusOf(entry, preset)))
+    .filter((entry) => filter === undefined || matchesFilter(entry.labels ?? [], filter));
 }
 
 function rulesPreset(
@@ -231,9 +239,15 @@ function ruleLine(entry: Entry, preset: string, fixable: boolean): string {
   return fixable ? `${line} [${FIXABLE_STATUSES.get(fixStatusOf(entry, preset)) ?? ''}]` : line;
 }
 
-function rulesText(preset: string, listed: readonly Entry[], fixable: boolean): string {
+function rulesText(
+  preset: string,
+  listed: readonly Entry[],
+  { fixable, labels }: RulesOptions,
+): string {
+  const filter = labelFilter(labels);
+  const labeled = filter === undefined ? '' : ` labeled ${filterText(filter)}`;
   return (
-    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} ${fixable ? 'fixable ' : ''}rules. ` +
+    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} ${fixable ? 'fixable ' : ''}rules${labeled}. ` +
     'nitpicker explain <tool/rule> describes one.\n' +
     listed.map((entry) => `${ruleLine(entry, preset, fixable)}\n`).join('')
   );
@@ -256,6 +270,6 @@ export function runRulesCommand({
   }
   const { preset, config } = rulesPreset(read.options, currentProjectRoot);
   const listed = listedEntries(preset, config, read.options);
-  stdout.write(rulesText(preset, listed, read.options.fixable));
+  stdout.write(rulesText(preset, listed, read.options));
   return 0;
 }

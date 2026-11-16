@@ -6,7 +6,7 @@ import {
   globMatcher,
 } from '../typed/runner/exception-views.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
-import { RUFF_SELECTOR } from './python-rule-ids.mjs';
+import { RUFF_SELECTOR } from './python-rule-ids.mts';
 
 export type Routable = Pick<Finding, 'tool' | 'rule' | 'path'>;
 

@@ -1,3 +1,5 @@
+import type { Rule } from 'eslint';
+
 export type Fields = Readonly<Record<string, unknown>>;
 
 export function parseJson(text: string): unknown {
@@ -6,6 +8,10 @@ export function parseJson(text: string): unknown {
 
 export function textOf(value: unknown): string {
   return typeof value === 'string' ? value : String(value);
+}
+
+export function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
 }
 
 export function textsOf(value: unknown): string[] {
@@ -40,6 +46,15 @@ export function messageOf(error: unknown): string {
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isRuleModule(value: unknown): value is Rule.RuleModule {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'create' in value &&
+    typeof value.create === 'function'
+  );
 }
 
 export function stringsIn(value: unknown): string[] {
