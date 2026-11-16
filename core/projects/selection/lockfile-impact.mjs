@@ -5,7 +5,7 @@ import { readPyproject, parseToml } from '../../configuration/project-checks/uv-
 import { filesUnder } from '../../../shared/filesystem.mjs';
 import { isPlainObject } from '../../../shared/config.mjs';
 import { containedPath } from '../../../shared/paths/contained-path.mjs';
-import { memoized } from '../../../shared/values/memoized.mjs';
+import { memoized } from '../../../shared/values/caching/memoized.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
 import {
   changedPackages,
