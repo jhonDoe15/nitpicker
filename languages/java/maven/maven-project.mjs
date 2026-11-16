@@ -2,11 +2,12 @@ import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
-import { isStrictlyInside } from '../../../shared/paths/strictly-inside.mjs';
+import { isStrictlyInside } from '../../../shared/filesystem.mjs';
 import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
+import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mjs';
 
 const DIRECTORY = 'directory';
 
@@ -35,11 +36,6 @@ const VERIFY_BUILD = [
   '-Dlicense.skipAggregateDownloadLicenses=true',
   '-Djapicmp.skip=true',
 ];
-
-function coordinates(project) {
-  const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
-  return `${groupId}:${textAt(project, 'artifactId')}`;
-}
 
 function configured(execution, plugin, name) {
   return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
@@ -211,6 +207,7 @@ function describeModule(project, { basedir, pomFile }) {
     ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: moduleCompiler(project),
+    requires: [...new Set(requiredCoordinates(project, plugins, pomFile))],
   };
 }
 

@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { readImportLinterConfig } from './import-linter-config.mjs';
+import { readImportLinterConfig } from './import-linter-config.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

@@ -7,13 +7,17 @@ import {
   installMutationCompanion,
   installStrykerTsconfig,
   mutatePatterns,
-  optionalText,
   rebaseMutationConfig,
   strykerRunConfig,
   writeTemporaryFile,
 } from './stryker/stryker-config.mts';
 import { readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
-import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
+import {
+  fieldOf,
+  fieldsOf,
+  parseJson,
+  optionalText,
+} from '../../../../../shared/values/readers.mts';
 import { importPolicyModule, relativeProjectPath, runNodeTool } from '../typed/tooling.mts';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';

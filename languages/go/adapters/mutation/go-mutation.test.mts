@@ -2,11 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createGoAnalyzers, GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mjs';
+import { createGoAnalyzers, GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { readMutationFindings } from '../typed/go-run-readers.mts';
-import { runMutant } from './mutation-run.mjs';
-import { onChangedLine } from './mutation-scope.mjs';
+import { runMutant } from './mutation-run.mts';
+import { onChangedLine } from './mutation-scope.mts';
 
 const roots: string[] = [];
 

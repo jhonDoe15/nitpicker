@@ -7,7 +7,7 @@ import {
   pinnedPytestArguments,
   readPytestAddopts,
   shellWords,
-} from './pytest-pins.mjs';
+} from './pytest-pins.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

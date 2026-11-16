@@ -1,12 +1,12 @@
 import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
 import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
-import { isUnder } from '../analysis/python-sources.mjs';
-import { isGeneratedPython } from '../../libraries/generated-files.mjs';
+import { isUnder } from '../analysis/python-sources.mts';
+import { isGeneratedPython } from '../../libraries/generated-files.mts';
 import {
   DOCUMENTATION_DIRECTORIES,
   INSTALLED_DIRECTORIES,
   NON_SOURCE_FILES,
-} from '../execution/python-project.mjs';
+} from '../execution/python-project.mts';
 
 export type OutsideProject = {
   readonly projectRoot: string;

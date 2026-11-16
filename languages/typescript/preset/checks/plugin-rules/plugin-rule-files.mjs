@@ -1,3 +1,5 @@
+import { CONVENTION_POLICY_FILES } from '../conventions/convention-policy-files.mjs';
+
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
@@ -126,10 +128,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/modules/no-module-level-let.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-production-console.mjs',
   'languages/typescript/preset/eslint-plugin/rules/naming/file-name-casing.mjs',
-  'languages/typescript/conventions/file-name-casing.mjs',
-  'languages/typescript/conventions/type-import-style.mjs',
-  'languages/typescript/conventions/measures/assertion-helpers.mjs',
-  'languages/typescript/conventions/measures/detached-work-runners.mjs',
+  ...CONVENTION_POLICY_FILES,
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',

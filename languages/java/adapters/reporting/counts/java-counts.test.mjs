@@ -8,7 +8,7 @@ import {
   removeTemporaryProjects,
   rootReports,
 } from '../test-support/kotlin-report-project.mjs';
-import { withJavaCountRatchets } from './java-counts.mjs';
+import { withJavaCountRatchets } from './java-counts.mts';
 import { isJavaTouchedRule } from '../../touched-rules.mjs';
 
 afterEach(removeTemporaryProjects);

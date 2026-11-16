@@ -1,9 +1,9 @@
 import { REVIEW, SAFE } from '../engine/safety.mjs';
-import { codeFixes } from '../../../languages/typescript/fix/code-fixes/code-fix-rules.mjs';
-import { OWN_SUGGESTION_RULES } from '../../../languages/typescript/fix/suggestions/own-suggestion-rules.mjs';
-import { RUFF_PROMOTED_FIXES } from '../../../languages/python/adapters/configuration/python-rule-ids.mjs';
-import { REVIEW_CODES } from '../../../languages/python/fix/review/review-rules.mjs';
-import { suggestionRules } from '../../../languages/typescript/fix/suggestions/suggestion-rules.mjs';
+import { codeFixes } from '../../../languages/typescript/fix/code-fixes/code-fix-rules.mts';
+import { OWN_SUGGESTION_RULES } from '../../../languages/typescript/fix/suggestions/own-suggestion-rules.mts';
+import { RUFF_PROMOTED_FIXES } from '../../../languages/python/adapters/configuration/python-rule-ids.mts';
+import { REVIEW_CODES } from '../../../languages/python/fix/review/review-rules.mts';
+import { suggestionRules } from '../../../languages/typescript/fix/suggestions/suggestion-rules.mts';
 
 import type { PresetRule } from '../typed/fix-types.mts';
 
@@ -42,10 +42,7 @@ export const SELECTED_FIXER_RULES = Object.freeze([
   ...listed(
     'ruff',
     [
-      ...RUFF_PROMOTED_FIXES.filter((code) => code !== undefined).map((code): [string, string] => [
-        code,
-        SAFE,
-      ]),
+      ...RUFF_PROMOTED_FIXES.map((code): [string, string] => [code, SAFE]),
       ...REVIEW_CODES.map((code): [string, string] => [code, REVIEW]),
     ],
     ['python'],

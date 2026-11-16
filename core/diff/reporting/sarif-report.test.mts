@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   renderBaselineSarifReport,
@@ -111,6 +112,29 @@ describe('renderSarifReport', () => {
     expect(fingerprint(finding({ identity: 'other' }))).not.toBe(original);
     expect(fingerprint(finding({ path: 'src/b.js' }))).not.toBe(original);
   });
+  it('keeps the fingerprint of a finding that quotes a relative specifier as its identity says', () => {
+    const quoted = finding({
+      tool: 'typescript-typecheck',
+      rule: 'TS2307',
+      path: 'src/orders/a.ts',
+      identity: "message:Cannot find module '../lib/b' or its corresponding type declarations.",
+      classification: 'enforceable',
+    });
+    const log = parseJson(renderSarifReport(report({ newFindings: [quoted] }), { projectPath }));
+    const expectedKey = JSON.stringify([
+      'typescript-typecheck',
+      'TS2307',
+      'src/orders/a.ts',
+      quoted.symbol ?? '',
+      "message:Cannot find module '../lib/b' or its corresponding type declarations.",
+      'enforceable',
+      '',
+    ]);
+
+    expect(
+      fieldAt(log, 'runs', 0, 'results', 0, 'partialFingerprints', 'nitpickerIdentity/v1'),
+    ).toBe(createHash('sha256').update(expectedKey).digest('hex'));
+  });
   it('links each rule to its entry in the rule reference with a helpUri and a short description', () => {
     const log = parseJson(
       renderSarifReport(
@@ -136,6 +160,7 @@ describe('renderSarifReport', () => {
         name: 'function-lines-limit',
         shortDescription: { text: 'A function longer than the limit.' },
         helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
+        properties: { tags: ['maintainability'] },
       },
       {
         id: 'pmd/UnusedLocalVariable',
@@ -144,6 +169,7 @@ describe('renderSarifReport', () => {
           text: 'Detects when a local variable is declared and/or assigned, but not used.',
         },
         helpUri: docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
+        properties: { tags: ['simplification'] },
       },
       {
         id: 'eslint-lint/@typescript-eslint/no-explicit-any',
@@ -153,12 +179,14 @@ describe('renderSarifReport', () => {
           'docs/rules/typescript-eslint.md',
           'eslint-typescript-eslint-no-explicit-any',
         ),
+        properties: { tags: ['maintainability'] },
       },
       {
         id: 'mypy/attr-defined',
         name: 'attr-defined',
         shortDescription: { text: 'A diagnostic of mypy, named by its <error code>.' },
         helpUri: docsUrl('docs/rules/python-types.md', 'mypy-error-code'),
+        properties: { tags: ['bug'] },
       },
     ]);
   });
@@ -182,10 +210,11 @@ describe('renderSarifReport', () => {
         shortDescription: {
           text: 'Detects when a local variable is declared and/or assigned, but not used.',
         },
+        properties: { tags: ['simplification'] },
       },
     ]);
   });
-  it('lists a rule the reference does not know with an id and a name only', () => {
+  it('lists a rule the reference does not know with an id, a name and its fallback label', () => {
     const log = parseJson(
       renderSarifReport(
         report({ newFindings: [finding({ tool: 'custom', rule: 'text-file', identity: 'c' })] }),
@@ -194,7 +223,7 @@ describe('renderSarifReport', () => {
 
     expectValidSarif(log);
     expect(fieldAt(log, 'runs', 0, 'tool', 'driver', 'rules')).toEqual([
-      { id: 'custom/text-file', name: 'text-file' },
+      { id: 'custom/text-file', name: 'text-file', properties: { tags: ['maintainability'] } },
     ]);
   });
   it('emits an empty result list for a clean report', () => {

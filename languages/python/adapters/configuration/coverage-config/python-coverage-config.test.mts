@@ -5,8 +5,8 @@ import {
   readProjectCoverage,
   UNTESTABLE_LINES,
   writeCoverageConfig,
-} from './python-coverage-config.mjs';
-import { javascriptPattern } from '../../../ingest/coverage-reports/exhaustive-match.mjs';
+} from './python-coverage-config.mts';
+import { javascriptPattern } from '../../../ingest/coverage-reports/exhaustive-match.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
@@ -242,7 +242,7 @@ describe('the project coverage config under tools.coverage', () => {
   }
 
   function written(
-    precedence: readonly string[] | undefined,
+    precedence: string[] | undefined,
     {
       files = { 'pyproject.toml': PYPROJECT },
       policyFiles,

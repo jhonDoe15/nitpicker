@@ -1,12 +1,14 @@
-import { PYTHON_CONVENTIONS as UNTYPED_CONVENTIONS } from '../python-conventions.mjs';
-import { pythonStyle as untypedStyle } from '../python-style.mjs';
+import type { NitpickerConfig } from '../../../../shared/values/config-types.mts';
+import { PYTHON_CONVENTIONS as UNTYPED_CONVENTIONS } from '../python-conventions.mts';
+import { pythonStyle as untypedStyle } from '../python-style.mts';
 
 type Convention = { id: string; measure: (text: string) => string | undefined };
 
 export const PYTHON_CONVENTIONS: readonly Convention[] = UNTYPED_CONVENTIONS;
 
-export function pythonStyle(input: { config: object; projectRoot: string }): {
-  summary: (conventions: object) => string[];
+export function pythonStyle(input: { config: NitpickerConfig; projectRoot: string }): {
+  summary: (conventions: object) => readonly string[];
 } {
-  return untypedStyle({ ...input, source: undefined, configRoot: undefined });
+  const parts = untypedStyle(input);
+  return { summary: (conventions: object) => parts.summary?.(conventions) ?? [] };
 }

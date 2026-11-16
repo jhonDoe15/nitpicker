@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 
 export const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 export const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

@@ -50,7 +50,7 @@ import { strictSyntaxConfigFor } from ${presetUrl('eslint-config/strict.mjs')};
 import { strictTestConfigFor } from ${presetUrl('eslint-config/strict-tests.mjs')};
 import { applyRuleExceptions } from ${presetUrl('eslint-config/exceptions.mjs')};
 import { resolveLayout } from ${presetUrl('layout.mjs')};
-import { applyJavascriptDialect } from ${JSON.stringify(import.meta.resolve('../../../../javascript/preset/eslint-dialect.mjs'))};
+import { applyJavascriptDialect } from ${JSON.stringify(import.meta.resolve('../../../../javascript/preset/eslint-dialect.mts'))};
 
 const layout = resolveLayout({}, [], { javascript: ${String(javascript)} });
 const entries = [

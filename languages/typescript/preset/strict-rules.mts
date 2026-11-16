@@ -1,6 +1,6 @@
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
-import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
+import { isPythonTouchedRule } from '../../python/rules/touched-rules.mts';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mts';

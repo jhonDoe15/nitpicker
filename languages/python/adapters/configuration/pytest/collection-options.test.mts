@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { collectionOptions, isTestFile, matchesGlob } from './collection-options.mjs';
+import { collectionOptions, isTestFile, matchesGlob } from './collection-options.mts';
 import { fieldsOf } from '../../../../../shared/values/readers.mts';
-import { readPytestConfig } from './pytest-config.mjs';
+import { readPytestConfig } from './pytest-config.mts';
 
 type Settings = { pythonFiles: string[]; django?: boolean; testpaths?: string[] };
 

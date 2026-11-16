@@ -41,7 +41,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
       evidence: /const WHOLE_PACKAGE_RULES[^=]*= \[\n {2}\[RULE_IDS\.domainImportsClient/u,
     },
     'inheritance-depth-limit': {
-      file: 'languages/go/adapters/configuration/go-config.mjs',
+      file: 'languages/go/adapters/configuration/go-config.mts',
       evidence: /Go has no inheritance/u,
     },
   },
@@ -148,7 +148,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found(
         'python',
         'unused-dependency',
-        'languages/python/adapters/dependencies/dependency-findings.mjs',
+        'languages/python/adapters/dependencies/dependency-findings.mts',
       ),
       found(
         'typescript',
@@ -168,7 +168,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
         'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
       ),
     ]).toEqual([
-      ['languages/java/adapters/design/design-findings.mjs'],
+      ['languages/java/adapters/design/design-findings.mts'],
       ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
       true,
     ]);
