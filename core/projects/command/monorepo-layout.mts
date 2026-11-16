@@ -4,11 +4,7 @@ import { detectedPreset } from '../../configuration/project-checks/preset-detect
 import { inspectRepository } from '../plan/inspect.mts';
 import { suggestedProjects } from '../plan/suggested-projects.mjs';
 import { existingConfig } from '../../init/files/config-file.mts';
-import type {
-  Member,
-  MonorepoLayout,
-  ProjectEntry,
-} from '../../init/monorepo/monorepo-types.mts';
+import type { Member, MonorepoLayout, ProjectEntry } from '../../init/monorepo/monorepo-types.mts';
 
 type PlanMember = {
   readonly path: string;
