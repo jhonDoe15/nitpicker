@@ -9,6 +9,7 @@ import {
   literal,
   numberText,
   opaque,
+  operatorOf,
   present,
   required,
   typeNode,
@@ -16,10 +17,6 @@ import {
 
 const NUMBER_KIND = 'number';
 const PARAMETER_KIND = 'parameter';
-
-function operatorOf(source: Node): string | undefined {
-  return field(source, 'operator')?.type;
-}
 
 function operation(kind: string): Converter {
   return (source, context) =>
@@ -129,10 +126,12 @@ export const EXPRESSIONS: Readonly<Record<string, Converter>> = {
   null_literal: literal('null'),
   this: (source) => at('this', source),
   super: (source, context) => context.name('super', source),
-  field_access: (source, context) =>
-    at({ kind: 'member', value: required(source, 'field').text }, source, [
+  field_access: (source, context) => {
+    const name = required(source, 'field').text;
+    return at({ kind: 'member', value: name, ...context.unstable(name) }, source, [
       context.get(field(source, 'object')),
-    ]),
+    ]);
+  },
   method_invocation: invocationOf,
   object_creation_expression: creationOf,
   array_access: (source, context) =>

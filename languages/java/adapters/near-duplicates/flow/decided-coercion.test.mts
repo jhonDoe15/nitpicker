@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useRuleViews } from './test-support/rule-views.mts';
+import { useRuleViews } from '../test-support/rule-views.mts';
 
 const { decided } = useRuleViews();
 

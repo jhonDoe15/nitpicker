@@ -53,7 +53,7 @@ const declarations =
 tester.run('no-decided-condition', rule, {
   valid: [
     'export function f(count: number) { if (count > 10) return "many"; if (count > 5) return "some"; return "few"; }',
-    'export function f(count: number) { if (count > 10) return 1; count = 30; if (count > 20) return 2; return 0; }',
+    'export function f(count: number) { if (count > 10) return 1; count = count * 2; if (count > 20) return 2; return 0; }',
     'export function f(a: string, b: string) { if (a < b) return 1; if (b > a) return 2; return 0; }',
     `${declarations}export function f() { if (user === undefined) return; load(); if (user.active) return; }`,
     'export function f(xs: number[]) { for (const x of xs) { if (x > 3) continue; if (x > 1) return x; } return 0; }',

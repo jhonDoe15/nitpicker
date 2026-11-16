@@ -9,7 +9,7 @@ import {
   uniqueNames as untypedUniqueNames,
   withSnippet as untypedWithSnippet,
 } from '../../../../shared/near-duplicates/unit-parts.mjs';
-import type { BaseContext, Converted, ShapeNode, Unit } from './jvm-types.mts';
+import type { BaseContext, Converted, PlacedNode, ShapeNode, Unit } from './jvm-types.mts';
 import {
   indentOf as untypedIndentOf,
   dedentedToLeast as untypedDedentedToLeast,
@@ -69,6 +69,7 @@ export const uniqueNames: <Item extends { readonly name: string }>(
 ) => Item[] = untypedUniqueNames;
 
 export const withSnippet: (node: Converted, text: string) => Converted = untypedWithSnippet;
+export const placedWithSnippet: (node: PlacedNode, text: string) => PlacedNode = untypedWithSnippet;
 
 const statementsOfUntyped: (
   source: Node | undefined,

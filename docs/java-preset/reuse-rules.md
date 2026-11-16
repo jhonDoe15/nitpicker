@@ -5,7 +5,7 @@ Part of the [Java preset guide](../java-preset.md).
 `duplicate-definition`, `sibling-copy-edit`, `exported-name-collision`, `near-duplicate`,
 `decided-condition` and `duplicate-branch` are the shared rules of the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
 (`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
-Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
+Maven alike, in the project-wide step (`builds/project-wide.mts`), so they need no build output.
 The findings have tool `structure` and are lifted with the top-level `exceptions`.
 
 - **Producer.** `adapters/reuse/jvm-reuse-facts.mts` reads every `.java` file (and `.kt` file with
@@ -49,16 +49,57 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`result-slip`.** The same trees feed `shared/rules/slips/`: an `indexOf` or `lastIndexOf` on a
+  list or set whose declared type is known, tested with `> 0` (or `>= 1`, `<= 0`, `< 1`), misses a
+  match at position 0. Use `>= 0`, `!= -1` or `contains`. SpotBugs `RV_CHECK_FOR_POSITIVE_INDEXOF`
+  keeps the `String` case and Error Prone `CompareToZero` keeps `compareTo`/`compare` results
+  compared with a value other than 0, so the two do not overlap.
+- **`integer-slip`.** The same trees and the same solver with fixed-width integers: a difference
+  compared with 0 (`a - b > 0`) or returned from `compareTo`/`compare` overflows for some inputs, and
+  `Math.abs(x)` of an `int` or `long` used as an index or `% n` bucket stays negative for the
+  smallest value; the message names the inputs, for example `a = 2147483647, b = -1`. Guards before
+  it (and sizes, which are bounded) rule a case out. Use `Integer.compare`, `Math.floorMod`, or mask
+  with `& Integer.MAX_VALUE`. The remainder slip `x % 2 == 1` is left to SpotBugs
+  `IM_BAD_CHECK_FOR_ODD` on Java.
 - **`decided-condition`.** The same trees feed `shared/rules/decided/`, which walks each method body
   with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
-  return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`) and asks
+  return, throw, break or continue, earlier `when` arms, the arms of a `switch` or `when (subject)` (the label in its arm, the earlier
+  labels excluded in `default`, nothing for fall-through or pattern arms) and a `case` label the
+  facts before the switch rule out, precondition calls matched by their import (`Objects.requireNonNull`, Guava `Preconditions`,
+  Spring `Assert`, commons-lang `Validate`, Kotlin `require`, `check` and `requireNotNull`) and
+  `assert` (which only removes a redundant check, since assertions can be off), the left side of
+  `&&` and `||`, the test of
+  a counted `for` loop or Kotlin `until`, `..` and `downTo` range, the branches of a ternary, and
+  facts about names a lambda captures when they cannot change; `equals` and `Objects.equals` on a
+  string, a boolean or an enum constant count as `==`, and a local declared or assigned a literal
+  equals it until the next write) and asks
   the solver whether the condition can still be both true and false. Only a proof reports: always
   false is dead code, always true a redundant check, and the message names the guard that decides
   it. It also reports `Boolean.TRUE.equals(x)` under a test that holds `x` present and true
   (`if (x != null && x)`), which is always `true` there. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
   what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
-  opaque value because JVM integers overflow. SpotBugs `UC_USELESS_CONDITION` reports a few of
+  exact to the solver, which follows the 32-bit and 64-bit wrap-around of `int` and `long` (typed
+  from declarations, literals, casts and the sizes of collections), so `n + 1 > 0` is decided only
+  where `n` cannot reach the maximum. Value models add what every caller knows about a
+  call on a name whose declared type is a known `String`, collection, `Optional`, array or
+  floating-point type: sizes and lengths are whole numbers that are never negative, `isEmpty()`
+  means a size of 0, `indexOf` returns at least -1, `Math.abs` of a `double` is not negative,
+  `Math.random()` is in `[0, 1)`, and a known pure method or a same-file getter that only returns a
+  field gives the same value until a write or a call may change it. A project method named `size()`
+  on another type gets no fact. A call of a same-file method that cannot be overridden (`private`,
+  `static` or `final`) and only returns a side-effect-free condition is read as that condition with
+  the arguments bound, through at most 2 levels and never through recursion; the message names the
+  helper ("and `valid` tests `n > 0`"). SpotBugs `UC_USELESS_CONDITION` reports a few of
   these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
+- **`shorter-condition`.** The same trees again, over each maximal `&&`/`||`/`!` condition whose
+  operands have no effect, cannot fail and number at most 6 distinct atoms. It drops one operand or
+  merges two operands of one chain, and reports the shorter condition when a truth table or the
+  solver proves it equivalent: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)` is `a`,
+  `(x >= 0 && x < 10) || (x >= 10 && x < 20)` is `x >= 0 && x < 20`. The form is printed from the
+  original operands in their order. An operand that guards a later one (a null check before a member
+  read, bounds before an index) stays, a float comparison is never negated into another, and an
+  operand that the operands before it decide is left to `decided-condition`. PMD
+  `SimplifyBooleanExpressions` only sees boolean literals, so the two do not overlap.
 - **`duplicate-branch`.** The same trees again: two arms of an `else if` chain, two `switch`
   cases (not one that falls through or that a case falls into; arrow cases never do) or two `when`
   arms whose bodies have the same canonical tree, with the locals declared in the arm renamed,

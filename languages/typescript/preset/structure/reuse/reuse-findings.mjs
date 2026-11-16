@@ -24,6 +24,7 @@ const REUSE_RULES = [
   'sibling-copy-edit',
   'near-duplicate',
   'duplicate-branch',
+  'result-slip',
 ];
 const FEATURE_RULES = ['foreign-feature-persistence'];
 

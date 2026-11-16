@@ -12,6 +12,7 @@ import {
   textOf,
   typeNode,
 } from '../tree/nodes.mts';
+import { placedWithSnippet } from '../jvm-views.mts';
 import { bodyOf } from './statements.mts';
 
 const RIGHT_FIELD = 'right';
@@ -68,8 +69,34 @@ function calleeOf(callee: Node, context: KotlinContext): ShapeNode {
   return context.get(callee);
 }
 
+const PREFIX_OPERATORS = new Set(['!', '-', '+']);
+const CALLEES = new Set(['identifier', 'navigation_expression']);
+
+function prefixedOperand(callee: Node | undefined): Node | undefined {
+  if (callee?.type !== 'unary_expression' || !PREFIX_OPERATORS.has(operatorText(callee) ?? '')) {
+    return undefined;
+  }
+  const operand = field(callee, 'argument') ?? codeChildren(callee)[0];
+  return operand !== undefined && CALLEES.has(operand.type) ? operand : undefined;
+}
+
+function prefixedCall(
+  source: Node,
+  operand: Node,
+  { parts, context }: { parts: readonly Node[]; context: KotlinContext },
+): PlacedNode {
+  const call = at('call', source, [calleeOf(operand, context), ...argumentsOf(parts, context)]);
+  const text = source.text.slice(operand.startIndex - source.startIndex);
+  return placedWithSnippet(call, text);
+}
+
 function callOf(source: Node, context: KotlinContext): PlacedNode {
   const [callee, ...parts] = codeChildren(source);
+  const operand = prefixedOperand(callee);
+  if (operand !== undefined && !parts.some((part) => part.type === 'type_arguments')) {
+    const call = prefixedCall(source, operand, { parts, context });
+    return at({ kind: 'unary', value: operatorText(present(callee)) }, source, [call]);
+  }
   const typeArguments = parts.find((part) => part.type === 'type_arguments');
   const call = at('call', source, [
     calleeOf(present(callee), context),
@@ -85,7 +112,8 @@ function navigationOf(source: Node, context: KotlinContext): PlacedNode {
   const member = present(found);
   const safe = source.children.some((child) => child.type === '?.');
   const value = member.type === 'identifier' ? member.text : textOf(member);
-  return at({ kind: 'member', value: safe ? `?.${value}` : value }, source, [
+  const unstable = context.unstable(value);
+  return at({ kind: 'member', value: safe ? `?.${value}` : value, ...unstable }, source, [
     context.get(receiver),
   ]);
 }
