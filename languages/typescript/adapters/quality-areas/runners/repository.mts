@@ -28,7 +28,7 @@ import {
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
-import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mjs';
+import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
 import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 

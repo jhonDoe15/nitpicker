@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { withSharedUnusedDirectives } from './unused-directives.mjs';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { withSharedUnusedDirectives } from './unused-directives.mts';
 
 const MESSAGE = "Unused eslint-disable directive (no problems were reported from 'no-console').";
 
@@ -10,7 +11,7 @@ const analyzers = [
   { name: 'entry-points' },
 ];
 
-function unused(tool, path, line = 1) {
+function unused(tool: string, path: string, line = 1): Finding {
   return {
     tool,
     rule: 'eslint/unused-disable-directive',
@@ -22,17 +23,24 @@ function unused(tool, path, line = 1) {
   };
 }
 
-function other(tool) {
-  return { tool, rule: 'no-debugger', path: 'src/a.ts', identity: 'x', message: 'x' };
+function other(tool: string): Finding {
+  return {
+    tool,
+    rule: 'no-debugger',
+    path: 'src/a.ts',
+    identity: 'x',
+    message: 'x',
+    classification: 'enforceable',
+  };
 }
 
-function unusedRules(tool, rules) {
+function unusedRules(tool: string, rules: readonly string[]): Finding {
   const quoted = rules.map((rule) => `'${rule}'`).join(' or ');
   const message = `Unused eslint-disable directive (no problems were reported from ${quoted}).`;
   return { ...unused(tool, 'src/a.ts'), message, identity: `message:${message}|occurrence:1` };
 }
 
-function inlineDisabled(tool) {
+function inlineDisabled(tool: string): Finding {
   return {
     ...unused(tool, 'src/a.ts'),
     rule: 'eslint/inline-config-disabled',
@@ -40,7 +48,7 @@ function inlineDisabled(tool) {
   };
 }
 
-function run(findingsByAnalyzer) {
+function run(findingsByAnalyzer: Readonly<Record<string, readonly Finding[]>>) {
   return {
     reports: new Map(
       Object.entries(findingsByAnalyzer).map(([name, findings]) => [name, { findings }]),
@@ -48,7 +56,7 @@ function run(findingsByAnalyzer) {
   };
 }
 
-function merged(findingsByAnalyzer) {
+function merged(findingsByAnalyzer: Readonly<Record<string, readonly Finding[]>>) {
   return Object.fromEntries(
     [...withSharedUnusedDirectives(run(findingsByAnalyzer), analyzers).reports].map(
       ([name, report]) => [name, report.findings.map(({ rule, path }) => `${rule} ${path}`)],
@@ -150,10 +158,10 @@ describe('an unused eslint-disable directive reported by several ESLint analyzer
       analyzers,
     );
 
-    expect(result.reports.get('eslint-errors').findings).toEqual([
+    expect(result.reports.get('eslint-errors')?.findings).toEqual([
       unusedRules('eslint-errors', ['no-debugger']),
     ]);
-    expect(result.reports.get('eslint-logging').findings).toEqual([]);
+    expect(result.reports.get('eslint-logging')?.findings).toEqual([]);
   });
 
   it('drops a multi-rule directive when each rule is used by at least one analyzer', () => {
@@ -177,9 +185,9 @@ describe('an unused eslint-disable directive reported by several ESLint analyzer
       analyzers,
     );
 
-    expect(result.reports.get('eslint-errors').findings).toEqual([
+    expect(result.reports.get('eslint-errors')?.findings).toEqual([
       unusedRules('eslint-errors', ['no-alert']),
     ]);
-    expect(result.reports.get('eslint-logging').findings).toEqual([]);
+    expect(result.reports.get('eslint-logging')?.findings).toEqual([]);
   });
 });

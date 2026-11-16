@@ -5,7 +5,7 @@ import {
 } from '../project-layer.mjs';
 import { projectEntries as untypedProjectEntries } from '../project-loader.mjs';
 import { replacedOptionRules as untypedReplacedOptionRules } from '../project-rules.mjs';
-import { replacedEslintOptions as untypedReplacedEslintOptions } from '../replaced-options.mjs';
+import { replacedEslintOptions as untypedReplacedEslintOptions } from '../replaced-options.mts';
 import { applyRuleExceptions as untypedApplyRuleExceptions } from '../../../preset/eslint-config/exceptions.mjs';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,

@@ -42,7 +42,7 @@ import {
   eslintConfigFiles as untypedEslintConfigFiles,
   readEslintConfigFile as untypedReadEslintConfigFile,
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
-import { replacedEslintOptions as untypedReplacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
+import { replacedEslintOptions as untypedReplacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mts';
 import { strykerConfigChanges as untypedStrykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
 import { testsConfigChanges as untypedTestsConfigChanges } from '../build-files/applied-values/retry-changes.mjs';
 import { typescriptConfigChanges as untypedTypescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';

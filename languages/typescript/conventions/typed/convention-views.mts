@@ -1,5 +1,6 @@
 import type * as Prettier from 'prettier';
-import { layeredPrettierOptions as untypedLayeredPrettierOptions } from '../../adapters/prettier/prettier-layers.mjs';
+import type { ChoiceConvention } from '../../../../shared/values/config-types.mts';
+import { layeredPrettierOptions as untypedLayeredPrettierOptions } from '../../adapters/prettier/prettier-layers.mts';
 import { fileNameComplies as untypedFileNameComplies } from '../file-name-casing.mjs';
 import {
   prettierConventionOptions as untypedPrettierConventionOptions,
@@ -12,7 +13,7 @@ import {
 
 export type ConventionDefinition = {
   readonly id: string;
-  readonly measure?: (text: string | undefined, file?: string) => unknown;
+  measure?(text: string | undefined, file?: string): unknown;
 };
 
 export type Detected = {
@@ -58,7 +59,7 @@ export function measureOf(
   if (definition?.measure === undefined) {
     throw new Error(`No convention ${id}`);
   }
-  return definition.measure;
+  return (text, file) => definition.measure?.(text, file);
 }
 
 export const layeredPrettierOptions: (
@@ -78,6 +79,5 @@ export const prettierConventionOptions: (
   conventions: Readonly<Record<string, string>>,
 ) => Prettier.Options = untypedPrettierConventionOptions;
 
-export const PRETTIER_CONVENTIONS: readonly (ConventionDefinition & {
-  readonly options: readonly string[];
-})[] = UNTYPED_PRETTIER_CONVENTIONS;
+export const PRETTIER_CONVENTIONS: readonly (ConventionDefinition & ChoiceConvention)[] =
+  UNTYPED_PRETTIER_CONVENTIONS;
