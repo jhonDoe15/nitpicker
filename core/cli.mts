@@ -37,6 +37,7 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
+import { runScoped } from './projects/run/refusal.mts';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';

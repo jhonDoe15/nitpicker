@@ -145,7 +145,7 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
-    ...(descriptiveLines === undefined ? projectLinesOf(report.summary) : []),
+    ...projectLinesOf(report.summary),
     ...linesOf(report.summary),
     `Status: ${textOf(report.summary.overallStatus)}`,
     ...scopeLinesOf(report.summary),
