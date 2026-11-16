@@ -1,5 +1,5 @@
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
-import { lazyMeasure } from '../parsing/lazy-measure.mts';
+import { checkoutModuleUrl, lazyMeasure } from '../parsing/lazy-measure.mts';
 import type { authEvidence as AuthEvidence } from './route-evidence.mts';
 
 type Counts = Readonly<Record<string, number>>;
@@ -18,7 +18,7 @@ const FRAMEWORKS = ['nest', 'route'];
 const MIN_TOP_SHARE = 0.5;
 
 const authEvidence: typeof AuthEvidence = lazyMeasure(
-  new URL('route-evidence.mjs', import.meta.url),
+  checkoutModuleUrl(new URL('route-evidence.mjs', import.meta.url)),
   'authEvidence',
 );
 
