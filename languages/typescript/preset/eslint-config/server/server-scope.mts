@@ -1,6 +1,6 @@
 import type { Linter } from 'eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { securitySupportGlobs } from '../policy/security-facts.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { securitySupportGlobs } from '../policy/security-facts.mts';
 import { type ScopeLayout, linterConfigs } from '../typed/config-types.mts';
 import { productionScope, readManifest } from '../typed/scope-views.mts';
 import { serverRuleIds } from './server-rules.mts';

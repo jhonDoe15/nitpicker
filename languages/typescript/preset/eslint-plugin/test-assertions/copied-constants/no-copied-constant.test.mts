@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { rule } from './no-copied-constant.mjs';
+import { rule } from './no-copied-constant.mts';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 import { writeProjectFiles } from '../../../test-support/temporary-projects.mts';
 

@@ -1,4 +1,4 @@
-import { rule } from '../fake-timers-require-restore.mjs';
+import { rule } from '../fake-timers-require-restore.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './reusable-object-per-call.mjs';
+import { rule } from './reusable-object-per-call.mts';
 
 const tester = typescriptRuleTester();
 

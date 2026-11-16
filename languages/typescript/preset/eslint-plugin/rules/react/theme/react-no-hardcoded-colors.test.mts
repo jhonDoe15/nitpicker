@@ -1,6 +1,6 @@
 import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import tseslint from 'typescript-eslint';
-import { rule as reactNoHardcodedColors } from './react-no-hardcoded-colors.mjs';
+import { rule as reactNoHardcodedColors } from './react-no-hardcoded-colors.mts';
 
 const tester = configuredRuleTester({
   languageOptions: {

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-unordered-query.mjs';
+import { rule } from './no-unordered-query.mts';
 
 const tester = typescriptRuleTester();
 const page = (form: string) => [{ messageId: 'page', data: { form } }];

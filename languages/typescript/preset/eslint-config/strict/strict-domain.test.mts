@@ -4,11 +4,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mts';
 import { linterConfigs } from '../typed/config-types.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
-import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mjs';
+import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mts';
 
 function messagesFor(filename: string, code: string) {
   return lintFixture({ config: strictDomainConfig, filename, code })

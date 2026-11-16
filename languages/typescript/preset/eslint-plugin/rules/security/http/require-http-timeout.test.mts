@@ -1,11 +1,11 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule as requireHttpTimeout } from './require-http-timeout.mjs';
-import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
+import { ruleModule, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
+import { rule as requireHttpTimeout } from './require-http-timeout.mts';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();
 const missing = (call: string) => [{ messageId: 'noTimeout', data: { call } }];
 
-tester.run('require-http-timeout', withoutFixes(requireHttpTimeout), {
+tester.run('require-http-timeout', withoutFixes(ruleModule(requireHttpTimeout)), {
   valid: [
     'let n = 1; n = 2; export default n;',
     'export const get = (url) => fetch(url, { signal: AbortSignal.timeout(10_000) });',
@@ -119,13 +119,17 @@ tester.run('require-http-timeout', withoutFixes(requireHttpTimeout), {
   ],
 });
 
-tester.run('require-http-timeout with fetch turned off', withoutFixes(requireHttpTimeout), {
-  valid: [{ code: 'export const get = (url) => fetch(url);', options: [{ fetch: false }] }],
-  invalid: [
-    {
-      code: 'import axios from "axios"; export const get = (url) => axios.get(url);',
-      options: [{ fetch: false }],
-      errors: missing('axios.get()'),
-    },
-  ],
-});
+tester.run(
+  'require-http-timeout with fetch turned off',
+  withoutFixes(ruleModule(requireHttpTimeout)),
+  {
+    valid: [{ code: 'export const get = (url) => fetch(url);', options: [{ fetch: false }] }],
+    invalid: [
+      {
+        code: 'import axios from "axios"; export const get = (url) => axios.get(url);',
+        options: [{ fetch: false }],
+        errors: missing('axios.get()'),
+      },
+    ],
+  },
+);

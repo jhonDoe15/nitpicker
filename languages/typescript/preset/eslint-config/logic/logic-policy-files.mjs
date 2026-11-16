@@ -12,6 +12,8 @@ export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/decided/syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/simpler-boolean-logic.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/logic/estree-terms.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/logic/term-views.mjs',
+  'shared/logic/comparisons/constant-verdicts.mjs',
   'shared/logic/normalize.mjs',
   'shared/logic/print.mjs',
   'shared/logic/terms.mjs',

@@ -9,9 +9,9 @@ import { compareFindings as untypedCompareFindings } from '../../../../../../cor
 import { normalizeEslintResults } from '../../../../adapters/eslint/normalize.mts';
 import { strictPresetConfig } from '../../../eslint-config/strict.mts';
 import { resolveLayout } from '../../../layout.mjs';
-import { nitpickerRules } from '../../index.mjs';
+import { nitpickerRules } from '../../index.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-forwarding-method-alias.mjs';
+import { rule } from './no-forwarding-method-alias.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-forwarding-method-')));
 writeFileSync(

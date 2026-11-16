@@ -1,6 +1,6 @@
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-dual-write.mjs';
+import { rule } from './no-dual-write.mts';
 
 const kafka = "import { send } from 'kafkajs';\n";
 

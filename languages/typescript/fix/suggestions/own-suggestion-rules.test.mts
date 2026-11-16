@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../preset/eslint-plugin/index.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { OWN_SUGGESTION_RULES } from './own-suggestion-rules.mts';
 

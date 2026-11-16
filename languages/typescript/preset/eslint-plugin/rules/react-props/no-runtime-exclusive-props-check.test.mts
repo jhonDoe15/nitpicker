@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-runtime-exclusive-props-check.mjs';
+import { rule } from './no-runtime-exclusive-props-check.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/ui/panel.tsx';

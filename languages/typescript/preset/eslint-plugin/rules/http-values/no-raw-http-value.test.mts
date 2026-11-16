@@ -1,7 +1,7 @@
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { typedCases, type CaseError } from '../../test-support/typed-cases.mts';
-import { rule } from './no-raw-http-value.mjs';
+import { rule } from './no-raw-http-value.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/web/negotiate.ts';

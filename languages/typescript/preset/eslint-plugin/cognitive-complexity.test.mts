@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from './test-support/rule-tester.mts';
-import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
+import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mts';
 
 const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

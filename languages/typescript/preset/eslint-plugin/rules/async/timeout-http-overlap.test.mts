@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { productionPolicyConfigFor } from '../../../eslint-config/policy/production-policy.mjs';
+import { productionPolicyConfigFor } from '../../../eslint-config/policy/production-policy.mts';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../../layout.mjs';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './timeout-abandons-operation.mjs';
+import { rule } from './timeout-abandons-operation.mts';
 
 const REJECT_AFTER =
   'const rejectAfter = (ms: number) => new Promise<never>((_, reject) => setTimeout(reject, ms));\n';

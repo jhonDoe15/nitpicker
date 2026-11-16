@@ -11,6 +11,7 @@ import {
 } from '../../../shared/messages/troubleshooting.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { withCompileCache } from '../../../shared/processes/environment.mts';
 import type { AnalyzerTask } from './tasks.mts';
 import { type AnalyzerReport, reportFromAnalyzerOutput } from './report/analyzer-report.mts';
 
@@ -69,7 +70,7 @@ function analyzerEnvironment(
   task: AnalyzerTask,
 ): NodeJS.ProcessEnv {
   return {
-    ...hostEnvironment(environment),
+    ...hostEnvironment(withCompileCache(environment)),
     ...(task.configuredTimeout === true ? { [timeoutVariable]: String(task.timeoutMs) } : {}),
   };
 }
