@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lowercaseEllOffsets, upperEllRecipe } from './upper-ell.mjs';
+import { lowercaseEllOffsets, upperEllRecipe } from './upper-ell.mts';
 
 function fixed(text) {
   return lowercaseEllOffsets(text).reduce(

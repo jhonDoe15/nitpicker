@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
+import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
 import { BASE, appliedFiles, filesOf } from '../test-support/cross-sources.mjs';
 import { compileFilesStatus, javacAvailable } from '../test-support/javac.mjs';
 

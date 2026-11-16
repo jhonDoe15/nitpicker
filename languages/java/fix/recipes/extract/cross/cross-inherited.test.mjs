@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
+import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
 import { family, twoClasses } from '../test-support/cross-sources.mjs';
 
 const roots = [];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { explicitItRecipe } from './explicit-it.mjs';
+import { explicitItRecipe } from './explicit-it.mts';
 
 const fix = (text) => applyRecipe(explicitItRecipe, text);
 

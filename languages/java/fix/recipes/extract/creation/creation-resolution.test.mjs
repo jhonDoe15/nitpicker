@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
+import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
 import { urlAndUri } from '../test-support/creation-sources.mjs';
 
 const PATH = 'src/main/java/demo/Adapters.java';

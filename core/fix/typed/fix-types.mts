@@ -117,6 +117,7 @@ export type FixRecipe = {
   readonly presets: readonly string[];
   readonly scope: 'file' | 'project';
   readonly safety: string;
+  readonly accepts?: (name: string) => boolean;
   readonly plan: (input: RecipePlanInput) => RecipePlan;
 };
 

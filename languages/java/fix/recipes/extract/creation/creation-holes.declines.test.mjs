@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
+import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
 import { creator, creatorClass, urlAndUri } from '../test-support/creation-sources.mjs';
 
 const PATH = 'src/main/java/demo/Adapters.java';

@@ -3,7 +3,7 @@ import { defineRecipes } from '../../../../core/fix/engine/recipes.mjs';
 import {
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
-} from './restating-doc-comment.mjs';
+} from './restating-doc-comment.mts';
 
 const MAIN = 'src/main/java/demo';
 const JAVA = `class Account {

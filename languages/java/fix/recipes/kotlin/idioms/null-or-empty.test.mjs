@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecipe, plannedLines } from '../test-support/apply-recipe.mjs';
-import { useIsNullOrEmptyRecipe, useOrEmptyRecipe } from './null-or-empty.mjs';
+import { useIsNullOrEmptyRecipe, useOrEmptyRecipe } from './null-or-empty.mts';
 
 describe('useIsNullOrEmptyRecipe', () => {
   const fix = (text) => applyRecipe(useIsNullOrEmptyRecipe, text);

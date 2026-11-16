@@ -6,7 +6,7 @@ import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
-import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
+import { JAVAC_EXPORTS } from '../maven/maven-lint.mts';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();

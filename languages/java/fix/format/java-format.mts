@@ -1,7 +1,7 @@
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { failureText } from '../../../../core/fix/common/fix-command.mjs';
 import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
-import { JAVAC_EXPORTS } from '../../maven/maven-lint.mjs';
+import { JAVAC_EXPORTS } from '../../maven/maven-lint.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import {

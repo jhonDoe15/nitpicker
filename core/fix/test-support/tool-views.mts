@@ -1,4 +1,4 @@
-import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mjs';
+import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mts';
 import { fakeGoFormat as untypedFakeGoFormat } from '../../../languages/go/fix/test-support/fake-go-format.mts';
 import { fakeJvmTools as untypedFakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { fakePythonTools as untypedFakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mts';
