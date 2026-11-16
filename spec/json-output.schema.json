@@ -49,6 +49,10 @@
           "description": "Nothing changed since the merge base, so nothing was checked.",
           "const": true
         },
+        "skippedAll": {
+          "description": "No analyzer reads the files the change touches, so every analyzer was skipped and nothing was checked.",
+          "const": true
+        },
         "counts": { "$ref": "#/$defs/counts" },
         "findings": {
           "description": "The failing findings, in the order the reports list them. Unreached mutants of one function are one entry, and a function lists at most three surviving mutants and then one entry for the rest.",
@@ -58,6 +62,11 @@
         "toolErrors": {
           "type": "array",
           "items": { "$ref": "#/$defs/toolError" }
+        },
+        "skippedAnalyzers": {
+          "description": "The analyzers no changed file can affect, skipped on both sides.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/text" }
         },
         "partialRun": {
           "description": "Only some analyzers ran (--analyzer); run without it before you finish.",
@@ -83,6 +92,8 @@
         "properties": {
           "base": false,
           "noChanges": false,
+          "skippedAll": false,
+          "skippedAnalyzers": false,
           "counts": { "properties": { "held": false } }
         }
       }

@@ -33,6 +33,7 @@ import {
   checksJavascript as untypedChecksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,
 } from '../../../languages/typescript/preset/modules/tsconfig-files.mjs';
+import { checkedJavascriptFiles as untypedCheckedJavascriptFiles } from '../../../languages/typescript/preset/eslint-config/policy/untyped-javascript.mjs';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
 import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mjs';
 import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mts';
@@ -112,6 +113,8 @@ const readBuildSources: (projectRoot: string, files: readonly string[]) => Build
 const detectSourceRoots: (projectRoot: string, setting: readonly string[] | undefined) => string[] =
   untypedDetectSourceRoots;
 const checksJavascript: (configFile: string) => boolean = untypedChecksJavascript;
+const checkedJavascriptFiles: (projectRoot: string, layout: ResolvedLayout) => string[] =
+  untypedCheckedJavascriptFiles;
 const projectTsconfigs: (
   projectRoot: string,
   files: readonly string[],
@@ -156,6 +159,7 @@ function reachedLabels(raw: unknown): ReadonlyMap<string, string> {
 export {
   builtInExcludedGlobs,
   canonicalRule,
+  checkedJavascriptFiles,
   checksJavascript,
   defaultResolvedLayout,
   detectSourceRoots,

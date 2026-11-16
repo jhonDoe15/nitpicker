@@ -11,6 +11,7 @@ import type { GoSettings } from './go-types.mts';
 
 type GoAnalyzer = {
   name: string;
+  inputs: { readonly scope: string };
   version: string;
   resolveVersion: (liveProjectRoot: string) => string;
   configurationHash: string;
@@ -31,6 +32,7 @@ type Invocation = {
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 const importClosure: (entries: readonly string[], root: string) => ReadonlyMap<string, unknown> =
   untypedImportClosure;
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
 export const GO_MUTATION_ANALYZER_NAME = 'mutation';
@@ -107,6 +109,7 @@ function resolveGoVersion(liveProjectRoot: string) {
 function createGoAnalyzer(settings: GoSettings): GoAnalyzer {
   return {
     name: GO_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: 'unresolved',
     resolveVersion: resolveGoVersion,
     configurationHash: hashConfiguration(settings),
@@ -138,6 +141,7 @@ function createGoAnalyzer(settings: GoSettings): GoAnalyzer {
 function createGoMutationAnalyzer(settings: GoSettings): GoAnalyzer {
   return {
     name: GO_MUTATION_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: 'unresolved',
     resolveVersion: resolveGoVersion,
     configurationHash: hashConfiguration({ ...settings, part: GO_MUTATION_ANALYZER_NAME }),
