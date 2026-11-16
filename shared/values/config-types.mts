@@ -80,3 +80,20 @@ export type ChoiceConvention = ConventionBase & {
 };
 
 export type ConventionDefinition = NamesConvention | ChoiceConvention;
+
+export type ConfigLayer = {
+  readonly file: string;
+  readonly label: string;
+  readonly config: unknown;
+};
+
+export type ConfigSettings = Readonly<Record<string, unknown>>;
+
+export type ProjectOverlay = {
+  readonly preset?: string;
+  readonly companion?: true;
+  readonly settings?: object;
+  readonly declared?: true;
+  readonly exclude?: readonly string[];
+  readonly inherits?: string;
+};

@@ -17,6 +17,7 @@ describe('quality diff command-line options', () => {
     ).toEqual({
       analyzerNames: ['eslint-lint', 'entry-points'],
       ruleFilters: ['no-explicit-any'],
+      projectPaths: [],
       labelNames: [],
       shardCount: undefined,
       shardIndex: undefined,
@@ -38,6 +39,7 @@ describe('quality diff command-line options', () => {
     ).toEqual({
       analyzerNames: [],
       ruleFilters: [],
+      projectPaths: [],
       labelNames: [],
       shardCount: 3,
       shardIndex: 1,

@@ -243,4 +243,35 @@ describe('dependency preparation for every package manager', () => {
       existsSync(path.join(projectRoot, 'packages/web/node_modules')),
     ]).toEqual([false, false]);
   });
+
+  it('installs a shared base once and lets the next project reuse it as it is', () => {
+    vi.stubEnv(
+      'PATH',
+      `${installFakeManagers(temporaryDirectory('fake-managers-'))}${path.delimiter}${process.env['PATH'] ?? ''}`,
+    );
+    const { projectRoot, liveProjectRoot } = snapshotAndLive({
+      snapshot: {
+        'yarn.lock': '# yarn lockfile v1\n',
+        'packages/web/package.json': '{"name":"web"}\n',
+        'packages/api/package.json': '{"name":"api"}\n',
+        'fake-members.txt': 'packages/web\npackages/api\n',
+      },
+      live: { 'yarn.lock': '# yarn lockfile v1\nchanged\n' },
+    });
+    const prepareFor = (folder: string) =>
+      prepareSnapshotDependencies({
+        projectRoot: path.join(projectRoot, folder),
+        liveProjectRoot,
+        toolRoot,
+        reuseExisting: true,
+      });
+
+    const first = prepareFor('packages/web');
+    writeFileSync(path.join(projectRoot, 'node_modules', 'installed-once'), '');
+    const second = prepareFor('packages/api');
+
+    expect(first?.kind).toBe('installed');
+    expect(second).toBeUndefined();
+    expect(existsSync(path.join(projectRoot, 'node_modules', 'installed-once'))).toBe(true);
+  });
 });

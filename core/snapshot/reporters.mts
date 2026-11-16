@@ -1,4 +1,4 @@
-import { scopeLine } from '../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
 import {
   type ReferenceLinks,
@@ -87,6 +87,7 @@ type JunitProfile = {
 const linesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const projectLinesOf: (summary: unknown) => readonly string[] = projectLine;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const profileOf: (
   summary: unknown,
@@ -144,6 +145,7 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
+    ...projectLinesOf(report.summary),
     ...linesOf(report.summary),
     `Status: ${textOf(report.summary.overallStatus)}`,
     ...scopeLinesOf(report.summary),

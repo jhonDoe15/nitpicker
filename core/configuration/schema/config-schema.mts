@@ -98,6 +98,44 @@ const TOP_LEVEL: SchemaTable = {
     description: 'Pins a style that nitpicker otherwise measures from the project.',
     type: 'object',
   },
+  extends: {
+    description:
+      'Path of the .json config this one builds on, relative to this file and inside the repository. Settings set here replace the shared ones.',
+    type: 'string',
+    minLength: 1,
+    pattern: '\\.json$',
+    not: { pattern: '^(/|[A-Za-z]:)' },
+  },
+  projects: {
+    description:
+      'At the top of a monorepo: the project folders (globs allowed), each with an optional preset. A folder that declares a workspace stands for its members unless "expand" is false. An empty array keeps the repository one project.',
+    type: 'array',
+    uniqueItems: true,
+    items: {
+      anyOf: [
+        projectPath,
+        {
+          type: 'object',
+          additionalProperties: false,
+          required: ['path'],
+          properties: {
+            path: projectPath,
+            preset: { enum: SUPPORTED_PRESETS },
+            expand: {
+              description:
+                'false keeps a folder that declares a workspace one project instead of gating each member.',
+              type: 'boolean',
+            },
+            settings: {
+              description:
+                "Settings of this entry's project, layered over its own config; a folder listed twice, with two presets, takes each entry's settings for that preset.",
+              type: 'object',
+            },
+          },
+        },
+      ],
+    },
+  },
 };
 
 function unavailableKeys(preset: string): string[] {

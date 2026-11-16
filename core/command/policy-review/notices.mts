@@ -22,8 +22,11 @@ import {
   unmatchedLayoutRootNotices,
 } from '../../../shared/notices/layout-roots-notice.mjs';
 
+import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+
+const EXCLUDE_KEY = 'exclude';
 
 type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };
 type Describer = (changedFiles: readonly string[], context?: NoticeContext) => readonly string[];
@@ -63,7 +66,7 @@ function jvmDescriber(
     ...renamed,
     ...jvmNotices(changedFiles, {
       preset: config.preset,
-      exclude: fieldOf(headPolicy, 'exclude'),
+      exclude: fieldOf(headPolicy, EXCLUDE_KEY),
       declaredRoots: declaredSourceRoots(projectRoot),
     }),
   ];
@@ -82,13 +85,26 @@ function languageDescriber(
       pythonNotices(changedFiles, {
         projectRoot,
         sourceRoots: sourceRootsOf(projectRoot, fieldOf(config.python, 'sourceRoots')),
-        exclude: textsOf(fieldOf(headPolicy, 'exclude')),
+        exclude: textsOf(fieldOf(headPolicy, EXCLUDE_KEY)),
         isTestFile: testFileMatcher(projectRoot),
       });
   }
   return config.preset === 'java' || config.preset === 'kotlin'
     ? jvmDescriber(config, headPolicy, projectRoot)
     : undefined;
+}
+
+function uncheckedDescriber(
+  config: NitpickerConfig,
+  headPolicy: unknown,
+  projectRoot: string,
+): Describer {
+  const request = {
+    preset: config.preset,
+    projectRoot,
+    exclude: textsOf(fieldOf(headPolicy, EXCLUDE_KEY)),
+  };
+  return (changedFiles) => uncheckedLanguageNotices(changedFiles, request);
 }
 
 function layoutDescriber(layout: unknown, projectRoot: string): Describer | undefined {
@@ -126,6 +142,7 @@ export function noticeDescriber(
 ): Describer | undefined {
   const describers = [
     languageDescriber(config, headPolicy, projectRoot),
+    uncheckedDescriber(config, headPolicy, projectRoot),
     coChangeDescriber(config, headPolicy, projectRoot),
     layoutDescriber(fieldOf(headPolicy, 'layout'), projectRoot),
   ].filter((describer) => describer !== undefined);
