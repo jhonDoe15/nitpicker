@@ -2,16 +2,22 @@ import { isUtf8 } from 'node:buffer';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../../core/fix/common/contained-path.mjs';
-import { fixSpawn } from '../../../core/fix/common/fix-command.mjs';
+import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { fixSpawn } from '../../../../core/fix/common/fix-command.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../core/tooling/temporary-files.mjs';
-import { runJava } from '../maven/maven-command.mjs';
-import { callUntyped } from '../adapters/typed/java-values.mts';
-import { fieldOf } from '../../../shared/values/readers.mts';
+} from '../../../../core/tooling/temporary-files.mjs';
+import { runJava } from '../../maven/maven-command.mjs';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import type { Tools } from '../tools/tool-classpath.mts';
 
+export type FormatterPlan = {
+  readonly label: string;
+  readonly operation: string;
+  readonly tools: Tools;
+};
 type FormatterJar = {
   readonly operation: string;
   readonly tool: string;

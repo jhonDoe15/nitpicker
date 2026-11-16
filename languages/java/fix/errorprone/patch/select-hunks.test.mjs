@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { selectHunks } from './select-hunks.mjs';
-import { parseUnifiedDiff } from './unified-diff.mjs';
+import { selectHunks } from './select-hunks.mts';
+import { parseUnifiedDiff } from './unified-diff.mts';
 
 function entry(label, body, header) {
   return { label, hunk: parseUnifiedDiff(`--- a\n+++ a\n${header}\n${body}`)[0].hunks[0] };

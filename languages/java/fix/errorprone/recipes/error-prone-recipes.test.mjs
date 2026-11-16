@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defineRecipes } from '../../../../../core/fix/engine/recipes.mjs';
 import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
-import { parseUnifiedDiff } from '../patch/unified-diff.mjs';
-import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mjs';
-import { errorProneRecipes } from './error-prone-recipes.mjs';
+import { parseUnifiedDiff } from '../patch/unified-diff.mts';
+import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
+import { errorProneRecipes } from './error-prone-recipes.mts';
 
 const roots = [];
 const NAME = 'src/A.java';

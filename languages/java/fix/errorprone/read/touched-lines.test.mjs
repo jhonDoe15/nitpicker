@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { touchedByFile, touchedLinesOf } from './touched-lines.mjs';
+import { touchedByFile, touchedLinesOf } from './touched-lines.mts';
 
 describe('touchedLinesOf', () => {
   it('numbers the lines of the live text that differ from the base, from one', () => {

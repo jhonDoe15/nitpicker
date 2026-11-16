@@ -1,28 +1,49 @@
-import { linesOf } from '../../../../../core/fix/common/rewrite/line-hunks.mjs';
+import { linesOf as untypedLinesOf } from '../../../../../core/fix/common/rewrite/line-hunks.mjs';
+import type { Hunk, HunkLine } from './unified-diff.mts';
+
+export type HunkEdit = {
+  readonly start: number;
+  readonly end: number;
+  readonly text: string;
+  readonly line: number;
+};
+type Core = { readonly head: number; readonly changed: readonly HunkLine[]; readonly span: number };
+type Replacement = {
+  readonly lines: readonly string[];
+  readonly changed: readonly HunkLine[];
+  readonly from: number;
+  readonly to: number;
+  readonly eol: string;
+};
+
+const linesOf: (text: string) => string[] = untypedLinesOf;
 
 const CARRIAGE_RETURN = /\r$/u;
 const LINE_END = /\r?\n$/u;
 
-function bare(line) {
+function bare(line: string): string {
   return line.replace(LINE_END, '').replace(CARRIAGE_RETURN, '');
 }
 
-export function hunkLines(hunk) {
+export function hunkLines(hunk: Hunk): {
+  readonly before: string[];
+  readonly after: string[];
+} {
   return {
     before: hunk.lines.filter(({ kind }) => kind !== '+').map(({ text }) => bare(text)),
     after: hunk.lines.filter(({ kind }) => kind !== '-').map(({ text }) => bare(text)),
   };
 }
 
-function matchesAt(lines, start, before) {
+function matchesAt(lines: readonly string[], start: number, before: readonly string[]): boolean {
   return (
     start >= 0 &&
     start + before.length <= lines.length &&
-    before.every((line, offset) => bare(lines[start + offset]) === line)
+    before.every((line, offset) => bare(lines[start + offset] ?? '') === line)
   );
 }
 
-export function locateHunk(lines, hunk) {
+export function locateHunk(lines: readonly string[], hunk: Hunk): number | undefined {
   const { before } = hunkLines(hunk);
   const expected = hunk.oldCount === 0 ? hunk.oldStart : hunk.oldStart - 1;
   if (matchesAt(lines, expected, before)) {
@@ -35,7 +56,7 @@ export function locateHunk(lines, hunk) {
   return found.length === 1 ? found[0] : undefined;
 }
 
-function coreOf(hunk) {
+function coreOf(hunk: Hunk): Core {
   const all = hunk.lines;
   const first = all.findIndex(({ kind }) => kind !== ' ');
   const head = first === -1 ? all.length : first;
@@ -43,14 +64,17 @@ function coreOf(hunk) {
   return { head, changed, span: changed.filter(({ kind }) => kind !== '+').length };
 }
 
-function offsetOf(lines, index) {
+function offsetOf(lines: readonly string[], index: number): number {
   return lines.slice(0, index).reduce((sum, line) => sum + line.length, 0);
 }
 
-function replacement({ lines, changed, from, to, eol }) {
+function replacement({ lines, changed, from, to, eol }: Replacement): {
+  readonly text: string;
+  readonly prefix: string;
+} {
   const added = changed.filter(({ kind }) => kind !== '-').map(({ text }) => bare(text));
   const atEnd = to === lines.length;
-  const unterminated = atEnd && lines.length > 0 && !LINE_END.test(lines.at(-1));
+  const unterminated = atEnd && lines.length > 0 && !LINE_END.test(lines.at(-1) ?? '');
   if (added.length === 0) {
     return { text: '', prefix: unterminated && from === to ? eol : '' };
   }
@@ -61,7 +85,7 @@ function replacement({ lines, changed, from, to, eol }) {
   return { text: `${joined}${eol}`, prefix: '' };
 }
 
-export function hunkEdit(text, hunk) {
+export function hunkEdit(text: string, hunk: Hunk): HunkEdit | undefined {
   const lines = linesOf(text);
   const start = locateHunk(lines, hunk);
   if (start === undefined) {
@@ -80,9 +104,9 @@ export function hunkEdit(text, hunk) {
   };
 }
 
-export function changedLines(hunk) {
+export function changedLines(hunk: Hunk): number[] {
   let line = hunk.oldCount === 0 ? hunk.oldStart + 1 : hunk.oldStart;
-  const removed = [];
+  const removed: number[] = [];
   for (const { kind } of hunk.lines) {
     if (kind === '-') {
       removed.push(line);

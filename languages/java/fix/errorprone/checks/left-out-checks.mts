@@ -1,4 +1,4 @@
-export const LEFT_OUT_CHECKS = Object.freeze(
+export const LEFT_OUT_CHECKS: readonly string[] = Object.freeze(
   `
 ArgumentSelectionDefectChecker ASTHelpersSuggestions BugPatternNaming ClassInitializationDeadlock
 ComparisonContractViolated DeeplyNested DistinctVarargsChecker DoNotClaimAnnotations

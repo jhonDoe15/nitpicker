@@ -1,4 +1,4 @@
-export const REVIEW_CHECKS = Object.freeze(
+export const REVIEW_CHECKS: readonly string[] = Object.freeze(
   `
 AddressSelection AlmostJavadoc ArrayEquals ArrayHashCode ArraysAsListPrimitiveArray ArrayToString
 AssertEqualsArgumentOrderChecker AssertFalse AssertionFailureIgnored AssertThrowsMinimizer

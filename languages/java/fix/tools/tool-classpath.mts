@@ -16,10 +16,10 @@ import { resolutionSettings } from './project-repositories.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
-type ToolSpec = { readonly coordinates: string; readonly transitive: boolean };
-type Tools = Readonly<Record<string, ToolSpec>>;
-type Classpaths = Record<string, readonly string[]>;
-type Environment = Readonly<Record<string, string | undefined>>;
+export type ToolSpec = { readonly coordinates: string; readonly transitive: boolean };
+export type Tools = Readonly<Record<string, ToolSpec>>;
+export type Classpaths = Record<string, readonly string[]>;
+export type Environment = Readonly<Record<string, string | undefined>>;
 type Resolution = {
   readonly projectRoot: string;
   readonly tools: Tools;
@@ -27,7 +27,7 @@ type Resolution = {
   readonly executeFixCommand: unknown;
 };
 type ToolResolution = Omit<Resolution, 'environment'> & {
-  readonly environment?: Environment;
+  readonly environment?: Environment | undefined;
   readonly buildTool?: unknown;
 };
 
@@ -102,6 +102,11 @@ function classpathsOf(value: unknown): Classpaths {
   );
 }
 
+export function configuredTool(environment: Environment, name: string): string | undefined {
+  const value = environment[name];
+  return value === '' ? undefined : value;
+}
+
 function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand }: Resolution) {
   const directory = textOf(cacheDirectory(`gradle-tools-${textOf(toolsKey(tools))}`));
   const cached = classpathsOf(readClasspaths(directory, Object.keys(tools)));
@@ -111,7 +116,7 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
   const sources = writeResolutionBuild(projectRoot, directory);
   const target = callUntyped(gradleTarget, {
     projectRoot,
-    configured: environment['NITPICKER_GRADLE'] || undefined,
+    configured: configuredTool(environment, 'NITPICKER_GRADLE'),
     args: gradleToolArguments(tools, directory),
   });
   const result = callUntyped(runFixCommand, {
@@ -146,7 +151,7 @@ function resolveWithMaven({
   return classpathsOf(
     callUntyped(resolveToolSet, {
       projectRoot,
-      maven: environment['NITPICKER_MAVEN'] || undefined,
+      maven: configuredTool(environment, 'NITPICKER_MAVEN'),
       tools: dependencies,
       spawn: callUntyped(fixSpawn, { operation: 'fix-tools', executeFixCommand }),
     }),

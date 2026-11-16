@@ -1,4 +1,4 @@
-export const SAFE_CHECKS = Object.freeze(
+export const SAFE_CHECKS: readonly string[] = Object.freeze(
   `
 AnnotationPosition AssertThrowsBlockToExpression BooleanLiteral BoxingComparator CanonicalDuration
 DeprecatedVariable EmptyBlockTag EmptyTopLevelDeclaration ExplicitArrayForVarargs ExtendsObject

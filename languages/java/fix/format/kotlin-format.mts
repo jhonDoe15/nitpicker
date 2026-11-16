@@ -1,9 +1,10 @@
-import { containedPath } from '../../../core/fix/common/contained-path.mjs';
-import { failureText } from '../../../core/fix/common/fix-command.mjs';
-import { KOTLIN_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
-import { callUntyped } from '../adapters/typed/java-values.mts';
-import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { failureText } from '../../../../core/fix/common/fix-command.mjs';
+import { KOTLIN_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import {
+  type FormatterPlan,
   readWorkspaceFile,
   runFormatterJar,
   withWorkspace,
@@ -20,11 +21,6 @@ type Formatter = {
   readonly operation: string;
   readonly invocation: (request: Invocation) => string[];
   readonly reported: (name: string) => string;
-};
-type KotlinFormatterPlan = {
-  readonly label: string;
-  readonly operation: string;
-  readonly tools: Readonly<Record<string, unknown>>;
 };
 type KotlinFormatRequest = {
   readonly formatter: unknown;
@@ -85,7 +81,7 @@ function kotlinFormatterOf(formatter: unknown): unknown {
 export function kotlinFormatterPlan(
   formatter: unknown,
   pinned: unknown,
-): KotlinFormatterPlan | undefined {
+): FormatterPlan | undefined {
   const entry = FORMATTERS.get(formatter);
   if (entry === undefined) {
     return undefined;
@@ -96,7 +92,7 @@ export function kotlinFormatterPlan(
     operation: entry.operation,
     tools: {
       [textOf(formatter)]: {
-        coordinates: callUntyped(fieldOf(tool, 'coordinates'), pinned),
+        coordinates: textOf(callUntyped(fieldOf(tool, 'coordinates'), pinned)),
         transitive: false,
       },
     },
