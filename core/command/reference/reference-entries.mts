@@ -30,6 +30,7 @@ export type Entry = {
   readonly page?: string;
   readonly tool?: string;
   readonly findingTools?: readonly string[];
+  readonly labels?: readonly string[];
   readonly fix?: Readonly<Record<string, string>>;
   readonly analyzers: Readonly<Record<string, readonly string[] | undefined>>;
 };

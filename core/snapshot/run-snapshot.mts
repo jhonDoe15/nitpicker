@@ -5,9 +5,11 @@ import {
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
 import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
-import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
+import { scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
+import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
+import type { LabelFilter } from '../labels/taxonomy.mts';
 import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 
@@ -31,6 +33,7 @@ type SnapshotRequest = {
   readonly headPolicy?: object | undefined;
   readonly scope: Scope;
   readonly setupErrors?: readonly object[];
+  readonly labels?: LabelFilter | undefined;
   readonly [option: string]: unknown;
 };
 
@@ -57,16 +60,11 @@ export type QualitySnapshot = {
 
 const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
   withHeadPolicyFile;
-const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const withoutOverlaps: <Run>(run: Run) => Run = withoutCrossToolOverlaps;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
 function sortKey(value: unknown): string {
   return typeof value === 'string' ? value : '';
-}
-
-function isEnforceable(finding: Finding): boolean {
-  return finding.classification === 'enforceable';
 }
 
 type HeadRunRequest = {
@@ -112,6 +110,7 @@ export function runQualitySnapshot({
   headPolicy = {},
   scope,
   setupErrors = [],
+  labels,
   ...execution
 }: SnapshotRequest): QualitySnapshot {
   const {
@@ -130,17 +129,18 @@ export function runQualitySnapshot({
   });
 
   const toolErrors = [...entriesOf(setupErrors), ...runErrors];
-  const { findings, tools, outside } = collectSnapshotFindings({
+  const collected = collectSnapshotFindings({
     analyzers,
     reports,
     toolErrors,
     scope,
     metadata,
+    labels,
   });
 
   return {
-    summary: snapshotSummary({ scope, outside, tools, analyzers, findings, toolErrors, startedAt }),
-    findings: sortFindings(findings),
+    summary: snapshotSummary({ ...collected, scope, analyzers, toolErrors, startedAt, labels }),
+    findings: sortFindings(collected.findings),
     toolErrors: sortFindings(toolErrors.map((error) => ({ ...error, path: error.path ?? '' }))),
   };
 }
@@ -153,6 +153,8 @@ type SummaryParts = {
   readonly findings: readonly Finding[];
   readonly toolErrors: readonly Finding[];
   readonly startedAt: number;
+  readonly labels: LabelFilter | undefined;
+  readonly hidden: number;
 };
 
 function snapshotSummary({
@@ -163,6 +165,8 @@ function snapshotSummary({
   findings,
   toolErrors,
   startedAt,
+  labels,
+  hidden,
 }: SummaryParts): QualitySnapshot['summary'] {
   const enforceableFindings = findings.filter(isEnforceable).length;
   const exclusions = declaredExclusions(analyzers);
@@ -174,6 +178,7 @@ function snapshotSummary({
     elapsedMs: Date.now() - startedAt,
     overallStatus,
     enforceableFindings,
+    ...labelSummary(labels, hidden, findings),
   };
 }
 
@@ -236,18 +241,22 @@ function collectSnapshotFindings({
   toolErrors,
   scope,
   metadata,
+  labels,
 }: SnapshotRun & {
   readonly analyzers: readonly unknown[];
   readonly scope: Scope;
   readonly metadata: MetadataMap;
+  readonly labels: LabelFilter | undefined;
 }): {
   readonly findings: Finding[];
   readonly tools: ToolSummary[];
   readonly outside: number;
+  readonly hidden: number;
 } {
   const findings: Finding[] = [];
   const tools: ToolSummary[] = [];
   let outside = 0;
+  let hidden = 0;
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
     const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
@@ -257,13 +266,14 @@ function collectSnapshotFindings({
         .map((finding) => toSnapshotToolError(finding)),
     );
     const analyzed = reported.filter((finding) => finding.classification !== 'tool-error');
-    const analyzerFindings = analyzed.filter((finding) => inScope(finding.path, scope));
-    outside += analyzed.length - analyzerFindings.length;
-    findings.push(...analyzerFindings);
-    tools.push(summarizeAnalyzer({ analyzer, name, metadata }, analyzerFindings));
+    const focused = inFocus(analyzed, scope, labels);
+    outside += focused.outside;
+    hidden += focused.hidden;
+    findings.push(...focused.findings);
+    tools.push(summarizeAnalyzer({ analyzer, name, metadata }, focused.findings));
   }
 
-  return { findings, tools, outside };
+  return { findings, tools, outside, hidden };
 }
 
 function declaredExclusions(analyzers: readonly unknown[]): string[] {
