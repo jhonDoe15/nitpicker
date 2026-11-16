@@ -23,7 +23,7 @@ import {
 } from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 
 const HELP = '--help';
 
@@ -42,6 +42,7 @@ type CacheCli = {
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
+  readonly configOverlay?: ProjectOverlay | undefined;
 };
 
 type ShardOptions = {
@@ -159,7 +160,7 @@ export function runCacheCommand(cli: CacheCli): number {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot),
   );
-  const config: NitpickerConfig = loadConfig(projectRoot);
+  const config: NitpickerConfig = loadConfig(projectRoot, { overlay: cli.configOverlay });
   const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
     maven: cli.environment['NITPICKER_MAVEN'],
   });

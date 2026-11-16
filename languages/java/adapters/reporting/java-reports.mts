@@ -203,7 +203,7 @@ function wideReport(projectRoot: string, run: ModuleRun, reportBase: string): Ja
 export function readJavaFindings(projectRoot: string, options: Options = {}): JavaReadout {
   const reportBase = textOf(options['reportBase']);
   const preset = textOf(options['preset'] ?? 'java');
-  const report: unknown = options['report'] ?? readReportModules(reportBase, preset);
+  const report: unknown = options['report'] ?? readReportModules(reportBase, preset, projectRoot);
   const manifest = fieldOf(report, MANIFEST);
   const modules = listOf(fieldOf(report, 'modules'));
   if (preset === KOTLIN && options['requireKotlin'] !== false) {

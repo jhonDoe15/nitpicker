@@ -34,6 +34,7 @@ import {
   describeError,
   displayPath,
   withoutAnsi,
+  outputRootFor,
 } from './aggregate-summary.mts';
 import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
@@ -180,6 +181,7 @@ function mergeShardEntries(
 export function runAggregateCli({
   arguments_ = process.argv.slice(2),
   currentProjectRoot,
+  configOverlay,
   analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -194,10 +196,11 @@ export function runAggregateCli({
     }
     const projectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
-    outputRoot = path.resolve(projectRoot, options.outputRoot ?? 'reports/quality/diff/combined');
+    outputRoot = outputRootFor(projectRoot, options.outputRoot, 'diff/combined');
     clearDiffReports(outputRoot);
     const report = configuredReport(options, {
       currentProjectRoot: projectRoot,
+      configOverlay,
       outputRoot,
       analyzers,
       warn: (message) => stderr.write(`nitpicker: ${message}\n`),
@@ -246,9 +249,9 @@ if (
 
 function configuredReport(
   options: AggregateOptions,
-  { currentProjectRoot, outputRoot, analyzers, warn }: ConfiguredTarget,
+  { currentProjectRoot, configOverlay, outputRoot, analyzers, warn }: ConfiguredTarget,
 ): AggregateReport {
-  const config: NitpickerConfig = loadConfig(currentProjectRoot);
+  const config: NitpickerConfig = loadConfig(currentProjectRoot, { overlay: configOverlay });
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
     outputRoot,

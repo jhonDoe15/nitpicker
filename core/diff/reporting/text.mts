@@ -11,7 +11,7 @@ import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mt
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 import { planSection } from '../../../shared/fix-plans/render.mjs';
-import { scopeLine } from '../../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import {
@@ -26,6 +26,7 @@ type Summary = ReportData['summary'];
 const stagedLinesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly unknown[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const projectLinesOf: (summary: unknown) => readonly string[] = projectLine;
 const docsUrl: (relativePath: string, anchor: undefined, root: unknown) => unknown = repositoryUrl;
 const helpUri: (links: ReferenceLinks, finding: ReportEntry) => unknown = helpUriFor;
 const links: () => ReferenceLinks = referenceLinks;
@@ -69,6 +70,7 @@ function summaryLines(report: ReportData): unknown[] {
   const { summary } = report;
   return [
     'Nitpicker quality diff',
+    ...projectLinesOf(summary),
     `Base ref: ${field(summary, 'requestedBaseRef')}`,
     `Merge base: ${field(summary, 'mergeBaseSha')}`,
     `Head: ${field(summary, 'headSha')}`,

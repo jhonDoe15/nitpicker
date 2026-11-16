@@ -18,7 +18,7 @@ const ENVIRONMENT = { NITPICKER_GRADLE: '', NITPICKER_MAVEN: 'fake-mvn' };
 const TOOLS_PROPERTY = '-Pnitpicker.fix.tools=';
 const GOOGLE_COORDINATES = 'java-format=com.google.googlejavaformat:google-java-format:1.35.0';
 const TEMPORARY = new RegExp(`${tmpdir()}/nitpicker-fix-\\w+`, 'gu');
-const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}\//u;
+const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}(?:\.staging-\w+)?\//u;
 
 afterEach(() => {
   vi.unstubAllEnvs();
