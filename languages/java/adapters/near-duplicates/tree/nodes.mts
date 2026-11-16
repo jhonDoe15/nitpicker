@@ -159,13 +159,13 @@ export function declaredClasses(
     .filter((name): name is string => name !== undefined);
 }
 
-export function scopeOf(program: Node, parts: ScopeParts): FileScope {
-  return {
+export function fileScopeOf(parts: ScopeParts): (program: Node) => FileScope {
+  return (program) => ({
     imported: parts.imports(program),
     packageName: parts.packageName(program),
     stars: parts.stars(program),
     classes: parts.classes(program),
-  };
+  });
 }
 
 export function isList(value: Converted): value is readonly ShapeNode[] {
