@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './settle-pending-on-close.mjs';
+import { rule } from './settle-pending-on-close.mts';
 import { type Build, factory, inClass, filename } from '../../../test-support/lifecycle-cases.mts';
 
 const tester = typescriptRuleTester();

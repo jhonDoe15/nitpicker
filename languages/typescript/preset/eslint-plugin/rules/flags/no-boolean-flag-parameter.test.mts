@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-boolean-flag-parameter.mjs';
+import { rule } from './no-boolean-flag-parameter.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/orders/send-order.ts';

@@ -4,7 +4,7 @@ import {
   runUnlessSkipped,
   skipPlanOf,
   withoutSkipped,
-} from '../../skipping/apply.mjs';
+} from '../../skipping/apply.mts';
 import type { AnalyzerRun } from '../../execution/run-analyzers.mts';
 import type { BaseSetup, Settings } from './diff-types.mts';
 import type { SkipPlan } from './run-types.mts';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPythonTouchedRule } from '../../../../languages/python/rules/touched-rules.mjs';
+import { isPythonTouchedRule } from '../../../../languages/python/rules/touched-rules.mts';
 import { fieldAt } from '../../../../scripts/json/fields.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { parseChangedLines } from '../../git/test-support/projects/changed-lines-views.mts';

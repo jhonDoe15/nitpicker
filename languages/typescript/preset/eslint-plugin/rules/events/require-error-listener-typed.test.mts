@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './require-error-listener.mjs';
+import { rule } from './require-error-listener.mts';
 
 const typeRoot = fileURLToPath(new URL('../../../../../../node_modules/@types', import.meta.url));
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-error-listener-')));

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './hover-test-needs-keyboard.mjs';
+import { rule } from './hover-test-needs-keyboard.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/test/ui/tooltip.test.tsx';

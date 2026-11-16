@@ -3,8 +3,10 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -88,6 +90,10 @@ public final class ToolText {
       Map<String, String> fields = new TreeMap<>();
       fields.put("summary", String.valueOf(info.getMethod("message").invoke(check)));
       fields.put("severity", String.valueOf(info.getMethod("defaultSeverity").invoke(check)));
+      Set<?> tags = (Set<?>) info.getMethod("getTags").invoke(check);
+      if (!tags.isEmpty()) {
+        fields.put("tags", String.join(",", new TreeSet<>(tags.stream().map(String::valueOf).toList())));
+      }
       Object link = info.getMethod("linkUrl").invoke(check);
       fields.put("url", link == null ? "" : String.valueOf(link));
       rules.put(String.valueOf(info.getMethod("canonicalName").invoke(check)), fields);

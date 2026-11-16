@@ -8,3 +8,7 @@ export function yamlDocuments(text) {
     .filter((document) => document.errors.length === 0)
     .map((document) => document.toJS());
 }
+
+export function parseYaml(text) {
+  return load('yaml').parse(text);
+}

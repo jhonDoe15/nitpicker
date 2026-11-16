@@ -7,7 +7,7 @@ import {
   mypyExcludeArguments,
   readMypyConfig,
   writeMypyConfig,
-} from './mypy-config.mjs';
+} from './mypy-config.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
@@ -312,13 +312,22 @@ describe('the mypy config with tools.mypy listing the project', () => {
 
   it('gives nitpicker exclude to the command line, where it adds to the project one', () => {
     const exclude = ['src/gen/**'];
-    const listedContext = { exclude, toolPrecedence: { mypy: ['project'] }, policyRoot: '/p' };
+    const context = (
+      listed: readonly string[],
+      toolPrecedence: Record<string, string[]> | undefined,
+    ) => ({
+      exclude: listed,
+      projectRoot: '/p',
+      policyRoot: undefined,
+      toolPrecedence,
+    });
 
-    expect(mypyExcludeArguments(listedContext)).toEqual(['--exclude', excludePattern(exclude)]);
-    expect(mypyExcludeArguments({ exclude: [], toolPrecedence: { mypy: ['project'] } })).toEqual(
-      [],
-    );
-    expect(mypyExcludeArguments({ exclude })).toEqual([]);
+    expect(mypyExcludeArguments(context(exclude, { mypy: ['project'] }))).toEqual([
+      '--exclude',
+      excludePattern(exclude),
+    ]);
+    expect(mypyExcludeArguments(context([], { mypy: ['project'] }))).toEqual([]);
+    expect(mypyExcludeArguments(context(exclude, undefined))).toEqual([]);
   });
 
   it('is nitpicker strictness alone for a project that sets nothing', () => {

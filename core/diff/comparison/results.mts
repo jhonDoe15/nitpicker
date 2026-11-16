@@ -21,7 +21,11 @@ import { runProfileSummary } from '../../quick/summary.mts';
 import { skippedSummary } from '../skipping/lines.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
+import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
+import { labeledFindings, labeledOutcomes, labelRun } from '../../labels/label-filter.mts';
+import type { LabelFilter } from '../../labels/taxonomy.mts';
 import { fieldOf, fieldsOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { areaOf } from '../reporting/format/rule-groups/finding-areas.mts';
 
 type ScopedOutcome = AnalyzerOutcome & { readonly outside?: number };
 
@@ -45,6 +49,8 @@ export type ReportContext = {
   readonly scope?: unknown;
   readonly quick?: unknown;
   readonly staged?: unknown;
+  readonly labels?: LabelFilter | undefined;
+  readonly labelsOf?: LabelsOf | undefined;
   readonly policyAnalyzers?: readonly unknown[] | undefined;
   readonly skippedAnalyzers?: readonly string[] | undefined;
 };
@@ -78,6 +84,7 @@ type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly metadata?: MetadataMap;
   readonly notes: ReportEntry[];
   readonly toolErrors: ReportEntry[];
+  readonly hidden?: number;
 };
 
 const withFixes: (
@@ -117,10 +124,26 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
-  const outcomes = scopedOutcomes(compared.outcomes, context.scope);
-  const notes = scopedNotes(compared.notes, context.scope);
-  const metadata = mergeMetadata(baseRun.metadata, headRun.metadata);
-  const report = buildReport({ ...context, outcomes, notes, toolErrors, metadata });
+  const labelsOf = context.labelsOf ?? findingLabeler({ areaOf });
+  const labeled = labeledOutcomes(
+    scopedOutcomes(compared.outcomes, context.scope),
+    context.labels,
+    labelsOf,
+  );
+  const notes = labeledFindings(
+    scopedNotes(compared.notes, context.scope),
+    context.labels,
+    labelsOf,
+  );
+  const report = buildReport({
+    ...context,
+    outcomes: labeled.outcomes,
+    notes: notes.findings,
+    toolErrors,
+    metadata: mergeMetadata(baseRun.metadata, headRun.metadata),
+    hidden: labeled.hidden,
+    labelsOf,
+  });
   return {
     ...report,
     newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
@@ -209,11 +232,20 @@ function policyReview(
   };
 }
 
+function labelCountsOf(findings: readonly Finding[], labelsOf: LabelsOf | undefined): object {
+  if (findings.length === 0) {
+    return {};
+  }
+  const labelsFor = labelsOf ?? findingLabeler({ areaOf });
+  return { labelCounts: labelCounts(findings.map((finding) => ({ labels: labelsFor(finding) }))) };
+}
+
 function runAndScopeSummary(context: BuildContext, outcomes: readonly ScopedOutcome[]): object {
   const outside = outcomes.reduce((total, { outside: count }) => total + (count ?? 0), 0);
   return {
     ...profileSummary({ quick: context.quick, staged: context.staged }),
     ...scopedSummary(context.scope, outside),
+    ...labelRun(context.labels, context.hidden ?? 0),
   };
 }
 
@@ -251,6 +283,10 @@ function buildReport(context: BuildContext): DiffReport {
       newEnforceableFindings: newFindings.filter(
         (finding) => finding.classification === 'enforceable',
       ).length,
+      ...labelCountsOf(
+        newFindings.filter((finding) => finding.classification === 'enforceable'),
+        context.labelsOf,
+      ),
     },
     newFindings: sorted(newFindings),
     resolvedFindings: sorted(collect(outcomes, 'resolvedFindings')),

@@ -83,7 +83,7 @@ const TYPED_IMPORT = [
 const UNUSED_VARIADIC = ['ARG001 src/shop/app.py', 'ARG002 src/shop/app.py'];
 
 function findings(
-  precedence: readonly string[] | undefined,
+  precedence: string[] | undefined,
   options: Readonly<Record<string, unknown>> = {},
 ) {
   return realLintFindings({
@@ -187,7 +187,10 @@ describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end
   it('checks against the followed line length in every ordering', () => {
     const wide = { 'src/shop/pick.py': TERNARY, 'ruff.toml': 'line-length = 120\n' };
     const measured = (lineLength: string) => ({ 'python.lineLength': lineLength });
-    const lineFindings = (precedence: readonly string[] | undefined, conventions: unknown) =>
+    const lineFindings = (
+      precedence: string[] | undefined,
+      conventions: Readonly<Record<string, unknown>> | undefined,
+    ) =>
       realLintFindings({
         files: wide,
         toolPrecedence: precedence === undefined ? undefined : { ruff: precedence },

@@ -1,9 +1,9 @@
-import { DATED, EMPTY_CATCH, FAILING_TEST } from '../test-support/maven-e2e-sources.mjs';
+import { DATED, EMPTY_CATCH, FAILING_TEST } from '../test-support/maven-e2e-sources.mts';
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { testCasesOf as untypedTestCasesOf } from '../../adapters/test-times/slow-tests.mjs';
+import { testCasesOf as untypedTestCasesOf } from '../../adapters/test-times/slow-tests.mts';
 
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';

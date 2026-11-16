@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mjs';
-import { packageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mjs';
+import { packageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mts';
 import { urlAndUri } from '../test-support/creation-sources.mjs';
 import { family, filesOf } from '../test-support/cross-sources.mjs';
 

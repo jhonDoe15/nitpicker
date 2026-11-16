@@ -7,7 +7,7 @@ import {
   projectFormatConfigFiles,
   readBlackConfig as untypedReadBlack,
   readRuffConfig as untypedReadRuff,
-} from './project-format-config.mjs';
+} from './project-format-config.mts';
 
 type Row = Readonly<Record<string, unknown>>;
 type FormatConfig = Row & {

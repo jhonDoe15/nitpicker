@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createGoAnalyzers } from '../../../languages/go/adapters/go-analyzer.mjs';
-import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
+import { createGoAnalyzers } from '../../../languages/go/adapters/go-analyzer.mts';
+import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mts';
 import {
   createPythonAnalyzers,
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
-} from '../../../languages/python/adapters/python-analyzer.mjs';
+} from '../../../languages/python/adapters/python-analyzer.mts';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { createHistoryAnalyzers } from '../../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';

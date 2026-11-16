@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseGoMod } from './go-module.mjs';
+import { parseGoMod } from './go-module.mts';
 
 describe('parseGoMod', () => {
   it('reads the module path, Go version, requirements and tool directives', () => {

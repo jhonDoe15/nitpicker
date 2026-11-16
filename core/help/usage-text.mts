@@ -1,4 +1,5 @@
 import { textOf } from '../../shared/values/readers.mts';
+import { FRAMEWORK_LABELS, KIND_LABELS } from '../labels/taxonomy.mts';
 
 type Row = readonly [name: string, text: string];
 
@@ -16,6 +17,7 @@ export const COMMANDS: readonly Row[] = [
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
   ['nitpicker changelog', 'Print what changed in a version, from the changelog of the package.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
+  ['nitpicker projects', 'List the projects of a monorepo and the ones a run would check.'],
   [
     'nitpicker show',
     'Print the summary of the last run again, filtered, without running anything.',
@@ -44,6 +46,15 @@ export const FLAGS: readonly Row[] = [
     '--rule <substring>',
     'List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
   ],
+  [
+    '--label <label>',
+    'Run only the checks that can report these labels and list only such findings (repeatable).',
+  ],
+  [
+    '--project <path>',
+    'In a monorepo, run only this project: folder, package name or quoted glob (repeatable).',
+  ],
+  ['--jobs <n>', 'In a monorepo, run up to n projects at once (default: a quarter of the CPUs).'],
   ['--details', 'Print every new and held finding with its full message.'],
   ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
@@ -84,6 +95,8 @@ export const CACHE_PUBLISH_FLAGS: readonly Row[] = [
 ];
 
 const INIT_USAGE = 'nitpicker init [--agents-md] [--ci github] [--help]';
+export const PROJECTS_USAGE =
+  'nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]';
 const AGGREGATE_USAGE =
   'nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]' +
   ' [--details]';
@@ -91,17 +104,18 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
-  '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '          [--rule <substring>]... [--label <label>]... [--project <path>]... [--jobs <n>] [--details]',
+  '          [--json] [--quick] [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
+  PROJECTS_USAGE,
   'nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]',
   'nitpicker explain <tool/rule>...',
-  'nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
+  'nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixable]',
 ];
 
 function table(rows: readonly Row[]): string {
@@ -134,6 +148,17 @@ function analyzerBlock(analyzers: AnalyzerListing): string {
     : `Analyzers of the ${analyzers.preset} preset (for --analyzer):\n${wrappedList(analyzers.names)}`;
 }
 
+function labelNames(rows: readonly (readonly [string, string])[]): string {
+  return rows.map(([label]) => label).join(', ');
+}
+
+function labelBlock(): string {
+  return (
+    `Labels (for --label; kinds match any, frameworks narrow them):\n` +
+    `${LIST_INDENT}kinds: ${labelNames(KIND_LABELS)}\n${LIST_INDENT}frameworks: ${labelNames(FRAMEWORK_LABELS)}\n`
+  );
+}
+
 function examples(analyzers: AnalyzerListing): string {
   const analyzer = ('names' in analyzers ? analyzers.names[0] : undefined) ?? '<name>';
   return table([
@@ -141,6 +166,10 @@ function examples(analyzers: AnalyzerListing): string {
     ['nitpicker --base origin/release', 'check it against a given base'],
     ['nitpicker --fix', 'apply the fixes nitpicker knows, then check'],
     [`nitpicker --analyzer ${analyzer}`, 'iterate on one analyzer; finish with a plain nitpicker'],
+    [
+      'nitpicker --label performance',
+      'focus on one kind of finding; finish with a plain nitpicker',
+    ],
     ['nitpicker src/orders/order.ts', 'gate your change to one file'],
     ['nitpicker --all src/orders', 'show every finding in one folder'],
   ]);
@@ -156,7 +185,7 @@ export function usageText({
   const reference = referenceUrl === undefined ? '' : ` Reference: ${textOf(referenceUrl)}`;
   return (
     `${usageBlock()}\n\nCommands (nitpicker <command> --help lists its options):\n${table(COMMANDS)}\n` +
-    `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n` +
+    `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n${labelBlock()}\n` +
     'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).\n' +
     'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read\n' +
     'new-findings.json (--all: findings.json) first, then report.txt. nitpicker show prints the last\n' +

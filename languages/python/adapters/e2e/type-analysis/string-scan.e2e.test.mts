@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { scanTestStrings } from '../../analysis/test-runtime/python-test-runtime.mjs';
-import { run } from '../../execution/python-process.mjs';
+import { scanTestStrings } from '../../analysis/test-runtime/python-test-runtime.mts';
+import { run } from '../../execution/python-process.mts';
 import { useScannedProjects } from '../test-support/scanned-projects.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';

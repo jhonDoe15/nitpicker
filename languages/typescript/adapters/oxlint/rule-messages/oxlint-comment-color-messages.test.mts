@@ -1,13 +1,14 @@
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { rule as noComments } from '../../../preset/eslint-plugin/rules/modules/no-comments.mjs';
-import { rule as noFixedSleep } from '../../../preset/eslint-plugin/rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
-import { rule as noHardcodedColors } from '../../../preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mjs';
+import { rule as noComments } from '../../../preset/eslint-plugin/rules/modules/no-comments.mts';
+import { rule as noFixedSleep } from '../../../preset/eslint-plugin/rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
+import { rule as noHardcodedColors } from '../../../preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mts';
 import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../../preset/eslint-plugin/index.mjs'))};
+import { nitpickerRules } from ${JSON.stringify(checkoutModuleUrl(new URL('../../../preset/eslint-plugin/index.mjs', import.meta.url)).href)};
 
 export default [
   {

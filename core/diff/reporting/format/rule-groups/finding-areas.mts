@@ -1,4 +1,4 @@
-import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 
 const goLinterTools: readonly string[] = GO_LINTER_TOOLS;

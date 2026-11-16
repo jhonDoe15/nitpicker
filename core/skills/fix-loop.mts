@@ -5,6 +5,7 @@ import {
   EXPLAIN,
   FIX_PREVIEW,
   HELD_NOTE,
+  LABEL_SENTENCE,
   NARROWED_SENTENCE,
   NO_PIPE,
   numbered,
@@ -16,12 +17,15 @@ import {
 } from './fix-loop-text.mts';
 
 function exitCodes(slots: FixLoopSlots): string {
-  const narrowed = slots.hasQuick ? '`--analyzer` or `--quick`' : '`--analyzer`';
+  const narrowed = slots.hasQuick
+    ? '`--analyzer`, `--quick` or `--label`'
+    : '`--analyzer` or `--label`';
   const reread = slots.hasFix ? ' Re-read the files `--fix` changed before editing them.' : '';
   const extra = slots.exit1 === undefined ? '' : ` ${slots.exit1}`;
   const lines = [
     `- 0: done, unless you narrowed the run with ${narrowed}: the summary then says ` +
-      '`Ran only: ...` or names the skipped checks, and you run the gate again without them ' +
+      '`Ran only: ...`, `Only findings labeled ...` or names the skipped checks, and you run the ' +
+      'gate again without them ' +
       'before you finish.',
     '- 1: fix the failing tests the summary leads with, every new finding (printed as ' +
       `\`<tool>/<rule> <path>:<line>\`) and any tool error listed below them.${extra}${reread} ` +
@@ -62,7 +66,9 @@ function steps(slots: FixLoopSlots): string[] {
 }
 
 function renderGateSection(slots: FixLoopSlots): string {
-  const intro = wrap(`${slots.hasQuick ? QUICK_SENTENCE : ''}${NARROWED_SENTENCE}`);
+  const intro = wrap(
+    `${slots.hasQuick ? QUICK_SENTENCE : ''}${NARROWED_SENTENCE} ${LABEL_SENTENCE}`,
+  );
   const tail = [...slots.tail, EXPLAIN].map((paragraph) => wrap(paragraph)).join('\n\n');
   return `## Finish with the gate\n\n${intro}\n\n${steps(slots).join('\n')}\n\n${tail}\n`;
 }

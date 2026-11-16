@@ -20,7 +20,7 @@ import {
   readPythonStructureFindings,
   structure,
   STRUCTURE_REPORT,
-} from './python-structure.mjs';
+} from './python-structure.mts';
 import { failureOf } from '../test-support/runs/failure-of.mts';
 
 type Row = Readonly<Record<string, unknown>>;

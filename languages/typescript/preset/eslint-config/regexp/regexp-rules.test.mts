@@ -3,7 +3,7 @@ import { eslintMessageWithHint } from '../../../adapters/hints/eslint-hints.mts'
 import { regexpRuleHints } from '../../../adapters/hints/eslint-routes.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule } from '../../strict-rules.mts';
-import { productionPolicyConfigFor } from '../policy/production-policy.mjs';
+import { productionPolicyConfigFor } from '../policy/production-policy.mts';
 import { hintInput } from '../typed/hints/hint-input.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { regexpRuleIds, regexpRules } from '../typed/hints/regexp-views.mts';

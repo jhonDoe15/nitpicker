@@ -1,10 +1,13 @@
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createProject, lintProject } from './test-support/oxlint-project.mts';
 import { residualRecorder } from './test-support/oxlint-runs.mts';
 
-const PLUGIN_URL = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
+const PLUGIN_URL = checkoutModuleUrl(
+  new URL('../../preset/eslint-plugin/index.mjs', import.meta.url),
+).href;
 
 function policy({ fixStyle, casing }: { readonly fixStyle: string; readonly casing: string }) {
   return `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};

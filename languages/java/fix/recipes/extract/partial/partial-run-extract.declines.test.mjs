@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { forcedPartial } from '../../../../adapters/near-duplicates/test-support/forced-partial.mjs';
+import { forcedPartial } from '../../../../adapters/near-duplicates/test-support/forced-partial.mts';
 import {
   headerMethod,
   headerPair,

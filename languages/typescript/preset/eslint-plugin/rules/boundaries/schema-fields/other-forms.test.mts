@@ -5,7 +5,7 @@ import type { Linter } from 'eslint';
 import { applyJavascriptDialect } from '../../../../../../javascript/preset/eslint-dialect.mts';
 import { strictPresetConfig } from '../../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../../layout.mjs';
-import { rule } from '../no-unvalidated-schema-field.mjs';
+import { rule } from '../no-unvalidated-schema-field.mts';
 
 const typescript = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

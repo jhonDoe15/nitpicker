@@ -1,5 +1,5 @@
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as ioInLoop } from './no-io-in-loop.mjs';
+import { rule as ioInLoop } from './no-io-in-loop.mts';
 
 const ruleTester = typescriptRuleTester();
 

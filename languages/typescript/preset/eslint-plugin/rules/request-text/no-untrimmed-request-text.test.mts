@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-untrimmed-request-text.mjs';
+import { rule } from './no-untrimmed-request-text.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-request-text-')));
 const trimmed = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-request-text-trimmed-')));

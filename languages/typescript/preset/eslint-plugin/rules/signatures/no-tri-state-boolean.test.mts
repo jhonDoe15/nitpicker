@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-tri-state-boolean.mjs';
+import { rule } from './no-tri-state-boolean.mts';
 
 const tester = typescriptRuleTester();
 

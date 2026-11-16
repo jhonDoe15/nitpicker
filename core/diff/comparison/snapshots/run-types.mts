@@ -3,6 +3,12 @@ import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 
 export type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
 
+export type SharedWorktree = {
+  readonly root: string;
+  readonly commitSha: string;
+  readonly lockPath: string;
+};
+
 export type RunSettings = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
@@ -16,11 +22,13 @@ export type RunSettings = {
   readonly scope?: unknown;
   readonly outputRoot: string;
   readonly runTasks?: unknown;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
 };
 
 export type SnapshotRoots = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
+  readonly sharedBase?: SharedWorktree | undefined;
 };
 
 export type SkipPlan = {

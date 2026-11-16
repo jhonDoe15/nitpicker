@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
+import { writeSpringRoles } from '../spring-arch/spring-roles.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { assigned } from './test-support/views/assigned.mts';
 

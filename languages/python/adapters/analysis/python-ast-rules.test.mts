@@ -3,8 +3,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { createFakeProjects } from '../test-support/fake-project.mts';
-import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
-import { checkRules, contractFaces, pythonSources, RULES_REPORT } from './python-ast-rules.mjs';
+import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mts';
+import { checkRules, contractFaces, pythonSources, RULES_REPORT } from './python-ast-rules.mts';
 import { failureOf } from '../test-support/runs/failure-of.mts';
 
 const fakes = createFakeProjects();

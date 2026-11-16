@@ -2,7 +2,7 @@ import { textsOf } from '../../../../../../shared/values/readers.mts';
 import {
   regexpRuleIds as untypedRegexpRuleIds,
   regexpRules as untypedRegexpRules,
-} from '../../regexp/regexp-rules.mjs';
+} from '../../regexp/regexp-rules.mts';
 
 export const regexpRuleIds: string[] = textsOf(untypedRegexpRuleIds);
 

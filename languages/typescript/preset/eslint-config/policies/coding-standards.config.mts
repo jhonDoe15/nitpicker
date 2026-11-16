@@ -1,6 +1,6 @@
 import { linterConfigs } from '../typed/config-types.mts';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { errorWrappingPolicy } from './error-wrapping-policy.mts';
 import { applyMatchingRuleExceptions, readHeadPolicy, readLayout } from '../typed/policy-views.mts';
 

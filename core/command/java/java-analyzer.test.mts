@@ -3,18 +3,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mts';
 import {
   INTERNAL_ERROR_RULE as internalErrorRule,
   analyzeJavaSnapshot as analyzeSnapshot,
-} from '../../../languages/java/adapters/java-runner.mjs';
+} from '../../../languages/java/adapters/java-runner.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import { useGradleFixtures } from './test-support/java-cli-harness.mts';
-import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mjs';
+import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mts';
 import { labelsOf, linkSentence } from '../test-support/report-readers.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { callUntyped } from '../../../languages/java/adapters/typed/java-values.mts';
 
 type SnapshotOptions = {
   readonly gradle?: string;
@@ -23,10 +24,14 @@ type SnapshotOptions = {
 };
 
 const INTERNAL_ERROR_RULE: string = internalErrorRule;
-const analyzeJavaSnapshot: (
+function analyzeJavaSnapshot(
   projectRoot: string,
   options: SnapshotOptions,
-) => { readonly findings: readonly unknown[] } = analyzeSnapshot;
+): { readonly findings: readonly unknown[] } {
+  return {
+    findings: listOf(fieldOf(callUntyped(analyzeSnapshot, projectRoot, options), 'findings')),
+  };
+}
 const fakeGradleRun: { readonly gradle: string; readonly spawn: unknown } = fakeGradleTools;
 const compileKotlinFailed: unknown = expect.stringContaining('compileKotlin failed');
 

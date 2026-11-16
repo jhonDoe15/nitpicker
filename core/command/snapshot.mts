@@ -31,6 +31,8 @@ import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
+import { projectHeader } from './comparison/outcome.mts';
+import type { LabelFilter } from '../labels/taxonomy.mts';
 
 const displayPath: (absolutePath: string) => string = untypedDisplayPath;
 const colorEnabled: (stream: unknown, environment: NodeJS.ProcessEnv) => boolean =
@@ -45,6 +47,7 @@ type SnapshotCli = {
     readonly outputRoot?: string;
   };
   readonly currentProjectRoot: string;
+  readonly currentFolder?: string | undefined;
   readonly analyzers: readonly ProfiledAnalyzer[];
   readonly quick: unknown;
   readonly captureHead?: unknown;
@@ -55,6 +58,7 @@ type SnapshotCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
   readonly scope: unknown;
+  readonly labels?: LabelFilter | undefined;
   readonly setupErrors: readonly object[];
   readonly additionalToolErrors?: readonly unknown[];
 };
@@ -130,7 +134,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         scope,
         setupErrors,
       },
-      analyzerRunOptions({ outputRoot, runTasks }),
+      { ...analyzerRunOptions({ outputRoot, runTasks }), labels: cli.labels },
     ),
   );
   addToolErrors(report, cli.additionalToolErrors ?? []);
@@ -140,6 +144,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     stamp,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
     runProfileSummary({ quick: cli.quick, staged: options.staged }),
+    { projectPath: relativeProjectPath.split(path.sep).join('/') },
   );
   report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
@@ -163,6 +168,7 @@ function writeSnapshotOutcome(
 ): number {
   const { stdout, jsonOutput } = cli;
   if (jsonOutput === undefined) {
+    stdout.write(projectHeader(cli.currentFolder, cli.currentProjectRoot));
     stdout.write(
       renderSnapshotConsoleSummary(report, {
         diagnosticsPath: displayPath(path.join(outputRoot, 'report.txt')),

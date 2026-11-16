@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-cleanup-skipped-on-failure.mjs';
+import { rule } from './no-cleanup-skipped-on-failure.mts';
 
 type Build = (body: string) => { filename: string; code: string };
 

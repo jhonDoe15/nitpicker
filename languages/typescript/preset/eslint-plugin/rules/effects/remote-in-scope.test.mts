@@ -1,7 +1,7 @@
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { rule as inTransaction } from './no-remote-call-in-transaction.mjs';
-import { rule as underLock } from './no-remote-call-under-lock.mjs';
+import { rule as inTransaction } from './no-remote-call-in-transaction.mts';
+import { rule as underLock } from './no-remote-call-under-lock.mts';
 
 const ruleTester = typescriptRuleTester();
 const runner = 'const runner = dataSource.createQueryRunner(); await runner.startTransaction();';

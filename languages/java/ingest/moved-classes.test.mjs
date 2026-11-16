@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { ingestErrorProne } from './errorprone/errorprone.mjs';
-import { ingestJacoco } from './coverage-reports/jacoco.mjs';
+import { ingestErrorProne } from './errorprone/errorprone.mts';
+import { ingestJacoco } from './coverage-reports/jacoco.mts';
 
 const ROOT = '/work/app';
 

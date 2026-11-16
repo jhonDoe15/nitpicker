@@ -1,6 +1,7 @@
 import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
-import { rule } from './require-http-timeout.mjs';
-import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
+import { ruleModule } from '../../../test-support/rule-tester.mts';
+import { rule } from './require-http-timeout.mts';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mts';
 
 type Errors = { messageId: string; data: Record<string, string> }[];
 
@@ -10,7 +11,7 @@ const { tester, typed } = typedCaseProject<Errors>({
   header: 'import https from "node:https";\nimport type { RequestOptions } from "node:https";\n',
 });
 
-tester.run('require-http-timeout with types', withoutFixes(rule), {
+tester.run('require-http-timeout with types', withoutFixes(ruleModule(rule)), {
   valid: [
     typed(
       'export const get = (options: RequestOptions) => https.get(options, (res) => res.resume());',

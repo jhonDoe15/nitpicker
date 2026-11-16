@@ -22,7 +22,7 @@ export type RulesReportEntry = {
   readonly rule: string;
   readonly path: string;
   readonly subject: string;
-  readonly line?: number;
+  readonly line?: number | undefined;
   readonly data?: unknown;
   readonly error?: string;
   readonly via?: string;

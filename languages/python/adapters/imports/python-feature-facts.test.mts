@@ -6,7 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../metrics/python-helpers.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';
-import { collectImports as untypedCollect } from '../analysis/python-coupling.mjs';
+import { collectImports } from '../analysis/python-coupling.mts';
+import { createToolContext } from '../test-support/typed/tool-context.mts';
 import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type {
   ImportsReport,
@@ -17,7 +18,7 @@ import type {
 import {
   pythonFeatureAnalysis as untypedAnalysis,
   pythonImportFacts as untypedFacts,
-} from './python-feature-facts.mjs';
+} from './python-feature-facts.mts';
 import { cycleFindings } from './python-import-rules.mts';
 import type { FeatureView } from './typed/import-rule-types.mts';
 
@@ -42,10 +43,6 @@ const pythonFeatureAnalysis: (
   report: ImportsReport,
   options?: AnalysisOptions,
 ) => FeatureView & { findings: IngestedFinding[] } = untypedAnalysis;
-const collectImports: (
-  context: { projectRoot: string; reportRoot: string; project: { sourceRoots: string[] } },
-  run: (context: unknown, command: readonly string[]) => unknown,
-) => ImportsReport = untypedCollect;
 
 const FEATURES = 'src/app/features';
 
@@ -274,7 +271,12 @@ function scanFixture() {
     return scanned;
   };
   return collectImports(
-    { projectRoot: fixture, reportRoot, project: { sourceRoots: ['src'] } },
+    createToolContext({
+      projectRoot: fixture,
+      liveRoot: fixture,
+      reportRoot,
+      settings: { sourceRoots: ['src'] },
+    }),
     run,
   );
 }

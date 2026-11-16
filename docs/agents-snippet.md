@@ -44,16 +44,23 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
   with `--base`, sharding or `--defer-exit`, and takes `--fix` only with `--rule`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary.
+- To focus on one kind of finding, add `--label <label>` (repeatable; `performance`, `bug`,
+  `simplification`, `maintainability` and more, `npx nitpicker --help` lists them): it runs only the
+  checks that can report it and lists only those findings. A focused run is never a pass either: the
+  summary says `Only findings labeled ...`; finish without `--label`.
 - `npx nitpicker show` prints the summary of the last run again without running anything. Add
   `--rule <substring>`, `--path <file or folder>` or `--details` to read one rule, one folder or the
   full messages instead of running again. It names the run it shows and warns when the working tree
   changed since. It exits 0 when that run passed, 1 when it did not and 2 when there is no report.
+- In a monorepo, `npx nitpicker` at the top runs every project your change touches.
+  `--project <path>` (repeatable) checks only the named projects; running it inside a project folder
+  checks that project alone.
 
 ### Exit codes
 
 | Code | Meaning                                                                                                                                |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer` or `--quick`.                          |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`, `--quick` or `--label`.               |
 | 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
 | 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 

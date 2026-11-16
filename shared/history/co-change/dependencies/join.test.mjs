@@ -66,6 +66,27 @@ describe('co-change dependencies', () => {
       'Neither imports the other, so what they share is not visible as a dependency.',
     );
   });
+  it('says the dependency is unknown when a package-name import may reach the other module', () => {
+    const pair = { ...PAIR, first: 'packages/billing/src', second: 'packages/tax/src' };
+    const reached = joined({
+      'change-history': historyReport(pair),
+      coupling: publisher([{ from: 'packages/tax/src/rates.ts', package: 'packages/billing' }]),
+    });
+    const elsewhere = joined({
+      'change-history': historyReport(pair),
+      coupling: publisher([
+        { from: 'packages/billing/src/invoice.ts', package: 'packages/ledger' },
+        { from: 'packages/tax/src/rates.ts', package: 'packages/tax' },
+      ]),
+    });
+
+    expect(sentenceOf(reached)).toBe(
+      'Whether they import each other is unknown: packages/tax/src imports the package in packages/billing by name, and that import does not lead to its source files.',
+    );
+    expect(sentenceOf(elsewhere)).toBe(
+      'Neither imports the other, so what they share is not visible as a dependency.',
+    );
+  });
   it('says the dependency is unknown when no analyzer published imports', () => {
     const run = joined({ 'change-history': historyReport(), coupling: { findings: [] } });
 

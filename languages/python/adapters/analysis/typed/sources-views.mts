@@ -6,14 +6,9 @@ import {
   nonProductionGlobs as untypedNonProductionGlobs,
   pythonSourceFiles as untypedPythonSourceFiles,
   writeSourceListing as untypedWriteSourceListing,
-} from '../python-sources.mjs';
+  type SourceListing,
+} from '../python-sources.mts';
 import type { OtherModule, PythonModule } from './python-graph-types.mts';
-
-type SourceListing = {
-  readonly projectRoot: string;
-  readonly reportRoot: string;
-  readonly project: { readonly sourceRoots: readonly string[] };
-};
 
 const existingSourceRoots: (projectRoot: string, sourceRoots: readonly string[]) => string[] =
   untypedExistingSourceRoots;

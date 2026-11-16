@@ -1,6 +1,7 @@
 import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts';
 import type { NitpickerConfig } from '../shared/values/config-types.mts';
 import type { RunTasks } from './diff/execution/progress.mts';
+import type { LabelFilter } from './labels/taxonomy.mts';
 
 export type TextOutput = {
   write(text: string): unknown;
@@ -8,7 +9,9 @@ export type TextOutput = {
 
 export type CliOptions = {
   readonly analyzerNames: readonly string[];
+  readonly labelNames?: readonly string[];
   readonly ruleFilters: readonly string[];
+  readonly projectPaths?: readonly string[];
   readonly fix: boolean;
   readonly dryRun: boolean;
   readonly details: boolean;
@@ -17,6 +20,7 @@ export type CliOptions = {
   readonly acceptPolicyChange?: string;
   readonly shardCount?: number | undefined;
   readonly shardIndex?: number | undefined;
+  readonly jobs?: number | undefined;
   readonly paths?: readonly string[];
   readonly all: boolean;
   readonly help: boolean;
@@ -41,6 +45,7 @@ export type CliInput = {
   readonly runTasks?: RunTasks | undefined;
   readonly currentProjectRoot?: string | undefined;
   readonly workingDirectory?: string | undefined;
+  readonly projectWorker?: string | undefined;
 };
 
 export type Cli = CliInput & {
@@ -83,4 +88,5 @@ export type RunSetup = {
   readonly quick: unknown;
   readonly captureHead: unknown;
   readonly setupErrors: readonly object[];
+  readonly labels?: LabelFilter | undefined;
 };
