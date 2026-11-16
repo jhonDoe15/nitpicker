@@ -4,7 +4,8 @@ import {
 } from '../../../preset/eslint-plugin/rules/queries/soft-delete/columns.mts';
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { automaticTables } from './automatic-filters.mts';
-import { readEvidence } from './read-evidence.mts';
+import { lazyMeasure } from '../parsing/lazy-measure.mts';
+import type { readEvidence as ReadEvidence } from './read-evidence.mts';
 
 const MIN_READS = 5;
 const MIN_SHARE = 0.8;
@@ -29,6 +30,11 @@ export const SOFT_DELETE_FILTERS_CONVENTION = {
 export function softDeleteFilterEntries(conventions: object = {}): string[] {
   return textsOf(fieldOf(conventions, SOFT_DELETE_FILTERS_CONVENTION.id));
 }
+
+const readEvidence: typeof ReadEvidence = lazyMeasure(
+  new URL('read-evidence.mjs', import.meta.url),
+  'readEvidence',
+);
 
 function filterEvidence(text: string, file: string): string[] {
   return [...readEvidence(text, file), ...automaticTables(text)];
