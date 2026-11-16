@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { repositoryBlocks, resolutionSettings } from './project-repositories.mjs';
+import { repositoryBlocks, resolutionSettings } from './project-repositories.mts';
 
 const roots = [];
 

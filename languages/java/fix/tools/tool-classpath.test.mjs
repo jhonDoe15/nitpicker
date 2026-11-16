@@ -16,7 +16,7 @@ import {
   gradleToolArguments,
   parseToolClasspaths,
   resolveToolClasspaths,
-} from './tool-classpath.mjs';
+} from './tool-classpath.mts';
 
 const roots = [];
 const TOOLS = {

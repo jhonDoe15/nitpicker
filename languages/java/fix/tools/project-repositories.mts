@@ -1,9 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { gradleTokens } from '../../builds/narrowing/gradle-script.mjs';
+import { textsOf } from '../../../../shared/values/readers.mts';
 
-const SETTINGS_BLOCKS = [['dependencyResolutionManagement', 'repositories']];
-const BUILD_BLOCKS = [
+type Blocks = readonly (readonly string[])[];
+type ParseState = {
+  readonly path: string[];
+  header: string;
+  readonly bodies: string[];
+  capture: Capture | undefined;
+};
+type Capture = { depth: number; text: string };
+type Declared = { readonly name: string; readonly kotlin: boolean; readonly bodies: string[] };
+type ResolutionSettings = {
+  readonly file: string;
+  readonly sources: string[];
+  readonly text: string;
+};
+
+const SETTINGS_BLOCKS: Blocks = [['dependencyResolutionManagement', 'repositories']];
+const BUILD_BLOCKS: Blocks = [
   ['repositories'],
   ['allprojects', 'repositories'],
   ['subprojects', 'repositories'],
@@ -16,13 +32,13 @@ const SOURCES = [
 ];
 const MAVEN_CENTRAL = 'mavenCentral()';
 
-function isTarget(path, blocks) {
+function isTarget(path: readonly string[], blocks: Blocks): boolean {
   return blocks.some(
     (block) => block.length === path.length && block.every((name, index) => name === path[index]),
   );
 }
 
-function openBlock(state, blocks) {
+function openBlock(state: ParseState, blocks: Blocks): void {
   state.path.push(state.header.trim());
   state.header = '';
   if (isTarget(state.path, blocks)) {
@@ -30,20 +46,20 @@ function openBlock(state, blocks) {
   }
 }
 
-function captureToken(state, token) {
-  state.capture.depth += Number(token === '{') - Number(token === '}');
-  if (state.capture.depth > 0) {
-    state.capture.text += token;
+function captureToken(state: ParseState, capture: Capture, token: string): void {
+  capture.depth += Number(token === '{') - Number(token === '}');
+  if (capture.depth > 0) {
+    capture.text += token;
     return;
   }
-  state.bodies.push(state.capture.text.trim());
+  state.bodies.push(capture.text.trim());
   state.capture = undefined;
   state.path.pop();
 }
 
-function consume(state, token, blocks) {
+function consume(state: ParseState, token: string, blocks: Blocks): void {
   if (state.capture !== undefined) {
-    captureToken(state, token);
+    captureToken(state, state.capture, token);
   } else if (token === '{') {
     openBlock(state, blocks);
   } else if (token === '}') {
@@ -54,17 +70,17 @@ function consume(state, token, blocks) {
   }
 }
 
-export function repositoryBlocks(text, blocks) {
-  const state = { path: [], header: '', bodies: [], capture: undefined };
-  for (const token of gradleTokens(text)) {
+export function repositoryBlocks(text: string, blocks: Blocks): string[] {
+  const state: ParseState = { path: [], header: '', bodies: [], capture: undefined };
+  for (const token of textsOf(gradleTokens(text))) {
     consume(state, token, blocks);
   }
   return state.bodies.filter((body) => body !== '');
 }
 
-function declared(projectRoot) {
-  return SOURCES.flatMap(({ name, kotlin, blocks }) => {
-    const file = containedPath(projectRoot, name);
+function declared(projectRoot: string): Declared[] {
+  return SOURCES.flatMap(({ name, kotlin, blocks }): Declared[] => {
+    const file: string = containedPath(projectRoot, name);
     if (!existsSync(file)) {
       return [];
     }
@@ -73,14 +89,14 @@ function declared(projectRoot) {
   });
 }
 
-function indented(bodies) {
+function indented(bodies: readonly string[]): string {
   return bodies
     .flatMap((body) => body.split('\n'))
     .map((line) => `        ${line.trim()}`)
     .join('\n');
 }
 
-export function resolutionSettings(projectRoot) {
+export function resolutionSettings(projectRoot: string): ResolutionSettings {
   const found = declared(projectRoot);
   const kotlin = found[0]?.kotlin ?? false;
   const chosen = found.filter((entry) => entry.kotlin === kotlin);
