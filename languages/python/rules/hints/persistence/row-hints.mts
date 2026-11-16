@@ -1,6 +1,9 @@
 import { RULES_TOOL } from '../tool.mts';
 import type { RuleHint } from '../hint-types.mts';
 
+const DJANGO = 'django';
+const MODEL = '<model>';
+
 const UPDATE_ADVICE: Readonly<Record<string, string>> = {
   django:
     'Update them in the database: `Order.objects.filter(...).update(status="expired")` (and `.delete()` for removal) changes every row in one statement without loading any.',
@@ -30,12 +33,12 @@ export const ROW_HINTS: readonly RuleHint[] = [
     tool: RULES_TOOL,
     rules: ['in-memory-update'],
     describe: (subject) => {
-      const [model = '<model>', fields = ''] = subject.split('|');
+      const [model = MODEL, fields = ''] = subject.split('|');
       return `\`${model}\` rows are loaded only to set ${quoted(fields)} to the same value on each and save them back, which one update statement does without loading the rows`;
     },
     allowed: (subject = '') => {
-      const [, , orm = 'django'] = subject.split('|');
-      return `${entry(UPDATE_ADVICE, orm, 'django')}${UPDATE_KEEP}`;
+      const [, , orm = DJANGO] = subject.split('|');
+      return `${entry(UPDATE_ADVICE, orm, DJANGO)}${UPDATE_KEEP}`;
     },
   },
 ];
@@ -64,19 +67,19 @@ export const NARROW_HINTS: readonly RuleHint[] = [
     tool: RULES_TOOL,
     rules: ['row-for-one-column'],
     describe: (subject) => {
-      const [model = '<model>', field = '<column>'] = subject.split('|');
+      const [model = MODEL, field = '<column>'] = subject.split('|');
       return `\`${model}\` rows are loaded whole only to read \`${field}\` from each, when the query can return just that column`;
     },
     allowed: (subject = '') =>
-      `${entry(COLUMN_ADVICE, subject.split('|')[2], 'django')}${SMALL_TABLE}`,
+      `${entry(COLUMN_ADVICE, subject.split('|')[2], DJANGO)}${SMALL_TABLE}`,
   },
   {
     tool: RULES_TOOL,
     rules: ['row-for-existence'],
     describe: (subject) => {
-      const [model = '<model>', shape] = subject.split('|');
+      const [model = MODEL, shape] = subject.split('|');
       return `\`${model}\` rows are ${entry(EXISTENCE_WORK, shape, 'first')}, when an existence query answers it`;
     },
-    allowed: (subject = '') => entry(EXISTENCE_ADVICE, subject.split('|')[2], 'django'),
+    allowed: (subject = '') => entry(EXISTENCE_ADVICE, subject.split('|')[2], DJANGO),
   },
 ];
