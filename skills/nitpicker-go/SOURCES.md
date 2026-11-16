@@ -86,6 +86,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
   `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
   cause of slow endpoints.
+- **HTTP value rules.** `http-value-case` and `hand-split-http-header` read header values through
+  `net/http` `Header.Get`, so a header name is never reported (it is case-insensitive there); a method
+  and a parsed `Scheme` are left out because the first is case-sensitive and `url.Parse` lowercases the
+  second.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,

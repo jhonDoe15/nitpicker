@@ -54,7 +54,8 @@ object`. Instance methods are left to the duplicates check, as class methods are
   return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`) and asks
   the solver whether the condition can still be both true and false. Only a proof reports: always
   false is dead code, always true a redundant check, and the message names the guard that decides
-  it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
+  it. It also reports `Boolean.TRUE.equals(x)` under a test that holds `x` present and true
+  (`if (x != null && x)`), which is always `true` there. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
   what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
   opaque value because JVM integers overflow. SpotBugs `UC_USELESS_CONDITION` reports a few of
   these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.

@@ -3,7 +3,7 @@ package sa1
 import "net/http"
 
 func RawHeader(header http.Header) []string {
-	return header["content-type"] // want SA1008
+	return header["content-type"] // want SA1008 http-value-case
 }
 
 func CanonicalHeader(header http.Header) string {

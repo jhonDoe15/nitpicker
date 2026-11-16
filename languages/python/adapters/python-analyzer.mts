@@ -16,6 +16,7 @@ import type {
   PythonInvocation,
   VersionReader,
 } from './typed/context/analyzer-types.mts';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 const importClosure: (relativePaths: string[], root: string) => Map<string, string> =
   untypedClosure;
@@ -100,6 +101,7 @@ function pythonInvocation(
 function pythonAnalyzer(settings: AnalyzerSettings, probes: AnalyzerProbes): PythonAnalyzer {
   return {
     name: PYTHON_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
@@ -135,6 +137,7 @@ function pythonAnalyzer(settings: AnalyzerSettings, probes: AnalyzerProbes): Pyt
 function mutationAnalyzer(settings: AnalyzerSettings, probes: AnalyzerProbes): PythonAnalyzer {
   return {
     name: MUTATION_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
       resolveVersion(liveProjectRoot, mutationVersions, { settings, probes }),

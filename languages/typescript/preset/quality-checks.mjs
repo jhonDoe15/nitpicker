@@ -68,14 +68,19 @@ function eslintChecksFor(layout, exclusions) {
         ...POLICY_FILES,
       ],
     },
-    productionEslintCheck(layout, exclusions, { name: 'errors', shardWeight: 9 }),
+    productionEslintCheck(layout, exclusions, {
+      name: 'errors',
+      shardWeight: 9,
+      colocatedWith: ['eslint-lint'],
+    }),
     productionEslintCheck(layout, exclusions, { name: 'logging', shardWeight: 9 }),
     productionEslintCheck(layout, exclusions, { name: 'module-effects', shardWeight: 11 }),
   ];
 }
 
-function productionEslintCheck(layout, exclusions, { name, shardWeight }) {
+function productionEslintCheck(layout, exclusions, { name, shardWeight, colocatedWith }) {
   return {
+    ...(colocatedWith === undefined ? {} : { colocatedWith }),
     name: `eslint-${name}`,
     configRelativePath: `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
     patterns: layout.sourceGlobs,
@@ -233,6 +238,8 @@ function graphChecksFor(exclusions) {
       configurationFiles: [
         ...DEPENDENCY_GRAPH_FILES,
         'languages/typescript/preset/test-runtime/analyze.mjs',
+        'languages/typescript/adapters/quality-areas/hashing/whole-file-hash.mjs',
+        'shared/paths/script-stem.mjs',
       ],
     },
     {

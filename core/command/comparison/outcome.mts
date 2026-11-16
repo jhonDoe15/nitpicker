@@ -33,14 +33,20 @@ type Outcome = {
 };
 
 function isUnchanged(report: unknown): boolean {
-  return fieldOf(fieldOf(report, 'summary'), 'noChanges') === true;
+  const summary = fieldOf(report, 'summary');
+  return fieldOf(summary, 'noChanges') === true || fieldOf(summary, 'skippedAll') === true;
 }
 
 function consoleSummary({ cli, report, outputRoot }: Omit<Outcome, 'base'>): string {
   const color = colorEnabled(cli.stdout, cli.environment);
   const diagnosticsPath: unknown = displayPath(absoluteTextReportPath(outputRoot));
   return textOf(
-    renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath }),
+    renderConsoleSummary(report, {
+      color,
+      details: cli.options.details,
+      diagnosticsPath,
+      projectRoot: cli.currentProjectRoot,
+    }),
   );
 }
 

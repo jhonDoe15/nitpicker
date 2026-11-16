@@ -8,6 +8,7 @@ import { exactText } from '../diff/reporting/test-support/output-expectations.mt
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import type { FixtureAnalyzer, FixtureInvocationContext } from './test-support/fixture-types.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
@@ -116,6 +117,21 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
   });
 });
+const PUBLISHED_NAMES = 'fake-quality-analyzer, fake-quality-analyzer (without changed tests)';
+
+type ScopedContext = FixtureInvocationContext & { readonly mutationScope?: unknown };
+
+type KeyedAnalyzer = FixtureAnalyzer & {
+  comparisonKey?: (context: {
+    readonly touchedPaths: readonly string[];
+    readonly quick: unknown;
+  }) => string;
+};
+
+function keyedAnalyzer(): KeyedAnalyzer {
+  return fakeAnalyzer();
+}
+
 describe('remote findings cache', () => {
   async function setup() {
     const remote = await startTestHttpServer();
@@ -130,9 +146,11 @@ describe('remote findings cache', () => {
     const execute = (
       arguments_: readonly string[],
       url = remote.url,
-      { subprocess }: { readonly subprocess?: true } = {},
+      {
+        subprocess,
+        analyzer = fakeAnalyzer(),
+      }: { readonly subprocess?: true; readonly analyzer?: FixtureAnalyzer } = {},
     ) => {
-      const analyzer = fakeAnalyzer();
       const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
         snapshots.push(context.snapshot ?? '');
@@ -184,6 +202,57 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
 `),
       );
       expect(snapshots).toEqual(['base', 'head']);
+    } finally {
+      await remote.close();
+    }
+  });
+  it('also publishes the unmutated base a comparison without changed tests reads', async () => {
+    const { remote, execute } = await setup();
+    try {
+      const scopes: unknown[] = [];
+      const keyed = keyedAnalyzer();
+      const createInvocation = keyed.createInvocation.bind(keyed);
+      keyed.comparisonKey = ({ touchedPaths, quick }) =>
+        `${String(touchedPaths.length)}:${String(quick)}`;
+      keyed.createInvocation = (context: ScopedContext) => {
+        scopes.push(context.mutationScope);
+        return createInvocation(context);
+      };
+      const { exitCode, output } = execute(['cache', 'publish'], remote.url, { analyzer: keyed });
+
+      expect(exitCode).toBe(0);
+      expect(scopes).toEqual([undefined, []]);
+      expect(output.stdoutText).toEqual(
+        expect.stringMatching(
+          exactText`Published 1 of 1 base snapshots for ${/[a-f0-9]{40}/}: ${PUBLISHED_NAMES}
+`,
+        ),
+      );
+      expect(await remote.keys()).toHaveLength(2);
+    } finally {
+      await remote.close();
+    }
+  });
+  it('keeps the full entry and warns when the unmutated base cannot be written', async () => {
+    const { remote, execute } = await setup();
+    try {
+      const keyed = keyedAnalyzer();
+      const createInvocation = keyed.createInvocation.bind(keyed);
+      keyed.comparisonKey = () => 'tests';
+      keyed.createInvocation = (context: ScopedContext) => {
+        if (context.mutationScope !== undefined) {
+          throw new Error('unmutated run failed');
+        }
+        return createInvocation(context);
+      };
+
+      const { exitCode, output } = execute(['cache', 'publish'], remote.url, { analyzer: keyed });
+
+      expect(exitCode).toBe(0);
+      expect(output.stderrText).toBe(
+        'nitpicker: the base without changed tests was not published: fake-quality-analyzer (analysis failed)\n',
+      );
+      expect(await remote.keys()).toHaveLength(1);
     } finally {
       await remote.close();
     }

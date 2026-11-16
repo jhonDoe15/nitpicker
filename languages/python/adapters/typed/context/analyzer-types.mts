@@ -21,6 +21,7 @@ export type VersionReader = (context: ToolContext) => string;
 
 export type PythonAnalyzer = {
   readonly name: string;
+  readonly inputs: { readonly scope: string };
   readonly publishesModuleImports?: true;
   readonly version: string;
   readonly resolveVersion: (liveProjectRoot: string) => string;
