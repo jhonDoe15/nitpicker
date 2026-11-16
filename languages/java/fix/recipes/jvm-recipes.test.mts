@@ -159,7 +159,7 @@ describe('--fix runs the JVM recipes before the formatter', () => {
       expect(fixed.result.fixedFiles).toEqual([name]);
       expect(fixed.read(`${JAVA}/New.java`)).toBe('class  New {}\n');
       expect(fixed.result.fixedFindings).toEqual([`${name}:4 spring/ddl-auto (spring-ddl-auto)`]);
-      expect((fixed.result.notes ?? []).join('\n')).not.toContain('application.yml');
+      expect(fixed.result.notes?.join('\n')).not.toContain('application.yml');
     },
   );
   it.each(Object.entries(BUILDS))(

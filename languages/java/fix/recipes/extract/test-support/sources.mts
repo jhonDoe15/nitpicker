@@ -31,8 +31,8 @@ function isReplace(edit: RecipeEdit): edit is Replace {
 }
 
 export function applied(text: string, edits: readonly RecipeEdit[]): string {
-  const ascending = edits.filter(isReplace).toSorted((left, right) => left.start - right.start);
-  return ascending.reduceRight(
+  const descending = edits.filter(isReplace).toSorted((left, right) => right.start - left.start);
+  return descending.reduce(
     (result, { start, end, text: replacement }) =>
       `${result.slice(0, start)}${replacement}${result.slice(end)}`,
     text,

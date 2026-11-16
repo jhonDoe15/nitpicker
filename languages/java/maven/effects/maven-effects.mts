@@ -5,7 +5,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../programs/java-command.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
-import type { ToolClasspaths } from '../typed/kotlin-types.mts';
+import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { minimumJava } from '../errorprone/maven-jdk.mts';
 import { moduleEffectsOptions as untypedModuleEffectsOptions } from '../../adapters/effects/effects-options.mjs';
@@ -49,7 +49,7 @@ function insideBuild(
 }
 
 function librariesOf(tools: ToolClasspaths): string[] {
-  return (tools['effects'] ?? []).filter((entry) => existsSync(entry));
+  return resolvedTool(tools, 'effects').filter((entry) => existsSync(entry));
 }
 
 function inputLines({
