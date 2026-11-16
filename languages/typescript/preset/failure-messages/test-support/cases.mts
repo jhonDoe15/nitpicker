@@ -1,11 +1,11 @@
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import path from 'node:path';
 import loggingConfig from '../../eslint-config/policies/logging.config.mts';
 import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mts';
 import type { FailureMessageCase } from './typed/case-types.mts';
 import { domainFailureMessageCases } from './domain-cases.mts';
-import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
+import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mts';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mts';
 import { productionPolicyConfig } from '../../eslint-config/policies/base.mts';
 import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mts';

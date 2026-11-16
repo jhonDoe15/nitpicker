@@ -1,4 +1,4 @@
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import type { ScopeLayout } from '../typed/config-types.mts';
 
 const atomicUpdateRules = {

@@ -6,8 +6,8 @@ import {
 import {
   namingConvention as untypedNamingConvention,
   usesRouteHandlerFramework as untypedUsesRouteHandlerFramework,
-} from '../../../preset/eslint-config/policy/production-policy.mjs';
-import { defaultExportSelectors as untypedDefaultExportSelectors } from '../../../preset/eslint-config/strict/strict-declarations.mjs';
+} from '../../../preset/eslint-config/policy/production-policy.mts';
+import { defaultExportSelectors as untypedDefaultExportSelectors } from '../../../preset/eslint-config/strict/strict-declarations.mts';
 
 const frameworkConventions: (projectRoot: string) => { readonly defaultExports: string[] } =
   untypedFrameworkConventions;

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-production-console.mjs';
+import { rule } from './no-production-console.mts';
 
 const tester = typescriptRuleTester();
 const root = '/repo/src/main/composition-root.ts';

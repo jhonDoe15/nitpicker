@@ -1,4 +1,4 @@
-import { EXCEPTION_ROUTE } from '../../eslint-plugin/test-assertions/weak-assertion/found-text.mjs';
+import { EXCEPTION_ROUTE } from '../../eslint-plugin/test-assertions/weak-assertion/found-text.mts';
 
 const DEFINED = `\`toBeDefined\` passes for any value but undefined. Assert the value itself with \`toBe\` or \`toEqual\`. ${EXCEPTION_ROUTE}`;
 const NOT_UNDEFINED = `\`not.toBeUndefined\` passes for any value but undefined. Assert the value itself with \`toBe\` or \`toEqual\`. ${EXCEPTION_ROUTE}`;

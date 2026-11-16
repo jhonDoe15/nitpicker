@@ -1,4 +1,4 @@
-import { rule } from './no-weak-assertion.mjs';
+import { rule } from './no-weak-assertion.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();

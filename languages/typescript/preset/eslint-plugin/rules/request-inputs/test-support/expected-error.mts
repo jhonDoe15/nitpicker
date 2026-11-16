@@ -1,4 +1,4 @@
-import { rule } from '../no-uncoerced-request-input.mjs';
+import { rule } from '../no-uncoerced-request-input.mts';
 
 function escaped(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);

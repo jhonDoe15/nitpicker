@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { configuredRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './report-module-load-effects.mjs';
+import { rule } from './report-module-load-effects.mts';
 
 const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },

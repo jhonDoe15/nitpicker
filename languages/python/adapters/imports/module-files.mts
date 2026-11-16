@@ -1,6 +1,7 @@
 import type { Dirent } from 'node:fs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { cachedValue } from '../../../../shared/values/caching/cached-value.mts';
 import type { ModuleCaches, ModuleFiles } from './typed/import-scan-types.mts';
 
 const MODULE_FILE = /\.(?:py|pyi|pyw|pyx|pxd|pyc|so|pyd)$/u;
@@ -16,18 +17,8 @@ function projectPath(projectRoot: string, relative: string): string | undefined 
   return full;
 }
 
-function cached<Value>(cache: Map<string, Value>, key: string, compute: () => Value): Value {
-  const known = cache.get(key);
-  if (known !== undefined) {
-    return known;
-  }
-  const value = compute();
-  cache.set(key, value);
-  return value;
-}
-
 function entries(caches: ModuleCaches, directory: string): Dirent[] {
-  return cached(caches.listings, directory, () =>
+  return cachedValue(caches.listings, directory, () =>
     existsSync(directory) ? readdirSync(directory, { withFileTypes: true }) : [],
   );
 }
@@ -45,7 +36,7 @@ function moduleEntry(
 }
 
 function rewires(caches: ModuleCaches, file: string): boolean {
-  return cached(
+  return cachedValue(
     caches.rewiring,
     file,
     () => existsSync(file) && PACKAGE_REWIRING.test(readFileSync(file, 'utf8')),

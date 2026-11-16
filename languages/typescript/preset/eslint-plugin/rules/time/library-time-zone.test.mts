@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-local-time-zone.mjs';
+import { rule } from './no-local-time-zone.mts';
 
 const tester = typescriptRuleTester();
 const LUXON = "import { DateTime } from 'luxon';\n";

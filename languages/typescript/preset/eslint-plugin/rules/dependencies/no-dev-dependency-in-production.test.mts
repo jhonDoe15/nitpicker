@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../../../shared/hygiene/rules.mjs';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-dev-dependency-in-production.mjs';
-import { packageNameOf } from './package-manifest.mjs';
-import { isTestSupportFile } from './test-support.mjs';
+import { rule } from './no-dev-dependency-in-production.mts';
+import { packageNameOf } from './package-manifest.mts';
+import { isTestSupportFile } from './test-support.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dev-dependency-'));
 afterAll(() => {

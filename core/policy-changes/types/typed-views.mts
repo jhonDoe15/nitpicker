@@ -33,7 +33,7 @@ import {
   checksJavascript as untypedChecksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,
 } from '../../../languages/typescript/preset/modules/tsconfig-files.mjs';
-import { checkedJavascriptFiles as untypedCheckedJavascriptFiles } from '../../../languages/typescript/preset/eslint-config/policy/untyped-javascript.mjs';
+import { checkedJavascriptFiles as untypedCheckedJavascriptFiles } from '../../../languages/typescript/preset/eslint-config/policy/untyped-javascript.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
 import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mjs';
 import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mts';
@@ -50,6 +50,9 @@ export type ResolvedLayout = {
   readonly executedTestRoots: readonly string[];
   readonly isSourceFile: (file: string) => boolean;
   readonly isExcluded: (file: string) => boolean;
+  readonly javascript: boolean;
+  readonly typescriptProject?: string | undefined;
+  readonly projectCodeFiles?: (projectRoot: string) => readonly string[];
 };
 
 type Matcher = { readonly test: (file: string) => boolean };

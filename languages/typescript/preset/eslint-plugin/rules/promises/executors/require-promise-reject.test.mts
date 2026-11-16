@@ -4,8 +4,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../../adapters/eslint/normalize.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule as deadlineRule } from './promise-wait-deadline.mjs';
-import { rule } from './require-promise-reject.mjs';
+import { rule as deadlineRule } from './promise-wait-deadline.mts';
+import { rule } from './require-promise-reject.mts';
 
 const tester = typescriptRuleTester();
 const missing = [{ messageId: 'missingReject' }];

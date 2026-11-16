@@ -1,6 +1,6 @@
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import type { EnvironmentScope, Environments } from './typed/environment-types.mts';
-import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mts';
 import { codeExtensions } from '../layout.mjs';
 import { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE } from './resolve-environment.mts';
 

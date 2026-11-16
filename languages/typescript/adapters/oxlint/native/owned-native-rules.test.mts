@@ -1,3 +1,4 @@
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -131,7 +132,7 @@ describe('ownedNativeMessage', () => {
 });
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../../preset/eslint-plugin/index.mjs'))};
+import { nitpickerRules } from ${JSON.stringify(checkoutModuleUrl(new URL('../../../preset/eslint-plugin/index.mjs', import.meta.url)).href)};
 
 export default [
   {

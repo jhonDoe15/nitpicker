@@ -5,6 +5,8 @@ export const QUERY_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/queries/order/no-unordered-query.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/order/query-options.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/query-chains.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/chains/chain-libraries.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/queries/rows/field-visitor.mjs',
   'languages/typescript/preset/eslint-plugin/rules/queries/query-texts.mjs',
   'shared/rules/queries/query-rule-files.mjs',
   'shared/rules/queries/sql-order.mjs',
