@@ -35,7 +35,12 @@ function rootName(node: TSESTree.Node): string | undefined {
 function callStep(current: TSESTree.CallExpression): Found {
   const callee = unwrapped(current.callee);
   if (callee.type === MEMBER) {
-    const step = { name: memberName(callee), args: current.arguments, node: current, isRootCall: false };
+    const step = {
+      name: memberName(callee),
+      args: current.arguments,
+      node: current,
+      isRootCall: false,
+    };
     return { step, next: unwrapped(callee.object) };
   }
   const name = callee.type === AST_NODE_TYPES.Identifier ? callee.name : undefined;

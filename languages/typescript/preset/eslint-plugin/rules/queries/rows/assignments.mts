@@ -27,8 +27,13 @@ function isDateNow(node: TSESTree.CallExpression): boolean {
 }
 
 function rootOf(node: TSESTree.Node): TSESTree.Node {
-  const current = unwrapped(node);
-  return current.type === AST_NODE_TYPES.MemberExpression ? rootOf(current.object) : current;
+  const pending = [unwrapped(node)];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
+      pending.push(unwrapped(current.object));
+    }
+  }
+  return pending.at(-1) ?? node;
 }
 
 function dependentOn(element: string, name: string): Children {
