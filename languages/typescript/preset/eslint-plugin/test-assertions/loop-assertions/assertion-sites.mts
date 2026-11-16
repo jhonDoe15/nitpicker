@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode, type SourceContext } from '../../rules/analysis/constant-resolution.mts';
-import { memoized } from '../../rules/support/memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 import { chainOf } from '../../rules/typed/node-views.mts';
 import { resolvedFunction } from '../unowned-async/hosts.mts';
 import {

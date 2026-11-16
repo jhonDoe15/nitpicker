@@ -30,7 +30,7 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/support/io/packages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/io/summaries.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/io/typed-calls.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/support/memo.mjs',
+  'shared/values/caches/memo.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/no-dual-write.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/no-retry-without-idempotency.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/relays.mjs',

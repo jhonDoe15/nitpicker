@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type TypeScript from 'typescript';
-import { memoized } from '../memo.mts';
+import { memoized } from '../../../../../../../shared/values/caches/memo.mts';
 import { readLayout } from '../../typed/policy-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 

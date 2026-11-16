@@ -2,7 +2,7 @@ import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { typeServices, type Context } from '../security/security-values.mts';
 import { isFillOnce } from '../support/flow/fill-once.mts';
 import { callEffects, chainOuterCall, describePath, ioKind } from '../support/io-effects.mts';
-import { memoized } from '../support/memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 import { heldScope, isOnParameter, scopeLabel } from './held-scopes.mts';
 import type { HeldScope, ScopeKind } from './scopes/scope-types.mts';
 

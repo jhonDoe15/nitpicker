@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mts';
-import { memoized } from '../support/memo.mts';
+import { memoized } from '../../../../../../shared/values/caches/memo.mts';
 import { chainOf, nameOf } from '../typed/node-views.mts';
 import { DEPTHS, memberName, staticKey, unwrapped, type Context } from './security-values.mts';
 
