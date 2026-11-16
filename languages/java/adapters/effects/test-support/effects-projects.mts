@@ -197,6 +197,9 @@ export const KOTLIN_EFFECTS = [
   'HandlerWithoutAuth 42 AccountController.export @PreAuthorize 10/11',
 ];
 
+const SCOPE = 'scope';
+const ENTITY = 'entity';
+
 type Field = (name: string) => unknown;
 
 function joined(field: Field, name: string): string {
@@ -209,16 +212,16 @@ function dotted(field: Field, owner: string, member: string): string {
 
 const KEYED_SUMMARIES: readonly (readonly [string, (field: Field) => unknown[]])[] = [
   ['shape', (field) => [field('shape'), `${textOf(field('declared'))}/${textOf(field('total'))}`]],
-  ['flag', (field) => [dotted(field, 'entity', 'flag'), field('source')]],
-  ['column', (field) => [dotted(field, 'entity', 'column'), field('read')]],
+  ['flag', (field) => [dotted(field, ENTITY, 'flag'), field('source')]],
+  ['column', (field) => [dotted(field, ENTITY, 'column'), field('read')]],
   ['job', (field) => [field('job'), joined(field, 'path')]],
   ['read', (field) => [field('read'), field('write')]],
   ['wrapper', (field) => [field('wrapper'), joined(field, 'path')]],
   ['async', (field) => [field('async')]],
-  ['object', (field) => [field('scope'), field('object'), field('write')]],
+  ['object', (field) => [field(SCOPE), field('object'), field('write')]],
   ['framework', (field) => [field('framework'), joined(field, 'path')]],
-  ['scope', (field) => [field('scope'), joined(field, 'path')]],
-  ['property', (field) => [field('origin'), dotted(field, 'entity', 'property')]],
+  [SCOPE, (field) => [field(SCOPE), joined(field, 'path')]],
+  ['property', (field) => [field('origin'), dotted(field, ENTITY, 'property')]],
 ];
 
 function restOf(field: Field): unknown[] {
@@ -226,7 +229,7 @@ function restOf(field: Field): unknown[] {
     'form',
     'path',
     'origin',
-    'entity',
+    ENTITY,
     'relation',
   ].map(field);
   if (entity === undefined && form !== undefined && origin !== undefined) {
@@ -236,7 +239,7 @@ function restOf(field: Field): unknown[] {
     return [form, origin, entity];
   }
   if (origin !== undefined) {
-    return [origin, dotted(field, 'entity', 'relation')];
+    return [origin, dotted(field, ENTITY, 'relation')];
   }
   if (form === undefined && calls !== undefined) {
     return [joined(field, 'path')];
@@ -244,8 +247,12 @@ function restOf(field: Field): unknown[] {
   return [form, calls === undefined ? field('variable') : joined(field, 'path')];
 }
 
+function fieldReader(violation: unknown): Field {
+  return (name) => fieldOf(violation, name);
+}
+
 function summaryOf(violation: unknown): string {
-  const field: Field = (name) => fieldOf(violation, name);
+  const field = fieldReader(violation);
   const keyed = KEYED_SUMMARIES.find(([name]) => field(name) !== undefined);
   const details = keyed === undefined ? restOf(field) : keyed[1](field);
   return [field('rule'), field('line'), field('method'), ...details]
