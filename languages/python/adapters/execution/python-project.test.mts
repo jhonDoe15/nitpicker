@@ -6,7 +6,7 @@ import {
   detectTargetVersion,
   detectTypeCheckers,
   importRoots,
-} from './python-project.mjs';
+} from './python-project.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 

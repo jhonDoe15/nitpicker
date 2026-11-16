@@ -5,8 +5,8 @@ import { kotlinStyleFiles as untypedKotlinStyleFiles } from '../../../languages/
 import {
   mutationConfigFiles as untypedMutationConfigFiles,
   pythonConfigFiles as untypedPythonConfigFiles,
-} from '../../../languages/python/adapters/project-tools/config-files.mjs';
-import { formatterChoiceFiles as untypedFormatterChoiceFiles } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
+} from '../../../languages/python/adapters/project-tools/config-files.mts';
+import { formatterChoiceFiles as untypedFormatterChoiceFiles } from '../../../languages/go/adapters/formatting/go-formatters.mts';
 import {
   applyLayout as untypedApplyLayout,
   applyLegacyInventory as untypedApplyLegacyInventory,

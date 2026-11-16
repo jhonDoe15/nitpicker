@@ -6,7 +6,7 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { createScratch } from '../test-support/scratch.mts';
-import { NON_PRODUCTION_GLOBS } from './python-sources.mjs';
+import { NON_PRODUCTION_GLOBS } from './python-sources.mts';
 import {
   existingSourceRoots,
   functionText,

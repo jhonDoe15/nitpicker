@@ -1,3 +1,5 @@
+import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from 'node:child_process';
+import type { Environment } from '../../../shared/processes/environment.mts';
 export type Position = Readonly<Record<'line' | 'column', number>>;
 export type CoverBlock = {
   readonly start: Position;
@@ -92,6 +94,8 @@ export type InspectReport = {
   readonly definitions: readonly GoDefinition[];
   readonly usages: readonly GoUsage[];
   readonly docComments?: readonly DocComment[] | undefined;
+  readonly errors?: readonly unknown[] | undefined;
+  readonly skipped?: readonly string[] | undefined;
   readonly design?: GoDesign | undefined;
 };
 export type GoPackages = {
@@ -155,22 +159,44 @@ export type TestRun = {
   readonly buildFailures: readonly string[];
   readonly testsRan: boolean;
 };
+export type ProcessResult = {
+  stdout?: string;
+  stderr?: string;
+  status?: SpawnSyncReturns<string>['status'];
+  error?: NodeJS.ErrnoException;
+};
 export type Spawn = (
   program: string,
   args: readonly string[],
-  options: object,
-) => { stdout?: string; stderr?: string; error?: Error };
+  options: SpawnSyncOptionsWithStringEncoding,
+) => ProcessResult;
 export type GoPolicy = {
   readonly exceptions?: readonly unknown[] | undefined;
   readonly fileLimits?:
     { readonly folderDepth?: number; readonly [field: string]: unknown } | undefined;
   readonly crapLimit?: number | undefined;
+  readonly duplicateSkippedFolders?: readonly string[] | undefined;
+  readonly snapshot?: string | undefined;
+  readonly baselineRoot?: string | undefined;
+  readonly testSeconds?: unknown;
+  readonly exclude?: readonly string[] | undefined;
+  readonly toolPrecedence?: Readonly<Record<string, readonly string[] | undefined>> | undefined;
+  readonly policyRoot?: string | undefined;
   readonly layout?: unknown;
   readonly testConsole?: unknown;
   readonly protocols?: unknown;
   readonly conventions?: unknown;
   readonly baselineMovesFile?: string | undefined;
   readonly [field: string]: unknown;
+};
+export type GoSettings = {
+  readonly buildTags?: readonly string[] | undefined;
+  readonly formatters?: readonly string[] | undefined;
+  readonly [field: string]: unknown;
+};
+export type GoFormatting = {
+  readonly formatters: readonly string[];
+  readonly from: string | undefined;
 };
 export type GoContext = {
   readonly projectRoot: string;
@@ -180,7 +206,16 @@ export type GoContext = {
   readonly module: string;
   readonly snapshot: string;
   readonly testSeconds?: unknown;
-  readonly settings: { readonly [field: string]: unknown };
+  readonly settings: GoSettings;
+  readonly environment: Environment;
+  readonly spawn?: Spawn | undefined;
+  projectGoFlags?: string | undefined;
+  readonly analyzerDeadlineMs?: number | undefined;
+  readonly toolPrecedence?: Readonly<Record<string, readonly string[] | undefined>> | undefined;
+  readonly policyRoot: string;
+  readonly exclude: readonly string[];
+  readonly formatting: GoFormatting;
+  readonly duplicateSkippedFolders?: readonly string[] | undefined;
   readonly [field: string]: unknown;
 };
 export type FindingRow = {
@@ -193,3 +228,42 @@ export type FindingRow = {
   readonly [field: string]: unknown;
 };
 export type ToolFailure = Pick<FindingRow, 'rule' | 'message'>;
+export type Diagnostic = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly file: string;
+  readonly line: number;
+  readonly column?: number | undefined;
+  readonly message: string;
+  readonly classification?: string;
+};
+export type SourcePosition = Pick<Diagnostic, 'file' | 'line' | 'column'>;
+export type TestEvent = {
+  readonly Action: string;
+  readonly Package?: string | undefined;
+  readonly ImportPath?: string | undefined;
+  readonly Test?: string | undefined;
+  readonly Output?: string | undefined;
+  readonly Error?: string | undefined;
+  readonly Elapsed?: number | undefined;
+  readonly FailedBuild?: string | undefined;
+};
+export type ParsedTestRun = TestRun & { readonly events: number };
+type RaceFrame = {
+  readonly function: string;
+  readonly full: string;
+  readonly file?: string;
+  readonly line?: number;
+};
+export type RaceAccess = RaceFrame & { readonly kind: string };
+export type RaceReport = { readonly accesses: readonly RaceAccess[]; readonly test: string };
+export type RaceCheck = {
+  readonly checked: boolean;
+  readonly reason?: string;
+  readonly raceOnly?: readonly { readonly id: string; readonly package: string }[];
+};
+export type RunContext = ToolContext & Pick<GoContext, 'reportRoot' | 'settings'>;
+export type ToolContext = Pick<
+  GoContext,
+  'projectRoot' | 'environment' | 'spawn' | 'analyzerDeadlineMs' | 'projectGoFlags'
+>;

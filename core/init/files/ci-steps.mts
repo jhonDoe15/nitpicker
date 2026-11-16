@@ -5,7 +5,7 @@ import { requiredPythonPeers } from '../peers/python-peers.mts';
 import {
   condaEnvironmentName,
   condaFile,
-} from '../../../languages/python/adapters/execution/environments/managed.mjs';
+} from '../../../languages/python/adapters/execution/environments/managed.mts';
 import type { InitProject, NodeManager, WorkflowContext } from '../init-types.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { pythonVersion } from './workflow/python-version.mts';

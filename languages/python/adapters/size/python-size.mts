@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
-import { CLASSES_REPORT } from '../analysis/python-structure.mjs';
+import { CLASSES_REPORT } from '../analysis/python-structure.mts';
 import type {
   ClassEntry,
   ClassesReport,

@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
-import { newerToolchain, sourceHash } from './go-tools.mjs';
+import { newerToolchain, sourceHash } from './go-tools.mts';
 
 describe('the toolchain the lint program builds with', () => {
   it.each([

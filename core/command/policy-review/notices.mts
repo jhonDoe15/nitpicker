@@ -13,8 +13,8 @@ import {
   type OutsideProject,
   pythonOutsideRootsNotices,
 } from '../../../languages/python/adapters/notices/outside-roots-notice.mts';
-import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
-import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
+import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mts';
+import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
 import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
 import {
@@ -24,7 +24,7 @@ import {
 
 import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
-import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 
 const EXCLUDE_KEY = 'exclude';
 
@@ -44,8 +44,9 @@ const coChangeNoticesOf: (request: {
   readonly ref: unknown;
   readonly changedPaths: readonly string[];
 }) => readonly string[] = coChangeNotices;
-const sourceRootsOf: (projectRoot: string, declared: unknown) => readonly string[] =
-  detectSourceRoots;
+function sourceRootsOf(projectRoot: string, declared: unknown): readonly string[] {
+  return detectSourceRoots(projectRoot, Array.isArray(declared) ? declared.map(textOf) : undefined);
+}
 const layoutRootKeys: readonly string[] = LAYOUT_ROOT_KEYS;
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);

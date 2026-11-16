@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { pythonRestatingDocstringRecipe as recipe } from './typed/recipe-views.mts';
 import type { TextEdit } from './typed/recipe-views.mts';
+import type { DocComment } from '../typed/fix-types.mts';
 
-function apply(text: string, comments: object[], inputs: object = {}) {
+function apply(text: string, comments: DocComment[], inputs: object = {}) {
   const { fixes } = recipe.plan({
     files: [{ path: 'shop/a.py', text }],
+    read: () => text,
+    projectRoot: '/',
+    accepts: () => true,
     inputs: { pythonDocstrings: { 'shop/a.py': comments }, ...inputs },
   });
   const edits = fixes
@@ -24,7 +28,7 @@ function comment(name: string, line: number, extra: object = {}) {
   return {
     name,
     line,
-    span: [line, line],
+    span: [line, line] as const,
     only: false,
     lines: [`${name}.`],
     detailed: false,
@@ -115,6 +119,14 @@ describe('pythonRestatingDocstringRecipe', () => {
   });
 
   it('plans nothing for a file with no scan result', () => {
-    expect(recipe.plan({ files: [{ path: 'a.py', text: '' }], inputs: {} }).fixes).toEqual([]);
+    expect(
+      recipe.plan({
+        files: [{ path: 'a.py', text: '' }],
+        read: () => '',
+        projectRoot: '/',
+        accepts: () => true,
+        inputs: {},
+      }).fixes,
+    ).toEqual([]);
   });
 });
