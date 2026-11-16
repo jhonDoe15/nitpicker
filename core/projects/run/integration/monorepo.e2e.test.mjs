@@ -162,7 +162,11 @@ describe.skipIf(!pythonE2eEnabled)(
     it('runs the Gradle module when it changes and skips the others', () => {
       const result = gate(root, 'svc-only');
 
-      expect(statuses(result)).toEqual({ web: 'skipped', api: 'skipped', svc: 'passed' });
+      expect(statuses(result), result.text).toEqual({
+        web: 'skipped',
+        api: 'skipped',
+        svc: 'passed',
+      });
       expect(result.exitCode).toBe(0);
       expect(linesStarting(result, '== ')).toEqual(['== svc (java) ==']);
       const names = result.json('svc/summary.json').tools.map(({ name }) => name);
