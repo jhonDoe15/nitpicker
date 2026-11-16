@@ -1,5 +1,5 @@
 import { afterAll } from 'vitest';
-import { rule } from './no-service-locator.mjs';
+import { rule } from './no-service-locator.mts';
 import {
   MAIL,
   createLocatorProject,

@@ -1,12 +1,12 @@
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
+import { limitedList } from '../../messages/format/limited-list.mjs';
 import { byText } from '../../text-order/by-text.mjs';
 
 const LISTED = 5;
 
 export function listed(items) {
-  const shown = items.slice(0, LISTED).join(', ');
-  return items.length > LISTED ? `${shown} and ${String(items.length - LISTED)} more` : shown;
+  return limitedList(items, LISTED);
 }
 
 export function sortedBy(entries, keyOf) {

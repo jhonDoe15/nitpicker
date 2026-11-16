@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-unisolated-job-loop.mjs';
+import { rule } from './no-unisolated-job-loop.mts';
 
 const nest = "import { Cron, Interval, Timeout } from '@nestjs/schedule';\n";
 const bull = "import { Processor, Process } from '@nestjs/bull';\n";

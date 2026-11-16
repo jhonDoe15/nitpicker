@@ -2,7 +2,7 @@ import type { FailureMessageCase } from '../typed/case-types.mts';
 import {
   productionLayoutConfigFor,
   productionPolicyConfigFor,
-} from '../../../eslint-config/policy/production-policy.mjs';
+} from '../../../eslint-config/policy/production-policy.mts';
 import { strictSyntaxConfigFor } from '../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../layout.mjs';
 

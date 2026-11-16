@@ -1,6 +1,6 @@
-import { rule as noTestRetry } from './no-test-retry.mjs';
-import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
-import { typescriptRuleTester } from '../test-support/rule-tester.mts';
+import { rule as noTestRetry } from './no-test-retry.mts';
+import { withoutFixes } from '../../eslint-config/rule-hints.mts';
+import { ruleModule, typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 
@@ -12,7 +12,7 @@ const invalid = (code: string, count = 1) => ({
   errors: Array.from({ length: count }, () => ({ messageId: 'retry' })),
 });
 
-ruleTester.run('no-test-retry', withoutFixes(noTestRetry), {
+ruleTester.run('no-test-retry', withoutFixes(ruleModule(noTestRetry)), {
   valid: [
     "it('runs', () => {});",
     "it('runs', { timeout: 5000 }, () => {});",

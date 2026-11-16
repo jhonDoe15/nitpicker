@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-singular-and-plural-prop.mjs';
+import { rule } from './no-singular-and-plural-prop.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/ui/panel.tsx';
@@ -105,6 +105,10 @@ tester.run('no-singular-and-plural-prop', rule, {
     },
     {
       code: 'const Panel: React.FC<{ id?: string; ids?: string[] }> = () => <div />;',
+      errors: [pair('id', 'ids')],
+    },
+    {
+      code: "const Panel: import('react').FC<{ id?: string; ids?: string[] }> = () => <div />;",
       errors: [pair('id', 'ids')],
     },
     {

@@ -1,6 +1,6 @@
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-retry-without-idempotency.mjs';
+import { rule } from './no-retry-without-idempotency.mts';
 
 const pRetry = "import pRetry from 'p-retry';\n";
 const insert = "db.query('INSERT INTO orders (id) VALUES ($1)', [id])";

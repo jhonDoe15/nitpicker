@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-unatomic-writes.mjs';
+import { rule } from './no-unatomic-writes.mts';
 
 const ALL = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize', 'mikro'];
 const forms = (orms, opensTransactions = true) => [{ orms, opensTransactions }];

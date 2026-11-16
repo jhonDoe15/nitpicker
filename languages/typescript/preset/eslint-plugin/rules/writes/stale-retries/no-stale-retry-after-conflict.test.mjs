@@ -1,5 +1,5 @@
 import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-stale-retry-after-conflict.mjs';
+import { rule } from './no-stale-retry-after-conflict.mts';
 
 const HEAD = [
   "import { OptimisticLockVersionMismatchError } from 'typeorm';",

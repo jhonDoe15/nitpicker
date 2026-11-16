@@ -5,7 +5,7 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from './test-support/finding-comparison.mts';
-import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../preset/eslint-plugin/index.mts';
 import { normalizeEslintResults } from './normalize.mts';
 
 const RULE = 'nitpicker/no-unused-dom-environment';

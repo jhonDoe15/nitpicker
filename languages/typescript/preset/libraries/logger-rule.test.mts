@@ -1,4 +1,4 @@
-import { structuredCatchLoggingRule } from '../eslint-plugin/rules/errors/structured-catch-logging.mjs';
+import { structuredCatchLoggingRule } from '../eslint-plugin/rules/errors/structured-catch-logging.mts';
 import { createTester } from './test-support/rule-tester.mts';
 
 const tester = createTester();

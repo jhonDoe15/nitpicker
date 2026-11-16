@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { detectConventions } from '../../../../../shared/conventions/detect.mjs';
-import { SOFT_DELETE_FILTERS_CONVENTION, softDeleteFilterEntries } from './soft-delete-filters.mjs';
+import { SOFT_DELETE_FILTERS_CONVENTION, softDeleteFilterEntries } from './soft-delete-filters.mts';
 
 const accepts = (_definition, file) => !/\.test\.|^test\//u.test(file);
 

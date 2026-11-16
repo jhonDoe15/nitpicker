@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule as noWeakHash } from './no-weak-hash.mjs';
+import { rule as noWeakHash } from './no-weak-hash.mts';
 
 const tester = typescriptRuleTester();
 const weak = (algorithm: string) => [{ messageId: 'weakHash', data: { algorithm } }];

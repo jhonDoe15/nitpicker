@@ -1,5 +1,5 @@
 import { typedIoProject } from '../../../test-support/projects/typed-io-project.mts';
-import { rule } from './no-loaded-rows-saved-back.mjs';
+import { rule } from './no-loaded-rows-saved-back.mts';
 
 const STORE = [
   "import { Entity, Column, Model, OneToMany } from 'typeorm';",

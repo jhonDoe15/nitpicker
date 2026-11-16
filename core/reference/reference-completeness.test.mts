@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nitpickerRules as untypedNitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import {
   reactRuleIds as untypedReactRuleIds,
@@ -39,7 +39,6 @@ import { parseJson, textsOf } from '../../shared/values/readers.mts';
 
 type Hint = { tool: string; rules?: unknown; prefix?: unknown };
 
-const nitpickerRules: { rules: Readonly<Record<string, unknown>> } = untypedNitpickerRules;
 const i18nRuleIds: readonly string[] = untypedI18nRuleIds;
 const reactRuleIds: readonly string[] = untypedReactRuleIds;
 const reactTestRuleIds: readonly string[] = untypedReactTestRuleIds;
