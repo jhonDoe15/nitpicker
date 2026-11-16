@@ -30,8 +30,8 @@ import {
 } from '../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
-import { javaFormat, javaFormatterPlan } from './java-format.mjs';
-import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
+import { javaFormat, javaFormatterPlan } from './java-format.mts';
+import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mts';
 import { defineRecipes } from '../../../core/fix/engine/recipes.mjs';
 import { errorPronePatch } from './errorprone/run/error-prone-step.mjs';
 import { errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mjs';

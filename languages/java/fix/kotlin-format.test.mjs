@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
+import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mts';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
 
 const PINNED = { ktlint: '1.8.0', ktfmt: '0.64' };
