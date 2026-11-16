@@ -1,4 +1,4 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -96,6 +96,48 @@ describe('project imports from the dependency graph', () => {
     ]);
     expect(disabled).not.toHaveProperty('moduleImports');
     expect(disabled.findings).toEqual(enabled.findings);
+  });
+
+  it('follows package-name imports of workspace packages to their source files', async () => {
+    const projectRoot = projectWith({
+      'package.json': '{"name":"r","type":"module","private":true,"workspaces":["packages/*"]}\n',
+      'packages/invoicing/package.json': '{"name":"@acme/invoicing","main":"src/index.ts"}\n',
+      'packages/invoicing/src/index.ts': 'export const total = (): number => 1;\n',
+      'packages/ledger/package.json':
+        '{"name":"@acme/ledger","exports":{".":{"import":"./dist/esm/index.js"}}}\n',
+      'packages/ledger/src/index.ts': 'export const sum = (): number => 1;\n',
+      'packages/tax/package.json': '{"name":"@acme/tax","main":"bundle/tax.cjs"}\n',
+      'packages/tax/src/rates.ts': 'export const rate = (): number => 1;\n',
+      'packages/billing/package.json': '{"name":"@acme/billing"}\n',
+      'packages/billing/src/invoice.ts': [
+        "import { total } from '@acme/invoicing';",
+        "import { sum } from '@acme/ledger';",
+        "import { rate } from '@acme/tax';",
+        "import { refund } from './refunds/refund.js';",
+        'export const invoice = (): number => total() + sum() + rate() + refund();',
+        '',
+      ].join('\n'),
+      'packages/billing/src/refunds/refund.ts': 'export const refund = (): number => 1;\n',
+    });
+    mkdirSync(path.join(projectRoot, 'node_modules/@acme'), { recursive: true });
+    for (const name of ['invoicing', 'ledger', 'tax']) {
+      symlinkSync(`../../packages/${name}`, path.join(projectRoot, `node_modules/@acme/${name}`));
+    }
+    const policyFile = path.join(path.dirname(projectRoot), 'policy.json');
+    writeFileSync(
+      policyFile,
+      JSON.stringify({ history: { coChange: true }, layout: { sourceRoots: ['packages'] } }),
+    );
+    vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+
+    const { moduleImports } = await coupling(projectRoot);
+
+    expect(moduleImports).toEqual([
+      { from: 'packages/billing/src/invoice.ts', package: 'packages/tax' },
+      { from: 'packages/billing/src/invoice.ts', to: 'packages/billing/src/refunds' },
+      { from: 'packages/billing/src/invoice.ts', to: 'packages/invoicing/src' },
+      { from: 'packages/billing/src/invoice.ts', to: 'packages/ledger/src' },
+    ]);
   });
 
   it('counts an import naming the .ts file as runtime when tsconfig rewrites import extensions', async () => {

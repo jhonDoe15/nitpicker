@@ -81,6 +81,9 @@ function runIt(fixers: string): string {
       'folder or the full messages instead of running again. It names the run it shows and warns ' +
       'when the working tree changed since. It exits 0 when that run passed, 1 when it did not ' +
       'and 2 when there is no report.',
+    'In a monorepo, `npx nitpicker` at the top runs every project your change touches. ' +
+      '`--project <path>` (repeatable) checks only the named projects; running it inside a ' +
+      'project folder checks that project alone.',
   ]);
 }
 

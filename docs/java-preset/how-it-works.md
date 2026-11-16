@@ -32,7 +32,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
   an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
   `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
-  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. A top build
+  that only includes builds with Java or Kotlin code is a monorepo: each included build is gated as
+  a project of its own (see [Monorepos](../usage.md#monorepos)), and a run inside a build where no
+  project applies the plugin names the included builds and the `projects` list that gates them. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies. A
   comparison narrows this to the affected projects, see

@@ -1,23 +1,22 @@
-import path from 'node:path';
-import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../shared/config.mjs';
-import { existsSync, readFileSync } from 'node:fs';
-import { validateConfig, KEYS } from './validate.mts';
+import { configError } from '../../shared/config.mjs';
+import { KEYS } from './validate.mts';
+import { readLayeredConfig } from './layers/read-layered.mts';
 import {
   rejectMissingBuildFiles,
   rejectUndeclaredPreset,
   rejectUnreadableSources,
 } from './project-checks/project-check-views.mts';
-import {
-  listNames,
-  rejectMissingConfiguredBuild,
-  withCanonicalRules,
-  withKotlinRuleAliases,
-} from './views/config-views.mts';
+import { listNames, rejectMissingConfiguredBuild } from './views/config-views.mts';
 import { textsOf } from '../../shared/values/readers.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 
-export function loadConfig(projectRoot: string): NitpickerConfig {
-  const config = readConfigFile(projectRoot);
+export type ConfigReadOptions = {
+  readonly overlay?: ProjectOverlay | undefined;
+  readonly repositoryRoot?: string | undefined;
+};
+
+export function loadConfig(projectRoot: string, options?: ConfigReadOptions): NitpickerConfig {
+  const config = readConfigFile(projectRoot, options);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
   rejectMissingBuildFiles(config, projectRoot);
@@ -25,25 +24,9 @@ export function loadConfig(projectRoot: string): NitpickerConfig {
   return config;
 }
 
-export function readConfigFile(projectRoot: string): NitpickerConfig {
-  const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
-  if (!existsSync(configPath)) {
-    return {};
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    throw new Error(
-      `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error },
-    );
-  }
-  return withoutSchemaKey(validateConfig(withCanonicalRules(withKotlinRuleAliases(parsed))));
-}
-
-function withoutSchemaKey(config: NitpickerConfig): NitpickerConfig {
-  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
+export function readConfigFile(projectRoot: string, options?: ConfigReadOptions): NitpickerConfig {
+  const layered: NitpickerConfig = readLayeredConfig(projectRoot, options);
+  return layered;
 }
 
 type ConfigurableAnalyzer = {
