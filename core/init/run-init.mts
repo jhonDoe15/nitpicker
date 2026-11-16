@@ -16,8 +16,8 @@ import { planPeers } from './peers/peer-plan.mts';
 import { skillSource } from './skill/skill-source.mts';
 import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mts';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mts';
-import { monorepoLayout } from './monorepo/monorepo-layout.mts';
 import { runMonorepoInit } from './monorepo/run-monorepo-init.mts';
+import type { MonorepoLayoutOf } from './monorepo/monorepo-types.mts';
 import type { TextOutput } from '../cli-context.mts';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
 
@@ -26,6 +26,7 @@ type InitCli = {
   readonly stdout: TextOutput;
   readonly nodeVersion?: string;
   readonly currentProjectRoot?: string | undefined;
+  readonly monorepoLayout?: MonorepoLayoutOf | undefined;
 };
 
 type InitOptions = { readonly agentsMd: boolean; readonly ci: readonly string[] };
@@ -75,7 +76,7 @@ export function runInitCommand(cli: InitCli): number {
     return 0;
   }
   const run = prepared(cli, options);
-  const layout = monorepoLayout(run.projectRoot, run.repository);
+  const layout = cli.monorepoLayout?.(run.projectRoot, run.repository);
   if (layout === undefined) {
     return initProject(cli, run);
   }

@@ -1,25 +1,14 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { detectedPreset } from '../../configuration/project-checks/preset-detection.mjs';
-import { inspectRepository } from '../../projects/plan/inspect.mts';
-import { suggestedProjects } from '../../projects/plan/suggested-projects.mjs';
-import { existingConfig } from '../files/config-file.mts';
-
-export type Member = {
-  readonly path: string;
-  readonly folder: string;
-  readonly absolute: string;
-  readonly preset: string;
-  readonly declared: boolean;
-};
-
-export type ProjectEntry = { readonly path: string; readonly preset: string };
-
-export type MonorepoLayout = {
-  readonly source: string;
-  readonly members: readonly Member[];
-  readonly entries: readonly ProjectEntry[];
-};
+import { inspectRepository } from '../plan/inspect.mts';
+import { suggestedProjects } from '../plan/suggested-projects.mjs';
+import { existingConfig } from '../../init/files/config-file.mts';
+import type {
+  Member,
+  MonorepoLayout,
+  ProjectEntry,
+} from '../../init/monorepo/monorepo-types.mts';
 
 type PlanMember = {
   readonly path: string;

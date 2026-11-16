@@ -16,11 +16,12 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
+  useRepositories,
   write,
 } from '../../../../languages/python/adapters/e2e/test-support/python-e2e-support.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+const { repository, removeRepositories } = useRepositories();
 
 const languages = path.resolve(import.meta.dirname, '../../../../languages');
 const PACKAGES = ['-e', '.', 'coverage', 'mypy', 'pytest', 'ruff'];
