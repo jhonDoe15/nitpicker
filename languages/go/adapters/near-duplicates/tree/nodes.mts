@@ -8,6 +8,8 @@ import {
   at,
   field,
   fields,
+  isList,
+  labelledAt,
   literal,
   numberText,
   opaque,
@@ -16,7 +18,7 @@ import {
   required,
 } from '../../../../java/adapters/near-duplicates/tree/nodes.mts';
 import type { GoContext } from '../types/go-types.mts';
-import { listOf } from '../types/go-views.mts';
+import { listOf } from '../../../../java/adapters/near-duplicates/jvm-views.mts';
 
 const BLOCK = 'block';
 
@@ -25,6 +27,8 @@ export {
   at,
   field,
   fields,
+  isList,
+  labelledAt,
   listOf,
   literal,
   numberText,

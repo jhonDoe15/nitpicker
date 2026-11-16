@@ -9,6 +9,7 @@ import {
   field,
   fields,
   grouped,
+  labelledAt,
   present,
   required,
   typeNode,
@@ -48,11 +49,6 @@ function forPart(sources: readonly Node[], context: BaseContext): PlacedNode[] {
       ? declarationsOf(source, context)
       : [at(EVALUATE_KIND, source, [context.get(source)])],
   );
-}
-
-function labelled(kind: string, source: Node): PlacedNode {
-  const [label] = codeChildren(source);
-  return at({ kind, ...(label === undefined ? {} : { value: label.text }) }, source);
 }
 
 function switchBody(source: Node, context: BaseContext): PlacedNode[] {
@@ -138,8 +134,8 @@ export const STATEMENTS: Readonly<Record<string, Converter>> = {
     ]),
   return_statement: (source, context) => at('return', source, [optionalChild(source, context)]),
   throw_statement: (source, context) => at('throw', source, [optionalChild(source, context)]),
-  break_statement: (source) => labelled('break', source),
-  continue_statement: (source) => labelled('continue', source),
+  break_statement: (source) => labelledAt('break', source, codeChildren(source)[0]),
+  continue_statement: (source) => labelledAt('continue', source, codeChildren(source)[0]),
   for_statement: (source, context) =>
     at('for', source, [
       at(BLOCK_KIND, source, forPart(fields(source, 'init'), context)),

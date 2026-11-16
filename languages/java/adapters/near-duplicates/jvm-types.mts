@@ -89,7 +89,7 @@ export type Unit = {
   readonly imports: UnitImports;
 };
 
-export type UnitImports = {
+type UnitImports = {
   readonly names: readonly string[];
   readonly stars: readonly string[];
   readonly classes: readonly string[];

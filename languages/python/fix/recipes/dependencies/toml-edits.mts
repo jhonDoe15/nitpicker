@@ -1,3 +1,4 @@
+import { lineEndingOf } from '../../../../../core/fix/typed/fix-views.mts';
 import { lineStartOf as untypedLineStartOf } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
 import type {
   TextEdit,
@@ -23,10 +24,6 @@ function endOfContent(text: string, offset: number): number {
 
 function indentOf(text: string, offset: number): string {
   return /^[ \t]*/u.exec(text.slice(lineStartOf(text, offset), offset))?.[0] ?? '';
-}
-
-function lineEndingOf(text: string): string {
-  return text.includes('\r\n') ? '\r\n' : '\n';
 }
 
 function quoted(requirement: string): string {

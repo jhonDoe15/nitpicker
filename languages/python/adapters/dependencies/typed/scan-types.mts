@@ -1,8 +1,8 @@
 import {
   fieldOf,
-  fieldsOf,
   listOf,
   parseJson,
+  textListsOf,
   textOf,
   textsOf,
 } from '../../../../../shared/values/readers.mts';
@@ -31,20 +31,14 @@ function numbersOf(value: unknown): number[] {
   return listOf(value).filter((entry): entry is number => typeof entry === 'number');
 }
 
-function groupsOf(value: unknown): Record<string, string[]> {
-  return Object.fromEntries(
-    Object.entries(fieldsOf(value)).map(([name, found]) => [name, textsOf(found)]),
-  );
-}
-
 export function scanOf(value: unknown): DistributionScan {
   const importable = fieldOf(value, 'importable');
   return {
     python: numbersOf(fieldOf(value, 'python')),
-    modules: groupsOf(fieldOf(value, 'modules')),
+    modules: textListsOf(fieldOf(value, 'modules')),
     stdlib: textsOf(fieldOf(value, 'stdlib')),
     entryPoints: textsOf(fieldOf(value, 'entryPoints')),
-    optional: groupsOf(fieldOf(value, 'optional')),
+    optional: textListsOf(fieldOf(value, 'optional')),
     references: textsOf(fieldOf(value, 'references')),
     ...(Array.isArray(importable) ? { importable: textsOf(importable) } : {}),
   };

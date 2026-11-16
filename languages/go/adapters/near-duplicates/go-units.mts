@@ -6,6 +6,7 @@ import {
   at,
   codeChildren,
   field,
+  isList,
   isStatementNode,
   opaque,
   present,
@@ -24,7 +25,11 @@ import type {
   GoUnit,
   UnitParts,
 } from './types/go-types.mts';
-import { depthFirst, uniqueNames, withSnippet } from './types/go-views.mts';
+import {
+  depthFirst,
+  uniqueNames,
+  withSnippet,
+} from '../../../java/adapters/near-duplicates/jvm-views.mts';
 import { importsOf } from './file-scope.mts';
 
 const NAME = 'name';
@@ -51,10 +56,6 @@ function nameNode(source: Node, names: Resolution, file: FileNames): GoNameNode 
         value,
         ...(names.addressed.has(value) ? { addressTaken: true as const } : {}),
       };
-}
-
-function isList(value: Converted): value is readonly ShapeNode[] {
-  return Array.isArray(value);
 }
 
 function convertedTree(root: Node, file: FileNames): GoContext {

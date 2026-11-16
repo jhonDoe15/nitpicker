@@ -6,16 +6,16 @@ import { afterAll } from 'vitest';
 import { typescriptRuleTester, type TypedRuleTester } from '../../../test-support/rule-tester.mts';
 
 type ExpectedError = { messageId: string; data: Record<string, string> };
-type TypedCase = { filename: string; code: string };
-type TypedCaseWithErrors = TypedCase & { errors: ExpectedError[] };
+export type TypedCase = { filename: string; code: string };
+export type TypedCaseWithErrors = TypedCase & { errors: ExpectedError[] };
 
-export function decidedTester(): {
+export function decidedTester(extraOptions: Record<string, string> = {}): {
   tester: TypedRuleTester;
   typed: {
     (code: string): TypedCase;
     (code: string, errors: ExpectedError[]): TypedCaseWithErrors;
   };
-  error: (messageId: string, condition: string, reason: string) => ExpectedError;
+  error: (messageId: string, condition: string, reason?: string) => ExpectedError;
 } {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-decided-flow-')));
   writeFileSync(
@@ -28,6 +28,7 @@ export function decidedTester(): {
         noEmit: true,
         types: [],
         lib: ['ES2022'],
+        ...extraOptions,
       },
       include: ['src'],
     }),
@@ -44,8 +45,8 @@ export function decidedTester(): {
     writeFileSync(file, code);
     return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
   }
-  function error(messageId: string, condition: string, reason: string): ExpectedError {
-    return { messageId, data: { condition, reason } };
+  function error(messageId: string, condition: string, reason?: string): ExpectedError {
+    return { messageId, data: reason === undefined ? { condition } : { condition, reason } };
   }
   return { tester, typed, error };
 }

@@ -4,6 +4,7 @@ import { DRIZZLE, moduleScope, type OrmBinding } from '../database/orm-modules.m
 import { memberName, staticKey, unwrapped, type Context } from '../security/security-values.mts';
 import { type MemberCall } from '../events/emitter-creations.mts';
 import { chainOf } from '../typed/node-views.mts';
+import { isCallExpression } from '../typed/syntax-views.mts';
 
 export type QueryScope = {
   readonly context: Context;
@@ -39,18 +40,14 @@ export function queryScope(context: Context): QueryScope {
   return { context, families: scope.families, orm: scope.families.size > 0 || prisma };
 }
 
-function isCall(node: TSESTree.Node): node is TSESTree.CallExpression {
-  return node.type === AST_NODE_TYPES.CallExpression;
-}
-
 function isMemberCall(node: TSESTree.Node): node is MemberCall {
-  return isCall(node) && node.callee.type === AST_NODE_TYPES.MemberExpression;
+  return isCallExpression(node) && node.callee.type === AST_NODE_TYPES.MemberExpression;
 }
 
 export function callChain(node: TSESTree.Node): TSESTree.CallExpression[] {
   return chainOf<TSESTree.Node>(unwrapped(node), (current) =>
     isMemberCall(current) ? unwrapped(current.callee.object) : undefined,
-  ).filter(isCall);
+  ).filter(isCallExpression);
 }
 
 function isAggregateSelect(call: TSESTree.CallExpression): boolean {

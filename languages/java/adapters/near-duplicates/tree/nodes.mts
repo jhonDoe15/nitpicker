@@ -1,5 +1,13 @@
 import type { Node } from 'web-tree-sitter';
-import type { BaseContext, PlacedNode, ShapeFields, ShapeNode } from '../jvm-types.mts';
+import { depthFirst } from '../jvm-views.mts';
+import type {
+  BaseContext,
+  Converted,
+  FileScope,
+  PlacedNode,
+  ShapeFields,
+  ShapeNode,
+} from '../jvm-types.mts';
 
 export const NONE: ShapeNode = Object.freeze({ kind: 'none', children: Object.freeze([]) });
 
@@ -127,4 +135,39 @@ export function blockOrStatements<Context extends BaseContext>(
   return source.type === 'block'
     ? context.get(source)
     : at('block', source, statements(source, context));
+}
+
+export function labelledAt(kind: string, source: Node, label: Node | undefined): PlacedNode {
+  return at({ kind, ...(label === undefined ? {} : { value: label.text }) }, source);
+}
+
+export type ScopeParts = {
+  readonly imports: (program: Node) => Map<string, string>;
+  readonly packageName: (program: Node) => string;
+  readonly stars: (program: Node) => string[];
+  readonly classes: (program: Node) => string[];
+};
+
+export function declaredClasses(
+  program: Node,
+  isClass: (node: Node) => boolean,
+  nameOf: (node: Node) => string | undefined,
+): string[] {
+  return [...depthFirst(program, codeChildren)]
+    .filter(isClass)
+    .map(nameOf)
+    .filter((name): name is string => name !== undefined);
+}
+
+export function scopeOf(program: Node, parts: ScopeParts): FileScope {
+  return {
+    imported: parts.imports(program),
+    packageName: parts.packageName(program),
+    stars: parts.stars(program),
+    classes: parts.classes(program),
+  };
+}
+
+export function isList(value: Converted): value is readonly ShapeNode[] {
+  return Array.isArray(value);
 }

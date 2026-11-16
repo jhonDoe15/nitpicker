@@ -85,7 +85,7 @@ export function statementsOf(source: Node | undefined, context: BaseContext): Sh
   return statementsOfUntyped(source, { get: context.raw });
 }
 
-export function listOf(sources: readonly Node[], context: BaseContext): ShapeNode[] {
+export function listOf(sources: readonly Node[], context: Pick<BaseContext, 'raw'>): ShapeNode[] {
   return listOfUntyped(sources, { get: context.raw });
 }
 
@@ -161,3 +161,8 @@ export function readRealInside(
 }
 export const resolveInside: (root: string, relative: string) => string | undefined =
   untypedResolveInside;
+
+export function wordIn(name: string, texts: readonly string[], before: string): boolean {
+  const word = new RegExp(`${before}${escapeRegExp(name)}(?![\\w$])`, 'u');
+  return texts.some((text) => word.test(text));
+}

@@ -4,6 +4,10 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import {
+  relevantFacts as untypedRelevantFacts,
+  solveFacts as untypedSolveFacts,
+} from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import {
   foldTerm as untypedFoldTerm,
   isComparison as untypedIsComparison,
   key as untypedKey,
@@ -35,6 +39,10 @@ const key: (root: Term) => string = untypedKey;
 const not: (operand: Term) => Term = untypedNot;
 const term: (kind: string, value?: string) => Term = untypedTerm;
 const withRange: (node: Term, range: Range | undefined) => Term = untypedWithRange;
+
+export const relevantFacts: (facts: readonly Fact[], names: ReadonlySet<string>) => Fact[] =
+  untypedRelevantFacts;
+export const solveFacts: (conditions: readonly Term[], query: Term) => string = untypedSolveFacts;
 
 const RELATIONS = new Set(['<', '<=', '>', '>=']);
 const MEMBER_KINDS = new Set(['member', 'index', 'call']);

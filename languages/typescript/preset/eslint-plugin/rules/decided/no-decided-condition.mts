@@ -4,18 +4,21 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import {
-  decidingFact as untypedDecidingFact,
-  relevantFacts as untypedRelevantFacts,
-  solveFacts as untypedSolveFacts,
-} from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import { decidingFact as untypedDecidingFact } from '../../../../../../shared/logic/sync/solve-facts.mjs';
 import { helperNote as untypedHelperNote } from '../../../../../../shared/logic/models/helper-note.mjs';
 import { hasModels as untypedHasModels } from '../../../../../../shared/logic/models/models.mjs';
 import { key as untypedKey } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst, type SourceCode } from '../typed/node-views.mts';
 import type { Term } from '../analysis/logic/estree-terms.mts';
 import { afterEffects, effectsOf, mutableNames, type FlowContext } from './effects.mts';
-import { conditionTerm, fact, typedServices, type Fact } from './facts.mts';
+import {
+  conditionTerm,
+  fact,
+  relevantFacts,
+  solveFacts,
+  typedServices,
+  type Fact,
+} from './facts.mts';
 import { coercionSites, type CoercionSite, type Guard } from './coercions/coercion-sites.mts';
 import { recordCaptures } from './flow/closures.mts';
 import { sitesIn } from './flow/sites.mts';
@@ -48,9 +51,6 @@ const decidingFact: (
   query: Term,
   verdict: Verdict,
 ) => Deciding | undefined = untypedDecidingFact;
-const relevantFacts: (facts: readonly Fact[], names: ReadonlySet<string>) => Fact[] =
-  untypedRelevantFacts;
-const solveFacts: (conditions: readonly Term[], query: Term) => string = untypedSolveFacts;
 const key: (root: Term) => string = untypedKey;
 const helperNote: (terms: readonly Term[]) => string = untypedHelperNote;
 const hasModels: (terms: readonly Term[]) => boolean = untypedHasModels;
