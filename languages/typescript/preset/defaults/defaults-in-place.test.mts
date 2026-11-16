@@ -34,6 +34,7 @@ const POLICY_PATHS = [
   'languages/typescript/conventions/file-name-casing.mjs',
   'languages/typescript/conventions/layout-measures.mjs',
   'languages/typescript/conventions/measures',
+  'languages/typescript/conventions/typed/measure-views.mjs',
   'languages/typescript/conventions/prettier-conventions.mjs',
   'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/conventions/type-import-style.mjs',

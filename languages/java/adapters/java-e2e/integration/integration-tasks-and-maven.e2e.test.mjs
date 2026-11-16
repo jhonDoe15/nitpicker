@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import {
   FULL_COVERAGE,
   comparable,

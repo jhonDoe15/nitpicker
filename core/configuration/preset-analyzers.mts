@@ -9,7 +9,7 @@ import { configureAnalyzers } from './configure-analyzers.mts';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mts';
 import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mts';
 import {

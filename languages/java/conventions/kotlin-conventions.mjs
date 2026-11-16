@@ -1,10 +1,10 @@
 import {
   assertionEvidence,
-  followedHelpers,
   MIN_FILES,
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
+import { followedHelpers } from '../../../shared/conventions/detect.mjs';
 import { COLUMNS } from '../../../shared/conventions/settings.mjs';
 import { indentationStep } from './measures/java-layout.mjs';
 import { lineLength } from './measures/kotlin-line-length.mjs';

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { projectWideReport } from '../../../../builds/project-wide.mjs';
+import { projectWideReport } from '../../../../builds/project-wide.mts';
 
 const SOURCE = [
   'package shop;',

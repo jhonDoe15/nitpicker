@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { designFindings } from '../../design-findings.mjs';
+import { designFindings } from '../../design-findings.mts';
 import { fixtureRoot, ref } from '../../test-support/design-facts-support.mjs';
 
 const SINGLE = [{ dir: '', sourceRoots: ['src/main/java'], published: false }];

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveComparison } from '../../diff/git/repository/git.mjs';
 import { branchOff } from '../../diff/git/test-support/branch-off.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
-import { wrappedCall } from '../../../languages/java/conventions/measures/test-support/wrapped-call.mjs';
+import { wrappedCall } from '../../../languages/java/conventions/measures/test-support/wrapped-call.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { comparedConventions, followedConventions } from '../test-support/compare-policy.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';

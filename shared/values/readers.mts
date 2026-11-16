@@ -8,6 +8,10 @@ export function textOf(value: unknown): string {
   return typeof value === 'string' ? value : String(value);
 }
 
+export function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export function textsOf(value: unknown): string[] {
   return Array.isArray(value) ? value.map(textOf) : [];
 }
@@ -42,6 +46,15 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function optionalText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+export function stringsIn(value: unknown): string[] {
+  const found: string[] = [];
+  const pending: unknown[] = [value];
+  for (const item of pending) {
+    if (typeof item === 'string') {
+      found.push(item);
+    } else if (typeof item === 'object' && item !== null) {
+      pending.push(...Object.values(fieldsOf(item)));
+    }
+  }
+  return found;
 }

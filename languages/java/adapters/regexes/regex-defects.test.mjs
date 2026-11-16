@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { javaStringLiteral, withRegexDefects } from './regex-defects.mjs';
+import { javaStringLiteral, withRegexDefects } from './regex-defects.mts';
 import { adviceProblems } from '../../../../shared/messages/advice/finding-advice.mjs';
 import { routeFields } from '../../../../shared/messages/exception-sentence.mjs';
 

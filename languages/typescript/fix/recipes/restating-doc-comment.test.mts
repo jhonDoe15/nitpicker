@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { typescriptRestatingDocCommentRecipe as recipe } from './restating-doc-comment.mjs';
+import { typescriptRestatingDocCommentRecipe as recipe } from './restating-doc-comment.mts';
 
 type Edit = { readonly start: number; readonly end: number; readonly text: string };
 type PlannedFix = { readonly edits: readonly Edit[]; readonly finding: { readonly line: number } };

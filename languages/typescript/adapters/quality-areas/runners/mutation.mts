@@ -15,8 +15,8 @@ import { readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
 import {
   fieldOf,
   fieldsOf,
-  optionalText,
   parseJson,
+  optionalText,
 } from '../../../../../shared/values/readers.mts';
 import { importPolicyModule, relativeProjectPath, runNodeTool } from '../typed/tooling.mts';
 import path from 'node:path';
