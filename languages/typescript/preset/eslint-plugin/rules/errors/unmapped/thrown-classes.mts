@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts } from '../../typed/typescript-views.mts';
+import { ts, withoutParentheses } from '../../typed/typescript-views.mts';
 import { classDeclarationOf, isProjectDeclaration } from './nest-classes.mts';
 
 type BodiedFunction = TypeScript.SignatureDeclaration & { readonly body: TypeScript.Node };
@@ -77,16 +77,6 @@ function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
     }
   });
   return children;
-}
-
-function withoutParentheses(node: TypeScript.Expression): TypeScript.Expression {
-  const chain = [node];
-  for (const current of chain) {
-    if (ts.isParenthesizedExpression(current)) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1) ?? node;
 }
 
 function thrownClass(

@@ -36,3 +36,13 @@ export function isReference(type: TypeScript.Type): type is TypeScript.TypeRefer
     (type.objectFlags & ts.ObjectFlags.Reference) !== 0
   );
 }
+
+export function withoutParentheses(node: TypeScript.Expression): TypeScript.Expression {
+  const chain = [node];
+  for (const current of chain) {
+    if (ts.isParenthesizedExpression(current)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1) ?? node;
+}

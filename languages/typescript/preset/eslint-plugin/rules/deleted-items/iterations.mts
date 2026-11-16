@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts } from '../typed/typescript-views.mts';
+import { ts, withoutParentheses } from '../typed/typescript-views.mts';
 import { isHelperName } from '../queries/soft-delete/columns.mts';
 import { assignsFlag, flagOf, mentionsFlag, type Flag } from './flags.mts';
 
@@ -33,16 +33,6 @@ const CALLBACK_METHODS = new Set([
 
 function isCallbackFunction(node: TypeScript.Node | undefined): node is Callback {
   return node !== undefined && (ts.isArrowFunction(node) || ts.isFunctionExpression(node));
-}
-
-function unparenthesized(node: TypeScript.Expression): TypeScript.Expression {
-  const pending = [node];
-  for (const current of pending) {
-    if (ts.isParenthesizedExpression(current)) {
-      pending.push(current.expression);
-    }
-  }
-  return pending.at(-1) ?? node;
 }
 
 function isHelperReference(node: TypeScript.Expression): boolean {
@@ -79,7 +69,7 @@ function callGuards(call: TypeScript.CallExpression, name: string): boolean {
 }
 
 function receiverGuards(receiver: TypeScript.Expression, name: string): boolean {
-  const pending = [unparenthesized(receiver)];
+  const pending = [withoutParentheses(receiver)];
   for (const current of pending) {
     if (!ts.isCallExpression(current)) {
       continue;
@@ -89,7 +79,7 @@ function receiverGuards(receiver: TypeScript.Expression, name: string): boolean 
     }
     const { expression } = current;
     if (ts.isPropertyAccessExpression(expression)) {
-      pending.push(unparenthesized(expression.expression));
+      pending.push(withoutParentheses(expression.expression));
     }
   }
   return false;
