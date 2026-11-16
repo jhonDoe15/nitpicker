@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PROXIED } from '../../kotlin/review-rules/spring/spring-types.mjs';
 import { CONSTRAINT_NAMES } from '../../kotlin/review-rules/validation/constraint-names.mjs';
-import { SPRING_RULESET, springRuleset, writeSpringRuleset } from './proxy-ruleset.mjs';
+import { SPRING_RULESET, springRuleset, writeSpringRuleset } from './proxy-ruleset.mts';
 
 const ruleset = readFileSync(SPRING_RULESET, 'utf8');
 const roots = [];

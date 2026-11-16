@@ -13,12 +13,12 @@ import {
   collectTestResults,
   junitLauncherVersion,
   runJacocoReport,
-} from '../../maven/maven-tests.mjs';
-import { runPit } from '../../maven/pit/maven-pit.mjs';
-import { copyTestResults } from '../../maven/results/maven-test-results.mjs';
-import { ingestArchunit } from '../../ingest/archunit.mjs';
-import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
-import { ingestPit } from '../../ingest/pit.mjs';
+} from '../../maven/maven-tests.mts';
+import { runPit } from '../../maven/pit/maven-pit.mts';
+import { copyTestResults } from '../../maven/results/maven-test-results.mts';
+import { ingestArchunit } from '../../ingest/archunit.mts';
+import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
+import { ingestPit } from '../../ingest/pit.mts';
 import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 

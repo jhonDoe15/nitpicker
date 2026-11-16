@@ -1,18 +1,10 @@
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectJavaFindings as untypedCollectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
+import type { JavaRunOptions } from '../../typed/java-run-options.mts';
 
 type Build = 'gradle' | 'maven';
-type UnboundFinding = {
-  readonly rule: string;
-  readonly path: string;
-  readonly identity: string;
-  readonly location?: { readonly line?: number };
-};
-
-const collectJavaFindings: (root: string, options?: object) => UnboundFinding[] =
-  untypedCollectJavaFindings;
 
 const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/spring-unbound-project');
 const BUILD_FILES: Readonly<Record<Build, readonly string[]>> = {
@@ -46,7 +38,7 @@ function copyFixture(roots: string[], build: Build): string {
 }
 
 export function unboundProjects(): {
-  readonly findings: (build: Build, options?: object) => string[];
+  readonly findings: (build: Build, options?: JavaRunOptions) => string[];
   readonly remove: () => void;
 } {
   const roots: string[] = [];
@@ -55,7 +47,8 @@ export function unboundProjects(): {
       collectJavaFindings(copyFixture(roots, build), options)
         .filter(({ rule }) => rule === 'unbound-property')
         .map(
-          ({ path: file, location, identity }) => `${file}:${String(location?.line)} ${identity}`,
+          ({ path: file, location, identity }) =>
+            `${file}:${String(location?.line)} ${String(identity)}`,
         )
         .sort(),
     remove: () => {
