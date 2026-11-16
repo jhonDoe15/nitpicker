@@ -87,8 +87,6 @@ and `tool-errors.json` in the same folder. Full reports are written to `reports/
   location and message, and where the rule states them, `allowedForm` (what to write instead) and
   `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
   the config list). Use `allowedForm` to fix the code. Never add `exception` yourself.
-- `fix-plans.json`: for each new finding of a nitpicker check that needs judgment, a plan with its
-  `kind`, `target` lines, `context`, `steps` and `doneWhen`. Follow the steps to fix the finding.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.

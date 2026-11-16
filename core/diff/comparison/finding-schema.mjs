@@ -5,7 +5,6 @@ import {
   isRecord,
   normalizeFindingPath,
   positiveInteger,
-  requiredRecord,
   requiredString,
 } from './schema/values.mjs';
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
@@ -98,7 +97,6 @@ const OPTIONAL_PARSERS = {
   helpUri: parseHelpUri,
   cause: parseCause,
   fix: parseFix,
-  planFacts: requiredRecord,
 };
 
 function parseOptionalFields(value, classification, context) {

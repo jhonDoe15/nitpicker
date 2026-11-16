@@ -626,8 +626,6 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `changed-metrics.json`: metrics that moved.
 - `held-findings.json`: findings that were already there and are no worse than at the base (for
   example a file over a size limit that did not grow); they are allowed, and any increase fails.
-- `fix-plans.json`: a plan for each new finding of a nitpicker check that needs judgment (see
-  [Fix plans](#fix-plans)).
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: informational notes the run reports but does not fail on, such as a base whose
   tests fail (see "A base whose tests fail" below).
@@ -2694,7 +2692,7 @@ files of one Java package the shared method goes into a new package-private clas
 after the words their class names share, and the second copy's own comments stay above its call.
 TypeScript and JavaScript copies in two files are left alone, because the import each file needs
 depends on the module system and the path rules of the project. A recipe leaves the
-finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
+finding as it is, and prints why in a "Fix notes:" line, when: a differing value reads a
 variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
 JavaScript), the helper name is taken, the copies differ in exceptions, the copies differ in a type
 that a type parameter cannot stand for (a type in a cast, in an `instanceof` or in a class literal,
@@ -2724,7 +2722,7 @@ statements, in two functions of one file or two methods of one class. The shared
 function placed after the first of the two. Each copy of the run becomes one call. The inputs of the
 function are the variables the run reads and declared before it, and the values the copies differ in.
 The one value the code after the run uses is returned, and a run that ends with `return` becomes a
-returned call. A recipe leaves the finding for its fix plan when the run returns early on some paths,
+returned call. A recipe leaves the finding as it is when the run returns early on some paths,
 defines more than one value that the code after it uses, writes a variable declared before it, jumps
 out of itself, awaits or yields, declares a function, a class or a `var`, sits in a Java `try` with a
 `catch`, throws other exceptions in the two copies, calls code that may change a variable the run
@@ -2742,8 +2740,7 @@ not look (tests, and for Python anything outside the production modules).
 The rule reference says what `--fix` does about each rule, in a "Fix" line that `nitpicker explain`
 prints too: `automatic` (a safe recipe, or a fixer that runs under `--fix`: ESLint rules that
 declare a fix, Prettier, ruff safe fixes and the formatters), `with --fix --rule` (a recipe that needs a
-review and runs only when you name the rule), `fix plan` (nitpicker writes the steps, and nothing is
-rewritten) or `none`. The line is computed from the recipes and the fixers, so it cannot drift: a
+review and runs only when you name the rule) or `none`. The line is computed from the recipes and the fixers, so it cannot drift: a
 test fails when the generated reference does not match them. An ESLint or ruff fix does not
 cover every case a rule reports. Checkstyle layout rules are not listed as fixed: with a Java
 formatter they are suppressed, and without one `--fix` does not format.
@@ -2962,60 +2959,6 @@ code does or what the tests measure, so they run only when a run selects their r
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
 under the nearest rule. Which rules have a check, and why the others do not, is in
 `skills/nitpicker-java/SOURCES.md`.
-
-## Fix plans
-
-Most of what is left after formatting needs judgment: a function that is too long, a mutant that
-survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
-can rewrite these. A comparison run writes down the code, its context and the form the rule allows
-in `fix-plans.json`, beside
-`new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The surviving
-mutants, the mutants no test runs and the uncovered branches of one function share one plan (see
-`findings` below), so a function with twenty mutants gets one plan, not twenty. The rule
-reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
-on) keeps its message and its help link and gets no plan. Plans are for tools and for looking up
-one finding: in two measurements with two agents, they did not reliably lower what an agent spent
-to reach green (see [evaluations](evaluations.md#fix-plans-measured-effect)).
-
-A plan changes no file, and nitpicker calls no language model for it: it is built from the finding,
-the project files and the allowed form of the rule. The schema is
-[`spec/fix-plans.schema.json`](../spec/fix-plans.schema.json), also exported by the package as
-`nitpicker/spec/fix-plans.schema.json`. Each plan has:
-
-- `finding`: the `tool`, `rule`, `path` and `line` of the finding.
-- `kind`: the change asked for. It is one of `extract-function`, `split-file`,
-  `add-test-for-branch`, `strengthen-assertion`, `kill-mutant`, `remove-duplicate`,
-  `extract-shared-function`, `invert-dependency`, `move-module`, `parse-at-boundary`,
-  `reduce-complexity`, `group-parameters`, `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
-  whose only guidance is their allowed form.
-- `findings`: only on a plan that covers several findings of one rule in one function. It lists the
-  `line` and `column` of each, and `finding` is the first. The plan's `context` then lists each
-  mutant (`mutants`: line, column, mutator, original, replacement) or branch (`branches`: line,
-  the share covered, the outcomes not taken). Findings that name no function keep one plan each.
-- `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`
-  (for a grouped plan, the first and the last line it covers).
-- `context`: only what the kind needs. It holds the measured value and the limit with candidate
-  blocks to move for a size rule, the branch and the nearest test file for coverage, the mutation
-  (the mutator, the original and the replacement) for a surviving mutant, both copies for a
-  duplicate, the function to extract from a near-duplicate (its signature, the arguments each copy
-  passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
-  import edge or cycle for an architecture rule. The test file is one beside the source, else an
-  existing test that imports the file (or a module that re-exports it, such as a feature `index`),
-  else the nearest TypeScript or JavaScript test that reaches it through other modules (such as a
-  test of the composition root; a module that re-exports names passes on only those names, and a
-  helper under a test folder ends the chain), else a new path that follows where the project keeps
-  its tests (for example a top-level `test/` folder, in its folder named like the first folder of
-  the source path that has one). Of several tests, one that calls the function wins, then one that
-  shares the most folder names with the source, then the first by path.
-- `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
-- `doneWhen`: the finding that stops being reported.
-
-The report lists one line per plan (`<tool>/<rule> <path>:<line> <kind>`, with `(<n> findings)` added
-for a grouped plan) and the console summary
-one line, `Fix plans: <count>, see <folder>/fix-plans.json`. A project that ran no comparison, such
-as `--all`, has no plans. The plans come from one registry keyed by tool and rule
-(`shared/fix-plans/registry.mjs`), and the `fix plan` status of the rule reference is computed from
-the same registry, so the two cannot differ. A plan does not list the tests that ran a mutant.
 
 ## Java preset
 

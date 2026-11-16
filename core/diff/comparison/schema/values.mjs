@@ -10,13 +10,6 @@ export function positiveInteger(value, context) {
   return value;
 }
 
-export function requiredRecord(value, context) {
-  if (!isPlainObject(value)) {
-    throw new TypeError(`${context} must be an object`);
-  }
-  return value;
-}
-
 export function requiredString(value, context) {
   if (typeof value !== 'string' || value.length === 0 || value.includes('\0')) {
     throw new TypeError(`${context} must be a non-empty string`);

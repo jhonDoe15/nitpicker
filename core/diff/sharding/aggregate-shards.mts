@@ -26,7 +26,6 @@ import {
   commonSummary,
   noChangesReport,
   sortByToolAndPath,
-  fixPlansFor,
   writeDiffReports,
   parseArguments,
   resolveProjectRoot,
@@ -117,9 +116,8 @@ function writeAggregate(
   { outputRoot, liveProjectRoot }: ReportTarget,
 ): AggregateReport {
   const location = repositoryLocationOf(liveProjectRoot);
-  const planned: AggregateReport = { ...report, fixPlans: fixPlansFor(report, location) };
-  planned.text = writeDiffReports(outputRoot, planned, location);
-  return planned;
+  report.text = writeDiffReports(outputRoot, report, location);
+  return report;
 }
 
 function unchangedReport(
