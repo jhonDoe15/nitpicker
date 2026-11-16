@@ -6,6 +6,7 @@ import {
   commonSummary,
   readUnchangedShards as readShardsUnchanged,
 } from './read-shards.mts';
+import type { ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type { MetadataMap } from '../execution/report/analyzer-metadata.mts';
 import { parseArguments as readArguments } from './arguments.mts';
 import {
@@ -29,7 +30,7 @@ import { textOf, textsOf } from '../../../shared/values/readers.mts';
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
 export { noChangesReport } from '../comparison/results.mts';
-export { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
+export { outputRootFor, writeDiffReports } from '../reporting/reporters.mts';
 export { resolveMetadata, resolvedExpectations } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
@@ -63,6 +64,7 @@ export type AggregateOptions = {
 export type AggregateCli = {
   readonly arguments_?: readonly string[];
   readonly currentProjectRoot?: string | undefined;
+  readonly configOverlay?: ProjectOverlay | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly stdout?: TextOutput;
   readonly stderr?: TextOutput;
@@ -91,6 +93,7 @@ export type UnchangedPolicy = {
 
 export type ConfiguredTarget = {
   readonly currentProjectRoot: string;
+  readonly configOverlay: ProjectOverlay | undefined;
   readonly outputRoot: string;
   readonly analyzers: readonly Analyzer[] | undefined;
   readonly warn: Warn;

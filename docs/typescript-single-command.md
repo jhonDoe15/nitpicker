@@ -126,7 +126,7 @@ Decision (proposed, pending owner review):
   `knip.json`, `jscpd.json`) get a generated copy with the roots moved and the exclusions added
   (`languages/typescript/preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
-- When the project has a `tsconfig.json`, the tsconfig copies extend it instead
+- When the project has a `tsconfig.json`, the tsconfig copies extend it instead (a solution config resolves to the referenced config that covers the most files, with the `types` of the other references merged in)
   (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `noCheck: false`,
   `skipLibCheck` and the layout's include and exclude globs; `tsconfig.stryker.json` adds `noCheck: false`, `skipLibCheck` and the same
   policy flags, so mutants that break the policy's indexing or return checks are compile errors.

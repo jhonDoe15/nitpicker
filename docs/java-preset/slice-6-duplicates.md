@@ -4,7 +4,7 @@ Part of the [Java preset guide](../java-preset.md).
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `manifest.json` in the report directory,
-  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in
+  `languages/java/adapters/metrics/java-duplicates.mts` runs the package's own pinned jscpd (`runJscpd` in
   `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
   check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
   main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's

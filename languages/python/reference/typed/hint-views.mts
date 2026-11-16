@@ -3,7 +3,7 @@ import { ruleEntry as untypedRuleEntry } from '../../../../shared/reference/entr
 import {
   hintFor as untypedHintFor,
   RULE_HINTS as UNTYPED_RULE_HINTS,
-} from '../../rules/rule-hints.mjs';
+} from '../../rules/rule-hints.mts';
 
 export type RuleHintView = {
   readonly tool: string;

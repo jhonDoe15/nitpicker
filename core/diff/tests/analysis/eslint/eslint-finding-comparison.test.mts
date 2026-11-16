@@ -17,6 +17,90 @@ const { createRepository } = useEslintFixtures();
 
 const countAnchor: unknown = expect.stringMatching(/^count:/u);
 
+const POLICY_FINDINGS = [
+  {
+    tool: 'eslint-errors',
+    rule: 'no-empty-function',
+    path: 'src/main/source.ts',
+    identity: 'message:unexpected|node:Block|syntax:b9613f54f8a5551f75d1f89b|occurrence:1',
+    message:
+      'Unexpected empty function \'empty\'. If this is intended, add {"rule":"no-empty-function","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    exception: { rule: 'no-empty-function', paths: ['src/main/source.ts'], reason: '...' },
+    exceptionList: 'exceptions',
+    classification: 'enforceable',
+    symbol: 'empty',
+    location: { line: 2, column: 25 },
+    anchor: { key: countAnchor },
+    ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
+  },
+  {
+    tool: 'eslint-lint',
+    rule: 'no-debugger',
+    path: 'src/main/source.ts',
+    identity: 'message:unexpected|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
+    message:
+      'Unexpected \'debugger\' statement. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    exception: { rule: 'no-debugger', paths: ['src/main/source.ts'], reason: '...' },
+    exceptionList: 'exceptions',
+    classification: 'enforceable',
+    location: { line: 1, column: 1 },
+  },
+  {
+    tool: 'eslint-lint',
+    rule: 'no-debugger',
+    path: 'src/main/source.ts',
+    identity: 'message:unexpected|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
+    message:
+      'Unexpected \'debugger\' statement. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    exception: { rule: 'no-debugger', paths: ['src/main/source.ts'], reason: '...' },
+    exceptionList: 'exceptions',
+    classification: 'enforceable',
+    symbol: 'unreachable',
+    location: { line: 6, column: 3 },
+    anchor: { key: countAnchor },
+    ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
+  },
+  {
+    tool: 'eslint-logging',
+    rule: 'no-console',
+    path: 'src/main/source.ts',
+    identity:
+      'message:unexpected|node:PropertyAccessExpression|syntax:7910e9715a78625d1a53c5b7|occurrence:1',
+    message:
+      'Unexpected console statement. If this is intended, add {"rule":"no-console","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    exception: { rule: 'no-console', paths: ['src/main/source.ts'], reason: '...' },
+    exceptionList: 'exceptions',
+    classification: 'enforceable',
+    location: { line: 3, column: 1 },
+  },
+  {
+    tool: 'eslint-module-effects',
+    rule: 'no-unreachable',
+    path: 'src/main/source.ts',
+    identity:
+      'message:unreachableCode|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
+    message:
+      'Unreachable code. If this is intended, add {"rule":"no-unreachable","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    exception: { rule: 'no-unreachable', paths: ['src/main/source.ts'], reason: '...' },
+    exceptionList: 'exceptions',
+    classification: 'enforceable',
+    symbol: 'unreachable',
+    location: { line: 6, column: 3 },
+    anchor: { key: countAnchor },
+    ratchet: { key: 'count:unreachableCode', value: 1, existingCodeOnly: true },
+  },
+];
+
+const POLICY_CONFIGS = [
+  ['eslint-lint', undefined],
+  ['eslint-errors', 'languages/typescript/preset/eslint-config/policies/errors.config.mjs'],
+  ['eslint-logging', 'languages/typescript/preset/eslint-config/policies/logging.config.mjs'],
+  [
+    'eslint-module-effects',
+    'languages/typescript/preset/eslint-config/policies/module-effects.config.mjs',
+  ],
+] as const;
+
 describe('ESLint finding comparison', () => {
   it('preserves unchanged, line-moved, and renamed findings while separating added and resolved findings', () => {
     const repository = createRepository({
@@ -130,124 +214,36 @@ describe('ESLint finding comparison', () => {
       },
     ]);
   });
-  it('runs all four command policies through the shared report pipeline', () => {
-    const repository = createRepository({
-      ...policyFiles(),
-      'src/main/source.ts': 'export const clean = true;\n',
-    });
-    writeFiles(repository.root, {
-      'src/main/source.ts': [
-        'debugger;',
-        'export function empty() {}',
-        "console.log('fixture');",
-        'export function unreachable() {',
-        '  return;',
-        '  debugger;',
-        '}',
-        '',
-      ].join('\n'),
-    });
-    commit(repository.root, 'add policy findings');
+  it.each(POLICY_CONFIGS)(
+    'runs the %s command policy through the shared report pipeline',
+    (name, config) => {
+      const repository = createRepository({
+        ...policyFiles(),
+        'src/main/source.ts': 'export const clean = true;\n',
+      });
+      writeFiles(repository.root, {
+        'src/main/source.ts': [
+          'debugger;',
+          'export function empty() {}',
+          "console.log('fixture');",
+          'export function unreachable() {',
+          '  return;',
+          '  debugger;',
+          '}',
+          '',
+        ].join('\n'),
+      });
+      commit(repository.root, 'add policy findings');
 
-    const report = runQualityDiff(
-      comparisonOptions(repository, [
-        recordedEslintAnalyzer('eslint-lint'),
-        recordedEslintAnalyzer(
-          'eslint-errors',
-          'languages/typescript/preset/eslint-config/policies/errors.config.mjs',
-        ),
-        recordedEslintAnalyzer(
-          'eslint-logging',
-          'languages/typescript/preset/eslint-config/policies/logging.config.mjs',
-        ),
-        recordedEslintAnalyzer(
-          'eslint-module-effects',
-          'languages/typescript/preset/eslint-config/policies/module-effects.config.mjs',
-        ),
-      ]),
-    );
+      const report = runQualityDiff(
+        comparisonOptions(repository, [recordedEslintAnalyzer(name, config)]),
+      );
 
-    expect(report.toolErrors).toEqual([]);
-    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
-    expect(new Set(report.newFindings.map((finding) => finding.tool))).toEqual(
-      new Set(['eslint-lint', 'eslint-errors', 'eslint-logging', 'eslint-module-effects']),
-    );
-    expect(report.newFindings).toEqual([
-      {
-        tool: 'eslint-errors',
-        rule: 'no-empty-function',
-        path: 'src/main/source.ts',
-        identity: 'message:unexpected|node:Block|syntax:b9613f54f8a5551f75d1f89b|occurrence:1',
-        message:
-          'Unexpected empty function \'empty\'. If this is intended, add {"rule":"no-empty-function","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        exception: { rule: 'no-empty-function', paths: ['src/main/source.ts'], reason: '...' },
-        exceptionList: 'exceptions',
-        classification: 'enforceable',
-        symbol: 'empty',
-        location: { line: 2, column: 25 },
-        anchor: { key: countAnchor },
-        ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
-      },
-      {
-        tool: 'eslint-lint',
-        rule: 'no-debugger',
-        path: 'src/main/source.ts',
-        identity:
-          'message:unexpected|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
-        message:
-          'Unexpected \'debugger\' statement. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        exception: { rule: 'no-debugger', paths: ['src/main/source.ts'], reason: '...' },
-        exceptionList: 'exceptions',
-        classification: 'enforceable',
-        location: { line: 1, column: 1 },
-      },
-      {
-        tool: 'eslint-lint',
-        rule: 'no-debugger',
-        path: 'src/main/source.ts',
-        identity:
-          'message:unexpected|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
-        message:
-          'Unexpected \'debugger\' statement. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        exception: { rule: 'no-debugger', paths: ['src/main/source.ts'], reason: '...' },
-        exceptionList: 'exceptions',
-        classification: 'enforceable',
-        symbol: 'unreachable',
-        location: { line: 6, column: 3 },
-        anchor: { key: countAnchor },
-        ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
-      },
-      {
-        tool: 'eslint-logging',
-        rule: 'no-console',
-        path: 'src/main/source.ts',
-        identity:
-          'message:unexpected|node:PropertyAccessExpression|syntax:7910e9715a78625d1a53c5b7|occurrence:1',
-        message:
-          'Unexpected console statement. If this is intended, add {"rule":"no-console","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        exception: { rule: 'no-console', paths: ['src/main/source.ts'], reason: '...' },
-        exceptionList: 'exceptions',
-        classification: 'enforceable',
-        location: { line: 3, column: 1 },
-      },
-      {
-        tool: 'eslint-module-effects',
-        rule: 'no-unreachable',
-        path: 'src/main/source.ts',
-        identity:
-          'message:unreachableCode|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
-        message:
-          'Unreachable code. If this is intended, add {"rule":"no-unreachable","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        exception: { rule: 'no-unreachable', paths: ['src/main/source.ts'], reason: '...' },
-        exceptionList: 'exceptions',
-        classification: 'enforceable',
-        symbol: 'unreachable',
-        location: { line: 6, column: 3 },
-        anchor: { key: countAnchor },
-        ratchet: { key: 'count:unreachableCode', value: 1, existingCodeOnly: true },
-      },
-    ]);
-  });
+      expect(report.toolErrors).toEqual([]);
+      expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
+      expect(report.newFindings).toEqual(POLICY_FINDINGS.filter(({ tool }) => tool === name));
+    },
+  );
   it('uses semantic occurrence order for repeated identical findings', () => {
     const repository = createRepository({
       ...policyFiles(),

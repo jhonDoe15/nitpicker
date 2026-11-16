@@ -81,6 +81,9 @@ function runIt(fixers: string): string {
       'folder or the full messages instead of running again. It names the run it shows and warns ' +
       'when the working tree changed since. It exits 0 when that run passed, 1 when it did not ' +
       'and 2 when there is no report.',
+    'In a monorepo, `npx nitpicker` at the top runs every project your change touches. ' +
+      '`--project <path>` (repeatable) checks only the named projects; running it inside a ' +
+      'project folder checks that project alone.',
   ]);
 }
 
@@ -110,9 +113,6 @@ function readReport(): string {
       'instead) and `exception` (the entry the message tells you to add to `exceptions`, with ' +
       '`exceptionList` naming the config list). Use `allowedForm` to fix the code. Never add ' +
       '`exception` yourself.',
-    '`fix-plans.json`: for each new finding of a nitpicker check that needs judgment, a plan ' +
-      'with its `kind`, `target` lines, `context`, `steps` and `doneWhen`. Follow the steps to fix ' +
-      'the finding.',
     '`resolved-findings.json` and `changed-metrics.json`: informational.',
     '`tool-errors.json`: the tool errors, whatever the exit code.',
     '`notes.json`: notes such as a base whose tests fail, which the run reports but does not ' +

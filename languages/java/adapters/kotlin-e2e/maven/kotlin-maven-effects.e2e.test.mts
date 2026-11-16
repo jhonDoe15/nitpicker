@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   KOTLIN_EFFECTS,
   KOTLIN_EFFECTS_FIXTURE,
-} from '../../effects/test-support/effects-projects.mjs';
+} from '../../effects/test-support/effects-projects.mts';
 import { kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
 import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
@@ -15,14 +15,27 @@ import { effectsSummary } from '../effects/test-support/kotlin-effects-views.mts
 const maven = process.env['NITPICKER_MAVEN'];
 const POM = path.resolve(import.meta.dirname, '../../../maven/fixtures/effects-kotlin/pom.xml');
 const KOTLIN_SOURCES = 'src/main/kotlin';
+const RESOURCES = 'src/main/resources';
 const JAVA_ONLY = 'JavaImports.saveEach';
 const KOTLIN_FILES = [
   'reports/LoopImports.kt',
   'reports/Accumulators.kt',
+  'graphql/OrderFields.kt',
+  'reactive/OrderStreams.kt',
+  'rows/TicketUpdates.kt',
+  'projections/MemberViews.kt',
+  'stale/OrderSaves.kt',
+  'futures/OrderFutures.kt',
   'billing/LazyLoads.kt',
   'held/HeldScopes.kt',
   'events/Retries.kt',
   'events/DualWrites.kt',
+  'races/Registrations.kt',
+  'jobs/JobsAllowed.kt',
+  'jobs/NightlyJobs.kt',
+  'trash/ProductService.kt',
+  'carts/BasketReports.kt',
+  'api/AccountController.kt',
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {
@@ -33,6 +46,9 @@ describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-maven-effects-'));
     mkdirSync(path.join(root, KOTLIN_SOURCES), { recursive: true });
     cpSync(path.join(KOTLIN_EFFECTS_FIXTURE, KOTLIN_SOURCES), path.join(root, KOTLIN_SOURCES), {
+      recursive: true,
+    });
+    cpSync(path.join(KOTLIN_EFFECTS_FIXTURE, RESOURCES), path.join(root, RESOURCES), {
       recursive: true,
     });
     cpSync(POM, path.join(root, 'pom.xml'));

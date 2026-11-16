@@ -1,6 +1,6 @@
-import { rule as noProductionImportsInSetupFiles } from './no-production-imports-in-setup-files.mjs';
-import { rule as noRealTimeRandomOrNetwork } from './no-real-time-random-or-network.mjs';
-import { rule as noUncollectedTests } from './no-uncollected-tests.mjs';
+import { rule as noProductionImportsInSetupFiles } from './no-production-imports-in-setup-files.mts';
+import { rule as noRealTimeRandomOrNetwork } from './no-real-time-random-or-network.mts';
+import { rule as noUncollectedTests } from './no-uncollected-tests.mts';
 import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();

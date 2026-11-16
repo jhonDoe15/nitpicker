@@ -67,7 +67,7 @@ function defaultsLines(runDefaults: Readonly<Record<string, unknown>>): string[]
   ];
 }
 
-function namedParts(
+export function namedParts(
   projectRoot: string,
   repository: string,
   runDefaults: Readonly<Record<string, unknown>>,
@@ -91,11 +91,15 @@ function expanded(line: string, parts: Readonly<Record<string, unknown>>): strin
     : [line.replace(TOKEN, () => String(yamlScalar(value)))];
 }
 
+export function filledWorkflow(parts: Readonly<Record<string, unknown>>): string {
+  const lines = readFileSync(TEMPLATE, 'utf8').trimEnd().split('\n');
+  return `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`;
+}
+
 function workflowDocument(projectRoot: string, context: WorkflowContext): WorkflowDocument {
   const { runDefaults, notes, ...steps } = workflowParts(projectRoot, context);
   const parts = { ...steps, ...namedParts(projectRoot, context.repository, runDefaults) };
-  const lines = readFileSync(TEMPLATE, 'utf8').trimEnd().split('\n');
-  return { content: `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`, notes };
+  return { content: filledWorkflow(parts), notes };
 }
 
 export function renderWorkflow(projectRoot: string, context: WorkflowContext): string {

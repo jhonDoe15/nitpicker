@@ -88,6 +88,8 @@ describe('layout-aware tsconfig', () => {
       JSON.stringify({ files: [], references: paths.map((reference) => ({ path: reference })) });
     function layeredFor(files: Readonly<Record<string, string>>, name = 'tsconfig.quality.json') {
       const projectRoot = temporaryProject(files);
+      mkdirSync(path.join(projectRoot, 'src'));
+      writeFileSync(path.join(projectRoot, 'src', 'main.ts'), 'export {};\n');
       const shipped = readFileSync(path.join(defaults, name), 'utf8');
       const target = path.join(projectRoot, '.nitpicker-x.json');
       const layered = layoutTransformFor(name, defaultLayout)(shipped, target);
@@ -112,7 +114,12 @@ describe('layout-aware tsconfig', () => {
     it('follows a reference to a directory, for the mutation tsconfig too', () => {
       const projectRoot = temporaryProject({ 'tsconfig.json': solution('./app') });
       mkdirSync(path.join(projectRoot, 'app'));
-      writeFileSync(path.join(projectRoot, 'app', 'tsconfig.json'), appConfig);
+      mkdirSync(path.join(projectRoot, 'src'));
+      writeFileSync(path.join(projectRoot, 'src', 'main.ts'), 'export {};\n');
+      writeFileSync(
+        path.join(projectRoot, 'app', 'tsconfig.json'),
+        appConfig.replace('"src"', '"../src"'),
+      );
       const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
 
       const mutation = parseTsconfig(

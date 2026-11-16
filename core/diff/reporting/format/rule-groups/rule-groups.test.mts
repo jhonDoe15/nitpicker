@@ -7,7 +7,7 @@ import { bareReport } from '../../test-support/bare-report.mts';
 import { entriesOf } from '../../../../../shared/values/findings.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { parseJson, textOf } from '../../../../../shared/values/readers.mts';
-import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mts';
 
 const SAMPLE = entriesOf(
   parseJson(

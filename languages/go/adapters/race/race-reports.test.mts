@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WARNING, withoutRaceReports } from './race-reports.mjs';
+import { WARNING, withoutRaceReports } from './race-reports.mts';
 import { parseRaces, raceFindings, raceNotCheckedFinding } from '../typed/go-readers.mts';
 
 const MODULE = { root: '/work/my shop', path: 'example.com/shop' };

@@ -5,7 +5,7 @@ import {
   readPytestConfig,
   readPythonFiles,
   shellWords,
-} from './pytest-config.mjs';
+} from './pytest-config.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 

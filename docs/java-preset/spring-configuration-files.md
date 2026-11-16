@@ -162,13 +162,13 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
   skipped. Profile groups and `spring.config.import` files are not followed, and
   `spring.profiles.active` is read only to learn the profiles the tests use.
-- **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
-  order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
-  (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,
-  profile expressions, line stability, exceptions, the configuration hash), `java-spring-rules.test.mjs`
+- **Tests.** `spring-config-parser.test.mts` (properties and YAML parsing, line endings, byte
+  order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mts`
+  (key words, value judgement), `java-spring.test.mts` (relaxed keys, open-in-view, ddl-auto,
+  profile expressions, line stability, exceptions, the configuration hash), `java-spring-rules.test.mts`
   (the other rules), `unbound-keys/` (metadata jars, properties classes, test overrides, the
-  unbound-property rule), `config-rules/config-rules.test.mjs` (active profiles, diagnostics, error
-  details, URL credentials), `wiring/spring-wiring.test.mjs` (the `@Enable...` check) and `java-reports.test.mjs`
+  unbound-property rule), `config-rules/config-rules.test.mts` (active profiles, diagnostics, error
+  details, URL credentials), `wiring/spring-wiring.test.mts` (the `@Enable...` check) and `java-reports.test.mts`
   (glue, the `spring: true` gate).
 - **Fixing with `--fix`.** `nitpicker --fix --rule spring/<rule>` edits `application*.properties`,
   `application*.yml` and `application*.yaml` under `src/main/resources` (and its `config/` folder)

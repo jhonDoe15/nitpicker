@@ -1,9 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScratch } from '../test-support/scratch.mts';
-import { formatCommand as untypedFormatCommand } from './format-command.mjs';
-
-const formatCommand: (context: object) => string[] = untypedFormatCommand;
+import { formatCommand } from './format-command.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const scratch = createScratch();

@@ -12,7 +12,7 @@ import {
   EMPTY_MUTATION_FACTS,
   fakeGradle,
   spawnFakeGradle,
-} from '../../../../languages/java/adapters/test-support/in-process-gradle.mjs';
+} from '../../../../languages/java/adapters/test-support/in-process-gradle.mts';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mts';
 import { readCatalog as readRuleCatalog } from '../../../../languages/java/messages/rule-messages.mjs';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type { ImportsReport, PythonModule } from '../analysis/typed/python-graph-types.mts';
-import { detectFrameworks as untypedDetect, withoutFrameworkForms } from './python-frameworks.mjs';
+import { detectFrameworks as untypedDetect, withoutFrameworkForms } from './python-frameworks.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 

@@ -141,7 +141,7 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   Type-only imports do not count.
 - **Dependencies.** `dependencies/unused-dependency`, `unlisted-dependency` and
   `no-dev-dependency-in-production`, with the TypeScript (knip) messages. The declared
-  dependencies come from `languages/python/libraries/python-dependencies.mjs`, a standalone reader
+  dependencies come from `languages/python/libraries/python-dependencies.mts`, a standalone reader
   of `pyproject.toml` (PEP 621 dependencies and extras, `[dependency-groups]`, uv, pdm, hatch
   environments, Poetry dependencies and groups), `Pipfile`, `requirements*.txt` and
   `requirements/*.txt|in`, and `setup.cfg`, that returns `{ runtime, development }` names and each

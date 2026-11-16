@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from '../no-assertion-in-loop.mjs';
+import { rule } from '../no-assertion-in-loop.mts';
 
 const filename = '/repo/test/report.test.ts';
 

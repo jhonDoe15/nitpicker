@@ -1,10 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { rerunCommand, retimeSlowTests } from './slow-retime.mjs';
+import { rerunCommand, retimeSlowTests } from './slow-retime.mts';
 import { readSlowTestFindings } from '../../typed/report/report-views.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
+import { retimeContext } from './test-support/retime-context.mts';
+import type { Launcher } from '../../typed/environment/launcher-types.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
@@ -30,7 +32,10 @@ function junit(cases: readonly Case[]): string {
   return `<testsuites><testsuite>${body}</testsuite></testsuites>`;
 }
 
-function launcher(calls: string[][], rerunXml: { file: string; text: string } | undefined) {
+function launcher(
+  calls: string[][],
+  rerunXml: { file: string; text: string } | undefined,
+): Launcher {
   return {
     description: 'test',
     launch(tool: string, args: readonly string[]) {
@@ -61,14 +66,12 @@ function setup({
   const reportRoot = directory({ 'pytest-junit.xml': report });
   const calls: string[][] = [];
   const rerunFile = path.join(reportRoot, 'rerun-junit.xml');
-  const context = {
+  const context = retimeContext({
     projectRoot,
     reportRoot,
-    snapshot: 'head',
-    env: {},
-    project: { testRunner: runner },
+    runner,
     launcher: launcher(calls, rerun === undefined ? undefined : { file: rerunFile, text: rerun }),
-  };
+  });
   return { context, calls, options: { projectRoot, reportRoot, testsRan: true } };
 }
 
@@ -94,7 +97,13 @@ describe('timing slow tests again without coverage', () => {
 
     expect(
       rerunCommand(context, [
-        { testCase: { qualifiedClass: 'tests.test_a', functionName: 'test_wait' } },
+        {
+          testCase: {
+            id: 'tests/test_a.py::test_wait',
+            qualifiedClass: 'tests.test_a',
+            functionName: 'test_wait',
+          },
+        },
       ]).slice(-2),
     ).toEqual(['-k', 'tests.test_a.test_wait']);
   });

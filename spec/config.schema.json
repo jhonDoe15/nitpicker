@@ -1304,6 +1304,54 @@
         "minConfidence": ["coChange"],
         "maxCommitFiles": ["coChange"]
       }
+    },
+    "extends": {
+      "description": "Path of the .json config this one builds on, relative to this file and inside the repository. Settings set here replace the shared ones.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\.json$",
+      "not": { "pattern": "^(/|[A-Za-z]:)" }
+    },
+    "projects": {
+      "description": "At the top of a monorepo: the project folders (globs allowed), each with an optional preset. A folder that declares a workspace stands for its members unless \"expand\" is false. An empty array keeps the repository one project.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "allOf": [
+                  { "not": { "pattern": "^/|^[A-Za-z]:" } },
+                  { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+                ]
+              },
+              "preset": { "enum": ["typescript", "javascript", "java", "kotlin", "python", "go"] },
+              "expand": {
+                "description": "false keeps a folder that declares a workspace one project instead of gating each member.",
+                "type": "boolean"
+              },
+              "settings": {
+                "description": "Settings of this entry's project, layered over its own config; a folder listed twice, with two presets, takes each entry's settings for that preset.",
+                "type": "object"
+              }
+            }
+          }
+        ]
+      }
     }
   },
   "allOf": [
@@ -1391,6 +1439,20 @@
               },
               "typescript.detachedWorkRunners": {
                 "description": "Detached-work runners: the names of the functions that run detached work and handle its rejection.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
+              },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
@@ -1634,6 +1696,20 @@
               },
               "typescript.detachedWorkRunners": {
                 "description": "Detached-work runners: the names of the functions that run detached work and handle its rejection.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
+              },
+              "typescript.softDeleteFilters": {
+                "description": "Soft-delete and visibility filters: the tables whose reads mostly apply a soft-delete or visibility filter, one entry per table: <table>__<column> or <table>__helper__<name>.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.routeAuth": {
+                "description": "Route auth requirement: how routes declare their auth requirement: nest__<decorator>, nest__fallback or route__<middleware>.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               }
@@ -2336,6 +2412,19 @@
                             "effects/RemoteCallUnderLock",
                             "effects/RetryWithoutIdempotency",
                             "effects/DualWriteWithoutOutbox",
+                            "effects/GraphqlFieldPerParent",
+                            "effects/ReactiveLookupPerElement",
+                            "effects/RowsChangedInMemory",
+                            "effects/EntityLoadedForOneColumn",
+                            "effects/EntityLoadedForExistence",
+                            "effects/RetryWithStaleObject",
+                            "effects/CheckThenWriteWithoutLock",
+                            "effects/AsyncMethodDoesBlockingWork",
+                            "effects/WaitOnAsyncTwin",
+                            "effects/JobLoopWithoutItemIsolation",
+                            "effects/SoftDeleteFilterMissing",
+                            "effects/DeletedItemInMemory",
+                            "effects/HandlerWithoutAuth",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

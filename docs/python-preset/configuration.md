@@ -95,7 +95,7 @@ The policy-change list also reads the project's own pytest and mutmut settings, 
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
 `--ignore-glob` in `addopts`, both counted only for files pytest collects (`python_files`), and a
 `do_not_mutate` pattern that covers production code are loosening. `-k`, `-m` and `--deselect` are
-not, because the run strips them and `uncollected-tests` reports the tests they hide (`languages/python/adapters/configuration/pytest/test-selection.mjs`). A hidden
+not, because the run strips them and `uncollected-tests` reports the tests they hide (`languages/python/adapters/configuration/pytest/test-selection.mts`). A hidden
 module that production code imports (`from legacy import feature`, followed through other hidden
 modules and parent packages) fails even under an established `exclude`. Changed `.py` files outside
 `python.sourceRoots` are named in a notice that never fails the run.

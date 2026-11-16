@@ -97,6 +97,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Change or delete many rows with one statement (`update(criteria, values)`, `updateMany`, `delete(criteria)`,
+  `deleteMany`, `nativeUpdate`), not by loading them, assigning a constant to each and saving them back
+  (`nitpicker/no-loaded-rows-saved-back`).
+- Select the one column you read (`select: { email: true }`) and test existence with `exists`/`existsBy`
+  (TypeORM) or `findFirst({ where, select: { id: true } })` (Prisma), not by loading whole rows or counting
+  (`nitpicker/no-whole-rows-for-one-value`).
 - Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
   that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
   one (`foreign-key-index`).
@@ -133,6 +139,27 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-retry-without-idempotency`).
 - Don't write to the database and publish a message in one function: write an outbox row in the same
   transaction and let a relay publish it (`nitpicker/no-dual-write`).
+- Don't look a row up per element in an RxJS pipeline (`from(ids).pipe(mergeMap((id) => load(id)))`): fetch all
+  the rows in one batched query and join them in memory (`nitpicker/no-lookup-per-element`).
+- Resolve a GraphQL field of a listed type through a DataLoader (`loaders.owner.load(parent.ownerId)`), never with
+  a repository or service call per parent (`nitpicker/no-query-per-parent`).
+- Retry an optimistic-lock conflict by re-reading the row by id and re-applying the change inside the retried
+  scope, never by saving the entity you loaded before the retry (`nitpicker/no-stale-retry-after-conflict`).
+- Write related rows in one transaction and write through the transaction's own manager, never a repository
+  injected from outside (`nitpicker/no-unatomic-writes`); decide a write from a read inside the transaction with a
+  row lock, or with an atomic `upsert` or `update ... where version = ?` (`nitpicker/no-check-then-write`).
+- In a scheduled or queue job, isolate each item of a loop: `try`/`catch` and record the failure per item, queue
+  one job per item, or `Promise.allSettled` and report the failures, so one bad item does not skip the rest
+  (`nitpicker/no-unisolated-job-loop`).
+- Apply the soft-delete or visibility filter the rest of the project applies to a table (`deletedAt IS NULL`, the
+  `withDefaultVisibility` helper) to every new read or join of it; a trash or admin query that reads those rows on
+  purpose takes the exception (`nitpicker/no-unfiltered-soft-delete-read`).
+- Skip deleted items the way the project does in every new loop, `find` or `filter` over a collection that carries
+  `isDeleted` (a guard, a helper such as `getNonDeletedElements`, or the narrowed type `NonDeleted<T>`); undo and
+  restore code that reads them on purpose takes the exception (`nitpicker/no-unguarded-deleted-items`).
+- Declare the auth requirement on every new route the way the project's other routes do (`@Authenticated({ permission })`,
+  the guard decorator, the auth middleware), or mark it public with the project's marker
+  (`nitpicker/no-route-without-auth`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runJavaDuplicates } from '../metrics/java-duplicates.mjs';
-import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
+import { runJavaDuplicates } from '../metrics/java-duplicates.mts';
+import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mts';
 import { readOptions } from '../options/java-read-options.mts';
 import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from '../reporting/java-reports.mts';
@@ -11,7 +11,7 @@ import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
-import { resolveKotlinRun } from '../kotlin/kotlin-run.mjs';
+import { resolveKotlinRun } from '../kotlin/kotlin-run.mts';
 import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
@@ -105,7 +105,7 @@ function gradleFindings(
     reportBase,
     kotlinRun,
   });
-  const report: unknown = readReportModules(reportBase, preset);
+  const report: unknown = readReportModules(reportBase, preset, projectRoot);
   const duplicates = {
     reportRoot: reportBase,
     manifest: fieldOf(report, 'manifest'),

@@ -7,7 +7,7 @@ import { fieldAt } from '../../../../scripts/json/fields.mts';
 import {
   kotlinRuleAliasNotices,
   withKotlinRuleAliases as untypedWithKotlinRuleAliases,
-} from './kotlin-options.mjs';
+} from './kotlin-options.mts';
 
 const withKotlinRuleAliases: (config: Record<string, unknown>) => Record<string, unknown> =
   untypedWithKotlinRuleAliases;

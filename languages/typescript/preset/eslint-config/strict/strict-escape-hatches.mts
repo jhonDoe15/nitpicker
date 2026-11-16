@@ -1,0 +1,86 @@
+import { readHeadPolicy as untypedReadHeadPolicy } from '../../head-policy.mjs';
+import { validationBehavior as untypedValidationBehavior } from '../../libraries/project-libraries.mjs';
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
+import type { StrictOptions } from '../typed/config-types.mts';
+
+type ReactScope = Pick<StrictOptions, 'react'>;
+
+const readHeadPolicy: () => { readonly libraries: unknown } = untypedReadHeadPolicy;
+const validationBehavior: (libraries: unknown) => { readonly name: string } =
+  untypedValidationBehavior;
+
+const validationName = validationBehavior(readHeadPolicy().libraries).name;
+
+const nullLiteral = "Literal[raw='null']";
+const strictEqualityOperand = 'BinaryExpression[operator=/^[!=]==$/] > Literal';
+const jsonData =
+  "CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] :matches(Property, ArrayExpression, ConditionalExpression, LogicalExpression) > Literal";
+const jsonStringifyArgument =
+  "CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] > Literal";
+
+const reactNullHost =
+  'CallExpression:matches([callee.name=/^(useRef|createContext)$/], [callee.property.name=/^(useRef|createContext)$/])';
+
+function nullMessageFor({ react }: ReactScope): string {
+  const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
+  return `Use \`undefined\` for an absent value, and an optional field or parameter (\`value?: T\`) where it may be missing. \`null\` is only for strict comparison with a library value and as a value in the data passed to \`JSON.stringify\` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
+}
+
+export const typeAssertionSelectors = [
+  {
+    selector: "TSAsExpression:not([typeAnnotation.typeName.name='const'])",
+    message: `Do not assert with \`as\`. Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source. \`as const\` is allowed.`,
+  },
+  {
+    selector: 'TSTypeAssertion',
+    message: `Do not assert with \`<Type>value\`. Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source.`,
+  },
+];
+
+function except(allowed: readonly string[]): string {
+  return allowed.map((selector) => `:not(${selector})`).join('');
+}
+
+export function nullSelectorsFor({ react }: ReactScope = {}): {
+  selector: string;
+  message: string;
+}[] {
+  const allowedNullLiterals = [
+    strictEqualityOperand,
+    jsonStringifyArgument,
+    jsonData,
+    ...(react ? [`${reactNullHost} > Literal`] : []),
+  ];
+  const allowedNullTypes = react
+    ? [`${reactNullHost} > TSTypeParameterInstantiation TSNullKeyword`]
+    : [];
+  return [
+    {
+      selector: `${nullLiteral}${except(allowedNullLiterals)}`,
+      message: nullMessageFor({ react }),
+    },
+    {
+      selector: `TSNullKeyword${except(allowedNullTypes)}`,
+      message: `${nullMessageFor({ react })} Type it as optional with \`undefined\`.`,
+    },
+  ];
+}
+
+export const escapeHatchSelectors = [
+  ...typeAssertionSelectors,
+  {
+    selector: 'TSAnyKeyword',
+    message: `Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type.`,
+  },
+  {
+    selector: 'TSNonNullExpression',
+    message:
+      'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
+  },
+];
+
+export const escapeHatchRules = {
+  'nitpicker/no-comments': 'error',
+};
+
+export const escapeHatchLinterOptions = { noInlineConfig: true };

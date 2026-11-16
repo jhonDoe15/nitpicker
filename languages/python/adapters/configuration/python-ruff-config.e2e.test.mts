@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createToolContext } from '../test-support/typed/tool-context.mts';
-import { ruffConfigFor } from './python-ruff-config.mjs';
+import { ruffConfigFor } from './python-ruff-config.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const roots: string[] = [];

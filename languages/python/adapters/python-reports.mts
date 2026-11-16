@@ -5,16 +5,16 @@ import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-bran
 import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mts';
 import { withoutLineNumbers } from '../ingest/typed/type-check-views.mts';
 import { ingestRulesReport } from '../ingest/rules-report.mts';
-import { RULES_TOOL } from '../rules/rule-hints.mjs';
-import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { RULES_TOOL } from '../rules/rule-hints.mts';
+import { PYTHON_ANALYZER_NAME } from './python-analyzer.mts';
 import { applyPythonExceptions } from './configuration/python-exceptions.mts';
 import type { ExceptionEntry } from './configuration/python-exceptions.mts';
-import { RULES_REPORT, readRegexSites } from './analysis/python-ast-rules.mjs';
-import { FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
-import { COVERAGE_REPORT } from './test-runs/test-step.mjs';
-import { TYPES_REPORT } from './python-types.mjs';
-import { isGeneratedPython } from '../libraries/generated-files.mjs';
-import { readFactImports } from './facts/python-facts.mjs';
+import { RULES_REPORT, readRegexSites } from './analysis/python-ast-rules.mts';
+import { FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mts';
+import { COVERAGE_REPORT } from './test-runs/test-step.mts';
+import { TYPES_REPORT } from './python-types.mts';
+import { isGeneratedPython } from '../libraries/generated-files.mts';
+import { readFactImports } from './facts/python-facts.mts';
 import { formatFindings, noTestsFinding, typeFindings } from './typed/report/report-ingest.mts';
 import type {
   AllowedSite,
@@ -67,8 +67,8 @@ import {
   withUtf16Columns,
   withoutAllowedForms,
   withoutFrameworkForms,
-  withoutShadowedFindings,
 } from './typed/report/report-views.mts';
+import { withoutShadowedFindings } from '../rules/filters/shadowed-findings.mts';
 
 const COLUMN_UNITS = { ruff: 'code-points', mypy: 'ascii-only' };
 

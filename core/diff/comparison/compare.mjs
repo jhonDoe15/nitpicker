@@ -3,6 +3,7 @@ import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { againstMissingReports } from './notices/missing-reports.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
+import { matchMovedMessages } from './moved-names/moved-messages.mjs';
 import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
 import { withWorseMessage } from '../../../shared/messages/advice/finding-advice.mjs';
 import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
@@ -17,12 +18,11 @@ export function compareFindings({
   baseFindings,
   headFindings,
   baseToHeadRenames = new Map(),
-  baseToHeadDirectories = new Map(),
-  baseToHeadPackages = new Map(),
   touchedCode,
   unknownOnBase,
+  ...layoutMoves
 }) {
-  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories, baseToHeadPackages);
+  const moves = baseMoves(baseToHeadRenames, { ...layoutMoves, headFindings });
   const { baseByKey, headByKey } = indexSnapshots({
     baseFindings,
     headFindings,
@@ -34,7 +34,7 @@ export function compareFindings({
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
   const anchored = moveAnchoredFindings(present, {
-    baseFindings: moveSimilarFindings(present, withoutExactMatch, moves.files),
+    baseFindings: moveSimilarFindings(present, withoutExactMatch, { moves, touchedCode }),
     snapshots: { base: baseFindings, head: headFindings },
     renames: moves.files,
     touchedCode,
@@ -71,15 +71,16 @@ function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {
   };
 }
 
-function moveSimilarFindings(present, baseFindings, renames) {
+function moveSimilarFindings(present, baseFindings, { moves, touchedCode }) {
   const similar = matchSimilarFindings({
     headFindings: present.newFindings,
     baseFindings,
-    renames,
+    renames: moves.files,
   });
   present.newFindings = similar.unmatched;
   present.unchangedFindings.push(...similar.matched);
-  return baseFindings.filter((finding) => !similar.matchedBase.has(finding));
+  const unmatched = baseFindings.filter((finding) => !similar.matchedBase.has(finding));
+  return moveMessageFindings(present, unmatched, { moves, touchedCode });
 }
 
 function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touchedCode }) {
@@ -90,6 +91,21 @@ function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touch
     renames,
     touchedCode,
   });
+  return settled(present, { pairs, baseFindings, touchedCode });
+}
+
+function moveMessageFindings(present, baseFindings, { moves, touchedCode }) {
+  const pairs = matchMovedMessages({
+    headFindings: present.newFindings.filter(
+      (finding) => present.withoutBase.has(finding) && finding.ratchet === undefined,
+    ),
+    baseFindings,
+    moves,
+  });
+  return settled(present, { pairs, baseFindings, touchedCode }).unmatchedBase;
+}
+
+function settled(present, { pairs, baseFindings, touchedCode }) {
   const movedHeads = new Set(pairs.map(({ head }) => head));
   present.newFindings = present.newFindings.filter((finding) => !movedHeads.has(finding));
   const grown = [];

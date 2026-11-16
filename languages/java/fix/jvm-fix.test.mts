@@ -19,7 +19,7 @@ import {
 } from './test-support/jvm-fix-harness.mts';
 
 const MAVEN = { 'pom.xml': '<project/>\n' };
-const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}\//u;
+const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}(?:\.staging-\w+)?\//u;
 
 afterEach(() => {
   vi.unstubAllEnvs();

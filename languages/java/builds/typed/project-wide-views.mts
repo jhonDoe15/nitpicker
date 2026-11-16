@@ -1,13 +1,14 @@
-import { readCouplingFindings, parseJdeps } from '../../adapters/metrics/java-coupling.mjs';
-import { readFeatureGraph } from '../../adapters/features/feature-findings.mjs';
+import type { CouplingFeatures } from '../../adapters/metrics/java-coupling-types.mts';
+import { readCouplingFindings, parseJdeps } from '../../adapters/metrics/java-coupling.mts';
+import { readFeatureGraph } from '../../adapters/features/feature-findings.mts';
 import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mjs';
-import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mjs';
+import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
-import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mjs';
-import { readJvmReuse } from '../../adapters/reuse/jvm-reuse-facts.mjs';
-import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mjs';
+import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
+import { readJvmReuse } from '../../adapters/reuse/jvm-reuse-facts.mts';
+import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
 import { outerClass } from '../../ingest/class-names.mjs';
 import { inModule } from '../module-path.mjs';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
@@ -31,6 +32,7 @@ export type KotlinNodes = {
   readonly fileOf: Map<string, string>;
 };
 export type Cycles = Readonly<Record<string, unknown>> & {
+  readonly generatedFiles: ReadonlySet<string>;
   readonly classes?: readonly { qualifier: string; name: string; file: string }[];
 };
 export type JdeEdge = { readonly source: string; readonly target: string };
@@ -40,7 +42,7 @@ export type CouplingOptions = {
   readonly kotlin: KotlinNodes | undefined;
   readonly files: ReadonlyMap<string, string | undefined> | undefined;
   readonly layout: unknown;
-  readonly features: unknown;
+  readonly features: CouplingFeatures | undefined;
 };
 type WideOptions = {
   readonly projects: readonly ReportProject[];
@@ -73,7 +75,7 @@ export type CouplingRun = {
   readonly manifest: Manifest;
   readonly kotlin: boolean;
   readonly layout: unknown;
-  readonly features: unknown;
+  readonly features: CouplingFeatures | undefined;
 };
 export type WideRun = {
   readonly projects: readonly ReportProject[];
@@ -87,9 +89,7 @@ export const inModuleOf: (modulePath: string | undefined, relativePath: string) 
   inModule;
 export const outerClassOf: (className: string) => string = outerClass;
 export function jdepsEdges(text: string): JdeEdge[] {
-  return parseJdeps(text).flatMap(({ source, target }) =>
-    source === undefined || target === undefined ? [] : [{ source, target }],
-  );
+  return parseJdeps(text).map(({ source, target }) => ({ source, target }));
 }
 export const couplingFindingsOf: (reportRoot: string, options: CouplingOptions) => JavaFinding[] =
   readCouplingFindings;

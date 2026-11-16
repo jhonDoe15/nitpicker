@@ -44,9 +44,9 @@ function isVitestFactory(value: unknown): value is VitestConfigFactory {
 }
 
 function vitestFactoryOf(module: object): VitestConfigFactory {
-  const factory: unknown = Reflect.get(module, 'default');
+  const factory: unknown = Reflect.get(module, 'layeredConfig');
   if (!isVitestFactory(factory)) {
-    throw new TypeError('The vitest config does not export a factory');
+    throw new TypeError('The vitest config does not export layeredConfig');
   }
   return factory;
 }
@@ -87,7 +87,7 @@ export async function resolveVitestConfig(
   const previousDirectory = process.cwd();
   process.chdir(projectRoot);
   try {
-    return await config({ command: 'serve', mode: 'test' });
+    return await config(projectRoot);
   } finally {
     process.chdir(previousDirectory);
   }

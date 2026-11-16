@@ -70,14 +70,14 @@ reported at the arm's `case` line, not at the end of the arm before it.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
   killed by any test. Mutants that change nothing but the `case _:` arm that closes an exhaustive
   `match` (the arm the coverage settings exclude, matched by the same pattern in
-  `languages/python/ingest/coverage-reports/exhaustive-match.mjs`) are left out: the type checker
+  `languages/python/ingest/coverage-reports/exhaustive-match.mts`) are left out: the type checker
   proves that code unreachable. A mutant of any other `assert_never` line is reported. The ways out are an `exceptions` entry for `mutant-survived` or
   `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
   `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
   the file are dropped).
 - **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
   production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
-  (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
+  (`languages/python/adapters/mutation/mutation-markers.mts`): each `# pragma: no mutate`
   (also its `block`, `start`, `end`, `class` and `function` forms) at its line, each production
   file a `do_not_mutate` pattern of the project's own `[tool.mutmut]` (or setup.cfg `[mutmut]`)
   matches, and `mutate_only_covered_lines = true` on the config file. The comment or pattern is not
@@ -123,7 +123,7 @@ releases are assumed to look alike, which is why a run that does not is rejected
   not record the mutation operator, so the text change stands in for it (the message only says
   whether a number, a string, an operator or an expression changed). The numbers `N` shift when a
   mutant is added above, which is why they are not part of the identity.
-- `python-mutation-data.mjs` reads those files and `languages/python/ingest/mutmut.mjs` turns them
+- `python-mutation-data.mjs` reads those files and `languages/python/ingest/mutmut.mts` turns them
   into findings. A `.meta` file without `exit_code_by_key`, or results none of whose names has the
   form `module.x_function__mutmut_N`, is a tool error that names the supported mutmut, not a
   silent pass.

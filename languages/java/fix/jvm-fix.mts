@@ -9,7 +9,7 @@ import {
   rewrittenPaths,
   runRecipes,
   sharedInputs,
-} from '../../../core/fix/typed/fix-pipeline.mts';
+} from '../../../core/fix/typed/fix-views.mts';
 import type {
   FixFile,
   FixOutcome,

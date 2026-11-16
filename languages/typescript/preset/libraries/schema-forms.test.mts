@@ -1,4 +1,4 @@
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
 import { createTester } from './test-support/rule-tester.mts';
 
 const tester = createTester();

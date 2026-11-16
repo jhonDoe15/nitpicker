@@ -93,13 +93,7 @@ describe('copied vitest configs', () => {
     expect(coverage.test.dir).toBeUndefined();
     expect(coverage.test.maxWorkers).toBe(4);
     expect(coverage.test.restoreMocks).toBe(true);
-    expect(coverage.test.include).toEqual([
-      'tests/**/*.test.tsx',
-      'lib/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-    ]);
+    expect(coverage.test.include).toEqual(['tests/**/*.test.tsx']);
     expect(sortedUnique(coverage.test.exclude)).toEqual([
       '**/.git/**',
       '**/node_modules/**',

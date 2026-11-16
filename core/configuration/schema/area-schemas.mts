@@ -20,7 +20,7 @@ import { stylingApproaches } from '../../../languages/typescript/preset/eslint-c
 import {
   KOTLIN_FORMATTERS,
   KOTLIN_KEYS,
-} from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+} from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import {
   ENVIRONMENTS,
   FORMATTERS as PYTHON_FORMATTERS,
@@ -28,12 +28,12 @@ import {
   SETTING_KEYS,
   TYPE_CHECKERS,
   WINDOWS_ABSOLUTE,
-} from '../../../languages/python/adapters/configuration/python-config.mjs';
+} from '../../../languages/python/adapters/configuration/python-config.mts';
 import {
   BUILD_TAG,
   GO_SETTING_KEYS,
-} from '../../../languages/go/adapters/configuration/go-config.mjs';
-import { FORMATTERS as GO_FORMATTERS } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
+} from '../../../languages/go/adapters/configuration/go-config.mts';
+import { FORMATTERS as GO_FORMATTERS } from '../../../languages/go/adapters/formatting/go-formatters.mts';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mts';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mts';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mts';

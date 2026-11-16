@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-compatibility-shim.mjs';
+import { rule } from './no-compatibility-shim.mts';
 
 const tester = typescriptRuleTester();
 

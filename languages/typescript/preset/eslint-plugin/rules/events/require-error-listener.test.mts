@@ -1,6 +1,6 @@
 import type { RuleTester } from 'eslint';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './require-error-listener.mjs';
+import { rule } from './require-error-listener.mts';
 
 type CaseRow = [string, Exclude<RuleTester.InvalidTestCase['errors'], number>];
 

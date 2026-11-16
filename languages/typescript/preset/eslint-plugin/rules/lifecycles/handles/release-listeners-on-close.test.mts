@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './release-listeners-on-close.mjs';
+import { rule } from './release-listeners-on-close.mts';
 import { type Build, factory, inClass } from '../../../test-support/lifecycle-cases.mts';
 
 const tester = typescriptRuleTester();

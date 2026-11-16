@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mts';
 import { ruffSelect } from '../ruff/typed/ruff-select.mts';
 import { route, sample } from './test-support/hint-samples.mts';
 import { ruleCases } from './test-support/python-rule-cases.mts';

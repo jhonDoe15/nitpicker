@@ -597,6 +597,130 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   own message: it no longer publishes a rolled-back change, but a crash after the commit still
   loses the message. Write the message to an outbox table in the same transaction and let a relay
   publish it, or use change data capture or a database-backed queue.
+- `nitpicker/no-query-per-parent`: a GraphQL field resolver that calls a database or remote function once per
+  parent object, when the parent type is returned as a list somewhere in the schema, is reported: a list of N
+  parents costs N queries and nothing in the code looks like a loop. The resolvers are a NestJS method with
+  `@ResolveField` (`@nestjs/graphql`) or a type-graphql method with `@FieldResolver`, whose parent type is the
+  class decorator `@Resolver(() => View)` (or the type of its `@Parent()` or `@Root()` parameter), and the field
+  functions of a resolver map (`resolvers: { View: { owner: (view) => ... } }`, also with `resolve`) in a file
+  that imports Apollo Server, Mercurius, graphql-yoga or graphql-tools; root fields (`Query`, `Mutation`,
+  `Subscription`) are never reported. A parent counts as a list when `@Query(() => [View])`, `@Field(() => [View])`
+  or the like names it, or an SDL string holds `: [View!]!`, in the program's files (the current file without
+  the type checker); a type only ever returned alone is not reported. The call is classified like
+  `nitpicker/no-io-in-loop`, through a project service too when the type checker runs. Allowed forms: a
+  DataLoader (`loaders.owner.load(parent.ownerId)`, `loadMany`), a read from a request-scoped cache, data already on
+  the parent. Prisma `findUnique` and `findUniqueOrThrow` (also the fluent `findUnique(...).relation()` form) are
+  batched by Prisma within a tick, so they are not reported. Calls in a loop or iteration callback inside the resolver stay with `nitpicker/no-io-in-loop`.
+- `nitpicker/no-lookup-per-element`: an RxJS `mergeMap`, `flatMap`, `concatMap`, `switchMap` or `exhaustMap` over
+  `from(items)` (or `of(...items)`, also behind `map`, `filter`, `tap`) whose function reaches a database or remote
+  call that reads the element is reported, with or without a concurrency limit: N elements make N queries or
+  requests. The function may be an inline function, a function in the same file passed by name, or call helpers
+  (a project service too when the type checker runs). Fetch the rows in one batched query before the pipeline
+  (`findByIds`, `WHERE id IN (...)`, a batch endpoint) and join them to the elements in memory. A
+  `bufferCount`, `toArray`, `take` or other grouping operator before the lookup, a fixed literal collection, a
+  function that does not read the element, and a `mergeMap` without a limit over a remote client that
+  `nitpicker/unbounded-reactive-fan-out` already reports are left alone.
+- `nitpicker/no-stale-retry-after-conflict`: a retry after a TypeORM optimistic-lock conflict that saves a
+  stale or unchanged entity is reported. The retry is a p-retry, async-retry, exponential-backoff or
+  cockatiel call, or a hand-written `for`/`while` retry loop, that names `OptimisticLockVersionMismatchError`
+  (in its arguments, in the cockatiel policy it runs, or in the loop), around `repository.save(entity)` or
+  `manager.save(Order, entity)`. Two shapes: the saved entity, or the object spread into the saved literal,
+  was loaded before the retried scope and nothing inside the scope reads the database or assigns it (every
+  attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
+  `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
+  re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
+  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+  Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
+- Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
+  as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM, and the second form only where the project opens transactions
+  somewhere (the followed convention `typescript.transactions`, measured from non-test source: `.transaction(`,
+  `$transaction(`, `.transactional(`, `startTransaction(`, `@Transactional()`). Inside a transaction
+  callback (`manager.transaction(async (m) => ...)`, `prisma.$transaction(async (tx) => ...)`,
+  Drizzle and Knex `transaction(...)`, Kysely `transaction().execute(...)`) a write through a client or
+  repository that is not the callback's parameter (`this.roleRepository.save(...)`, a module-level `prisma`)
+  is reported, because it runs outside that transaction; a call that passes the parameter on (`{ transaction: t }`),
+  one rooted at another function's parameter and a callback with no parameter are not. Sequelize writes are
+  judged by their options (no `transaction` key); a MikroORM `em.transactional` routes the global entity manager into
+  its transaction, so it is not judged. A function that awaits writes to two or more different tables
+  (a repository's name, `manager.save(Entity, ...)`, `prisma.order.create`, `insert(orders)`,
+  `insertInto("orders")`, `knex("orders").insert`, `Order.create`) outside any transaction is reported at the
+  second one; a write through a parameter (the caller may pass the transaction in), a call that passes a
+  transaction-named argument, a `@Transactional()` method, a `withTransaction`/`inTransaction` callback (CLS
+  transaction hosts), a function that calls `begin()` or `startTransaction()` (MikroORM, query runners), writes in the
+  branches of one `if`/`switch` or either side of an `if` branch that returns or throws, a
+  write in a `catch` or `finally` and two writes to one table are left alone, each write is judged by the ORM its own
+  receiver belongs to when TypeORM and MikroORM are both present, and a table the rule cannot
+  name is not compared. The advisory rule reports a write to a table that follows a read of the same table
+  (`findOne`, `findFirst`, `count`, `exists`, `selectFrom`) whose result decided an insert (`create`, `insert`,
+  `save` of a new object) or, for a `count` or `exists` check, any write, in an `if` (also as a guard clause that
+  returns or throws); a not-found or permission guard before an `update`, `save` or `delete` of the row just
+  loaded is left alone. It also needs no transaction, no lock option (`lock`, `forUpdate`,
+  `pessimistic`) and no atomic form (`upsert`, `on conflict`, a `version` or `updatedAt` condition) in the write; it is
+  classified report-only until measured on more projects. Both name the allowed forms: one transaction with
+  its manager passed down, an atomic statement, or a row lock inside the transaction.
+- One failing item must not stop the rest of a job (`nitpicker/no-unisolated-job-loop`, needing the type
+  checker to see the I/O inside helpers): in a NestJS `@Cron`, `@Interval` or `@Timeout` method (imported from
+  `@nestjs/schedule`), a `@Process` method or the `process` method of a `@Processor` class or a
+  `WorkerHost` subclass (`@nestjs/bull`, `@nestjs/bullmq`), a BullMQ `new Worker(name, fn)` callback, an
+  Agenda `define(name, fn)` callback and a `node-cron` `schedule(expression, fn)` callback, a `for...of` or
+  `for await` loop whose body awaits a database or remote call (direct or through helpers) that is not inside a
+  `try` with a `catch` that does not throw, or followed by `.catch(handler)` (or `.then(ok, handler)`) on that
+  call, is reported. A loop that only enqueues (a message effect), a loop body that uses `Promise.allSettled`, a
+  loop over a literal list and a loop outside such a handler stay quiet; a `try` whose `catch` rethrows, or a
+  `try`/`finally` with no `catch`, does not isolate the item and is reported. Plain `for`, `while` and `forEach`
+  loops are not checked. The message names the allowed forms: a `try`/`catch` or `.catch(...)` per item that
+  records the failure, one queued job per item, or `allSettled` with the failures reported; a job that must fail
+  as a whole so the run is retried takes the exception.
+- Reads that skip the project's soft-delete or visibility filter (`nitpicker/no-unfiltered-soft-delete-read`): the
+  followed convention `typescript.softDeleteFilters` lists, per table, the column (`deletedAt`, `deleted_at`,
+  `isDeleted`, `deleted`, `archived`, `visibility`, `isVisible`, `hidden` and their variants) or the helper
+  (a function named for deleted, visible, active, archived, trashed or live rows, such as
+  `withDefaultVisibility`, called in the query or passed to `$call`) that at least 80% of the reads of that table
+  apply, with at least five reads measured from non-test source at the merge base. A read is a Kysely
+  `selectFrom`/join, a Knex `knex('table')` chain, a Drizzle `select().from(table)`/join, a Prisma `findMany` and its
+  siblings, a TypeORM repository `find*`/`count`/`exists`, a Sequelize model read, a MikroORM `find` or a TypeORM
+  query builder run with `getMany`, `getOne` and the like, and it applies the filter when the call mentions the column
+  (a `where` key, `table.column` text or member, `whereNull`), including a deliberate `IS NOT NULL` or `Not(IsNull())`
+  and the acknowledgements `withDeleted`, `onlyDeleted`, `includeDeleted`, `withTrashed` and `unscoped`. With a majority,
+  a changed read or join of that table without any of them is reported with the column and the helper the project
+  uses; a table below the threshold, or a project with no majority, is never reported. Relation loads (`include`,
+  `select`, `relations`), ordering and a query built in one expression and run elsewhere are not judged, and
+  a trash, restore, purge or admin query takes the exception.
+- Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
+  the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
+  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,
+  `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`, `forEach` or `flatMap`, which covers lookups and index
+  computations) is judged against the whole checked program, not the changed file: it follows the flag when at least five
+  iterations over that item type exist in non-test source and at least 80% of them skip flagged items. An iteration skips
+  them when its body mentions the flag, when an earlier `filter`/`find` step in its receiver chain does, when the receiver is a
+  call of a helper named for live items (`getNonDeletedElements`, `activeItems`), when such a helper is passed by reference
+  (`filter(isLive)`) or called on the item in the body (`if (!isLive(item)) continue`), or when the item type is narrowed, the flag
+  declared as `false` (`true` for `isVisible`, `null` or `undefined` for `deletedAt`), as in `NonDeleted<T>`. A changed
+  iteration that does not is reported with the flag, the share, the guard form, the most used helper that returns narrowed
+  items and the narrowed type alias. A flag below the threshold is never followed, an iteration with a function reference
+  instead of an inline callback is not judged, a loop that assigns the flag is skipped, and undo, trash, restore and sync code takes the exception. Without a type
+  program (no `tsconfig`) the rule is silent, so JavaScript projects without type information are not covered.
+- Route handlers without the project's auth requirement (`nitpicker/no-route-without-auth`, syntactic): the followed
+  convention `typescript.routeAuth` records how routes declare auth, measured from non-test source at the merge base.
+  A NestJS handler is a method with `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Options` or `@Head` (from
+  `@nestjs/common`) in a `@Controller` class; its auth declarations are the decorators at method and class level whose
+  name has an auth word (`Auth`, `Authenticated`, `Authorize`, `UseGuards`, `Roles`, `Permission`, `Jwt`, `Scopes`,
+  ...; documentation and throttling names such as `ApiBearerAuth`, `Throttle` or `ThrottlerGuard` are not auth), as a shape of the name plus the option keys of an object argument (`@Authenticated({ permission })`), and a
+  public marker is a name with `Public` or `Anonymous` (or a skip-auth name) or an auth option set to `false`
+  (`permission: false`). When at least ten handlers exist and one shape covers at least half of them and, with the
+  public ones, at least 90%, a handler with neither the shape nor a public marker is reported, naming the shape.
+  With a global guard (`APP_GUARD`, `useGlobalGuards`, or an auth-named middleware applied with
+  `consumer.apply(...).forRoutes(...)`) nothing is followed. Without a majority, where more than half of at least
+  five handlers declare a guard or auth decorator, a handler with no auth decorator at method or class level and
+  no public marker is reported. Express, Fastify, Koa router, Hono and Restify route calls (`app.get('/path', ...)`
+  on a receiver created by the framework (`express()`, `Router()`, `Fastify()`, `new Hono()`), typed as one, or
+  registered through `register`, with a path first and a handler last; calls are read in source order) follow the same 90% rule on the auth middleware name (a
+  name with an auth word) among the route's own middleware, `preHandler`/`onRequest` options, and a
+  `use(...)`/`addHook(...)` on the same receiver before it; there is no public marker, so a route whose path names
+  `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
+  `public` or `oauth` is left alone. The service form (a request id reaching a repository call
+  without the project's access check) needs data flow and is not covered.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
@@ -648,6 +772,42 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No query rows loaded only to be changed or deleted the same way (`nitpicker/no-loaded-rows-saved-back`,
+  needs the type checker for TypeORM, Sequelize and MikroORM). It reads the query results of
+  `nitpicker/no-in-memory-query` and reports, at the write, three shapes: a `for...of` or `forEach` whose
+  body only assigns row fields (`=`) to values that do not read the row (literals, other variables,
+  `new Date()`, `Date.now()`), followed by `save(rows)` (TypeORM), `bulkCreate(rows, { updateOnDuplicate })`
+  (Sequelize) or `flush()` on the same entity manager (MikroORM); `remove(rows)`, `softRemove(rows)` or
+  `removeAndFlush(rows)`; and rows mapped to one field (`rows.map((row) => row.id)`, also through a variable
+  read once or `In`, `inArray`) that only feeds a delete or update by those ids (`delete`, `deleteMany`,
+  `destroy`, `softDelete`, `nativeDelete`, `update`, `updateMany`, `nativeUpdate`, or a Drizzle
+  `delete`/`update` with `.where(inArray(...))`). Use `update(criteria, values)` or `delete(criteria)`
+  (TypeORM), `updateMany`/`deleteMany` (Prisma), `Model.update(values, { where })`/`destroy({ where })`
+  (Sequelize), `nativeUpdate`/`nativeDelete` (MikroORM), or `update().set().where()`/`delete().where()`
+  (Drizzle). A loop body that reads the row, calls a function or emits an event, rows that are used
+  another way too (returned, passed on), paged queries, queries with `select`, `columns` or `attributes`,
+  and entities with a hook (`BeforeUpdate`, `AfterRemove` and the like), a version column
+  (`VersionColumn`, `version: true`), a relation with `cascade`, `orphanRemoval` or `orphanedRowAction`, a
+  subscriber or a `Model.addHook` call, or whose class cannot be resolved, are left alone. A delete or update
+  of another table or model keyed by the loaded rows' ids is not this shape. Per-row `save`, `update` and `remove` calls inside the loop are
+  `nitpicker/no-io-in-loop`'s.
+- No whole rows loaded only to read one column or to test existence (`nitpicker/no-whole-rows-for-one-value`,
+  needs the type checker for the column form). On the query results of `nitpicker/no-in-memory-query` it
+  reports a result only mapped to one field of its rows (`rows.map((row) => row.email)` or
+  `.map(({ email }) => email)`, directly or through a variable read once), when the type checker finds the
+  field as a declared column (a getter, a method, a relation without a column decorator or an unresolved type
+  stays silent): select the column (`select: { email: true }` in TypeORM and Prisma, `attributes` in
+  Sequelize, `fields` in MikroORM, `db.select({ email: users.email })` in Drizzle). It also reports a
+  `count`/`countBy` result that is only compared with zero or one (`> 0`, `>= 1`, `!== 0`, `=== 0`, `< 1`,
+  or used as a condition) and a `findOne`, `findOneBy`, `findFirst` or `findUnique` result that is only a
+  condition (`if (row)`, `!row`, `Boolean(row)`, `!== null`, `== undefined`, a ternary test), directly or
+  through a variable read once: use `exists` or `existsBy` (TypeORM), `findFirst({ where, select: { id: true } })`
+  (Prisma), `findOne` with `attributes: ['id']` (Sequelize) or `fields` (MikroORM). A query that already
+  selects (`select`, `columns`, `attributes`, `fields`), a `findOne` with a lock option (`lock`, `forUpdate`,
+  `skipLocked`; `exists` cannot lock), a paged query, rows that are used another way, and
+  ids that only feed a delete or update (`nitpicker/no-loaded-rows-saved-back`'s) are left alone.
+  Drizzle's `select({ value: count() })` existence form and its one-column form are not covered: its rows
+  have no model class to read the field from, and the count comes back as a row.
 - No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
   counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
   `multiple-collection-joins`): the database returns one row for every pair of their elements. It
@@ -872,6 +1032,11 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   A bounded read that must finish before the function can continue goes in a reviewed
   `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
   `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  The JVM-only effects rules for an async method that does its blocking work and wraps the result
+  (`Futures.immediateFuture(dao.find())`) and for sync code that waits on its async twin
+  (`findByIdAsync(id).get()`) have no TypeScript rule: the first form with a Node call is
+  `Promise.resolve(readFileSync(...))`, which this rule reports through its `*Sync` call, and a
+  Promise has no blocking wait, so the second form does not exist.
   Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
   recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
   whole.

@@ -5,7 +5,7 @@ import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../.
 import { resolveAnalyzerVersion as untypedResolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { hashFiles as untypedHashFiles } from '../../../preset/checks/hash.mjs';
 import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../preset/diff/configured-analyzers.mjs';
-import { accumulatingSpreadMessages as untypedSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
+import { accumulatingSpreadMessages as untypedSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mts';
 import type { AnalyzerReport } from '../../../../../shared/values/findings.mts';
 
 export function called(untyped: unknown, values: readonly unknown[]): unknown {

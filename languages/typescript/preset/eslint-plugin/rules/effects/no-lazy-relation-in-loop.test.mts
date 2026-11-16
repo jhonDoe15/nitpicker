@@ -1,6 +1,6 @@
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-lazy-relation-in-loop.mjs';
+import { rule } from './no-lazy-relation-in-loop.mts';
 
 const ENTITIES = [
   "import { Entity, Column, ManyToOne, OneToMany } from 'typeorm';",

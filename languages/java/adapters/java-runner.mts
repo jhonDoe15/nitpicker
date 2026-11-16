@@ -3,7 +3,7 @@ import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaReport } from './java-diff.mts';
 import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
-import { parseJavaRunnerArguments } from './java-policy.mjs';
+import { parseJavaRunnerArguments } from './java-policy.mts';
 import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';

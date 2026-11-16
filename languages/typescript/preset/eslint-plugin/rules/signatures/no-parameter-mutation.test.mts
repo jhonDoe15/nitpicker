@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { namedErrorProject } from '../../test-support/projects/typed-ts-project.mts';
-import { rule } from './no-parameter-mutation.mjs';
+import { rule } from './no-parameter-mutation.mts';
 
 const { root, tester, typed } = namedErrorProject(
   'nitpicker-parameter-mutation-',

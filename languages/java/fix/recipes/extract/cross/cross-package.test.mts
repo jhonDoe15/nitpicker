@@ -5,12 +5,10 @@ import type { RecipeSource } from '../../../../../../core/fix/typed/fix-types.mt
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture-files.mts';
 import { javaExtractNearDuplicateRecipe as recipe } from '../near-duplicate-extract.mts';
-import { packageScanner as untypedPackageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mjs';
+import { packageScanner } from '../../../../adapters/near-duplicates/extract/cross/shared-class.mts';
 import { urlAndUri } from '../test-support/creation-sources.mts';
 import { family, filesOf } from '../test-support/cross-sources.mts';
 
-const packageScanner: (root: string) => (folders: readonly string[]) => unknown =
-  untypedPackageScanner;
 const FOLDER = 'src/main/java/demo';
 const roots: string[] = [];
 

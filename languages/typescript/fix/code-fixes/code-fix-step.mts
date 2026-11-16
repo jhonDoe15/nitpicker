@@ -2,11 +2,12 @@ import type { FixFile, FixSettings, FixStep } from '../../../../core/fix/typed/f
 import {
   fixerError,
   formatNotes,
+  readBytes,
   withFixedLineEndingsOf,
   writeTexts,
-  type Layout,
-} from '../typed/fix-views.mts';
-import { type Bytes, readBytes } from '../../../../core/fix/typed/fix-pipeline.mts';
+  type Bytes,
+} from '../../../../core/fix/typed/fix-views.mts';
+import type { Layout } from '../typed/fix-views.mts';
 import { planCodeFixes } from './plan-code-fixes.mts';
 
 type CodeFixSettings = Pick<FixSettings, 'projectRoot' | 'selectedRules' | 'writer'> & {

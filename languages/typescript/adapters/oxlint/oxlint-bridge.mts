@@ -2,6 +2,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { nativeConfigFlags } from '../lint-engine/compatibility/native-config.mts';
 
 type BridgeRequest = {
   readonly namespace: string;
@@ -38,7 +39,11 @@ async function coreRules({
   projectRoot,
   sampleFile,
 }: Omit<BridgeRequest, 'namespace' | 'alias'>): Promise<Record<string, unknown>> {
-  const eslint = new ESLint({ cwd: projectRoot, overrideConfigFile: wrapperPath });
+  const eslint = new ESLint({
+    cwd: projectRoot,
+    overrideConfigFile: wrapperPath,
+    flags: nativeConfigFlags(wrapperPath),
+  });
   const config: unknown = await eslint.calculateConfigForFile(sampleFile);
   const rules = fieldOf(fieldOf(fieldOf(config, 'plugins'), '@'), 'rules');
   return Object.fromEntries(ruleNames.map((name) => [name, fieldOf(rules, name)]));

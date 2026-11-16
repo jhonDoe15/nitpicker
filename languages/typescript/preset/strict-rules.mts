@@ -1,10 +1,10 @@
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
-import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
-import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
+import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mts';
+import { isPythonTouchedRule } from '../../python/rules/touched-rules.mts';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
 import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mts';
-import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mjs';
+import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mts';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 import { serverRuleIds } from './eslint-config/server/server-rules.mts';
 export const strictEslintRuleIds = [
@@ -25,7 +25,18 @@ export const strictEslintRuleIds = [
   'nitpicker/naming-convention',
   'nitpicker/no-accumulating-spread',
   'nitpicker/no-dual-write',
+  'nitpicker/no-loaded-rows-saved-back',
+  'nitpicker/no-lookup-per-element',
+  'nitpicker/no-query-per-parent',
+  'nitpicker/no-whole-rows-for-one-value',
+  'nitpicker/no-unatomic-writes',
+  'nitpicker/no-check-then-write',
+  'nitpicker/no-unisolated-job-loop',
+  'nitpicker/no-unfiltered-soft-delete-read',
+  'nitpicker/no-unguarded-deleted-items',
+  'nitpicker/no-route-without-auth',
   'nitpicker/no-retry-without-idempotency',
+  'nitpicker/no-stale-retry-after-conflict',
   'nitpicker/no-remote-call-under-lock',
   'nitpicker/no-remote-call-in-transaction',
   'nitpicker/no-lazy-relation-in-loop',

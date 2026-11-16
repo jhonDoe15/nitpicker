@@ -16,7 +16,8 @@ import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
 } from '../../git/repository/worktree.mjs';
-import type { SnapshotRoots } from './run-types.mts';
+import type { DeclaredMoves } from '../moved-names/declared/move-types.mts';
+import type { SharedWorktree, SnapshotRoots } from './run-types.mts';
 
 export type Comparison = {
   readonly mergeBaseSha: string;
@@ -32,7 +33,10 @@ type Moves = {
   readonly inferred: Map<string, string>;
 };
 
-type LayoutMoves = Moves & { readonly packages: Map<string, string> };
+type LayoutMoves = Moves & {
+  readonly packages: Map<string, string>;
+  readonly declared: DeclaredMoves;
+};
 
 type GitRange = {
   readonly repositoryRoot: string;
@@ -59,6 +63,7 @@ type Project = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
   readonly warn?: unknown;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
 };
 
 type Worktree = { readonly commitSha: string; readonly warn: unknown };
@@ -75,7 +80,11 @@ const changedLinesOf: (
   request: ProjectRange & { readonly inferredMoves: Moves['inferred'] },
 ) => ReadonlyMap<string, unknown> = readChangedLines;
 const removesTests: (request: ProjectRange) => unknown = readRemovesTests;
-const movedPackages: (moves: Moves, range: ProjectRange) => Map<string, string> = readMovedPackages;
+const movedPackages: (
+  moves: Moves,
+  range: ProjectRange,
+) => { readonly packages: Map<string, string>; readonly declared: DeclaredMoves } =
+  readMovedPackages;
 const inWorktree: <T>(root: string, worktree: Worktree, operation: (root: string) => T) => T =
   withTemporaryWorktree;
 const inNamedWorktree: <T>(
@@ -95,7 +104,7 @@ export function readSnapshotLayout(
   const moves = movesOf({ ...projectRange, changes });
   return {
     baseProjectRelativePath,
-    moves: { ...moves, packages: movedPackages(moves, projectRange) },
+    moves: { ...moves, ...movedPackages(moves, projectRange) },
     touchedPaths: touchedPathsOf({ ...projectRange, changes }),
     touchedCode: {
       changedLines: changedLinesOf({ ...projectRange, inferredMoves: moves.inferred }),
@@ -119,16 +128,23 @@ export function withSnapshotRoots<T>(
   operation: (roots: SnapshotRoots) => T,
 ): T {
   const { repositoryRoot, projectRelativePath, warn } = settings;
-  const base = { commitSha: comparison.mergeBaseSha, warn };
-  return inWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
-    inNamedWorktree(
+  const shared =
+    settings.sharedBaseWorktree?.commitSha === comparison.mergeBaseSha
+      ? settings.sharedBaseWorktree
+      : undefined;
+  function withHead(baseWorktreeRoot: string): T {
+    return inNamedWorktree(
       repositoryRoot,
       { commitSha: comparison.headSha, directoryName: 'head', warn },
       (headWorktreeRoot) =>
         operation({
           baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
           headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
+          sharedBase: shared,
         }),
-    ),
-  );
+    );
+  }
+  return shared === undefined
+    ? inWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
+    : withHead(shared.root);
 }

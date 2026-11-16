@@ -1,9 +1,9 @@
 import tseslint from 'typescript-eslint';
-import { configuredRuleTester } from './test-support/rule-tester.mts';
-import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
-import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
-import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
-import { withoutFixes } from '../eslint-config/rule-hints.mjs';
+import { configuredRuleTester, ruleModule } from './test-support/rule-tester.mts';
+import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mts';
+import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mts';
+import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mts';
+import { withoutFixes } from '../eslint-config/rule-hints.mts';
 
 const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
@@ -59,7 +59,7 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
     },
   ],
 });
-ruleTester.run('structured-catch-logging', withoutFixes(structuredCatchLogging), {
+ruleTester.run('structured-catch-logging', withoutFixes(ruleModule(structuredCatchLogging)), {
   valid: [
     {
       filename: '/repo/src/main/feature.ts',
@@ -92,23 +92,27 @@ ruleTester.run('structured-catch-logging', withoutFixes(structuredCatchLogging),
     },
   ],
 });
-ruleTester.run('keep caught causes in the Pino serializer', withoutFixes(structuredCatchLogging), {
-  valid: [
-    "try { load(); } catch (error) { logger.warn({ err: error }, 'failed'); }",
-    "try { load(); } catch (error) { const fields = { err: error, category: 'network' }; logger.error(fields, 'failed'); }",
-  ],
-  invalid: [
-    {
-      code: "try { load(); } catch (error) { const message = error instanceof Error ? error.message : 'failed'; logger.warn({ error: message }, 'failed'); }",
-      errors: [{ messageId: 'caughtErrorShape' }],
-    },
-    {
-      code: "try { load(); } catch (error) { logger.warn({ err: error.message }, 'failed'); }",
-      errors: [{ messageId: 'caughtErrorShape' }],
-    },
-  ],
-});
-ruleTester.run('preserve wrapped error causes', withoutFixes(preserveErrorCause), {
+ruleTester.run(
+  'keep caught causes in the Pino serializer',
+  withoutFixes(ruleModule(structuredCatchLogging)),
+  {
+    valid: [
+      "try { load(); } catch (error) { logger.warn({ err: error }, 'failed'); }",
+      "try { load(); } catch (error) { const fields = { err: error, category: 'network' }; logger.error(fields, 'failed'); }",
+    ],
+    invalid: [
+      {
+        code: "try { load(); } catch (error) { const message = error instanceof Error ? error.message : 'failed'; logger.warn({ error: message }, 'failed'); }",
+        errors: [{ messageId: 'caughtErrorShape' }],
+      },
+      {
+        code: "try { load(); } catch (error) { logger.warn({ err: error.message }, 'failed'); }",
+        errors: [{ messageId: 'caughtErrorShape' }],
+      },
+    ],
+  },
+);
+ruleTester.run('preserve wrapped error causes', withoutFixes(ruleModule(preserveErrorCause)), {
   valid: [
     'try { load(); } catch (error) { throw normalizeFailure(error); }',
     "try { load(); } catch (error) { throw new Error('failed', { cause: error }); }",

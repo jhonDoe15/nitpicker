@@ -43,3 +43,14 @@ export function nameHoles(holes, taken, stemOf) {
   }
   return named;
 }
+
+export const TYPE_PARAMETER_NAMES = Object.freeze([
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z',
+  ...Array.from({ length: 20 }, (_, index) => `T${String(index + 1)}`),
+]);

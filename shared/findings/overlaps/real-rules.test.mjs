@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../languages/typescript/adapters/eslint/normalize.mts';
 import { makeTemporaryRoot } from '../../../languages/typescript/adapters/eslint/test-support/finding-for.mts';
-import { nitpickerRules } from '../../../languages/typescript/preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../../languages/typescript/preset/eslint-plugin/index.mts';
 import { withoutCrossToolOverlaps } from './cross-tool.mjs';
 
 const CODE = [
