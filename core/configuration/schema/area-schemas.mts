@@ -20,7 +20,7 @@ import { stylingApproaches } from '../../../languages/typescript/preset/eslint-c
 import {
   KOTLIN_FORMATTERS,
   KOTLIN_KEYS,
-} from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+} from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import {
   ENVIRONMENTS,
   FORMATTERS as PYTHON_FORMATTERS,

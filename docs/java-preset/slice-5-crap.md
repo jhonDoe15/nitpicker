@@ -71,5 +71,5 @@ Part of the [Java preset guide](../java-preset.md).
   parameter keeps its legacy values and fails only on growth; renaming the method, or adding an
   overload of the same name above it, makes them new (#548).
 - **Tests.** `languages/java/ingest/crap.test.mjs` against the committed samples
-  `fixtures/structure.json` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
+  `fixtures/structure.json` and `fixtures/jacoco-crap.xml`; `java-reports.test.mts` covers the glue;
   the gated e2e test has a case adding a ten-branch untested method.

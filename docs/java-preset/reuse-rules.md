@@ -8,7 +8,7 @@ Part of the [Java preset guide](../java-preset.md).
 Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
 The findings have tool `structure` and are lifted with the top-level `exceptions`.
 
-- **Producer.** `adapters/reuse/jvm-reuse-facts.mjs` reads every `.java` file (and `.kt` file with
+- **Producer.** `adapters/reuse/jvm-reuse-facts.mts` reads every `.java` file (and `.kt` file with
   `preset: "kotlin"`) under the main source roots the build reports for each module, leaving out
   roots under `build/` and files matched by `exclude`. One tokenizer
   (`adapters/reuse/source/jvm-tokens.mjs`) serves both languages: each string, text block, raw string

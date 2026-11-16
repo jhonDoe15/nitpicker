@@ -11,7 +11,7 @@ import {
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import { useGradleFixtures } from './test-support/java-cli-harness.mts';
-import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mjs';
+import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mts';
 import { labelsOf, linkSentence } from '../test-support/report-readers.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
