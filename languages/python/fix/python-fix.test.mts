@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
+import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mts';
 import { fakePythonTools } from './test-support/fake-python-fix.mts';
 import {
   fixOptions,

@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lint, RUFF_REPORT } from '../adapters/python-tools.mjs';
+import { lint, RUFF_REPORT } from '../adapters/python-tools.mts';
 import { toolContext } from '../rules/test-support/python-rule-scripts.mts';
 import type { IngestedFinding } from '../ingest/typed/ingest-types.mts';
 import { ruffFindings } from '../adapters/python-reports.mts';
@@ -12,12 +12,10 @@ import {
   checkRules,
   readAllowances,
   readTestFiles,
-} from '../adapters/analysis/python-ast-rules.mjs';
+} from '../adapters/analysis/python-ast-rules.mts';
 import { ingestRulesReport } from '../ingest/rules-report.mts';
 import { applyRuleHints, exceptionRoute } from '../rules/typed/rule-hint-views.mts';
 
-const runLint: (context: unknown) => void = lint;
-const runRules: (context: unknown) => void = checkRules;
 const testFilesOf: (root: string) => string[] = readTestFiles;
 const readJson: (text: string) => unknown = JSON.parse;
 
@@ -202,8 +200,8 @@ function readFindings(
     settings: { environment: 'path', sourceRoots: ['.'] },
     reportRoot,
   });
-  runRules(context);
-  runLint(context);
+  checkRules(context);
+  lint(context);
   const report = readJson(readFileSync(path.join(reportRoot, RUFF_REPORT), 'utf8'));
   const testFiles = testFilesOf(reportRoot);
   const ruff = ruffFindings(report, {

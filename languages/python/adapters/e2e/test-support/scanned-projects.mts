@@ -1,7 +1,7 @@
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
-import { scanImports } from '../../analysis/python-coupling.mjs';
-import { run } from '../../execution/python-process.mjs';
+import { scanImports } from '../../analysis/python-coupling.mts';
+import { run } from '../../execution/python-process.mts';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
 
 type ScannedProject = {

@@ -4,6 +4,7 @@ import type { ComparisonCli } from './run-context.mts';
 export function runnerOptions(cli: ComparisonCli): Record<string, unknown> {
   return {
     scope: cli.scope,
+    labels: cli.labels,
     progress: cli.progress,
     runTasks: cli.runTasks,
     fixRecipes: FIX_RECIPES,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
-import { failedTests, failingModules, parseJunit as untypedParse } from './junit-results.mjs';
+import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
+import { failedTests, failingModules, parseJunit as parsedJunit } from './junit-results.mts';
 
 function parseJunit(xml: string): Readonly<Record<string, unknown>>[] {
-  return listOf(untypedParse(xml)).map(fieldsOf);
+  return parsedJunit(xml).map(fieldsOf);
 }
 
 const REPORT = `<?xml version="1.0" encoding="utf-8"?>
@@ -70,9 +70,9 @@ describe('pytest JUnit results', () => {
     });
   });
   it('names the failed tests and the modules they are in, once each', () => {
-    const cases = parseJunit(REPORT);
+    const cases = parsedJunit(REPORT);
 
-    expect(listOf(failedTests(cases)).map((item) => textOf(fieldOf(item, 'id')))).toEqual([
+    expect(failedTests(cases).map(({ id }) => id)).toEqual([
       'tests/test_a.py::test_bad',
       'tests/test_c.py',
     ]);

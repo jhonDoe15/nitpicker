@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   readFileEntries,
   requirementFiles,
-} from '../../../languages/python/adapters/execution/python-project.mjs';
+} from '../../../languages/python/adapters/execution/python-project.mts';
 import { escapeRegExp } from '../../../shared/paths/glob.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
 

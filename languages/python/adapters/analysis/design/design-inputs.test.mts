@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { designFiles } from './design-files.mjs';
+import { designFiles } from './design-files.mts';
 import { textsOf } from '../../../../../shared/values/readers.mts';
-import { designDistributions } from './design-distributions.mjs';
+import { designDistributions } from './design-distributions.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 

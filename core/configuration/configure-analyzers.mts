@@ -5,9 +5,9 @@ import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs
 import {
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
-} from '../../languages/python/adapters/python-analyzer.mjs';
+} from '../../languages/python/adapters/python-analyzer.mts';
 import { applyDisable } from './config.mts';
-import { GO_ANALYZER_NAME } from '../../languages/go/adapters/go-analyzer.mjs';
+import { GO_ANALYZER_NAME } from '../../languages/go/adapters/go-analyzer.mts';
 import {
   applyAnalyzerTimeouts,
   applyLayout,

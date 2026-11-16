@@ -2,11 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parsePythonArguments } from '../python-runner.mts';
-import {
-  MANIFEST_REPORT,
-  createToolContext as untypedCreateToolContext,
-  runPythonTools,
-} from '../python-tools.mjs';
+import { MANIFEST_REPORT, runPythonTools } from '../python-tools.mts';
 import { createToolContext } from '../test-support/typed/tool-context.mts';
 import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { readPythonFindings } from '../python-reports.mts';
@@ -22,9 +18,7 @@ afterEach(restoreTemporaryState);
 
 function quickContext(root: string) {
   const reportRoot = temporaryRoot();
-  const context: unknown = Reflect.apply(untypedCreateToolContext, undefined, [
-    { projectRoot: root, liveRoot: root, reportRoot, quick: true },
-  ]);
+  const context = createToolContext({ projectRoot: root, liveRoot: root, reportRoot, quick: true });
   return { context, reportRoot };
 }
 

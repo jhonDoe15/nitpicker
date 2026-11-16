@@ -9,7 +9,7 @@ import {
 import {
   installRecordingManager,
   installRecordingPython,
-} from './test-support/recording-managers.mts';
+} from './test-support/recording-installer-stubs.mts';
 import {
   createRootTracker,
   pyproject,

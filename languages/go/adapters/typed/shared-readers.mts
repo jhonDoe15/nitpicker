@@ -23,7 +23,10 @@ import {
   testRuntimeReport as untypedTestRuntimeReport,
 } from '../../../../shared/rules/test-runtime/classify.mjs';
 import { evaluateTestRuntime as untypedEvaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mjs';
-import { hash as untypedHash } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  hash as untypedHash,
+  nextOccurrence as untypedNextOccurrence,
+} from '../../../../shared/rules/finding-helpers.mjs';
 import {
   slowTestBudget as untypedSlowTestBudget,
   slowTestFindings as untypedSlowTestFindings,
@@ -97,6 +100,8 @@ const slowTestBudget: (limits: unknown) => {
 const evaluateTestRuntime: (report: object, analyzer: string) => FindingRow[] =
   untypedEvaluateTestRuntime;
 const hash: (text: string) => string = untypedHash;
+const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
+  untypedNextOccurrence;
 export type RuntimeReport = {
   readonly summary: { readonly discoveredTests: number };
   readonly findings: readonly { readonly test: string }[];
@@ -162,6 +167,7 @@ export {
   ingestCrapRows,
   libraryMessage,
   listed,
+  nextOccurrence,
   registeredFactRules,
   slowTestBudget,
   slowTestFindings,

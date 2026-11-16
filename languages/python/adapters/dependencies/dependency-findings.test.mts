@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
-import { readDependencyFindings as untypedRead, scanDependencies } from './dependency-findings.mjs';
+import { readPythonDependencies } from '../../libraries/python-dependencies.mts';
+import { readDependencyFindings as untypedRead, scanDependencies } from './dependency-findings.mts';
 import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';

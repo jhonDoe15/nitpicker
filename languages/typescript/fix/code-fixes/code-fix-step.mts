@@ -6,8 +6,8 @@ import {
   withFixedLineEndingsOf,
   writeTexts,
   type Bytes,
-  type Layout,
-} from '../typed/fix-views.mts';
+} from '../../../../core/fix/typed/fix-views.mts';
+import type { Layout } from '../typed/fix-views.mts';
 import { planCodeFixes } from './plan-code-fixes.mts';
 
 type CodeFixSettings = Pick<FixSettings, 'projectRoot' | 'selectedRules' | 'writer'> & {

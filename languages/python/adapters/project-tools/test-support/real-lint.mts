@@ -3,15 +3,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { ruffFindings } from '../../python-reports.mts';
-import { lint, RUFF_REPORT } from '../../python-tools.mjs';
-import { createToolContext } from '../../typed/runner/runner-views.mts';
+import { lint, RUFF_REPORT } from '../../python-tools.mts';
+import {
+  createToolContext,
+  type ToolContextOptions,
+} from '../../test-support/typed/tool-context.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 
 type LintOptions = {
   readonly files: Readonly<Record<string, string>>;
   readonly policyFiles?: Readonly<Record<string, string>>;
-  readonly toolPrecedence?: unknown;
-  readonly conventions?: unknown;
+  readonly toolPrecedence?: ToolContextOptions['toolPrecedence'] | undefined;
+  readonly conventions?: ToolContextOptions['conventions'] | undefined;
   readonly exclude?: readonly string[];
 };
 
@@ -36,7 +39,7 @@ function findingsIn(
     reportRoot: roots.reportRoot,
     exclude,
     toolPrecedence,
-    conventions,
+    ...(conventions === undefined ? {} : { conventions }),
     policyRoot: roots.policyRoot,
   });
   lint(context);

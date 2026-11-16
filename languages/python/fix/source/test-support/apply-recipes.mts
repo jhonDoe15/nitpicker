@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
 import { useGitFixtures } from '../../test-support/git-fixtures.mts';
 import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
-import { scriptRecipes } from '../python-recipes.mjs';
-import { localRunScript } from '../script-edits.mjs';
+import { scriptRecipes } from '../python-recipes.mts';
+import { localRunScript } from '../script-edits.mts';
 
 const { createGitRepository } = useGitFixtures();
 
