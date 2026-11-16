@@ -1,4 +1,4 @@
-import { DATED, EMPTY_CATCH, FAILING_TEST } from '../test-support/maven-e2e-sources.mjs';
+import { DATED, EMPTY_CATCH, FAILING_TEST } from '../test-support/maven-e2e-sources.mts';
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

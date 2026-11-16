@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { matchesRule, overlapPairs, withoutOverlaps } from './static-overlaps.mts';
 import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
+
+const OVERLAP_PAIRS = overlapPairs();
 
 const PROBE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/probe-findings.json'), 'utf8'),

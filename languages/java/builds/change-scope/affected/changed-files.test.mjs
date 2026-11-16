@@ -11,7 +11,7 @@ import {
   repositoryChangeKey,
   notAffectedFindings,
   withChangedFiles,
-} from './changed-files.mjs';
+} from './changed-files.mts';
 
 const { createGitRepository } = useGitFixtures();
 

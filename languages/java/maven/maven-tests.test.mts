@@ -1,0 +1,434 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  archunitMatcher,
+  collectTestResults,
+  junitLauncherVersion,
+  pitClasspath,
+  pitTests,
+  freshExecFiles,
+  runJacocoReport,
+} from './maven-tests.mts';
+import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+import { readPitMutators as untypedPitMutators } from '../builds/java-build.mjs';
+import { pitTargets } from './module/pit-scope.mts';
+
+const readPitMutators: () => string[] = untypedPitMutators;
+
+const roots: string[] = [];
+
+function tree(files: Readonly<Record<string, string>>): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tests-'));
+  roots.push(root);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), text);
+  }
+  return root;
+}
+
+const suite = (name: string, cases: readonly (readonly [string, string?])[]): string =>
+  `<?xml version="1.0"?><testsuite name="${name}">${cases
+    .map(([test, failure]) =>
+      failure === undefined
+        ? `<testcase classname="${name}" name="${test}"/>`
+        : `<testcase classname="${name}" name="${test}"><failure message="${failure}" type="AssertionError">trace</failure></testcase>`,
+    )
+    .join('')}</testsuite>`;
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+describe('archunitMatcher', () => {
+  it('matches the default ArchUnit class names and nested classes, or the configured patterns', () => {
+    const matches = archunitMatcher();
+
+    expect(
+      ['shop.ArchTest', 'shop.web.ArchitectureTest$Inner', 'shop.OrderTest'].map(matches),
+    ).toEqual([true, true, false]);
+    expect(archunitMatcher('**/*Rules.class, shop/Layers.class')('shop.Layers')).toBe(true);
+  });
+});
+
+describe('pitTargets', () => {
+  it('targets the first package holding classes on each path, and names classes beside org.pitest', () => {
+    const classes = tree({
+      'org/example/Main.class': '',
+      'org/example/calc/Calc.class': '',
+      'shop/web/Controller.class': '',
+      'shop/web/api/Dto.class': '',
+      'Root.class': '',
+    });
+
+    expect(pitTargets(classes)).toEqual(['Root', 'org.example.*', 'shop.web.*']);
+    expect(pitTargets(tree({ 'org/Top.class': '', 'org/acme/A.class': '' }))).toEqual([
+      'org.Top',
+      'org.acme.*',
+    ]);
+  });
+});
+
+describe('pitTests', () => {
+  it('lists outer test classes by name, without ArchUnit rule classes', () => {
+    const classes = tree({
+      'shop/OrderTest.class': '',
+      'shop/OrderTest$Nested.class': '',
+      'shop/ArchTest.class': '',
+    });
+
+    expect(pitTests(classes, archunitMatcher())).toEqual(['shop.OrderTest']);
+  });
+});
+
+describe('junitLauncherVersion', () => {
+  it('asks for the launcher matching the engine only when the classpath lacks one', () => {
+    expect(junitLauncherVersion(['/m2/junit-platform-engine-1.11.4.jar', '/m2/x.jar'])).toBe(
+      '1.11.4',
+    );
+    expect(
+      junitLauncherVersion([
+        '/m2/junit-platform-engine-1.11.4.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+      ]),
+    ).toBeUndefined();
+    expect(junitLauncherVersion(['/m2/junit-4.13.2.jar'])).toBeUndefined();
+  });
+});
+
+describe('javaArgumentFile', () => {
+  it('quotes each argument on its own line, escaping backslashes, quotes and line breaks', () => {
+    expect(
+      javaArgumentFile(['-Dl=a,b', '-Dg=hello world', '-Dq=say "hi"', '-Dd=C:\\x\\', '-Dn=a\nb']),
+    ).toBe('"-Dl=a,b"\n"-Dg=hello world"\n"-Dq=say \\"hi\\""\n"-Dd=C:\\\\x\\\\"\n"-Dn=a\\nb"\n');
+  });
+});
+
+describe('pitClasspath', () => {
+  const tools = {
+    pit: ['/m2/pitest-command-line.jar'],
+    'pit-junit5': ['/m2/pitest-junit5-plugin.jar'],
+    'pit-testng': ['/m2/pitest-testng-plugin.jar'],
+    'launcher-1.11.4': ['/m2/junit-platform-launcher-1.11.4.jar'],
+  };
+
+  it('adds each test plugin only for the test framework the project runs on', () => {
+    expect(
+      [
+        ['/m2/junit-4.13.2.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar', '/m2/junit-platform-launcher-1.11.4.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/testng-helper-1.0.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/junit-platform-engine-1.11.4.jar'],
+      ].map((testRuntime) => pitClasspath(tools, testRuntime)),
+    ).toEqual([
+      ['/m2/pitest-command-line.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+      ],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-junit5-plugin.jar'],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-testng-plugin.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+        '/m2/pitest-testng-plugin.jar',
+      ],
+    ]);
+  });
+});
+
+describe('collectTestResults', () => {
+  const since = Date.now() - 1000;
+
+  it('copies ArchUnit reports and ignores their failures and stale reports', () => {
+    const reports = tree({
+      'TEST-shop.ArchTest.xml': suite('shop.ArchTest', [['layers', 'Rule violated']]),
+      'TEST-shop.OldTest.xml': suite('shop.OldTest', [['old', 'stale']]),
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
+    });
+    utimesSync(
+      path.join(reports, 'TEST-shop.OldTest.xml'),
+      new Date(2020, 0, 1),
+      new Date(2020, 0, 1),
+    );
+    const reportDir = tree({});
+
+    collectTestResults({
+      module: {
+        basedir: '/m',
+        testOutputDirectory: '/missing',
+        surefireReports: reports,
+        failsafeReports: reports,
+      },
+      reportDir,
+      since,
+      isArchunit: archunitMatcher(),
+    });
+
+    expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.ArchTest.xml'))).toBe(true);
+    expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.OrderTest.xml'))).toBe(false);
+  });
+
+  it('lists every failing test of the module', () => {
+    const cases = Array.from({ length: 12 }, (_, index): [string, string] => [
+      `case${String(index)}`,
+      `expected ${String(index)}`,
+    ]);
+    const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
+
+    const { failure } = collectTestResults({
+      module: {
+        basedir: '/m',
+        testOutputDirectory: '/missing',
+        surefireReports: reports,
+        failsafeReports: reports,
+      },
+      reportDir: tree({}),
+      since,
+      isArchunit: archunitMatcher(),
+    });
+
+    expect([failure?.module, failure?.tests]).toEqual([
+      '.',
+      cases.map(([test, message]) => `shop.OrderTest.${test}: ${message}`),
+    ]);
+  });
+
+  it('lists failing Failsafe tests as Surefire ones, reading a shared directory once', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
+    });
+    const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
+    const run = (failsafeReports: string) =>
+      collectTestResults({
+        module: {
+          basedir: '/m',
+          testOutputDirectory: '/missing',
+          surefireReports: surefire,
+          failsafeReports,
+        },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      }).failure?.tests;
+
+    expect([run(failsafe), run(`${surefire}/.`)]).toEqual([
+      ['shop.OrderTest.totals: no', 'shop.OrderIT.stores: gone'],
+      ['shop.OrderTest.totals: no'],
+    ]);
+  });
+
+  it('reports whether any test ran', () => {
+    const run = (files: Readonly<Record<string, string>>) =>
+      collectTestResults({
+        module: {
+          basedir: '/m',
+          surefireReports: tree(files),
+          failsafeReports: '/missing',
+          testOutputDirectory: tree({}),
+        },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+
+    expect([
+      run({}).testsRan,
+      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }).testsRan,
+    ]).toEqual([false, true]);
+  });
+
+  it('lists the failing tests with their details under the module name', () => {
+    const reports = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'expected 3']]),
+    });
+
+    expect(
+      collectTestResults({
+        module: {
+          basedir: '/m',
+          testOutputDirectory: '/missing',
+          surefireReports: reports,
+          failsafeReports: tree({}),
+        },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+        moduleName: 'core',
+      }),
+    ).toEqual({
+      testsRan: true,
+      failure: {
+        module: 'core',
+        tests: ['shop.OrderTest.totals: expected 3'],
+        details: [{ name: 'shop.OrderTest.totals', message: 'expected 3' }],
+      },
+    });
+  });
+
+  it('fails when surefire ran none of the ArchUnit classes', () => {
+    const testClasses = tree({ 'shop/LayerRules.class': '', 'shop/OrderTest.class': '' });
+
+    expect(() => {
+      collectTestResults({
+        module: {
+          basedir: '/m',
+          surefireReports: tree({
+            'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
+          }),
+          failsafeReports: '/missing',
+          testOutputDirectory: testClasses,
+        },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher('**/*Rules.class'),
+      });
+    }).toThrow(
+      new Error(
+        'Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in /m ' +
+          '(shop.LayerRules). ' +
+          'Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results',
+      ),
+    );
+  });
+});
+
+describe('freshExecFiles', () => {
+  it('keeps every coverage file written since the build started, once each', () => {
+    const target = tree({ 'unit.exec': 'u', 'it.exec': 'i', 'old.exec': 'o' });
+    const file = (name: string): string => path.join(target, name);
+    utimesSync(file('old.exec'), new Date(2020, 0, 1), new Date(2020, 0, 1));
+
+    expect(
+      freshExecFiles(
+        ['unit.exec', 'it.exec', 'unit.exec', 'old.exec', 'missing.exec'].map(file),
+        Date.now() - 1000,
+      ),
+    ).toEqual([file('unit.exec'), file('it.exec')]);
+  });
+});
+
+describe('runJacocoReport', () => {
+  it('fails when tests ran but no coverage file is fresh', () => {
+    const reportDir = tree({ 'classes/demo/A.class': '' });
+    const module = {
+      basedir: '/m',
+      coordinates: 'shop:core',
+      outputDirectory: path.join(reportDir, 'classes'),
+      sourceRoots: [],
+    };
+
+    expect(() => {
+      runJacocoReport({
+        module,
+        reportDir,
+        tools: {},
+        execFiles: ['/m/none.exec', '/m/none-it.exec'],
+        since: 0,
+        testsRan: true,
+      });
+    }).toThrow(
+      new Error(
+        'JaCoCo recorded no coverage in /m: the tests ran without its agent. If maven-surefire-plugin ' +
+          'sets <argLine>, start it with @{argLine} so the agent stays attached',
+      ),
+    );
+  });
+
+  it('writes an empty report for a module without main classes', () => {
+    const reportDir = tree({});
+    const module = {
+      basedir: '/m',
+      coordinates: 'shop:it',
+      outputDirectory: path.join(reportDir, 'missing'),
+      sourceRoots: [],
+    };
+
+    runJacocoReport({
+      module,
+      reportDir,
+      tools: {},
+      execFiles: ['/m/none.exec'],
+      since: 0,
+      testsRan: true,
+    });
+
+    expect(readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8')).toBe(
+      '<?xml version="1.0"?><report name="shop:it"></report>',
+    );
+  });
+});
+
+describe('runPit', () => {
+  it('passes the mutators listed in the Gradle init script', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const module = {
+      basedir: root,
+      outputDirectory: path.join(root, 'classes'),
+      testOutputDirectory: path.join(root, 'test-classes'),
+      sourceRoots: [],
+      testJvmArgs: [],
+    };
+    const calls: string[][] = [];
+    const spawn = (_command: string, [argumentFile]: readonly string[]) => {
+      calls.push(readFileSync(textOf(argumentFile).slice(1), 'utf8').split('\n'));
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    runPit({
+      module,
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      spawn,
+    });
+    const [tokens = []] = calls;
+
+    expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
+  });
+
+  it('records the base history in the module build directory', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const calls: string[][] = [];
+    runPit({
+      module: {
+        basedir: root,
+        buildDirectory: path.join(root, 'target'),
+        outputDirectory: path.join(root, 'classes'),
+        testOutputDirectory: path.join(root, 'test-classes'),
+        sourceRoots: [],
+        testJvmArgs: [],
+      },
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      history: { snapshot: 'base', projectRoot: root },
+      spawn: (_command: string, [argumentFile]: readonly string[]) => {
+        calls.push(readFileSync(textOf(argumentFile).slice(1), 'utf8').split('\n'));
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+    const [tokens = []] = calls;
+
+    expect(tokens[tokens.indexOf('"--historyOutputLocation"') + 1]).toBe(
+      `"${path.join(root, 'target', 'nitpicker-pit-history', 'test.history')}"`,
+    );
+  });
+});

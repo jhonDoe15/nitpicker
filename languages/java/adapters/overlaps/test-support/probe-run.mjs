@@ -1,8 +1,8 @@
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectJavaFindings } from '../../java-diff.mjs';
-import { OVERLAP_PAIRS } from '../static-overlaps.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
+import { overlapPairs } from '../static-overlaps.mts';
 
 export const PROBE_FILE = path.resolve(import.meta.dirname, '../fixtures/probe-findings.json');
 const PROJECT = path.resolve(import.meta.dirname, '../../fixtures/gradle-project');
@@ -20,10 +20,9 @@ const EXTRA_MAVEN_DEPENDENCIES = [
 ];
 const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone', 'forbiddenapis']);
 const MESSAGE_RULES = new Set(
-  OVERLAP_PAIRS.filter(({ scope }) => scope === 'variable').flatMap(({ primary, secondary }) => [
-    ...primary,
-    ...secondary,
-  ]),
+  overlapPairs()
+    .filter(({ scope }) => scope === 'variable')
+    .flatMap(({ primary, secondary }) => [...primary, ...secondary]),
 );
 
 export function readProbe(file = PROBE_FILE) {
