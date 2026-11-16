@@ -10,7 +10,6 @@ import { metricChange } from './console/metric-values.mts';
 import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
-import { planSection } from '../../../shared/fix-plans/render.mjs';
 import { projectLine, scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
@@ -38,7 +37,6 @@ const activeAndClean: (
 ) => { readonly active: unknown[]; readonly clean: number } = splitTools;
 const isActive: (tool: unknown) => boolean = isActiveDiffTool;
 const cleanLineOf: (clean: number) => string = cleanLine;
-const plansSection: (plans: unknown) => string[] = planSection;
 
 function field(value: unknown, key: string): string {
   return textOf(fieldOf(value, key));
@@ -57,7 +55,6 @@ export function renderTextReport(
   ];
   lines.push(...failingFirstLines('New', report.newFindings));
   lines.push(...ruleReferenceLines(report.newFindings, reference));
-  lines.push(...plansSection(report.fixPlans ?? []));
   appendHeldSection(lines, report.unchangedFindings);
   lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
   appendMetricSection(lines, report.changedMetrics);
