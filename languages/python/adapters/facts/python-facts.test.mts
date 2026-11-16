@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BASE_FACTS_REPORT, FACTS_REPORT, FACTS_TOOL, readFactImports } from './python-facts.mjs';
+import { BASE_FACTS_REPORT, FACTS_REPORT, FACTS_TOOL, readFactImports } from './python-facts.mts';
 import { readFactFindings } from '../typed/report/report-views.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 

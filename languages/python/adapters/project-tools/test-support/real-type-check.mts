@@ -3,14 +3,17 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { typeFindings } from '../../python-reports.mts';
-import { createToolContext } from '../../test-support/typed/tool-context.mts';
+import {
+  createToolContext,
+  type ToolContextOptions,
+} from '../../test-support/typed/tool-context.mts';
 import { readTypesReport } from '../../typed/report/report-views.mts';
-import { TYPES_REPORT, typeCheck } from '../../python-types.mjs';
+import { TYPES_REPORT, typeCheck } from '../../python-types.mts';
 
 type TypeOptions = {
   readonly files: Readonly<Record<string, string>>;
   readonly checker?: string;
-  readonly toolPrecedence?: unknown;
+  readonly toolPrecedence?: ToolContextOptions['toolPrecedence'];
   readonly settings?: Readonly<Record<string, unknown>>;
   readonly exclude?: readonly string[];
 };

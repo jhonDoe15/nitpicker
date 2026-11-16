@@ -6,7 +6,7 @@ import {
   textOf,
   textsOf,
 } from '../../../../../shared/values/readers.mts';
-import { readDuplicateFindings as untypedDuplicates } from '../../analysis/python-duplicates.mjs';
+import { readDuplicateFindings as untypedDuplicates } from '../../analysis/python-duplicates.mts';
 import {
   ingestSarif as untypedIngestSarif,
   prepareSarif as untypedPrepareSarif,
@@ -14,34 +14,33 @@ import {
 import { readStructureFunctions as untypedStructureFunctions } from '../../../../../shared/ingest/structure-report.mjs';
 import { withUtf16Columns as untypedUtf16Columns } from '../../../../../shared/ingest/columns/utf16-columns.mjs';
 import { moduleImportsSection as untypedModuleImports } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
-import { applyRuleHints as untypedRuleHints } from '../../../rules/rule-hints.mjs';
-import { detectLibraries as untypedLibraries } from '../../../rules/libraries/project-libraries.mjs';
-import { pytestStyle as untypedPytestStyle } from '../../../rules/libraries/pytest-style.mjs';
+import { applyRuleHints as untypedRuleHints } from '../../../rules/rule-hints.mts';
+import { detectLibraries as untypedLibraries } from '../../../rules/libraries/project-libraries.mts';
+import { pytestStyle as untypedPytestStyle } from '../../../rules/libraries/pytest-style.mts';
 import { withoutAllowedForms as untypedAllowedForms } from '../../../rules/filters/ruff-allowed-forms.mts';
-import { withoutShadowedFindings as untypedShadowed } from '../../../rules/filters/shadowed-findings.mjs';
-import { readConsoleFindings as untypedConsole } from '../../test-results/console-output.mjs';
-import { readFactFindings as untypedFacts } from '../../facts/python-facts.mjs';
-import { readTestRuntimeFindings as untypedTestRuntime } from '../../analysis/test-runtime/python-test-runtime.mjs';
-import { readImportLinterFindings as untypedImportLinter } from '../../analysis/python-import-linter.mjs';
+import { readConsoleFindings as untypedConsole } from '../../test-results/console-output.mts';
+import { readFactFindings as untypedFacts } from '../../facts/python-facts.mts';
+import { readTestRuntimeFindings as untypedTestRuntime } from '../../analysis/test-runtime/python-test-runtime.mts';
+import { readImportLinterFindings as untypedImportLinter } from '../../analysis/python-import-linter.mts';
 import {
   readCouplingFindings as untypedCoupling,
   readImportsReport as untypedImportsReport,
-} from '../../analysis/python-coupling.mjs';
+} from '../../analysis/python-coupling.mts';
 import {
   readPythonStructureFindings as untypedStructure,
   pythonFileLimitFindings as untypedFileLimits,
   readPythonFunctions as untypedFunctions,
-} from '../../analysis/python-structure.mjs';
+} from '../../analysis/python-structure.mts';
 import {
   readAllowances as untypedAllowances,
   readTestFiles as untypedTestFiles,
-} from '../../analysis/python-ast-rules.mjs';
-import { readSlowTestFindings as untypedSlowTests } from '../../test-runs/slow-tests.mjs';
-import { testFailureFindings as untypedTestFailures } from '../../test-runs/test-failures.mjs';
-import { pythonFeatureAnalysis as untypedFeatures } from '../../imports/python-feature-facts.mjs';
-import { readDependencyFindings as untypedDependencies } from '../../dependencies/dependency-findings.mjs';
-import { withoutFrameworkForms as untypedFrameworkForms } from '../../dependencies/python-frameworks.mjs';
-import { listProductionModules as untypedProductionModules } from '../../analysis/python-sources.mjs';
+} from '../../analysis/python-ast-rules.mts';
+import { readSlowTestFindings as untypedSlowTests } from '../../test-runs/slow-tests.mts';
+import { testFailureFindings as untypedTestFailures } from '../../test-runs/test-failures.mts';
+import { pythonFeatureAnalysis as untypedFeatures } from '../../imports/python-feature-facts.mts';
+import { readDependencyFindings as untypedDependencies } from '../../dependencies/dependency-findings.mts';
+import { withoutFrameworkForms as untypedFrameworkForms } from '../../dependencies/python-frameworks.mts';
+import { listProductionModules as untypedProductionModules } from '../../analysis/python-sources.mts';
 import {
   cycleFindings as untypedCycles,
   outsideRootsFindings as untypedOutsideRoots,
@@ -205,13 +204,6 @@ export function withoutAllowedForms(
   options: Options,
 ): IngestedFinding[] {
   return findingsOf(call(untypedAllowedForms, findings, options));
-}
-
-export function withoutShadowedFindings(
-  findings: readonly IngestedFinding[],
-  options: Options,
-): IngestedFinding[] {
-  return findingsOf(call(untypedShadowed, findings, options));
 }
 
 export function readStructureFunctions(reportRoot: string): readonly unknown[] {

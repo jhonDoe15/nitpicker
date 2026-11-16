@@ -1,13 +1,12 @@
-import { describeRuleFinding as untypedDescribe, RULES_TOOL } from '../rules/rule-hints.mjs';
+import { describeRuleFinding as untypedDescribe, RULES_TOOL } from '../rules/rule-hints.mts';
 import { identitySubject } from '../rules/hints/effects/identity.mts';
 import { createIdentities } from './typed/type-check-views.mts';
-import { withRegexDefects as untypedWithRegexDefects } from '../rules/regexes/regex-defects.mjs';
-import { parseJson } from '../../../shared/values/readers.mts';
+import { withRegexDefects } from '../rules/regexes/regex-defects.mts';
 import type { IngestedFinding, RulesReportEntry } from './typed/ingest-types.mts';
 
 const describeRuleFinding: (rule: string, subject: string, context: object) => string =
   untypedDescribe;
-const withRegexDefects: (entries: unknown) => RulesReportEntry[] = untypedWithRegexDefects;
+const readReport: (text: string) => readonly RulesReportEntry[] = JSON.parse;
 
 type ToolErrorInput = {
   readonly rule: string;
@@ -62,21 +61,20 @@ function described(
 
 export function ingestRulesReport(text: string, libraries?: unknown): IngestedFinding[] {
   const identify = createIdentities();
-  return withRegexDefects(parseJson(text)).map(
-    ({ rule, path, subject, line, data, error, via }) => {
-      if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
-        return toolError({ rule, path, subject, error });
-      }
-      const shown = via ?? subject;
-      return {
-        tool: RULES_TOOL,
-        rule,
-        path,
-        identity: identify({ path, rule, subject: identitySubject(rule, subject) }),
-        subject: shown,
-        ...described({ rule, subject: shown, data }, libraries),
-        location: { line },
-      };
-    },
-  );
+  const entries: readonly RulesReportEntry[] = withRegexDefects(readReport(text));
+  return entries.map(({ rule, path, subject, line, data, error, via }) => {
+    if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
+      return toolError({ rule, path, subject, error });
+    }
+    const shown = via ?? subject;
+    return {
+      tool: RULES_TOOL,
+      rule,
+      path,
+      identity: identify({ path, rule, subject: identitySubject(rule, subject) }),
+      subject: shown,
+      ...described({ rule, subject: shown, data }, libraries),
+      location: { line },
+    };
+  });
 }

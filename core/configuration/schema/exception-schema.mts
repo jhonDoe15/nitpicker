@@ -12,7 +12,7 @@ import {
   NAME_EXCEPTION_RULES,
 } from '../../../shared/policy.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../../../shared/project-rules/hygiene-rules.mjs';
-import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../../languages/python/adapters/configuration/python-config.mjs';
+import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../../languages/python/adapters/configuration/python-config.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mjs';
 import {
@@ -23,7 +23,7 @@ import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotli
 import {
   GO_EXCEPTION_RULES,
   GO_LINT_TOOLS,
-} from '../../../languages/go/adapters/configuration/go-config.mjs';
+} from '../../../languages/go/adapters/configuration/go-config.mts';
 import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { NITPICKER_RULES, RENAMED_TYPESCRIPT_RULES } from '../validate.mts';
 import {

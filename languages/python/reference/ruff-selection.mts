@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { isStableRule } from '../adapters/configuration/python-ruff-config.mjs';
-import { RUFF_IGNORE, RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
+import { isStableRule } from '../adapters/configuration/python-ruff-config.mts';
+import { RUFF_IGNORE, RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mts';
 import { paragraphsOf as untypedParagraphsOf } from '../../../shared/reference/build/text.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { parseRuffRules } from './typed/ruff-rule-views.mts';
@@ -22,7 +22,7 @@ const WHY_PARAGRAPHS = 2;
 
 function isSelected(code: string): boolean {
   const [, letters = '', digits = ''] = CODE.exec(code) ?? [];
-  return RUFF_SELECT.some((selector = '') => {
+  return RUFF_SELECT.some((selector) => {
     const [, selectorLetters = '', selectorDigits = ''] = CODE.exec(selector) ?? [];
     return selectorLetters === letters && digits.startsWith(selectorDigits);
   });

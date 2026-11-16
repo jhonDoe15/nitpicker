@@ -3,14 +3,14 @@ import { applyFindingPolicy as untypedApplyPolicy } from '../../../../../shared/
 import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../../shared/head-policy.mjs';
 import { trackTemporaryPath as untypedTrack } from '../../../../../core/tooling/temporary-files.mjs';
 import { withTroubleshooting as untypedTroubleshooting } from '../../../../../shared/messages/troubleshooting.mjs';
-import { applyRuleHints as untypedHints } from '../../../rules/rule-hints.mjs';
+import { applyRuleHints as untypedHints } from '../../../rules/rule-hints.mts';
 import { parseRunnerArguments as untypedParse } from '../../../../../core/tooling/runner-arguments.mjs';
 import { precedenceToolNames as untypedPrecedence } from '../../../../java/adapters/gradle-presets.mjs';
 import {
   createToolContext as untypedContext,
   runPythonTools as untypedRunTools,
-} from '../../python-tools.mjs';
-import { mutationFindings as untypedMutation } from '../../mutation/python-mutation.mjs';
+} from '../../python-tools.mts';
+import { mutationFindings as untypedMutation } from '../../mutation/python-mutation.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { isFinding } from '../report/finding-guards.mts';

@@ -1,6 +1,5 @@
 import { jscpdVersion as untypedJscpdVersion } from '../../../../../core/tooling/jscpd/run-jscpd.mjs';
 import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
-import { probe as untypedProbe } from '../../execution/python-process.mjs';
 import { fieldOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 
 const jscpdVersionText: () => unknown = untypedJscpdVersion;
@@ -23,10 +22,7 @@ export function testsRanOf(json: string): unknown {
   return fieldOf(parseJson(json), 'testsRan');
 }
 
-export function probe(context: unknown, command: readonly string[]): unknown {
-  const call: (context: unknown, command: readonly string[]) => unknown = untypedProbe;
-  return call(context, command);
-}
+export { probe } from '../../execution/python-process.mts';
 
 export function launchEnv(context: Readonly<Record<string, unknown>>, tool: string): unknown {
   const launcher = fieldOf(context, 'launcher');

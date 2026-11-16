@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { openSnapshotEnvironment } from '../../execution/python-environment.mjs';
+import { openSnapshotEnvironment } from '../../execution/python-environment.mts';
 import { writeFiles as write } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
@@ -35,22 +35,8 @@ function pyproject(pythonRange: string, extra = '') {
   return `[project]\nname = "demo"\nversion = "0.1.0"\nrequires-python = "${pythonRange}"\ndependencies = ["${DEPENDENCY}"]\n${extra}`;
 }
 
-type Launcher = {
-  readonly description: string;
-  readonly launch: (
-    program: string,
-    args: readonly string[],
-  ) => { readonly command: string; readonly args: string[]; readonly env: NodeJS.ProcessEnv };
-};
-const openEnvironment: (options: {
-  projectRoot: string;
-  liveRoot: string;
-  setting: undefined;
-  spawn: undefined;
-}) => Launcher = openSnapshotEnvironment;
-
 function environmentOf(projectRoot: string, liveRoot: string) {
-  const launcher = openEnvironment({
+  const launcher = openSnapshotEnvironment({
     projectRoot,
     liveRoot,
     setting: undefined,

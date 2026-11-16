@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
-import { mutationMarkerFindings as untypedFindings } from './mutation-markers.mjs';
+import { mutationMarkerFindings as untypedFindings } from './mutation-markers.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
