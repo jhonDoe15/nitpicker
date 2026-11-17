@@ -30,9 +30,9 @@ type ResumeRequest = {
 const gitOutput: (root: string, args: readonly string[]) => string = runGit;
 
 function cacheStoreOf({ options, currentProjectRoot, environment }: ResumeRequest) {
-  return !options.cache
-    ? undefined
-    : resolveCacheStore({ projectRoot: currentProjectRoot, environment }).store;
+  return options.cache
+    ? resolveCacheStore({ projectRoot: currentProjectRoot, environment }).store
+    : undefined;
 }
 
 export function snapshotResume(request: ResumeRequest): SnapshotResume | undefined {
