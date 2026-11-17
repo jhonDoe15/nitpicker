@@ -6,7 +6,8 @@ import { noteSummaryLines } from './format/notes.mts';
 import { singleLine } from './format/text.mts';
 import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
-import { byFixOrder, ruleGroupLines } from './format/rule-groups/rule-groups.mts';
+import { ruleGroupLines } from './format/rule-groups/rule-groups.mts';
+import { byPriority } from './format/rule-groups/finding-order.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mts';
 import { scopeLine } from '../../scope/scope-findings.mjs';
@@ -246,7 +247,7 @@ function appendViolationSummary(
     );
     return;
   }
-  for (const group of groupRepeatedFindings(violations.toSorted(byFixOrder))) {
+  for (const group of groupRepeatedFindings(violations.toSorted(byPriority))) {
     const [finding] = group;
     if (finding === undefined) {
       continue;

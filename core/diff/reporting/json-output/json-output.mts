@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { areaCounts, areaOf } from '../format/rule-groups/finding-areas.mts';
 import { foldMutants as folded } from '../format/mutants.mts';
+import { inPriorityOrder } from '../format/rule-groups/finding-order.mts';
 import { printable } from '../format/text.mts';
 import { heldFindingsOf as heldFindings } from '../report-model.mts';
 import { errorHeadline as headlineOf, withoutSkipNotices as withoutSkips } from '../summary.mts';
@@ -112,7 +113,7 @@ function renderJson({
       reportOnly: findings.length - failing.length,
       ...(held === undefined ? {} : { held }),
     },
-    findings: helpUris(folded(failing)).map(findingEntry),
+    findings: helpUris(folded(inPriorityOrder(failing))).map(findingEntry),
     toolErrors: withoutSkips(report.toolErrors).map(toolErrorEntry),
     ...(partialRun === undefined
       ? {}
