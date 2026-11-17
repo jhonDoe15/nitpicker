@@ -2,6 +2,7 @@ import { annotationIn, argumentOf, isTrue, typeName } from '../spring-names.mjs'
 import { acceptsArguments, entriesOf, isSelfCall, ownerOf } from '../spring-scopes.mjs';
 import { JAKARTA_TRANSACTIONAL, SPRING_TRANSACTIONAL } from '../spring-types.mjs';
 import { TEMPLATE_CALLS, TRANSACTION_TEMPLATES } from './transaction-types.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 const NO_TRANSACTION = /\b(?:NOT_SUPPORTED|NEVER|SUPPORTS)\b/u;
 const AFTER_COMMIT = /commit|completion/iu;
@@ -122,7 +123,7 @@ export function inheritsTransactional(view, declared) {
     const supers = (current.supers ?? [])
       .map((type) => view.projectClass(typeName(type))?.declared)
       .filter((next) => next !== undefined && !queue.includes(next));
-    queue.push(...(queue.length < SEARCH_LIMIT ? supers : []));
+    appendAll(queue, queue.length < SEARCH_LIMIT ? supers : []);
   }
   return false;
 }

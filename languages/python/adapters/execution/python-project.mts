@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { FileEntry, FileSource, TypeCheckerHints } from './typed/project-types.mts';
 import { isDirectory } from '../../libraries/project-files.mts';
+import { largest, smallest } from '../../../../shared/lists/lists.mts';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -130,11 +131,11 @@ function lowestMinor(specifier: string): number {
       const bound = LOWER_BOUND.exec(clause.trim());
       return bound === null ? [] : [Number(bound[2]) + (bound[1] === '>' ? 1 : 0)];
     });
-    return bounds.length === 0 ? [] : [Math.max(...bounds)];
+    return bounds.length === 0 ? [] : [largest(bounds)];
   });
   return alternatives.length === 0
     ? MINIMUM_MINOR
-    : Math.max(MINIMUM_MINOR, Math.min(...alternatives));
+    : Math.max(MINIMUM_MINOR, smallest(alternatives));
 }
 
 export function detectTargetVersion(projectRoot: string): string {
@@ -159,7 +160,7 @@ export function detectTypeCheckers(projectRoot: string, setting?: string): strin
     checker,
     typeCheckerScore(texts, hints, checker === 'pyright' && basedpyright > 0),
   ]);
-  const best = Math.max(...scores.map(([, score]) => score));
+  const best = largest(scores.map(([, score]) => score));
   return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
 }
 

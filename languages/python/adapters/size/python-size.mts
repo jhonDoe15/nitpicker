@@ -24,6 +24,7 @@ import {
   type SettleContext,
   type SizeFinding,
 } from './typed/size-types.mts';
+import { largest } from '../../../../shared/lists/lists.mts';
 
 const SIZE_TOOL = 'structure';
 const WORDING = {
@@ -175,7 +176,7 @@ function countedParents(entry: ClassEntry, resolve: Resolve): ClassEntry[] {
 }
 
 function deepest(parents: ClassEntry[], depths: Map<ClassEntry, number>): number {
-  return Math.max(0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0)));
+  return largest([0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0))]);
 }
 
 function hierarchy(entries: ClassEntry[], resolve: Resolve): Hierarchy {

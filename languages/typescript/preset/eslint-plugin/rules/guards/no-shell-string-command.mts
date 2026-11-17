@@ -10,6 +10,7 @@ import {
 } from '../analysis/subprocess-calls.mts';
 import { variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { ASSERTION_FORMS, resolvedThrough } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;
 type MessageId = 'shellString' | 'shellProgram' | 'useExecFile' | 'dropShell';
@@ -64,7 +65,10 @@ function enablesShell(context: SourceContext, options: Node): boolean {
     const spreads = object.properties.filter(
       (property) => property.type === AST_NODE_TYPES.SpreadElement,
     );
-    pending.push(...spreads.map((spread) => spread.argument));
+    appendAll(
+      pending,
+      spreads.map((spread) => spread.argument),
+    );
   }
   return false;
 }

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { CONFTEST } from './constants.mts';
 import type { FixtureReach, Literals } from '../typed/runtime-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type FixtureTable = Map<string, { autouse: boolean; requests: Set<string> }>;
 type Provider = { file: string; table: FixtureTable };
@@ -135,7 +136,7 @@ function resolveFixtures(
     } else if (!seen.has(key)) {
       seen.add(key);
       reached.add(provider.file);
-      pending.push(...followUps(providers, index, request.name));
+      appendAll(pending, followUps(providers, index, request.name));
     }
   }
   return { reached, unresolved };

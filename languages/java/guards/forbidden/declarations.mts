@@ -10,6 +10,7 @@ import {
   parameterTypes,
   withoutAnnotations,
 } from './java-source.mts';
+import { largest } from '../../../../shared/lists/lists.mts';
 
 type Naming = RegExp;
 type MethodOptions = { readonly naming: Naming; readonly constructor: boolean };
@@ -54,8 +55,8 @@ function typeScore(types: string[], descriptor: string[], constructor: boolean):
   const alignments = constructor
     ? [descriptor.slice(0, types.length), descriptor.slice(descriptor.length - types.length)]
     : [descriptor];
-  return Math.max(
-    ...alignments.map((aligned) => aligned.filter((type, at) => type === types[at]).length),
+  return largest(
+    alignments.map((aligned) => aligned.filter((type, at) => type === types[at]).length),
   );
 }
 

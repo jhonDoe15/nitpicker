@@ -1,3 +1,4 @@
+import { appendAll } from '../../lists/items.mjs';
 const MAX_CYCLE_CLASSES = 6;
 const MAX_PATHS = 5000;
 
@@ -43,7 +44,10 @@ function cyclesFrom(start, { from, rank }) {
     .map((edge) => ({ path: [edge], seen: new Set([start, edge.to]) }));
   for (const { path, seen } of pending) {
     const next = from.get(path.at(-1).to) ?? [];
-    cycles.push(...next.filter((edge) => edge.to === start).map((edge) => [...path, edge]));
+    appendAll(
+      cycles,
+      next.filter((edge) => edge.to === start).map((edge) => [...path, edge]),
+    );
     const open = next.filter((edge) => opens(edge, { path, seen, start, rank }));
     pending.push(
       ...open

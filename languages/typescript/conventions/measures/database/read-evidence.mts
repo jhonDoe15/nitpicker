@@ -6,6 +6,7 @@ import {
   readMentions,
   type TableEntry,
 } from '../../../preset/eslint-plugin/rules/queries/soft-delete/read-mentions.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ALL_ORMS = ['drizzle', 'knex', 'kysely', 'mikro', 'prisma', 'sequelize', 'typeorm'];
 const READ_HINT = /\b(?:find|select|from|createQueryBuilder|knex|query)/iu;
@@ -46,7 +47,7 @@ export function readEvidence(text: string, file: string): string[] {
     const ordinal = (ordinals.get(entry.table) ?? 0) + 1;
     ordinals.set(entry.table, ordinal);
     if (ordinal <= MAX_READS_PER_TABLE) {
-      evidence.push(...evidenceOf(entry, ordinal));
+      appendAll(evidence, evidenceOf(entry, ordinal));
     }
   }
   return evidence;

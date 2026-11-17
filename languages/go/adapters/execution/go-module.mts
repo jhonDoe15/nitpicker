@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 export const GO_MOD = 'go.mod';
 const COMMENT = /\/\/.*$/u;
@@ -39,7 +40,7 @@ function directives(text: string): Entry[] {
   for (const raw of text.split(/\r?\n/u)) {
     const line = raw.replace(COMMENT, '').trim();
     const entry = line === '' ? undefined : entryOf(block, line);
-    entries.push(...(entry === undefined ? [] : [entry]));
+    appendAll(entries, entry === undefined ? [] : [entry]);
     block = line === '' ? block : nextBlock(block, line);
   }
   return entries;

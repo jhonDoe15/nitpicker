@@ -6,6 +6,7 @@ import {
   type ParsedModule,
   type Reexport,
 } from './exported-constants.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Start = { readonly file: string; readonly name: string };
 type Options = { readonly root: string };
@@ -37,8 +38,9 @@ function definingFiles(start: Start, options: Options): string[] {
       found.push(file);
       continue;
     }
-    pending.push(
-      ...reexportedFrom(module, { file, name }).map((next) => ({
+    appendAll(
+      pending,
+      reexportedFrom(module, { file, name }).map((next) => ({
         ...next,
         depth: depth + 1,
       })),

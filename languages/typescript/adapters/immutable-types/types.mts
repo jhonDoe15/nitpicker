@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../typed/typescript-program.mts';
 import { type Kind, KINDS } from './kinds.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type TypeNode = TypeScript.TypeNode;
 type SourceFile = TypeScript.SourceFile;
@@ -82,7 +83,7 @@ export function mutablePart(typeNode: TypeNode, sourceFile: SourceFile): Mutable
     if (item.notReadonly || isMutableType(node, sourceFile)) {
       return { trail: item.trail, typeNode: node, notReadonly: item.notReadonly };
     }
-    pending.push(...childrenOf(node, item, sourceFile));
+    appendAll(pending, childrenOf(node, item, sourceFile));
   }
   return undefined;
 }

@@ -2,6 +2,7 @@ import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { declarationParts, fileBindings, freeBindings } from './bindings.mjs';
 import { leafTexts, normalizedTexts } from './tokens.mjs';
 import { untypedParts } from './type-syntax.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const WRAPPERS = new Set(['memo', 'forwardRef']);
 const LITERAL_KINDS = new Set([
@@ -61,7 +62,7 @@ function isLiteralOnly(expression) {
   for (const node of pending) {
     const children = literalChildren(node);
     if (children === undefined) return false;
-    pending.push(...children);
+    appendAll(pending, children);
   }
   return true;
 }
@@ -74,7 +75,7 @@ function isComponentInitializer(expression) {
     const name =
       callee !== undefined && ts.isPropertyAccessExpression(callee) ? callee.name : callee;
     if (name !== undefined && ts.isIdentifier(name) && WRAPPERS.has(name.text)) {
-      pending.push(...node.arguments.slice(0, 1));
+      appendAll(pending, node.arguments.slice(0, 1));
     }
   }
   return false;

@@ -2,6 +2,7 @@ import { type Dirent, lstatSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { globMatcher } from '../typed/head-policy.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const GLOB_CHARACTER = /[*?{[\]()!+@|]/u;
 const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git']);
@@ -65,13 +66,14 @@ async function filesForPattern(projectRoot: string, plan: PatternPlan): Promise<
   const pending = [{ relative: plan.base, depth: 0 }];
   for (const frame of pending) {
     const entries = await readdir(path.join(projectRoot, frame.relative), { withFileTypes: true });
-    files.push(
-      ...entries
+    appendAll(
+      files,
+      entries
         .filter((entry) => entry.isFile())
         .map((entry) => path.posix.join(frame.relative, entry.name))
         .filter((file) => plan.matcher.test(file)),
     );
-    pending.push(...subdirectories(entries, frame, plan.maxDepth));
+    appendAll(pending, subdirectories(entries, frame, plan.maxDepth));
   }
   return files;
 }

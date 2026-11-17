@@ -16,6 +16,7 @@ import { mutate } from './mutation/go-mutation.mts';
 import { fieldOf, fieldsOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import type { GoContext, GoPolicy, GoSettings, Spawn, ToolFailure } from './go-types.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type Step = (context: GoContext) => void;
 
@@ -105,7 +106,7 @@ export function runGoSteps(context: GoContext, part = 'go'): ToolFailure[] {
   const failures: ToolFailure[] = [];
   for (const step of STEPS[part] ?? []) {
     const failure = attempt(step, context);
-    failures.push(...(failure === undefined ? [] : [failure]));
+    appendAll(failures, failure === undefined ? [] : [failure]);
     if (failure !== undefined && PREREQUISITES.has(step)) {
       break;
     }

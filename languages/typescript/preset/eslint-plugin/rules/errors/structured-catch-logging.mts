@@ -5,6 +5,7 @@ import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/
 import { loggerShapes as untypedLoggerShapes } from '../../../libraries/project-libraries.mjs';
 import { contains, type Ranged, type SourceCode } from '../typed/node-views.mts';
 import { readHeadPolicy, type LibraryChoices } from '../typed/policy-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageId = 'caughtErrorShape' | 'caughtValueShape' | 'caughtEitherShape';
 type Variable = TSESLint.Scope.Variable;
@@ -147,10 +148,10 @@ function trackDeclarator(
     currentCatch.initializers.set(node.id.name, node.init);
   }
   if (node.init && referencesCaughtValue(node.init, currentCatch.variables)) {
-    currentCatch.variables.push(...sourceCode.getDeclaredVariables(node));
+    appendAll(currentCatch.variables, sourceCode.getDeclaredVariables(node));
   }
   if (isCaughtValue(node.init ?? undefined, currentCatch.caught)) {
-    currentCatch.caught.push(...sourceCode.getDeclaredVariables(node));
+    appendAll(currentCatch.caught, sourceCode.getDeclaredVariables(node));
   }
 }
 

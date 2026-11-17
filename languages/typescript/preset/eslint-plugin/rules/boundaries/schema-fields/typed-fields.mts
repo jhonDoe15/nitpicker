@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, type SourceCode } from '../../typed/node-views.mts';
 import { libraryBinding, variableOf } from './library-bindings.mts';
 import { chainBase } from './library-nodes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Declared = TSESTree.TypeElement[] | TSESTree.TypeNode;
 type DecoratorBinding = { readonly validator: boolean; readonly name: string | undefined };
@@ -130,10 +131,10 @@ function isOpaque(type: TSESTree.TypeNode): boolean {
       pending.push(current.elementType);
     }
     if (current.type === AST_NODE_TYPES.TSUnionType) {
-      pending.push(...current.types);
+      appendAll(pending, current.types);
     }
     if (OPAQUE_CONTAINERS.has(referenceName(current))) {
-      pending.push(...typeArguments(current));
+      appendAll(pending, typeArguments(current));
     }
   }
   return false;
@@ -146,9 +147,9 @@ function objectTypes(type: TSESTree.TypeNode): TSESTree.TypeNode[] {
     if (current.type === AST_NODE_TYPES.TSArrayType) {
       pending.push(current.elementType);
     } else if (current.type === AST_NODE_TYPES.TSUnionType) {
-      pending.push(...current.types);
+      appendAll(pending, current.types);
     } else if (OPAQUE_CONTAINERS.has(referenceName(current))) {
-      pending.push(...typeArguments(current));
+      appendAll(pending, typeArguments(current));
     } else {
       types.push(current);
     }
@@ -194,9 +195,13 @@ export function opaqueTypeFields(
     for (const members of groups) {
       seen.add(members);
     }
-    fields.push(...unseen.filter((entry) => isOpaque(entry.type)));
-    pending.push(
-      ...unseen
+    appendAll(
+      fields,
+      unseen.filter((entry) => isOpaque(entry.type)),
+    );
+    appendAll(
+      pending,
+      unseen
         .filter((entry) => !isOpaque(entry.type))
         .map((entry) => ({ type: entry.type, depth: depth + 1 })),
     );

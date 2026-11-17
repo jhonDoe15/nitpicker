@@ -35,6 +35,7 @@ import {
 } from './typed/java-values.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
+import { largest } from '../../../shared/lists/lists.mts';
 
 type Budget = TimeBudget;
 type JavaSnapshotOptions = {
@@ -83,7 +84,7 @@ export function javaExecutionBudget(environment: JavaEnvironment = process.env):
   return {
     ...gradle,
     mavenCommandTimeoutMs: maven.commandTimeoutMs,
-    analyzerTimeoutMs: Math.max(...budgets.map((budget) => budget.analyzerTimeoutMs)),
+    analyzerTimeoutMs: largest(budgets.map((budget) => budget.analyzerTimeoutMs)),
   };
 }
 

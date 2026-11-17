@@ -1,3 +1,4 @@
+import { appendAll, largest } from '../../shared/lists/lists.mts';
 export type Analyzer = { readonly name: string; readonly dependencies?: readonly string[] };
 
 export type Seconds = Readonly<Record<string, number>>;
@@ -23,7 +24,7 @@ function dependencyClosure(byName: ReadonlyMap<string, Analyzer>, name: string):
     for (const dependency of fresh) {
       seen.add(dependency);
     }
-    pending.push(...fresh);
+    appendAll(pending, fresh);
   }
   return seen;
 }
@@ -45,7 +46,7 @@ export function ownCosts(
 }
 
 export function weightsFromSeconds(costs: Seconds): Record<string, number> {
-  const heaviest = Math.max(...Object.values(costs));
+  const heaviest = largest(Object.values(costs));
   return Object.fromEntries(
     Object.entries(costs).map(([name, seconds]) => [
       name,

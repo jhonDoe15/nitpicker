@@ -3,6 +3,7 @@ import path from 'node:path';
 import { isMigrationFile as untypedIsMigrationFile } from '../../../../../../shared/hygiene/migrations/migration-files.mjs';
 import { nearestManifest, type Manifest } from '../dependencies/package-manifest.mts';
 import { MIKRO_ORM } from '../persistence/orm-bindings.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type SchemaSource = {
   readonly dependencies: ReadonlySet<string>;
@@ -74,8 +75,9 @@ function hasMigrations(root: string): boolean {
     if (entries.some((entry) => isMigrationEntry(root, frame.directory, entry))) {
       return true;
     }
-    pending.push(
-      ...entries
+    appendAll(
+      pending,
+      entries
         .filter((entry) => isWalked(frame, entry))
         .map((entry) => ({
           directory: path.join(frame.directory, entry.name),

@@ -17,6 +17,7 @@ import {
   type Relation,
   type Types,
 } from './relation-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type Included = { readonly name: string; readonly relation: Relation };
@@ -127,8 +128,9 @@ function groupsOf(context: Context, types: Types, root: Omit<WorkItem, 'group'>)
   const pending: WorkItem[] = [{ ...root, group: 0 }];
   for (const item of pending) {
     const entries = item.include === undefined ? [] : entriesOf(context, item.include);
-    pending.push(
-      ...entries.flatMap((entry) => nestedWork(context, types, { item, entry, groups })),
+    appendAll(
+      pending,
+      entries.flatMap((entry) => nestedWork(context, types, { item, entry, groups })),
     );
   }
   return groups;

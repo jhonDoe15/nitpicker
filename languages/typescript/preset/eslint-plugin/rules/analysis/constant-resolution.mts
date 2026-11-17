@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, isNode, scopeChain, type SourceCode } from '../typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type SourceContext = { readonly sourceCode: SourceCode };
 type MaybeNode = TSESTree.Node | undefined;
@@ -149,7 +150,10 @@ function numericEntries(context: SourceContext, root: MaybeNode, depth: number):
       depth: entry.depth + 1,
       parent: entry,
     }));
-    entries.push(...operands.map((operand) => numericEntry(context, operand)));
+    appendAll(
+      entries,
+      operands.map((operand) => numericEntry(context, operand)),
+    );
   }
   return entries;
 }

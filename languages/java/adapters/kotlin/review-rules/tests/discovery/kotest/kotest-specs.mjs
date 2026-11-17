@@ -1,6 +1,7 @@
 import { closeOf, marksFrom } from '../text-scan.mjs';
 import { linkedRanges } from './kotest-links.mjs';
 import { levelsOf, registrationsIn, viewOf } from './kotest-registrations.mjs';
+import { appendAll } from '../../../../../../../../shared/lists/items.mjs';
 
 export { hasNestedRegistration } from './kotest-registrations.mjs';
 
@@ -62,7 +63,7 @@ export function specNodes(scanned, ranges) {
       break;
     }
     const visited = visit(view, item);
-    nodes.push(...visited.nodes);
+    appendAll(nodes, visited.nodes);
     pending.push(...visited.next);
   }
   const parents = new Set(nodes.map(({ parent }) => parent));

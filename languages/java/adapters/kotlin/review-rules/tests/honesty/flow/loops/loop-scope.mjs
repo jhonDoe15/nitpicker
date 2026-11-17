@@ -2,6 +2,7 @@ import { functionOwners, functionsOf } from '../../../discovery/functions.mjs';
 import { closeOf, repeatUntil, skipSpace } from '../../../discovery/text-scan.mjs';
 import { assertsIn } from '../assertion-calls.mjs';
 import { constructsIn } from '../flow-constructs.mjs';
+import { appendAll } from '../../../../../../../../../shared/lists/items.mjs';
 
 const INT = String.raw`(-?\d[\d_]*)L?`;
 const RANGE = String.raw`${INT}\s*(\.\.<|\.\.|until|downTo)\s*${INT}(?:\s+step\s+\d[\d_]*L?)?`;
@@ -146,7 +147,7 @@ function reachedHelpers(found, start) {
   for (const fn of pending) {
     if (!reached.has(fn)) {
       reached.add(fn);
-      pending.push(...found.callees.get(fn));
+      appendAll(pending, found.callees.get(fn));
     }
   }
   return [...reached];

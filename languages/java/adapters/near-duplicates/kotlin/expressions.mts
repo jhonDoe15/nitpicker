@@ -14,6 +14,7 @@ import {
 } from '../tree/nodes.mts';
 import { callOf, operatorText } from './calls.mts';
 import { bodyOf } from './statements.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const RIGHT_FIELD = 'right';
 const STRING_KIND = 'string';
@@ -149,7 +150,10 @@ function stringOf(source: Node, context: KotlinContext): PlacedNode {
     if (child.type === 'string_content' || child.type === 'escape_sequence') {
       content += child.text;
     } else {
-      pieces.push(...contentParts(content, source, context), context.get(codeChildren(child)[0]));
+      appendAll(pieces, [
+        ...contentParts(content, source, context),
+        context.get(codeChildren(child)[0]),
+      ]);
       content = '';
     }
   }

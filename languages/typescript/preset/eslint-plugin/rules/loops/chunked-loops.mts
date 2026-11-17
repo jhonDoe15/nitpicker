@@ -5,6 +5,7 @@ import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secre
 import { contains } from '../typed/node-views.mts';
 import { calleeName } from '../typed/syntax-views.mts';
 import { childrenOf, type EnclosingLoop, type LoopNode } from './loop-shapes.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
@@ -98,7 +99,7 @@ function slicesInline(
     if (isSlice(node) || (node.type === AST_NODE_TYPES.CallExpression && isChunkSource(node))) {
       return true;
     }
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return false;
 }

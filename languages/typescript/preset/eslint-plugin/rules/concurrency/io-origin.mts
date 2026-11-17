@@ -21,6 +21,7 @@ import type {
   Ref,
   SpecOf,
 } from './origins/origin-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type { ClientSpec, Origin, Origins } from './origins/origin-types.mts';
 
@@ -184,7 +185,7 @@ function expandField({ env, pending, goal }: Frame, member: TSESTree.MemberExpre
     .map((node) => fieldCandidate(env, node, key))
     .filter((candidate) => candidate !== undefined)
     .map(({ value, next }) => goalFor(goal, next, value));
-  pending.push(...candidates);
+  appendAll(pending, candidates);
   goal.children = candidates;
   goal.combine = (values) => values.find((value) => value !== undefined);
 }

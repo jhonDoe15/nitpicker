@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { quickSummary } from './summary.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type Invocation = ReturnType<ProfiledAnalyzer['createInvocation']>;
 
@@ -106,7 +107,7 @@ export function withDependencies(
     for (const dependency of added) {
       selected.add(dependency);
     }
-    pending.push(...added);
+    appendAll(pending, added);
   }
   return analyzers.filter(({ name }) => selected.has(name));
 }

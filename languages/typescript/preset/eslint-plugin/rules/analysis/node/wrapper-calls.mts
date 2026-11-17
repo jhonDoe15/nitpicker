@@ -13,6 +13,7 @@ import {
   type ModuleBindings,
   type Subprocess,
 } from '../subprocess-calls.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type FunctionNode =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
@@ -68,7 +69,7 @@ function pushChildren(
   for (const key of visitorKeys[node.type] ?? []) {
     const value: unknown = Reflect.get(node, key);
     if (Array.isArray(value)) {
-      pending.push(...value.filter(isNode));
+      appendAll(pending, value.filter(isNode));
     } else if (isNode(value)) {
       pending.push(value);
     }

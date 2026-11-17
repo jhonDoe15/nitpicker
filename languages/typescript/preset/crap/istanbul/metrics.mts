@@ -5,6 +5,7 @@ import type {
   BranchUnit,
   StatementUnit,
 } from '../crap-types.mts';
+import { smallest } from '../../../../../shared/lists/lists.mts';
 
 type CoverageExpectation = Pick<
   FunctionDescriptor,
@@ -55,7 +56,7 @@ function combine(
     .filter(({ status }) => status === 'measured')
     .flatMap(({ percent }) => (percent === undefined ? [] : [percent]));
   if (percents.length > 0) {
-    return measured(Math.min(...percents));
+    return measured(smallest(percents));
   }
   const reason = metrics.find(({ status }) => status === 'unknown')?.unknownReason;
   return reason === undefined

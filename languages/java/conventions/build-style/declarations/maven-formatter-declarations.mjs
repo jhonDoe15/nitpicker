@@ -3,6 +3,7 @@ import { stepFormatterDetails } from '../java-formatter-options.mjs';
 import { flagValue, versionValue } from './formatter-values.mjs';
 import { mavenValue } from './value-references.mjs';
 import { SPRING_JAVA_FORMAT, springFormatInPom } from '../spring-format/spring-java-format.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const PALANTIR_STYLE = 'palantir';
 const GOOGLE_STYLE = 'google';
@@ -14,7 +15,7 @@ const MAVEN_FORMATTER_ARTIFACTS = new Map([
 function descendants(root, name) {
   const found = [root];
   for (const node of found) {
-    found.push(...node.children);
+    appendAll(found, node.children);
   }
   return found.filter((node) => node.name === name);
 }

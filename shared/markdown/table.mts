@@ -1,3 +1,4 @@
+import { largest } from '../lists/lists.mts';
 function tableRow(cells: readonly string[], widths: readonly number[]): string {
   return `| ${cells.map((cell, column) => cell.padEnd(widths[column] ?? 0)).join(' | ')} |`;
 }
@@ -7,7 +8,7 @@ export function markdownTableLines(
   rows: readonly (readonly string[])[],
 ): string[] {
   const widths = header.map((title, column) =>
-    Math.max(title.length, ...rows.map((cells) => (cells[column] ?? '').length)),
+    largest([title.length, ...rows.map((cells) => (cells[column] ?? '').length)]),
   );
   return [
     tableRow(header, widths),

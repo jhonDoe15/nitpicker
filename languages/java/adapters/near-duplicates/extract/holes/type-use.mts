@@ -10,6 +10,7 @@ import {
   roleOf,
   squashed,
 } from '../syntax.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const DIRECT = 'direct';
 const CONTEXT = 'a differing type is used where a type parameter cannot stand for it';
@@ -91,8 +92,9 @@ function declaredNames(declaration: Node): string[] {
   if (declaration.type === 'formal_parameter' || declaration.type === 'enhanced_for_statement') {
     names.push(required(declaration, 'name'));
   } else {
-    names.push(
-      ...declaration.namedChildren
+    appendAll(
+      names,
+      declaration.namedChildren
         .filter(({ type }) => type === 'variable_declarator')
         .map((declarator) => required(declarator, 'name')),
     );

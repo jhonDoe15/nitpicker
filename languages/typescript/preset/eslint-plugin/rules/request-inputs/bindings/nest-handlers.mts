@@ -5,6 +5,7 @@ import { leafProblem, schemaProblems } from '../fields/schema-fields.mts';
 import type { Checker, Finding, Kind, Located, Problem } from '../problem-types.mts';
 import { nameOf } from './import-bindings.mts';
 import { decoratorCall, decoratorsOf, importOf, isFromPackage } from './ts-nodes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Transport = { readonly source: string; readonly arguments: TypeScript.Expression[] };
 type KindPart = { readonly kind?: Kind | undefined; readonly inner?: TypeScript.TypeNode[] };
@@ -141,7 +142,7 @@ function typeKind(type: TypeScript.TypeNode | undefined): Kind | undefined {
     if (part.inner === undefined) {
       kinds.add(part.kind);
     } else {
-      pending.push(...part.inner);
+      appendAll(pending, part.inner);
     }
   }
   return kinds.size === 1 ? [...kinds][0] : undefined;
@@ -169,7 +170,7 @@ function typeParts(type: TypeScript.TypeNode | undefined): TypeScript.TypeNode[]
   const pending = type === undefined ? [] : [type];
   for (const current of pending) {
     if (ts.isUnionTypeNode(current)) {
-      pending.push(...current.types);
+      appendAll(pending, current.types);
     }
     if (ts.isParenthesizedTypeNode(current)) {
       pending.push(current.type);

@@ -19,6 +19,7 @@ import {
   isMutableValue,
   isReadonlyTypeNode,
 } from './mutable-values.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 function isPropertyDeclaration(declaration: Node | undefined): declaration is FieldDeclaration {
   return (
@@ -137,7 +138,10 @@ function bindingNames(name: BindingName): Identifier[] {
       names.push(node);
     } else {
       const elements: readonly ArrayBindingElement[] = node.elements;
-      pending.push(...elements.filter(ts.isBindingElement).map((element) => element.name));
+      appendAll(
+        pending,
+        elements.filter(ts.isBindingElement).map((element) => element.name),
+      );
     }
   }
   return names;

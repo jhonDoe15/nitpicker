@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { syntaxChildren as untypedSyntaxChildren } from '../../../../syntax/children.mjs';
 import { chainOf } from '../../typed/node-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type ResolvedFunction =
   | TypeScript.FunctionDeclaration
@@ -64,7 +65,7 @@ function functionLiteralOf(expression: TypeScript.Node): FunctionLiteral | undef
     if (isFunctionLiteral(inner)) {
       return inner;
     }
-    pending.push(...(ts.isCallExpression(inner) ? inner.arguments : []));
+    appendAll(pending, ts.isCallExpression(inner) ? inner.arguments : []);
   }
   return undefined;
 }
@@ -169,13 +170,12 @@ function aliasedDeclarations(
   const pending: AliasSearch[] = [{ symbol, depth: ALIAS_DEPTH }];
   for (const { symbol: current, depth } of pending) {
     const declarations = declarationsOf(checker, current);
-    found.push(...declarations);
+    appendAll(found, declarations);
     const next =
       depth === 0 ? [] : declarations.map((declaration) => aliasedSymbolOf(checker, declaration));
-    pending.push(
-      ...next.flatMap((alias) =>
-        alias === undefined ? [] : [{ symbol: alias, depth: depth - 1 }],
-      ),
+    appendAll(
+      pending,
+      next.flatMap((alias) => (alias === undefined ? [] : [{ symbol: alias, depth: depth - 1 }])),
     );
   }
   return found;

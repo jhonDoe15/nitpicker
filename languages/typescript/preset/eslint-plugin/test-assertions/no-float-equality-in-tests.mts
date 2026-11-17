@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { chainOf, isIdentifierNamed } from '../rules/typed/node-views.mts';
 import { ASSERTION_WRAPPERS, unwrapOf } from '../rules/typed/syntax-views.mts';
 import { moduleBindings } from '../rules/analysis/test-code-analysis.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Bindings = ReturnType<typeof moduleBindings>;
 type NamedMember = TSESTree.MemberExpressionNonComputedName & {
@@ -82,7 +83,7 @@ function firstFloat(
       return node;
     }
     if (deep) {
-      pending.push(...nestedValues(unwrapOf(node, ASSERTION_WRAPPERS)));
+      appendAll(pending, nestedValues(unwrapOf(node, ASSERTION_WRAPPERS)));
     }
   }
   return undefined;
@@ -129,7 +130,7 @@ function comparedFloat(expression: TSESTree.Node): TSESTree.Node | undefined {
     if (literal !== undefined) {
       return literal;
     }
-    pending.push(...conditionParts(current));
+    appendAll(pending, conditionParts(current));
   }
   return undefined;
 }

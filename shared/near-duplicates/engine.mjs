@@ -9,6 +9,7 @@ import { KEY_MODES, compareText, createKeyCache, digest, keyOf } from './tree/ke
 import { sizeOf } from './tree/nodes.mjs';
 import { sharedRun } from './verdict/runs.mjs';
 import { wholeVerdict } from './verdict/whole.mjs';
+import { largest, smallest } from '../lists/items.mjs';
 
 export function prepareUnit(unit, tokensOf = createVocabulary()) {
   const { tree, original, rewritten } = canonicalTree(unit.tree);
@@ -34,8 +35,8 @@ function oriented([left, right], cachedKey) {
 
 function spanOf(statements) {
   return {
-    start: Math.min(...statements.map(({ start }) => start)),
-    end: Math.max(...statements.map(({ end }) => end)),
+    start: smallest(statements.map(({ start }) => start)),
+    end: largest(statements.map(({ end }) => end)),
   };
 }
 

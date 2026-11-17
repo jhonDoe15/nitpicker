@@ -3,6 +3,7 @@ import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts
 import { normalizedText } from '../syntax.mts';
 import type { AlignEnv, Both } from '../typed/extract-types.mts';
 import { recordTypeHole, typePairProblem } from '../typed/typed-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -96,7 +97,7 @@ function expand(
   }
   const parts = listParts(x, y) ?? referenceParts(x, y, env.sourceFile);
   if (parts !== undefined) {
-    pending.push(...parts);
+    appendAll(pending, parts);
     return undefined;
   }
   if (!(isSimple(x) && isSimple(y))) {

@@ -30,6 +30,7 @@ import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-te
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 import { projectHeader } from './comparison/outcome.mts';
 import { finishSnapshotResume, snapshotResume } from '../diff/cache/resume/snapshot-resume.mts';
@@ -190,7 +191,9 @@ function addToolErrors(report: SnapshotReport, errors: readonly unknown[]): void
   if (errors.length === 0) {
     return;
   }
-  report.toolErrors.unshift(...errors.map((error) => ({ ...objectOf(error), path: '' })));
+  const existing = report.toolErrors.splice(0);
+  const added = errors.map((error) => ({ ...objectOf(error), path: '' }));
+  appendAll(appendAll(report.toolErrors, added), existing);
   Object.assign(report.summary, { overallStatus: 'tool-error' });
 }
 

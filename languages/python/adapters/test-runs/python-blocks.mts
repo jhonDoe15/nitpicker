@@ -1,4 +1,5 @@
 import type { FunctionBlock, Logical, ScanState, Source } from './typed/run-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const DEFINITION = /^\s*(?:async\s+)?def\s+(\w+)\s*\(/u;
 const CLASS = /^\s*class\s+(\w+)/u;
@@ -142,9 +143,12 @@ function classMarks(source: Source, position: number): string[] {
   for (const owner of owners) {
     if (CLASS.test(at(source.lines, at(source.logical, owner).first))) {
       const end = bodyEnd(source.logical, owner);
-      marks.push(...decoratorText(source, owner), ...markLines(source, owner, end));
+      appendAll(marks, [...decoratorText(source, owner), ...markLines(source, owner, end)]);
     }
-    owners.push(...[ownerOf(source.logical, owner)].filter((next) => next !== undefined));
+    appendAll(
+      owners,
+      [ownerOf(source.logical, owner)].filter((next) => next !== undefined),
+    );
   }
   return marks;
 }
@@ -160,7 +164,10 @@ function scopeChain(source: Source, position: number): string {
   const owners = [ownerOf(source.logical, position)].filter((owner) => owner !== undefined);
   for (const owner of owners) {
     names.unshift(SCOPE.exec(at(source.lines, at(source.logical, owner).first))?.[1] ?? '');
-    owners.push(...[ownerOf(source.logical, owner)].filter((next) => next !== undefined));
+    appendAll(
+      owners,
+      [ownerOf(source.logical, owner)].filter((next) => next !== undefined),
+    );
   }
   return names.join('.');
 }

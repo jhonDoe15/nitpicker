@@ -17,6 +17,7 @@ import {
   type SourceFile,
   ts,
 } from './typescript.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 export const CODE_SHORTCUTS = 'code-shortcuts';
 
@@ -43,9 +44,9 @@ export function detectCodeShortcuts({
     const fixtureText = fixtureTree.get(file);
     const before = fixtureText === undefined ? [] : occurrencesIn(file, fixtureText, featuresRoot);
     const after = occurrencesIn(file, text, featuresRoot);
-    shortcuts.push(...newOccurrences(file, before, after));
+    appendAll(shortcuts, newOccurrences(file, before, after));
     if (fixtureText !== undefined) {
-      shortcuts.push(...sharedEntryBranches(file, before, after, featuresRoot));
+      appendAll(shortcuts, sharedEntryBranches(file, before, after, featuresRoot));
     }
   }
   return shortcuts;

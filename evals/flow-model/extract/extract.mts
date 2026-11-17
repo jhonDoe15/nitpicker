@@ -14,6 +14,7 @@ import { findFunction } from './module-bindings.mts';
 import { bindingFieldName, loadProgram, locationOf } from './program.mts';
 import { toExpr } from './expressions.mts';
 import { bodyOf } from './statements.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 export const ANALYZER_VERSION = 'flow-model-4';
 
@@ -158,12 +159,12 @@ export function extractModel({
   for (const name of queue) {
     const fn = findFunction(sourceFile, name);
     if (fn === undefined || Object.hasOwn(functions, name)) {
-      missing.push(...(fn === undefined ? [name] : []));
+      appendAll(missing, fn === undefined ? [name] : []);
       continue;
     }
     const extracted = extractFunction(fn, name, { sourceFile, checker });
     functions[name] = extracted.model;
-    queue.push(...extracted.helpers);
+    appendAll(queue, extracted.helpers);
   }
   if (!Object.hasOwn(functions, entry)) {
     throw new Error(`flow-model: entry function ${entry} not found in ${file}`);

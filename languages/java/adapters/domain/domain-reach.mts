@@ -1,6 +1,7 @@
 import { concernOf } from './infrastructure-classes.mts';
 import { isAdapter, isDomain } from './domain-roles.mts';
 import type { ClassEdge, ClassEntry, LibraryEdge, LibraryHit, Reach } from './domain-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 function byName(left: ClassEntry, right: ClassEntry): number {
   return `${left.file}\0${left.name}`.localeCompare(`${right.file}\0${right.name}`);
@@ -54,7 +55,7 @@ export function reachableIo({
     for (const importer of fresh) {
       next.set(importer, reached);
     }
-    queue.push(...fresh);
+    appendAll(queue, fresh);
   }
   return { hits, next };
 }
@@ -63,7 +64,7 @@ function pathFrom(entry: ClassEntry, next: Reach['next']): ClassEntry[] {
   const path = [entry];
   for (const step of path) {
     const following = next.get(step);
-    path.push(...(following === undefined ? [] : [following]));
+    appendAll(path, following === undefined ? [] : [following]);
   }
   return path;
 }

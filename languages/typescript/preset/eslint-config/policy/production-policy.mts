@@ -154,6 +154,7 @@ function productionGuardRules({
     ],
     'nitpicker/no-io-in-loop': 'error',
     'nitpicker/no-accumulator-concat': 'error',
+    'nitpicker/no-array-spread-arguments': 'error',
     'nitpicker/no-lazy-relation-in-loop': 'error',
     'nitpicker/no-lookup-per-element': 'error',
     'nitpicker/no-query-per-parent': 'error',

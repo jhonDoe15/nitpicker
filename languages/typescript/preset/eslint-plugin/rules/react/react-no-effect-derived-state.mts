@@ -7,6 +7,7 @@ import {
   type EffectCallback,
   type FunctionNode,
 } from './react-effects.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageIds = 'derivedState' | 'resetState' | 'storageState';
 type OptionalNode = TSESTree.Node | undefined;
@@ -160,7 +161,7 @@ function readsStorage(sourceCode: SourceCode, root: TSESTree.Node | undefined): 
     if (isStorage(sourceCode, node)) {
       return true;
     }
-    pending.push(...nodeChildren(node));
+    appendAll(pending, nodeChildren(node));
   }
   return false;
 }

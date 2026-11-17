@@ -9,6 +9,7 @@ import { memberName, staticKey, type Context } from '../security/security-values
 import { ancestorsOf, chainOf } from '../typed/node-views.mts';
 import { descendants, skipped } from './io-origin.mts';
 import type { Invocation } from './origins/origin-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type FunctionNode =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
@@ -221,8 +222,11 @@ export function mappings(context: Context, node: TSESTree.Node): Site[] {
     const target = skipped(entry.node);
     if (entry.depth <= MAX_DEPTH) {
       const step = mappingStep(context, target);
-      sites.push(...step.sites);
-      pending.push(...step.next.map((next) => ({ node: next, depth: entry.depth + 1 })));
+      appendAll(sites, step.sites);
+      appendAll(
+        pending,
+        step.next.map((next) => ({ node: next, depth: entry.depth + 1 })),
+      );
     }
   }
   return sites;

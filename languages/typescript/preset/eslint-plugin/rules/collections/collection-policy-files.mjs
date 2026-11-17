@@ -3,6 +3,7 @@ export const COLLECTION_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/collection-policy-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/collections/call-spreads/no-array-spread-arguments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/array-membership.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/keyed-lookup.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/no-costly-collection-form.mjs',

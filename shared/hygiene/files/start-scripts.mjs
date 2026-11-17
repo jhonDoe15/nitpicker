@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { pathInside } from '../../filesystem.mjs';
 import { readJson } from './known-files.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const START_SCRIPT = /^(?:pre)?(?:start|serve)(?::(?!.*(?:dev|local|watch|debug|test))[\w:.-]+)?$/u;
 const SEGMENT_BREAK = /&&|\|\||[;|\n]/u;
@@ -43,14 +44,14 @@ function reachedSegments(scripts, start) {
   for (const name of pending) {
     const command = scripts[name];
     const own = typeof command === 'string' ? segmentsOf(command) : [];
-    segments.push(...own);
+    appendAll(segments, own);
     const next = own
       .flatMap((segment) => calledScripts(scripts, segment))
       .filter((called) => !visited.has(called) && visited.size < MAX_SCRIPTS);
     for (const called of next) {
       visited.add(called);
     }
-    pending.push(...next);
+    appendAll(pending, next);
   }
   return segments;
 }

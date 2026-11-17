@@ -13,6 +13,7 @@ import {
   roleOf,
   squashed,
 } from '../syntax.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type DeclaredRun = { statement: Node; declarator: Node; where: string };
 
@@ -57,7 +58,7 @@ export function ownNodes(statements: readonly Node[]): Node[] {
   for (const node of pending) {
     found.push(node);
     if (!OWN_SCOPES.has(node.type)) {
-      pending.push(...node.namedChildren);
+      appendAll(pending, node.namedChildren);
     }
   }
   return found;

@@ -10,6 +10,7 @@ import {
   TROUBLESHOOTING,
   wrap,
 } from './fix-loop-text.mts';
+import { largest } from '../../shared/lists/lists.mts';
 
 const EXIT_ROWS: readonly (readonly [string, string])[] = [
   [
@@ -31,8 +32,8 @@ const EXIT_ROWS: readonly (readonly [string, string])[] = [
 
 function table(): string {
   const rows: (readonly [string, string])[] = [['Code', 'Meaning'], ...EXIT_ROWS];
-  const first = Math.max(...rows.map((row) => row[0].length));
-  const second = Math.max(...rows.map((row) => row[1].length));
+  const first = largest(rows.map((row) => row[0].length));
+  const second = largest(rows.map((row) => row[1].length));
   function line(row: readonly [string, string]): string {
     return `| ${row[0].padEnd(first)} | ${row[1].padEnd(second)} |`;
   }

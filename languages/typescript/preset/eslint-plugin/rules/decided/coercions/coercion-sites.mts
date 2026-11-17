@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { syntaxChildren, isFunction } from '../syntax.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type Guard = {
   readonly test: TSESTree.Node;
@@ -68,8 +69,9 @@ export function coercionSites(root: TSESTree.Node): CoercionSite[] {
       sites.push({ node, operand, guards });
     }
     if (!isFunction(node)) {
-      pending.push(
-        ...guardedChildren(node).map(({ child, guard }) => ({
+      appendAll(
+        pending,
+        guardedChildren(node).map(({ child, guard }) => ({
           node: child,
           guards: guard === undefined ? guards : [...guards, guard],
         })),
