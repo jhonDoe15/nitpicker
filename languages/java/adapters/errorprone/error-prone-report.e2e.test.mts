@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -130,6 +130,27 @@ describe.runIf(enabled)(
       expect(
         probe(['slices', descriptor, ...files], ['-Dnitpicker.errorprone.workers=4']).trim(),
       ).toBe('101');
+    });
+
+    it('stops at the deadline with an empty report and the reason Error Prone was skipped', () => {
+      const report = path.join(work, 'deadline', 'errorprone.json');
+      const argumentsFile = path.join(work, 'deadline', 'arguments');
+      mkdirSync(path.dirname(report), { recursive: true });
+      writeFileSync(argumentsFile, ['-classpath', work, '--sources', ...sources(1)].join('\n'));
+
+      const run = spawnSync(
+        'java',
+        ['-Dnitpicker.errorprone.deadline=1', REPORT_SOURCE, report, CHECKS_FILE, argumentsFile],
+        { encoding: 'utf8', timeout: JAVA_TIMEOUT_MS },
+      );
+
+      expect(run.status, run.stderr).toBe(0);
+      expect(readFileSync(report, 'utf8')).toBe('[]\n');
+      expect(
+        readFileSync(path.join(path.dirname(report), 'errorprone-skipped.txt'), 'utf8'),
+      ).toMatch(
+        /^it was stopped after 1 minute, at the time limit of the run; NITPICKER_MAVEN_TIMEOUT_MINUTES/u,
+      );
     });
   },
 );

@@ -149,6 +149,8 @@ tasks.register('nitpickerErrorProne') {
         workDir.get().asFile.mkdirs()
         def report = reportFile.get().asFile
         report.delete()
+        def skipped = new File(report.parentFile, 'errorprone-skipped.txt')
+        skipped.delete()
         def compiles = [main: tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets()
             .collectEntries { [(it.name): tasks.named(it.compileJavaTaskName).get()] }
         if (compiles.values().every { it.source.isEmpty() }) {
@@ -161,11 +163,13 @@ tasks.register('nitpickerErrorProne') {
         try {
             java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
         } catch (GradleException e) {
-            new File(report.parentFile, 'errorprone-skipped.txt').text = e.message.replaceAll(/\s+/, ' ').trim() + '\n'
+            skipped.text = e.message.replaceAll(/\s+/, ' ').trim() + '\n'
             report.text = '[]\n'
             return
         }
-        def runnerFlags = ["-Dnitpicker.errorprone.workers=${Runtime.runtime.availableProcessors()}".toString()]
+        def deadline = gradle.startParameter.projectProperties['nitpicker.pit.deadline']
+        def runnerFlags = ["-Dnitpicker.errorprone.workers=${Runtime.runtime.availableProcessors()}".toString()] +
+            (deadline == null ? [] : ["-Dnitpicker.errorprone.deadline=${deadline}".toString()])
         def run = { String mode ->
             def argumentFiles = compiles.collect { name, compile ->
                 writeArguments(name, compile, errorProne, name != 'main', name == 'main' ? mode : 'plain')
