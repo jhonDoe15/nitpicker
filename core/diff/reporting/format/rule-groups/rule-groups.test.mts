@@ -186,7 +186,7 @@ describe('console summary grouped by rule', () => {
     ]);
   });
 
-  it('orders rules by label, bug first and style last, then by fix order, path and line', () => {
+  it('orders targeted rules by label, then broad rules, then style, each by fix order and place', () => {
     const mutant = finding({
       tool: 'pit',
       rule: 'mutant-survived',
@@ -228,15 +228,23 @@ describe('console summary grouped by rule', () => {
       line: 2,
       message: 'Wrong argument type.',
     });
-    const lines = summaryLines([mutant, unused, format, leak, overflow, typeError]);
+    const ignored = finding({
+      tool: 'errorprone',
+      rule: 'CheckReturnValue',
+      file: 'src/main/java/demo/A.java',
+      line: 3,
+      message: 'Use the result.',
+    });
+    const lines = summaryLines([mutant, ignored, unused, format, leak, overflow, typeError]);
 
     expect(lines.filter((line) => line.startsWith('  ') && !line.startsWith('    '))).toEqual([
-      '  by area: format 1 · types 1 · lint 3 · mutation 1',
+      '  by area: format 1 · types 1 · lint 4 · mutation 1',
       '  typescript-typecheck/TS2345: Wrong argument type.',
       '  pmd/MaxValueOverflow: This sum overflows.',
       '  pmd/CloseResource: Close it.',
       '  pmd/UnusedPrivateField: Remove the field.',
       '  pit/mutant-survived: Survived. Add an assertion that would.',
+      '  errorprone/CheckReturnValue: Use the result.',
       '  google-java-format/format: Format it.',
     ]);
   });
