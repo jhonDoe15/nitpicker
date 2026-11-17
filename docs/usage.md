@@ -507,12 +507,19 @@ while it resolves the optional peer dependencies of Vitest 4; the tool error the
 
 ### Console summary
 
-A comparison run prints a short summary. New violations are grouped by rule, in the order to fix
-them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
-its advice once, then one line per place (`path:line:col` and only the part of the message that
-differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
-`<function>`) where the findings of the rule differ; a line then names its own function, for example
-`(function price)`. A count per area follows the headline:
+A comparison run prints a short summary. New violations are grouped by rule, the most important
+first. Rules that detect one specific defect or design problem come first, by their
+[label](#labels): `bug`, `security`, `performance`, `reliability`, `maintainability`,
+`simplification`, `tests`. Broad pattern rules follow in the same label order: rules that flag a
+risky form wherever it appears (`CheckReturnValue`, `NullAway`, truthiness checks, default time
+zones and locales) and the generic repetition and size limits (clones, repeated string literals,
+file, function and class size). `style` comes last. `nitpicker explain <rule>` says `Order: a broad
+pattern rule` for those. Inside each group the order is the one to fix them in: format, type check,
+lint, structure, then tests, coverage, CRAP and mutation. Each rule prints its advice once, then one
+line per place (`path:line:col` and only the part of the message that differs between findings),
+then once the `exceptions` entry that accepts it, with `<path>` (or `<function>`) where the findings
+of the rule differ; a line then names its own function, for example `(function price)`. A count per
+area follows the headline:
 
 ```text
 Quality gate summary
@@ -598,13 +605,13 @@ line; here it is spread out:
 - `status` is `passed` (exit 0), `failed` (exit 1: failing findings or failing tests) or `error`
   (exit 2: a tool error left the run incomplete). `exitCode` is the exit code of the process, 0
   with `--defer-exit`.
-- `findings` lists the failing findings only, each message on one line. When `exception` carries
-  the entry that accepts a finding, the message leaves out the sentence that names it;
-  `exceptionList` is set when the entry goes to `python.exceptions`. `line`, `column`,
-  `allowedForm`, `exception` and `helpUri` are left out when the finding has none. Mutants fold as
-  in the console summary: one entry per function for the mutants no test runs and at most three
-  surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts every
-  mutant.
+- `findings` lists the failing findings only, in the priority order of the console summary, each
+  message on one line. When `exception` carries the entry that accepts a finding, the message leaves
+  out the sentence that names it; `exceptionList` is set when the entry goes to `python.exceptions`.
+  `line`, `column`, `allowedForm`, `exception` and `helpUri` are left out when the finding has none.
+  Mutants fold as in the console summary: one entry per function for the mutants no test runs and at
+  most three surviving ones, each folded entry marked `"folded": true`, while `counts.failing`
+  counts every mutant.
 - `counts.byArea` counts the failing findings per area, in the order to fix them, and
   `counts.byLabel` per [label](#labels) (a finding with two labels counts under both). Report-only
   and held findings are counts only; the files in `reports` list them.
@@ -631,10 +638,11 @@ the package as `nitpicker/spec/json-output.schema.json`.
 
 A comparison run writes these files to `reports/quality/diff/`:
 
-- `report.txt`: the readable report. It lists the new findings that fail the run first, then the
-  report-only ones; a metric finding shows its value (and its limit, when it has one), and a metric
-  delta is rounded to the precision of the two values. The per-tool table lists the analyzers with
-  any count, then one line counts the ones that ran clean.
+- `report.txt`: the readable report. It lists the new findings that fail the run first, in the
+  priority order of the console summary, then the report-only ones; a metric finding shows its value
+  (and its limit, when it has one), and a metric delta is rounded to the precision of the two
+  values. The per-tool table lists the analyzers with any count, then one line counts the ones that
+  ran clean.
 - `summary.json`: totals, per-tool counts and the fields below.
 - `new-findings.json`: the new findings, the ones that count against the change.
 - `resolved-findings.json`: findings that were in the base and are gone.
@@ -662,10 +670,13 @@ prints `Project: <path from the current folder>` first, in comparison, `--all` a
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
 `report.sarif` and `codequality.json`. Its `report.txt` has the same layout: enforceable findings
 first, then the descriptive ones with their metric values, and the same per-tool table. The console
-prints the same summary layout as a comparison
-run: findings grouped by rule, at most ten design notes, the tool errors, one line for each analyzer
-with findings and a count of the analyzers that ran clean, and the path of `report.txt`, which keeps
-the full list. The exit codes do not change.
+prints the same summary layout as a comparison run: findings grouped by rule, at most ten design
+notes, the tool errors, one line for each analyzer with findings and a count of the analyzers that
+ran clean, and the path of `report.txt`, which keeps the full list. The one difference: the `style`
+rules fold into one line after the others, such as `style: 412 findings from 23 rules, folded (list
+them with --label style or --details)`, so a first survey shows what is worth fixing; `--details`, a
+`--label` run and a snapshot with only style findings list them in full. The exit codes do not
+change.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run, and

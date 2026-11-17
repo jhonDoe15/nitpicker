@@ -179,5 +179,12 @@ export function goLabels(tool: string, rule: string): Labels | undefined {
   return GO_LINTERS.get(tool);
 }
 
+const BROAD_LINTERS: ReadonlySet<string> = new Set(['exhaustive']);
+const BROAD_GO_RULES: ReadonlySet<string> = new Set(['repeated_string_literal']);
+
+export function isBroadGoRule(tool: string, rule: string): boolean {
+  return BROAD_LINTERS.has(tool) || (tool === 'go-rules' && BROAD_GO_RULES.has(rule));
+}
+
 export const GO_RULE_NAMES: readonly string[] = [...GO_RULES.keys()];
 export const GOCRITIC_CHECKERS: readonly string[] = [...GOCRITIC.keys()];

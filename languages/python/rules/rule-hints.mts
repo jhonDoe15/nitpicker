@@ -59,6 +59,25 @@ const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the proj
 const USE_REPLACEMENT =
   'Call the replacement the deprecation notice names; the deprecated API is going away.';
 
+const MYPY_UNTYPED_CODES = [
+  'no-untyped-def',
+  'no-untyped-call',
+  'no-any-return',
+  'no-any-unimported',
+  'type-arg',
+  'explicit-any',
+];
+const PYRIGHT_UNTYPED_RULES = [
+  'reportUnknownMemberType',
+  'reportUnknownArgumentType',
+  'reportUnknownVariableType',
+  'reportUnknownParameterType',
+  'reportUnknownLambdaType',
+  'reportMissingParameterType',
+  'reportMissingTypeArgument',
+  'reportUntypedFunctionDecorator',
+];
+
 export const RULE_HINTS: readonly RuleHint[] = [
   ...STYLE_HINTS,
   ...SIMPLER_LOGIC_HINTS,
@@ -100,6 +119,8 @@ export const RULE_HINTS: readonly RuleHint[] = [
     rules: ['reportDeprecated'],
     allowed: USE_REPLACEMENT,
   })),
+  { tool: 'mypy', rules: MYPY_UNTYPED_CODES, allowed: FIX_TYPE },
+  ...PYRIGHT_TOOLS.map((tool) => ({ tool, rules: PYRIGHT_UNTYPED_RULES, allowed: FIX_TYPE })),
   ...TYPE_CHECK_TOOLS.map((tool) => ({ tool, rules: undefined, allowed: FIX_TYPE })),
 ];
 

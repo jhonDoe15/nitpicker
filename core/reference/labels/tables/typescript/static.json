@@ -14,5 +14,11 @@
   "dependency-architecture/no-production-to-test": ["maintainability"],
   "dependency-architecture/shared-does-not-import-features": ["maintainability"],
   "prettier-format/prettier/prettier": ["style"],
+  "typescript-typecheck/TS4111": ["style"],
+  "typescript-typecheck/TS7005": ["maintainability"],
+  "typescript-typecheck/TS7006": ["maintainability"],
+  "typescript-typecheck/TS7031": ["maintainability"],
+  "typescript-typecheck/TS7034": ["maintainability"],
+  "typescript-typecheck/TS7053": ["maintainability"],
   "typescript-typecheck/TS<code>": ["bug"]
 }
