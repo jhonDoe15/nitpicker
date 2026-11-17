@@ -12,6 +12,7 @@ import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type Finding = ReportEntry;
 
@@ -260,8 +261,9 @@ function collectSnapshotFindings({
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
     const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
-    toolErrors.push(
-      ...reported
+    appendAll(
+      toolErrors,
+      reported
         .filter((finding) => finding.classification === 'tool-error')
         .map((finding) => toSnapshotToolError(finding)),
     );
@@ -269,7 +271,7 @@ function collectSnapshotFindings({
     const focused = inFocus(analyzed, scope, labels);
     outside += focused.outside;
     hidden += focused.hidden;
-    findings.push(...focused.findings);
+    appendAll(findings, focused.findings);
     tools.push(summarizeAnalyzer({ analyzer, name, metadata }, focused.findings));
   }
 
