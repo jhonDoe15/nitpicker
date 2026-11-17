@@ -669,10 +669,13 @@ prints `Project: <path from the current folder>` first, in comparison, `--all` a
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
 `report.sarif` and `codequality.json`. Its `report.txt` has the same layout: enforceable findings
 first, then the descriptive ones with their metric values, and the same per-tool table. The console
-prints the same summary layout as a comparison
-run: findings grouped by rule, at most ten design notes, the tool errors, one line for each analyzer
-with findings and a count of the analyzers that ran clean, and the path of `report.txt`, which keeps
-the full list. The exit codes do not change.
+prints the same summary layout as a comparison run: findings grouped by rule, at most ten design
+notes, the tool errors, one line for each analyzer with findings and a count of the analyzers that
+ran clean, and the path of `report.txt`, which keeps the full list. The one difference: the `style`
+rules fold into one line after the others, such as `style: 412 findings from 23 rules, folded (list
+them with --label style or --details)`, so a first survey shows what is worth fixing; `--details`, a
+`--label` run and a snapshot with only style findings list them in full. The exit codes do not
+change.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run, and

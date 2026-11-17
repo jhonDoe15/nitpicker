@@ -8,6 +8,7 @@ import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { ruleGroupLines } from './format/rule-groups/rule-groups.mts';
 import { byPriority } from './format/rule-groups/finding-order.mts';
+import { foldStyle } from './format/rule-groups/style-fold.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mts';
 import { scopeLine } from '../../scope/scope-findings.mjs';
@@ -144,7 +145,12 @@ function renderGateSummary(
       policyCount: violations.filter(isPolicyFinding).length,
       snapshot,
     },
-    { color, details, labelCounts: labelCountLine(report.summary) },
+    {
+      color,
+      details,
+      labelCounts: labelCountLine(report.summary),
+      foldStyle: snapshot && fieldOf(report.summary, 'labels') === undefined,
+    },
   );
   lines.push(
     ...reviewSummaryLines(consolePolicySummary(report), (text) =>
@@ -228,10 +234,12 @@ function appendViolationSummary(
     color,
     details,
     labelCounts,
+    foldStyle: fold,
   }: {
     readonly color: boolean;
     readonly details: boolean;
     readonly labelCounts: readonly string[];
+    readonly foldStyle: boolean;
   },
 ): void {
   const { violations } = summary;
@@ -242,8 +250,10 @@ function appendViolationSummary(
   }
   lines.push(...labelCounts);
   if (!details) {
+    const { shown, lines: folded } = foldStyle(violations, fold);
     lines.push(
-      ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], { color })),
+      ...ruleGroupLines(foldMutants(shown), (label) => style(label, [ANSI.yellow], { color })),
+      ...folded,
     );
     return;
   }

@@ -1,5 +1,5 @@
 import { findingLabeler } from '../../../../labels/finding-labels.mts';
-import { isBroadRule, priorityRank } from '../../../../labels/finding-priority.mts';
+import { isBroadRule, primaryKind, priorityRank } from '../../../../labels/finding-priority.mts';
 import { areaOf, areaRank } from './finding-areas.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
@@ -9,6 +9,10 @@ const LABELS_OF = findingLabeler({ areaOf });
 
 function rankOf(finding: ReportEntry): number {
   return priorityRank(LABELS_OF(finding), isBroadRule(finding));
+}
+
+export function isStyleFinding(finding: ReportEntry): boolean {
+  return primaryKind(LABELS_OF(finding)) === 'style';
 }
 
 function byPosition(left: ReportEntry, right: ReportEntry): number {
