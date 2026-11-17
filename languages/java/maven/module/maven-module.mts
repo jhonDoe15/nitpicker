@@ -1,16 +1,16 @@
 import path from 'node:path';
 import { runFormat } from '../format/maven-format.mts';
-import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mjs';
+import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mts';
 import { archunitMatcher } from '../maven-tests.mts';
 import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
-import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
-import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
+import { runErrorProne } from '../errorprone/maven-errorprone.mts';
+import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mts';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mts';
 import { runGuards } from '../guards/maven-guards.mts';
-import { runEffects } from '../effects/maven-effects.mjs';
+import { runEffects } from '../effects/maven-effects.mts';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
 import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mts';
@@ -69,7 +69,14 @@ function sourceTask(
 
 function runSourceTools(options: ModuleOptions): void {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
-  const base = { module, reportDir, tools, configs, timeoutMs: options['timeoutMs'] };
+  const base = {
+    module,
+    reportDir,
+    tools,
+    configs,
+    timeoutMs: options['timeoutMs'],
+    environment: options['environment'],
+  };
   const tasks = [
     sourceTask(runPmd, LINT_URL, {
       ...base,
@@ -151,6 +158,7 @@ export function analyzeModule(options: ModuleRequest): unknown {
   }
   const sourceJava = callUntyped(parserJava, {
     level: callUntyped(sourceLevel, module['compiler']),
+    environment: options['environment'],
   });
   const written = { ...fieldsOf(manifest), ...fieldsOf(fieldOf(kotlin, 'manifest')), sourceJava };
   callUntyped(writeManifest, {

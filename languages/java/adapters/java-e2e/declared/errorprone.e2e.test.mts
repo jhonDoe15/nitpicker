@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mts';
-import { runErrorProne as runErrorProneUntyped } from '../../../maven/errorprone/maven-errorprone.mjs';
+import { runErrorProne as runErrorProneTyped } from '../../../maven/errorprone/maven-errorprone.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import {
   type BuildCommand,
@@ -34,7 +34,13 @@ const runErrorProne: (context: {
   tools: Tools;
   classpaths: { mainCompile: string[]; testCompile: string[] };
   configs: ToolChoices;
-}) => void = runErrorProneUntyped;
+}) => void = (context) => {
+  runErrorProneTyped({
+    ...context,
+    classpaths: { mainRuntime: [], testRuntime: [], ...context.classpaths },
+    environment: process.env,
+  });
+};
 
 const HOLDER = `package demo;
 

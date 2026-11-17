@@ -9,6 +9,7 @@ import type {
   GoUsage,
   InspectReport,
   NamedTests,
+  GoUnitFact,
   TestRun,
 } from '../go-types.mts';
 
@@ -177,7 +178,11 @@ function definitionFacts(
 
 export function goFacts(
   report: FactsReport,
-  { module = '', testRun }: { module?: string; testRun?: Pick<TestRun, 'outputs'> } = {},
+  {
+    module = '',
+    testRun,
+    units = [],
+  }: { module?: string; testRun?: Pick<TestRun, 'outputs'>; units?: readonly GoUnitFact[] } = {},
 ): GoFacts {
   const packages = goPackages(report, module);
   const roles = new Map<string, GoFactRole>(
@@ -193,6 +198,7 @@ export function goFacts(
     definitions: definitionFacts(report, productionUses(imports)),
     imports,
     ...goDesignFacts(report, packages),
+    nearDuplicateUnits: units,
     docComments: report.docComments ?? [],
     console: testRun === undefined ? [] : goConsoleFacts(testRun, { report, module }),
     constrained: report.files

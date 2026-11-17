@@ -1,8 +1,10 @@
 import { MessageChannel, Worker, receiveMessageOnPort } from 'node:worker_threads';
 import { chainOf } from '../../traversal.mjs';
 import { checkoutModuleUrl } from '../../paths/checkout-module.mjs';
+import { spendRun } from './budget.mjs';
 
-const DEFAULT_TIMEOUT_MS = 20_000;
+const SAFETY_NET_MS = 120_000;
+const MAX_ANSWERS = 20_000;
 const WORKER = checkoutModuleUrl(new URL('decide-worker.mjs', import.meta.url));
 
 function startBridge() {
@@ -34,6 +36,20 @@ function bridgeOnce() {
 }
 
 const bridge = bridgeOnce();
+
+function answerCache() {
+  const known = new Map();
+  return {
+    find: (id) => known.get(id),
+    keep(id, result) {
+      if (known.size < MAX_ANSWERS) {
+        known.set(id, result);
+      }
+    },
+  };
+}
+
+const answers = answerCache();
 
 function pendingReplies(bridge) {
   return chainOf(receiveMessageOnPort(bridge.replies), () => receiveMessageOnPort(bridge.replies));
@@ -91,18 +107,40 @@ function ask(request, timeoutMs) {
   return result;
 }
 
+function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
+  const id = JSON.stringify(request);
+  const known = answers.find(id);
+  if (known !== undefined) {
+    return known;
+  }
+  if (!spendRun(budget)) {
+    return undefined;
+  }
+  const result = ask(request, timeoutMs);
+  if (result !== undefined) {
+    answers.keep(id, result);
+  }
+  return result;
+}
+
+function reply(asked, options) {
+  const { timeoutMs, budget, ...decideOptions } = options;
+  const request = { ...asked, options: decideOptions };
+  return answered(request, { timeoutMs, budget });
+}
+
 /**
  * `decide` for synchronous callers such as lint rules: the solver runs in a worker thread and this
- * call blocks until it answers. A solver that does not answer within `timeoutMs` counts as 'open',
- * and so does every call while that answer is still pending or after the worker stopped.
+ * call blocks until it answers. Answers are kept by the terms asked. The solver stops at its
+ * resource limit (`options.resourceLimit`), the same on every machine; `timeoutMs` is only a safety
+ * net far above any normal answer. A question that runs out of either, that exceeds `options.budget`
+ * (see `solverBudget`) or that arrives while an answer is pending or after the worker stopped is 'open'.
  */
 export function decideSync(conditions, query, options = {}) {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...decideOptions } = options;
-  return ask({ explain: false, conditions, query, options: decideOptions }, timeoutMs) ?? 'open';
+  return reply({ explain: false, conditions, query }, options) ?? 'open';
 }
 
 export function counterexampleSync(conditions, query, options = {}) {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...decideOptions } = options;
-  const result = ask({ explain: true, conditions, query, options: decideOptions }, timeoutMs);
+  const result = reply({ explain: true, conditions, query }, options);
   return result === undefined || result === 'none' ? undefined : result;
 }

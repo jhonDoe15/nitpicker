@@ -12,7 +12,7 @@ const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_SKIPPED = 'cpd-skipped.txt';
 
-export { runPmd } from '../maven-lint.mjs';
+export { runPmd } from '../maven-lint.mts';
 
 function launchCpd(options: CpdOptions, command: unknown): unknown {
   try {

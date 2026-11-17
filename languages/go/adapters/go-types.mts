@@ -124,6 +124,15 @@ export type GoConsoleFact = {
   readonly test: string;
   readonly messages: readonly string[];
 };
+export type GoUnitFact = {
+  readonly file: string;
+  readonly name: string;
+  readonly start: number;
+  readonly end: number;
+  readonly tokens: number;
+  readonly final: boolean;
+  readonly tree: unknown;
+};
 export type GoFacts = {
   readonly modules: readonly GoModuleFact[];
   readonly packages: readonly { readonly root: string; readonly published: boolean }[];
@@ -131,6 +140,7 @@ export type GoFacts = {
   readonly imports: readonly GoImportFact[];
   readonly types: readonly DesignType[];
   readonly callables: readonly DesignCallable[];
+  readonly nearDuplicateUnits: readonly GoUnitFact[];
   readonly docComments: readonly DocComment[];
   readonly console: readonly GoConsoleFact[];
   readonly constrained: readonly string[];

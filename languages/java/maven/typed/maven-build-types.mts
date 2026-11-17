@@ -27,6 +27,7 @@ export type AnalyzeRequest = MavenRun & {
   readonly project: unknown;
   readonly testsSkipped: boolean;
   readonly effectsOptions: unknown;
+  readonly environment: JavaEnvironment;
 };
 export type ToolsRequest = {
   readonly modules: readonly MavenModule[];

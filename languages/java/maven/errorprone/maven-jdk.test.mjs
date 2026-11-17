@@ -8,9 +8,8 @@ import {
   chooseFormatterJdk,
   chooseToolJdk,
   sourceLevel,
-  featureVersion,
-  jdkHomes,
-} from './maven-jdk.mjs';
+} from './maven-jdk.mts';
+import { featureVersion, jdkHomes } from './jdk-probe.mts';
 
 const VERSION_OUTPUT = (version) =>
   `openjdk version "${version}" 2024-01-16\nOpenJDK Runtime Environment`;

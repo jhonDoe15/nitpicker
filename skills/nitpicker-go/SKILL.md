@@ -120,7 +120,15 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`duplicates/duplicate-clone`). Call the existing code, or move it to a shared package both use.
   A smaller function copied into a second package fails too
   (`duplicate-definition`), and so does editing one of two copies away from the other
-  (`sibling-copy-edit`): keep one copy, exported from one package.
+  (`sibling-copy-edit`): keep one copy, exported from one package. A function proved to copy
+  another in a few values or in how its logic is written fails too (`near-duplicate`): extract one
+  function with the changed values as parameters.
+- A condition that the guards before it already decide fails (`decided-condition`: `if n > 20` after
+  `if n > 10 { return }`, or `err != nil` again after `if err != nil { return err }`): remove it, or
+  fix the condition you meant. A condition with an exactly equivalent shorter form fails
+  (`shorter-condition`: `n > 3 && n > 5` is `n > 5`): write the printed form. Two arms of an `if`/`else if` chain, a `switch` or a `select` with the
+  same body fail (`duplicate-branch`): merge the cases (`case 1, 2:`), or change the one meant to
+  differ.
 - A doc comment says what the name does not: `// Close closes.` restates it
   (`doc-comment-content`); say what the caller must know (`// Close flushes pending writes and
 releases the file; calling it twice returns an error.`). Keep the prose to 5 lines; put an

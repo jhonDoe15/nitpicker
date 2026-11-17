@@ -1,4 +1,9 @@
-import { childrenNamed as namedChildren, parseXml as parsed } from '../ingest/common.mjs';
+import {
+  childAt as childAtPath,
+  childrenAt as childrenAtPath,
+  childrenNamed as namedChildren,
+  parseXml as parsed,
+} from '../ingest/common.mjs';
 
 export type XmlElement = {
   readonly name: string;
@@ -9,3 +14,11 @@ export type XmlElement = {
 
 export const parseXml: (text: string) => XmlElement = parsed;
 export const childrenNamed: (element: XmlElement, name: string) => XmlElement[] = namedChildren;
+export const childAt: (
+  element: XmlElement | undefined,
+  ...names: readonly string[]
+) => XmlElement | undefined = childAtPath;
+export const childrenAt: (
+  element: XmlElement | undefined,
+  ...names: readonly string[]
+) => XmlElement[] = childrenAtPath;

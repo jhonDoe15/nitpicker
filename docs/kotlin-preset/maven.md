@@ -14,7 +14,7 @@ where no module does is a `kotlin/maven-failure` tool error saying so.
 plugin's `compile` and `kapt` executions for main code, those of `test-compile` and `test-kapt` for
 test code (a `sourceDirs` set on the plugin itself serves main code only); where none are set, the
 plugin compiles the Maven source roots (`sourceDirectory`, `testSourceDirectory` and the roots
-build-helper adds), and so do these; one reader, `kotlin-roots.mjs`, serves the Kotlin preset and
+build-helper adds), and so do these; one reader, `kotlin-roots.mts`, serves the Kotlin preset and
 the Java preset's `kotlinSourceRoots`. A folder the build does not compile, such as a leftover
 `src/main/kotlin` that no `sourceDir` and no `sourceDirectory` names, is not analyzed. Only
 directories that exist, lie inside the module and are not under its build directory are kept, and

@@ -9,6 +9,7 @@ import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { typeServices } from '../security/security-values.mts';
 import { ancestorsOf, depthFirst, isNode, type SourceCode } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
+import { isTestOf } from './test-positions.mts';
 
 type Range = readonly [number, number];
 type Context = TSESLint.RuleContext<'simpler' | 'swapped', readonly unknown[]>;
@@ -123,13 +124,6 @@ function expressionRoot(node: TSESTree.Node): TSESTree.Node | undefined {
     : root;
 }
 
-function isLoopTest(node: TSESTree.Node): boolean {
-  const { parent } = node;
-  return (
-    parent !== undefined && LOOP_TESTS.has(parent.type) && 'test' in parent && parent.test === node
-  );
-}
-
 export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
   meta: {
     type: 'suggestion',
@@ -181,7 +175,7 @@ export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
       const root = expressionRoot(node);
       if (root !== undefined && !seen.has(root)) {
         seen.add(root);
-        report(toTerm(root, sourceCode, options), isLoopTest(root));
+        report(toTerm(root, sourceCode, options), isTestOf(root, LOOP_TESTS));
       }
     }
 

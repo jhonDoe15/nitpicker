@@ -53,3 +53,16 @@ export function functionUnitRule(rule, findingsOf) {
       .filter((unit) => unit.tree?.kind === 'function' && !isExcepted(rule, unit.file))
       .flatMap((unit) => findingsOf(unit, analyzerName));
 }
+
+/**
+ * A counter for finding identities within one unit: `numbered(base)` returns `base#1`, then
+ * `base#2` for the next finding with the same base.
+ */
+export function identityCounter() {
+  const seen = new Map();
+  return function numbered(base) {
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return `${base}#${String(count)}`;
+  };
+}

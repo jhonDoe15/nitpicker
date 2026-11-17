@@ -1,51 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { decidedTester } from './test-support/decided-tester.mts';
 import { rule } from './no-decided-condition.mts';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-decided-condition-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      allowJs: true,
-      checkJs: true,
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-type ExpectedError = { messageId: string; data: Record<string, string> };
-type TypedCase = { filename: string; code: string };
-
-function typed(code: string): TypedCase;
-function typed(code: string, errors: ExpectedError[]): TypedCase & { errors: ExpectedError[] };
-function typed(
-  code: string,
-  errors?: ExpectedError[],
-): TypedCase | (TypedCase & { errors: ExpectedError[] }) {
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
-
-function error(messageId: string, condition: string, reason?: string): ExpectedError {
-  return { messageId, data: reason === undefined ? { condition } : { condition, reason } };
-}
+const { tester, typed, error } = decidedTester();
 
 const declarations =
   'declare const user: { active: boolean } | undefined; declare function load(): void;\n';
@@ -53,7 +9,7 @@ const declarations =
 tester.run('no-decided-condition', rule, {
   valid: [
     'export function f(count: number) { if (count > 10) return "many"; if (count > 5) return "some"; return "few"; }',
-    'export function f(count: number) { if (count > 10) return 1; count = 30; if (count > 20) return 2; return 0; }',
+    'export function f(count: number) { if (count > 10) return 1; count = count * 2; if (count > 20) return 2; return 0; }',
     'export function f(a: string, b: string) { if (a < b) return 1; if (b > a) return 2; return 0; }',
     `${declarations}export function f() { if (user === undefined) return; load(); if (user.active) return; }`,
     'export function f(xs: number[]) { for (const x of xs) { if (x > 3) continue; if (x > 1) return x; } return 0; }',

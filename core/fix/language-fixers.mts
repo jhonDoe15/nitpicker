@@ -1,5 +1,5 @@
 import { fixGo } from '../../languages/go/fix/go-fix.mts';
-import { fixJvm } from '../../languages/java/fix/jvm-fix.mjs';
+import { fixJvm } from '../../languages/java/fix/jvm-fix.mts';
 import { fixPython } from '../../languages/python/fix/python-fix.mts';
 import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 import { isPlainObject } from '../../shared/values/readers.mts';

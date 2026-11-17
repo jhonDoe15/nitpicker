@@ -189,6 +189,20 @@ export function isCall(node: TSESTree.Node): node is CallLike {
   return node.type === AST_NODE_TYPES.CallExpression || node.type === AST_NODE_TYPES.NewExpression;
 }
 
+export function isCallExpression(node: TSESTree.Node): node is TSESTree.CallExpression {
+  return node.type === AST_NODE_TYPES.CallExpression;
+}
+
+export function soleReturnedValue(fn: FunctionNode): TSESTree.Expression | undefined {
+  if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
+    return fn.body;
+  }
+  const [only, ...rest] = fn.body.body;
+  return rest.length === 0 && only?.type === AST_NODE_TYPES.ReturnStatement
+    ? (only.argument ?? undefined)
+    : undefined;
+}
+
 export function isExport(node: TSESTree.Node): node is ExportNode {
   return (
     node.type === AST_NODE_TYPES.ExportNamedDeclaration ||

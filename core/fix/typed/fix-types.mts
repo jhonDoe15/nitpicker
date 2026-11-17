@@ -79,6 +79,48 @@ export type FixSettings = {
 
 export type RuleRef = { readonly tool: string; readonly rule: string };
 
+export type RecipeSource = FixFile & { readonly text: string };
+
+export type RecipeEdit =
+  | FixEdit
+  | {
+      readonly type: 'replace';
+      readonly path: string;
+      readonly start: number;
+      readonly end: number;
+      readonly text: string;
+    }
+  | { readonly type: 'move'; readonly from: string; readonly to: string }
+  | { readonly type: 'untrack'; readonly path: string };
+
+export type RecipeFix = {
+  readonly finding: RuleRef & { readonly path: string; readonly line: number };
+  readonly edits: readonly RecipeEdit[];
+};
+
+export type RecipePlanInput = {
+  readonly files: readonly RecipeSource[];
+  readonly read?: (name: string) => string | undefined;
+  readonly projectRoot?: string;
+  readonly accepts?: (name: string) => boolean;
+  readonly inputs?: Readonly<Record<string, unknown>>;
+};
+
+export type RecipePlan = {
+  readonly fixes: readonly RecipeFix[];
+  readonly notes?: readonly string[];
+};
+
+export type FixRecipe = {
+  readonly id: string;
+  readonly rules: readonly RuleRef[];
+  readonly presets: readonly string[];
+  readonly scope: 'file' | 'project';
+  readonly safety: string;
+  readonly accepts?: (name: string) => boolean;
+  readonly plan: (input: RecipePlanInput) => RecipePlan;
+};
+
 export type RuleMatcher = RuleRef & {
   readonly pattern?: string;
   readonly findingTools?: readonly string[];

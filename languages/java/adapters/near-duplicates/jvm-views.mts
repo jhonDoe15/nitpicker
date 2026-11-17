@@ -9,7 +9,7 @@ import {
   uniqueNames as untypedUniqueNames,
   withSnippet as untypedWithSnippet,
 } from '../../../../shared/near-duplicates/unit-parts.mjs';
-import type { BaseContext, Converted, ShapeNode, Unit } from './jvm-types.mts';
+import type { BaseContext, Converted, PlacedNode, ShapeNode, Unit } from './jvm-types.mts';
 import {
   indentOf as untypedIndentOf,
   dedentedToLeast as untypedDedentedToLeast,
@@ -69,6 +69,7 @@ export const uniqueNames: <Item extends { readonly name: string }>(
 ) => Item[] = untypedUniqueNames;
 
 export const withSnippet: (node: Converted, text: string) => Converted = untypedWithSnippet;
+export const placedWithSnippet: (node: PlacedNode, text: string) => PlacedNode = untypedWithSnippet;
 
 const statementsOfUntyped: (
   source: Node | undefined,
@@ -84,7 +85,7 @@ export function statementsOf(source: Node | undefined, context: BaseContext): Sh
   return statementsOfUntyped(source, { get: context.raw });
 }
 
-export function listOf(sources: readonly Node[], context: BaseContext): ShapeNode[] {
+export function listOf(sources: readonly Node[], context: Pick<BaseContext, 'raw'>): ShapeNode[] {
   return listOfUntyped(sources, { get: context.raw });
 }
 
@@ -160,3 +161,8 @@ export function readRealInside(
 }
 export const resolveInside: (root: string, relative: string) => string | undefined =
   untypedResolveInside;
+
+export function wordIn(name: string, texts: readonly string[], before: RegExp): boolean {
+  const word = new RegExp(`${before.source}${escapeRegExp(name)}(?![\\w$])`, 'u');
+  return texts.some((text) => word.test(text));
+}

@@ -8,8 +8,8 @@ export type CaseError = {
   readonly messageId: string;
   readonly data?: Readonly<Record<string, string>>;
 };
-type TypedCase = { filename: string; code: string };
-type InvalidCase = TypedCase & { errors: CaseError[] };
+export type TypedCase = { filename: string; code: string };
+export type InvalidCase = TypedCase & { errors: CaseError[] };
 
 type TypedCases = {
   readonly tester: TypedRuleTester;

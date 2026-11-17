@@ -1,9 +1,11 @@
+import { isStableModel } from '../../logic/models/models.mjs';
 import { pureCallKind } from '../../logic/purity.mjs';
 import { not, term } from '../../logic/terms.mjs';
 import { escapingNames } from '../../near-duplicates/canonical/effects.mjs';
 import { logicTerm } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { foldTree } from '../../traversal.mjs';
+import { isOpaqueComparison } from './flow/values/opaque.mjs';
 
 const NAMES = new Set(['name']);
 const MEMBER_KINDS = new Set(['member', 'index', 'call', 'new']);
@@ -37,6 +39,8 @@ export function conditionTerm(node, scope) {
     parameters: new Map(),
     strictEquality: true,
     looseBooleans: scope.looseBooleans,
+    exactIntegers: scope.unbounded,
+    isOpaque: (node) => isOpaqueComparison(node, scope),
   };
   return logicTerm(node, context);
 }
@@ -103,6 +107,7 @@ function isEffectCall(node) {
   }
   return (
     node.kind === 'call' &&
+    !isStableModel(node) &&
     !isBooleanConversion(node.children[0]) &&
     pureCallKind(node.children[0]) === undefined
   );
@@ -116,6 +121,12 @@ function writtenTargets(node) {
     return [node.children[1]];
   }
   return node.kind === 'statement' ? (STATEMENT_TARGETS[node.value]?.(node.children) ?? []) : [];
+}
+
+export function writtenNames(node) {
+  return writtenTargets(node)
+    .filter(Boolean)
+    .flatMap((target) => [...namesOf(target)]);
 }
 
 function ownEffects(node, below) {

@@ -155,6 +155,7 @@
   "eslint/nitpicker/require-test-process-timeout": ["tests", "reliability"],
   "eslint/nitpicker/reusable-object-per-call": ["performance"],
   "eslint/nitpicker/settle-pending-on-close": ["reliability"],
+  "eslint/nitpicker/shorter-boolean-logic": ["simplification"],
   "eslint/nitpicker/simpler-boolean-logic": ["simplification"],
   "eslint/nitpicker/strict-boolean-expressions": ["bug"],
   "eslint/nitpicker/structured-catch-logging": ["reliability"],

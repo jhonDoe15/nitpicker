@@ -175,3 +175,7 @@ export const sharedInputs: (options: {
   readonly selectedRules: readonly string[];
 }) => { readonly inputs: object; readonly toolErrors: readonly unknown[] } = untypedSharedInputs;
 export const SHARED_RECIPES: readonly unknown[] = UNTYPED_SHARED_RECIPES;
+
+export function lineEndingOf(text: string): string {
+  return text.includes('\r\n') ? '\r\n' : '\n';
+}
