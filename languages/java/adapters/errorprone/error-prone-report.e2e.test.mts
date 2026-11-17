@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ const RUNNER_DIRECTORY = new URL('../../gradle/errorprone/', import.meta.url);
 const REPORT_SOURCE = fileURLToPath(new URL('ErrorProneReport.java', RUNNER_DIRECTORY));
 const CHECKS_FILE = fileURLToPath(new URL('checks.json', RUNNER_DIRECTORY));
 const JAVA_TIMEOUT_MS = 120_000;
+const IMMUTABLE_CLASS = 'com/google/errorprone/annotations/Immutable.class';
 const PROBE = `import java.nio.file.*;
 import java.util.List;
 
@@ -21,9 +22,10 @@ public final class Probe {
     List<String> rest = List.of(args).subList(1, args.length);
     switch (args[0]) {
       case "flags" -> System.out.print(ErrorProneReport.pluginArgument(Files.readString(Path.of(rest.get(0))),
-          List.of(), true, false, List.of()));
+          List.of(), true, false, List.of(), Boolean.parseBoolean(rest.get(1))));
       case "slices" -> ErrorProneReport.slices(rest).forEach(slice -> System.out.println(slice.size()));
-      default -> throw new IllegalArgumentException(args[0]);
+      default -> System.out.print(
+          ErrorProneReport.immutableInReach(List.of("-classpath", rest.get(0)), rest.subList(1, rest.size())));
     }
   }
 }
@@ -67,7 +69,7 @@ describe.runIf(enabled)(
     }
 
     it('turns on the enable list and off the disable list, and leaves the defaultOff checks to Error Prone', () => {
-      const flags = probe(['flags', CHECKS_FILE]);
+      const flags = probe(['flags', CHECKS_FILE, 'true']);
 
       expect(compiled.status, compiled.stderr).toBe(0);
       expect(flags).toBe(
@@ -81,6 +83,30 @@ describe.runIf(enabled)(
         ].join(' '),
       );
       expect(CHECKS.defaultOff.length).toBeGreaterThan(0);
+    });
+
+    it('turns the Immutable check off when its annotation is out of reach, before the project flags', () => {
+      const flags = probe(['flags', CHECKS_FILE, 'false']).split(' ');
+
+      expect(flags.slice(0, 3)).toEqual([
+        '-Xplugin:ErrorProne',
+        '-XepAllErrorsAsWarnings',
+        '-Xep:Immutable:OFF',
+      ]);
+    });
+
+    it('finds the Immutable annotation on the classpath or named in the sources', () => {
+      const classes = mkdtempSync(path.join(work, 'classes-'));
+      const [plain = '', annotated = ''] = [
+        ...sources(1),
+        ...sources(1, '@Immutable final class A {}'),
+      ];
+
+      expect(probe(['reach', classes, plain])).toBe('false');
+      expect(probe(['reach', classes, annotated])).toBe('true');
+      mkdirSync(path.dirname(path.join(classes, IMMUTABLE_CLASS)), { recursive: true });
+      writeFileSync(path.join(classes, IMMUTABLE_CLASS), '');
+      expect(probe(['reach', classes, plain])).toBe('true');
     });
 
     it('splits the sources into one slice per worker, keeping 40 files or more in each', () => {

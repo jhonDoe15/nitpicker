@@ -322,6 +322,13 @@ Part of the [Java preset guide](../java-preset.md).
   pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
   the number of cores. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
   with the same 8027 diagnostics.
+- **`Immutable` only when it can match.** The check walks every supertype of every class, which
+  takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
+  types annotated with `com.google.errorprone.annotations.Immutable` and their subtypes, so the
+  runner turns it off (`-Xep:Immutable:OFF`, before the project's own flags, which can turn it back
+  on) when that annotation class is on neither the class path nor the module path and no source
+  names it. A library that uses the annotation brings its jar (`error_prone_annotations`) along, as
+  Guava does.
 
 ## Checks that are off
 
