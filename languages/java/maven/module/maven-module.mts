@@ -2,18 +2,16 @@ import path from 'node:path';
 import { runFormat } from '../format/maven-format.mts';
 import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mts';
 import { archunitMatcher } from '../maven-tests.mts';
-import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
 import { runErrorProne } from '../errorprone/maven-errorprone.mts';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mts';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mts';
-import { runGuards } from '../guards/maven-guards.mts';
-import { runEffects } from '../effects/maven-effects.mts';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
-import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mts';
+import { runModuleChecks, runModuleCoverage } from '../parallel/module-tasks.mts';
+import { readTestRuns } from '../quick/maven-test-phase.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -43,21 +41,9 @@ const ERRORPRONE_URL = textOf(
 const METRICS_URL = textOf(
   checkoutModuleUrl(new URL('../parallel/module-metrics.mjs', import.meta.url)).href,
 );
-
-function runArchitecture(options: ModuleOptions): void {
-  const { module, reportDir, tools, classpaths, pinned, springArch, springRoles } = options;
-  callUntyped(runSpringArch, {
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    pinned,
-    archRules: springArch,
-    springRoles,
-    spawn: options['spawn'],
-    timeoutMs: options['timeoutMs'],
-  });
-}
+const TASKS_URL = textOf(
+  checkoutModuleUrl(new URL('../parallel/module-tasks.mjs', import.meta.url)).href,
+);
 
 function sourceTask(
   tool: { readonly name: string },
@@ -65,6 +51,23 @@ function sourceTask(
   options: ModuleOptions,
 ): SourceTask {
   return { run: tool, url, name: tool.name, options };
+}
+
+function withoutFunctions(options: ModuleOptions): ModuleOptions {
+  return Object.fromEntries(
+    Object.entries(options).filter(
+      ([name, value]) => name === 'spawn' || typeof value !== 'function',
+    ),
+  );
+}
+
+function coverageTasks(options: ModuleOptions, coverageModule: unknown): SourceTask[] {
+  const coverage = options['coverage'];
+  if (coverage === undefined) {
+    return [];
+  }
+  const task = withoutFunctions({ ...options, ...fieldsOf(coverage), module: coverageModule });
+  return [sourceTask(runModuleCoverage, TASKS_URL, task)];
 }
 
 function runSourceTools(options: ModuleOptions): void {
@@ -77,7 +80,10 @@ function runSourceTools(options: ModuleOptions): void {
     timeoutMs: options['timeoutMs'],
     environment: options['environment'],
   };
+  const coverageModule = fieldOf(kotlin, 'coverageModule');
   const tasks = [
+    ...coverageTasks(options, coverageModule),
+    sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
     sourceTask(runPmd, LINT_URL, {
       ...base,
       classpaths,
@@ -85,18 +91,18 @@ function runSourceTools(options: ModuleOptions): void {
       springRules: options['springRules'],
       reactor: options['reactor'],
     }),
+    sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runSpotbugs, LINT_URL, {
       ...base,
       module: fieldOf(kotlin, 'spotbugsModule'),
       auxClasspath: fieldOf(kotlin, 'auxClasspath'),
     }),
-    sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
+    sourceTask(runModuleChecks, TASKS_URL, withoutFunctions({ ...options, coverageModule })),
     sourceTask(runFormat, FORMAT_URL, {
       ...base,
       javaStyle: fieldOf(style, 'javaStyle'),
       formatterFlags: fieldOf(style, 'formatterFlags'),
     }),
-    sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
   ];
@@ -109,9 +115,6 @@ function analyzeSources(options: ModuleOptions): unknown {
     options: options['kotlinOptions'],
   });
   runSourceTools({ ...options, kotlin: { ...fieldsOf(kotlin), spring: options['spring'] } });
-  callUntyped(runGuards, options, options['project']);
-  callUntyped(runEffects, { ...options, options: options['effectsOptions'] });
-  runArchitecture({ ...options, module: fieldOf(kotlin, 'coverageModule') });
   return kotlin;
 }
 
@@ -139,23 +142,18 @@ export function analyzeModule(options: ModuleRequest): unknown {
     testRuntime: classpaths.testRuntime,
   });
   const failure = fieldOf(runs, 'failure');
+  const testsSkipped = options['testsSkipped'] === true;
   const kotlin = analyzeSources({
     ...options,
     reportDir,
     spring: fieldOf(manifest, 'spring'),
     springArch: fieldOf(manifest, 'springArch'),
     reactor: usesReactor(classpaths),
+    coverage:
+      failure === undefined && !testsSkipped && options['quick'] !== true
+        ? { testsRan: fieldOf(runs, 'testsRan'), archunitIncludes: module['archunitIncludes'] }
+        : undefined,
   });
-  const testsSkipped = options['testsSkipped'] === true;
-  if (failure === undefined && !testsSkipped) {
-    callUntyped(runCoverageTools, {
-      ...options,
-      module: fieldOf(kotlin, 'coverageModule'),
-      reportDir,
-      testsRan: fieldOf(runs, 'testsRan'),
-      isArchunit,
-    });
-  }
   const sourceJava = callUntyped(parserJava, {
     level: callUntyped(sourceLevel, module['compiler']),
     environment: options['environment'],
