@@ -17,7 +17,11 @@ import { moduleName } from '../../builds/test-failures.mjs';
 import { type JavaPolicy, callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
-import { dependencyListArguments, PROJECT_CHECKS_OFF } from './maven-build-arguments.mts';
+import {
+  dependencyListArguments,
+  PROJECT_CHECKS_OFF,
+  usesArchunit,
+} from './maven-build-arguments.mts';
 
 type BuildRequest = {
   readonly projectRoot: string;
@@ -40,6 +44,7 @@ type GoalRequest = {
 type TestRuns = { readonly testsRan: unknown; readonly failure: unknown };
 
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
+const SKIP_TESTS = '-DskipTests';
 
 function archunitTestFilter(modules: readonly unknown[]): string {
   const patterns = modules.flatMap((module) =>
@@ -49,6 +54,9 @@ function archunitTestFilter(modules: readonly unknown[]): string {
 }
 
 export function buildGoals({ quick, pinned, modules }: GoalRequest): string[] {
+  if (quick && !usesArchunit(modules)) {
+    return ['test', SKIP_TESTS];
+  }
   if (quick) {
     return [
       'test',
@@ -124,6 +132,7 @@ export function buildAndTest({
   selection = [],
   reruns = textsOf(TEST_RERUNS_OFF),
 }: BuildRequest): void {
+  const goals = textsOf(callUntyped(buildGoals, { quick, pinned, modules }));
   callUntyped(runMaven, {
     projectRoot,
     maven,
@@ -132,10 +141,10 @@ export function buildAndTest({
     args: [
       '--quiet',
       ...selection,
-      ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
+      ...goals,
       ...textsOf(callUntyped(dependencyListArguments, work)),
       '-Dmaven.test.failure.ignore=true',
-      '-DskipTests=false',
+      ...(goals.includes(SKIP_TESTS) ? [] : ['-DskipTests=false']),
       '-Dmaven.test.skip=false',
       ...reruns,
       ...PROJECT_CHECKS_OFF,
