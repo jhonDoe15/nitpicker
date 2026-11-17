@@ -46,6 +46,30 @@ function cruiserEntry({
   });
 }
 
+const COMPILER_ERROR_NOTE =
+  'A compiler error has no exception: fix the type error. A config entry for one is rejected.';
+
+const IMPLICIT_ANY_CODES: readonly (readonly [string, string])[] = [
+  ['TS7005', 'A variable whose type is implicitly `any`.'],
+  ['TS7006', 'A parameter whose type is implicitly `any`.'],
+  ['TS7031', 'A destructured binding whose type is implicitly `any`.'],
+  ['TS7034', 'A variable whose type is implicitly `any` in some places.'],
+  ['TS7053', 'An element access that is implicitly `any`, since the key cannot index the type.'],
+];
+
+function implicitAnyRow([rule, summary]: readonly [string, string]): Readonly<
+  Record<string, unknown>
+> & { readonly tool: string; readonly rule: string } {
+  return {
+    tool: 'typescript-typecheck',
+    rule,
+    summary,
+    why: 'The preset turns on `noImplicitAny`, so every value has a type the checker can follow.',
+    allowed: 'Give the value a type at its source, or narrow an `unknown` value before using it.',
+    exception: { note: COMPILER_ERROR_NOTE },
+  };
+}
+
 const OTHER_ROWS = [
   {
     tool: 'prettier-format',
@@ -58,15 +82,21 @@ const OTHER_ROWS = [
   },
   {
     tool: 'typescript-typecheck',
+    rule: 'TS4111',
+    summary: 'A property of a type with an index signature read with dot access (`env.NODE_ENV`).',
+    why: 'The preset turns on `noPropertyAccessFromIndexSignature`, so a read that may be undefined looks different from a declared property.',
+    allowed: "Read it with brackets (`env['NODE_ENV']`), or declare the property on the type.",
+    exception: { note: COMPILER_ERROR_NOTE },
+  },
+  {
+    tool: 'typescript-typecheck',
     rule: 'TS<code>',
     pattern: '^TS\\d+$',
     barePattern: true,
     summary: 'A TypeScript compiler error, with the compiler code (`TS2322`).',
     why: 'The project type-checks under the strictest compiler options of the preset.',
     allowed: 'Fix the type error.',
-    exception: {
-      note: 'A compiler error has no exception: fix the type error. A config entry for one is rejected.',
-    },
+    exception: { note: COMPILER_ERROR_NOTE },
   },
 ];
 
@@ -88,5 +118,8 @@ function otherEntry({
 }
 
 export function staticEntries(): RuleEntry[] {
-  return [...dependencyCruiser.forbidden.map(cruiserEntry), ...OTHER_ROWS.map(otherEntry)];
+  return [
+    ...dependencyCruiser.forbidden.map(cruiserEntry),
+    ...[...OTHER_ROWS, ...IMPLICIT_ANY_CODES.map(implicitAnyRow)].map(otherEntry),
+  ];
 }

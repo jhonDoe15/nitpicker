@@ -73,7 +73,7 @@
   "kotlinc/cast": ["simplification"],
   "kotlinc/deprecation": ["maintainability"],
   "kotlinc/lint-not-run": ["reliability"],
-  "kotlinc/unchecked": ["bug"],
+  "kotlinc/unchecked": ["maintainability"],
   "ktfmt/format": ["style"],
   "ktlint/ktlint.<rule>": ["style"],
   "pmd/AssertionInControlFlow": ["tests"],
