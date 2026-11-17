@@ -18,6 +18,7 @@ import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
 import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
 import type { CaptureHead } from './snapshots/run-types.mts';
+import type { Checkpoints } from '../execution/tasks.mts';
 import type {
   BaseSetup,
   DiffOptions,
@@ -217,7 +218,11 @@ function runAndCombine(context: RunContext): DiffReport {
   });
 }
 
-function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]): AnalyzerRun {
+function runBaseAnalyzers(
+  context: RunContext,
+  baseAnalyzers: readonly unknown[],
+  checkpoints?: Checkpoints,
+): AnalyzerRun {
   const { settings, roots, basePolicyFile } = context;
   return unlessSkipped(baseAnalyzers, context.skipPlan, (analyzersToRun) =>
     runAnalyzers({
@@ -231,6 +236,7 @@ function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]
       baselineRoot: undefined,
       baselineMovesFile: undefined,
       mutationScope: undefined,
+      checkpoints,
       ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
     }),
   );
@@ -256,6 +262,6 @@ function runBaseSide(context: RunContext): unknown {
       quick: settings.quick !== undefined,
     }),
     policyRoot: roots.headSnapshotRoot,
-    run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
+    run: (baseAnalyzers, checkpoints) => runBaseAnalyzers(context, baseAnalyzers, checkpoints),
   });
 }

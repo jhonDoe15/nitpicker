@@ -19,6 +19,7 @@ import {
   skippedOutcome,
   summarizeOutcomes,
 } from './outcomes.mts';
+import { checkpointed } from './checkpoints.mts';
 import { describeFailure } from '../../../../shared/messages/crashes/internal-error.mts';
 
 type Executor = (task: AnalyzerTask) => unknown;
@@ -172,7 +173,11 @@ async function runTask(
   }
   const releaseCapacity = await semaphore.acquire(Math.min(task.concurrencyWeight, maxParallel));
   try {
-    return await executeTimedTask(task, { execute, signal });
+    return checkpointed(
+      task,
+      await executeTimedTask(task, { execute, signal }),
+      dependencyOutcomes,
+    );
   } finally {
     releaseCapacity();
     releaseGroup();
