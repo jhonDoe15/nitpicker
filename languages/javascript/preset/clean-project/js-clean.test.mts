@@ -52,7 +52,7 @@ const PLANTED_OUTPUT = [
   'Quality snapshot summary',
   '✖ 31 enforceable findings',
   '  by area: format 3 · types 1 · lint 26 · structure 1',
-  '  by label: bug 3 · simplification 11 · maintainability 12 · style 6 (focus with --label <label>)',
+  '  by label: bug 2 · simplification 11 · maintainability 13 · style 6 (focus with --label <label>)',
   '  prettier-format/prettier/prettier: These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
   '    src/main/format/messy.cjs:1',
   '    src/main/format/messy.js:1',

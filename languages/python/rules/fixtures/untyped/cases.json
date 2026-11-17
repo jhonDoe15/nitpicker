@@ -16,5 +16,11 @@
     "tool": "basedpyright",
     "rule": "reportMissingParameterType",
     "mention": "fix the type"
+  },
+  {
+    "name": "basedpyright Any value names fixing the type",
+    "tool": "basedpyright",
+    "rule": "reportAny",
+    "mention": "fix the type"
   }
 ]
