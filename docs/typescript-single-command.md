@@ -204,8 +204,9 @@ Not yet addressed: ESLint plugin versions are not part of the policy hash.
 
 ## Findings cache
 
-Status: implemented for the base side only. The head side always runs, because it changes with every
-edit; the base is a committed tree and cannot change under its key.
+Status: implemented for the base side. The head side is not cached across runs, because it changes
+with every edit; the base is a committed tree and cannot change under its key. The head side of an
+unfinished run is kept for a resume (see below).
 
 - Key, one entry per analyzer: merge-base SHA, project path relative to the repository, analyzer
   name, analyzer (tool) version, the analyzer's configuration hash taken from the head policy, and
@@ -225,6 +226,16 @@ edit; the base is a committed tree and cannot change under its key.
   location and no remote cache, caching is off and the run says so on stderr.
 - Only clean reports are stored: nothing is cached for an analyzer with a tool error or a
   `tool-error` finding. An analyzer that depends on an uncached one is rerun together with it.
+- Checkpoints: the analyzer scheduler writes each clean report to the cache folder as soon as that
+  analyzer finishes, not when the whole run ends. When the scheduler itself crashes or is stopped,
+  the run reads those entries back, reports the findings of the analyzers that finished and names
+  the scheduler failure as a tool error.
+- Resume: the head side of a full comparison and the `--all` snapshot write their checkpoints to
+  `resume/<digest>/` in the cache folder, keyed by the tree of the captured head commit (plus the
+  merge base for a comparison). A rerun on the same tree reuses the analyzers that finished and says
+  so on stderr (`nitpicker: head: 3 analyzers resumed from an unfinished run`). The folder is
+  deleted once a run finishes without a scheduler failure, so a finished run is never reused. Any
+  edit changes the tree and starts over. Quick runs keep caching their head side by tree as before.
 - Opt out with `--no-cache`.
 - Limit: the key covers the analyzer version and configuration hash, not project files that only
   feed the head policy (for example a `tsconfig.json` change on the head branch). Use `--no-cache`

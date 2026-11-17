@@ -6,13 +6,20 @@ import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repos
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mts';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
+import { finishResume, resumeDirectory } from '../cache/resume/resume-cache.mts';
 import {
   type DiffReport,
   allSkippedReport,
   combineAnalyzerReports,
   noChangesReport,
 } from './results.mts';
-import { quickScoped, runCached, runHeadAnalyzers, toolRoot } from './quick/head-run.mts';
+import {
+  headResumePlace,
+  quickScoped,
+  runCached,
+  runHeadAnalyzers,
+  toolRoot,
+} from './quick/head-run.mts';
 import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
@@ -60,6 +67,8 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
   });
   const location = { projectPath, repositoryRoot: settings.repositoryRoot };
   report.text = writeReports(settings.outputRoot, report, location);
+  const resumed = headResumePlace(settings, comparison);
+  finishResume(resumed === undefined ? undefined : resumeDirectory(resumed), report.toolErrors);
   return report;
 }
 
