@@ -508,13 +508,18 @@ while it resolves the optional peer dependencies of Vitest 4; the tool error the
 ### Console summary
 
 A comparison run prints a short summary. New violations are grouped by rule, the most important
-first: by the rule's [label](#labels) (`bug`, `security`, `performance`, `reliability`,
-`maintainability`, `simplification`, `tests`, then `style` last), and inside a label in the order to
-fix them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule
-prints its advice once, then one line per place (`path:line:col` and only the part of the message
-that differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
-`<function>`) where the findings of the rule differ; a line then names its own function, for example
-`(function price)`. A count per area follows the headline:
+first. Rules that detect one specific defect or design problem come first, by their
+[label](#labels): `bug`, `security`, `performance`, `reliability`, `maintainability`,
+`simplification`, `tests`. Broad pattern rules follow in the same label order: rules that flag a
+risky form wherever it appears (`CheckReturnValue`, `NullAway`, truthiness checks, default time
+zones and locales) and the generic repetition and size limits (clones, repeated string literals,
+file, function and class size). `style` comes last. `nitpicker explain <rule>` says `Order: a broad
+pattern rule` for those. Inside each group the order is the one to fix them in: format, type check,
+lint, structure, then tests, coverage, CRAP and mutation. Each rule prints its advice once, then one
+line per place (`path:line:col` and only the part of the message that differs between findings),
+then once the `exceptions` entry that accepts it, with `<path>` (or `<function>`) where the findings
+of the rule differ; a line then names its own function, for example `(function price)`. A count per
+area follows the headline:
 
 ```text
 Quality gate summary

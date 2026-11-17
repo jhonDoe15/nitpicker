@@ -1,5 +1,5 @@
 import { findingLabeler } from '../../../../labels/finding-labels.mts';
-import { priorityRank } from '../../../../labels/finding-priority.mts';
+import { isBroadRule, priorityRank } from '../../../../labels/finding-priority.mts';
 import { areaOf, areaRank } from './finding-areas.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
@@ -8,7 +8,7 @@ const COLUMN_FIELD = 'column';
 const LABELS_OF = findingLabeler({ areaOf });
 
 function rankOf(finding: ReportEntry): number {
-  return priorityRank(LABELS_OF(finding));
+  return priorityRank(LABELS_OF(finding), isBroadRule(finding));
 }
 
 function byPosition(left: ReportEntry, right: ReportEntry): number {
