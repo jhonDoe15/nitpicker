@@ -329,6 +329,11 @@ Part of the [Java preset guide](../java-preset.md).
   on) when that annotation class is on neither the class path nor the module path and no source
   names it. A library that uses the annotation brings its jar (`error_prone_annotations`) along, as
   Guava does.
+- **Time limit.** `-Dnitpicker.errorprone.deadline=<epoch ms>` (Maven: the command limit less half a
+  minute; Gradle: the run's deadline) stops the compile when it is not done in time. The runner
+  then writes an empty report and `errorprone-skipped.txt` with the reason, so only Error Prone's
+  findings are lost, as an `Error Prone did not run` tool error, and the other tools of the Java
+  analyzer still report.
 
 ## Checks that are off
 

@@ -42,6 +42,9 @@ public final class ErrorProneReport {
 
   private static final int WORKERS = Math.max(1, Integer.getInteger("nitpicker.errorprone.workers", 1));
   private static final int SLICE_FILES = 40;
+  private static final long DEADLINE = Long.getLong("nitpicker.errorprone.deadline", Long.MAX_VALUE);
+  private static final long STARTED = System.currentTimeMillis();
+  private static final String SKIPPED = "errorprone-skipped.txt";
 
   private static final Map<String, Path> FIX_CHECK_CLASSES = new HashMap<>();
 
@@ -59,22 +62,27 @@ public final class ErrorProneReport {
     List<String> entries = new ArrayList<>();
     List<String> errors = new ArrayList<>();
     Map<String, String> crashes = new LinkedHashMap<>();
+    List<Outcome> outcomes;
     try {
       List<Job> jobs = new ArrayList<>();
       for (int index = 2; index < args.length; index++) {
         jobs.addAll(jobs(compiler, Path.of(args[index]), checks));
       }
-      for (Outcome outcome : run(jobs)) {
-        entries.addAll(outcome.entries());
-        errors.addAll(outcome.errors());
-        outcome.crashes().forEach(crashes::putIfAbsent);
-      }
+      outcomes = run(jobs);
     } finally {
       for (Path built : FIX_CHECK_CLASSES.values()) {
         try (Stream<Path> files = Files.walk(built)) {
           files.sorted(Comparator.reverseOrder()).forEach(file -> file.toFile().delete());
         }
       }
+    }
+    if (outcomes == null) {
+      skipOutOfTime(Path.of(args[0]));
+    }
+    for (Outcome outcome : outcomes) {
+      entries.addAll(outcome.entries());
+      errors.addAll(outcome.errors());
+      outcome.crashes().forEach(crashes::putIfAbsent);
     }
     entries.addAll(crashes.values());
     if (!errors.isEmpty()) {
@@ -362,7 +370,24 @@ public final class ErrorProneReport {
     return total;
   }
 
-  /** Compiles the jobs, the largest first, on WORKERS threads and returns their outcomes in the jobs' order. */
+  /**
+   * Writes an empty report and the reason Error Prone was stopped at {@code -Dnitpicker.errorprone.deadline}, so only
+   * its own findings are lost, and exits, since javac's threads do not stop on interrupt.
+   */
+  private static void skipOutOfTime(Path report) throws IOException {
+    long minutes = Math.max(1, (System.currentTimeMillis() - STARTED) / 60_000);
+    String unit = minutes == 1 ? " minute" : " minutes";
+    Files.writeString(report.resolveSibling(SKIPPED), "it was stopped after " + minutes + unit + ", at the time limit "
+        + "of the run; NITPICKER_MAVEN_TIMEOUT_MINUTES or NITPICKER_GRADLE_TIMEOUT_MINUTES give it more time\n",
+        StandardCharsets.UTF_8);
+    Files.writeString(report, "[]\n", StandardCharsets.UTF_8);
+    System.exit(0);
+  }
+
+  /**
+   * Compiles the jobs, the largest first, on WORKERS threads and returns their outcomes in the jobs' order, or null
+   * when they are not done by the deadline.
+   */
   private static List<Outcome> run(List<Job> jobs) throws IOException {
     ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(WORKERS, jobs.size())));
     try {
@@ -372,9 +397,11 @@ public final class ErrorProneReport {
       }
       List<Outcome> outcomes = new ArrayList<>();
       for (Job job : jobs) {
-        outcomes.add(started.get(job).get());
+        outcomes.add(started.get(job).get(Math.max(0, DEADLINE - System.currentTimeMillis()), TimeUnit.MILLISECONDS));
       }
       return outcomes;
+    } catch (TimeoutException e) {
+      return null;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IOException(e);
