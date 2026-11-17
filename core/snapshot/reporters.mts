@@ -25,6 +25,7 @@ import {
   splitTools as untypedSplitTools,
 } from '../diff/reporting/console/tool-table.mts';
 import { renderSnapshotConsole } from '../diff/reporting/summary.mts';
+import { inPriorityOrder } from '../diff/reporting/format/rule-groups/finding-order.mts';
 
 import { textOf } from '../../shared/values/readers.mts';
 import {
@@ -157,7 +158,7 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  lines.push(...findingSectionLines('Enforceable findings', enforceable));
+  lines.push(...findingSectionLines('Enforceable findings', inPriorityOrder(enforceable)));
   lines.push(...findingSectionLines('Descriptive findings', descriptive));
   lines.push(...referenceLinesOf(report.findings, reference));
   lines.push(...toolErrorSectionLines(report.toolErrors));

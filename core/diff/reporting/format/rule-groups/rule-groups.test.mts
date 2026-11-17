@@ -186,7 +186,7 @@ describe('console summary grouped by rule', () => {
     ]);
   });
 
-  it('orders rules by fix order, then by path and line, and counts each area', () => {
+  it('orders rules by label, bug first and style last, then by fix order, path and line', () => {
     const mutant = finding({
       tool: 'pit',
       rule: 'mutant-survived',
@@ -200,20 +200,44 @@ describe('console summary grouped by rule', () => {
       file: 'src/main/java/demo/Z.java',
       message: 'Format it.',
     });
-    const lint = finding({
+    const unused = finding({
       tool: 'pmd',
       rule: 'UnusedPrivateField',
       file: 'src/main/java/demo/B.java',
       line: 4,
       message: 'Remove the field.',
     });
-    const lines = summaryLines([mutant, lint, format]);
+    const leak = finding({
+      tool: 'pmd',
+      rule: 'CloseResource',
+      file: 'src/main/java/demo/C.java',
+      line: 9,
+      message: 'Close it.',
+    });
+    const overflow = finding({
+      tool: 'pmd',
+      rule: 'MaxValueOverflow',
+      file: 'src/main/java/demo/A.java',
+      line: 7,
+      message: 'This sum overflows.',
+    });
+    const typeError = finding({
+      tool: 'typescript-typecheck',
+      rule: 'TS2345',
+      file: 'src/main/z.ts',
+      line: 2,
+      message: 'Wrong argument type.',
+    });
+    const lines = summaryLines([mutant, unused, format, leak, overflow, typeError]);
 
     expect(lines.filter((line) => line.startsWith('  ') && !line.startsWith('    '))).toEqual([
-      '  by area: format 1 · lint 1 · mutation 1',
-      '  google-java-format/format: Format it.',
+      '  by area: format 1 · types 1 · lint 3 · mutation 1',
+      '  typescript-typecheck/TS2345: Wrong argument type.',
+      '  pmd/MaxValueOverflow: This sum overflows.',
+      '  pmd/CloseResource: Close it.',
       '  pmd/UnusedPrivateField: Remove the field.',
       '  pit/mutant-survived: Survived. Add an assertion that would.',
+      '  google-java-format/format: Format it.',
     ]);
   });
 

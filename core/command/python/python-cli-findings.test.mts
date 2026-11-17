@@ -23,11 +23,11 @@ const FAILING_SUMMARY = [
   '✖ 2 new enforceable violations',
   '  by area: format 1 · lint 1',
   '  by label: bug 1 · style 1 (focus with --label <label>)',
-  `  ruff-format/format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
-  '    src/demo/a.py',
   '  ruff/B006: Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
   '    src/demo/a.py:2:1',
   '    If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+  `  ruff-format/format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
+  '    src/demo/a.py',
   'Full diagnostics: <path>',
   '',
 ].join('\n');
