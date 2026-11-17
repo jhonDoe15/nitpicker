@@ -14,6 +14,7 @@ import {
   type Located,
   type Original,
 } from './journal-types.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 export function createJournal(projectRoot: string): Journal {
   return {
@@ -142,7 +143,10 @@ export function journalWriter(journal: Journal): JournalWriter {
       noteFixed(journal, entries);
       saveAll(journal);
       const { events } = journal;
-      events.push(...result.applied.map((entry) => eventOf(entry, tool)));
+      appendAll(
+        events,
+        result.applied.map((entry) => eventOf(entry, tool)),
+      );
       return result;
     },
   };
