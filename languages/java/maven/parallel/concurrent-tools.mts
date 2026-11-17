@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { availableParallelism } from 'node:os';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { toolSlots } from './tool-slots.mts';
 
 type ToolRun = (options: Readonly<Record<string, unknown>>) => void;
 type ToolTask = {
@@ -29,7 +29,7 @@ function runInProcesses(tasks: readonly ToolTask[]): readonly unknown[] {
   const result = spawnSync(process.execPath, ['--input-type=module', '--eval', SUPERVISOR_SOURCE], {
     input: JSON.stringify({
       tasks: tasks.map(({ url, name, options }) => ({ url, name, options })),
-      limit: Math.max(1, availableParallelism()),
+      limit: toolSlots(),
     }),
     encoding: 'utf8',
     maxBuffer: MAX_OUTCOME_BYTES,

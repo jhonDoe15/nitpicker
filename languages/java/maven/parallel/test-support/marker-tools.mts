@@ -13,3 +13,7 @@ export function writeMarker({
 export function failWith({ message }: { readonly message: string }): never {
   throw new Error(message);
 }
+
+export function writeJavaOptions({ file }: { readonly file: string }): void {
+  writeFileSync(file, process.env['JDK_JAVA_OPTIONS'] ?? '');
+}
