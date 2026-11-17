@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { KIND_LABELS } from './taxonomy.mts';
-import { PRIORITY_KINDS, isBroadRule, primaryKind, priorityRank } from './finding-priority.mts';
+import { PRIORITY_KINDS, broadRuleCheck, primaryKind, priorityRank } from './finding-priority.mts';
+
+const isBroadRule = broadRuleCheck();
 
 describe('finding priority', () => {
   it('ranks every kind once, bug first and style last', () => {

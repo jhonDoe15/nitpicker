@@ -13,7 +13,7 @@ const BUG = finding('typescript-typecheck', 'TS2345', 4);
 
 describe('folding style rules', () => {
   it('replaces the style findings with one count line', () => {
-    expect(foldStyle([FORMAT, BUG, ENUM, SECOND_ENUM], true)).toEqual({
+    expect(foldStyle([FORMAT, BUG, ENUM, SECOND_ENUM])).toEqual({
       shown: [BUG],
       lines: [
         '  style: 3 findings from 2 rules, folded (list them with --label style or --details)',
@@ -21,15 +21,13 @@ describe('folding style rules', () => {
     });
   });
 
-  it('keeps every finding when folding is off or only style findings are left', () => {
-    const findings = [FORMAT, BUG];
-    expect(foldStyle(findings, false)).toEqual({ shown: findings, lines: [] });
-    expect(foldStyle([FORMAT, ENUM], true)).toEqual({ shown: [FORMAT, ENUM], lines: [] });
-    expect(foldStyle([BUG], true)).toEqual({ shown: [BUG], lines: [] });
+  it('keeps every finding when only style findings or none are left', () => {
+    expect(foldStyle([FORMAT, ENUM])).toEqual({ shown: [FORMAT, ENUM], lines: [] });
+    expect(foldStyle([BUG])).toEqual({ shown: [BUG], lines: [] });
   });
 
   it('counts one finding of one rule in the singular', () => {
-    expect(foldStyle([BUG, FORMAT], true).lines).toEqual([
+    expect(foldStyle([BUG, FORMAT]).lines).toEqual([
       '  style: 1 finding from 1 rule, folded (list them with --label style or --details)',
     ]);
   });

@@ -605,13 +605,13 @@ line; here it is spread out:
 - `status` is `passed` (exit 0), `failed` (exit 1: failing findings or failing tests) or `error`
   (exit 2: a tool error left the run incomplete). `exitCode` is the exit code of the process, 0
   with `--defer-exit`.
-- `findings` lists the failing findings only, in the order of the console summary, each message on
-  one line. When `exception` carries the entry that accepts a finding, the message leaves out the
-  sentence that names it; `exceptionList` is set when the entry goes to `python.exceptions`. `line`,
-  `column`, `allowedForm`, `exception` and `helpUri` are left out when the finding has none. Mutants
-  fold as in the console summary: one entry per function for the mutants no test runs and at most
-  three surviving ones, each folded entry marked `"folded": true`, while `counts.failing` counts
-  every mutant.
+- `findings` lists the failing findings only, in the priority order of the console summary, each
+  message on one line. When `exception` carries the entry that accepts a finding, the message leaves
+  out the sentence that names it; `exceptionList` is set when the entry goes to `python.exceptions`.
+  `line`, `column`, `allowedForm`, `exception` and `helpUri` are left out when the finding has none.
+  Mutants fold as in the console summary: one entry per function for the mutants no test runs and at
+  most three surviving ones, each folded entry marked `"folded": true`, while `counts.failing`
+  counts every mutant.
 - `counts.byArea` counts the failing findings per area, in the order to fix them, and
   `counts.byLabel` per [label](#labels) (a finding with two labels counts under both). Report-only
   and held findings are counts only; the files in `reports` list them.
@@ -638,10 +638,11 @@ the package as `nitpicker/spec/json-output.schema.json`.
 
 A comparison run writes these files to `reports/quality/diff/`:
 
-- `report.txt`: the readable report. It lists the new findings that fail the run first, in the order
-  of the console summary, then the report-only ones; a metric finding shows its value (and its
-  limit, when it has one), and a metric delta is rounded to the precision of the two values. The
-  per-tool table lists the analyzers with any count, then one line counts the ones that ran clean.
+- `report.txt`: the readable report. It lists the new findings that fail the run first, in the
+  priority order of the console summary, then the report-only ones; a metric finding shows its value
+  (and its limit, when it has one), and a metric delta is rounded to the precision of the two
+  values. The per-tool table lists the analyzers with any count, then one line counts the ones that
+  ran clean.
 - `summary.json`: totals, per-tool counts and the fields below.
 - `new-findings.json`: the new findings, the ones that count against the change.
 - `resolved-findings.json`: findings that were in the base and are gone.

@@ -7,7 +7,7 @@ import { singleLine } from './format/text.mts';
 import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { ruleGroupLines } from './format/rule-groups/rule-groups.mts';
-import { byPriority } from './format/rule-groups/finding-order.mts';
+import { inPriorityOrder } from './format/rule-groups/finding-order.mts';
 import { foldStyle } from './format/rule-groups/style-fold.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mts';
@@ -250,14 +250,16 @@ function appendViolationSummary(
   }
   lines.push(...labelCounts);
   if (!details) {
-    const { shown, lines: folded } = foldStyle(violations, fold);
+    const { shown, lines: folded } = fold
+      ? foldStyle(violations)
+      : { shown: violations, lines: [] };
     lines.push(
       ...ruleGroupLines(foldMutants(shown), (label) => style(label, [ANSI.yellow], { color })),
       ...folded,
     );
     return;
   }
-  for (const group of groupRepeatedFindings(violations.toSorted(byPriority))) {
+  for (const group of groupRepeatedFindings(inPriorityOrder(violations))) {
     const [finding] = group;
     if (finding === undefined) {
       continue;

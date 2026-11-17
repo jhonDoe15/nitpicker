@@ -1,14 +1,15 @@
 import { findingLabeler } from '../../../../labels/finding-labels.mts';
-import { isBroadRule, primaryKind, priorityRank } from '../../../../labels/finding-priority.mts';
+import { broadRuleCheck, primaryKind, priorityRank } from '../../../../labels/finding-priority.mts';
 import { areaOf, areaRank } from './finding-areas.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 
 const COLUMN_FIELD = 'column';
 const LABELS_OF = findingLabeler({ areaOf });
+const IS_BROAD = broadRuleCheck();
 
 function rankOf(finding: ReportEntry): number {
-  return priorityRank(LABELS_OF(finding), isBroadRule(finding));
+  return priorityRank(LABELS_OF(finding), IS_BROAD(finding));
 }
 
 export function isStyleFinding(finding: ReportEntry): boolean {
@@ -27,14 +28,17 @@ function byPosition(left: ReportEntry, right: ReportEntry): number {
   );
 }
 
-export function byPriority(left: ReportEntry, right: ReportEntry): number {
+type Ranked<T> = { readonly finding: T; readonly rank: number; readonly area: number };
+
+function byRank<T extends ReportEntry>(left: Ranked<T>, right: Ranked<T>): number {
   return (
-    rankOf(left) - rankOf(right) ||
-    areaRank(left.tool) - areaRank(right.tool) ||
-    byPosition(left, right)
+    left.rank - right.rank || left.area - right.area || byPosition(left.finding, right.finding)
   );
 }
 
 export function inPriorityOrder<T extends ReportEntry>(findings: readonly T[]): T[] {
-  return findings.toSorted(byPriority);
+  return findings
+    .map((finding) => ({ finding, rank: rankOf(finding), area: areaRank(finding.tool) }))
+    .toSorted(byRank)
+    .map(({ finding }) => finding);
 }

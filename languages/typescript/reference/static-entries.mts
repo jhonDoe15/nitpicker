@@ -46,6 +46,7 @@ function cruiserEntry({
   });
 }
 
+const TYPECHECK_TOOL = 'typescript-typecheck';
 const COMPILER_ERROR_NOTE =
   'A compiler error has no exception: fix the type error. A config entry for one is rejected.';
 
@@ -61,7 +62,7 @@ function implicitAnyRow([rule, summary]: readonly [string, string]): Readonly<
   Record<string, unknown>
 > & { readonly tool: string; readonly rule: string } {
   return {
-    tool: 'typescript-typecheck',
+    tool: TYPECHECK_TOOL,
     rule,
     summary,
     why: 'The preset turns on `noImplicitAny`, so every value has a type the checker can follow.',
@@ -81,7 +82,7 @@ const OTHER_ROWS = [
     exception: { key: 'exceptions', rule: 'prettier/prettier' },
   },
   {
-    tool: 'typescript-typecheck',
+    tool: TYPECHECK_TOOL,
     rule: 'TS4111',
     summary: 'A property of a type with an index signature read with dot access (`env.NODE_ENV`).',
     why: 'The preset turns on `noPropertyAccessFromIndexSignature`, so a read that may be undefined looks different from a declared property.',
@@ -89,7 +90,7 @@ const OTHER_ROWS = [
     exception: { note: COMPILER_ERROR_NOTE },
   },
   {
-    tool: 'typescript-typecheck',
+    tool: TYPECHECK_TOOL,
     rule: 'TS<code>',
     pattern: '^TS\\d+$',
     barePattern: true,
