@@ -1,7 +1,7 @@
-import { referenceEntryOf } from './finding-labels.mts';
+import { perRule, referenceEntryOf } from './finding-labels.mts';
 import { isBroadGoRule } from './go-labels.mts';
 import { isKind } from './taxonomy.mts';
-import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import { fieldOf } from '../../shared/values/readers.mts';
 
 type Located = { readonly tool?: unknown; readonly rule?: unknown };
 
@@ -29,21 +29,11 @@ export function primaryKind(labels: readonly string[]): string | undefined {
 export type BroadRuleCheck = (finding: Located) => boolean;
 
 export function broadRuleCheck(): BroadRuleCheck {
-  const cache = new Map<string, boolean>();
-  return ({ tool, rule }) => {
-    const toolName = textOf(tool ?? '');
-    const ruleName = textOf(rule ?? '');
-    const key = `${toolName}\0${ruleName}`;
-    const known = cache.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const broad =
+  return perRule(
+    (toolName, ruleName) =>
       isBroadGoRule(toolName, ruleName) ||
-      fieldOf(referenceEntryOf(toolName, ruleName), 'tier') === 'broad';
-    cache.set(key, broad);
-    return broad;
-  };
+      fieldOf(referenceEntryOf(toolName, ruleName), 'tier') === 'broad',
+  );
 }
 
 function tierOf(kind: string, broad: boolean): number {

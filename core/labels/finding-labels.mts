@@ -48,8 +48,8 @@ export function referenceEntryOf(tool: string, rule: string): unknown {
   return findEntry(referenceIndex(), { tool, rule });
 }
 
-export function findingLabeler({ areaOf, index = referenceIndex }: LabelerSource): LabelsOf {
-  const cache = new Map<string, Labels>();
+export function perRule<T>(compute: (tool: string, rule: string) => T): (finding: Located) => T {
+  const cache = new Map<string, T>();
   return ({ tool, rule }) => {
     const toolName = textOf(tool ?? '');
     const ruleName = textOf(rule ?? '');
@@ -58,13 +58,19 @@ export function findingLabeler({ areaOf, index = referenceIndex }: LabelerSource
     if (known !== undefined) {
       return known;
     }
-    const labels =
+    const value = compute(toolName, ruleName);
+    cache.set(key, value);
+    return value;
+  };
+}
+
+export function findingLabeler({ areaOf, index = referenceIndex }: LabelerSource): LabelsOf {
+  return perRule(
+    (toolName, ruleName) =>
       goLabels(toolName, ruleName) ??
       entryLabels(index(), toolName, ruleName) ??
-      fallbackLabels(areaOf(toolName));
-    cache.set(key, labels);
-    return labels;
-  };
+      fallbackLabels(areaOf(toolName)),
+  );
 }
 
 export function withLabels<T extends Located>(findings: readonly T[], labelsOf: LabelsOf): T[] {
