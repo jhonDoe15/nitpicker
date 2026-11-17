@@ -3,7 +3,7 @@ import {
   escapeGlob,
   exceptionSentence,
 } from '../../../../../shared/messages/exception-sentence.mjs';
-import { byPriority } from './finding-order.mts';
+import { inPriorityOrder } from './finding-order.mts';
 import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
@@ -57,7 +57,7 @@ function groupByRule(
   findings: readonly ReportEntry[],
 ): { readonly label: string; readonly members: ReportEntry[] }[] {
   const groups = new Map<string, ReportEntry[]>();
-  for (const finding of findings.toSorted(byPriority)) {
+  for (const finding of inPriorityOrder(findings)) {
     const label = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
     groups.set(label, [...(groups.get(label) ?? []), finding]);
   }

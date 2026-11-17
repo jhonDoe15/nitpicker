@@ -23,6 +23,10 @@ export function findingSectionLines(heading: string, findings: readonly ReportEn
   ];
 }
 
+export function prioritySectionLines(heading: string, findings: readonly ReportEntry[]): string[] {
+  return findingSectionLines(heading, inPriorityOrder(findings));
+}
+
 export function ruleFilterSection(
   ruleFilters: readonly string[],
   sections: readonly FindingSection[],
@@ -62,7 +66,7 @@ export function failingFirstLines(noun: string, findings: readonly ReportEntry[]
   const failing = findings.filter(({ classification }) => classification === 'enforceable');
   const reportOnly = findings.filter(({ classification }) => classification !== 'enforceable');
   return [
-    ...findingSectionLines(`${noun} failing findings`, inPriorityOrder(failing)),
+    ...prioritySectionLines(`${noun} failing findings`, failing),
     ...findingSectionLines(`${noun} report-only findings`, reportOnly),
   ];
 }

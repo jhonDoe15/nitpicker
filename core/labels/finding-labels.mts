@@ -44,6 +44,10 @@ function referenceIndex(): unknown {
   return SHARED_LINKS.index();
 }
 
+export function referenceEntryOf(tool: string, rule: string): unknown {
+  return findEntry(referenceIndex(), { tool, rule });
+}
+
 export function findingLabeler({ areaOf, index = referenceIndex }: LabelerSource): LabelsOf {
   const cache = new Map<string, Labels>();
   return ({ tool, rule }) => {
