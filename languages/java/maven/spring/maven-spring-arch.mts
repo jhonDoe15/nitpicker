@@ -3,7 +3,7 @@ import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
-import { compiledProgram, programSources } from '../programs/helper-programs.mjs';
+import { compiledProgram, programSources } from '../programs/helper-programs.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 

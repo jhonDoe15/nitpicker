@@ -12,6 +12,7 @@ import {
   textOf,
   typeNode,
 } from '../tree/nodes.mts';
+import { callOf, operatorText } from './calls.mts';
 import { bodyOf } from './statements.mts';
 
 const RIGHT_FIELD = 'right';
@@ -28,64 +29,13 @@ const KEYWORD_NAMES: Readonly<Record<string, (source: Node) => PlacedNode>> = {
 };
 const SIMPLE_TEMPLATE = /\$([A-Za-z_]\w*)/gu;
 
-function operatorText(source: Node): string | undefined {
-  const operator = field(source, 'operator');
-  if (operator !== undefined) {
-    return operator.type;
-  }
-  return source.children.find((child) => !child.isNamed)?.type;
-}
-
-function argumentOf(argument: Node, context: KotlinContext): ShapeNode {
-  const parts = codeChildren(argument);
-  const value = context.get(parts.at(-1));
-  const spread = argument.children.some((child) => child.type === '*');
-  if (parts.length > 1) {
-    return at({ kind: 'expression', value: `argument:${present(parts[0]).text}` }, argument, [
-      value,
-    ]);
-  }
-  return spread ? at({ kind: 'expression', value: 'spread' }, argument, [value]) : value;
-}
-
-function argumentsOf(parts: readonly Node[], context: KotlinContext): ShapeNode[] {
-  return parts.flatMap((part) => {
-    if (part.type === 'value_arguments') {
-      return codeChildren(part).map((argument) => argumentOf(argument, context));
-    }
-    if (part.type === 'annotated_lambda') {
-      const lambda = codeChildren(part).find((child) => child.type === 'lambda_literal');
-      return [context.get(lambda)];
-    }
-    return [];
-  });
-}
-
-function calleeOf(callee: Node, context: KotlinContext): ShapeNode {
-  if (callee.type === 'identifier') {
-    return context.method(callee.text, callee);
-  }
-  return context.get(callee);
-}
-
-function callOf(source: Node, context: KotlinContext): PlacedNode {
-  const [callee, ...parts] = codeChildren(source);
-  const typeArguments = parts.find((part) => part.type === 'type_arguments');
-  const call = at('call', source, [
-    calleeOf(present(callee), context),
-    ...argumentsOf(parts, context),
-  ]);
-  return typeArguments === undefined
-    ? call
-    : { ...call, children: [...call.children, typeNode(typeArguments)] };
-}
-
 function navigationOf(source: Node, context: KotlinContext): PlacedNode {
   const [receiver, found] = codeChildren(source);
   const member = present(found);
   const safe = source.children.some((child) => child.type === '?.');
   const value = member.type === 'identifier' ? member.text : textOf(member);
-  return at({ kind: 'member', value: safe ? `?.${value}` : value }, source, [
+  const unstable = context.unstable(value);
+  return at({ kind: 'member', value: safe ? `?.${value}` : value, ...unstable }, source, [
     context.get(receiver),
   ]);
 }

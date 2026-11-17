@@ -2,7 +2,6 @@ package reads
 
 import (
 	"go/ast"
-	"sort"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
 )
@@ -59,20 +58,11 @@ func Of(env *scope.Env, body *ast.BlockStmt) []Read {
 	})
 	reads := make([]Read, 0, len(order))
 	for _, entry := range order {
-		entry.read.Fields = sorted(entry.fields)
-		entry.read.Decided = sorted(entry.decided)
+		entry.read.Fields = scope.SortedNames(entry.fields)
+		entry.read.Decided = scope.SortedNames(entry.decided)
 		reads = append(reads, entry.read)
 	}
 	return reads
-}
-
-func sorted(set map[string]bool) []string {
-	names := make([]string, 0, len(set))
-	for name := range set {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }
 
 func inside(spans []span, position int) bool {

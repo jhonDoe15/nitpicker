@@ -199,4 +199,32 @@ describe.skipIf(!pythonE2eEnabled)('duplicate-branch over Python functions', () 
 
     expect(branches(text)).toEqual([]);
   });
+
+  it('reports, as report-only, adjacent guards with one body and an if whose inner else repeats the outer else', () => {
+    const text = [
+      'def find(order, flag, other, queue):',
+      '    if order is None:',
+      '        return 0',
+      '    if len(order.items) == 0 or other:',
+      '        return 0',
+      '    if flag:',
+      '        if not other:',
+      '            return 1',
+      '        else:',
+      '            return 2',
+      '    else:',
+      '        return 2',
+      '    if flag:',
+      '        return 3',
+      '    if queue.pop():',
+      '        return 3',
+      '    return 4',
+      '',
+    ].join('\n');
+
+    expect(branches(text)).toEqual([
+      '2 descriptive: The guards `order is None` (line 2) and `len(order.items) == 0 or other` (line 4) have the same body. Merge them into one guard: `if order is None or len(order.items) == 0 or other:`.',
+      '6 descriptive: The `else` on line 12 repeats the inner `else` of the `if` on line 7. Use one test, `if flag and not other:`, for the inner branch, and keep a single `else`.',
+    ]);
+  });
 });

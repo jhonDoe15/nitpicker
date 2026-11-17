@@ -2,12 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
-import { detektJava, skipWithoutJdk } from '../../errorprone/maven-jdk.mjs';
+import { detektJava, skipWithoutJdk } from '../../errorprone/maven-jdk.mts';
 import { DETEKT_SKIPPED } from '../../../adapters/reporting/skips/skipped-tools.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import { toolchainJdkHome } from '../../configuration/toolchain/toolchain-jdk.mjs';
+import { toolchainJdkHome } from '../../configuration/toolchain/toolchain-jdk.mts';
 import type { JdkRequirements, ToolchainContext } from '../../typed/toolchain-types.mts';
 import { type JavaSpawn, callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf, numberOr, optionalText, textOf } from '../../../../../shared/values/readers.mts';
@@ -119,6 +119,11 @@ export function detektArguments({
   ];
 }
 
+function detektFinished(result: unknown, report: string): boolean {
+  const status = numberOr(fieldOf(result, 'status'), -1);
+  return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
+}
+
 export function runDetekt({
   module,
   reportDir,
@@ -152,7 +157,10 @@ export function runDetekt({
     { reportDir, file: DETEKT_SKIPPED, placeholders: { 'detekt.sarif': EMPTY_SARIF } },
     () => {
       callUntyped(runJava, {
-        java: callUntyped(detektJava, { spawn: options.spawn }),
+        java: callUntyped(detektJava, {
+          spawn: options.spawn,
+          environment: options.toolchains.environment,
+        }),
         tool: 'detekt',
         classpath: tools['detekt'],
         mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
@@ -160,10 +168,7 @@ export function runDetekt({
         cwd: module.basedir,
         spawn: options.spawn,
         timeoutMs: options.timeoutMs,
-        accept: (result: unknown) => {
-          const status = numberOr(fieldOf(result, 'status'), -1);
-          return (status === 0 || status === FINDINGS_EXIT_CODE) && existsSync(report);
-        },
+        accept: (result: unknown) => detektFinished(result, report),
       });
     },
   );

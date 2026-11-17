@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
 import type { Edit, ImportedName, SourceFile } from '../../../extract-types.mts';
-import { escapeRegExp } from '../../../jvm-views.mts';
+import { wordIn } from '../../../jvm-views.mts';
 import { descendants, parentOf, present, required } from '../../syntax.mts';
 
 export const IMPORT_NODE = 'import_declaration';
@@ -94,8 +94,7 @@ function codeAndTags(text: string): string[] {
 }
 
 function mentions(name: string, texts: readonly string[]): boolean {
-  const word = new RegExp(`(?<![.\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
-  return texts.some((text) => word.test(text));
+  return wordIn(name, texts, /(?<![.\w$])/u);
 }
 
 export function unusedImports(

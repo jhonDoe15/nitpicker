@@ -75,9 +75,23 @@ members is not reported.
   expression or `and`/`or` operand that the guards before it in the same function decide fails,
   when a solver proves it always true (a redundant check) or always false (dead code). The guards
   are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
-  `continue`, and the left side of `and` and `or` (a `bool(x)` under `if x:` is reported the same
-  way, as always true); an assignment to a name, or a call when the name
-  is a module name, forgets what was known, and arithmetic is an opaque value.
+  `continue`, an `assert` (which only removes a redundant check), the arms of a `match` over literal patterns, the left side of `and` and `or` (a `bool(x)` under `if x:` is reported the same
+  way, as always true), the bounds of a `for i in range(...)` loop, the
+  branches of a conditional expression, and facts about names a lambda or nested function captures
+  when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
+  is a module name, forgets what was known, and sums, differences and products of integers (`int` annotations and integer literals) are exact because Python integers never overflow, while other arithmetic is an opaque value. `len(x)` is a whole
+  number that is never negative and `abs(x)` is not below 0. A call of a module function that only
+  returns a side-effect-free condition is read as that condition (at most 2 levels, no recursion),
+  and the message names the helper; methods stay opaque.
+- `result-slip` (tool `facts`) reads the same trees: `text.find(x) > 0` (also `rfind`, and `>= 1`,
+  `<= 0`, `< 1`) misses a match at index 0; test `>= 0`, or use `in`.
+- `shorter-condition` (tool `facts`) reads the same trees: an `and`/`or` condition with at most 6
+  distinct operands, none with an effect or able to fail, that a truth table or a solver proves equal
+  to a condition with fewer operands fails, and the message prints it from the original operands in
+  their order: `n > 3 and n > 5` is `n > 5`, `(a and b) or (a and not b)` is `a`. A condition whose
+  operands are not all booleans counts only as the test of an `if`, `while` or conditional
+  expression, because `and` and `or` return an operand. Ruff `SIM222` and `SIM223` only see boolean
+  literals and `PLR1714` merges repeated `==` tests, so the rules do not overlap.
 - `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
   conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
   adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The
@@ -187,7 +201,7 @@ target(...)` in an `async def`, passing its own parameters in order (by position
   names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]`,
   `[tool.poetry.scripts]`, `[tool.poetry.plugins.<group>]` and `[tool.flit.scripts]`, the
   `[options.entry_points]` of `setup.cfg`, and the `name = module:function` strings of `setup.py`
-  (all read once by `rules/libraries/package-facts.mjs`, which never runs `setup.py`; entry points
+  (all read once by `rules/libraries/package-facts.mts`, which never runs `setup.py`; entry points
   built at run time are not seen). Tests do not count as callers, unless the project is a
   published package (a `[project]` or poetry `name` with a `[build-system]` table, whose missing
   `build-backend` means setuptools as PEP 517 says, and no `package-mode = false`, a `setup.cfg` `[metadata] name`, or a `setup.py` whose `setup()` gets a

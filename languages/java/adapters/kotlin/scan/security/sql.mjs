@@ -4,7 +4,7 @@ import {
   LOOSE_STATEMENT,
   STRONG_STATEMENT,
 } from '../../../../../../shared/rules/security/sql-text.mjs';
-import { closingIndex, literalAt, splitArguments } from '../kotlin-source.mjs';
+import { closingIndex, enclosingOpen, literalAt, splitArguments } from '../kotlin-source.mjs';
 import { classifiedPieces, templatePieces } from './sql-values.mjs';
 
 const SINK_NAMES = [
@@ -34,31 +34,18 @@ const PRIMARY = /^[A-Za-z_]\w*(?:\s*(?:\?\.|\.)\s*[A-Za-z_]\w*|!!)*/;
 const FORMAT_CALL = /\bString\s*\.\s*format\s*\(/g;
 const FORMAT_AFTER = /^\s*\.\s*format\s*\(/;
 const CONVERSION = /%(?:\d+\$)?[-#+ 0,(]*(?:[1-9]\d*)?(?:\.\d+)?([a-zA-Z%])/g;
-const PARENS = /[()]/g;
 
 const SQL_MESSAGES = {
   SqlStringBuilding:
     'Pass values as bind parameters: `jdbcTemplate.query("SELECT * FROM users WHERE id = ?", mapper, id)`, `prepareStatement("... WHERE id = ?")` with `setLong(1, id)`, `:id` with `NamedParameterJdbcTemplate` or JPA `setParameter("id", id)`, or a query DSL (Exposed, jOOQ). Build placeholder lists from placeholders alone (`ids.joinToString(", ") { "?" }`), optional filters from literal fragments joined with `" AND "`, and take a table or column name from a constant or an enum. This SQL text is built from a runtime value with a string template, `+` or `format`, so the value can change the statement (SQL injection).',
 };
 
-function enclosingParen(code, offset) {
-  const open = [];
-  for (const { index, 0: paren } of code.slice(0, offset).matchAll(PARENS)) {
-    if (paren === '(') {
-      open.push(index);
-    } else {
-      open.pop();
-    }
-  }
-  return open.at(-1) ?? -1;
-}
-
 function isSinkCall(receiver, name) {
   return SQL_SINK.test(name) || (name === 'update' && UPDATE_RECEIVER.test(receiver ?? ''));
 }
 
 function callSink(code, offset) {
-  const open = enclosingParen(code, offset);
+  const open = enclosingOpen(code, offset, '(');
   if (open === -1) {
     return false;
   }
@@ -69,7 +56,7 @@ function callSink(code, offset) {
 function variableSink(code, name) {
   const passed = new RegExp(String.raw`(?<![\w.])${name}\b`, 'g');
   return [...code.matchAll(passed)].some(({ index }) => {
-    const open = enclosingParen(code, index);
+    const open = enclosingOpen(code, index, '(');
     if (open === -1) {
       return false;
     }

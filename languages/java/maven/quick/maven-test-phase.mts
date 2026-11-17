@@ -10,14 +10,14 @@ import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from '../maven-command.
 import { springAotSkip } from '../spring/arch-rules-gate.mts';
 import { isTestsTimeout, timedOutTests } from '../../adapters/red-base/tests-failed.mts';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
-import { lifecycleArgs } from '../maven-project.mjs';
+import { lifecycleArgs } from '../maven-project.mts';
 import { jacocoPlugin } from '../maven-tools.mjs';
 import { relativeTo } from '../module/module-paths.mts';
 import { moduleName } from '../../builds/test-failures.mjs';
 import { type JavaPolicy, callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
-import { dependencyListArguments, PROJECT_CHECKS_OFF } from './maven-build-arguments.mjs';
+import { dependencyListArguments, PROJECT_CHECKS_OFF } from './maven-build-arguments.mts';
 
 type BuildRequest = {
   readonly projectRoot: string;

@@ -44,6 +44,10 @@ export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+export function isText(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -68,4 +72,10 @@ export function stringsIn(value: unknown): string[] {
     }
   }
   return found;
+}
+
+export function textListsOf(value: unknown): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(value)).map(([name, found]) => [name, textsOf(found)]),
+  );
 }

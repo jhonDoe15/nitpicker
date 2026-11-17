@@ -1,4 +1,6 @@
-from near_tree_parts import NONE, BaseConverter, located, operator
+import ast
+
+from near_tree_parts import NONE, BaseConverter, flat, literal_of, located, operator
 
 
 class StatementConverter(BaseConverter):
@@ -83,6 +85,35 @@ class StatementConverter(BaseConverter):
         return self.grouped("statement", "with", source, [*items, self.block(source.body, source)])
 
     on_AsyncWith = on_With
+
+    def pattern_labels(self, pattern):
+        if isinstance(pattern, ast.MatchValue):
+            return [self.get(pattern.value)]
+        if isinstance(pattern, ast.MatchSingleton):
+            return [literal_of(pattern)]
+        if isinstance(pattern, ast.MatchOr):
+            parts = [self.pattern_labels(part) for part in pattern.patterns]
+            if all(len(part) == 1 and part[0]["kind"] in ("literal", "member", "unary") for part in parts):
+                return [part[0] for part in parts]
+        if isinstance(pattern, ast.MatchAs) and pattern.pattern is None and pattern.name is None:
+            return []
+        segment = ast.get_source_segment(self.text, pattern) or type(pattern).__name__
+        return [located("expression", pattern, value="pattern:" + flat(segment))]
+
+    def match_case(self, case):
+        labels = self.pattern_labels(case.pattern)
+        if case.guard is not None:
+            guard = located("expression", case.guard, value="guard:" + flat(ast.get_source_segment(self.text, case.guard) or ""))
+            labels.append(guard)
+        label = located("statement", case.pattern, labels, value="label")
+        return located("statement", case.pattern, [label, self.block(case.body, case.pattern)], value="rule")
+
+    def on_Match(self, source):
+        patterns = [node for case in source.cases for node in ast.walk(case.pattern)]
+        if any(getattr(node, "name", None) or getattr(node, "rest", None) for node in patterns):
+            return None
+        cases = [self.match_case(case) for case in source.cases]
+        return located("statement", source, [self.get(source.subject), *cases], value="match")
 
     def on_Assert(self, source):
         return self.grouped("statement", "assert", source, [self.get(source.test), self.get(source.msg)])

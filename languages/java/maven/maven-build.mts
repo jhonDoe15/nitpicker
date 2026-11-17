@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { readReactor } from './maven-project.mjs';
-import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
+import { readReactor } from './maven-project.mts';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mts';
 import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
 import {
@@ -16,15 +16,16 @@ import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
-import { processorTool } from './errorprone/maven-errorprone.mjs';
+import { processorTool } from './errorprone/maven-errorprone.mts';
+import { compilerOf } from './errorprone/compiler-types.mts';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
 import { effectsOptions } from '../adapters/effects/effects-options.mjs';
-import { dependencyFile } from './quick/maven-build-arguments.mjs';
+import { dependencyFile } from './quick/maven-build-arguments.mts';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
-import { mavenScope } from './reactor/maven-scope.mjs';
-import { reactorRootFor } from './reactor/reactor-root.mjs';
+import { mavenScope } from './reactor/maven-scope.mts';
+import { reactorRootFor } from './reactor/reactor-root.mts';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../adapters/typed/java-values.mts';
@@ -148,7 +149,7 @@ function formatterVersion(policy: JavaPolicy): unknown {
 function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest): unknown[] {
   return [
     ...modules
-      .map((module): unknown => processorTool(module['compiler']))
+      .map((module): unknown => processorTool(compilerOf(module['compiler'])))
       .filter((tool) => tool !== undefined),
     ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, formatterVersion(policy))),
     ...listOf(fieldOf(kotlin, 'extraTools')),
@@ -227,6 +228,7 @@ function presetInWork(
     ...prepared,
     testsSkipped: timedOut.length > 0,
     pitDeadline,
+    environment,
     configs,
     policy,
     kotlin,

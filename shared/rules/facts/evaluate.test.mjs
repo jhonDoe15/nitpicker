@@ -206,6 +206,8 @@ describe('the shared fact rules', () => {
       'near-duplicate',
       'decided-condition',
       'duplicate-branch',
+      'result-slip',
+      'shorter-condition',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       PERSISTENCE,
@@ -219,6 +221,12 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('go')).toEqual([
       'duplicate-definition',
       'sibling-copy-edit',
+      'near-duplicate',
+      'decided-condition',
+      'duplicate-branch',
+      'result-slip',
+      'integer-slip',
+      'shorter-condition',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       'public-alternative-bypass',
@@ -228,7 +236,9 @@ describe('the shared fact rules', () => {
       ...DESIGN_RULES,
     ]);
     withLanguageRegistered('public-alternative-bypass', 'go', () => {
-      expect(sharedFactExceptionRules()).toEqual(python);
+      expect(sharedFactExceptionRules()).toEqual(
+        python.toSpliced(python.indexOf('result-slip') + 1, 0, 'integer-slip'),
+      );
       expect(registeredFactRules('go').includes('public-alternative-bypass')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });

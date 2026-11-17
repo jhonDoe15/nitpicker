@@ -7,6 +7,7 @@ import {
 import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mjs';
 import { hasTypeInformation } from '../promises/cannot-reject.mts';
 import { variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { soleReturnedValue } from '../typed/syntax-views.mts';
 import { hasSameFunctionSignature, isAsyncCallee } from './forwarding-signatures.mts';
 
 type Services = ParserServicesWithTypeInformation;
@@ -35,18 +36,8 @@ function isAbsent(value: unknown): boolean {
   return value === undefined || value === null;
 }
 
-function returnedValue(fn: FunctionNode): TSESTree.Node | undefined {
-  if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
-    return fn.body;
-  }
-  const [only, ...rest] = fn.body.body;
-  return rest.length === 0 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
-}
-
 function forwardedCall(fn: FunctionNode): TSESTree.Node | undefined {
-  const value = returnedValue(fn);
+  const value = soleReturnedValue(fn);
   return fn.async && value?.type === AST_NODE_TYPES.AwaitExpression ? value.argument : value;
 }
 

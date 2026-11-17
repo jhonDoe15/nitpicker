@@ -2,11 +2,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
-import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
+import { type ReactorModule, lifecycleArgs, readReactor } from '../../maven/maven-project.mts';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../maven/configuration/maven-classpaths.mjs';
+} from '../../maven/configuration/maven-classpaths.mts';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,
@@ -26,18 +26,7 @@ import { optionalText } from '../../../../shared/values/readers.mts';
 import { readSlowTestFindings } from '../test-times/slow-tests.mts';
 
 type PinnedTools = object;
-type FixtureModule = {
-  readonly basedir: string;
-  readonly archunitIncludes: string | undefined;
-  readonly jacocoDestFiles: readonly string[];
-  readonly sourceRoots: readonly string[];
-  readonly testSourceRoots: readonly string[];
-  readonly surefireReports: string;
-  readonly failsafeReports: string;
-  readonly testOutputDirectory: string;
-  readonly coordinates: string;
-  readonly outputDirectory: string;
-};
+type FixtureModule = ReactorModule;
 type Fixture = {
   readonly module: FixtureModule;
   readonly classpaths: { readonly testRuntime: readonly unknown[] };
@@ -52,11 +41,10 @@ type FixtureContext = Fixture & {
 };
 
 const pinnedTools: () => PinnedTools = readPinnedTools;
-const reactorOf: (projectRoot: string, effectivePom: string) => FixtureModule[] = readReactor;
-const dependenciesOf: (text: string) => unknown = parseDependencyList;
-const classpathsOf: (module: FixtureModule, dependencies: unknown) => Fixture['classpaths'] =
-  moduleClasspaths;
-const lifecycleOf: (modules: readonly FixtureModule[]) => string[] = lifecycleArgs;
+const reactorOf = readReactor;
+const dependenciesOf = parseDependencyList;
+const classpathsOf = moduleClasspaths;
+const lifecycleOf = lifecycleArgs;
 const jacocoPluginOf: (pinned: PinnedTools, modules: FixtureModule[]) => string = jacocoPlugin;
 const toolsFor: (request: {
   readonly projectRoot: string;

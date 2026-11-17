@@ -9,7 +9,7 @@ import {
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import type { FixOutcome } from '../../../../../core/fix/typed/fix-types.mts';
 import { fixJava } from '../test-support/fix-java.mts';
-import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mjs';
+import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mts';
 
 type Repository = { readonly root: string };
 

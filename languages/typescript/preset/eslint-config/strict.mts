@@ -202,6 +202,11 @@ function typedProductionRules(layout: ScopeLayout, options: StrictOptions) {
   };
 }
 
+const booleanLogicRules: Linter.RulesRecord = {
+  'nitpicker/simpler-boolean-logic': 'error',
+  'nitpicker/shorter-boolean-logic': 'error',
+};
+
 function strictTypedConfigFor(
   layout: ScopeLayout,
   parserOptions: ParserOptions,
@@ -234,7 +239,7 @@ function strictTypedConfigFor(
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
+      rules: { ...truthinessRules, ...booleanLogicRules },
     },
     {
       files: testAreaGlobsFor(layout),

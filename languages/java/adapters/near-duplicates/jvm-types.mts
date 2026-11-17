@@ -6,6 +6,7 @@ export type ShapeFields = {
   readonly binding?: string;
   readonly literal?: string;
   readonly text?: string;
+  readonly unstable?: true;
 };
 
 export type ShapeNode = ShapeFields & {
@@ -21,12 +22,17 @@ export type Converted = ShapeNode | readonly ShapeNode[];
 export type FileScope = {
   readonly imported: ReadonlyMap<string, string>;
   readonly packageName: string;
+  readonly stars: readonly string[];
+  readonly classes: readonly string[];
 };
 
 export type ClassScope = {
   readonly fields: ReadonlyMap<string, string>;
   readonly methods: ReadonlyMap<string, string>;
+  readonly unstable: ReadonlySet<string>;
 };
+
+export type Unstable = { readonly unstable?: true };
 
 export type Names = {
   readonly bound: ReadonlySet<string>;
@@ -39,6 +45,7 @@ export type BaseContext = {
   readonly get: (source: Node | undefined) => ShapeNode;
   readonly name: (text: string, source: Node) => ShapeNode;
   readonly method: (text: string, source: Node) => ShapeNode;
+  readonly unstable: (text: string) => Unstable;
 };
 
 export type Context<Extra extends object = object> = BaseContext & Extra;
@@ -79,6 +86,13 @@ export type Unit = {
   readonly tokens: number;
   readonly final: boolean;
   readonly tree: PlacedNode;
+  readonly imports: UnitImports;
+};
+
+type UnitImports = {
+  readonly names: readonly string[];
+  readonly stars: readonly string[];
+  readonly classes: readonly string[];
 };
 
 export type KotlinExtra = {

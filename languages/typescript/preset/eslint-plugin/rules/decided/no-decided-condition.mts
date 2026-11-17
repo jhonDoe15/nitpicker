@@ -4,26 +4,26 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import {
-  decidingFact as untypedDecidingFact,
-  relevantFacts as untypedRelevantFacts,
-  solveFacts as untypedSolveFacts,
-} from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import { decidingFact as untypedDecidingFact } from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import { helperNote as untypedHelperNote } from '../../../../../../shared/logic/models/helper-note.mjs';
+import { hasModels as untypedHasModels } from '../../../../../../shared/logic/models/models.mjs';
 import { key as untypedKey } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst, type SourceCode } from '../typed/node-views.mts';
 import type { Term } from '../analysis/logic/estree-terms.mts';
+import { afterEffects, effectsOf, mutableNames, type FlowContext } from './effects.mts';
 import {
-  afterEffects,
   conditionTerm,
-  effectsOf,
   fact,
-  mutableNames,
+  relevantFacts,
+  solveFacts,
   typedServices,
   type Fact,
-  type FlowContext,
 } from './facts.mts';
 import { coercionSites, type CoercionSite, type Guard } from './coercions/coercion-sites.mts';
-import { conditionChecks, type Check } from './statement-flow.mts';
+import { recordCaptures } from './flow/closures.mts';
+import { sitesIn } from './flow/sites.mts';
+import { checkLabel } from './flow/switch.mts';
+import { conditionChecks, type StatementCheck } from './statement-flow.mts';
 import { isNarrowingTest, outsideFunctions } from './syntax.mts';
 
 type MessageId = 'alwaysTrue' | 'alwaysFalse' | 'coercionTrue' | 'coercionFalse';
@@ -34,7 +34,8 @@ type Scan = {
   readonly services: ParserServicesWithTypeInformation;
   readonly flow: FlowContext;
 };
-type Found = { readonly reason: string | undefined };
+type Found = { readonly reason: string };
+type Deciding = { readonly reason: string | undefined; readonly term?: Term | undefined };
 type Hit = {
   readonly node: TSESTree.Node;
   readonly facts: readonly Fact[];
@@ -43,33 +44,34 @@ type Hit = {
 };
 type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+type Site = { readonly node: TSESTree.Node; readonly extra: readonly Fact[] };
 
-const decidingFact: (facts: readonly Fact[], query: Term, verdict: Verdict) => Fact | undefined =
-  untypedDecidingFact;
-const relevantFacts: (facts: readonly Fact[], names: ReadonlySet<string>) => Fact[] =
-  untypedRelevantFacts;
-const solveFacts: (conditions: readonly Term[], query: Term) => string = untypedSolveFacts;
+const decidingFact: (
+  facts: readonly Fact[],
+  query: Term,
+  verdict: Verdict,
+) => Deciding | undefined = untypedDecidingFact;
 const key: (root: Term) => string = untypedKey;
+const helperNote: (terms: readonly Term[]) => string = untypedHelperNote;
+const hasModels: (terms: readonly Term[]) => boolean = untypedHasModels;
 
-const CHAINS = new Set(['&&', '||']);
 const VERDICTS: Readonly<Record<Verdict, MessageId>> = {
   true: 'alwaysTrue',
   false: 'alwaysFalse',
 };
 
 function reasonFor(facts: readonly Fact[], query: Term, verdict: Verdict): Found {
-  return (
-    decidingFact(facts, query, verdict) ?? {
-      reason: 'the conditions before it decide it together',
-    }
-  );
+  const deciding = decidingFact(facts, query, verdict);
+  const reason = deciding?.reason ?? 'the conditions before it decide it together';
+  const terms = deciding?.term === undefined ? [query] : [query, deciding.term];
+  return { reason: `${reason}${helperNote(terms)}` };
 }
 
 function verdictOf(
   facts: readonly Fact[],
   condition: { readonly term: Term },
 ): Verdict | undefined {
-  if (facts.length === 0) {
+  if (facts.length === 0 && !hasModels([condition.term])) {
     return undefined;
   }
   const result = solveFacts(
@@ -108,24 +110,6 @@ function chainOperands(chain: TSESTree.LogicalExpression): TSESTree.Node[] {
   ].filter(
     (node) => node.type !== AST_NODE_TYPES.LogicalExpression || node.operator !== chain.operator,
   );
-}
-
-function isChainHead(node: TSESTree.LogicalExpression): boolean {
-  const { parent } = node;
-  const continues =
-    parent.type === AST_NODE_TYPES.LogicalExpression && parent.operator === node.operator;
-  const isTernaryTest =
-    parent.type === AST_NODE_TYPES.ConditionalExpression && parent.test === node;
-  return CHAINS.has(node.operator) && !continues && !isTernaryTest;
-}
-
-function sitesIn(expression: TSESTree.Node): TSESTree.Node[] {
-  return [...outsideFunctions(expression)].flatMap((node) => {
-    if (node.type === AST_NODE_TYPES.ConditionalExpression) {
-      return [node.test];
-    }
-    return node.type === AST_NODE_TYPES.LogicalExpression && isChainHead(node) ? [node] : [];
-  });
 }
 
 function report(scan: Scan, { node, facts, verdict, query }: Hit): void {
@@ -205,18 +189,35 @@ function checkCoercion(scan: Scan, site: CoercionSite, facts: readonly Fact[]): 
   scan.context.report({ node, messageId, data: { condition, reason } });
 }
 
-function checkedConditions(found: Check): TSESTree.Node[] {
-  return found.condition === undefined ? sitesIn(found.expression) : [found.condition];
+function sitesOf(scan: Scan, found: StatementCheck): Site[] {
+  return found.condition === undefined
+    ? sitesIn(found.expression, scan)
+    : [{ node: found.condition, extra: [] }];
 }
 
-function analyze(scan: Scan, statements: readonly TSESTree.Statement[]): void {
+function analyze(
+  scan: Scan,
+  statements: readonly TSESTree.Statement[],
+  initial: readonly Fact[] = [],
+): void {
   for (const found of conditionChecks(statements, scan.flow)) {
-    for (const condition of checkedConditions(found)) {
-      checkChain(scan, condition, found.facts);
+    if (found.label !== undefined) {
+      checkLabel(scan, found.label, [...initial, ...found.facts]);
+      continue;
+    }
+    for (const site of sitesOf(scan, found)) {
+      checkChain(scan, site.node, [...initial, ...found.facts, ...site.extra]);
     }
     for (const site of coercionSites(found.condition ?? found.expression)) {
-      checkCoercion(scan, site, found.facts);
+      checkCoercion(scan, site, [...initial, ...found.facts]);
     }
+  }
+}
+
+function analyzeExpression(scan: Scan, expression: TSESTree.Node, facts: readonly Fact[]): void {
+  recordCaptures([expression], facts, scan.flow);
+  for (const site of sitesIn(expression, scan)) {
+    checkChain(scan, site.node, [...facts, ...site.extra]);
   }
 }
 
@@ -249,11 +250,19 @@ export const rule: TSESLint.RuleModule<
     if (!typedServices(services)) {
       return {};
     }
-    const flow = { sourceCode, mutable: mutableNames(sourceCode), effects: new WeakMap() };
+    const flow: FlowContext = {
+      sourceCode,
+      mutable: mutableNames(sourceCode),
+      effects: new WeakMap(),
+      captured: new Map(),
+    };
     const scan: Scan = { context, sourceCode, services, flow };
     function analyzeFunction(node: FunctionNode): void {
+      const facts = flow.captured.get(node) ?? [];
       if (node.body.type === AST_NODE_TYPES.BlockStatement) {
-        analyze(scan, node.body.body);
+        analyze(scan, node.body.body, facts);
+      } else {
+        analyzeExpression(scan, node.body, facts);
       }
     }
     return {

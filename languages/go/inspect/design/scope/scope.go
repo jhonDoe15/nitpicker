@@ -3,6 +3,7 @@ package scope
 import (
 	"go/ast"
 	"go/token"
+	"sort"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
 )
@@ -226,4 +227,13 @@ func ParamObjects(declaration *ast.FuncDecl) []ParamObject {
 		}
 	}
 	return objects
+}
+
+func SortedNames(set map[string]bool) []string {
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

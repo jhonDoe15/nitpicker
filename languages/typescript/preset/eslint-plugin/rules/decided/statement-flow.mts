@@ -1,28 +1,33 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../typed/node-views.mts';
-import {
-  afterEffects,
-  effectsOf,
-  fact,
-  patternNames,
-  type Fact,
-  type FlowContext,
-} from './facts.mts';
+import { afterEffects, effectsOf, type FlowContext } from './effects.mts';
+import { fact, patternNames, type Fact } from './facts.mts';
+import { statementsOf, exitOf, type MaybeStatement } from './flow/exits.mts';
+import { assertionFacts } from './flow/assertions.mts';
+import { assignedFacts } from './flow/assignments.mts';
+import { recordCaptures } from './flow/closures.mts';
+import { switchFlow, type LabelCheck } from './flow/switch.mts';
 
 type Statement = TSESTree.Statement;
-type MaybeStatement = TSESTree.IfStatement['alternate'] | undefined;
 type Task = { readonly statements: readonly Statement[]; readonly facts: readonly Fact[] };
 type ConditionCheck = {
   readonly condition: TSESTree.Node;
   readonly expression?: undefined;
+  readonly label?: undefined;
   readonly facts: readonly Fact[];
 };
 type ExpressionCheck = {
   readonly condition?: undefined;
   readonly expression: TSESTree.Node;
+  readonly label?: undefined;
   readonly facts: readonly Fact[];
 };
-export type Check = ConditionCheck | ExpressionCheck;
+type SwitchCheck = LabelCheck & {
+  readonly condition?: undefined;
+  readonly expression?: undefined;
+};
+export type StatementCheck = ConditionCheck | ExpressionCheck;
+export type Check = StatementCheck | SwitchCheck;
 type Flow = {
   readonly checks: Check[];
   readonly children: Task[];
@@ -43,13 +48,6 @@ type Declaration =
   | TSESTree.VariableDeclaration
   | TSESTree.FunctionDeclarationWithName
   | TSESTree.ClassDeclarationWithName;
-
-const JUMPS = new Map([
-  ['ReturnStatement', 'returns'],
-  ['ThrowStatement', 'throws'],
-  ['BreakStatement', 'breaks'],
-  ['ContinueStatement', 'continues'],
-]);
 
 function isLoop(node: TSESTree.Node): node is Loop {
   return (
@@ -79,41 +77,6 @@ function ownExpressions(node: Statement): readonly TSESTree.ReturnStatement['arg
   return node.type === AST_NODE_TYPES.VariableDeclaration
     ? node.declarations.map(({ init }) => init)
     : [];
-}
-
-function statementsOf(node: MaybeStatement): readonly Statement[] {
-  if (node === null || node === undefined) {
-    return [];
-  }
-  return node.type === AST_NODE_TYPES.BlockStatement ? node.body : [node];
-}
-
-function lastStatement(node: MaybeStatement): Statement | undefined {
-  return statementsOf(node).at(-1);
-}
-
-function isLeavingBoth(
-  statement: Statement | undefined,
-): statement is TSESTree.IfStatement & { readonly alternate: Statement } {
-  return statement?.type === AST_NODE_TYPES.IfStatement && statement.alternate !== null;
-}
-
-function exitOf(node: MaybeStatement): string | undefined {
-  const last = lastStatement(node);
-  const jump = last === undefined ? undefined : JUMPS.get(last.type);
-  if (jump !== undefined) {
-    return jump;
-  }
-  const pending: MaybeStatement[] = [node];
-  for (const current of pending) {
-    const final = lastStatement(current);
-    if (isLeavingBoth(final)) {
-      pending.push(final.consequent, final.alternate);
-    } else if (final === undefined || !JUMPS.has(final.type)) {
-      return undefined;
-    }
-  }
-  return 'leaves';
 }
 
 function declaredNames(statements: readonly Statement[]): TSESTree.Node[] {
@@ -258,11 +221,18 @@ function otherFlow(node: Statement, facts: readonly Fact[], context: FlowContext
       ? facts
       : afterEffects(facts, effectsOf([node], context), mutable);
   const lists = nestedLists(node);
-  const checks = ownExpressions(node)
-    .filter((expression) => expression !== null)
-    .map((expression) => ({ expression, facts: after }));
+  const own = ownExpressions(node).filter((expression) => expression !== null);
+  recordCaptures(own, facts, context);
+  const checks = own.map((expression) => ({ expression, facts: after }));
   const entry = KEPT_ENTRY.has(node.type) ? facts : after;
-  return { checks, children: lists.map((statements) => ({ statements, facts: entry })), after };
+  const cases =
+    node.type === AST_NODE_TYPES.SwitchStatement ? switchFlow(node, after, context) : undefined;
+  const { sourceCode } = context;
+  return {
+    checks: [...checks, ...(cases?.checks ?? [])],
+    children: cases?.children ?? lists.map((statements) => ({ statements, facts: entry })),
+    after: [...after, ...assignedFacts(node, sourceCode), ...assertionFacts(node, sourceCode)],
+  };
 }
 
 function statementFlow(node: Statement, facts: readonly Fact[], context: FlowContext): Flow {

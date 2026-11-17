@@ -8,7 +8,7 @@ const IDENTIFIER = /^[\w$]+$/u;
 const CLOSED_OVER = new Set(['assign', 'update', 'lambda', 'declare', 'this']);
 const SIMPLE_ARGUMENTS = new Set(['literal', 'this']);
 
-function labelParts(label) {
+export function labelParts(label) {
   const groups = LABEL.exec(label.replace(REPEAT, ''))?.groups;
   return groups === undefined
     ? undefined
@@ -61,7 +61,7 @@ function helperOf(tree) {
   return closed ? { parameters, statements } : undefined;
 }
 
-function helperTable(units) {
+export function helperTable(units) {
   const table = new Map();
   for (const unit of units) {
     const parts = labelParts(unit.name);
@@ -104,7 +104,7 @@ function isSimple(argument) {
   return isBound(argument) || SIMPLE_ARGUMENTS.has(argument.kind);
 }
 
-function calledHelper(node, scope) {
+export function calledHelper(node, scope) {
   const { table, file } = scope;
   const [callee, ...rest] = node?.kind === 'call' ? node.children : [];
   const name = callee === undefined ? undefined : calledName(callee);
@@ -134,7 +134,7 @@ function spliced(statement, scope) {
     : call.helper.statements.map((part) => substituted(part, call, statement));
 }
 
-function isExpressionHelper({ statements }) {
+export function isExpressionHelper({ statements }) {
   return statements.length === 1 && statements[0].kind === 'return';
 }
 

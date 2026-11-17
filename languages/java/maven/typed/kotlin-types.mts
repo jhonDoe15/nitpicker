@@ -21,6 +21,14 @@ export type ProjectModule = Omit<KotlinModule, 'kotlin'> & {
   readonly kotlin?: KotlinRoots | undefined;
 };
 export type ToolClasspaths = Readonly<Record<string, readonly string[] | undefined>>;
+
+export function resolvedTool(tools: ToolClasspaths, name: string): readonly string[] {
+  const classpath = tools[name];
+  if (classpath === undefined) {
+    throw new TypeError(`the ${name} tool classpath was not resolved`);
+  }
+  return classpath;
+}
 export type KotlinClasspaths = {
   readonly mainCompile: readonly string[];
   readonly testCompile: readonly string[];

@@ -83,6 +83,9 @@ describe('testHonestyFindings', () => {
       'DroppedCallbackInTest',
       'MessageAfterAssertion',
       'GlobalStateLeakInTest',
+      'RealClockInTest',
+      'RandomInTest',
+      'NetworkInTest',
       'SharedTestState',
     ]);
   });

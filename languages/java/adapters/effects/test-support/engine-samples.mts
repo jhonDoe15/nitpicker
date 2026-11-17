@@ -11,7 +11,7 @@ import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../../../maven/maven-command.mjs';
-import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mjs';
+import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 
