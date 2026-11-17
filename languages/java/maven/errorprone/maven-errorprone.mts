@@ -12,6 +12,7 @@ import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
+import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
 
 type Modular = boolean | 'all';
 type ErrorProneContext = {
@@ -53,6 +54,7 @@ const JVM_FLAGS = [
     (name) => `--add-opens=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
   ),
 ];
+const ERROR_PRONE_SHARES = 2;
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
 const MODULE_INFO = 'module-info.java';
 
@@ -178,6 +180,13 @@ function usesPreview(compiler: CompilerSettings): boolean {
   );
 }
 
+export function runnerFlags(slots: number = toolSlots()): string[] {
+  return [
+    `-Dnitpicker.errorprone.workers=${String(slots)}`,
+    ...toolHeapFlags(Math.max(1, slots / ERROR_PRONE_SHARES)),
+  ];
+}
+
 function analyze(
   {
     module,
@@ -215,7 +224,7 @@ function analyze(
     spawn,
     timeoutMs,
     tool: 'Error Prone',
-    jvmArgs: JVM_FLAGS,
+    jvmArgs: [...JVM_FLAGS, ...runnerFlags()],
     args: [
       path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java'),
       report,

@@ -161,18 +161,19 @@ tasks.register('nitpickerErrorProne') {
         try {
             java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
         } catch (GradleException e) {
-            new File(report.parentFile, 'errorprone-skipped.txt').text =
-                e.message.replaceAll(/\s+/, ' ').trim() + '\n'
+            new File(report.parentFile, 'errorprone-skipped.txt').text = e.message.replaceAll(/\s+/, ' ').trim() + '\n'
             report.text = '[]\n'
             return
         }
+        def runnerFlags = ["-Dnitpicker.errorprone.workers=${Runtime.runtime.availableProcessors()}".toString()]
         def run = { String mode ->
             def argumentFiles = compiles.collect { name, compile ->
                 writeArguments(name, compile, errorProne, name != 'main', name == 'main' ? mode : 'plain')
             }
                 .findAll { it != null }
-            def process = new ProcessBuilder([java] + jvmFlags + [runner.absolutePath, report.absolutePath,
-                    checks.absolutePath] + argumentFiles*.absolutePath)
+            def command = [java] + jvmFlags + runnerFlags +
+                [runner.absolutePath, report.absolutePath, checks.absolutePath] + argumentFiles*.absolutePath
+            def process = new ProcessBuilder(command)
                 .directory(projectDir).redirectErrorStream(true).start()
             // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.
             def log = process.inputStream.getText('UTF-8').readLines().findAll { !it.startsWith('Picked up ') }

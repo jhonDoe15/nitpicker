@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.*;
 import java.util.stream.*;
 import javax.lang.model.element.*;
@@ -13,7 +14,8 @@ import javax.tools.*;
  * Compiles source sets with javac and Error Prone as its plugin and writes the diagnostics, and the checks that
  * crashed, as a JSON array. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...}; the
  * report, the arguments files and the crash handling are described in docs/java-preset/error-prone-and-nullaway.md.
- * A failed compilation exits with status 1 and javac's errors on stderr.
+ * A failed compilation exits with status 1 and javac's errors on stderr. With {@code -Dnitpicker.errorprone.workers=N}
+ * it splits each source set into up to N slices, compiled at once against the project's own classes.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
@@ -34,11 +36,18 @@ public final class ErrorProneReport {
   private static final Pattern STOP_BUBBLING = Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
   private static final Pattern CRASH = Pattern.compile("BugPattern: (\\w+)(?:[\\s\\S]*?Stack Trace:\\s*(.+))?");
 
+  private static final int WORKERS = Math.max(1, Integer.getInteger("nitpicker.errorprone.workers", 1));
+  private static final int SLICE_FILES = 40;
+
   private static final Map<String, Path> FIX_CHECK_CLASSES = new HashMap<>();
 
   private ErrorProneReport() {}
 
   private record ClassSpan(long start, long end, List<String> annotations) {}
+
+  private record Job(Path argumentsFile, List<String> options, List<String> sources, long size) {}
+
+  private record Outcome(List<String> entries, List<String> errors, Map<String, String> crashes) {}
 
   public static void main(String[] args) throws IOException {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -47,8 +56,14 @@ public final class ErrorProneReport {
     List<String> errors = new ArrayList<>();
     Map<String, String> crashes = new LinkedHashMap<>();
     try {
+      List<Job> jobs = new ArrayList<>();
       for (int index = 2; index < args.length; index++) {
-        compile(compiler, Path.of(args[index]), checks, entries, errors, crashes);
+        jobs.addAll(jobs(compiler, Path.of(args[index]), checks));
+      }
+      for (Outcome outcome : run(jobs)) {
+        entries.addAll(outcome.entries());
+        errors.addAll(outcome.errors());
+        outcome.crashes().forEach(crashes::putIfAbsent);
       }
     } finally {
       for (Path built : FIX_CHECK_CLASSES.values()) {
@@ -231,8 +246,7 @@ public final class ErrorProneReport {
     return false;
   }
 
-  private static void compile(JavaCompiler compiler, Path argumentsFile, String checks, List<String> entries,
-      List<String> errors, Map<String, String> crashes) throws IOException {
+  private static List<Job> jobs(JavaCompiler compiler, Path argumentsFile, String checks) throws IOException {
     List<String> lines = Files.readAllLines(argumentsFile, StandardCharsets.UTF_8);
     int separator = lines.indexOf(SOURCES);
     List<String> head = lines.subList(0, separator);
@@ -242,24 +256,97 @@ public final class ErrorProneReport {
     Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
+    List<Job> jobs = new ArrayList<>();
     for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
-      List<String> options = javacOptions(head);
-      if (fixChecks != null) {
-        int processors = options.indexOf(PROCESSOR_PATH) + 1;
-        options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
-      }
-      if (group.size() < sources.size()) {
+      List<List<String>> slices = slices(group);
+      for (int slice = 0; slice < slices.size(); slice++) {
+        List<String> files = slices.get(slice);
+        List<String> options = javacOptions(head);
+        if (fixChecks != null) {
+          int processors = options.indexOf(PROCESSOR_PATH) + 1;
+          options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
+        }
         int classpath = options.indexOf("-classpath") + 1;
-        options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
-      }
-      String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
-          + (group == unsuppressed ? "-lombok" : "");
-      options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-          group == unsuppressed, projectLines(head, patchDirectory)));
-      if (failedSilently(compiler, options, group, entries, errors, crashes)) {
-        errors.add("javac failed on " + argumentsFile + " without reporting an error");
+        if (files.size() < sources.size() && classpath == 0) {
+          options.addAll(List.of("-classpath", ownClasses));
+        } else if (files.size() < sources.size()) {
+          options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
+        }
+        String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
+            + (group == unsuppressed ? "-lombok" : "") + (slices.size() > 1 ? "-" + slice : "");
+        options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
+            group == unsuppressed, projectLines(head, patchDirectory)));
+        jobs.add(new Job(argumentsFile, options, files, bytes(files)));
       }
     }
+    return jobs;
+  }
+
+  /**
+   * Splits a group into slices of about equal size in bytes, at most WORKERS and at least SLICE_FILES files each. A
+   * module compile stays whole, since only the slice with its module-info.java would compile as the module.
+   */
+  static List<List<String>> slices(List<String> sources) throws IOException {
+    int count = Math.min(WORKERS, sources.size() / SLICE_FILES);
+    if (count <= 1 || sources.stream().anyMatch(source -> Path.of(source).endsWith("module-info.java"))) {
+      return List.of(sources);
+    }
+    double share = (double) bytes(sources) / count;
+    List<List<String>> slices = new ArrayList<>();
+    List<String> current = new ArrayList<>();
+    long filled = 0;
+    for (String source : sources) {
+      current.add(source);
+      filled += Files.size(Path.of(source));
+      if (slices.size() < count - 1 && filled >= share * (slices.size() + 1)) {
+        slices.add(current);
+        current = new ArrayList<>();
+      }
+    }
+    if (!current.isEmpty()) {
+      slices.add(current);
+    }
+    return slices;
+  }
+
+  private static long bytes(List<String> sources) throws IOException {
+    long total = 0;
+    for (String source : sources) {
+      total += Files.size(Path.of(source));
+    }
+    return total;
+  }
+
+  /** Compiles the jobs, the largest first, on WORKERS threads and returns their outcomes in the jobs' order. */
+  private static List<Outcome> run(List<Job> jobs) throws IOException {
+    ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(WORKERS, jobs.size())));
+    try {
+      Map<Job, Future<Outcome>> started = new IdentityHashMap<>();
+      for (Job job : jobs.stream().sorted(Comparator.comparingLong(Job::size).reversed()).toList()) {
+        started.put(job, pool.submit(() -> outcome(job)));
+      }
+      List<Outcome> outcomes = new ArrayList<>();
+      for (Job job : jobs) {
+        outcomes.add(started.get(job).get());
+      }
+      return outcomes;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException(e);
+    } catch (ExecutionException e) {
+      throw e.getCause() instanceof IOException io ? io : new IOException(e.getCause());
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  private static Outcome outcome(Job job) throws IOException {
+    Outcome outcome = new Outcome(new ArrayList<>(), new ArrayList<>(), new LinkedHashMap<>());
+    if (failedSilently(ToolProvider.getSystemJavaCompiler(), job.options(), job.sources(), outcome.entries(),
+        outcome.errors(), outcome.crashes())) {
+      outcome.errors().add("javac failed on " + job.argumentsFile() + " without reporting an error");
+    }
+    return outcome;
   }
 
   private static boolean failedSilently(JavaCompiler compiler, List<String> options, List<String> sources,
