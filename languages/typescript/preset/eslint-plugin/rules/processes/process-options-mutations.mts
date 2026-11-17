@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
 import { chainOf, variableNamed } from '../typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type TypeWrapper =
   TSESTree.TSAsExpression | TSESTree.TSSatisfiesExpression | TSESTree.TSNonNullExpression;
@@ -129,7 +130,7 @@ export function optionsMayChange(
     if (inspected.mutated) {
       return true;
     }
-    pending.push(...inspected.aliases);
+    appendAll(pending, inspected.aliases);
   }
   return false;
 }

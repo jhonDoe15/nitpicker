@@ -51,6 +51,7 @@ import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import { largest } from '../../../shared/lists/lists.mts';
 
 function resolvePolicyRoot({
   optionsPolicyRoot,
@@ -133,7 +134,7 @@ function unchangedReport(
       withoutRepeats(shards.flatMap(({ toolErrors }) => toolErrors)),
     ),
   });
-  report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
+  report.summary.elapsedMs = largest(shards.map(({ summary }) => summary.elapsedMs));
   return report;
 }
 

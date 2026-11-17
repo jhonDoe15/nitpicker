@@ -9,6 +9,7 @@ import {
   staticImportsOf,
 } from './java-sources.mjs';
 import { lazy } from '../../../../shared/rules/finding-helpers.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 export const ENUM_PREDICATE_RULE = 'ExhaustiveEnumPredicate';
 const GENERIC_ENUM = 'an enum of the project';
@@ -187,7 +188,7 @@ function listedLabels(body) {
     const fallsThrough = next !== undefined && body.slice(entry.end, next.start).trim() === '';
     const isDefault = entry.labels === undefined || DEFAULT_LABEL.test(entry.labels);
     intoDefault = isDefault || (fallsThrough && intoDefault);
-    listed.push(...(intoDefault ? [] : entry.labels.split(',')));
+    appendAll(listed, intoDefault ? [] : entry.labels.split(','));
   }
   return listed
     .map((label) => label.split('.').map((part) => part.trim()))

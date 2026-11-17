@@ -4,6 +4,7 @@ import { resolvedExpression } from '../bindings/ts-nodes.mts';
 import type { Checker, Finding, Kind, Problem } from '../problem-types.mts';
 import { isMethodCall, libraryCall, listed, type LibraryCall } from './schema-libraries.mts';
 import { shapeFields, type Field } from './schema-shapes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type LeafStep = {
   readonly next?: TypeScript.Node | undefined;
@@ -114,8 +115,8 @@ export function schemaProblems(
   const problems: Finding[] = [];
   for (const level of pending) {
     const found = fieldProblems(level, checker);
-    problems.push(...found.problems);
-    pending.push(...found.nested);
+    appendAll(problems, found.problems);
+    appendAll(pending, found.nested);
   }
   return problems;
 }

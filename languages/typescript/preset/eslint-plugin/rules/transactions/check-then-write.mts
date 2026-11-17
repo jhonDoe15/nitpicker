@@ -9,6 +9,7 @@ import { ancestorsOf, contains, outermostWrapper, type VisitorKeys } from '../ty
 import { openerCallback } from './clients.mts';
 import { endsInExit } from './exclusive-branches.mts';
 import type { OrmCall } from './writes-in-units.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Scope = { readonly body: TSESTree.Node; readonly context: Context };
 
@@ -76,7 +77,7 @@ function readsName(node: TSESTree.Node, name: string, visitorKeys: VisitorKeys):
     if (current.type === AST_NODE_TYPES.Identifier && current.name === name) {
       return true;
     }
-    pending.push(...childrenOf(current, visitorKeys));
+    appendAll(pending, childrenOf(current, visitorKeys));
   }
   return false;
 }
@@ -126,7 +127,7 @@ function decidingConditions(
     ) {
       found.push(node);
     }
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return found;
 }

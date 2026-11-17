@@ -1,5 +1,6 @@
 import { literal, logical, term } from '../../logic/terms.mjs';
 import { conditionTerm, fact, isBooleanConversion } from './facts.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const CHAINS = new Set(['&&', '||']);
 const REFERENCES = new Set(['name', 'member', 'index']);
@@ -85,8 +86,9 @@ export function coercionSites(root, scope) {
       });
       sites.push({ node, query, facts });
     }
-    pending.push(
-      ...guarded(node).map(({ child, guard }) => ({
+    appendAll(
+      pending,
+      guarded(node).map(({ child, guard }) => ({
         node: child,
         guards: guard === undefined ? guards : [...guards, guard],
       })),

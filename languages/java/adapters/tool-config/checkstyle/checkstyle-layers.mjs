@@ -1,5 +1,6 @@
 import { childrenNamed, parseXml } from '../../../../../shared/ingest/common.mjs';
 import { renderXml } from '../xml-write.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const DOCTYPE_ID = '-//Checkstyle//DTD Checkstyle Configuration 1.3//EN';
 const DOCTYPE_URL = 'https://checkstyle.org/dtds/configuration_1_3.dtd';
@@ -29,7 +30,7 @@ function isModule(node) {
 function withoutInlineFilters(root) {
   const order = [root];
   for (const module of order) {
-    order.push(...module.children.filter(isModule));
+    appendAll(order, module.children.filter(isModule));
   }
   const rewritten = new Map();
   for (const module of order.toReversed()) {
@@ -128,7 +129,7 @@ function mergeModule(base, other, otherWins) {
   const order = [root];
   for (const group of order) {
     expand(group, otherWins);
-    order.push(...group.children);
+    appendAll(order, group.children);
   }
   const results = new Map();
   for (const group of order.toReversed()) {

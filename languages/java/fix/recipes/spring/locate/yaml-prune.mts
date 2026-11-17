@@ -1,6 +1,7 @@
 import { lineAt } from './lines.mts';
 import type { LineTable } from './locate-types.mts';
 import { indentOf, parentLine } from './yaml-locate.mts';
+import { largest } from '../../../../../../shared/lists/lists.mts';
 
 function subtree(table: LineTable, index: number): number[] {
   const { indent } = indentOf(lineAt(table, index));
@@ -27,7 +28,7 @@ function emptied<T>(
     return undefined;
   }
   const children = subtree(table, parent);
-  const owner = deleted.get(Math.max(...children));
+  const owner = deleted.get(largest(children));
   return owner !== undefined && children.every((child) => deleted.has(child))
     ? { parent, owner }
     : undefined;

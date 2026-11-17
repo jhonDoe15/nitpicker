@@ -19,6 +19,7 @@ import {
   unwrapExpression,
   type ResolvedFunction,
 } from './function-shapes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type RegistrationContext = {
   readonly program: TypeScript.Program;
@@ -171,9 +172,9 @@ function referencedFunctions(
   const found: ResolvedFunction[] = [];
   const pending = [expression];
   for (const current of pending) {
-    found.push(...functionsReferencedBy(checker, current));
+    appendAll(found, functionsReferencedBy(checker, current));
     const inner = ts.isShorthandPropertyAssignment(current) ? current : unwrapExpression(current);
-    pending.push(...(ts.isCallExpression(inner) ? inner.arguments : []));
+    appendAll(pending, ts.isCallExpression(inner) ? inner.arguments : []);
   }
   return found;
 }

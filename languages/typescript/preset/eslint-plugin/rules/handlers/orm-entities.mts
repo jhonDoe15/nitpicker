@@ -3,6 +3,7 @@ import { isReference, ts } from '../typed/typescript-views.mts';
 import { decoratorNames } from '../contracts/decorators.mts';
 import { packageOf } from '../contracts/infrastructure-types.mts';
 import { findInType } from '../contracts/type-walk.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type Entity = { readonly name: string; readonly orm: string };
 
@@ -65,7 +66,7 @@ function classOrm(checker: TypeScript.TypeChecker, type: TypeScript.Type): strin
       return orm;
     }
     if (current.isClassOrInterface()) {
-      chain.push(...unseenBases(checker, current, seen));
+      appendAll(chain, unseenBases(checker, current, seen));
     }
   }
   return undefined;

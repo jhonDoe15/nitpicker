@@ -1,4 +1,5 @@
 import { combineBounds } from './validators/bounds.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 function idsOf(fact) {
   return fact.entities.flatMap((entity) => fact.fields.map((field) => `${entity}#${field}`));
@@ -10,7 +11,7 @@ export function groupFacts(facts) {
     const ids = idsOf(fact);
     const merged = { ids: new Set(ids), members: [{ fact, order }] };
     for (const group of new Set(ids.flatMap((id) => groupOf.get(id) ?? []))) {
-      merged.members.push(...group.members);
+      appendAll(merged.members, group.members);
       merged.ids = new Set([...merged.ids, ...group.ids]);
     }
     for (const id of merged.ids) {

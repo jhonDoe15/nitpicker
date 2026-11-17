@@ -1,6 +1,7 @@
 import { parseIni } from '../configuration/ini-parser.mts';
 import { readProjectFile, toml } from '../../libraries/project-files.mts';
 import { fieldOf, isPlainObject, textOf } from '../../../../shared/values/readers.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Options = Readonly<Record<string, unknown>>;
 type PinOutcome = {
@@ -185,8 +186,8 @@ export function pinAddopts(words: readonly string[]): { kept: string[]; removed:
     const outcome: PinOutcome = skipped
       ? { removed: [], kept: [], consumesNext: false }
       : pinWord(word, words[index + 1]);
-    removed.push(...outcome.removed);
-    kept.push(...outcome.kept);
+    appendAll(removed, outcome.removed);
+    appendAll(kept, outcome.kept);
     skipped = outcome.consumesNext;
   }
   return { kept, removed };

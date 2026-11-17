@@ -109,7 +109,7 @@ export function analyzeSource(source: string, filename: string): SourceAnalysis 
         source: normalizePath(filename),
         function: names.get(node),
         ...location(sourceFile, node),
-        parameters: Math.max(...chain.map((link) => link.parameters.length)),
+        parameters: largest(chain.map((link) => link.parameters.length)),
         ...functionBodyMetrics(chain.at(-1) ?? node),
       });
     }

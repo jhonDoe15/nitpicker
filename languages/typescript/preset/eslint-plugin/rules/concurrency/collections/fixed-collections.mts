@@ -3,6 +3,7 @@ import { findVariable, resolveConstant } from '../../analysis/constant-resolutio
 import { memberName, type Context } from '../../security/security-values.mts';
 import { nameOf } from '../../typed/node-views.mts';
 import { descendants, skipped } from '../io-origin.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type Step = boolean | { readonly next: readonly MaybeNode[] };
@@ -54,7 +55,10 @@ function numeric(context: Context, node: TSESTree.Node): boolean {
     if (parts === undefined) {
       return false;
     }
-    pending.push(...parts.map((part) => ({ node: part, depth: entry.depth + 1 })));
+    appendAll(
+      pending,
+      parts.map((part) => ({ node: part, depth: entry.depth + 1 })),
+    );
   }
   return true;
 }
@@ -208,7 +212,10 @@ export function isFixedCollection(context: Context, node: TSESTree.Node, start =
       return false;
     }
     if (step !== true) {
-      pending.push(...step.next.map((next) => ({ node: next, depth: entry.depth + 1 })));
+      appendAll(
+        pending,
+        step.next.map((next) => ({ node: next, depth: entry.depth + 1 })),
+      );
     }
   }
   return true;

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const REGEXP_KEY = '$nitpickerRegExp';
 const SCALAR_TYPES = new Set(['string', 'number', 'boolean', 'undefined']);
@@ -71,7 +72,7 @@ function unsupportedValue(value) {
       return { where, what: circular ? 'a circular reference' : described(item) };
     }
     if (!scalar) {
-      pending.push(...childrenOf(item, where, ancestors));
+      appendAll(pending, childrenOf(item, where, ancestors));
     }
   }
   return undefined;

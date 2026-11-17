@@ -3,6 +3,7 @@ import { ts } from '../typed/typescript-views.mts';
 import { isNestController } from './decorators.mts';
 import { infrastructureOf, type Infrastructure } from './infrastructure-types.mts';
 import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Checker = TypeScript.TypeChecker;
 type Leak = { readonly member: string; readonly found: Infrastructure };
@@ -184,9 +185,12 @@ export function exportLeaks(checker: Checker, exported: TypeScript.Symbol): Leak
     const symbol = resolved(checker, entry);
     if (!seen.has(symbol)) {
       seen.add(symbol);
-      leaks.push(...symbolLeaks(checker, symbol, label));
+      appendAll(leaks, symbolLeaks(checker, symbol, label));
       const inner = isNamespace(symbol) ? checker.getExportsOfModule(symbol) : [];
-      pending.push(...inner.map((child) => ({ entry: child, label: `${label}.${child.name}` })));
+      appendAll(
+        pending,
+        inner.map((child) => ({ entry: child, label: `${label}.${child.name}` })),
+      );
     }
   }
   return leaks;

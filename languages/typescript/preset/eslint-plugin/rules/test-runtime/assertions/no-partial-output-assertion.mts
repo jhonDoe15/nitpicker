@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mts';
 import { chainOf } from '../../typed/node-views.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
 
@@ -104,7 +105,7 @@ function containsPartialMatcher(expected: TSESTree.Node): boolean {
     if (isPartialAsymmetricMatcher(node)) {
       return true;
     }
-    pending.push(...expectedValueParts(node));
+    appendAll(pending, expectedValueParts(node));
   }
   return false;
 }

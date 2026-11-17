@@ -9,6 +9,7 @@ import { chainOf, isNode } from '../typed/node-views.mts';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
 import { TYPE_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import { declaredMemberValue } from './member-values.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type Context = Readonly<TSESLint.RuleContext<string, readonly unknown[]>>;
 type TypeWrapper =
@@ -268,8 +269,11 @@ export function leafValues(context: Context, node: MaybeNode): TSESTree.Node[] {
       continue;
     }
     const expansion = expansionOf(context, resolved);
-    leaves.push(...expansion.leaves);
-    pending.push(...expansion.next.map((child) => ({ node: child, depth: item.depth + 1 })));
+    appendAll(leaves, expansion.leaves);
+    appendAll(
+      pending,
+      expansion.next.map((child) => ({ node: child, depth: item.depth + 1 })),
+    );
   }
   return leaves;
 }

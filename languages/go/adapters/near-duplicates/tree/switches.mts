@@ -17,6 +17,7 @@ import {
   typeNode,
   withInitializer,
 } from './nodes.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const CASE = 'case';
 const DEFAULT_CASE = 'default_case';
@@ -58,7 +59,7 @@ function breaksSwitch(part: Node): boolean {
       return true;
     }
     if (!NESTED_BREAK_TARGETS.has(node.type)) {
-      pending.push(...codeChildren(node));
+      appendAll(pending, codeChildren(node));
     }
   }
   return false;

@@ -9,6 +9,7 @@ import {
   isGeneratorModule,
   type Binding,
 } from './key-generators.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type ImportBindingDefinition = TSESLint.Scope.Definitions.ImportBindingDefinition;
 type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
@@ -93,7 +94,7 @@ function returnedExpressions(fn: FunctionNode): TSESTree.Node[] {
     if (node.type === AST_NODE_TYPES.ReturnStatement && node.argument !== null) {
       returned.push(node.argument);
     }
-    pending.push(...(isFunctionNode(node) ? [] : nodeChildren(node)));
+    appendAll(pending, isFunctionNode(node) ? [] : nodeChildren(node));
   }
   return returned;
 }
@@ -175,7 +176,7 @@ function firstFoundIn(
     if (call !== undefined) {
       return call;
     }
-    pending.push(...(isFunctionNode(node) ? [] : nodeChildren(node)));
+    appendAll(pending, isFunctionNode(node) ? [] : nodeChildren(node));
   }
   return undefined;
 }

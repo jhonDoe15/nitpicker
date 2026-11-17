@@ -1,5 +1,6 @@
 import { maskCLike } from '../../masking/c-like.mts';
 import { GRADLE_DECLARATION, type GateLine, TEST_BLOCK, TEST_SETTINGS, TOOLS } from './tools.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 function openedHeads(line: string): string[] {
   const heads: string[] = [];
@@ -37,9 +38,9 @@ export function gradleGateLines(file: string, text: string): GateLine[] {
   const gate: GateLine[] = [];
   for (const line of masked.split('\n').map((candidate) => candidate.trim())) {
     const opened = openedHeads(line);
-    if (line !== '') gate.push(...gateEntry({ line, scope: [...stack, ...opened] }));
+    if (line !== '') appendAll(gate, gateEntry({ line, scope: [...stack, ...opened] }));
     stack.length = Math.max(0, stack.length - closedBlocks(line));
-    stack.push(...opened);
+    appendAll(stack, opened);
   }
   return gate;
 }

@@ -6,6 +6,7 @@ import {
   trimmedEnd,
   wordBefore,
 } from '../../discovery/text-scan.mjs';
+import { appendAll } from '../../../../../../../../shared/lists/items.mjs';
 
 const LOOPBACK =
   /^(?:localhost|[^.]+\.localhost|127(?:\.\d+){3}|\[::1\]|\[(?:0:){7}1\]|0\.0\.0\.0|host\.docker\.internal)$/iu;
@@ -68,7 +69,7 @@ export function literalFrom(scanned, offset) {
       continue;
     }
     if (scanned.code[at] !== '"') {
-      pending.push(...extended(item, nextStarts(scanned, at), item.suffix));
+      appendAll(pending, extended(item, nextStarts(scanned, at), item.suffix));
       continue;
     }
     const text = literalAt(scanned, at)?.text ?? '';
@@ -77,7 +78,7 @@ export function literalFrom(scanned, offset) {
       return text + item.suffix;
     }
     const rest = text.slice(reference[0].length) + item.suffix;
-    pending.push(...extended(item, bindingsOf(scanned).get(reference[1]) ?? [], rest));
+    appendAll(pending, extended(item, bindingsOf(scanned).get(reference[1]) ?? [], rest));
   }
   return undefined;
 }
@@ -110,7 +111,7 @@ export function receiverLiteral(scanned, dot) {
     if (step.literal !== undefined) {
       return step.literal;
     }
-    pending.push(...step.next);
+    appendAll(pending, step.next);
   }
   return undefined;
 }

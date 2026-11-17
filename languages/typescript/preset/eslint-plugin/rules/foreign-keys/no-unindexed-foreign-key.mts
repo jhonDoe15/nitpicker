@@ -2,6 +2,7 @@ import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { unindexedTableKeys } from './drizzle-tables.mts';
 import { unindexedRelations } from './entity-relations.mts';
 import { indexesItself, schemaSource } from './schema-source.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageId = 'TypeORM' | 'MikroORM' | 'Drizzle';
 type Finding = {
@@ -35,7 +36,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     const found: Finding[] = [];
 
     function collect(entries: readonly Finding[]): void {
-      found.push(...entries);
+      appendAll(found, entries);
     }
 
     return {

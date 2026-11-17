@@ -8,6 +8,7 @@ import {
 import { topLevelIndexes } from './jvm-members.mjs';
 import { signature } from './signature/jvm-signature.mjs';
 import { namesOf } from './jvm-tokens.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record', 'object']);
 const MEMBER_ACCESS = new Set(['.', '::']);
@@ -118,9 +119,10 @@ function typeTree(structure, info, { language, member }) {
   for (const type of pending) {
     const body = bodyOf(structure.tokens, structure.close, type.info.member);
     if (body !== undefined) {
-      found.push(...typeMembers(structure, { ...type, body }, language));
-      pending.push(
-        ...(structure.nested ? nestedTypes(structure, { ...type, body }, language) : []),
+      appendAll(found, typeMembers(structure, { ...type, body }, language));
+      appendAll(
+        pending,
+        structure.nested ? nestedTypes(structure, { ...type, body }, language) : [],
       );
     }
   }

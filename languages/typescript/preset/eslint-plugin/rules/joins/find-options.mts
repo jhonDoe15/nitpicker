@@ -18,6 +18,7 @@ import {
   type JoinSite,
   type Types,
 } from './relation-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type PathEntry = { readonly path: readonly string[]; readonly value: MaybeNode };
@@ -77,7 +78,7 @@ function objectPaths(context: Context, object: TSESTree.ObjectExpression): (read
   const pending = objectEntries(context, object, []);
   for (const { path, value } of pending) {
     if (value?.type === AST_NODE_TYPES.ObjectExpression) {
-      pending.push(...objectEntries(context, value, path));
+      appendAll(pending, objectEntries(context, value, path));
     }
   }
   return pending.map(({ path }) => path);

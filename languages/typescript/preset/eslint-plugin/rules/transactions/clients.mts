@@ -7,6 +7,7 @@ import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mts';
 import { callChain, rootNode } from '../support/orm/chains.mts';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
 import type { FunctionNode } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type ClientOrigin = 'transaction' | 'parameter' | 'other';
 export type ClientScope = { readonly context: Context; readonly fn: FunctionNode };
@@ -96,7 +97,7 @@ export function mentionsTransaction(
     ) {
       return true;
     }
-    pending.push(...childrenOf(node, context.sourceCode.visitorKeys));
+    appendAll(pending, childrenOf(node, context.sourceCode.visitorKeys));
   }
   return false;
 }

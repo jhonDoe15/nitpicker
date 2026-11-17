@@ -11,6 +11,7 @@ import type {
 } from '../jvm-types.mts';
 import { methodNode, nameNode } from './names.mts';
 import { at, codeChildren, isList, opaque, present } from './nodes.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const TOKEN = /[\w$]+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/gu;
 
@@ -61,7 +62,10 @@ function unitRoots<Extra extends object>(
       roots.push({ ...entry, label: language.unitLabel(entry.node, entry.qualifier) });
     } else {
       const inner = language.scopeOf(entry.node, entry);
-      pending.push(...codeChildren(entry.node).map((node) => ({ ...inner, node })));
+      appendAll(
+        pending,
+        codeChildren(entry.node).map((node) => ({ ...inner, node })),
+      );
     }
   }
   return roots.toSorted((left, right) => left.node.startIndex - right.node.startIndex);

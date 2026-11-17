@@ -506,6 +506,19 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   array or a tuple (a string's `concat` is not reported); without it, the variable or the `reduce`
   start value must be an array literal. Allowed forms: `flatMap`, `Object.fromEntries`,
   `Object.groupBy`, or push into an array created before the loop.
+- `nitpicker/no-array-spread-arguments`: a list of unknown length is not spread into `push`,
+  `unshift` or `splice` of an array, or into `Math.max`, `Math.min`, `String.fromCharCode` or
+  `String.fromCodePoint` (`target.push(...items)`, `Math.max(...sizes)`), in all production code.
+  Each item becomes one argument, and V8 throws `RangeError: Maximum call stack size exceeded` once
+  a list reaches about 125,000 items, which a large project's findings, files or lines do. Other
+  calls are left alone, since their spread arguments are parameter lists (`path.join(...parts)`).
+  With the type checker an array, typed array, `Set`, `Map` or `any` value is reported (a tuple or a
+  string is not), and `push`, `unshift` and `splice` only on an array; without it, every spread
+  argument of those calls is. An array or string literal (`Math.max(...[a, b])`, also as both
+  branches of `? :`), a function's own rest parameter or `arguments` passed on, a call on `super`,
+  and a local variable named `Math` or `String` are never reported. Allowed forms: a loop that pushes
+  each item, `concat`, a comparison per item for a largest or smallest value, or an exception for
+  a list that is always short.
 - `nitpicker/no-lazy-relation-in-loop` (needs the type checker): `await item.relation` in a loop or
   iteration callback over the result of a TypeORM `find`, `findAndCount`, `findBy`,
   `findAndCountBy` (on a repository, or on an `EntityManager` with the entity first:

@@ -3,6 +3,7 @@ import { constantInitializer, type SourceCode } from '../../typed/node-views.mts
 import { unwrapOf, TYPE_ASSERTIONS } from '../../typed/syntax-views.mts';
 import { initializerOf, isUnresolved, libraryBinding, variableOf } from './library-bindings.mts';
 import { propertyName, SCHEMA_LIBRARIES } from './library-nodes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type Finding = {
   readonly kind: 'loose' | 'field';
@@ -166,10 +167,13 @@ export function jsonSchemaFindings(root: TSESTree.Node): Finding[] {
     if (schema.type !== AST_NODE_TYPES.ObjectExpression || depth > MAX_DEPTH) {
       continue;
     }
-    findings.push(...schemaFindings(schema));
+    appendAll(findings, schemaFindings(schema));
     for (const { key, value } of entries(schema)) {
       const children = key === 'properties' ? objectValues(value) : childSchemas(key, value);
-      pending.push(...children.map((child) => ({ schema: child, depth: depth + 1 })));
+      appendAll(
+        pending,
+        children.map((child) => ({ schema: child, depth: depth + 1 })),
+      );
     }
   }
   return findings;

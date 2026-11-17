@@ -1,4 +1,5 @@
 import { suspendsAt, viewOf } from './suspend-calls.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 export const SUSPENDED_UPDATE_RULE = 'NonAtomicUpdateAcrossSuspension';
 
@@ -37,7 +38,7 @@ function gateProperty(qualifier, update, { file, view, klass }) {
   }
   const owners = klass === undefined ? [] : [klass.qualified];
   if (klass !== undefined && !THIS_PREFIX.test(qualifier)) {
-    owners.push(...companionsOf(klass, view));
+    appendAll(owners, companionsOf(klass, view));
   }
   const member = file.properties.find(
     (declared) => owners.includes(declared.owner) && declared.name === name,

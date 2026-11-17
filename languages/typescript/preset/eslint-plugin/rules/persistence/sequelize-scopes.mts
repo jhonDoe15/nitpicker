@@ -3,6 +3,7 @@ import { isFunctionNode } from '../analysis/constant-resolution.mts';
 import { staticKeyName } from '../analysis/static-shapes.mts';
 import { nodeChildren, type SourceCode } from '../typed/node-views.mts';
 import { SEQUELIZE, importedName, importsOrm, objectOf, propertiesOf } from './orm-bindings.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const DEFAULT_SCOPE = 'defaultScope';
 const SCOPE_DECORATOR = 'DefaultScope';
@@ -19,7 +20,7 @@ function returnedValues(body: TSESTree.Node): (TSESTree.Node | undefined)[] {
     if (node.type === AST_NODE_TYPES.ReturnStatement) {
       returned.push(node.argument ?? undefined);
     } else {
-      pending.push(...childNodes(node));
+      appendAll(pending, childNodes(node));
     }
   }
   return returned;

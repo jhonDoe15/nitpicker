@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { isRealPathInside, isRegularFile } from '../../../../shared/conventions/read-inside.mjs';
 import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 export const PROJECT_TSCONFIG = 'tsconfig.json';
 
@@ -154,8 +155,9 @@ export function tsconfigChain(projectRoot, relativeConfig) {
   const root = path.resolve(projectRoot);
   const found = [path.resolve(root, relativeConfig)];
   for (const file of found) {
-    found.push(
-      ...extendedFiles(file).filter((next) => !found.includes(next) && isTrackedInside(root, next)),
+    appendAll(
+      found,
+      extendedFiles(file).filter((next) => !found.includes(next) && isTrackedInside(root, next)),
     );
   }
   return found

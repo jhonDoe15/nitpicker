@@ -6,6 +6,7 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, chainOf } from '../typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Call = TSESTree.NewExpression | TSESTree.CallExpression;
 type FunctionNode =
@@ -114,7 +115,7 @@ function constantArguments(context: SourceContext, node: Call): boolean {
     if (value === undefined || !leafConstant(context, value) || pending.length > MAX_PARTS) {
       return false;
     }
-    pending.push(...parts(value));
+    appendAll(pending, parts(value));
   }
   return true;
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import type { LintMessage } from '../plan/oxlint-shapes.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export type Directive = {
   readonly comment: string;
@@ -49,7 +50,7 @@ function commentRanges(sourceFile: TypeScript.SourceFile): TypeScript.CommentRan
       addRanges(ranges, ts.getLeadingCommentRanges(text, node.getFullStart()));
     }
     addRanges(ranges, ts.getTrailingCommentRanges(text, node.getEnd()));
-    nodes.push(...node.getChildren(sourceFile));
+    appendAll(nodes, node.getChildren(sourceFile));
   }
   return [...ranges.values()].sort((left, right) => left.pos - right.pos);
 }

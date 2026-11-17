@@ -1,5 +1,6 @@
 import { outerClass as untypedOuterClass } from '../../ingest/class-names.mjs';
 import type { CouplingEdge } from '../metrics/java-coupling-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 export type UsageProject = {
   readonly qualifier: string;
@@ -117,8 +118,9 @@ function grownWiring(candidates: readonly CouplingEdge[]): Set<string> {
   for (const annotation of pending) {
     if (!wiring.has(annotation)) {
       wiring.add(annotation);
-      pending.push(
-        ...candidates.filter(({ target }) => target === annotation).map(({ source }) => source),
+      appendAll(
+        pending,
+        candidates.filter(({ target }) => target === annotation).map(({ source }) => source),
       );
     }
   }

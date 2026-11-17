@@ -15,6 +15,7 @@ import {
   type ConstantValue,
 } from './copied-constants-views.mts';
 import { hasModifier, localConstants, type ConstantEntry } from './constant-literals.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type ExportedName = { readonly exported: string; readonly local: string };
 type LocalExport = TypeScript.ExportDeclaration & {
@@ -230,7 +231,7 @@ export function exportedConstants(
     for (const [name, value] of fresh) {
       found.set(name, value);
     }
-    pending.push(...reexportSteps(step));
+    appendAll(pending, reexportSteps(step));
   }
   return found;
 }

@@ -10,6 +10,7 @@ import {
   isListenMethod,
   isStreamWaiter,
 } from './emitter-modules.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const MAX_DEPTH = 3;
 
@@ -116,7 +117,7 @@ function inspectBody(
     if (handlesNode(node, scope.target)) {
       return { handled: true, next };
     }
-    next.push(...delegation(checker, node, scope));
+    appendAll(next, delegation(checker, node, scope));
     ts.forEachChild(node, (child) => {
       pending.push(child);
     });
@@ -178,7 +179,10 @@ export function helperOutcome(
     if (handled) {
       return 'handled';
     }
-    pending.push(...next.filter((entry) => entry.depth <= MAX_DEPTH));
+    appendAll(
+      pending,
+      next.filter((entry) => entry.depth <= MAX_DEPTH),
+    );
   }
   return 'neutral';
 }

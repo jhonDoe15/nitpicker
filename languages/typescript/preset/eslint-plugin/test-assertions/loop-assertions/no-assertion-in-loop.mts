@@ -6,6 +6,7 @@ import type { FunctionNode } from '../unowned-async/nodes.mts';
 import { factsOf, siteKind, type LoopEnv } from './assertion-sites.mts';
 import { loopsAround, type Construct } from './loops.mts';
 import { testBody } from './subtests.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Options = readonly [{ readonly assertionFunctionNames?: readonly string[] }?];
 type SiteKind = NonNullable<ReturnType<typeof siteKind>>;
@@ -73,7 +74,7 @@ function reachableFindings(env: LoopEnv, test: FunctionNode): Finding[] {
       continue;
     }
     env.analyzed.add(fn);
-    findings.push(...loopFindings(env, fn));
+    appendAll(findings, loopFindings(env, fn));
     for (const callee of factsOf(env, fn).callees.filter((candidate) => !queued.has(candidate))) {
       queued.add(callee);
       pending.push(callee);

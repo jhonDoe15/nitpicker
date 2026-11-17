@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../shared/lists/items.mjs';
 const INDENT = '  ';
 
 export function escapeXml(text) {
@@ -32,7 +33,7 @@ function linesOf(node, rendered) {
 export function renderXml(root) {
   const order = [root];
   for (const node of order) {
-    order.push(...node.children);
+    appendAll(order, node.children);
   }
   const rendered = new Map();
   for (const node of order.toReversed()) {

@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
+import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.m
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
-import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -115,6 +115,7 @@ export const partRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
+  'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
-  'no-test-helpers-in-source': ruleNoTestHelpersInSource,
 };

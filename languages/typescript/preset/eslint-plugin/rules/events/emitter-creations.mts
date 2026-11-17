@@ -18,6 +18,7 @@ import {
   isEmitterType,
   isListenMethod,
 } from './emitter-modules.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const TYPESCRIPT_FILE = /\.[cm]?tsx?$/u;
 const MODULE_PATH = /\/node_modules\/(?:@types\/)?((?:@[^/]+\/)?[^/]+)\//gu;
@@ -85,7 +86,7 @@ function classChain(type: TypeScript.Type): TypeScript.Type[] {
     const target = referenceTarget(current);
     if (!seen.has(target) && seen.size < MAX_BASES) {
       seen.add(target);
-      pending.push(...(target.getBaseTypes() ?? []));
+      appendAll(pending, target.getBaseTypes() ?? []);
     }
   }
   return [...seen];

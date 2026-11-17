@@ -3,6 +3,7 @@ import path from 'node:path';
 import { readSpringDocuments } from '../spring/spring-config-files.mjs';
 import { relaxKey } from '../spring/spring-config-parser.mjs';
 import { placeholderDefault } from '../spring/spring-secrets.mjs';
+import { appendAll, largest } from '../../../../shared/lists/items.mjs';
 
 const BATCH_KEYS = new Set(
   [
@@ -36,13 +37,13 @@ function resourceRoots(projectRoot) {
   const found = [];
   for (const current of pending) {
     const next = children(base, current);
-    found.push(
-      ...next
-        .filter(isResources)
-        .map((child) => path.relative(base, child).replaceAll(path.sep, '/')),
+    appendAll(
+      found,
+      next.filter(isResources).map((child) => path.relative(base, child).replaceAll(path.sep, '/')),
     );
-    pending.push(
-      ...next
+    appendAll(
+      pending,
+      next
         .filter((child) => !isResources(child))
         .map((child) => ({ directory: child, depth: current.depth + 1 })),
     );
@@ -56,7 +57,7 @@ function sizeIn(projectRoot, roots) {
     .filter((entry) => BATCH_KEYS.has(relaxKey(entry.key)))
     .map((entry) => Number.parseInt(placeholderDefault(entry.value).trim(), 10))
     .filter((size) => Number.isInteger(size) && size > 1);
-  return sizes.length === 0 ? undefined : Math.max(...sizes);
+  return sizes.length === 0 ? undefined : largest(sizes);
 }
 
 function moduleOf(resourceRoot) {
@@ -80,7 +81,7 @@ export function batchFetchSizes(projectRoot) {
 
 export function batchFetchSize(projectRoot) {
   const sizes = [...batchFetchSizes(projectRoot).values()];
-  return sizes.length === 0 ? undefined : Math.max(...sizes);
+  return sizes.length === 0 ? undefined : largest(sizes);
 }
 
 function scopedOptions(projectRoot, place) {

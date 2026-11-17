@@ -3,6 +3,7 @@ import type { Dirent } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from './contained-path.mts';
 import { memberDependencyDirectories } from './members.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
@@ -59,7 +60,7 @@ function linkDirectory(directories: LinkDirectories, roots: LinkRoots): LinkDire
 function linkEntries(liveRoot: string, snapshotRoot: string, roots: LinkRoots): void {
   const pending: LinkDirectories[] = [{ liveDirectory: liveRoot, snapshotDirectory: snapshotRoot }];
   for (const directories of pending) {
-    pending.push(...linkDirectory(directories, roots));
+    appendAll(pending, linkDirectory(directories, roots));
   }
 }
 

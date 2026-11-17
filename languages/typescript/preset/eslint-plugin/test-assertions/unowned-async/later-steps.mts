@@ -10,6 +10,7 @@ import {
   type Facts,
 } from './node-facts/node-facts.mts';
 import { children, nodesIn, type Env, type FunctionNode } from './nodes.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const { DefinitionType } = TSESLint.Scope;
 
@@ -48,7 +49,10 @@ function reachableNodes(env: Env, roots: readonly TSESTree.Node[]): TSESTree.Nod
     const own = nodesIn(env.context, root, (child) => runsInline(env, child));
     const bodies = own.map((node) => unfollowedHelper(env, node, followed));
     found.push(own);
-    pending.push(...bodies.filter((body) => body !== undefined));
+    appendAll(
+      pending,
+      bodies.filter((body) => body !== undefined),
+    );
   }
   return found.flat();
 }

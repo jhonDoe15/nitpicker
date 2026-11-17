@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const MAX_DEPTH = 8;
 
@@ -76,7 +77,10 @@ export function findInType<Hit>(
     seen.add(type);
     const hit = match(type);
     if (hit === undefined) {
-      pending.push(...partsOf(checker, type).map((part) => ({ type: part, depth: depth + 1 })));
+      appendAll(
+        pending,
+        partsOf(checker, type).map((part) => ({ type: part, depth: depth + 1 })),
+      );
     } else {
       found.push(hit);
     }
