@@ -72,16 +72,16 @@ describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions e
         pythonExceptionRoute('frozen-dataclass', 'src/demo/rules.py'),
       ],
       [
-        'ruff/PTH118: `os.path.join()` should be replaced by `Path` with `/` operator. ' +
-          'Use `pathlib.Path`: `Path(a) / b`, `path.read_text()`, `path.exists()`.',
-        'src/demo/rules.py:11:12',
-        pythonExceptionRoute('PTH118', 'src/demo/rules.py'),
-      ],
-      [
         'python-rules/no-inline-suppression: Inline suppression `# noqa: E501`. ' +
           'Remove the comment and fix the code.',
         'src/demo/rules.py:14',
         pythonExceptionRoute('no-inline-suppression', 'src/demo/rules.py'),
+      ],
+      [
+        'ruff/PTH118: `os.path.join()` should be replaced by `Path` with `/` operator. ' +
+          'Use `pathlib.Path`: `Path(a) / b`, `path.read_text()`, `path.exists()`.',
+        'src/demo/rules.py:11:12',
+        pythonExceptionRoute('PTH118', 'src/demo/rules.py'),
       ],
     ]);
   });

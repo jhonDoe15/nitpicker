@@ -121,7 +121,6 @@ export const RULE_HINTS: readonly RuleHint[] = [
   })),
   { tool: 'mypy', rules: MYPY_UNTYPED_CODES, allowed: FIX_TYPE },
   ...PYRIGHT_TOOLS.map((tool) => ({ tool, rules: PYRIGHT_UNTYPED_RULES, allowed: FIX_TYPE })),
-  { tool: 'basedpyright', rules: ['reportAny', 'reportExplicitAny'], allowed: FIX_TYPE },
   ...TYPE_CHECK_TOOLS.map((tool) => ({ tool, rules: undefined, allowed: FIX_TYPE })),
 ];
 

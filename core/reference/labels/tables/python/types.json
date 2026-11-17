@@ -1,8 +1,6 @@
 {
   "basedpyright/<rule>": ["bug"],
-  "basedpyright/reportAny": ["maintainability"],
   "basedpyright/reportDeprecated": ["maintainability"],
-  "basedpyright/reportExplicitAny": ["maintainability"],
   "basedpyright/reportMissingImports": ["bug"],
   "basedpyright/reportMissingModuleSource": ["bug"],
   "basedpyright/reportMissingParameterType": ["maintainability"],
