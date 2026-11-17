@@ -1,6 +1,7 @@
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { metricSuffix } from './metric-values.mts';
+import { inPriorityOrder } from '../format/rule-groups/finding-order.mts';
 
 const suffixOf: (finding: ReportEntry) => string = metricSuffix;
 
@@ -20,6 +21,10 @@ export function findingSectionLines(heading: string, findings: readonly ReportEn
       return `${rule} ${textOf(finding.path)}${location} ${textOf(finding.message)}${suffixOf(finding)}`;
     }),
   ];
+}
+
+export function prioritySectionLines(heading: string, findings: readonly ReportEntry[]): string[] {
+  return findingSectionLines(heading, inPriorityOrder(findings));
 }
 
 export function ruleFilterSection(
@@ -61,7 +66,7 @@ export function failingFirstLines(noun: string, findings: readonly ReportEntry[]
   const failing = findings.filter(({ classification }) => classification === 'enforceable');
   const reportOnly = findings.filter(({ classification }) => classification !== 'enforceable');
   return [
-    ...findingSectionLines(`${noun} failing findings`, failing),
+    ...prioritySectionLines(`${noun} failing findings`, failing),
     ...findingSectionLines(`${noun} report-only findings`, reportOnly),
   ];
 }

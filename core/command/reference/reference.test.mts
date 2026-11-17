@@ -88,6 +88,7 @@ describe('nitpicker explain', () => {
         'A function longer than the limit.',
         '',
         'Labels: maintainability',
+        'Order: a broad pattern rule: reports list its findings after those of targeted rules, before style',
         'Presets: TypeScript, JavaScript, Java, Kotlin and Python',
         'Analyzers: structure (TypeScript and JavaScript); java (Java); kotlin (Kotlin); python (Python)',
         'Why it is on: Long functions hide several jobs in one place; agents grow them instead of splitting them.',

@@ -29,6 +29,7 @@ import { renderSnapshotConsole } from '../diff/reporting/summary.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import {
   findingSectionLines,
+  prioritySectionLines,
   ruleFilterSection,
   toolErrorSectionLines,
 } from '../diff/reporting/console/text-sections.mts';
@@ -157,7 +158,7 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  lines.push(...findingSectionLines('Enforceable findings', enforceable));
+  lines.push(...prioritySectionLines('Enforceable findings', enforceable));
   lines.push(...findingSectionLines('Descriptive findings', descriptive));
   lines.push(...referenceLinesOf(report.findings, reference));
   lines.push(...toolErrorSectionLines(report.toolErrors));

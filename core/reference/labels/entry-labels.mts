@@ -8,6 +8,7 @@ import { textOf } from '../../../shared/values/readers.mts';
 type Entry = Readonly<Record<string, unknown>>;
 
 const TABLES = fileURLToPath(new URL('./tables/', import.meta.url));
+const BROAD_RULES = fileURLToPath(new URL('./broad-rules.json', import.meta.url));
 const FRAMEWORKS = FRAMEWORK_LABELS.map(([label]) => label);
 
 function tableFiles(root: string): string[] {
@@ -50,8 +51,14 @@ function ordered(labels: readonly string[]): string[] {
   return [...new Set(kinds), ...FRAMEWORKS.filter((label) => labels.includes(label))];
 }
 
+export function broadRuleIds(file: string = BROAD_RULES): Set<string> {
+  const ids: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  return new Set(Array.isArray(ids) ? ids.map(textOf) : []);
+}
+
 export function entryLabeler(): (entry: Entry) => Entry {
   const table = labelTable();
+  const broad = broadRuleIds();
   const upstream = upstreamLabelResolver();
   return (entry) => {
     const id = textOf(entry['id']);
@@ -60,6 +67,10 @@ export function entryLabeler(): (entry: Entry) => Entry {
     if (problems.length > 0) {
       throw new Error(`The rule reference has problems:\n${problems.join('\n')}`);
     }
-    return { ...entry, labels: ordered(labels ?? []) };
+    return {
+      ...entry,
+      labels: ordered(labels ?? []),
+      ...(broad.has(id) ? { tier: 'broad' } : {}),
+    };
   };
 }
