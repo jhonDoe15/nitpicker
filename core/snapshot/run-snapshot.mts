@@ -4,7 +4,7 @@ import {
 } from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
-import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
+import { resumedAnalyzerRun } from '../diff/cache/resume/snapshot-resume.mts';
 import { scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
@@ -83,7 +83,7 @@ function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunR
   return withoutOverlaps(
     withSharedUnusedDirectives(
       withPolicyFile(headPolicy, (headPolicyFile) =>
-        runAnalyzers({
+        resumedAnalyzerRun(execution['resume'], {
           analyzers,
           ...roots,
           headPolicyFile,

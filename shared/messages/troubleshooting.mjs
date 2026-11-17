@@ -26,6 +26,7 @@ export const TROUBLESHOOTING_ANCHORS = {
   cachePublishFails: 'cache-publish-fails',
   analyzerTimeout: 'an-analyzer-times-out',
   analyzerCrashed: 'an-analyzer-crashes',
+  runStopped: 'a-run-crashes-or-stops-partway',
   shardAggregationFails: 'shard-aggregation-fails',
   fixersFail: 'fixers-fail',
   windowsAndWsl: 'windows-and-wsl',
