@@ -229,7 +229,7 @@ is not on npm. Keep the tarball in your repository, so teammates and CI install 
 without access to the release:
 
 ```sh
-VERSION=0.1.0-rc.2
+VERSION=0.1.0-rc.3
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
