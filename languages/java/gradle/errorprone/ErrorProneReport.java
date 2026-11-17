@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.*;
 import java.util.stream.*;
+import java.util.zip.ZipFile;
 import javax.lang.model.element.*;
 import javax.tools.*;
 
@@ -34,6 +35,9 @@ public final class ErrorProneReport {
   private static final Pattern ADD_SUPPRESS_WARNINGS =
       Pattern.compile("(?m)^\\s*lombok\\.addSuppressWarnings\\s*=\\s*(\\w+)");
   private static final Pattern STOP_BUBBLING = Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
+  private static final String IMMUTABLE_CLASS = "com/google/errorprone/annotations/Immutable.class";
+  private static final Pattern IMMUTABLE_USE =
+      Pattern.compile("@(?:[\\w.]+\\.)?Immutable\\b|annotations\\.Immutable\\b");
   private static final Pattern CRASH = Pattern.compile("BugPattern: (\\w+)(?:[\\s\\S]*?Stack Trace:\\s*(.+))?");
 
   private static final int WORKERS = Math.max(1, Integer.getInteger("nitpicker.errorprone.workers", 1));
@@ -101,8 +105,11 @@ public final class ErrorProneReport {
   }
 
   static String pluginArgument(String checks, List<String> packages, boolean test, boolean lombokUnsuppressed,
-      List<String> projectLines) {
+      List<String> projectLines, boolean immutableInReach) {
     List<String> flags = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
+    if (!immutableInReach) {
+      flags.add("-Xep:Immutable:OFF");
+    }
     if (test) {
       flags.add("-XepCompilingTestOnlyCode");
     }
@@ -256,6 +263,7 @@ public final class ErrorProneReport {
     Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
+    boolean immutable = immutableInReach(javacOptions(head), sources);
     List<Job> jobs = new ArrayList<>();
     for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
       List<List<String>> slices = slices(group);
@@ -275,7 +283,7 @@ public final class ErrorProneReport {
         String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
             + (group == unsuppressed ? "-lombok" : "") + (slices.size() > 1 ? "-" + slice : "");
         options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-            group == unsuppressed, projectLines(head, patchDirectory)));
+            group == unsuppressed, projectLines(head, patchDirectory), immutable));
         jobs.add(new Job(argumentsFile, options, files, bytes(files)));
       }
     }
@@ -307,6 +315,43 @@ public final class ErrorProneReport {
       slices.add(current);
     }
     return slices;
+  }
+
+  /**
+   * Whether Error Prone's Immutable check can find anything: only when its annotation is on the class or module path,
+   * or the sources name it. The check walks every supertype of every class, which takes minutes on deep interface
+   * hierarchies, so it is turned off when it cannot match.
+   */
+  static boolean immutableInReach(List<String> options, List<String> sources) throws IOException {
+    for (String flag : List.of("-classpath", "--module-path")) {
+      int at = options.indexOf(flag) + 1;
+      for (String entry : at == 0 ? new String[0] : options.get(at).split(java.io.File.pathSeparator)) {
+        if (!entry.isEmpty() && holdsImmutable(Path.of(entry))) {
+          return true;
+        }
+      }
+    }
+    for (String source : sources) {
+      String text = new String(Files.readAllBytes(Path.of(source)), StandardCharsets.ISO_8859_1);
+      if (IMMUTABLE_USE.matcher(text).find()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean holdsImmutable(Path entry) {
+    if (Files.isDirectory(entry)) {
+      return Files.exists(entry.resolve(IMMUTABLE_CLASS));
+    }
+    if (!Files.isRegularFile(entry)) {
+      return false;
+    }
+    try (ZipFile jar = new ZipFile(entry.toFile())) {
+      return jar.getEntry(IMMUTABLE_CLASS) != null;
+    } catch (IOException e) {
+      return true;
+    }
   }
 
   private static long bytes(List<String> sources) throws IOException {
