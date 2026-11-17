@@ -1,5 +1,6 @@
 import { runGit } from '../../git/repository/command.mjs';
-import { createFindingsCache, runBaseWithCache } from '../../cache/findings-cache.mts';
+import { createFindingsCache } from '../../cache/findings-cache.mts';
+import { runBaseWithCache } from '../../cache/entries/run-with-cache.mts';
 import { cachedLine } from '../../execution/progress.mts';
 import {
   type AnalyzerRun,
@@ -11,6 +12,7 @@ import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { scopeToTouchedFiles } from './scope.mts';
 import { unlessSkipped } from '../snapshots/skips.mts';
 import type { RunSettings, SkipPlan, SnapshotRoots } from '../snapshots/run-types.mts';
+import type { Checkpoints } from '../../execution/tasks.mts';
 
 export type CachedRunRequest = {
   readonly settings: RunSettings;
@@ -21,7 +23,7 @@ export type CachedRunRequest = {
   readonly label: string;
   readonly analyzers: readonly unknown[];
   readonly policyRoot: string;
-  readonly run: (analyzers: readonly unknown[]) => AnalyzerRun;
+  readonly run: (analyzers: readonly unknown[], checkpoints?: Checkpoints) => AnalyzerRun;
 };
 
 type HeadContext = {
@@ -73,7 +75,7 @@ export function runCached({
 
 function runQuickHead(
   { settings, comparison, roots, layout }: HeadContext,
-  run: (analyzers: readonly unknown[]) => AnalyzerRun,
+  run: (analyzers: readonly unknown[], checkpoints?: Checkpoints) => AnalyzerRun,
 ): unknown {
   const analyzers = quickScoped(settings, layout, settings.analyzers);
   if (settings.quick === undefined || settings.cacheStore === undefined) {
@@ -97,7 +99,7 @@ function runQuickHead(
 
 export function runHeadAnalyzers(context: HeadContext, baselineMovesFile: unknown): unknown {
   const { settings, roots, headPolicyFile } = context;
-  return runQuickHead(context, (scoped) =>
+  return runQuickHead(context, (scoped, checkpoints) =>
     unlessSkipped(scoped, context.skipPlan, (analyzers) =>
       runAnalyzers({
         analyzers,
@@ -110,6 +112,7 @@ export function runHeadAnalyzers(context: HeadContext, baselineMovesFile: unknow
         baselineRoot: roots.baseProjectRoot,
         baselineMovesFile,
         mutationScope: fieldOf(settings.scope, 'paths'),
+        checkpoints,
         ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
       }),
     ),

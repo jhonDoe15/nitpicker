@@ -8,6 +8,10 @@ type Invocation = {
   readonly env?: NodeJS.ProcessEnv | undefined;
 };
 
+export type TaskCheckpoint = { readonly key: string; readonly file: string };
+
+export type Checkpoints = ReadonlyMap<string, TaskCheckpoint>;
+
 export type AnalyzerTask = {
   readonly name: string;
   readonly dependencies: readonly string[];
@@ -21,6 +25,7 @@ export type AnalyzerTask = {
   readonly reportedTools?: readonly string[] | undefined;
   readonly invocation: Invocation;
   readonly progress?: unknown;
+  readonly checkpoint?: TaskCheckpoint | undefined;
 };
 
 type Frame = { readonly task: AnalyzerTask; readonly exiting: boolean };
@@ -90,6 +95,13 @@ function validateOptionalTaskFields(task: unknown, name: string): void {
   const tolerated = fieldOf(task, 'toleratedDependencyErrors');
   if (tolerated !== undefined && !isStringList(tolerated, isNonEmptyString)) {
     throw new TypeError(`${name} toleratedDependencyErrors must be non-empty strings`);
+  }
+  const checkpoint = fieldOf(task, 'checkpoint');
+  if (
+    checkpoint !== undefined &&
+    !(isNonEmptyString(fieldOf(checkpoint, 'key')) && isNonEmptyString(fieldOf(checkpoint, 'file')))
+  ) {
+    throw new TypeError(`${name} checkpoint must name a key and a file`);
   }
 }
 

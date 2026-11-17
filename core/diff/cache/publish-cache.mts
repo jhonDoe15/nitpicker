@@ -5,7 +5,8 @@ import {
   removeSnapshotDependencies,
 } from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
+import { type FindingsCache, createFindingsCache } from './findings-cache.mts';
+import { isCacheable } from './entries/run-with-cache.mts';
 import type { CacheStore } from './cache-stores.mts';
 import { withComparisonKeys } from './keys/comparison-keys.mts';
 import { runGit } from '../git/repository/command.mjs';
