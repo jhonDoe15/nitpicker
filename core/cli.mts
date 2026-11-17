@@ -41,7 +41,6 @@ import { runMonorepo } from './projects/run/monorepo.mts';
 import { runScoped } from './projects/run/refusal.mts';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
-import { describeError } from '../shared/messages/error-chain.mjs';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
 import {
   type ComparisonCli,
@@ -63,6 +62,7 @@ import type {
 } from './cli-context.mts';
 import type { NitpickerConfig } from '../shared/values/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
+import { describeFailure } from '../shared/messages/crashes/internal-error.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
@@ -101,7 +101,7 @@ export function runCli(options: CliInput = {}): ExitCode {
   try {
     return runCommand(cli);
   } catch (error) {
-    const description = textOf(describeError(error)) || 'unknown error';
+    const description = describeFailure(error) || 'unknown error';
     cli.stderr.write(`nitpicker failed: ${description}\n`);
     if (wantsJson(cli.arguments_)) {
       cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);

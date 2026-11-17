@@ -8,7 +8,6 @@ import {
 } from '../tasks.mts';
 import { type Release, type Semaphore, createWeightedSemaphore } from '../capacity.mts';
 import { createProgressReporter, writeToDescriptor } from '../progress.mts';
-import { describeError } from '../../../../shared/messages/error-chain.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   type GraphResult,
@@ -20,6 +19,7 @@ import {
   skippedOutcome,
   summarizeOutcomes,
 } from './outcomes.mts';
+import { describeFailure } from '../../../../shared/messages/crashes/internal-error.mts';
 
 type Executor = (task: AnalyzerTask) => unknown;
 
@@ -42,7 +42,7 @@ type TaskRun = {
 
 type TimedRun = { readonly execute: Executor; readonly signal: AbortSignal | undefined };
 
-const errorText: (error: unknown) => string = describeError;
+const errorText: (error: unknown) => string = describeFailure;
 
 function isAborted(signal: AbortSignal | undefined): boolean {
   return signal?.aborted === true;

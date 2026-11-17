@@ -34,6 +34,7 @@ import {
   javaPolicyOf,
 } from './typed/java-values.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type Budget = TimeBudget;
 type JavaSnapshotOptions = {
@@ -184,11 +185,14 @@ function failureRule(error: unknown, projectRoot: string, buildTool: unknown): s
 function failureMessage(error: unknown, rule: string, preset: string): string {
   if (rule === INTERNAL_ERROR_RULE) {
     const reason = error instanceof Error ? error.message : textOf(error);
-    return textOf(
-      withTroubleshooting(
-        `Internal error in the ${preset} analyzer: ${reason}`,
-        TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    return withInternalFrames(
+      textOf(
+        withTroubleshooting(
+          `Internal error in the ${preset} analyzer: ${reason}`,
+          TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+        ),
       ),
+      error,
     );
   }
   const anchor =
