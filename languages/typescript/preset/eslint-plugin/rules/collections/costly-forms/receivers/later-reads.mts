@@ -15,7 +15,7 @@ const LOOPS = new Set<string>([
   AST_NODE_TYPES.DoWhileStatement,
 ]);
 
-function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
+export function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
   return ancestorsOf(node).find(isFunction);
 }
 
