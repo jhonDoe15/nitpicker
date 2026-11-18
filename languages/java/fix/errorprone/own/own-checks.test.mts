@@ -22,17 +22,22 @@ const NAMES = OWN_CHECKS.map(({ check }) => check);
 
 describe('the own fix checks', () => {
   it('have one Java class each, registered as Error Prone services', () => {
-    const classes = readdirSync(SOURCES)
-      .filter(
-        (name) =>
-          name.endsWith('.java') &&
-          readFileSync(path.join(SOURCES, name), 'utf8').includes('@BugPattern('),
-      )
-      .map((name) => name.replace(/\.java$/u, ''));
+    const sources = readdirSync(SOURCES)
+      .filter((name) => name.endsWith('.java'))
+      .map((name) => ({
+        className: name.replace(/\.java$/u, ''),
+        text: readFileSync(path.join(SOURCES, name), 'utf8'),
+      }))
+      .filter(({ text }) => text.includes('@BugPattern('));
+    const checks = sources.map(
+      ({ className, text }) => /@BugPattern\(\s*name = "(\w+)"/u.exec(text)?.[1] ?? className,
+    );
     const services = readFileSync(SERVICES, 'utf8').split('\n').filter(Boolean);
 
-    expect(classes.toSorted()).toEqual(NAMES.toSorted());
-    expect(services.toSorted()).toEqual(NAMES.map((name) => `nitpicker.fix.${name}`).toSorted());
+    expect(checks.toSorted()).toEqual(NAMES.toSorted());
+    expect(services.toSorted()).toEqual(
+      sources.map(({ className }) => `nitpicker.fix.${className}`).toSorted(),
+    );
   });
 
   it('never reuse the name of a check of Error Prone', () => {
