@@ -8,6 +8,7 @@ import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from '../reporting/java-reports.mts';
 import { readNotAffected, readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
+import { failedModuleFindings } from '../../maven/reactor/failed-modules.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
@@ -175,7 +176,11 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
   });
   const design = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
   return {
-    findings: [...read.findings, ...design],
+    findings: [
+      ...read.findings,
+      ...design,
+      ...failedModuleFindings(run.failedModules, projectRoot),
+    ],
     imports: read.imports,
     testsFailures: run.testsFailures,
     notAffected: run.notAffected,

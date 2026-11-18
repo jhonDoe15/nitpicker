@@ -140,6 +140,7 @@ export function buildAndTest({
     timeoutMs,
     args: [
       '--quiet',
+      '--fail-at-end',
       ...selection,
       ...goals,
       ...textsOf(callUntyped(dependencyListArguments, work)),

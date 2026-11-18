@@ -1,5 +1,6 @@
 import type { JavaEnvironment, JavaPolicy } from '../../adapters/typed/java-values.mts';
 import type { Classpaths, MavenModule, MavenScope } from './maven-values.mts';
+import type { FailedModule } from '../reactor/failed-modules.mts';
 
 export type MavenRun = {
   readonly projectRoot: string;
@@ -52,6 +53,7 @@ export type MavenPresetRun = {
   readonly testsFailures: unknown[];
   readonly formatAdvice: unknown;
   readonly notAffected: string[];
+  readonly failedModules: readonly FailedModule[];
 };
 export type Prepared = {
   readonly modules: MavenModule[];
@@ -62,6 +64,7 @@ export type Prepared = {
   readonly analyzed: AnalyzedModule[];
   readonly tools: unknown;
   readonly timedOut: unknown[];
+  readonly failed: readonly FailedModule[];
 };
 export type ReadModules = {
   readonly modules: MavenModule[];
