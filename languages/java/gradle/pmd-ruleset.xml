@@ -95,6 +95,22 @@
                 value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout"/>
     </properties>
   </rule>
+  <rule ref="category/java/bestpractices.xml/CheckResultSet">
+    <properties>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+self::MethodCall[@MethodName = 'next'][parent::DoStatement]
+  [let $name := string(*[1][self::VariableAccess]/@Name)
+   return $name != '' and exists(../preceding-sibling::IfStatement
+     [*[1][self::UnaryExpression[@Operator = '!']
+           [MethodCall[@MethodName = 'next'][*[1][self::VariableAccess][@Name = $name]]]]]
+     [*[2][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement or self::BreakStatement
+           or self::Block/*[last()][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement
+                                    or self::BreakStatement]]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/bestpractices.xml/GuardLogStatement"
         message="Pass values as placeholders (LOG.debug(&quot;user '{'}&quot;, user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed.">
     <properties>
