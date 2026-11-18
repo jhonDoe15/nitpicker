@@ -1350,11 +1350,12 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `{ signal }` on, test `!signal.aborted` in the loop condition.
 - `nitpicker/no-use-after-await-when-disposed` (production files): an `async` method (or async arrow field) of a class whose
   `dispose`, `close`, `destroy` or `ngOnDestroy` sets a flag (`this._isDisposed = true`, `this.closed = true`,
-  `this.destroyed = true`) that fires an event (`this._onDidStart.fire()`, `this.emitter.emit(...)`), registers a
-  disposable (`this._register(...)`) or starts a timer or process (`setTimeout`, `setInterval`, `spawn`, `fork`,
-  `createModel`, `createTerminal`) after an `await` on the same path, with no read of the flag (or of a name with
+  `this.destroyed = true`) that fires an event (`this._onDidStart.fire()`, `this.emitter.emit(...)`) or starts a timer or
+  process (`setTimeout`, `setInterval`, `spawn`, `fork`, `createModel`, `createTerminal`, also as `window.setTimeout`,
+  `cp.spawn` or `this.modelService.createModel`) after an `await` on the same path, with no read of the flag (or of a name with
   `dispos`, `destroy`, `closed`, `cancel`, `abort` or `unmount` in it, such as `token.isCancellationRequested`) between
-  that `await` and the use. Plain field writes after the `await`, calls inside nested callbacks, methods only called from
+  that `await` and the use. Plain field writes after the `await`, `_register` calls, an awaited `setTimeout` (the promise
+  form), calls inside nested callbacks, methods only called from
   the constructor and classes whose teardown sets no flag are not reported. Allowed form: `if (this._isDisposed) return;`
   after the `await`, before the state change.
 - `nitpicker/no-falsy-error-check` (production files): a caught or rejected value tested by truthiness, so a thrown

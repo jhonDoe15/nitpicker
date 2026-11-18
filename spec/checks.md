@@ -193,6 +193,12 @@ supply while the calling function has an `AbortSignal` in scope (types needed), 
 reads that signal (without types for a parameter named `signal`). Passing `{ signal }` on, testing `signal.aborted`,
 awaiting a reader of a response fetched with the signal and listening for the signal's `abort` event are allowed.
 
+Use after await on a disposed object: `nitpicker/no-use-after-await-when-disposed` (production source, in `eslint-lint`)
+reports an async method of a class whose teardown method sets a disposed, closed or destroyed flag when the method fires an
+event or starts a timer or process (also `cp.spawn`, `window.setTimeout`, `modelService.createModel`; an awaited
+`setTimeout` is only a sleep) after an `await` without reading that flag (or a cancellation check) between the `await`
+and the use. `if (this._isDisposed) return;` after the `await` is allowed.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited

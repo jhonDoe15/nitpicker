@@ -178,6 +178,7 @@ function productionGuardRules({
     'nitpicker/no-unindexed-foreign-key': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-abort-signal-forwarding': 'error',
+    'nitpicker/no-use-after-await-when-disposed': 'error',
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',
     'nitpicker/time-unit-mismatch': 'error',
