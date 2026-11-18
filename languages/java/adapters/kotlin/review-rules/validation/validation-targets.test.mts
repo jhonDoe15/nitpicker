@@ -4,7 +4,7 @@ import type { ParameterFact } from '../test-support/facts.mts';
 import { routed, run, summary } from '../test-support/facts.mts';
 import type { Loose } from '../test-support/loose-facts.mts';
 import { file, klass, parameter, recordedFiles, testFile } from '../test-support/loose-facts.mts';
-import { VALIDATION_TARGET_RULE, validationTargetFindings } from './validation-targets.mjs';
+import { VALIDATION_TARGET_RULE, validationTargetFindings } from './validation-targets.mts';
 
 const FACTS = path.resolve(import.meta.dirname, '../../../fixtures/kotlin-spring-facts.json');
 const CONSTRAINTS = { path: 'jakarta.validation.constraints.NotBlank' };

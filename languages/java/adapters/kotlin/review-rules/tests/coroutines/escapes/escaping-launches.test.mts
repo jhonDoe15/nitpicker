@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
-import { ESCAPING_RULE } from './escaping-launches.mjs';
+import { ESCAPING_RULE } from './escaping-launches.mts';
 
 function escapes(text: string): string[] {
   return rulesOf(text, ESCAPING_RULE);

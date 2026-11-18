@@ -15,16 +15,20 @@ import {
   type FileFacts,
   type WaitFact,
 } from '../test-support/facts.mts';
-import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mjs';
+import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mts';
 import {
   NEGATIVE_WAIT_RULE,
   testWaitFindings,
   waitMessage as untypedWaitMessage,
-} from './test-waits.mjs';
+} from './test-waits.mts';
 import { fn, productionTypeResolver, wait } from './wait-facts.mts';
 
-const waitMessage: (found: { rule: string; kind: string }, awaitility?: boolean) => string =
-  untypedWaitMessage;
+function waitMessage(
+  found: { rule: string; kind: string },
+  options = { awaitility: false },
+): string {
+  return untypedWaitMessage({ ...found, exemptable: false }, options);
+}
 
 const CLASS_FRAME = {
   k: 'class',
@@ -448,9 +452,16 @@ describe('fixed sleeps in Kotlin tests: parity details', () => {
     }
 
     expect([sleep, timed].map((kind) => names(waitMessage(kind)))).toEqual([false, false]);
-    expect([sleep, timed].map((kind) => names(waitMessage(kind, true)))).toEqual([true, true]);
+    expect([sleep, timed].map((kind) => names(waitMessage(kind, { awaitility: true })))).toEqual([
+      true,
+      true,
+    ]);
     expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0]?.message).toBe(
-      routed(waitMessage(sleep, true), FIXED_SLEEP_RULE, 'src/test/kotlin/demo/SampleTest.kt'),
+      routed(
+        waitMessage(sleep, { awaitility: true }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
     );
   });
 });

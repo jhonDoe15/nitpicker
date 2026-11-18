@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { timerNotStoppedOnClose as untypedTimerNotStoppedOnClose } from './timer-fields.mjs';
+import { timerNotStoppedOnClose as untypedTimerNotStoppedOnClose } from './timer-fields.mts';
 
 const timerNotStoppedOnClose: Check<Ruled> = untypedTimerNotStoppedOnClose;
 

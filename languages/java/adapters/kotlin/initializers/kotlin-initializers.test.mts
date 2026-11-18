@@ -56,6 +56,7 @@ function entry(
     complexity: 1,
     inline: false,
     initializer: false,
+    lambda: false,
     ...extra,
   };
 }
@@ -195,7 +196,7 @@ describe('identity of init blocks', () => {
       ({ rule, identity, ratchet }) => [
         rule,
         identity.replace(/source:\w+$/, 'source:H'),
-        ratchet.key,
+        ratchet?.key,
       ],
     );
   }
@@ -229,7 +230,7 @@ describe('identity of init blocks', () => {
       findings.map(({ symbol, allowedForm, message }) => [
         symbol,
         allowedForm,
-        message.includes(allowedForm),
+        allowedForm !== undefined && message.includes(allowedForm),
         fieldAt(
           parseFinding(findings.find((finding) => finding.symbol === symbol)),
           'exception',

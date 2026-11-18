@@ -9,7 +9,7 @@ import {
   MERGED_LISTS,
   mergeForbiddenMethods,
   writeDetektLists,
-} from './detekt-lists.mjs';
+} from './detekt-lists.mts';
 
 const temporaryRoots: string[] = [];
 

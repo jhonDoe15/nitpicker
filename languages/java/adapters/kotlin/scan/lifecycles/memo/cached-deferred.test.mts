@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { cachedDeferredKeepsFailure as untypedCachedDeferredKeepsFailure } from './cached-deferred.mjs';
+import { cachedDeferredKeepsFailure as untypedCachedDeferredKeepsFailure } from './cached-deferred.mts';
 
 const cachedDeferredKeepsFailure: Check<Ruled> = untypedCachedDeferredKeepsFailure;
 

@@ -8,7 +8,7 @@ import { compareFindings as untypedCompare } from '../../../../../core/diff/comp
 import {
   parseCompilerWarnings as untypedParseCompilerWarnings,
   readCompilerFindings as untypedReadCompilerFindings,
-} from './kotlin-compiler.mjs';
+} from './kotlin-compiler.mts';
 
 const parseCompilerWarnings: (output: string) => { rule: string; line: number }[] =
   untypedParseCompilerWarnings;

@@ -3,7 +3,7 @@ import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture
 import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 import { routeOf, run, type RuleFinding } from '../test-support/facts.mts';
 import { JUNIT_HEAD } from '../test-support/sources.mts';
-import { HONESTY_RULES, testHonestyFindings } from './test-honesty.mjs';
+import { HONESTY_RULES, testHonestyFindings } from './test-honesty.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

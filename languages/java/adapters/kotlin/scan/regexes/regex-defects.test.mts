@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { regexDefects as untypedRegexDefects } from './regex-defects.mjs';
+import { regexDefects as untypedRegexDefects } from './regex-defects.mts';
 
 const regexDefects: Check<Subjected> = untypedRegexDefects;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
-import { WEAK_RULE } from './weak-reports.mjs';
+import { WEAK_RULE } from './weak-reports.mts';
 
 const FIRST_BODY_LINE = 12;
 const MARK = ' // weak';

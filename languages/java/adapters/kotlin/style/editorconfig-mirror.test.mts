@@ -6,7 +6,7 @@ import {
   isolatedWorkspace as untypedIsolatedWorkspace,
   mirroredWorkspace as untypedMirroredWorkspace,
   projectEditorconfigs as untypedProjectEditorconfigs,
-} from './editorconfig-mirror.mjs';
+} from './editorconfig-mirror.mts';
 
 type Editorconfig = { path: string; text: string };
 type Workspace = { offset: string; editorconfigs: Editorconfig[] };

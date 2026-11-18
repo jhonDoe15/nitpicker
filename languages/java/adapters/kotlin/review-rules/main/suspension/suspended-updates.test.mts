@@ -3,7 +3,7 @@ import type { FileFacts, PropertyFact } from '../../test-support/facts.mts';
 import { run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { file, fn, klass, parameter, property } from '../../test-support/loose-facts.mts';
-import { SUSPENDED_UPDATE_RULE, suspendedUpdateFindings } from './suspended-updates.mjs';
+import { SUSPENDED_UPDATE_RULE, suspendedUpdateFindings } from './suspended-updates.mts';
 
 const suspendFun = (name: string, owner = 'Ledger', overrides: Loose = {}) =>
   fn(name, { owner, modifiers: ['suspend'], ...overrides });

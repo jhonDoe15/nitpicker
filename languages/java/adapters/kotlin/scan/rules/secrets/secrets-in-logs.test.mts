@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { secretsInLogs as untypedSecretsInLogs } from './secrets-in-logs.mjs';
+import { secretsInLogs as untypedSecretsInLogs } from './secrets-in-logs.mts';
 
 const secretsInLogs: Check<Subjected> = untypedSecretsInLogs;
 

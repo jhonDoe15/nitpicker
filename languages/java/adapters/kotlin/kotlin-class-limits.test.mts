@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { readKotlinClassLimitFindings as untypedReadKotlinClassLimitFindings } from './kotlin-class-limits.mjs';
-import type { KotlinFinding } from './test-support/kotlin-metrics-views.mts';
+import { readKotlinClassLimitFindings } from './kotlin-class-limits.mts';
 
 type TypeEntry = {
   file: string;
@@ -19,14 +18,6 @@ type ClassMetrics = {
 };
 
 const exceptionHint: (rule: string, file: string) => string = untypedExceptionHint;
-const readKotlinClassLimitFindings: (
-  metrics: ClassMetrics,
-  options?: {
-    thresholds?: Record<string, number>;
-    exceptions?: { rule: string; paths: string[] }[];
-    modulePath?: string;
-  },
-) => KotlinFinding[] = untypedReadKotlinClassLimitFindings;
 
 const file = 'src/main/kotlin/demo/Shapes.kt';
 const type = (name: string, values: Partial<TypeEntry> = {}): TypeEntry => ({
@@ -107,7 +98,7 @@ describe('readKotlinClassLimitFindings', () => {
       metrics([type('Small', { methods: 21 }), type('Large', { methods: 30 })]),
     );
 
-    expect(findings.map(({ ratchet }) => ratchet.value)).toEqual([30, 21]);
+    expect(findings.map(({ ratchet }) => ratchet?.value)).toEqual([30, 21]);
   });
 
   it('drops a class under an exception of its rule and names the module path in the route', () => {

@@ -4,7 +4,7 @@ import { foundWrappedLines } from '../typed/scan-found.mts';
 import {
   httpWithoutTimeout as untypedHttpWithoutTimeout,
   unsafeDeserialization as untypedUnsafeDeserialization,
-} from './clients.mjs';
+} from './clients.mts';
 
 const httpWithoutTimeout: Check<Ruled> = untypedHttpWithoutTimeout;
 const unsafeDeserialization: Check<Ruled> = untypedUnsafeDeserialization;
