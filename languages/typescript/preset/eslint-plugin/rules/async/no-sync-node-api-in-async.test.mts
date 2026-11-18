@@ -18,8 +18,8 @@ const blocking = (api: string, module = 'fs', context = 'an async function', pre
     data: { api, context, alternative: `${prefix}${alternativeOf(module, api)}` },
   },
 ];
-const suggested = (api: string, output: string, messageId = 'awaitTwin') => [
-  { ...blocking(api)[0], suggestions: [{ messageId, output }] },
+const suggested = (api: string, output: string, messageId = 'awaitTwin', module = 'fs') => [
+  { ...blocking(api, module)[0], suggestions: [{ messageId, output }] },
 ];
 const inCallback = (api: string) => blocking(api, 'fs', 'an async function', CALLBACK_ADVICE);
 const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
@@ -72,7 +72,12 @@ const blockers: CaseRow[] = [
   ],
   [
     'import fs from "fs-extra"; export async function copy(a, b) { fs.copySync(a, b); }',
-    blocking('copySync', 'fs-extra'),
+    suggested(
+      'copySync',
+      'import fs from "fs-extra"; export async function copy(a, b) { await fs.copy(a, b); }',
+      'awaitTwin',
+      'fs-extra',
+    ),
   ],
   [
     'import { execSync } from "child_process"; export async function build() { return execSync("make"); }',
@@ -208,7 +213,20 @@ const blockers: CaseRow[] = [
   ],
   [
     'import fs from "fs-extra"; export async function has(p) { return fs.pathExistsSync(p) || fs.existsSync(p); }',
-    [...blocking('pathExistsSync', 'fs-extra'), ...blocking('existsSync', 'fs-extra')],
+    [
+      ...suggested(
+        'pathExistsSync',
+        'import fs from "fs-extra"; export async function has(p) { return await fs.pathExists(p) || fs.existsSync(p); }',
+        'awaitTwin',
+        'fs-extra',
+      ),
+      ...suggested(
+        'existsSync',
+        'import fs from "fs-extra"; export async function has(p) { return fs.pathExistsSync(p) || await fs.pathExists(p); }',
+        'awaitTwin',
+        'fs-extra',
+      ),
+    ],
   ],
   [
     'import { hkdfSync } from "node:crypto"; export async function derive(k) { return hkdfSync("sha256", k, "", "", 32); }',
