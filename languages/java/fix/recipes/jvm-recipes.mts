@@ -23,6 +23,7 @@ import { commentedCodeRecipe } from './kotlin/markers/commented-code.mts';
 import { mayBeConstRecipe, mayBeConstReviewRecipe } from './kotlin/modifiers/may-be-const.mts';
 import { modifierOrderRecipe } from './kotlin/modifiers/modifier-order.mts';
 import { optionalAbstractRecipe } from './kotlin/modifiers/optional-abstract.mts';
+import { sortForExtremeRecipe } from './kotlin/performance/collections/sort-for-extreme.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
 import {
@@ -62,6 +63,7 @@ export const JVM_RECIPES = defineRecipes([
   explicitGcRecipe,
   modifierOrderRecipe,
   optionalAbstractRecipe,
+  sortForExtremeRecipe,
   focusedTestRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
