@@ -40,9 +40,7 @@ function isClosureMembership(node: TSESTree.Node, rows: ReadonlySet<string>): bo
   }
   const method = memberName(callee);
   const root = rootName(callee.object);
-  return (
-    method === MEMBERSHIP_OWNED || (method === MEMBERSHIP_ANY && !rows.has(root ?? ''))
-  );
+  return method === MEMBERSHIP_OWNED || (method === MEMBERSHIP_ANY && !rows.has(root ?? ''));
 }
 
 function isLengthRead(node: TSESTree.Node): boolean {
