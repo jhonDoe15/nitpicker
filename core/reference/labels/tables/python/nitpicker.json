@@ -7,6 +7,7 @@
   "python-rules/blind-suppress": ["reliability"],
   "python-rules/blocking-helper-in-async": ["performance", "async"],
   "python-rules/boolean-flag-parameter": ["maintainability"],
+  "python-rules/cache-write-in-transaction": ["reliability", "persistence"],
   "python-rules/cached-rejection": ["bug", "async"],
   "python-rules/cancellation-not-propagated": ["reliability", "async"],
   "python-rules/catch-log-without-exception": ["reliability"],

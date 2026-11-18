@@ -140,6 +140,8 @@ Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
+`cache-write-in-transaction` (a Django or Redis cache write, or a dict filled with a row written in the block, inside
+`transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -288,6 +290,12 @@ Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `esl
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
 item. Only proven cases are reported: a collection of unknown origin is not.
+
+Cache writes in transactions: `nitpicker/no-cache-write-in-transaction` (production source, in `eslint-lint`) reports a
+Redis, `cache-manager`, `keyv` or `node-cache` write, or a `Map` filled with a row or id written in the same callback,
+inside a Prisma `$transaction`, TypeORM `transaction`, Kysely `transaction().execute` or begin/commit scope. The
+allowed form is writing the cache after the transaction call returns (or from a TypeORM `afterTransactionCommit`
+subscriber); the finding names it.
 
 Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
 `nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,
