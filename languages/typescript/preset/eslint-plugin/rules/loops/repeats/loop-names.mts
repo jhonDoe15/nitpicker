@@ -47,17 +47,33 @@ export function bodyDeclaredNames(loop: LoopNode, visitorKeys: VisitorKeys): Set
   );
 }
 
+function isSelfStep(node: TSESTree.Node, visitorKeys: VisitorKeys): boolean {
+  if (node.type === AST_NODE_TYPES.UpdateExpression) {
+    return true;
+  }
+  if (node.type !== AST_NODE_TYPES.AssignmentExpression) {
+    return false;
+  }
+  const own = patternNames(node.left);
+  return (
+    node.operator !== '=' ||
+    (node.right.type === AST_NODE_TYPES.BinaryExpression &&
+      own.some((name) => referencedNames(node.right, visitorKeys).has(name)))
+  );
+}
+
 function updatedNames(loop: LoopNode, visitorKeys: VisitorKeys): string[] {
   const update = 'update' in loop ? loop.update : undefined;
-  if (update === null || update === undefined) {
-    return [];
-  }
-  return descendants(update, visitorKeys, isFunction).flatMap((node) => {
-    if (node.type === AST_NODE_TYPES.UpdateExpression) {
-      return patternNames(node.argument);
-    }
-    return node.type === AST_NODE_TYPES.AssignmentExpression ? patternNames(node.left) : [];
-  });
+  const roots = update === null || update === undefined ? [loop.body] : [loop.body, update];
+  return roots
+    .flatMap((root) => descendants(root, visitorKeys, isFunction))
+    .filter((node) => isSelfStep(node, visitorKeys))
+    .flatMap((node) => {
+      if (node.type === AST_NODE_TYPES.UpdateExpression) {
+        return patternNames(node.argument);
+      }
+      return node.type === AST_NODE_TYPES.AssignmentExpression ? patternNames(node.left) : [];
+    });
 }
 
 export function itemNames(found: EnclosingLoop, visitorKeys: VisitorKeys): Set<string> {

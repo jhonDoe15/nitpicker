@@ -9,6 +9,7 @@ import { passesChunk } from './chunked-loops.mts';
 import { isPushedForConcurrency } from './concurrent-batches.mts';
 import { enclosingLoop, isRetryAttempt, type EnclosingLoop } from './loop-shapes.mts';
 import { isPagingCall } from './paging-calls.mts';
+import { isDrainCall } from './repeats/drain-loops.mts';
 import { IO_IN_LOOP_MESSAGES } from './advice/messages.mts';
 import { adviceOf, type Advice } from './advice/query-advice.mts';
 
@@ -33,7 +34,9 @@ function messageIdOf(effect: Effect, concurrent: boolean, advice: Advice): Messa
 function isLoopCall(node: Call, found: EnclosingLoop, context: Context): boolean {
   const { visitorKeys } = context.sourceCode;
   return !(
-    isRetryAttempt(node, found.loop, visitorKeys) || isPagingCall(node, found.loop, visitorKeys)
+    isRetryAttempt(node, found.loop, visitorKeys) ||
+    isPagingCall(node, found.loop, visitorKeys) ||
+    isDrainCall(node, found.loop, context)
   );
 }
 

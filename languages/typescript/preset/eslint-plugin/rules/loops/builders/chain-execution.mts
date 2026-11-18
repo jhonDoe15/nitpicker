@@ -67,6 +67,12 @@ export function outerCalls(call: Call): Call[] {
     );
 }
 
+export function chainArguments(call: Call): TSESTree.Node[] {
+  return [call, ...innerCalls(call), ...outerCalls(call)].flatMap((each) =>
+    each.type === AST_NODE_TYPES.CallExpression ? each.arguments : [],
+  );
+}
+
 function isExecutingStep(link: TSESTree.Node): boolean {
   const method =
     link.type === AST_NODE_TYPES.MemberExpression && !link.computed
