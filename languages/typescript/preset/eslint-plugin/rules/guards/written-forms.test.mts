@@ -201,6 +201,9 @@ tester.run('no-module-level-mutable-state through aliases and Reflect', noModule
       filename: adapter,
       code: 'const counters = {}; export function read(k) { return Reflect.get(counters, k); }',
     },
+    { filename: adapter, code: 'export function f(x) { return constructor.assign(x); }' },
+    { filename: adapter, code: 'export function f(x) { return toString.set(x); }' },
+    { filename: adapter, code: 'export function f(x) { return hasOwnProperty.has(x); }' },
   ],
   invalid: [
     {

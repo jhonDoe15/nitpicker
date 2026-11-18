@@ -80,8 +80,20 @@ tester.run('no-dual-write with types', rule, {
     run(
       `const row = await prisma.order.findUnique({ where: { id } }); if (!row) { return; } ${relaySend} ${mark}`,
     ),
+    run(
+      `const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { await producer.send({ topic: 'o', messages: [row.id] }); await prisma.$executeRaw\`update orders set sent = true where id = \${row.id}\`; }`,
+    ),
+    run(
+      `const rows = await prisma.order.findMany({ where: { id } }); await Promise.all(rows.map(async () => { ${send} }));`,
+    ),
   ],
   invalid: [
+    {
+      ...run(
+        `const rows = await prisma.order.findMany({ where: { id } }); rows.forEach(async () => { ${send} await prisma.order.update({ where: { id }, data: {} }); });`,
+      ),
+      errors: [{ messageId: 'dualWrite' }],
+    },
     {
       ...run(`await prisma.order.create({ data: { id } }); ${send}`),
       errors: [

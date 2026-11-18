@@ -31,6 +31,8 @@ tester.run('release-listeners-on-close', rule, {
     inClass('start(signal) { this.socket.addEventListener("x", this.h, { signal }); } close() {}'),
     inClass('start() { const socket = open(); socket.on("data", this.onData); } close() {}'),
     inClass(LISTEN),
+    inClass('start() { this.socket.on(); } close() {}'),
+    inClass('start() { this.socket.addEventListener(); } close() {}'),
     inClass('constructor() { this.socket.on("data", this.onData); } close() {}'),
     factory('const child = spawn(); child.on("error", fail); function stop() {} return { stop };'),
     inClass(

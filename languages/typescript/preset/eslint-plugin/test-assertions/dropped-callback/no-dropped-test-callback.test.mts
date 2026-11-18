@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { Linter } from 'eslint';
+import { parser as typescriptParser } from 'typescript-eslint';
+import { afterAll, describe, expect, it } from 'vitest';
+import { ruleModule, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-dropped-test-callback.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-dropped-callback-')));
@@ -110,4 +112,25 @@ tester.run('no-dropped-test-callback', rule, {
     typed('run((context) => { hasSessions(1); });', 1),
     typed('function check() {\n  hasSessions(1);\n  hasSessions(2);\n}', 2),
   ],
+});
+
+describe('no-dropped-test-callback with a program but no node map', () => {
+  it('declines instead of crashing', () => {
+    const linter = new Linter({ configType: 'flat' });
+    const parser = {
+      parseForESLint: (code: string) => ({
+        ...typescriptParser.parseForESLint(code),
+        services: { program: {}, esTreeNodeToTSNodeMap: undefined },
+      }),
+    };
+    const messages = linter.verify('hasSessions(1);', [
+      {
+        plugins: { nitpicker: { rules: { 'no-dropped-test-callback': ruleModule(rule) } } },
+        languageOptions: { parser },
+        rules: { 'nitpicker/no-dropped-test-callback': 'error' },
+      },
+    ]);
+
+    expect(messages).toEqual([]);
+  });
 });
