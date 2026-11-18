@@ -117,7 +117,13 @@ similar), chunk calls (the argument is the loop element and itself a collection,
 list created inside each iteration does not count), writes flushed in steps (`persist`, `merge`,
 `save`, `remove`, `flush` and `clear` in a loop that calls `flush()` or `clear()` on the
 `EntityManager`, a Hibernate session or a repository under a modulo test such as
-`if (++count % 50 == 0)`), `Optional` callbacks and file calls. A loop the rule misjudges (a
+`if (++count % 50 == 0)`), `Optional` callbacks and file calls. I/O that a callee reaches only inside
+once-per-class initialisation is not per item: a static field tested for `null` or a flag and
+assigned in the same branch (plain, double-checked or `synchronized`), a lambda given to
+`computeIfAbsent` on a static map with a literal or constant key (`Model.class`), and static
+initialisers, including the holder-class idiom. I/O after the memoised branch, on the loop element
+or in a memo keyed by the element (`cache.computeIfAbsent(item.id(), this::load)`) is still reported.
+In Kotlin, `by lazy` on a companion or top-level property is such an initialiser. A loop the rule misjudges (a
 count-then-page loop, a cursor held in an object or an array) is not understood: put it in
 `exceptions` for `effects/IoCallInLoop` with the reason.
 Spring Data getters are not reads, but derived queries are (`getFirstByStatus`,
