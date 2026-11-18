@@ -174,6 +174,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
   to create or empty a file use `writeFileSync(path, '')`, and close a descriptor given to `spawn` as stdio in the parent
   (`nitpicker/no-unclosed-file-descriptor`).
+- Node streams are chained with `pipeline(a, b, c)` from `node:stream/promises`, not `a.pipe(b).pipe(c)`, because `pipe`
+  forwards no errors (`nitpicker/no-pipe-dropping-errors`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

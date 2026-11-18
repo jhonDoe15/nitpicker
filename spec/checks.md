@@ -394,6 +394,13 @@ Unclosed file descriptors: `nitpicker/no-unclosed-file-descriptor` (production s
 given to `spawn` as stdio still has to be closed by the parent. `await using`, a descriptor that is returned or stored, a
 module-level descriptor and one used by a `process.stdout.write` or `process.stderr.write` override are allowed.
 
+Pipe chains that drop errors: `nitpicker/no-pipe-dropping-errors` (production source, in `eslint-lint`) reports a Node stream
+(recognized from `fs`, `zlib`, `crypto` and `stream` factories and classes, `.createReadStream()` and `.stream()` calls) chained
+with `.pipe()` where the result is used or piped again, or where a lone `a.pipe(b);` is followed by a `'finish'`, `'end'` or
+`'close'` listener on `b`, and the source or a middle stream has no `'error'` listener and is not passed to `pipeline` or
+`finished`. `pipeline(...)`, an error listener on each stream before the last, RxJS `pipe` and a lone `a.pipe(b);` statement
+nobody waits on are allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

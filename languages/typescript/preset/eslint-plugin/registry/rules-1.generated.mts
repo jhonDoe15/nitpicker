@@ -70,6 +70,7 @@ import { rule as ruleNoParameterMutation } from '../rules/signatures/no-paramete
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-strin
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
-import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -173,6 +173,7 @@ export const partRules = {
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
-  'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
 };
