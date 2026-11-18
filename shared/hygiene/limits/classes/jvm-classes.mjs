@@ -1,3 +1,4 @@
+import { isEnumField } from '../scanning/enum-names.mjs';
 import { fieldFacts } from './field-facts.mjs';
 import { closingIndex, lineAt, splitTopLevel, topLevelText } from '../scanning/scan.mjs';
 import {
@@ -84,7 +85,7 @@ function isBoundedColumn(field, column) {
   return !readOnly && !lob && !column.named.has('columnDefinition') && TEXT_TYPE.test(field.type);
 }
 
-function fieldFactsOf(entity, field) {
+function fieldFactsOf(entity, field, enums) {
   const column = field.annotations.find(({ name }) => name === 'Column')?.args;
   const length = column?.named.get('length');
   return fieldFacts({
@@ -92,15 +93,16 @@ function fieldFactsOf(entity, field) {
     field,
     table: tableOf(entity),
     style: 'jvm',
+    enumerated: isEnumField(field, enums),
     stored: entity.annotations.some(({ name }) => STORED.has(name)),
     columnName: column?.named.get('name'),
     width: typeof length === 'number' && isBoundedColumn(field, column) ? length : undefined,
   });
 }
 
-export function jvmFacts(classes) {
+export function jvmFacts(classes, enums = new Set()) {
   const byName = new Map(classes.map((entity) => [entity.name, entity]));
   return classes.flatMap((entity) =>
-    fieldsWithAncestors(entity, byName).flatMap((field) => fieldFactsOf(entity, field)),
+    fieldsWithAncestors(entity, byName).flatMap((field) => fieldFactsOf(entity, field, enums)),
   );
 }
