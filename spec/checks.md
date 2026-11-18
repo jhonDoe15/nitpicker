@@ -404,6 +404,7 @@ Empty every signals: `nitpicker/no-empty-every-signal` (production source, in `e
 `all`, `every` or `each` name or is the test of an `if` or `?:` whose branch stops, finishes, cancels, deletes, removes or
 sends, and nothing in the function reads `xs.length`, `xs[0]`, `xs.some`, `xs.find` or `isNonEmpty(xs)`. The guarded form
 `xs.length > 0 && xs.every(...)` is the allowed form.
+
 Blank number coercion: `nitpicker/no-blank-number-coercion` (production source, in `eslint-lint`, type-aware) reports `Number(x)` or `+x`
 of a string that can be empty (or an untyped env, query, form or config read) when the result is checked only with `isNaN`,
 `Number.isNaN` or `Number.isFinite`, because `Number("")` is 0. A blank check on the text, `parseInt` or `parseFloat`, and a

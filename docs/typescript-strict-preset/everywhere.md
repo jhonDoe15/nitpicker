@@ -1650,6 +1650,16 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `xs.findIndex`, `xs.at` or `isNonEmpty(xs)`, which counts as an empty-list guard (so `xs.length === 0 || xs.every(...)`
   and `xs.length > 0 && xs.every(...)` both pass here). When an empty list should count as done, keep `every`
   and add an exception for the rule.
+- `nitpicker/no-blank-number-coercion` (type-aware, production source): `Number(x)` or `+x` of a string that can be
+  empty (`string`, `string | undefined`, or an untyped `process.env.X`, `req.query.x`, `searchParams.get(...)`,
+  `formData.get(...)`, `config.getString(...)`) whose only validity check is `isNaN`, `Number.isNaN` or
+  `Number.isFinite`, on the call itself or on the variable that holds it. `Number("")` and `Number("  ")` are `0`,
+  not `NaN`, so a blank setting, env var or form field passes as the number 0. Reject blank text first
+  (`if (!x?.trim())`), use `Number.parseInt(x, 10)` or `parseFloat` (NaN for `""`), or write the blank case out
+  (`x.trim() === "" ? 0 : Number(x)`). Not reported: a function that tests the same text for blankness (`!x`,
+  `x ? ... : ...`, `x.trim()`, `x.length`, `x === ''`), a result that is also checked against the zero boundary
+  (`> 0`, `>= 1`, `<= 0`, `< 1`), text taken from a destructured `split(...)` part, an `x || 'text'` default, text that is a non-blank literal union, and `unknown`
+  values outside the input shapes above.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
