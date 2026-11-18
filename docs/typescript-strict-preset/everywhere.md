@@ -112,7 +112,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   subscription must not be dropped in a long-lived object. For an expression statement that is a call named
   `on*`, `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun`, `addListener`, `addEventListener` or
   `register*` (not a `this.register*` method) whose result type has a `dispose()` or `unsubscribe()` method (or is a
-  `() => void` function), in a class with a close, dispose, destroy or `ngOnDestroy` method or at module level, it
+  `() => void` function; an optional call `a?.onX(...)` counts), in a class with a close, dispose, destroy or `ngOnDestroy` method or at module level, it
   reports the dropped handle: the listener is never removed. `once*` calls, an emitter that is a field the class
   creates itself, `void` calls, and an RxJS `subscribe` after `take`, `first`, `takeUntil`, `takeUntilDestroyed` or an
   HTTP client call are left alone. Allowed: register the handle (`this._register(...)`, `store.add(...)`), keep it

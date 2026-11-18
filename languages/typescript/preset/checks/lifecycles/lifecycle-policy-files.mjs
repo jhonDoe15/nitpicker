@@ -28,4 +28,6 @@ export const LIFECYCLE_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/debounce/no-per-call-debounce.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/registry/registry-entries.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/registry/no-unguarded-registry-delete.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/subscriptions/subscription-handles.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/subscriptions/no-dropped-subscription-handle.mjs',
 ];

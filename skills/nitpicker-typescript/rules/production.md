@@ -27,6 +27,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A teardown that deletes a registry entry by key first checks that the entry is still its own registration:
   `if (map.get(key) === value) { map.delete(key); }`, because a newer registration may have reused the key
   (`nitpicker/no-unguarded-registry-delete`).
+- The handle an event subscription returns (a disposable, a `Subscription` or an unsubscribe function) is kept
+  and released in dispose, for example `this._register(emitter.onDidChange(...))`, not dropped
+  (`nitpicker/no-dropped-subscription-handle`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
