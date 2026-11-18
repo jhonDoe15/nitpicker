@@ -206,6 +206,7 @@ const REVIEW_RULES = new Set([
   'OptionalOrElseGetNull',
   'NullableLibraryResult',
   'UrlPathUsedAsFile',
+  'MkdirsResultAsFailure',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
   'HashCodeDisagreesWithEquals',
