@@ -1,4 +1,5 @@
 import {
+  isListedSuggestion as untypedIsListedSuggestion,
   isRuleSelected as untypedIsRuleSelected,
   suggestionName as untypedSuggestionName,
   suggestionRules as untypedSuggestionRules,
@@ -14,13 +15,20 @@ export type LintMessage = {
   readonly line?: number | undefined;
   readonly fatal?: true | undefined;
   readonly fix?: LintFix | undefined;
-  readonly suggestions?: readonly { readonly fix?: LintFix | undefined }[] | undefined;
+  readonly suggestions?:
+    | readonly { readonly fix?: LintFix | undefined; readonly messageId?: string | undefined }[]
+    | undefined;
 };
 
 export const isRuleSelected: (
   rule: string | undefined,
   selectedRules: readonly string[],
 ) => boolean = untypedIsRuleSelected;
+
+export const isListedSuggestion: (
+  rule: string | undefined,
+  messageId: string | undefined,
+) => boolean = untypedIsListedSuggestion;
 
 export const suggestionName: (rule: string | undefined) => string = untypedSuggestionName;
 
