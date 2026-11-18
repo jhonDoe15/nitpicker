@@ -1,4 +1,5 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { mapToPMapFix } from '../../fixes/concurrency/map-to-p-map-fix.mts';
 import { pMapFix } from '../../fixes/concurrency/p-map-fix.mts';
 import { suggestible } from '../../fixes/support/descriptors.mts';
 import type { ReportFix } from '../../fixes/support/ranges.mts';
@@ -33,7 +34,7 @@ type Group = {
   readonly node: TSESTree.CallExpression;
   readonly combinator: string;
   readonly sites: readonly Site[];
-  readonly fix?: SuggestedFix;
+  readonly fix?: SuggestedFix | undefined;
 };
 
 const MAX_HELPER_DEPTH = 3;
@@ -120,7 +121,7 @@ export function reportSites(
     readonly messageId: string;
     readonly data: Readonly<Record<string, string>>;
     readonly sites: readonly Site[];
-    readonly fix?: SuggestedFix;
+    readonly fix?: SuggestedFix | undefined;
   },
   textOf: (collection: TSESTree.Node) => string,
 ): void {
@@ -152,13 +153,7 @@ export function reportSites(
 function reportGroup(scope: FanOutScope, group: Group): void {
   const { context } = scope;
   const { node, combinator, sites, fix } = group;
-  const at = {
-    node,
-    messageId: 'unbounded',
-    data: { combinator },
-    sites,
-    ...(fix === undefined ? {} : { fix }),
-  };
+  const at = { node, messageId: 'unbounded', data: { combinator }, sites, fix };
   reportSites(scope, at, (collection) => context.sourceCode.getText(collection));
 }
 
@@ -182,7 +177,17 @@ export function lazyScope(context: Context): FanOutScope {
   };
 }
 
-export const rule: TSESLint.RuleModule<'unbounded' | 'addConcurrency'> = {
+function fixOf(
+  context: Context,
+  node: TSESTree.CallExpression,
+  combinator: string,
+): SuggestedFix | undefined {
+  return combinator === 'Promise.all'
+    ? { messageId: 'usePMap', plan: mapToPMapFix(context, node) }
+    : undefined;
+}
+
+export const rule: TSESLint.RuleModule<'unbounded' | 'addConcurrency' | 'usePMap'> = {
   meta: {
     type: 'problem',
     hasSuggestions: true,
@@ -191,6 +196,8 @@ export const rule: TSESLint.RuleModule<'unbounded' | 'addConcurrency'> = {
     messages: {
       unbounded:
         "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.",
+      usePMap:
+        'Run the calls through `pMap` with a limit of 8. The results keep their order, and after a failure no new calls start (`Promise.all` starts them all).',
       addConcurrency:
         'Add `{ concurrency: 8 }` so that at most 8 calls run at once. The results keep their order.',
     },
@@ -205,6 +212,7 @@ export const rule: TSESLint.RuleModule<'unbounded' | 'addConcurrency'> = {
             node,
             combinator,
             sites: mappings(context, node.arguments[0] ?? node),
+            fix: fixOf(context, node, combinator),
           });
         } else if (mentionsPMap(context) && scope.bounds.isUnboundedPMap(node)) {
           const worker = workerOf(context, node.arguments[1]);
