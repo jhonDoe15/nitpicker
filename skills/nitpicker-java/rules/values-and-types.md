@@ -114,6 +114,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `Collectors.toMap` over parsed text or request data (a split string, file lines, cookies, headers) has a merge
   function that says what a repeated key means, `toMap(Cookie::getName, Cookie::getValue, (first, second) -> first)`,
   or uses `groupingBy` (`pmd/ToMapDuplicateKey`).
+- Output whose order matters (generated files, SQL column lists, schemas, config text) is built from a
+  `LinkedHashMap`, `LinkedHashSet`, `TreeMap` or a sorted stream, not from a `HashMap` or `HashSet` joined or appended in
+  iteration order (`pmd/HashOrderInOrderedOutput`).
 - A collection that the code changes later is built mutable: `new ArrayList<>(List.of("#"))`, not `Arrays.asList`, `List.of`, `Map.of`, `Collections.emptyList()` or `Stream.toList()`, whose `add`, `put` and `remove` throw
   `UnsupportedOperationException` (`pmd/ImmutableCollectionChanged`).
 - A copy constructor copies the collections it takes from the other object (`new ArrayList<>(other.items)`,

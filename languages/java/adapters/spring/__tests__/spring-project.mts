@@ -201,6 +201,7 @@ const REVIEW_RULES = new Set([
   'ImmutableCollectionChanged',
   'CopyConstructorSharesCollection',
   'ToMapDuplicateKey',
+  'HashOrderInOrderedOutput',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',
