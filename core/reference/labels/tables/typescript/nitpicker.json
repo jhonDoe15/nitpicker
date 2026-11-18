@@ -138,6 +138,7 @@
   "eslint/nitpicker/no-unused-dom-environment": ["tests", "performance"],
   "eslint/nitpicker/no-unvalidated-schema-field": ["security", "maintainability"],
   "eslint/nitpicker/no-wait-for-with-fake-timers": ["tests"],
+  "eslint/nitpicker/no-wall-clock-elapsed": ["bug"],
   "eslint/nitpicker/no-wasted-collection-step": ["performance"],
   "eslint/nitpicker/no-weak-assertion": ["tests"],
   "eslint/nitpicker/no-weak-hash": ["security"],

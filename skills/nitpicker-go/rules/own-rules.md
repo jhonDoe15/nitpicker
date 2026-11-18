@@ -90,6 +90,8 @@ the allowed form and ends with its exception entry.
   lets `i == len(x)` through and `x[i]` panics; `>` is right only for an insertion position.
 - A backoff delay does not grow by `1 << attempt` without a bound (`go-rules/backoff-shift-overflow`): cap the exponent
   (`min(attempt, 20)`) or stop growing at a maximum delay; the shift wraps and the delay turns negative.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads (`go-rules/wall-clock-elapsed`):
+  keep the `time.Time` and use `time.Since(start)` instead of subtracting two `time.Now().Unix()` values.
 - A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
   `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a

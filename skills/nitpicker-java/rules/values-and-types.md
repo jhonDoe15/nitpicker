@@ -122,3 +122,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A backoff delay does not grow by `1L << attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`) or use
   `Math.multiplyExact` and fall back to the maximum delay; the shift wraps and the delay turns negative
   (`pmd/BackoffShiftOverflow`).
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `System.nanoTime()` or use a `Stopwatch` or Micrometer `Timer.Sample` instead of subtracting two `Instant.now()` or
+  `System.currentTimeMillis()` readings (`pmd/WallClockElapsed`).

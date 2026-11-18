@@ -1794,3 +1794,13 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   clamped product.
   Allowed form: `Math.min(maxDelay, base * 2 ** Math.min(attempt, 10))`. The same form runs as `BackoffShiftOverflow`
   (Java and Kotlin) and `go-rules/backoff-shift-overflow` (Go).
+- `nitpicker/no-wall-clock-elapsed`: elapsed time or a timeout measured with the wall clock. Rejecting form: a `const`
+  or `let` assigned once from `Date.now()`, `new Date().getTime()`, `new Date().valueOf()` or `+new Date()` whose every
+  read is a subtraction from another wall-clock read, when the difference is compared with `<`, `>`, `<=` or `>=` or
+  passed to a `record`, `observe`, `timing`, `histogram` or `setTimeout` call. A field assigned from the wall clock
+  (`this.start = Date.now()`, a name containing `start`, `begin` or `t0`) and later subtracted from a wall-clock read is
+  reported on the subtraction. Not reported: a difference compared with a limit named for a gesture (`hold`, `tap`,
+  `press`, `click`, `double`, `debounce`), a start that is also stored,
+  sent or compared with a stored timestamp, and a variable that is reassigned. Allowed form: `performance.now()` for both
+  ends. The same form runs as `WallClockElapsed` (Java and Kotlin), `wall-clock-elapsed` (Python) and
+  `go-rules/wall-clock-elapsed` (Go).

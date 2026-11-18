@@ -210,3 +210,5 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A backoff delay does not grow by `1 << attempt` or `2 ** attempt` without a bound: cap the exponent
   (`Math.min(attempt, 10)`) and clamp the delay with `Math.min` (`nitpicker/no-overflowing-backoff`); the shift wraps
   at 32 bits and the power reaches `Infinity`.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `performance.now()` for both ends instead of subtracting two `Date.now()` readings (`nitpicker/no-wall-clock-elapsed`).

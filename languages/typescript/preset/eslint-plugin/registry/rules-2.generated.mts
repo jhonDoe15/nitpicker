@@ -35,6 +35,7 @@ import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-unt
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
@@ -112,6 +113,7 @@ export const partRules = {
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
+  'no-wall-clock-elapsed': ruleNoWallClockElapsed,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,

@@ -163,6 +163,7 @@
   "languages/python/rules/e2e/updates/narrow-reads.e2e.test.mjs": 4,
   "languages/python/rules/e2e/waits/futures.e2e.test.mts": 1,
   "languages/python/rules/e2e/waits/waits.e2e.test.mts": 2,
+  "languages/python/rules/e2e/wall-clock/wall-clock-elapsed.e2e.test.mts": 2,
   "languages/python/rules/e2e/writes/check-then-write.e2e.test.mjs": 2,
   "languages/python/rules/e2e/writes/dual-write-forms.e2e.test.mts": 2,
   "languages/python/rules/e2e/writes/dual-write-without-outbox.e2e.test.mts": 2,

@@ -17,7 +17,7 @@ const MESSAGE =
 const REGISTRATIONS =
   /^(subscribe|on|once|addListener|addEventListener|listen|watch|observe|on[A-Z].*)$/;
 
-function calleeName(callee: TSESTree.Node): string {
+export function calleeName(callee: TSESTree.Node): string {
   if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name;
   }
