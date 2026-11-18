@@ -199,6 +199,7 @@ const REVIEW_RULES = new Set([
   'TimerNotStoppedOnClose',
   'CachedFutureKeepsFailure',
   'ImmutableCollectionChanged',
+  'CopyConstructorSharesCollection',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',

@@ -30,6 +30,7 @@
   "pmd/CollapsibleIfStatements": ["simplification"],
   "pmd/CompatibilityShim": ["maintainability"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
+  "pmd/CopyConstructorSharesCollection": ["bug"],
   "pmd/CredentialLiteral": ["security"],
   "pmd/DefaultLabelNotLastInSwitch": ["style"],
   "pmd/DefaultLabelNotLastInSwitchStmt": ["style"],
