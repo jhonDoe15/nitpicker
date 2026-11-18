@@ -24,6 +24,7 @@ import { mayBeConstRecipe, mayBeConstReviewRecipe } from './kotlin/modifiers/may
 import { modifierOrderRecipe } from './kotlin/modifiers/modifier-order.mts';
 import { optionalAbstractRecipe } from './kotlin/modifiers/optional-abstract.mts';
 import { sortForExtremeRecipe } from './kotlin/performance/collections/sort-for-extreme.mts';
+import { plainTextRegexRecipe } from './kotlin/performance/regexes/plain-text-regex.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
 import {
@@ -64,6 +65,7 @@ export const JVM_RECIPES = defineRecipes([
   modifierOrderRecipe,
   optionalAbstractRecipe,
   sortForExtremeRecipe,
+  plainTextRegexRecipe,
   focusedTestRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
