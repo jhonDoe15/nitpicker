@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../../../../../shared/lists/items.mjs';
 import { append } from '../../../kotlin-facts.mjs';
 import { typeArguments } from '../../spring-names.mjs';
 import { bindingIndex } from './bindings.mjs';
@@ -231,7 +232,7 @@ function solve(view, holders) {
     const state = evaluate(holder, states, taints);
     if (strength(state) > strength(states.get(holder.target))) {
       states.set(holder.target, state);
-      pending.push(...(dependents.get(holder.target) ?? []));
+      appendAll(pending, dependents.get(holder.target) ?? []);
     }
   }
   return taints;
