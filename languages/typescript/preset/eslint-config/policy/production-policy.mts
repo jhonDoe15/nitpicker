@@ -173,6 +173,7 @@ function productionGuardRules({
     'nitpicker/no-unisolated-job-loop': 'error',
     'nitpicker/no-unguarded-deleted-items': 'error',
     'nitpicker/no-unscoped-record-access': 'error',
+    'nitpicker/no-unguarded-cyclic-recursion': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',

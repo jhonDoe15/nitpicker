@@ -342,15 +342,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `listen({ port, host: '127.0.0.1' })`; a service that must accept remote connections passes `'0.0.0.0'` explicitly.
 - `nitpicker/no-unguarded-cyclic-recursion` (needs the type checker): a function that calls itself with a value read
   through a property that can lead back to an earlier node, and has no visited set or depth limit, so a cycle (an
-  error `cause` chain, a `parent` link of a route or scope graph, a recursive type) overflows the stack or never
+  error `cause` chain, a dependency or import graph, a recursive type) overflows the stack or never
   finishes. The recursive call (also `this.name(...)`, and through a local variable, a `for...of` loop or a callback
   of `map`, `filter`, `some`, `every`, `find`, `forEach`, `flatMap`) must pass a value reached from its own parameter
-  through `parent`, `parents`, `cause`, `causes`, `prev`, `previous`, `next`, `owner`, `ref`, `reference(s)`,
-  `dependencies`, `dependents`, `deps`, `importers`, `imports`, `edges`, `links`, `neighbors`, `supertype(s)`, `base`
-  or `bases`, or, for a parameter of the TypeScript API `Type`, through `types`, `target`, `constraint` or
-  `getTypeArguments`/`getBaseTypes`, with a typed argument that is assignable to the parameter. A function that mentions
+  through `cause`, `causes`, `parents`, `references`, `dependencies`, `dependents`, `deps`, `importers`, `imports`,
+  `edges`, `links`, `neighbors`, `supertypes`, `bases` or `baseTypes`, or, for a parameter of the TypeScript API
+  `Type`, through `types`, `target`, `constraint`, `base`, `supertype` or `getTypeArguments`/`getBaseTypes`, with a typed argument that is assignable to the parameter. A function that mentions
   a `Set`, `WeakSet`, `Map` or `WeakMap`, or a name such as `seen`, `visited`, `depth`, `level`, `stack`, `limit`, `cache`
-  or `memo`, is taken as guarded; untyped (`any`) parameters, tree children (`children`, `body`, `left`, `right`),
+  or `memo`, is taken as guarded; untyped (`any`) parameters, single-pointer walks (`parent`, `next`, `prev`, `owner`,
+  `ref`: a chain ends), tree children (`children`, `body`, `left`, `right`),
   and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
   visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
 - `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
