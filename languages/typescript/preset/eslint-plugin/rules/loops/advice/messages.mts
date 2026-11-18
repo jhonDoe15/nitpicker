@@ -1,10 +1,7 @@
 const EXCEPTION = 'An exception fits only when a call per item is intended';
 const PAGING =
   'Paging, cursor and retry loops are fine, and so is a call that takes a whole chunk of the items.';
-const BATCH_QUERY = [
-  'Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`,',
-  '`insertMany`) or `WHERE id IN (...)`, run before the loop.',
-].join(' ');
+const BATCH_QUERY = 'Fetch or write them in one query: {{form}}, run before the loop.';
 
 export const IO_IN_LOOP_MESSAGES = {
   query: [
@@ -19,6 +16,19 @@ export const IO_IN_LOOP_MESSAGES = {
     'Keep that loop small and bounded (a few workspaces or pages), or collect the keys of all its',
     'items and run one such call after it.',
     PAGING,
+  ].join(' '),
+  foreignKeyQuery: [
+    'This runs {{callee}} once per item of a loop, and its key is a foreign key of a row the loop',
+    'already holds.',
+    'Load the related rows with the query that loaded those rows (`relations`, `include` or a join),',
+    'or fetch all the keys at once before the loop.',
+    PAGING,
+    `${EXCEPTION} (a store with no batch form).`,
+  ].join(' '),
+  dependentQuery: [
+    'This runs {{callee}} once per item of a loop, and its key comes from the previous iteration:',
+    'the calls depend on each other and cannot be batched, so a call per item is expected.',
+    'If the chain is long, look for one recursive query or endpoint that returns it whole.',
   ].join(' '),
   cacheQuery: [
     'This runs {{callee}} once per item of a loop, one round trip per item.',

@@ -1,6 +1,6 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../security/security-values.mts';
-import { describePath, ioEffect, ioKind } from '../support/io-effects.mts';
+import { calleeOrigin, describePath, ioEffect, ioKind } from '../support/io-effects.mts';
 import { isRelayMark } from '../writes/relays.mts';
 import { outerCalls } from './builders/chain-execution.mts';
 import { isEntityFactory } from './builders/entity-factories.mts';
@@ -11,6 +11,7 @@ import { enclosingLoop, isRetryAttempt, type EnclosingLoop } from './loop-shapes
 import { isPagingCall } from './paging-calls.mts';
 import { isDrainCall } from './repeats/drain-loops.mts';
 import { isPollingCall, isRereadInCatch } from './repeats/polling-loops.mts';
+import { batchForm } from './advice/batch-forms.mts';
 import { IO_IN_LOOP_MESSAGES } from './advice/messages.mts';
 import { adviceOf, type Advice } from './advice/query-advice.mts';
 
@@ -20,6 +21,9 @@ type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 type Effect = NonNullable<ReturnType<typeof ioEffect>>;
 
 function messageIdOf(effect: Effect, concurrent: boolean, advice: Advice): MessageIds {
+  if (advice === 'dependentQuery') {
+    return advice;
+  }
   if (effect.kind === 'remote') {
     return 'request';
   }
@@ -82,7 +86,10 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       context.report({
         node,
         messageId: messageIdOf(effect, concurrent, adviceOf(node, found, context)),
-        data: { callee: describePath(effect.path) },
+        data: {
+          callee: describePath(effect.path),
+          form: batchForm(effect.path[0] ?? '', calleeOrigin(node, context)?.pkg),
+        },
       });
     }
     return { CallExpression: check, TaggedTemplateExpression: check };

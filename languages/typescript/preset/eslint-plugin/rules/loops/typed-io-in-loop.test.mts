@@ -1,3 +1,4 @@
+import { batchForm, GENERIC_FORM } from './advice/batch-forms.mts';
 import { rule as ioInLoop } from './no-io-in-loop.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 
@@ -41,7 +42,7 @@ function body(statements: string) {
 }
 
 function caseOf(code: string, messageId: string, callee?: string) {
-  const data = callee === undefined ? {} : { data: { callee } };
+  const data = callee === undefined ? {} : { data: { callee, form: GENERIC_FORM } };
   return { ...typed(code), errors: [{ messageId, ...data }] };
 }
 
@@ -99,8 +100,24 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     ),
     caseOf(loop('await new Customer().getAccount();'), 'query'),
     caseOf(loop('await new Customer().save();'), 'query'),
-    caseOf(loop('await repo.findOneBy({ id });', typeorm), 'query'),
-    caseOf(loop('await repo.save(repo.create({ id }));', typeorm), 'query', '`repo.save()`'),
+    {
+      ...typed(loop('await repo.findOneBy({ id });', typeorm)),
+      errors: [
+        {
+          messageId: 'query',
+          data: { callee: '`repo.findOneBy()`', form: batchForm('repo.findOneBy()', 'typeorm') },
+        },
+      ],
+    },
+    {
+      ...typed(loop('await repo.save(repo.create({ id }));', typeorm)),
+      errors: [
+        {
+          messageId: 'query',
+          data: { callee: '`repo.save()`', form: batchForm('repo.save()', 'typeorm') },
+        },
+      ],
+    },
     caseOf(
       loop("await repo.createQueryBuilder('a').where('a.id = :id', { id }).getMany();", typeorm),
       'query',
@@ -118,7 +135,15 @@ tester.run('no-io-in-loop with types', ioInLoop, {
       loop('await new SQSClient().send(new ReceiveMessageCommand({ QueueUrl: id }));', sqs),
       'request',
     ),
-    caseOf(loop('await db("users").where({ id });', knex), 'query', '`db().where()`'),
+    {
+      ...typed(loop('await db("users").where({ id });', knex)),
+      errors: [
+        {
+          messageId: 'query',
+          data: { callee: '`db().where()`', form: batchForm('db().where()', 'knex') },
+        },
+      ],
+    },
     caseOf(loop('await fetch(id);'), 'request', '`fetch()`'),
     caseOf(
       loop(

@@ -40,6 +40,15 @@ ruleTester.run('no-io-in-loop set queries', ioInLoop, {
       inLoop('await repo.find({ where: { id: In([row.id]) } });', 'const row of rows'),
       inLoop('await repository.find({ where: { id: { $in: [id] } } });', 'const id of ids'),
       inLoop('await repo.findOne({ where: { id } });', 'const id of ids'),
+      inLoop(
+        'await prisma.user.findMany({ where: { orgId: id, role: { in: roles } } });',
+        'const id of ids',
+      ),
+      inLoop('await repo.find({ where: { owner: id, status: In(roles) } });', 'const id of ids'),
+      inLoop(
+        'await prisma.user.findMany({ where: { id: { in: [id, other] } } });',
+        'const id of ids',
+      ),
       inLoop('await repo.find({ where: { channelId: workspace.id } });'),
     ].map(reported('query')),
   ],
