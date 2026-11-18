@@ -137,6 +137,21 @@ typescriptRuleTester().run('reusable-object-per-call hoist', rule, {
       'NUMBER_FORMAT',
       'const NUMBER_FORMAT = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });\n\nexport function show(v: number) { return NUMBER_FORMAT.format(v); }',
     ),
+    hoists(
+      'export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", dateStyle: "medium" }).format(d); }',
+      'DATE_TIME_FORMAT',
+      'const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", dateStyle: "medium" });\n\nexport function day(d: Date) { return DATE_TIME_FORMAT.format(d); }',
+    ),
+    hoists(
+      'export function day(d: Date) { return Intl.DateTimeFormat("de", { timeZone: "Europe/Berlin", hour: "numeric" }).format(d); }',
+      'DATE_TIME_FORMAT',
+      'const DATE_TIME_FORMAT = Intl.DateTimeFormat("de", { timeZone: "Europe/Berlin", hour: "numeric" });\n\nexport function day(d: Date) { return DATE_TIME_FORMAT.format(d); }',
+    ),
+    hoists(
+      'export function days(a: Date, b: Date) { const f = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC" }); return f.format(a) + f.formatToParts(b).length; }',
+      'DATE_TIME_FORMAT',
+      'const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC" });\n\nexport function days(a: Date, b: Date) {  return DATE_TIME_FORMAT.format(a) + DATE_TIME_FORMAT.formatToParts(b).length; }',
+    ),
     declines(
       'export function show(v: number) { const options = { maximumFractionDigits: 1 }; return new Intl.NumberFormat("en-US", options).format(v); }',
     ),
@@ -200,6 +215,22 @@ typescriptRuleTester().run('reusable-object-per-call hoist', rule, {
     ),
     declines(
       'export function show(v: number) { return new Intl.NumberFormat("en-US", { currency: "USD" }, 1).format(v); }',
+    ),
+    declines(
+      'export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d); }',
+    ),
+    declines('export function day(d: Date) { return new Intl.DateTimeFormat("en-US").format(d); }'),
+    declines(
+      'export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { timeZone: undefined }).format(d); }',
+    ),
+    declines(
+      'export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { timeZone: "" }).format(d); }',
+    ),
+    declines(
+      'export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { timeZone: "Nowhere/Land" }).format(d); }',
+    ),
+    declines(
+      'const ZONE = "UTC"; export function day(d: Date) { return new Intl.DateTimeFormat("en-US", { timeZone: ZONE }).format(d); }',
     ),
   ],
 });
