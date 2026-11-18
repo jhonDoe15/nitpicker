@@ -52,7 +52,9 @@ function waitsWhile(isWaiting) {
 
 function awaitReplies(signal, pool, { state, collect }) {
   const quiet = { since: Date.now() };
-  const isWaiting = () => state.answered < state.next && Date.now() - quiet.since < SAFETY_NET_MS;
+  function isWaiting() {
+    return state.answered < state.next && Date.now() - quiet.since < SAFETY_NET_MS;
+  }
   for (const limit of waitsWhile(isWaiting)) {
     Atomics.wait(signal, 0, 0, limit);
     Atomics.store(signal, 0, 0);
