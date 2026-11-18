@@ -45,6 +45,7 @@
   "pmd/EmptyFinalizer": ["simplification"],
   "pmd/EpochNarrowedToInt": ["bug"],
   "pmd/ExhaustiveEnumPredicate": ["maintainability"],
+  "pmd/FieldCanBeFinal": ["simplification"],
   "pmd/FinalizeOnlyCallsSuperFinalize": ["simplification"],
   "pmd/FixedSleepInTest": ["tests"],
   "pmd/FloatEqualityInTest": ["tests"],

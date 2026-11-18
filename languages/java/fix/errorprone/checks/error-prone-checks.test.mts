@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  enablingFlags,
   isReviewCheck,
   isSafeCheck,
   LEFT_OUT_CHECKS,
@@ -33,7 +34,16 @@ describe('the Error Prone fix lists', () => {
       ...textsOf(fieldOf(CHECKS, 'defaultOff')),
     ]);
 
-    expect([...SAFE_CHECKS, ...REVIEW_CHECKS].filter((check) => off.has(check))).toEqual([]);
+    expect(
+      [...SAFE_CHECKS, ...REVIEW_CHECKS].filter(
+        (check) => off.has(check) && enablingFlags([check]).length === 0,
+      ),
+    ).toEqual([]);
+    expect(
+      enablingFlags([...SAFE_CHECKS, ...REVIEW_CHECKS]).filter(
+        (flag) => !off.has(flag.split(':')[1] ?? ''),
+      ),
+    ).toEqual([]);
   });
 
   it('covers the checks that emit a fix', () => {
@@ -70,6 +80,20 @@ describe('patchChecks', () => {
         'checkstyle/UpperEll',
       ]),
     ).toEqual(['ClassCanBeStatic', 'MissingOverride']);
+  });
+
+  it('runs the Error Prone check whose fix clears a selected PMD finding', () => {
+    expect(patchChecks(['pmd/FieldCanBeFinal'])).toEqual(['FieldCanBeFinal']);
+    expect(patchChecks(['pmd/FieldCanBeFinal', 'errorprone/FieldCanBeFinal'])).toEqual([
+      'FieldCanBeFinal',
+    ]);
+  });
+
+  it('switches on, for a patch run, the fix checks that Error Prone leaves off', () => {
+    expect(enablingFlags(['MissingOverride', 'FieldCanBeFinal'])).toEqual([
+      '-Xep:FieldCanBeFinal:WARN',
+    ]);
+    expect(enablingFlags(['MissingOverride'])).toEqual([]);
   });
 
   it('runs no compile when the selection names no Error Prone check', () => {

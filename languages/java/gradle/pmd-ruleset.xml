@@ -249,6 +249,61 @@ return //MethodDeclaration[@Name = $cleanup or ModifierList/Annotation[some $hoo
       </property>
     </properties>
   </rule>
+  <rule name="FieldCanBeFinal" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Field {0} is only assigned during initialization; declare it final.">
+    <description>A private field written once in its declaration, in the one instance initializer or in each
+      constructor (a static field in the one static initializer) and nowhere else can be final. A
+      field read in a constructor or initializer of its class is left out too. Fields with an
+      annotation other than @Deprecated or @SuppressWarnings, and classes of JPA entities or Lombok-generated members are left out,
+      as frameworks and generated code write them.</description>
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//FieldDeclaration[@Visibility = 'private']
+  [not(pmd-java:modifiers() = ('final', 'volatile'))]
+  [not(ModifierList/Annotation[not(@SimpleName = ('Deprecated', 'SuppressWarnings'))])]
+  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration]/ModifierList/Annotation
+      [@SimpleName = ('Entity', 'Embeddable', 'MappedSuperclass', 'Data', 'Setter', 'Builder', 'SuperBuilder',
+                      'NoArgsConstructor', 'AllArgsConstructor', 'RequiredArgsConstructor')])]
+  /VariableDeclarator
+  [let $name := @Name,
+       $static := ../@Static,
+       $body := ../..,
+       $writes := $body//*[self::VariableAccess or self::FieldAccess][@Name = $name][@AccessType != 'READ']
+         [not(ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody][1]
+                [not(. is $body)][FieldDeclaration/VariableDeclarator/@Name = $name])]
+         [not(self::VariableAccess and ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                or self::LambdaExpression or self::Initializer][1]//VariableId[@Name = $name])],
+       $reads := $body//*[self::VariableAccess or self::FieldAccess][@Name = $name][@AccessType = 'READ']
+         [ancestor::*[self::ConstructorDeclaration or self::Initializer]
+            [($static = false() and (self::ConstructorDeclaration or @Static = false())) or @Static = $static]
+            [parent::* is $body]]
+         [not(ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody][1]
+                [not(. is $body)][FieldDeclaration/VariableDeclarator/@Name = $name])]
+         [not(self::VariableAccess and ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                or self::LambdaExpression or self::Initializer][1]//VariableId[@Name = $name])],
+       $direct := $writes[self::VariableAccess or ThisExpression]
+         [let $write := . return parent::AssignmentExpression[@Operator = '='][*[1] is $write]
+           /parent::ExpressionStatement/parent::Block/parent::*
+           [($static = false() and self::ConstructorDeclaration) or (self::Initializer and @Static = $static)]
+           [parent::* is $body]],
+       $inInitializer := $direct[../../../parent::Initializer],
+       $inConstructor := $direct[../../../parent::ConstructorDeclaration]
+   return
+     empty(ancestor::CompilationUnit//FieldAccess[@Name = $name][@AccessType != 'READ'][not(ThisExpression)])
+     and ((@Initializer = true() and empty($writes))
+     or (@Initializer = false() and empty($reads) and exists($writes) and count($writes) = count($direct)
+         and ((count($inInitializer) = 1 and empty($inConstructor))
+              or (empty($inInitializer)
+                  and (every $constructor in $body/ConstructorDeclaration satisfies
+                         count($inConstructor[../../../.. is $constructor])
+                           = (if ($constructor/Block/ExplicitConstructorInvocation[@This = true()]) then 0 else 1))))))]
+  /VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
     <priority>2</priority>

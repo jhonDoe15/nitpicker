@@ -159,6 +159,24 @@ describe('the Error Prone recipes', () => {
     expect(selected.fixedFindings).toEqual([`${NAME}:3 pmd/RetryInTest (java-source-review)`]);
   });
 
+  it('report a fixed FieldCanBeFinal hunk as the PMD finding of the same field too', () => {
+    const root = project();
+    const final = labeledHunk(
+      'FieldCanBeFinal',
+      '-  void run() {}\n+  final void run() {}\n',
+      '@@ -3,1 +3,1 @@',
+    );
+
+    const plain = run(root, [final]);
+    const selected = run(root, [final], ['pmd/FieldCanBeFinal']);
+
+    expect(plain.fixedFindings).toEqual([]);
+    expect(selected.fixedFindings).toEqual([
+      `${NAME}:3 errorprone/FieldCanBeFinal (java-error-prone-review)`,
+      `${NAME}:3 pmd/FieldCanBeFinal (java-error-prone-review)`,
+    ]);
+  });
+
   it('cover the java and kotlin presets', () => {
     const [safe, review, ownSafe, ownReview] = errorProneRecipes(new Map());
 

@@ -7,6 +7,7 @@ import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { configuredTool } from '../../tools/tool-classpath.mts';
+import { enablingFlags } from '../checks/error-prone-checks.mts';
 import { OWN_CHECKS_DIRECTORY, usesOwnChecks } from '../own/own-checks.mts';
 
 export type PatchRun = {
@@ -32,6 +33,7 @@ export function patchFlags({
   return [
     `-XepPatchChecks:${checks.join(',')}`,
     `-XepPatchLocation:${patchRoot}`,
+    ...enablingFlags(checks),
     ...(usesOwnChecks(checks) ? [`-XepNitpickerFixChecks:${OWN_CHECKS_DIRECTORY}`] : []),
   ];
 }
