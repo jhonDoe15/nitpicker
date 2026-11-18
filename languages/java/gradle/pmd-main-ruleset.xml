@@ -3747,6 +3747,52 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SecretDigestEquals" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A password hash or secret digest is compared with equals. PasswordEncoder.encode of a salted encoder (bcrypt, PBKDF2, Argon2) picks a new salt on every call, so its result never equals the stored value: use passwordEncoder.matches(raw, stored). Any other digest, HMAC or crypt(raw, salt) result compared with equals stops at the first differing character and leaks timing: use MessageDigest.isEqual(expected.getBytes(UTF_8), actual.getBytes(UTF_8)). Compare checksums of public data (a file hash, a cache key) with equals.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $secret := '(password|passwd|passphrase|secret|signature|hmac|crypted|apiKey)(Hash|Digest|Value)?$',
+    $name := function($e) {
+      string(($e[self::VariableAccess or self::FieldAccess]/@Name, $e[self::MethodCall]/@MethodName)[1])
+    },
+    $sure := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = 'encode' and *[1][pmd-java:typeIs('org.springframework.security.crypto.password.PasswordEncoder')]
+        or @MethodName = 'doFinal' and *[1][pmd-java:typeIs('javax.crypto.Mac')]])
+    },
+    $digest := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = 'digest' and *[1][pmd-java:typeIs('java.security.MessageDigest')]
+        or matches(@MethodName, '^(hash|digest|hmac|crypt|sha[0-9]+|md5)[A-Za-z0-9]*$|^(compute|calculate|create|generate)(Hash|Digest|Hmac)')
+           and ArgumentList/@Size >= 1])
+    },
+    $local := function($e, $test) {
+      exists($e[self::VariableAccess][let $n := @Name return
+        ancestor::MethodDeclaration[1]//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $n]
+          [$test(*[2])]
+          [not(ancestor::MethodDeclaration[1]//AssignmentExpression[*[1][self::VariableAccess[@Name = $n]]])]])
+    },
+    $wrapped := function($e, $test) {
+      some $p in ($e, $e[self::ConstructorCall or self::MethodCall]/ArgumentList/*) satisfies $test($p)
+    },
+    $flag := function($a, $b) {
+      $sure($a) or $local($a, $sure)
+      or ($wrapped($a, $digest) or $local($a, $digest)) and matches($name($b), $secret, 'i')
+    }
+return (
+  //MethodCall[@MethodName = ('equals', 'contentEquals')][ArgumentList/@Size = 1]
+      [not(*[1][self::TypeExpression])]
+      [$flag(*[1], ArgumentList/*[1]) or $flag(ArgumentList/*[1], *[1])]
+  | //MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 2][*[1][self::TypeExpression]]
+      [*[1][self::TypeExpression/ClassType/@SimpleName = 'Arrays']]
+      [$flag(ArgumentList/*[1], ArgumentList/*[2]) or $flag(ArgumentList/*[2], ArgumentList/*[1])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SecretInLog" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Log that the secret is set, or a masked tail, instead of the secret itself.">
     <description>A secret-named value passed to a log call, to standard output or error, or to an exception message.</description>
