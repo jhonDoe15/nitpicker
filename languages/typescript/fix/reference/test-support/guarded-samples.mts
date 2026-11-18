@@ -21,6 +21,9 @@ const OBJECT_HAS =
 
 const KEYED_HAS = GENERIC_HAS.replace('has<T>', 'has<T extends string>');
 
+const CAST_DEFAULT =
+  'type Settings = { readonly retries: number };\n\nexport function retries({ retries = 3 }: Settings): number {\n  return retries;\n}\n\nexport function fromJson(text: string): number {\n  return retries(JSON.parse(text) as Settings);\n}\n';
+
 export const GUARDED_SAMPLES: readonly GuardedSample[] = [
   {
     rule: '@typescript-eslint/prefer-includes',
@@ -70,5 +73,12 @@ export const GUARDED_SAMPLES: readonly GuardedSample[] = [
     input: KEYED_HAS,
     plain: KEYED_HAS.replace('values.indexOf(value) !== -1', 'values.includes(value)'),
     selected: KEYED_HAS.replace('values.indexOf(value) !== -1', 'values.includes(value)'),
+  },
+  {
+    rule: '@typescript-eslint/no-useless-default-assignment',
+    path: 'src/main/samples/g07.ts',
+    input: CAST_DEFAULT,
+    plain: CAST_DEFAULT,
+    selected: CAST_DEFAULT.replace('{ retries = 3 }', '{ retries }'),
   },
 ];
