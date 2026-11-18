@@ -4,14 +4,18 @@ import { TYPE_ASSERTIONS, unwrapOf } from '../typed/syntax-views.mts';
 import {
   accumulatingSpreadMessageId,
   accumulatingSpreadMessages,
+  spreadSuggestionMessages,
+  type RuleMessageId,
   type SpreadKind,
   type SpreadMessageId,
 } from './accumulating-spread-messages.mts';
-import { isFixedShape } from './spread-shapes.mts';
+import { isFixedShape, LOOP_TYPES } from './spread-shapes.mts';
 import { reduceArrayFix } from '../../fixes/collections/reduce/reduce-array-fix.mts';
 import { reduceObjectFix } from '../../fixes/collections/reduce/reduce-object-fix.mts';
-import { fixable } from '../../fixes/support/descriptors.mts';
+import { fixable, suggestible } from '../../fixes/support/descriptors.mts';
+import { loopPushFix } from '../../fixes/collections/loops/loop-push-fix.mts';
 import type { FixPlan } from '../../fixes/support/ranges.mts';
+import type { FixPlans } from '../../fixes/edits/plans.mts';
 
 type Variable = TSESLint.Scope.Variable;
 type ParameterDefinition = TSESLint.Scope.Definitions.ParameterDefinition;
@@ -22,6 +26,7 @@ type Report = {
   readonly descriptor: Location;
   readonly declarator?: TSESTree.VariableDeclarator;
   readonly callback?: TSESTree.Node;
+  readonly variable?: Variable;
 };
 type LoopFinding = {
   readonly definition: VariableDefinition;
@@ -37,13 +42,6 @@ const FUNCTION_TYPES = new Set<string>([
   AST_NODE_TYPES.FunctionDeclaration,
   AST_NODE_TYPES.FunctionExpression,
   AST_NODE_TYPES.ArrowFunctionExpression,
-]);
-const LOOP_TYPES = new Set<string>([
-  AST_NODE_TYPES.ForStatement,
-  AST_NODE_TYPES.ForInStatement,
-  AST_NODE_TYPES.ForOfStatement,
-  AST_NODE_TYPES.WhileStatement,
-  AST_NODE_TYPES.DoWhileStatement,
 ]);
 const WRAPPERS = [
   ...TYPE_ASSERTIONS,
@@ -177,6 +175,7 @@ function loopReport({ definition, variable, spread, sourceCode }: LoopFinding): 
     ? undefined
     : {
         declarator: definition.node,
+        variable,
         kind,
         descriptor: { loc: declaredNameLocation(sourceCode, definition.node.id) },
       };
@@ -211,10 +210,9 @@ function spreadReport(spread: TSESTree.SpreadElement, sourceCode: SourceCode): R
     : undefined;
 }
 
-function fixPlanOf(
-  context: Readonly<TSESLint.RuleContext<SpreadMessageId, []>>,
-  report: Report,
-): FixPlan | undefined {
+type RuleContext = Readonly<TSESLint.RuleContext<RuleMessageId, []>>;
+
+function fixPlanOf(context: RuleContext, report: Report): FixPlan | undefined {
   if (report.callback === undefined) {
     return undefined;
   }
@@ -224,16 +222,29 @@ function fixPlanOf(
   return report.kind === 'reduceArray' ? reduceArrayFix(context, report.callback) : undefined;
 }
 
-export const rule: TSESLint.RuleModule<SpreadMessageId> = {
+function pushPlanOf(
+  context: RuleContext,
+  report: Report,
+  messageId: SpreadMessageId,
+): FixPlans | undefined {
+  return report.kind === 'loopArray' &&
+    report.variable !== undefined &&
+    !messageId.startsWith('domain')
+    ? loopPushFix(context, report.variable)
+    : undefined;
+}
+
+export const rule: TSESLint.RuleModule<RuleMessageId> = {
   meta: {
     type: 'problem',
     fixable: 'code',
+    hasSuggestions: true,
     docs: {
       description:
         'Disallow spreading a reduce accumulator or a loop accumulator into its own next value',
     },
     schema: [],
-    messages: accumulatingSpreadMessages,
+    messages: { ...accumulatingSpreadMessages, ...spreadSuggestionMessages },
   },
   create(context) {
     const { sourceCode } = context;
@@ -249,7 +260,16 @@ export const rule: TSESLint.RuleModule<SpreadMessageId> = {
         }
         if (!isFixedShape(spread)) {
           const messageId = accumulatingSpreadMessageId(report.kind, context.filename);
-          context.report(fixable({ ...report.descriptor, messageId }, fixPlanOf(context, report)));
+          const descriptor = fixable(
+            { ...report.descriptor, messageId },
+            fixPlanOf(context, report),
+          );
+          context.report(
+            suggestible(descriptor, {
+              messageId: 'pushOntoArray',
+              plan: pushPlanOf(context, report, messageId),
+            }),
+          );
         }
       },
     };

@@ -1,6 +1,14 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../typed/node-views.mts';
 
+export const LOOP_TYPES = new Set<string>([
+  AST_NODE_TYPES.ForStatement,
+  AST_NODE_TYPES.ForInStatement,
+  AST_NODE_TYPES.ForOfStatement,
+  AST_NODE_TYPES.WhileStatement,
+  AST_NODE_TYPES.DoWhileStatement,
+]);
+
 function isNumber(node: TSESTree.Node | undefined): boolean {
   const literal =
     node?.type === AST_NODE_TYPES.UnaryExpression && node.operator === '-' ? node.argument : node;
