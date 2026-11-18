@@ -198,6 +198,7 @@ const REVIEW_RULES = new Set([
   'UnsynchronizedSharedCollection',
   'ConcurrentMapCheckThenAct',
   'SharedStatefulHelperField',
+  'CallValueStoredInSharedField',
   'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
