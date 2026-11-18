@@ -682,6 +682,14 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
+            // PMD warns on stderr when a rule throws on a file; the log keeps those warnings for the report.
+            def pmdLog = new ByteArrayOutputStream()
+            def pmdStderr = System.err
+            errorOutput = new OutputStream() {
+                void write(int b) { pmdLog.write(b); pmdStderr.write(b) }
+                void write(byte[] bytes, int offset, int length) { pmdLog.write(bytes, offset, length); pmdStderr.write(bytes, offset, length) }
+            }
+            doLast { reportDir.get().file('pmd-log.txt').asFile.text = pmdLog.toString('UTF-8') }
             // languages/java/adapters/tool-config writes a layered copy of nitpicker's ruleset when the
             // project lists its own ruleset or the tests use assertion helpers of their own, and the
             // project's ruleset without the rules nitpicker already has.
