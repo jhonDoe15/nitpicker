@@ -138,7 +138,7 @@ function isModuleBase(context: SourceContext, node: TSESTree.Node | undefined): 
   return false;
 }
 
-function inBlock(block: TSESTree.Node, node: TSESTree.Node): boolean {
+export function inBlock(block: TSESTree.Node, node: TSESTree.Node): boolean {
   return block.range[0] <= node.range[0] && node.range[1] <= block.range[1];
 }
 
