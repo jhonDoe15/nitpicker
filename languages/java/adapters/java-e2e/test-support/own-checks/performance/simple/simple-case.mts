@@ -15,6 +15,7 @@ export type SimpleCase = {
 type Options = {
   readonly check: string;
   readonly name: string;
+  readonly typeParameters?: string;
   readonly imports?: readonly string[];
   readonly importsAfter?: readonly string[];
   readonly members?: readonly Shape[];
@@ -42,11 +43,13 @@ function sourceOf(options: Options, side: 0 | 1): { text: string; changed: numbe
   const add = (shape: Shape, indent: string): void => {
     const [before, after = before] = shape;
     if (before !== after) {
-      changed.push(lines.length + 1);
+      const was = before.split('\n');
+      const now = after.split('\n');
+      changed.push(lines.length + 1 + was.findIndex((line, index) => line !== now[index]));
     }
     lines.push(...indented(side === 0 ? before : after, indent));
   };
-  lines.push(`public class ${name} {`);
+  lines.push(`public class ${name}${options.typeParameters ?? ''} {`);
   members.forEach((member) => {
     add(member, '  ');
   });

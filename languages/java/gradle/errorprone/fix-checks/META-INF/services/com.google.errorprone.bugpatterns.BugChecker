@@ -17,4 +17,5 @@ nitpicker.fix.SpringDataBatchOfOne
 nitpicker.fix.SpringDataNoSaveInLoop
 nitpicker.fix.SpringRestController
 nitpicker.fix.UseCollectionIsEmpty
+nitpicker.fix.UseEnumCollections
 nitpicker.fix.UseStandardCharsets

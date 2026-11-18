@@ -35,11 +35,33 @@ describe('hunkEdit', () => {
     );
   });
 
-  it('keeps the context lines that sit between two changes of one hunk', () => {
-    const source = 'a\nb\nc\nd\ne\n';
-    const hunk = hunkOf(' a\n-b\n+B\n c\n-d\n+D\n e\n', '@@ -1,5 +1,5 @@');
-
-    expect(applied(source, hunk)).toBe('a\nB\nc\nD\ne\n');
+  it.each([
+    [
+      'keeps the context lines that sit between two changes of one hunk',
+      'a\nb\nc\nd\ne\n',
+      [' a\n-b\n+B\n c\n-d\n+D\n e\n', '@@ -1,5 +1,5 @@'],
+      'a\nB\nc\nD\ne\n',
+    ],
+    [
+      'ignores the empty context line Error Prone lists after the last line of the file',
+      'a\nb\nc\n',
+      [' a\n-b\n+B\n c\n \n', '@@ -1,4 +1,4 @@'],
+      'a\nB\nc\n',
+    ],
+    [
+      'matches old lines that the patch wrote without their carriage return',
+      'a\r\nb\r\nc\r\n',
+      [' a\n-b\n+B\n c\n', '@@ -1,3 +1,3 @@'],
+      'a\r\nB\r\nc\r\n',
+    ],
+    [
+      'keeps a missing newline at the end of the file',
+      'a\nb',
+      [' a\n-b\n+c\n', '@@ -1,2 +1,2 @@'],
+      'a\nc',
+    ],
+  ] as const)('%s', (_name, source, [lines, header], expected) => {
+    expect(applied(source, hunkOf(lines, header))).toBe(expected);
   });
 
   it('finds the lines again when the file shifted since the compile', () => {
@@ -95,19 +117,6 @@ describe('hunkEdit', () => {
     expect(applied(crlf, OVERRIDE)).toBe(
       'class A {\r\n  int a;\r\n  @Override void run() {}\r\n  int b;\r\n}\r\n',
     );
-  });
-
-  it('matches old lines that the patch wrote without their carriage return', () => {
-    const crlf = 'a\r\nb\r\nc\r\n';
-    const hunk = hunkOf(' a\n-b\n+B\n c\n', '@@ -1,3 +1,3 @@');
-
-    expect(applied(crlf, hunk)).toBe('a\r\nB\r\nc\r\n');
-  });
-
-  it('keeps a missing newline at the end of the file', () => {
-    const hunk = hunkOf(' a\n-b\n+c\n', '@@ -1,2 +1,2 @@');
-
-    expect(applied('a\nb', hunk)).toBe('a\nc');
   });
 
   it('uses offsets into the decoded text for multi-byte characters', () => {

@@ -43,9 +43,15 @@ function matchesAt(lines: readonly string[], start: number, before: readonly str
   );
 }
 
+function withoutPastEnd(lines: readonly string[], before: string[], start: number): string[] {
+  const overrun = start + before.length === lines.length + 1 && before.at(-1) === '';
+  return overrun ? before.slice(0, -1) : before;
+}
+
 export function locateHunk(lines: readonly string[], hunk: Hunk): number | undefined {
-  const { before } = hunkLines(hunk);
+  const { before: listed } = hunkLines(hunk);
   const expected = hunk.oldCount === 0 ? hunk.oldStart : hunk.oldStart - 1;
+  const before = withoutPastEnd(lines, listed, expected);
   if (matchesAt(lines, expected, before)) {
     return expected;
   }
