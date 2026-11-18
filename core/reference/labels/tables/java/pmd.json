@@ -104,6 +104,7 @@
   "pmd/LogStringConcatenation": ["performance"],
   "pmd/LoggerForOtherClass": ["bug", "maintainability"],
   "pmd/LogicInversion": ["simplification"],
+  "pmd/LoopVariableUnused": ["bug"],
   "pmd/MapValueCastToNumber": ["bug"],
   "pmd/MethodWithSameNameAsEnclosingClass": ["style"],
   "pmd/MissingSerialVersionUID": ["maintainability"],

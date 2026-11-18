@@ -1618,6 +1618,43 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LoopVariableUnused" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop never uses its loop variable, but its body reads a fixed element of the iterated collection (xs.get(0), xs[0]), so every iteration reads the same element. Use the variable instead: for (String name : names) context.getBean(name, type), delegates.get(i).handle(ctx). If the loop only repeats work, name the variable ignored (for (Item ignored : items)) or use a plain counter.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $skip := '^(ignored?|unused|dummy|_.*)$',
+    $takeFirst := function($loop) {
+      exists($loop/*[last()][self::BreakStatement or self::ReturnStatement]
+             | $loop/*[last()][self::Block]/*[last()][self::BreakStatement or self::ReturnStatement])
+    },
+    $unconditional := function($e, $loop) {
+      empty($e/ancestor::*[self::IfStatement or self::ConditionalExpression][ancestor::*[. is $loop]])
+    },
+    $fixed := function($e, $xs) {
+      exists($e[self::ArrayAccess][*[1][self::VariableAccess or self::FieldAccess][@Name = $xs]][*[2][self::NumericLiteral]]
+             | $e[self::MethodCall][@MethodName = 'get'][ArgumentList/@Size = 1][ArgumentList/NumericLiteral]
+                 [*[1][self::VariableAccess or self::FieldAccess][@Name = $xs]]
+                 [*[1][pmd-java:typeIs('java.util.List')]])
+    }
+return (
+  for $loop in //ForeachStatement[let $x := LocalVariableDeclaration/VariableDeclarator/VariableId/@Name
+      return not(matches($x, $skip)) and not(*[3]//VariableAccess[@Name = $x])]
+        [*[2][self::VariableAccess or self::FieldAccess]][not($takeFirst(.))]
+  return $loop/*[3]//*[self::ArrayAccess or self::MethodCall][$fixed(., $loop/*[2]/@Name)][$unconditional(., $loop)],
+  for $loop in //ForStatement[ForInit/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name = InfixExpression[@Operator = '<']/*[1]/@Name]
+      [let $i := ForInit//VariableId/@Name return not(*[last()]//VariableAccess[@Name = $i])]
+      [not($takeFirst(.))]
+  return let $limit := $loop/InfixExpression[@Operator = '<']/*[2],
+      $xs := ($limit[self::MethodCall][@MethodName = 'size'][ArgumentList/@Size = 0]/*[1][self::VariableAccess or self::FieldAccess]
+              | $limit[self::FieldAccess][@Name = 'length']/*[1][self::VariableAccess or self::FieldAccess])/@Name
+    return $loop/*[last()]//*[self::ArrayAccess or self::MethodCall][exists($xs)][$fixed(., $xs)][$unconditional(., $loop)]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="MapValueCastToNumber" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A value read from a Map&lt;String, Object&gt; or a Properties is cast straight to a number or java.time type. The runtime type depends on the source (a JDBC driver returns Long or BigDecimal for an integer column, YAML and JSON give Integer, Long, Double or String), so the cast works in one setup and throws ClassCastException in another. Convert instead: ((Number) row.get(&quot;count&quot;)).intValue(), Integer.parseInt(String.valueOf(value)), a typed accessor (rs.getObject(column, LocalDate.class)) or a typed binding (@ConfigurationProperties, a record mapper). Maps that come from a method parameter or that this class fills itself (put, putAll, setProperty) are not reported, and neither is a get that an instanceof test of the cast type on the same get expression guards.">
     <priority>3</priority>
