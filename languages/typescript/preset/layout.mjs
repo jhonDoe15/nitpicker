@@ -153,6 +153,10 @@ function createClassifiers({
   };
 }
 
+function globsPattern(globs) {
+  return globs.length === 0 ? undefined : globs.map((glob) => globToRegExpSource(glob)).join('|');
+}
+
 function exactPathPattern(files) {
   return files.length === 0
     ? undefined
@@ -215,10 +219,7 @@ export function resolveLayout(
     ...globs,
     hiddenGlobs,
     ...endToEndFor(layout, testRoots, extensionGlob),
-    excludePattern:
-      hiddenGlobs.length === 0
-        ? undefined
-        : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
+    excludePattern: globsPattern(hiddenGlobs),
     generatedFilePattern: exactPathPattern(generatedFiles),
     ...createClassifiers({
       sourceRoots,
