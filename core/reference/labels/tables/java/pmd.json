@@ -28,6 +28,7 @@
   "pmd/CheckSkipResult": ["reliability"],
   "pmd/ClassLoadEffect": ["reliability"],
   "pmd/CleanupSkippedOnFailure": ["reliability"],
+  "pmd/CloseDereferencesUnopenedField": ["bug", "reliability"],
   "pmd/CloseResource": ["reliability"],
   "pmd/CollapsibleIfStatements": ["simplification"],
   "pmd/CompatibilityShim": ["maintainability"],
