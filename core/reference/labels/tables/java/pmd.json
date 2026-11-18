@@ -1,5 +1,6 @@
 {
   "pmd/AnnotationAttributeNotResolved": ["bug", "spring"],
+  "pmd/AssertNotNullWrongCheck": ["bug", "spring"],
   "pmd/AssignmentInOperand": ["maintainability"],
   "pmd/AvoidAssertAsIdentifier": ["style"],
   "pmd/AvoidCatchingGenericException": ["reliability"],
