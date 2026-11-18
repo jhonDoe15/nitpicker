@@ -77,7 +77,7 @@ export function isItemChain(node: TSESTree.Node, item: string): node is TSESTree
   );
 }
 
-export function scalarOf(site: Site, node: TSESTree.Node): Scalar | undefined {
+export function scalarOf(site: Pick<Site, 'context'>, node: TSESTree.Node): Scalar | undefined {
   const services = typeServices(site.context);
   const type = services?.getTypeAtLocation(node);
   if (type === undefined) {
@@ -89,7 +89,9 @@ export function scalarOf(site: Site, node: TSESTree.Node): Scalar | undefined {
   return (type.flags & ts.TypeFlags.Number) !== 0 ? 'number' : undefined;
 }
 
-export function keyedWhere(site: Site, where: TSESTree.Node | undefined): KeyedWhere | undefined {
+export function keyedWhere(
+  site: Pick<Site, 'context' | 'loop' | 'repeated'>,
+  where: TSESTree.Node | undefined): KeyedWhere | undefined {
   const properties =
     where?.type === AST_NODE_TYPES.ObjectExpression ? propertiesOf(where) : undefined;
   const { sourceCode } = site.context;

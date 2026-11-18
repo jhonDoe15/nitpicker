@@ -17,4 +17,9 @@ export const IO_IN_LOOP_SUGGESTIONS = {
     'The values are read before the loop starts, so a key that changes while the loop runs is no longer seen.',
     'A key that holds a value of another type makes `get` throw, but `mget` returns `null` for it.',
   ].join(' '),
+  batchWrite: [
+    'Run the statement once per 500 keys instead of once per item. A chunk now succeeds or fails as a whole,',
+    'and a column that the database sets on write (such as an update date) gets one value for the chunk.',
+    'Entity listeners and subscribers run once per statement instead of once per item.',
+  ].join(' '),
 };
