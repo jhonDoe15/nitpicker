@@ -27,6 +27,7 @@
   "pmd/CheckResultSet": ["bug"],
   "pmd/CheckSkipResult": ["reliability"],
   "pmd/ClassLoadEffect": ["reliability"],
+  "pmd/CleanupLoopStopsOnFailure": ["bug", "reliability"],
   "pmd/CleanupSkippedOnFailure": ["reliability"],
   "pmd/CloseDereferencesUnopenedField": ["bug", "reliability"],
   "pmd/CloseResource": ["reliability"],
