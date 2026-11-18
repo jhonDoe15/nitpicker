@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { FixEdit } from '../../../../core/fix/typed/fix-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 import {
   countFindings,
   judgeFindings,
   recipeRuns,
 } from '../../../../core/fix/verify/judge-findings.mts';
+import type { FindingKey } from '../../../../core/fix/verify/verify-types.mts';
 import { newPassBudget, writeOutputs, type Reported } from './write-planned.mts';
 
 const RULE = 'nitpicker/no-wasted-collection-step';
@@ -12,15 +15,20 @@ const NAME = 'src/a.ts';
 type Entry = {
   readonly name: string;
   readonly recipe?: string;
-  readonly fix: { readonly finding?: unknown; readonly alsoFixes?: readonly unknown[] };
+  readonly fix: {
+    readonly edits: readonly FixEdit[];
+    readonly finding?: FindingKey;
+    readonly alsoFixes?: readonly FindingKey[];
+  };
 };
 
 function recordingWriter() {
   const entries: Entry[] = [];
   return {
     entries,
+    projectRoot: '.',
     apply(_snapshot: unknown, planned: readonly Entry[]) {
-      entries.push(...planned);
+      appendAll(entries, planned);
       return { applied: planned.map(({ name }) => ({ name })), changedMeanwhile: [], errors: [] };
     },
   };
@@ -41,20 +49,28 @@ function runsOf(entries: readonly Entry[]) {
     entries.map(({ recipe, fix }) => ({
       recipe,
       files: [NAME],
-      finding: fix.finding as never,
-      alsoFindings: (fix.alsoFixes ?? []) as never[],
+      finding: fix.finding,
+      alsoFindings: fix.alsoFixes ?? [],
     })),
   );
 }
 
 function twoPasses(firstCount: number) {
   const writer = recordingWriter();
-  const settings = { selectedRules: [`eslint-lint/${RULE}`], writer } as never;
+  const settings = { selectedRules: [`eslint-lint/${RULE}`], writer };
   const budget = newPassBudget();
   const first = new Map([[NAME, Buffer.from('f(await p);\n')]]);
   const second = new Map([[NAME, Buffer.from('f(p);\n')]]);
-  writeOutputs(settings, first, [reportOf(firstCount, { range: [2, 8], text: '' })], budget);
-  writeOutputs(settings, second, [reportOf(1, { range: [0, 1], text: 'g' })], budget);
+  writeOutputs(settings, {
+    before: first,
+    reported: [reportOf(firstCount, { range: [2, 8], text: '' })],
+    budget,
+  });
+  writeOutputs(settings, {
+    before: second,
+    reported: [reportOf(1, { range: [0, 1], text: 'g' })],
+    budget,
+  });
   return writer.entries;
 }
 

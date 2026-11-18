@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 import { contains } from '../../../rules/typed/node-views.mts';
 import { allOf, type FixPlans } from '../../edits/plans.mts';
@@ -7,10 +7,12 @@ import { accumulationOf, type Accumulation, type Write, type WriteParser } from 
 import { hasMethod } from '../reduce/type-proofs.mts';
 
 type Variable = TSESLint.Scope.Variable;
-export type Declaration = {
+type Declaration = {
   readonly declaration: TSESTree.VariableDeclaration;
   readonly declarator: TSESTree.VariableDeclarator;
 };
+
+const { DefinitionType } = TSESLint.Scope;
 
 const STATEMENT_LISTS = new Set<string>([AST_NODE_TYPES.BlockStatement, AST_NODE_TYPES.Program]);
 const WRITE_TARGETS = new Set<string>([
@@ -22,7 +24,7 @@ const WRITE_TARGETS = new Set<string>([
 
 function declarationOf(variable: Variable): Declaration | undefined {
   const [definition] = variable.defs;
-  if (definition?.type !== 'Variable' || variable.defs.length !== 1) {
+  if (definition?.type !== DefinitionType.Variable || variable.defs.length !== 1) {
     return undefined;
   }
   const { node: declarator, parent: declaration } = definition;
@@ -63,6 +65,14 @@ function isSafeMemberRead(identifier: TSESTree.Identifier | TSESTree.JSXIdentifi
   return ((isLength || member.computed) && !writes) || isPushCall(member);
 }
 
+function lastEnd(loops: readonly TSESTree.Node[]): number {
+  let end = 0;
+  for (const loop of loops) {
+    end = Math.max(end, loop.range[1]);
+  }
+  return end;
+}
+
 function readsAreSafe(accumulation: Accumulation): boolean {
   if (
     accumulation.reads.some(
@@ -71,10 +81,10 @@ function readsAreSafe(accumulation: Accumulation): boolean {
   ) {
     return false;
   }
-  const lastEnd = Math.max(...accumulation.loops.map((loop) => loop.range[1]));
+  const loopsEnd = lastEnd(accumulation.loops);
   return accumulation.reads.every(({ identifier }) => {
     const inLoop = accumulation.loops.some((loop) => contains(loop, identifier));
-    return inLoop ? isSafeMemberRead(identifier) : identifier.range[0] >= lastEnd;
+    return inLoop ? isSafeMemberRead(identifier) : identifier.range[0] >= loopsEnd;
   });
 }
 

@@ -88,8 +88,7 @@ function keepsUndefinedOut(context: Context, form: ExtremeForm): boolean {
 }
 
 function reduceText(
-  sourceText: string,
-  typeText: string,
+  source: { readonly sourceText: string; readonly typeText: string },
   { direction }: ExtremeForm,
   { candidate, best, less }: Comparator,
 ): string {
@@ -97,6 +96,7 @@ function reduceText(
     direction === 'first'
       ? `${best} === undefined || ${less} ? ${candidate} : ${best}`
       : `${best} !== undefined && ${less} ? ${best} : ${candidate}`;
+  const { sourceText, typeText } = source;
   return `${sourceText}.reduce<${typeText} | undefined>((${best}, ${candidate}) => (${choice}), undefined)`;
 }
 
@@ -146,6 +146,6 @@ export function extremeFix(context: Context, call: TSESTree.CallExpression): Rep
   ) {
     return undefined;
   }
-  const text = reduceText(sourceCode.getText(source), typeText, form, comparator);
+  const text = reduceText({ sourceText: sourceCode.getText(source), typeText }, form, comparator);
   return allOf(planFor(form, text));
 }

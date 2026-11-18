@@ -26,14 +26,17 @@ function comparison(
   binary: TSESTree.BinaryExpression,
 ): FixPlan[] | undefined {
   const { sourceCode } = context;
-  const operator = sourceCode.getFirstTokenBetween(
-    binary.left,
-    binary.right,
-    (token) => token.value === binary.operator,
-  );
-  const before = operator === null ? null : sourceCode.getTokenBefore(operator);
-  const after = operator === null ? null : sourceCode.getTokenAfter(operator);
-  if (before === null || after === null || top.type === AST_NODE_TYPES.ChainExpression) {
+  const operator =
+    sourceCode.getFirstTokenBetween(
+      binary.left,
+      binary.right,
+      (token) => token.value === binary.operator,
+    ) ?? undefined;
+  const before =
+    operator === undefined ? undefined : (sourceCode.getTokenBefore(operator) ?? undefined);
+  const after =
+    operator === undefined ? undefined : (sourceCode.getTokenAfter(operator) ?? undefined);
+  if (before === undefined || after === undefined || top.type === AST_NODE_TYPES.ChainExpression) {
     return undefined;
   }
   const negation = NEGATING.has(binary.operator) ? '!' : '';

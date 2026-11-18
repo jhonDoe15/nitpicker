@@ -1,4 +1,4 @@
-import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import type { TSESLint } from '@typescript-eslint/utils';
 import { afterAll } from 'vitest';
 import { typedCases } from '../../test-support/typed-cases.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
@@ -6,7 +6,6 @@ import { hasNeverFalsyItems } from './array-items.mts';
 
 const rule: TSESLint.RuleModule<'answer'> = {
   meta: { type: 'problem', schema: [], messages: { answer: '{{answer}}' } },
-  defaultOptions: [],
   create(context) {
     return {
       'CallExpression[callee.name="probe"] > :first-child'(

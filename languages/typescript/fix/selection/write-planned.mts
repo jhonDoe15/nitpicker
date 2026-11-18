@@ -24,6 +24,18 @@ export type Reported = {
 };
 type Applied = { readonly rule: string; readonly line: number | undefined };
 export type PassBudget = { readonly seeded: Set<string>; readonly left: Map<string, number> };
+export type PassInput = {
+  readonly before: Bytes;
+  readonly reported: readonly Reported[];
+  readonly budget: PassBudget;
+};
+type AppliedRuns = { readonly applied: readonly Applied[]; readonly recorded: readonly Applied[] };
+type WriteOutcome = {
+  readonly rewritten: string[];
+  readonly changedMeanwhile: string[];
+  readonly unwritable: string[];
+  readonly fixedFindings: string[];
+};
 
 export function newPassBudget(): PassBudget {
   return { seeded: new Set(), left: new Map() };
@@ -74,12 +86,7 @@ function analyzerRule(rule: string): string {
   return rule.slice(ANALYZER.length + 1);
 }
 
-function recipeOf(
-  settings: PlanSettings,
-  name: string,
-  applied: readonly Applied[],
-  recorded: readonly Applied[],
-) {
+function recipeOf(settings: PlanSettings, name: string, { applied, recorded }: AppliedRuns) {
   if (settings.selectedRules.length === 0 || applied.length === 0) {
     return {};
   }
@@ -96,12 +103,7 @@ function recipeOf(
   };
 }
 
-function plannedTexts(
-  settings: PlanSettings,
-  before: Bytes,
-  reported: readonly Reported[],
-  budget: PassBudget,
-) {
+function plannedTexts(settings: PlanSettings, { before, reported, budget }: PassInput) {
   const findings: string[] = [];
   const planned = reported.flatMap((file) => {
     const original = before.get(file.name)?.toString('utf8') ?? '';
@@ -117,20 +119,19 @@ function plannedTexts(
           {
             name: file.name,
             text,
-            ...recipeOf(settings, file.name, applied, recordable(budget, file, applied)),
+            ...recipeOf(settings, file.name, {
+              applied,
+              recorded: recordable(budget, file, applied),
+            }),
           },
         ];
   });
   return { planned, findings };
 }
 
-export function writeOutputs(
-  settings: PlanSettings,
-  before: Bytes,
-  reported: readonly Reported[],
-  budget: PassBudget,
-) {
-  const { planned, findings } = plannedTexts(settings, before, reported, budget);
+export function writeOutputs(settings: PlanSettings, input: PassInput): WriteOutcome {
+  const { before } = input;
+  const { planned, findings } = plannedTexts(settings, input);
   const { written, changedMeanwhile, unwritable } = writeTexts(
     settings.writer,
     planned.map((file) => ({ ...file, bytes: before.get(file.name) })),

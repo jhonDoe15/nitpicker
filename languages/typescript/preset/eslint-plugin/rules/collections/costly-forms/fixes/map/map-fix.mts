@@ -16,9 +16,16 @@ import { memberName, someNode } from '../../repeated-runs.mts';
 import { printedType } from '../element-types.mts';
 import { lookupShape, type LookupShape } from './lookup-shape.mts';
 import { checkedItem } from './lookup-types.mts';
-import { insertionSlot } from './map-slot.mts';
+import { insertionSlot, type Slot } from './map-slot.mts';
 
 const STEP = '  ';
+const INDEXED: Readonly<Record<LookupShape['method'], boolean>> = {
+  some: false,
+  find: false,
+  findLast: false,
+  findIndex: true,
+  findLastIndex: true,
+};
 
 function constantDeclarator(
   sourceCode: SourceCode,
@@ -31,7 +38,6 @@ function constantDeclarator(
     variable === undefined ||
     definition?.type !== TSESLint.Scope.DefinitionType.Variable ||
     declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
-    definition.parent?.type !== AST_NODE_TYPES.VariableDeclaration ||
     definition.parent.kind !== 'const' ||
     declarator.init === null ||
     isExported(declarator)
@@ -72,9 +78,12 @@ type Plan = {
   readonly index: string;
 };
 
+function head(declared: string, source: string): string {
+  return `for (const ${declared} of ${source}) {`;
+}
+
 function loopLines({ shape, name, itemText, index }: Plan, keyText: string): string[] {
   const { method, receiver, parameter } = shape;
-  const head = (declared: string, source: string) => `for (const ${declared} of ${source}) {`;
   switch (method) {
     case 'some':
       return [
@@ -108,7 +117,7 @@ function loopLines({ shape, name, itemText, index }: Plan, keyText: string): str
         `${STEP}}`,
         '}',
       ];
-    default:
+    case 'findLastIndex':
       return [
         `const ${name} = new Map<string, number>();`,
         head(`[${index}, ${parameter}]`, `${receiver.name}.entries()`),
@@ -118,26 +127,33 @@ function loopLines({ shape, name, itemText, index }: Plan, keyText: string): str
   }
 }
 
+function indexLookupText(call: TSESTree.CallExpression, name: string, value: string): string {
+  const plain =
+    call.parent.type === AST_NODE_TYPES.VariableDeclarator ||
+    call.parent.type === AST_NODE_TYPES.ReturnStatement;
+  return plain ? `${name}.get(${value}) ?? -1` : `(${name}.get(${value}) ?? -1)`;
+}
+
 function lookupText(
   sourceCode: SourceCode,
   call: TSESTree.CallExpression,
   { shape, name }: Plan,
 ): string {
   const value = sourceCode.getText(shape.value);
-  if (shape.method === 'some') {
-    return `${name}.has(${value})`;
+  switch (shape.method) {
+    case 'some':
+      return `${name}.has(${value})`;
+    case 'find':
+    case 'findLast':
+      return `${name}.get(${value})`;
+    case 'findIndex':
+    case 'findLastIndex':
+      return indexLookupText(call, name, value);
   }
-  if (shape.method === 'find' || shape.method === 'findLast') {
-    return `${name}.get(${value})`;
-  }
-  const plain = [AST_NODE_TYPES.VariableDeclarator, AST_NODE_TYPES.ReturnStatement].includes(
-    call.parent.type as AST_NODE_TYPES.VariableDeclarator,
-  );
-  return plain ? `${name}.get(${value}) ?? -1` : `(${name}.get(${value}) ?? -1)`;
 }
 
 function usesIndex(shape: LookupShape): boolean {
-  return shape.method === 'findIndex' || shape.method === 'findLastIndex';
+  return INDEXED[shape.method];
 }
 
 function itemTypeText(context: Context, call: TSESTree.CallExpression, shape: LookupShape) {
@@ -152,7 +168,13 @@ function indexName(taken: readonly string[]): string {
   return ['index', 'position', 'offset'].find((name) => !taken.includes(name)) ?? 'ordinal';
 }
 
-export function mapFix(context: Context, call: TSESTree.CallExpression): ReportFix | undefined {
+type Target = {
+  readonly shape: LookupShape;
+  readonly itemText: string;
+  readonly slot: Slot;
+};
+
+function targetOf(context: Context, call: TSESTree.CallExpression): Target | undefined {
   const { sourceCode } = context;
   const shape = lookupShape(call);
   const declarator =
@@ -172,18 +194,29 @@ export function mapFix(context: Context, call: TSESTree.CallExpression): ReportF
   ) {
     return undefined;
   }
+  return { shape, itemText, slot };
+}
+
+function freeLookupName(
+  sourceCode: SourceCode,
+  call: TSESTree.CallExpression,
+  { shape, slot }: Target,
+): string | undefined {
   const base =
     shape.method === 'some'
       ? `${shape.receiver.name}${capitalized(shape.key)}Set`
       : `${shape.receiver.name}By${capitalized(shape.key)}`;
-  const name = freeName(sourceCode, {
-    sites: [call, slot.statement],
-    within: slot.statement,
-    base,
-  });
-  if (name === undefined) {
+  return freeName(sourceCode, { sites: [call, slot.statement], within: slot.statement, base });
+}
+
+export function mapFix(context: Context, call: TSESTree.CallExpression): ReportFix | undefined {
+  const { sourceCode } = context;
+  const target = targetOf(context, call);
+  const name = target === undefined ? undefined : freeLookupName(sourceCode, call, target);
+  if (target === undefined || name === undefined) {
     return undefined;
   }
+  const { shape, itemText, slot } = target;
   const index = indexName([name, shape.parameter, shape.receiver.name]);
   const plan = { shape, name, itemText, index };
   const lines = loopLines(plan, sourceCode.getText(shape.keyNode));

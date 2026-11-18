@@ -96,8 +96,9 @@ describe('the selected ESLint step repeats on the files it changed', () => {
     expect(runs).toHaveLength(10);
     expect(text).toBe(`${'a'.repeat(10)}grow();\n`);
     expect(result.fixedFindings).toEqual([`${NAME}:1 eslint-lint/x/grow (eslint-suggestion)`]);
-    expect(result.notes).toContain(
+    expect(result.notes).toEqual([
+      'eslint --fix rewrote src/a.ts',
       'eslint --fix stopped after 10 passes: selected fixes may still apply',
-    );
+    ]);
   });
 });

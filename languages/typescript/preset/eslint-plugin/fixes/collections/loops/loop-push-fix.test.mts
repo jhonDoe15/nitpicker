@@ -1,4 +1,7 @@
-import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
+import {
+  suggestionCases,
+  typedCaseProject,
+} from '../../../test-support/projects/typed-ts-project.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from '../../../rules/collections/no-accumulating-spread.mts';
 
@@ -16,29 +19,25 @@ function wrap(body: string, parameters = 'xs: Row[], existing: string[]') {
   return `export function f(${parameters}) {\n${body}\n}`;
 }
 
-function pushes(body: string, output: string, parameters?: string) {
-  const code = wrap(body, parameters);
-  return {
-    ...typed(code),
-    errors: [
-      {
-        messageId: 'loopArray',
-        suggestions: [
-          { messageId: 'pushOntoArray', output: `${header}${wrap(output, parameters)}` },
-        ],
-      },
-    ],
-  };
-}
-
-function declines(body: string, parameters?: string) {
-  return { ...typed(wrap(body, parameters)), errors: [{ messageId: 'loopArray' }] };
-}
+const { pushes, declines } = suggestionCases({
+  typed,
+  header,
+  wrap,
+  messageId: 'loopArray',
+  suggestionId: 'pushOntoArray',
+});
 
 const loopOf = (statement: string, before = '', after = '  return out;') =>
   `${before}  let out: string[] = [];\n  for (const x of xs) {\n    ${statement}\n  }\n${after}`;
 const constLoopOf = (statement: string, before = '', after = '  return out;') =>
   loopOf(statement, before, after).replace('let out', 'const out');
+
+const AWAITED_PUSH =
+  '  const out: string[] = [];\n  for (const x of xs) {\n    out.push(await load());\n  }\n  return out;';
+
+function asAsync(body: string): string {
+  return wrap(body).replace('function', 'async function');
+}
 
 tester.run('no-accumulating-spread loop suggestion', rule, {
   valid: [],
@@ -115,9 +114,9 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
     ),
     {
       ...typed(
-        wrap(
+        asAsync(
           '  let out: string[] = [];\n  for (const x of xs) {\n    out = [...out, await load()];\n  }\n  return out;',
-        ).replace('function', 'async function'),
+        ),
       ),
       errors: [
         {
@@ -125,7 +124,7 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
           suggestions: [
             {
               messageId: 'pushOntoArray',
-              output: `${header}${wrap('  const out: string[] = [];\n  for (const x of xs) {\n    out.push(await load());\n  }\n  return out;').replace('function', 'async function')}`,
+              output: `${header}${asAsync(AWAITED_PUSH)}`,
             },
           ],
         },

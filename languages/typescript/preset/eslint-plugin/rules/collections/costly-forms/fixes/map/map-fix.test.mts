@@ -1,6 +1,5 @@
 import { afterAll } from 'vitest';
 import { typedCases } from '../../../../../test-support/typed-cases.mts';
-import { typescriptRuleTester } from '../../../../../test-support/rule-tester.mts';
 import { rule } from '../../no-costly-collection-form.mts';
 
 const { tester, cleanup, typed } = typedCases('nitpicker-map-fix-');
@@ -30,10 +29,6 @@ function fixes(code: string, output: string, call = 'find', key = 'id') {
       { ...method(call, key), suggestions: [{ messageId: 'useMap', output: `${HEAD}${output}` }] },
     ],
   };
-}
-
-function declines(code: string, call = 'find', key = 'id') {
-  return { ...typed(`${HEAD}${code}`), errors: [method(call, key)] };
 }
 
 const BUILD = [

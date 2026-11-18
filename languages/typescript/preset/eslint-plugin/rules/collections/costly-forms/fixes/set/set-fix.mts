@@ -13,7 +13,7 @@ import { needsParentheses } from '../parentheses.mts';
 import { isGuardedPush } from './guards.mts';
 import { membershipOf, type Membership } from './membership.mts';
 
-type Edit = { readonly range: TSESTree.Range; readonly text: string; readonly strict?: boolean };
+type Edit = { readonly range: TSESTree.Range; readonly text: string; readonly strict: boolean };
 
 function elementTypeText(
   sourceCode: Context['sourceCode'],
@@ -44,11 +44,15 @@ function membershipEdit(context: Context, name: string, membership: Membership):
   return { range: replaced.range, text: present ? call : negated, strict: membership.strict };
 }
 
+type MethodSite = {
+  readonly name: string;
+  readonly reference: TSESTree.Identifier;
+  readonly references: ReadonlySet<TSESTree.Node>;
+};
+
 function methodEdit(
   context: Context,
-  name: string,
-  reference: TSESTree.Identifier,
-  references: ReadonlySet<TSESTree.Node>,
+  { name, reference, references }: MethodSite,
 ): Edit | undefined {
   const method = methodCallOn(reference);
   if (method?.call !== undefined && method.name === 'push') {
@@ -56,7 +60,7 @@ function methodEdit(
     return callee.type === AST_NODE_TYPES.MemberExpression &&
       method.call.arguments.length === 1 &&
       isGuardedPush(context.sourceCode, method.call, references)
-      ? { range: callee.property.range, text: 'add' }
+      ? { range: callee.property.range, text: 'add', strict: false }
       : undefined;
   }
   const membership = membershipOf(reference);
@@ -66,7 +70,7 @@ function methodEdit(
   return method?.member !== undefined &&
     method.name === 'length' &&
     !isAssignmentTarget(method.member)
-    ? { range: method.member.property.range, text: 'size' }
+    ? { range: method.member.property.range, text: 'size', strict: false }
     : undefined;
 }
 
@@ -103,22 +107,23 @@ function plainEdit(
   return parent.type === AST_NODE_TYPES.ReturnStatement &&
     sameFunction &&
     isFinalReturn(declarator, reference, references)
-    ? { range: reference.range, text: `[...${reference.name}]` }
+    ? { range: reference.range, text: `[...${reference.name}]`, strict: false }
     : undefined;
 }
 
+type Owner = { readonly declarator: TSESTree.VariableDeclarator; readonly name: string };
+
 function editsOf(
   context: Context,
-  declarator: TSESTree.VariableDeclarator,
+  { declarator, name }: Owner,
   references: readonly TSESTree.Identifier[],
 ): Edit[] | undefined {
-  const { name } = declarator.id as TSESTree.Identifier;
   const found = new Set<TSESTree.Node>(references);
   const edits: Edit[] = [];
   for (const reference of references) {
     const edit =
       outerOf(reference) === reference
-        ? (methodEdit(context, name, reference, found) ??
+        ? (methodEdit(context, { name, reference, references: found }) ??
           plainEdit(declarator, reference, references))
         : undefined;
     if (edit === undefined) {
@@ -139,11 +144,29 @@ function overlap(edits: readonly Edit[]): boolean {
 }
 
 function excludesNaN(context: Context, id: TSESTree.Identifier, edits: readonly Edit[]): boolean {
-  if (!edits.some((edit) => edit.strict === true)) {
+  if (!edits.some((edit) => edit.strict)) {
     return true;
   }
   const typed = arrayItemTypes(context, id);
   return typed !== undefined && typed.items.length > 0 && !typed.items.some(canBeNaN);
+}
+
+type EmptyArray = { readonly id: TSESTree.Identifier; readonly init: TSESTree.ArrayExpression };
+
+function emptyArrayOf(
+  sourceCode: Context['sourceCode'],
+  declarator: TSESTree.VariableDeclarator,
+): EmptyArray | undefined {
+  const { id, init } = declarator;
+  const declaration = declarator.parent;
+  return id.type === AST_NODE_TYPES.Identifier &&
+    init?.type === AST_NODE_TYPES.ArrayExpression &&
+    init.elements.length === 0 &&
+    declaration.kind === 'const' &&
+    !declaration.declare &&
+    !isDeclared(sourceCode, declarator, 'Set')
+    ? { id, init }
+    : undefined;
 }
 
 export function setFix(
@@ -151,31 +174,23 @@ export function setFix(
   declarator: TSESTree.VariableDeclarator,
 ): ReportFix | undefined {
   const { sourceCode } = context;
-  const { id, init } = declarator;
-  const declaration = declarator.parent;
-  if (
-    id.type !== AST_NODE_TYPES.Identifier ||
-    init?.type !== AST_NODE_TYPES.ArrayExpression ||
-    init.elements.length > 0 ||
-    declaration.type !== AST_NODE_TYPES.VariableDeclaration ||
-    declaration.kind !== 'const' ||
-    declaration.declare ||
-    isDeclared(sourceCode, declarator, 'Set')
-  ) {
-    return undefined;
-  }
-  const elementType = elementTypeText(sourceCode, id);
+  const found = emptyArrayOf(sourceCode, declarator);
+  const elementType = found === undefined ? undefined : elementTypeText(sourceCode, found.id);
   const variable = sourceCode.getDeclaredVariables(declarator)[0];
-  if (elementType === undefined || variable === undefined) {
+  if (found === undefined || elementType === undefined || variable === undefined) {
     return undefined;
   }
+  const { id, init } = found;
   const references = variable.references
     .filter((reference) => !reference.init)
     .map((reference) => reference.identifier)
     .filter((identifier) => identifier.type === AST_NODE_TYPES.Identifier);
-  const edits = editsOf(context, declarator, references);
-  const range: TSESTree.Range = [id.range[0], init.range[1]];
-  const declared: Edit = { range, text: `${id.name} = new Set<${elementType}>()` };
+  const edits = editsOf(context, { declarator, name: id.name }, references);
+  const declared: Edit = {
+    range: [id.range[0], init.range[1]],
+    text: `${id.name} = new Set<${elementType}>()`,
+    strict: false,
+  };
   if (
     edits === undefined ||
     overlap(edits) ||

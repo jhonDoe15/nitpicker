@@ -180,20 +180,25 @@ function addPass(totals: Totals, pass: PassOutcome) {
   }
 }
 
-function runPasses(
-  settings: EslintSettings,
-  firstFiles: readonly FixFile[],
-  linked: LinkedPolicyFile,
-  totals: Totals,
-) {
+type PassRun = {
+  readonly files: readonly FixFile[];
+  readonly linked: LinkedPolicyFile;
+  readonly totals: Totals;
+};
+
+function runPasses(settings: EslintSettings, { files: firstFiles, linked, totals }: PassRun) {
   const { projectRoot } = settings;
   const passes = settings.selectedRules.length === 0 ? 1 : MAX_PASSES;
   const budget = newPassBudget();
   let files = firstFiles;
-  for (let pass = 1; pass <= passes && files.length > 0; pass += 1) {
+  const numbers = Array.from({ length: passes }, (_, index) => index + 1);
+  for (const pass of numbers) {
+    if (files.length === 0) {
+      return;
+    }
     const before = readBytes(projectRoot, files);
     const reported = reportedFiles(projectRoot, files, runEslint(settings, files, linked).stdout);
-    const outcome = writeOutputs(settings, before, reported, budget);
+    const outcome = writeOutputs(settings, { before, reported, budget });
     addPass(totals, {
       ...outcome,
       unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
@@ -219,7 +224,7 @@ function attemptEslintFix(settings: EslintSettings, files: readonly FixFile[]): 
       path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
       layoutTransformFor(policyFile, layout),
     );
-    runPasses(settings, files, linked, totals);
+    runPasses(settings, { files, linked, totals });
   } catch (error) {
     failure = error;
   }

@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../rules/security/security-values.mts';
+import { ancestorsOf } from '../../rules/typed/node-views.mts';
 import { containsNode } from '../support/nodes.mts';
 import { hasCommentIn, replacing, type FixPlan } from '../support/ranges.mts';
 import { isGlobalName } from './support/globals.mts';
@@ -28,16 +29,7 @@ function isTransactional(context: Context, node: TSESTree.Node): boolean {
 }
 
 function insideTransaction(context: Context, node: TSESTree.Node): boolean {
-  for (
-    let current: TSESTree.Node | null | undefined = node.parent;
-    current;
-    current = current.parent
-  ) {
-    if (isTransactional(context, current)) {
-      return true;
-    }
-  }
-  return false;
+  return ancestorsOf(node).some((ancestor) => isTransactional(context, ancestor));
 }
 
 function writesAnything(context: Context, list: TSESTree.ArrayExpression): boolean {

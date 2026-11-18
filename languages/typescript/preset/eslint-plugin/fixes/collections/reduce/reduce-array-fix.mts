@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import type { Callback } from '../../../rules/typed/syntax-views.mts';
 import { hasSingleType } from '../../../rules/support/array-items.mts';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { startsFromSizedArray } from '../support/fresh-arrays.mts';
@@ -8,12 +9,13 @@ import {
   expressionText,
   reduceSite,
   rewrittenCall,
-  type Callback,
   type ReduceSite,
 } from './reduce-site.mts';
 import { hasDenseDefiniteArrayType, hasMethod } from './type-proofs.mts';
 
-type Rewrite = { readonly method: 'map' | 'flatMap'; readonly result: string };
+const FLAT_MAP = 'flatMap';
+
+type Rewrite = { readonly method: 'map' | typeof FLAT_MAP; readonly result: string };
 
 function appendedTail(site: ReduceSite): readonly TSESTree.Node[] | undefined {
   const { result, accumulator } = site;
@@ -36,11 +38,11 @@ function rewriteOf(context: Context, tail: readonly TSESTree.Node[]): Rewrite | 
   const [only] = tail;
   if (tail.length > 1) {
     const items = sourceCode.text.slice(only?.range[0], tail.at(-1)?.range[1]);
-    return { method: 'flatMap', result: `[${items}]` };
+    return { method: FLAT_MAP, result: `[${items}]` };
   }
   if (only?.type === AST_NODE_TYPES.SpreadElement) {
     return hasDenseDefiniteArrayType(context, only.argument)
-      ? { method: 'flatMap', result: expressionText(sourceCode, only.argument) }
+      ? { method: FLAT_MAP, result: expressionText(sourceCode, only.argument) }
       : undefined;
   }
   return only === undefined
@@ -71,7 +73,7 @@ function fixOf(context: Context, callback: Callback): FixPlan | undefined {
   ) {
     return undefined;
   }
-  if (rewrite.method === 'flatMap' && !hasMethod(context, site.receiver, 'flatMap')) {
+  if (rewrite.method === FLAT_MAP && !hasMethod(context, site.receiver, FLAT_MAP)) {
     return undefined;
   }
   const result = asExpressionBody(site, rewrite.result);

@@ -6,7 +6,6 @@ import { allOf } from './plans.mts';
 
 const rule: TSESLint.RuleModule<'use'> = {
   meta: { type: 'problem', fixable: 'code', schema: [], messages: { use: 'use' } },
-  defaultOptions: [],
   create(context) {
     const { sourceCode } = context;
     return {

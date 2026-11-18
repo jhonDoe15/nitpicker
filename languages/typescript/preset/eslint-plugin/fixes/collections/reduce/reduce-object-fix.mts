@@ -1,14 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import type { Callback } from '../../../rules/typed/syntax-views.mts';
 import { unwrapped, type Context } from '../../../rules/security/security-values.mts';
 import { isDeclared } from '../../support/scope.mts';
 import { replacing, type FixPlan } from '../../support/ranges.mts';
-import {
-  expressionText,
-  reduceSite,
-  rewrittenCall,
-  type Callback,
-  type ReduceSite,
-} from './reduce-site.mts';
+import { expressionText, reduceSite, rewrittenCall, type ReduceSite } from './reduce-site.mts';
 import { hasObjectFromEntries, isPrimitiveKey } from './type-proofs.mts';
 
 type EntryProperty = TSESTree.Property;

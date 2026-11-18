@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices, type Context } from '../security/security-values.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { isReference, ts } from '../typed/typescript-views.mts';
 import type { TypeAnswer } from './checked-types.mts';
 
 const FALSY_FLAGS =
@@ -24,7 +24,7 @@ const FALSY_FLAGS =
 
 const OBJECT_FLAGS = ts.TypeFlags.Object | ts.TypeFlags.NonPrimitive;
 
-function unionMembers(type: TypeScript.Type): readonly TypeScript.Type[] {
+export function unionMembers(type: TypeScript.Type): readonly TypeScript.Type[] {
   return type.isUnion() ? type.types : [type];
 }
 
@@ -33,7 +33,7 @@ export function itemTypesOf(
   member: TypeScript.Type,
 ): readonly TypeScript.Type[] | undefined {
   if (checker.isTupleType(member)) {
-    return checker.getTypeArguments(member as TypeScript.TypeReference);
+    return isReference(member) ? checker.getTypeArguments(member) : undefined;
   }
   if (!checker.isArrayType(member)) {
     return undefined;

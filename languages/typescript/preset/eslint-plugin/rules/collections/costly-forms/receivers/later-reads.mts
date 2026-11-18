@@ -6,14 +6,7 @@ import {
   variableNamed,
 } from '../../../typed/node-views.mts';
 import { isFunction } from '../../../typed/syntax-views.mts';
-
-const LOOPS = new Set<string>([
-  AST_NODE_TYPES.ForStatement,
-  AST_NODE_TYPES.ForInStatement,
-  AST_NODE_TYPES.ForOfStatement,
-  AST_NODE_TYPES.WhileStatement,
-  AST_NODE_TYPES.DoWhileStatement,
-]);
+import { LOOP_TYPES, plainAssignmentStatement } from '../../spread-shapes.mts';
 
 export function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
   return ancestorsOf(node).find(isFunction);
@@ -25,7 +18,7 @@ function loopsAround(node: TSESTree.Node): TSESTree.Node[] {
     if (isFunction(ancestor)) {
       return loops;
     }
-    if (LOOPS.has(ancestor.type)) {
+    if (LOOP_TYPES.has(ancestor.type)) {
       loops.push(ancestor);
     }
   }
@@ -40,16 +33,6 @@ function statementOf(node: TSESTree.Node): TSESTree.Node | undefined {
   );
 }
 
-function reassignment(write: TSESLint.Scope.Reference): TSESTree.AssignmentExpression | undefined {
-  const assignment = write.identifier.parent;
-  return assignment.type === AST_NODE_TYPES.AssignmentExpression &&
-    assignment.operator === '=' &&
-    assignment.left === write.identifier &&
-    assignment.parent.type === AST_NODE_TYPES.ExpressionStatement
-    ? assignment
-    : undefined;
-}
-
 function replacedBefore(
   call: TSESTree.CallExpression,
   read: TSESLint.Scope.Reference,
@@ -57,7 +40,7 @@ function replacedBefore(
 ): boolean {
   const statement = statementOf(call);
   return writes.some((write) => {
-    const assignment = reassignment(write);
+    const assignment = plainAssignmentStatement(write.identifier);
     const sibling = assignment?.parent;
     return (
       assignment !== undefined &&

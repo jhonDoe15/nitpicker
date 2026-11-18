@@ -8,9 +8,11 @@ export type ExtremeForm = {
   readonly destructured?: TSESTree.VariableDeclarator;
 };
 
+const FIRST = 'first';
+const LAST = 'last';
 const ENDS = new Map<string, ExtremeForm['direction']>([
-  ['shift', 'first'],
-  ['pop', 'last'],
+  ['shift', FIRST],
+  ['pop', LAST],
 ]);
 
 function atDirection(call: TSESTree.CallExpression): ExtremeForm['direction'] | undefined {
@@ -20,9 +22,19 @@ function atDirection(call: TSESTree.CallExpression): ExtremeForm['direction'] | 
     return undefined;
   }
   if (position === 0) {
-    return 'first';
+    return FIRST;
   }
-  return position === -1 ? 'last' : undefined;
+  return position === -1 ? LAST : undefined;
+}
+
+function directionOf(
+  call: TSESTree.CallExpression,
+  name: string,
+): ExtremeForm['direction'] | undefined {
+  if (name === 'at') {
+    return atDirection(call);
+  }
+  return call.arguments.length === 0 ? ENDS.get(name) : undefined;
 }
 
 function methodForm(member: TSESTree.MemberExpression): ExtremeForm | undefined {
@@ -37,8 +49,7 @@ function methodForm(member: TSESTree.MemberExpression): ExtremeForm | undefined 
   ) {
     return undefined;
   }
-  const direction =
-    name === 'at' ? atDirection(call) : call.arguments.length === 0 ? ENDS.get(name) : undefined;
+  const direction = directionOf(call, name);
   return direction === undefined ? undefined : { direction, replaced: call };
 }
 
@@ -51,7 +62,7 @@ function memberForm(
   }
   if (member.computed) {
     return isIndexZero(member.property) && !member.optional
-      ? { direction: 'first', replaced: member }
+      ? { direction: FIRST, replaced: member }
       : undefined;
   }
   return methodForm(member);
@@ -68,7 +79,7 @@ function destructuringForm(
     id.elements.length === 1 &&
     id.typeAnnotation === undefined &&
     element?.type === AST_NODE_TYPES.Identifier
-    ? { direction: 'first', replaced: call, destructured: declarator }
+    ? { direction: FIRST, replaced: call, destructured: declarator }
     : undefined;
 }
 
