@@ -327,6 +327,13 @@ from literals of another case or from a parameter, and a collection filled with 
 key as written. Normalizing both sides, a collection of literals already in the key's case and a case-insensitive
 collection are allowed.
 
+Precondition messages: `nitpicker/no-mismatched-precondition-message` (production source, in `eslint-lint`) and
+`pmd/PreconditionMessageNamesOtherValue` (Java and Kotlin), `precondition-message-names-other-value` (Python) and
+`go-rules/precondition-message-names-other-value` (Go) report a precondition (`assert`, `invariant`, a null check that
+throws, `Assert.notNull`, `Objects.requireNonNull`, `checkState`, `require`) whose message starts with the name of
+another parameter or local in scope instead of the checked value. A message naming the checked value or its type is
+allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

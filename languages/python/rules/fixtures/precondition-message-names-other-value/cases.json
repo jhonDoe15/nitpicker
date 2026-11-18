@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "precondition-message-names-other-value",
+    "mention": "check the value the message names"
+  }
+]

@@ -60,6 +60,7 @@ import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
-import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -163,6 +163,7 @@ export const partRules = {
   'no-managed-resource-construction-outside-composition-roots':
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
-  'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
 };

@@ -21,6 +21,13 @@ describe('mined rule messages', () => {
       '`found` is filled with the lower-cased `item` but looked up ' +
         'with `item` as written, so a value with other capitals misses',
     ],
+    [
+      'precondition-message-names-other-value',
+      'value|name',
+      'The check is on `value` but its message names `name`, so a ' +
+        'failure points at the wrong value, or the value the message ' +
+        'names goes through unchecked',
+    ],
   ])('%s describes %s', (rule, subject, expected) => {
     expect(describeRuleFinding(rule, subject)).toBe(expected);
   });

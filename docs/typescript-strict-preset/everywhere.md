@@ -1064,6 +1064,10 @@ await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or
   checked expression. The checked names are the identifiers of `x` (`user.id` gives `user` and `id`). Allowed forms:
   a message that names the checked value, a message about its type or concept (the last word matches:
   `TimeUnit` for `targetTimeUnit`), a function name at the start of the message
+  (`useThing must be used inside a provider`), a first word that is an import, a class or a function (`Stripe is not
+  configured`), a checked value derived from the named one (`const stripped = title.trim()` then `!stripped` with
+  `title must be set`), a message that also names the checked value, and conditions that read more than one value.
+  The same form runs as `pmd/PreconditionMessageNamesOtherValue` (Java and Kotlin).
 - `nitpicker/no-malformed-query-text` (production code): query text that is malformed once its literal parts are
   joined. The text is a string, a template (interpolations are opaque) or a `+` chain that starts with a query keyword
   (`SELECT`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM`, `MERGE INTO`, `WITH`) or a fragment (`AND`, `OR`,

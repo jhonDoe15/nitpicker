@@ -22,6 +22,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/negativecount"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/preconditions"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/replacements"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/requests"
@@ -69,6 +70,7 @@ func Analyzers() []*analysis.Analyzer {
 			negativecount.Analyzer,
 			nanguard.Analyzer,
 			lookups.Analyzer,
+			preconditions.Analyzer,
 		},
 	)
 }

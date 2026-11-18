@@ -196,6 +196,7 @@ function productionGuardRules({
     'nitpicker/no-prefix-without-boundary': 'error',
     'nitpicker/no-unanchored-affix-replace': 'error',
     'nitpicker/no-case-mismatched-lookup': 'error',
+    'nitpicker/no-mismatched-precondition-message': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
     'nitpicker/require-promise-reject': 'error',
