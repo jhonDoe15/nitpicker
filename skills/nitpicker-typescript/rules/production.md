@@ -82,6 +82,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A function that receives an `AbortSignal` passes it on to the awaited calls that accept one (`await sleep(1000, { signal })`,
   `fetch(url, { signal })`) and an endless polling loop checks `signal.aborted` or passes the signal on
   (`nitpicker/require-abort-signal-forwarding`).
+- An async method of a class with a `dispose`/`close`/`destroy` flag checks the flag after each `await` before it fires an
+  event, registers a disposable or starts a timer or process: `if (this._isDisposed) return;`
+  (`nitpicker/no-use-after-await-when-disposed`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

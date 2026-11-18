@@ -131,6 +131,7 @@ export const strictEslintRuleIds = [
   'nitpicker/require-error-listener',
   'nitpicker/require-http-timeout',
   'nitpicker/require-abort-signal-forwarding',
+  'nitpicker/no-use-after-await-when-disposed',
   'nitpicker/require-process-timeout',
   'nitpicker/require-promise-reject',
   'nitpicker/require-test-process-timeout',
