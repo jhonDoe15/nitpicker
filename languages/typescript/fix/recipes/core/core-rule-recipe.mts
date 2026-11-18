@@ -31,13 +31,14 @@ type CoreRecipe = {
   readonly id: string;
   readonly rule: string;
   readonly safety?: string;
+  readonly options?: readonly unknown[];
   readonly plan: (request: CoreRequest) => CorePlan;
 };
 
 const SAFE: string = untypedSafe;
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 
-function lint(name: string, text: string, rule: string) {
+function lint(name: string, text: string, { rule, options = [] }: CoreRecipe) {
   const linter = new TSESLint.Linter({ configType: 'flat' });
   const messages = linter.verify(
     text,
@@ -51,7 +52,7 @@ function lint(name: string, text: string, rule: string) {
           parserOptions: { ecmaFeatures: { jsx: name.endsWith('x') } },
         },
         linterOptions: { reportUnusedDisableDirectives: 'off' },
-        rules: { [rule]: 'error' },
+        rules: { [rule]: ['error', ...options] },
       },
     ],
     { filename: name },
@@ -82,7 +83,7 @@ function offset(sourceCode: SourceCode, line: number, column: number): number {
 }
 
 function fileFixes(recipe: CoreRecipe, { path: name, text }: File) {
-  const { messages, sourceCode } = lint(name, text, recipe.rule);
+  const { messages, sourceCode } = lint(name, text, recipe);
   const fixes: Fix[] = [];
   const notes: string[] = [];
   for (const message of messages) {
