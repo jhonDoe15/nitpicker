@@ -70,6 +70,16 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   ternary or `&&` guard, since each render builds a new one (not in an async component or a
   `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
   `createRef()` in a function component.
+- **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
+  `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
+  `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
+  renders (a JSX child or attribute, directly or through one variable) shows `&`, `<` and quotes
+  as `&amp;` and `&#39;`: i18next escapes the value and React escapes the text again. Set
+  `interpolation: { escapeValue: false }` once where i18next is initialised (react-i18next
+  escapes through React), or pass it in the call. Nothing is reported when any source file of the
+  package sets `escapeValue: false`; `count`, `context` and other reserved options, literal values,
+  numbers and values formatted as numbers or dates (`toLocaleString`, `Intl` formats, arithmetic),
+  `dangerouslySetInnerHTML` and text that does not reach JSX are left alone.
 - **No mutation that drops failure** (`nitpicker/react-mutation-drops-failure`). A React Query
   mutation (`useMutation`, `api.x.useMutation()`, or a hook imported from a project file that wraps
   `useMutation` without handling failure itself) whose `onSuccess` is passed in the hook or the call
