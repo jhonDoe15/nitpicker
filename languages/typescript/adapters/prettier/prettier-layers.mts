@@ -17,6 +17,7 @@ type LayerSettings = {
   readonly policyOptions: object;
   readonly liveProjectRoot: string;
   readonly relativePath: string;
+  readonly onConfigError?: (error: unknown) => void;
 };
 type IgnoreSettings = {
   readonly precedence: unknown;
@@ -35,7 +36,7 @@ const readHeadPolicy: () => { readonly conventions: Conventions } = untypedReadH
 const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 export async function layeredPrettierOptions(
-  prettier: typeof Prettier,
+  prettier: Pick<typeof Prettier, 'resolveConfig'>,
   settings: LayerSettings,
 ): Promise<Prettier.Options> {
   const layers = await Promise.all(
@@ -50,22 +51,30 @@ function withDetectedBase(value: unknown): string[] {
 }
 
 async function layerOptions(
-  prettier: typeof Prettier,
+  prettier: Pick<typeof Prettier, 'resolveConfig'>,
   settings: LayerSettings,
   layer: string,
 ): Promise<Prettier.Options> {
-  const { policyOptions, liveProjectRoot, relativePath } = settings;
+  const { policyOptions, liveProjectRoot, relativePath, onConfigError } = settings;
   if (layer === 'nitpicker') {
     return { ...policyOptions, ...conventionOptions(relativePath, { followed: false }) };
   }
   if (layer === 'detected') {
     return conventionOptions(relativePath, { followed: true });
   }
-  return (
-    (await prettier.resolveConfig(path.join(liveProjectRoot, relativePath), {
-      editorconfig: true,
-    })) ?? {}
-  );
+  try {
+    return (
+      (await prettier.resolveConfig(path.join(liveProjectRoot, relativePath), {
+        editorconfig: true,
+      })) ?? {}
+    );
+  } catch (error) {
+    if (onConfigError === undefined) {
+      throw error;
+    }
+    onConfigError(error);
+    return {};
+  }
 }
 
 function conventionOptions(

@@ -3472,7 +3472,11 @@ own tools do:
   must be committed, or the test fails). `vi.stubEnv` and `vi.stubGlobal` are undone after each
   test. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
   test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
-  coverage thresholds never decide nitpicker's findings.
+  coverage thresholds never decide nitpicker's findings. A workspace member (a folder listed by the
+  `workspaces` of a `package.json` or by a `pnpm-workspace.yaml`) without a config of its own uses the
+  config at the workspace root, as `vitest` run from that root would: its aliases, plugins, `globals`
+  and setup files (resolved from the root) apply, while the tests run are the member's own, not the
+  root config's `include` or `projects`.
 
 Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
 
