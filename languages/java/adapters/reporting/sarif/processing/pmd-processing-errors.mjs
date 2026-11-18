@@ -1,5 +1,8 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { normalizeUri, prepareSarif } from '../../../../../../shared/ingest/sarif.mjs';
 import { isRecord } from '../../../../../../shared/rules/facts/checks.mjs';
+import { isRuleCrashText } from './pmd-rule-crashes.mjs';
 
 const RULE = 'processing-error';
 const MAX_CAUSE_LENGTH = 240;
@@ -46,8 +49,29 @@ function relativePath(prepared) {
     : '.';
 }
 
-export function pmdProcessingErrors(log, { roots, sourceRoots, projectRoot }) {
-  const notifications = notificationsOf(log).filter(isRecord);
+function notifiedFile(notification, projectRoot) {
+  const location = Array.isArray(notification.locations) ? notification.locations[0] : undefined;
+  const uri = isRecord(location) ? location.physicalLocation?.artifactLocation?.uri : undefined;
+  if (typeof uri !== 'string') {
+    return undefined;
+  }
+  return uri.startsWith('file:') ? fileURLToPath(uri) : path.resolve(projectRoot, uri);
+}
+
+function isLoggedRuleCrash(notification, loggedCrashFiles, projectRoot) {
+  return (
+    isRuleCrashText(messageText(notification)) &&
+    loggedCrashFiles.has(notifiedFile(notification, projectRoot))
+  );
+}
+
+export function pmdProcessingErrors(
+  log,
+  { roots, sourceRoots, projectRoot, loggedCrashFiles = new Set() },
+) {
+  const notifications = notificationsOf(log)
+    .filter(isRecord)
+    .filter((notification) => !isLoggedRuleCrash(notification, loggedCrashFiles, projectRoot));
   if (notifications.length === 0) {
     return [];
   }

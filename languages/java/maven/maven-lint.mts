@@ -15,6 +15,7 @@ import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
+import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mjs';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -106,32 +107,48 @@ export function runPmd(options: PmdOptions): void {
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
   const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules, reactor });
-  runJava({
+  const result = runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      rulesets,
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: pmdArguments({ report, rulesets, auxClasspath, linted }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
     timeoutMs,
   });
+  const stderr = fieldOf(result, 'stderr');
+  writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
+}
+
+function pmdArguments({
+  report,
+  rulesets,
+  auxClasspath,
+  linted,
+}: {
+  readonly report: string;
+  readonly rulesets: string;
+  readonly auxClasspath: string;
+  readonly linted: readonly string[];
+}): string[] {
+  return [
+    'check',
+    '--no-cache',
+    '--no-progress',
+    '--format',
+    'sarif',
+    '--report-file',
+    report,
+    '--rulesets',
+    rulesets,
+    '--aux-classpath',
+    `file:${auxClasspath}`,
+    '--suppress-marker',
+    'NITPICKER-NO-INLINE-SUPPRESSION',
+    '--dir',
+    linted.join(','),
+  ];
 }
 
 export function runSpotbugs({

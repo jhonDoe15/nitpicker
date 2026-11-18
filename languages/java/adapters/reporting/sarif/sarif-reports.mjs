@@ -24,6 +24,7 @@ import { withPmdLevels } from './pmd-levels.mjs';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mjs';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
+import { pmdLogRuleCrashes, pmdLoggedCrashFiles } from './processing/pmd-rule-crashes.mjs';
 import { withoutClassesWithoutSource } from './spotbugs-sources.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -140,7 +141,11 @@ export function sarifFindings(context) {
   );
   return [
     ...withProjectFilters(pmdFindings(pmd, context), context),
-    ...pmdProcessingErrors(pmd, context),
+    ...pmdProcessingErrors(pmd, {
+      ...context,
+      loggedCrashFiles: pmdLoggedCrashFiles(context.reportRoot, projectRoot),
+    }),
+    ...pmdLogRuleCrashes(context.reportRoot, projectRoot),
     ...ingestSarif(
       withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
       { tool: 'spotbugs' },
