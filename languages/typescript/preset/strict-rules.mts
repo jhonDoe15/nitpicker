@@ -49,6 +49,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-raw-http-value',
   'nitpicker/no-hardcoded-secret',
   'nitpicker/no-secret-in-log',
+  'nitpicker/no-unstripped-remote-text',
   'nitpicker/no-hand-quoted-generated-code',
   'nitpicker/no-incomplete-escaping',
   'nitpicker/no-string-length-as-byte-count',
