@@ -9,10 +9,16 @@ import type {
   RuleRef,
 } from '../../../../../core/fix/typed/fix-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
+import { isDeclined } from '../declines/declined-hunks.mts';
+import { projectNames, type ProjectNames } from '../declines/reflected-names.mts';
 
 export type PatchEntries = ReadonlyMap<string, readonly LabeledHunk[]>;
 type Placed = { readonly line: number; readonly edit: RecipeEdit };
-type Labels = { readonly names: ReadonlySet<string>; readonly ruleFor: (check: string) => RuleRef };
+type Labels = {
+  readonly names: ReadonlySet<string>;
+  readonly ruleFor: (check: string) => RuleRef;
+  readonly project: ProjectNames;
+};
 type RecipeSpec = {
   readonly id: string;
   readonly checks: readonly string[];
@@ -36,10 +42,11 @@ function editOf(text: string, name: string, { hunk, line }: LabeledHunk): Placed
 function fileFixes(
   { path: name, text }: RecipeSource,
   hunks: readonly LabeledHunk[],
-  { names, ruleFor }: Labels,
+  { names, ruleFor, project }: Labels,
 ): RecipeFix[] {
   const found = new Map<string, RecipeFix>();
-  for (const entry of hunks.filter(({ label }) => names.has(label))) {
+  const wanted = hunks.filter((entry) => names.has(entry.label) && !isDeclined(entry, project));
+  for (const entry of wanted) {
     const placed = editOf(text, name, entry);
     if (placed !== undefined) {
       const key = `${entry.label}:${String(placed.line)}`;
@@ -72,8 +79,9 @@ function recipeOf({ id, checks, safety, entries, ruleFor = ruleOf }: RecipeSpec)
     presets: PRESETS,
     scope: 'file',
     safety,
-    plan({ files }) {
-      return { fixes: fixesOf(entries, files, { names, ruleFor }) };
+    plan({ files, projectRoot }) {
+      const project = projectNames(projectRoot);
+      return { fixes: fixesOf(entries, files, { names, ruleFor, project }) };
     },
   };
 }
