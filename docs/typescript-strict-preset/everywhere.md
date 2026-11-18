@@ -1359,7 +1359,8 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   the constructor and classes whose teardown sets no flag are not reported. Allowed form: `if (this._isDisposed) return;`
   after the `await`, before the state change.
 - `nitpicker/no-falsy-error-check` (production files): a caught or rejected value tested by truthiness, so a thrown
-  `undefined`, `null`, `0` or `''` counts as no error. It reports `if (e)`, `if (!e)`, `e ? a : b` and `while (e)` for a
+  `undefined`, `null`, `0` or `''` counts as no error. It reports `if (e)`, `if (!e)`, `e ? a : b`, `while (e)` and
+  `!!e` (also `state?.error ? a : b`) for a
   `catch` clause variable and for the parameter of a `.catch(...)` handler or the second argument of `.then(...)` that has
   no type or is `unknown` or `any`, unless the branch reads a member of it (`e ? e.message : ...` guards a property read);
   `typeof e === 'object'` for those values without a `null` check, `instanceof` or `e &&` in the same function; and, with

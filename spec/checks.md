@@ -199,6 +199,12 @@ event or starts a timer or process (also `cp.spawn`, `window.setTimeout`, `model
 `setTimeout` is only a sleep) after an `await` without reading that flag (or a cancellation check) between the `await`
 and the use. `if (this._isDisposed) return;` after the `await` is allowed.
 
+Falsy thrown values: `nitpicker/no-falsy-error-check` (production source, in `eslint-lint`) reports a caught or rejected
+value (a `catch` variable, the parameter of a `.catch` or `.then` rejection handler, with types an `error` or `cause`
+property typed `unknown`) that is tested by truthiness (also `!!e` and an optional chain), used as the left side of `||`, or tested with `typeof e ===
+'object'` without a `null` check, because a thrown `undefined`, `null`, `0` or `''` then counts as no error. A separate
+presence flag, `!== undefined` and `'cause' in error` are allowed.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
