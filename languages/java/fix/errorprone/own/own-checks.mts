@@ -24,6 +24,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'RetryInTest', tool: PMD, safety: REVIEW },
   { check: 'MutationIgnoreMarker', tool: PMD, safety: REVIEW },
   { check: 'GeneratedOnHandWrittenCode', tool: PMD, safety: REVIEW },
+  { check: 'SpringDataNoSaveInLoop', tool: PMD, safety: REVIEW },
 ]);
 
 const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));

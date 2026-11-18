@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { ownRule } from '../../../../fix/errorprone/own/own-checks.mts';
 import { REVIEW_CASES as BASIC_REVIEW_CASES } from './own-check-review-cases.mts';
 import { SAFE_CASES as BASIC_SAFE_CASES } from './own-check-safe-cases.mts';
@@ -119,17 +120,28 @@ export function expectedOutcome({ withReview }: { withReview: boolean }): Outcom
   };
 }
 
+const MORE = /^\.\.\. and \d+ more, see (.+)$/u;
+
+function findingsIn(text: string): string[] {
+  const lines = text.split('\n');
+  const start = lines.indexOf('Fixed findings:');
+  const section = start < 0 ? [] : lines.slice(start + 1);
+  const end = section.findIndex((line) => !line.startsWith('  '));
+  return section.slice(0, end < 0 ? section.length : end).map((line) => line.trim());
+}
+
+function fixedFindings(stdout: string): string[] {
+  const shown = findingsIn(stdout);
+  const logFile = shown.map((line) => MORE.exec(line)?.[1]).find((file) => file !== undefined);
+  return logFile === undefined ? shown : findingsIn(readFileSync(logFile, 'utf8'));
+}
+
 export function outcomeOf(result: {
   stdout: string;
   read(file: string): string | undefined;
 }): Outcome {
-  const lines = result.stdout.split('\n');
-  const start = lines.indexOf('Fixed findings:');
-  const section = start < 0 ? [] : lines.slice(start + 1);
-  const end = section.findIndex((line) => !line.startsWith('  '));
-  const findings = section.slice(0, end < 0 ? section.length : end).map((line) => line.trim());
   return {
     files: Object.fromEntries(ALL_CASES.map(({ file }) => [file, result.read(file)])),
-    findings: findings.toSorted(compareText),
+    findings: fixedFindings(result.stdout).toSorted(compareText),
   };
 }
