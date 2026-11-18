@@ -193,4 +193,25 @@ public class Choice {
 `,
     lines: [5],
   },
+  {
+    check: 'SimplifyBooleanExpressions',
+    file: `${MAIN}/Truth.java`,
+    before: `package demo;
+
+public class Truth {
+  boolean same(boolean ready) {
+    return ready == true;
+  }
+}
+`,
+    after: `package demo;
+
+public class Truth {
+  boolean same(boolean ready) {
+    return ready;
+  }
+}
+`,
+    lines: [5],
+  },
 ];
