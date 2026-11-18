@@ -10,9 +10,8 @@ import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
-import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mts';
-import { applySuggestions } from './suggestions/apply-suggestions.mts';
-import type { LintMessage } from './suggestions/typed/suggestion-views.mts';
+import { selectedEslintRules } from './selection/selected-fixes.mts';
+import { TOOL, writeOutputs, type Reported } from './selection/write-planned.mts';
 import { reportedFilesOf, type ReportedFile } from './typed/eslint-report.mts';
 import {
   containedPath,
@@ -20,12 +19,9 @@ import {
   formatNotes,
   readBytes,
   runFixCommand,
-  withFixedLineEndingsOf,
-  writeTexts,
   type Bytes,
 } from '../../../core/fix/typed/fix-views.mts';
 import type { Layout } from './typed/fix-views.mts';
-import { appendAll } from '../../../shared/lists/lists.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -36,12 +32,6 @@ type EslintSettings = Pick<
   readonly policyEnvironment: NodeJS.ProcessEnv;
   readonly eslintSettings: unknown;
   readonly layout: Layout;
-};
-type Reported = {
-  readonly name: string;
-  readonly output: unknown;
-  readonly messages: readonly LintMessage[];
-  readonly fatal: boolean;
 };
 type Attempt = {
   readonly linked: LinkedPolicyFile | undefined;
@@ -63,8 +53,6 @@ function eslintCheck(name: string) {
 
 const eslintPolicy = eslintCheck('eslint-lint');
 const loggingPolicy = eslintCheck('eslint-logging');
-
-const TOOL = 'eslint --fix';
 
 const EXTRA_POLICY_VARIABLE = 'NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG';
 
@@ -154,57 +142,6 @@ function reportedFiles(projectRoot: string, files: readonly FixFile[], stdout: s
       return { name, output, messages, fatal: messages.some(({ fatal }) => fatal === true) };
     },
   );
-}
-
-function fixedText(
-  settings: EslintSettings,
-  original: string,
-  { output, messages, fatal }: Reported,
-) {
-  if (fatal) {
-    return { text: typeof output === 'string' ? output : original, applied: [] };
-  }
-  if (settings.selectedRules.length === 0) {
-    const base = typeof output === 'string' ? output : original;
-    return applySuggestions({ text: base, messages, selectedRules: [] });
-  }
-  const { text, suggested } = selectedOutput(
-    original,
-    messages,
-    selectedEslintRules(settings.selectedRules),
-  );
-  return { text: text ?? original, applied: suggested };
-}
-
-function plannedTexts(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
-  const findings: string[] = [];
-  const planned = reported.flatMap((file) => {
-    const original = before.get(file.name)?.toString('utf8') ?? '';
-    const { text: fixed, applied } = fixedText(settings, original, file);
-    appendAll(
-      findings,
-      applied.map(({ rule, line }) => `${file.name}:${String(line)} ${rule} (eslint-suggestion)`),
-    );
-    const text = withFixedLineEndingsOf(original, fixed);
-    return text === original ? [] : [{ name: file.name, text }];
-  });
-  return { planned, findings };
-}
-
-function writeOutputs(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
-  const { planned, findings } = plannedTexts(settings, before, reported);
-  const { written, changedMeanwhile, unwritable } = writeTexts(
-    settings.writer,
-    planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
-    TOOL,
-  );
-  const kept = new Set(written);
-  return {
-    rewritten: written,
-    changedMeanwhile,
-    unwritable,
-    fixedFindings: findings.filter((finding) => kept.has(finding.slice(0, finding.indexOf(':')))),
-  };
 }
 
 function attemptEslintFix(
