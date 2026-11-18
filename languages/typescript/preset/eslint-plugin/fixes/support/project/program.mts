@@ -1,25 +1,27 @@
 import type TypeScript from 'typescript';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 
-const HOOKS = ['$use(', '$extends('];
-const known = new WeakMap<TypeScript.Program, boolean>();
+const known = new WeakMap<TypeScript.Program, Map<string, boolean>>();
 
 function isProjectFile(file: TypeScript.SourceFile): boolean {
   return !file.isDeclarationFile && !file.fileName.includes('/node_modules/');
 }
 
-export function hasQueryInterception(context: Context): boolean {
+export function projectMentions(context: Context, tokens: readonly string[]): boolean {
   const program = typeServices(context)?.program;
   if (program === undefined) {
     return true;
   }
-  const cached = known.get(program);
+  const key = tokens.join('|');
+  const cache = known.get(program) ?? new Map<string, boolean>();
+  known.set(program, cache);
+  const cached = cache.get(key);
   if (cached !== undefined) {
     return cached;
   }
   const found = program
     .getSourceFiles()
-    .some((file) => isProjectFile(file) && HOOKS.some((hook) => file.text.includes(hook)));
-  known.set(program, found);
+    .some((file) => isProjectFile(file) && tokens.some((token) => file.text.includes(token)));
+  cache.set(key, found);
   return found;
 }

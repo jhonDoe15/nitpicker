@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const TYPEORM = `
-export interface FindOneOptions<T> { where?: unknown; relations?: unknown; relationLoadStrategy?: 'join' | 'query' }
+export interface FindOneOptions<T> { where?: unknown; relations?: unknown; relationLoadStrategy?: 'join' | 'query'; order?: unknown; take?: number; skip?: number; withDeleted?: boolean; select?: unknown; lock?: unknown; loadRelationIds?: unknown }
 export declare class SelectQueryBuilder<T> {
   leftJoinAndSelect(property: string | Function, alias: string, condition?: string): this;
   innerJoinAndSelect(property: string | Function, alias: string, condition?: string): this;
@@ -33,12 +33,15 @@ const MIKRO_ORM = `
 export declare class Collection<T> { getItems(): T[] }
 export type Ref<T> = T & { unwrap(): T };
 export declare enum LoadStrategy { JOINED = 'joined', SELECT_IN = 'select-in' }
-export interface FindOptions { populate?: readonly string[]; strategy?: LoadStrategy | 'joined' | 'select-in' }
+export interface FindOptions { populate?: readonly string[]; strategy?: LoadStrategy | 'joined' | 'select-in'; fields?: string[]; limit?: number; offset?: number; orderBy?: object; populateWhere?: object }
 export declare class EntityManager {
   find<E>(entity: new () => E, where: object, options?: FindOptions): Promise<E[]>;
   findOne<E>(entity: new () => E, where: object, options?: FindOptions): Promise<E | null>;
 }
-export declare class EntityRepository<T> { findAll(options?: FindOptions): Promise<T[]> }
+export declare class EntityRepository<T> {
+  findAll(options?: FindOptions): Promise<T[]>;
+  find(where: object, options?: FindOptions): Promise<T[]>;
+}
 `;
 
 const SEQUELIZE = `
@@ -46,6 +49,8 @@ export declare class Model {
   static findAll<M extends Model>(this: new () => M, options?: object): Promise<M[]>;
   static findByPk<M extends Model>(this: new () => M, id: unknown, options?: object): Promise<M | null>;
   static findAndCountAll<M extends Model>(this: new () => M, options?: object): Promise<{ rows: M[]; count: number }>;
+  static hasMany(target: unknown, options?: object): unknown;
+  static belongsToMany(target: unknown, options?: object): unknown;
 }
 export type NonAttribute<T> = T & { readonly brand?: true };
 `;
