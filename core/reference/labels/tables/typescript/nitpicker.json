@@ -91,6 +91,7 @@
   "eslint/nitpicker/no-production-console": ["maintainability"],
   "eslint/nitpicker/no-production-imports-in-setup-files": ["tests"],
   "eslint/nitpicker/no-promise-chain": ["style", "async"],
+  "eslint/nitpicker/no-prototype-key-access": ["bug", "security"],
   "eslint/nitpicker/no-query-per-parent": ["performance", "persistence"],
   "eslint/nitpicker/no-raised-test-timeout": ["tests"],
   "eslint/nitpicker/no-raw-http-value": ["bug"],

@@ -88,6 +88,7 @@ import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/n
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mts';
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
+import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-prototype-key-access.mts';
 import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-ca
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
-import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -191,6 +191,7 @@ export const partRules = {
   'no-production-console': ruleNoProductionConsole,
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
+  'no-prototype-key-access': ruleNoPrototypeKeyAccess,
   'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
-  'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
 };

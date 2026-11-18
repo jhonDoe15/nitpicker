@@ -67,6 +67,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A `sort` comparator returns `0` for equal items and treats a missing `a` and a missing `b` differently: `a - b`,
   `a.localeCompare(b)`, or a nulls-first/nulls-last helper, never `x < y ? 1 : -1`
   (`nitpicker/no-inconsistent-comparator`).
+- A merge or lookup keyed by input text skips `__proto__`, `constructor` and `prototype`, or uses
+  `Object.hasOwn(table, key)`, a `Map` or an `Object.create(null)` table, never `key in table` on an object literal
+  (`nitpicker/no-prototype-key-access`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
