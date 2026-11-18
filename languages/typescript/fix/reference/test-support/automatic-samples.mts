@@ -5,6 +5,13 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'no-duplicate-imports': {
+    path: 'src/main/samples/s44.ts',
+    input:
+      "import { join } from 'node:path';\nimport { basename } from 'node:path';\n\nexport function named(folder: string): string {\n  return basename(join(folder, 'a'));\n}\n",
+    output:
+      "import { join, basename } from 'node:path';\n\nexport function named(folder: string): string {\n  return basename(join(folder, 'a'));\n}\n",
+  },
   'no-useless-catch': {
     path: 'src/main/samples/s43.ts',
     input:
