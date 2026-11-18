@@ -75,6 +75,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/GeneratedMemberCycle`). `@Data` or `@EqualsAndHashCode` on a subclass of a class with fields
   states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
   (`pmd/GeneratedEqualsSkipsSuperclass`).
+- `equals` and `hashCode` read the same fields: `hashCode` may use a subset of what `equals` compares, never a field
+  `equals` ignores, and never `super.hashCode()` or `System.identityHashCode(this)` next to an `equals` that compares
+  fields (`pmd/HashCodeDisagreesWithEquals`). Keep mutable state out of both.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it, with no `default` (`pmd/ExhaustiveSwitchHasDefault`, also for
   a pattern switch). A classic `switch` statement needs `default`.

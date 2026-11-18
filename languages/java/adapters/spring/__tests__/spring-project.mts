@@ -208,6 +208,7 @@ const REVIEW_RULES = new Set([
   'UrlPathUsedAsFile',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
+  'HashCodeDisagreesWithEquals',
 ]);
 const roots: string[] = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';

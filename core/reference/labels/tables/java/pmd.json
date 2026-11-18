@@ -62,6 +62,7 @@
   "pmd/GlobalStateLeakInTest": ["tests"],
   "pmd/GuardLogStatement": ["performance"],
   "pmd/HardcodedSecret": ["security"],
+  "pmd/HashCodeDisagreesWithEquals": ["bug"],
   "pmd/HashOrderInOrderedOutput": ["reliability"],
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/ImmutableCollectionChanged": ["bug"],
