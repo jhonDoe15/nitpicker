@@ -2390,6 +2390,7 @@
                             "pmd/PatternTranslation",
                             "pmd/ExpandingReplacement",
                             "pmd/UnescapedHtmlValue",
+                            "pmd/UncheckedResponseBody",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

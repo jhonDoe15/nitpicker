@@ -128,6 +128,7 @@
   "python-rules/unbounded-fan-out": ["performance", "async"],
   "python-rules/unbounded-query-array": ["performance", "persistence"],
   "python-rules/unbounded-wait": ["reliability"],
+  "python-rules/unchecked-response-json": ["bug"],
   "python-rules/unclosed-inline-resource": ["reliability"],
   "python-rules/uncollected-tests": ["tests"],
   "python-rules/unescaped-html-value": ["bug", "security"],

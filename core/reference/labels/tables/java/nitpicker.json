@@ -65,6 +65,7 @@
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UnescapedHtmlValue": ["bug", "security"],
+  "pmd/UncheckedResponseBody": ["bug"],
   "pmd/UntestedRoundTrip": ["tests"],
   "spotbugs/InlineSuppression": ["maintainability"],
   "spring/active-profile": ["maintainability", "spring"],

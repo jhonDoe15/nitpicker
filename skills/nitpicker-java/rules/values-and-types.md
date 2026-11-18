@@ -110,3 +110,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
   (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
+- A JDK `HttpClient` or OkHttp response is checked (`statusCode()`, `isSuccessful()`) before its body is handed to a JSON
+  parser (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.

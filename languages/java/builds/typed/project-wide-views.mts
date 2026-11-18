@@ -6,6 +6,7 @@ import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { readStringCallFindings } from '../../adapters/review-rules/string-calls/string-calls.mjs';
+import { readValueCheckFindings } from '../../adapters/review-rules/value-checks/value-checks.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
@@ -116,3 +117,5 @@ export const maxValueFindings: (projectRoot: string, options: WideOptions) => Ja
   readMaxValueFindings;
 export const stringCallFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
   readStringCallFindings;
+export const valueCheckFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
+  readValueCheckFindings;

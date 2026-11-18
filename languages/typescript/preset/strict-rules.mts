@@ -43,6 +43,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-accumulator-concat',
   'nitpicker/no-array-spread-arguments',
   'nitpicker/no-io-in-loop',
+  'nitpicker/no-unchecked-response-json',
   'nitpicker/no-costly-collection-form',
   'nitpicker/no-collected-stream-rows',
   'nitpicker/no-wasted-collection-step',

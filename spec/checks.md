@@ -278,6 +278,13 @@ reaches about 125,000 items. With the type checker arrays, typed arrays, sets, m
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
 
+Unchecked response bodies: `nitpicker/no-unchecked-response-json` (production source, in `eslint-lint`) in the TypeScript and
+JavaScript presets reports `res.json()` on a `fetch` response that nothing has read yet
+(`res.ok`, `res.status`, headers, a helper given `res`). `unchecked-response-json` (script) in Python reports `.json()` on a
+`requests` or `httpx` response before `raise_for_status()` or a status read; `pmd/UncheckedResponseBody` (Java and Kotlin) reports
+a JDK `HttpClient` or OkHttp body passed to a JSON parser before the status is read; `go-rules/unchecked-response-json` reports
+`json.NewDecoder(resp.Body).Decode` before `resp.StatusCode` is read. A read inside `try` with a handler is allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

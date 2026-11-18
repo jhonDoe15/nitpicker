@@ -1976,3 +1976,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `error`, so using an API marked `@deprecated` is a finding in each checker.
 - Integer overflow on a "no limit" maximum (`MaxValueOverflow` in the Java and Kotlin presets,
   `go-rules/max-value-overflow` in Go) does not apply to Python: `int` has arbitrary precision, so a sum never wraps.
+- `unchecked-response-json` reports `.json()` on the result of `requests.get`, `post`, `put`, `patch`, `delete`,
+  `head`, `options` or `request`, `httpx` module calls, and calls on a `requests.Session` or `httpx.Client` or
+  `AsyncClient` variable of the same function (also a chained `requests.get(url).json()`), when nothing has read the response before (no `raise_for_status()`,
+  `status_code`, `ok`, `headers`, no function that is handed the response) and the read is not inside a `try` with an
+  `except`. An error page from a proxy or gateway is HTML, so `.json()` raises an opaque `ValueError` and the status is lost.
+  Call `raise_for_status()` first, or read `.text` and parse it in `try`. aiohttp is not covered. Test files are skipped.
