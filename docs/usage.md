@@ -2348,7 +2348,9 @@ Where you start the run matters:
   entry. The folder's own `nitpicker.config.json` applies to the entry of the preset it declares
   (or to both when it declares none); the other entry takes its settings from `settings`. A
   TypeScript or JavaScript entry without `layout` in its `settings` checks `src/main/webapp`,
-  `src/main/frontend` and `frontend`, whichever exist.
+  `src/main/frontend` and `frontend`, whichever exist. The repository-wide checks
+  (`repository-hygiene`) run in the first entry only, so a committed key or a field limit mismatch
+  is reported once.
 
 - A Git submodule is never a project of the repository around it: a `projects` entry or glob that
   names one, or a workspace glob that covers one, is an error, and a changed submodule gets a

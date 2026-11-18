@@ -108,6 +108,7 @@ function overlayOf(
   const settings = companionSettings(entry, { absolute, companion });
   const extra = {
     ...(companion ? { companion } : {}),
+    ...(entry.later === true ? { repositoryChecks: false as const } : {}),
     ...(settings === undefined ? {} : { settings }),
   };
   if (
