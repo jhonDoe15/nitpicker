@@ -1597,6 +1597,23 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `unknown` and `any`. When an explicit
   `undefined` must count as present (a patch that clears a field), add an exception for the rule. In the
   JavaScript preset the type comes from JSDoc and inference (`checkJs`).
+- `nitpicker/no-lookup-as-presence` (type-aware, production source): a stored value read to decide whether its
+  key is present, where a stored value can itself read as missing. Reported: the cache shape on a `Map`,
+  `WeakMap` or `ReadonlyMap` (`let v = m.get(k); if (!v) { ...; m.set(k, v); }`, `if (v === undefined)`,
+  `if (v == null)`, `if (v) return v; ...; m.set(k, ...)`, `m.get(k) || compute()` or `?? compute()` followed by
+  `m.set(k, ...)` for the same map and key) when the value type can be falsy (`string`, `number`, `boolean`,
+  `0`, `''`, `false`, `null`, `undefined`, `unknown`, an unconstrained type parameter) for a truthiness test, or
+  holds `undefined`, `null` or `unknown` for a comparison; and `record[key] !== undefined` (also `===`, `!=`, `==`)
+  with a non-literal key on a record whose values are `unknown`, used as a condition or returned, which cannot
+  tell a missing key from a stored `undefined`. Write `m.has(k)` for the cache (`if (!m.has(k)) m.set(k, make());
+  const v = m.get(k)!;`) and `key in record` or `Object.hasOwn(record, key)` for the record. Not reported: a
+  value type that cannot be falsy (objects, functions), a map whose `get` result is only read, a miss branch
+  that stores another key or map, `any` values, a `|| 0`, `|| ''` or `|| false` fallback (same result), a
+  text or number map whose stored values are never empty (a non-empty literal or template, `emitFile()`,
+  `randomUUID()`), a `!= null` test on a record, a record test whose branch throws or returns a "missing"
+  message, a comparison with `undefined` on a value type without it, and
+  a condition that also tests the key with `in` or `has`. When a stored empty value must be computed again,
+  add an exception for the rule.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,

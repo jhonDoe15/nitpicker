@@ -386,10 +386,13 @@ In-operator presence checks: `nitpicker/no-in-presence-check` (production source
 type of `obj` declares the key as optional or `| undefined`, or as an index signature value that includes `undefined`,
 because `in` is true for a key that holds `undefined`. A union discriminant (a member without the key or with the key
 typed only `undefined`), a condition that also reads `obj.key`, a ternary that passes `obj.key` on and a branch that throws or type-checks it are not reported; `obj.key !== undefined` is the allowed form.
+
 Lookup tested as presence: `nitpicker/no-lookup-as-presence` (production source, in `eslint-lint`, type-aware) reports a
 `Map`, `WeakMap` or `ReadonlyMap` read (`m.get(k)`, directly or through a variable) tested by truthiness, `=== undefined`
 or `== null` when the branch that handles the miss stores the same key with `m.set(k, ...)` and the value type can be falsy
 or can hold the tested value, and `record[key] !== undefined` with a variable key on a record of `unknown` values. The
+allowed forms are `m.has(k)`, `key in record` and `Object.hasOwn(record, key)`. A `|| 0` or `|| ''` fallback and a text or
+number map that only stores non-empty values are not reported.
 Shadowed spread keys: `nitpicker/no-shadowed-spread-key` (production source, in `eslint-lint`, type-aware) reports a function
 parameter written before a spread (an object literal property or a JSX attribute) whose type declares the same key as optional,
 and a string or number literal written after a spread of a parameter typed `*Options`, `*Config`, `*Settings` or `*Props` that
