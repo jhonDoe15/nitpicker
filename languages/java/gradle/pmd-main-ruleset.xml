@@ -2835,7 +2835,7 @@ let $candidate := function($v) {
       or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
       or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
         and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
-      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+      or (matches($v, '^(?:bearer|basic|token)\s+[^\s"]+$', 'i')
         and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
       or (matches($v, '[?&;]password=[^&;\s]+', 'i')
         and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
@@ -2880,7 +2880,7 @@ let $words := function($s) {
       or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
       or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
         and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
-      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+      or (matches($v, '^(?:bearer|basic|token)\s+[^\s"]+$', 'i')
         and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
       or (matches($v, '[?&;]password=[^&;\s]+', 'i')
         and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
@@ -2953,8 +2953,14 @@ let $words := function($s) {
     $loggedName := function($n) {
       $secretName($n) and not(matches($n, '^(?:has|is)[A-Z_]')) and not(matches($n, '^[A-Z][A-Z0-9_]*$'))
     },
+    $enumName := function($leaf) {
+      exists($leaf[self::VariableAccess]
+        [some $call in ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+           //MethodCall[@MethodName = 'valueOf'][pmd-java:typeIs('java.lang.Enum')]
+           satisfies $call/ArgumentList/*[last()][self::VariableAccess/@Name = $leaf/@Name]])
+    },
     $secret := function($leaf) {
-      exists($leaf[self::VariableAccess or self::FieldAccess][$loggedName(@Name)]
+      exists($leaf[self::VariableAccess or self::FieldAccess][$loggedName(@Name)][not($enumName(.))]
         | $leaf[self::MethodCall][ArgumentList/@Size = 0][matches(@MethodName, '^get[A-Z]')]
             [$loggedName(substring(@MethodName, 4))]
         | $leaf[self::MethodCall][@MethodName = ('getenv', 'getProperty')]
