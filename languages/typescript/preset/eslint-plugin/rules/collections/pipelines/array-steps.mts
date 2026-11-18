@@ -45,11 +45,14 @@ function methodCall(node: TSESTree.Node, name: string): MethodCall | undefined {
     : undefined;
 }
 
-function isNothing(node: TSESTree.Node): boolean {
+function isNothing(node: TSESTree.Node, operator: string): boolean {
   const value = unwrapped(node);
   return (
     (value.type === AST_NODE_TYPES.Identifier && value.name === 'undefined') ||
-    (value.type === AST_NODE_TYPES.Literal && value.value === null && value.raw === 'null')
+    (value.type === AST_NODE_TYPES.Literal &&
+      value.value === null &&
+      value.raw === 'null' &&
+      operator.length === 2)
   );
 }
 
@@ -94,7 +97,7 @@ function isBooleanUse(outer: TSESTree.Node): boolean {
     return parent.operator === '!';
   }
   if (parent.type === AST_NODE_TYPES.BinaryExpression && EQUALITY.has(parent.operator)) {
-    return isNothing(parent.left === outer ? parent.right : parent.left);
+    return isNothing(parent.left === outer ? parent.right : parent.left, parent.operator);
   }
   return (
     parent.type === AST_NODE_TYPES.CallExpression &&
