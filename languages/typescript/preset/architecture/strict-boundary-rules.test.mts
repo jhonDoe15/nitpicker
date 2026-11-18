@@ -4,15 +4,23 @@ import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/e
 import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mjs';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
-import { cruiseStrict, cruiseWithConfig, outputText } from './test-support/strict-cruise.mts';
-import strictConfig from './fixtures/dependency-cruiser.strict.fixture.config.mjs';
+import {
+  cruiseStrict,
+  cruiseWithConfig,
+  type FixtureConfig,
+  outputText,
+} from './test-support/strict-cruise.mts';
+import untypedStrictConfig from './fixtures/dependency-cruiser.strict.fixture.config.mjs';
 import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath as untypedSharedReachPath,
   strictBoundaryRules as untypedStrictBoundaryRules,
   strictBoundaryRulesFor as untypedStrictBoundaryRulesFor,
 } from './strict-boundary-rules.mjs';
-import { testFilePathPatterns, testFilePaths } from './strict-layout.mjs';
+import {
+  testFilePathPatterns as untypedTestFilePathPatterns,
+  testFilePaths as untypedTestFilePaths,
+} from './strict-layout.mjs';
 import { resolveLayout } from '../layout.mjs';
 import {
   defaultTestFiles as untypedDefaultTestFiles,
@@ -40,6 +48,10 @@ const sharedReachPath: (violation: unknown, modules: unknown) => string[] | unde
 const cruiserConfig: { readonly forbidden: readonly { readonly name: string }[] } =
   untypedCruiserConfig;
 const DEPENDENCY_RULES: readonly string[] = untypedDependencyRules;
+const strictConfig: FixtureConfig = untypedStrictConfig;
+const testFilePaths: readonly string[] = untypedTestFilePaths;
+const testFilePathPatterns: (layout: unknown, projectRoot: string) => unknown =
+  untypedTestFilePathPatterns;
 const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
 function testFilePatterns(options: { includeRegexes: string[] }): unknown {
   return Reflect.apply(untypedTestFilePatterns, undefined, [options]);
@@ -231,7 +243,7 @@ describe('the test files of each runner in domain/', () => {
 
   function cruiseWith(patterns: readonly string[]) {
     const forbidden = strictConfig.forbidden.map((rule) =>
-      rule.name.startsWith('domain-')
+      rule.name?.startsWith('domain-') === true
         ? { ...rule, from: { ...rule.from, pathNot: [...patterns] } }
         : rule,
     );

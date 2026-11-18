@@ -35,12 +35,7 @@ function isAnchoredPattern(node: TSESTree.RegExpLiteral): boolean {
 }
 
 function isFragmentPattern(node: TSESTree.Node | undefined): boolean {
-  return (
-    node?.type === AST_NODE_TYPES.Literal &&
-    'regex' in node &&
-    node.regex !== undefined &&
-    !isAnchoredPattern(node)
-  );
+  return node?.type === AST_NODE_TYPES.Literal && 'regex' in node && !isAnchoredPattern(node);
 }
 
 export function isFragmentMatch(argument: TSESTree.Node | undefined): boolean {

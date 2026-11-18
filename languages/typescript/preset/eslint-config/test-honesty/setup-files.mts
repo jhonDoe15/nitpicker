@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 import {
   firstFileIn as untypedFirstFileIn,
   isDirectory as untypedIsDirectory,
@@ -136,7 +137,10 @@ function runnerEntries(projectRoot: string, runner: string): string[] {
   const entries: string[] = [];
   for (const directory of pending) {
     const root = path.join(projectRoot, directory);
-    entries.push(...ownEntries(root, runner).map((file) => path.posix.join(directory, file)));
+    appendAll(
+      entries,
+      ownEntries(root, runner).map((file) => path.posix.join(directory, file)),
+    );
     const projects = PROJECT_RUNNERS.has(runner) ? projectDirectoriesOf(root, runner) : [];
     for (const project of projects) {
       pending.add(path.posix.join(directory, project));

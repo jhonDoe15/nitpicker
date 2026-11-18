@@ -61,9 +61,7 @@ import {
 } from '../test-environment/test-environment-config.mts';
 import type { Environments } from '../test-environment/typed/environment-types.mts';
 import { withRunnerTestPaths as untypedWithRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
-import { testRunnerLintConfig as untypedTestRunnerLintConfig } from '../eslint-config/runner/runner-rules.mjs';
 import { policyTestRunner as untypedPolicyTestRunner } from '../test-runner/policy-runner.mjs';
-import { domProductionConfigFor as untypedDomProductionConfigFor } from '../test-environment/dom-code/dom-code.mts';
 
 export type Entry = Linter.Config;
 
@@ -172,18 +170,8 @@ export const policyTestRunner: (policy: PresetPolicy, projectRoot: string) => st
 export const withRunnerTestPaths: (layout: PresetLayout, projectRoot: string) => PresetLayout =
   untypedWithRunnerTestPaths;
 
-export type RunnerLintConfig = {
-  readonly plugins: Readonly<Record<string, Plugin>>;
-  readonly settings: Readonly<Record<string, unknown>>;
-  readonly globals: Readonly<Record<string, boolean | 'readonly' | 'writable'>>;
-  readonly rules: Linter.RulesRecord;
-  readonly typedRules: Linter.RulesRecord;
-};
-
-export const testRunnerLintConfig: (
-  runner: string,
-  assertionHelpers: string[],
-) => RunnerLintConfig = untypedTestRunnerLintConfig;
+export { testRunnerLintConfig } from '../eslint-config/runner/runner-lint-config.mts';
+export { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mts';
 export const stubRestoresIn: (projectRoot: string) => unknown[] = untypedStubRestoresIn;
 export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
   untypedExistingRoots;
@@ -282,14 +270,6 @@ export function testEnvironmentConfigFor(
   return entriesOf(
     Reflect.apply(untypedTestEnvironmentConfigFor, undefined, [layout, environments, runner]),
   );
-}
-
-export function domProductionConfigFor(
-  layout: PresetLayout,
-  environments: TestEnvironments,
-  projectRoot: string,
-): Entry[] {
-  return entriesOf(untypedDomProductionConfigFor(layout, environments, projectRoot));
 }
 
 export function applyJavascriptDialect(entries: Entry[], policy: PresetPolicy): Entry[] {

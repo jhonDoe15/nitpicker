@@ -37,6 +37,8 @@ describe('a type check diagnostic in a file outside the project', () => {
     layout: { isExcluded: () => false, isTestFile: () => false },
     contextOnly: new Set<string>(),
     projectRoot: member,
+    runner: undefined,
+    untyped: false,
   };
 
   it('is left out, and the diagnostics of the project files stay', () => {

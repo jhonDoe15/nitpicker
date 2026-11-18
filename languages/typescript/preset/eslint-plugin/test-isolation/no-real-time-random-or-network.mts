@@ -1,6 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, type SourceCode } from '../rules/typed/node-views.mts';
-import { type RunnerApis, createRunnerApis, runnerApiVisitors } from '../rules/runner-apis/runner-apis.mts';
+import {
+  type RunnerApis,
+  createRunnerApis,
+  runnerApiVisitors,
+} from '../rules/runner-apis/runner-apis.mts';
 import { setsFakeClock, spiedMember } from '../rules/runner-apis/runner-doubles.mts';
 import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 
@@ -110,7 +114,11 @@ function isNetworkCall(
   return binding !== undefined && property !== undefined && binding.allowed.has(property);
 }
 
-function reportUnfaked(context: Context, state: FakeState, { clockCalls, randomCalls }: Unfaked): void {
+function reportUnfaked(
+  context: Context,
+  state: FakeState,
+  { clockCalls, randomCalls }: Unfaked,
+): void {
   const { fakeClock, fixRandom } = vocabularyOf(context);
   const unfaked = [
     ...(state.fakeClock ? [] : clockCalls.map((node) => ({ node, messageId: 'clock' as const }))),

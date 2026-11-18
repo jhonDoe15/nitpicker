@@ -42,8 +42,8 @@ type DiagnosticFilter = {
   readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded' | 'isTestFile'>;
   readonly contextOnly: ReadonlySet<string>;
   readonly projectRoot: string;
-  readonly runner?: unknown;
-  readonly untyped?: boolean;
+  readonly runner: unknown;
+  readonly untyped: boolean;
 };
 
 function diagnosticFilter(
@@ -70,7 +70,7 @@ export function isReportedDiagnostic(
   }
   const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
   const untypedGlobal =
-    filter.untyped === true &&
+    filter.untyped &&
     filter.layout.isTestFile(file) &&
     isUntypedRunnerGlobal(diagnostic, filter.runner);
   return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);

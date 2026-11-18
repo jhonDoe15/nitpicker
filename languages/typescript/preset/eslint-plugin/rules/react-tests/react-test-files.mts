@@ -99,7 +99,10 @@ function topLevelCalls(statement: TSESTree.ProgramStatement): (TSESTree.Node | u
     : [];
 }
 
-function mockedSources(apis: RunnerApis, statement: TSESTree.ProgramStatement): (string | undefined)[] {
+function mockedSources(
+  apis: RunnerApis,
+  statement: TSESTree.ProgramStatement,
+): (string | undefined)[] {
   return topLevelCalls(statement)
     .filter((node) => node?.type === AST_NODE_TYPES.CallExpression)
     .flatMap((call) => moduleMocks(apis, call).map(({ name }) => name));

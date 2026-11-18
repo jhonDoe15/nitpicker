@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf } from '../rules/typed/node-views.mts';
+import { chainOf, requiredLiteral } from '../rules/typed/node-views.mts';
 import { isExpectCall, memberName } from '../rules/analysis/test-code-analysis.mts';
 
 type MessageId = 'unpinned' | 'unpinnedFailure' | 'literalSubject' | 'bareCall';
@@ -49,18 +49,9 @@ function rememberImport(bindings: Bindings, node: TSESTree.ImportDeclaration): v
   }
 }
 
-function requiredModule(init: TSESTree.Expression | null): string | undefined {
-  if (
-    init?.type !== AST_NODE_TYPES.CallExpression ||
-    init.callee.type !== AST_NODE_TYPES.Identifier ||
-    init.callee.name !== 'require'
-  ) {
-    return undefined;
-  }
-  const [first] = init.arguments;
-  return first?.type === AST_NODE_TYPES.Literal && typeof first.value === 'string'
-    ? first.value
-    : undefined;
+function requiredModule(init: TSESTree.Expression | undefined): string | undefined {
+  const source = requiredLiteral(init);
+  return typeof source === 'string' ? source : undefined;
 }
 
 function propertyKey(key: TSESTree.PropertyName): string | undefined {
@@ -72,7 +63,7 @@ function propertyKey(key: TSESTree.PropertyName): string | undefined {
 
 function rememberRequire(bindings: Bindings, declarator: TSESTree.VariableDeclarator): void {
   const { id, init } = declarator;
-  if (!ASSERT_MODULES.has(requiredModule(init) ?? '')) {
+  if (!ASSERT_MODULES.has(requiredModule(init ?? undefined) ?? '')) {
     return;
   }
   if (id.type === AST_NODE_TYPES.Identifier) {
@@ -106,7 +97,8 @@ function assertMethod(bindings: Bindings, callee: TSESTree.Node): string | undef
   if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name === ASSERT ? 'ok' : bindings.get(callee.name);
   }
-  return callee.type === AST_NODE_TYPES.MemberExpression && isAssertNamespace(bindings, callee.object)
+  return callee.type === AST_NODE_TYPES.MemberExpression &&
+    isAssertNamespace(bindings, callee.object)
     ? memberName(callee)
     : undefined;
 }

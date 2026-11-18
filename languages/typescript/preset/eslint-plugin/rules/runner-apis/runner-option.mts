@@ -5,10 +5,11 @@ import { ancestorDirectories as untypedAncestorDirectories } from '../../../../.
 import { posixRelative as untypedPosixRelative } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { readHeadPolicy, readLayout } from '../typed/policy-views.mts';
 import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
+import { recordedTestRunner as untypedRecordedTestRunner } from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
 import {
-  recordedTestRunner as untypedRecordedTestRunner,
+  type RunnerVocabulary,
   runnerVocabulary,
-} from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
+} from '../../../test-runner/vocabulary/typed-vocabulary.mts';
 import {
   defaultTestFiles as untypedDefaultTestFiles,
   testFileMatcher as untypedTestFileMatcher,
@@ -48,9 +49,7 @@ export function runnerOf(context: Pick<RunnerContext, 'options'>): string {
   return typeof runner === 'string' ? runner : projectRunner();
 }
 
-export function vocabularyOf(
-  context: Pick<RunnerContext, 'options'>,
-): ReturnType<typeof runnerVocabulary> {
+export function vocabularyOf(context: Pick<RunnerContext, 'options'>): RunnerVocabulary {
   return runnerVocabulary(runnerOf(context));
 }
 

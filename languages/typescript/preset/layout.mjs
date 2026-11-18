@@ -153,6 +153,10 @@ function createClassifiers({
   };
 }
 
+/**
+ * @param {readonly string[]} globs
+ * @returns {string | undefined}
+ */
 function globsPattern(globs) {
   return globs.length === 0 ? undefined : globs.map((glob) => globToRegExpSource(glob)).join('|');
 }

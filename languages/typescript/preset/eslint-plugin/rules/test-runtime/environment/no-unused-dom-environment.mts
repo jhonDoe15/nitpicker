@@ -32,7 +32,7 @@ type Declared = {
   readonly directive: string;
   readonly name: string;
   readonly loc: TSESTree.SourceLocation | undefined;
-  readonly isDirective?: boolean;
+  readonly isDirective: boolean;
   readonly nameRange?: TSESTree.Range;
 };
 type GlobalDomSetup = { readonly setupPlace: string; readonly separateRun: string };
@@ -99,7 +99,7 @@ function registeredInFile(program: TSESTree.Program): Declared | undefined {
     );
     const name = specifier === undefined ? undefined : registeredEnvironment(specifier);
     if (specifier !== undefined && name !== undefined) {
-      return { directive: specifier, name, loc: statement.loc };
+      return { directive: specifier, name, loc: statement.loc, isDirective: false };
     }
   }
   return undefined;
@@ -107,9 +107,11 @@ function registeredInFile(program: TSESTree.Program): Declared | undefined {
 
 function declaredEnvironment(sourceCode: SourceCode, runner: string): Declared | undefined {
   const match =
-    RUNNER_DIRECTIVES[runner] === undefined ? null : ENVIRONMENT_DIRECTIVE.exec(sourceCode.text);
+    RUNNER_DIRECTIVES[runner] === undefined
+      ? undefined
+      : (ENVIRONMENT_DIRECTIVE.exec(sourceCode.text) ?? undefined);
   const [, tool, name] = match ?? [];
-  if (match === null || tool === undefined || name === undefined) {
+  if (match === undefined || tool === undefined || name === undefined) {
     return registeredInFile(sourceCode.ast);
   }
   const comment = sourceCode
@@ -168,7 +170,7 @@ function projectReport(options: EnvironmentOptions | undefined, runner: string):
 }
 
 function declaredMessage(declared: Declared, projectEnvironment: string | undefined): MessageId {
-  if (declared.isDirective !== true) {
+  if (!declared.isDirective) {
     return 'unusedRegisteredEnvironment';
   }
   return isDomEnvironment(projectEnvironment)

@@ -9,7 +9,7 @@ export type ModuleMock = {
 type CallKind = {
   readonly kind: string | undefined;
   readonly method?: string | undefined;
-  readonly direct?: boolean;
+  readonly direct: boolean;
 };
 
 const MODULE_MOCKS: Readonly<Record<string, readonly string[]>> = {
@@ -67,17 +67,16 @@ function callKind(apis: RunnerApis, callee: TSESTree.Node): CallKind {
     method === undefined || callee.type !== AST_NODE_TYPES.MemberExpression
       ? undefined
       : kindOfObject(apis, callee.object);
-  return { kind, method };
+  return { kind, method, direct: false };
 }
 
 export function moduleMocks(apis: RunnerApis, call: TSESTree.CallExpression): ModuleMock[] {
   const { kind = '', method = '', direct } = callKind(apis, call.callee);
   const loader = LOADER_MOCKS[kind];
-  if (loader !== undefined && (direct === true || loader.includes(method))) {
+  if (loader !== undefined && (direct || loader.includes(method))) {
     return loaderMocks(call);
   }
-  const mocksModule =
-    direct === true ? DIRECT_MODULE_MOCKS.has(kind) : MODULE_MOCKS[kind]?.includes(method);
+  const mocksModule = direct ? DIRECT_MODULE_MOCKS.has(kind) : MODULE_MOCKS[kind]?.includes(method);
   const [source, replacement] = mocksModule === true ? call.arguments : [];
   return source === undefined ? [] : [{ name: mockedName(source), source, replacement }];
 }

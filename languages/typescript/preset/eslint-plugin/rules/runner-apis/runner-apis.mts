@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf } from '../typed/node-views.mts';
+import { chainOf, requiredLiteral } from '../typed/node-views.mts';
 import { memberName } from '../analysis/test-code-analysis.mts';
 
 type ImportSpec = {
@@ -7,10 +7,12 @@ type ImportSpec = {
   readonly names: readonly string[];
   readonly kind: string;
   readonly functions?: readonly string[];
-  readonly chained?: boolean;
 };
 type Binding = { readonly local: string; readonly kind: string; readonly method?: string };
-export type CalledMethod = { readonly kind: string | undefined; readonly method?: string | undefined };
+export type CalledMethod = {
+  readonly kind: string | undefined;
+  readonly method?: string | undefined;
+};
 export type RunnerApis = {
   readonly kinds: Map<string, string>;
   readonly functions: Map<string, { readonly kind: string; readonly method: string }>;
@@ -74,10 +76,11 @@ const IMPORTS: readonly ImportSpec[] = [
     matches: (source) => source === 'proxyquire',
     names: [DEFAULT_NAME],
     kind: 'proxyquire',
-    chained: true,
   },
   { matches: (source) => source === 'esmock', names: [DEFAULT_NAME], kind: 'esmock' },
 ];
+
+const CHAINED_KINDS: ReadonlySet<string> = new Set(['proxyquire']);
 
 const PRODUCED_KINDS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   sinon: { createSandbox: SINON, useFakeTimers: CLOCK },
@@ -108,7 +111,7 @@ function importBindings(node: TSESTree.ImportDeclaration, spec: ImportSpec): Bin
   );
 }
 
-function chainedRequire(init: TSESTree.Node | null | undefined): TSESTree.Node | undefined {
+function chainedRequire(init: TSESTree.Node | undefined): TSESTree.Node | undefined {
   if (init?.type !== AST_NODE_TYPES.CallExpression) {
     return undefined;
   }
@@ -121,18 +124,9 @@ function chainedRequire(init: TSESTree.Node | null | undefined): TSESTree.Node |
   return steps.at(-1);
 }
 
-function requireSource(init: TSESTree.Node | null | undefined): string | undefined {
-  if (
-    init?.type !== AST_NODE_TYPES.CallExpression ||
-    init.callee.type !== AST_NODE_TYPES.Identifier ||
-    init.callee.name !== 'require'
-  ) {
-    return undefined;
-  }
-  const [first] = init.arguments;
-  return first?.type === AST_NODE_TYPES.Literal && typeof first.value === 'string'
-    ? first.value
-    : undefined;
+function requireSource(init: TSESTree.Node | undefined): string | undefined {
+  const source = requiredLiteral(init);
+  return typeof source === 'string' ? source : undefined;
 }
 
 function destructuredBindings(pattern: TSESTree.ObjectPattern, spec: ImportSpec): Binding[] {
@@ -160,13 +154,13 @@ function specFor(source: string | undefined): ImportSpec | undefined {
   return source === undefined ? undefined : IMPORTS.find(({ matches }) => matches(source));
 }
 
-function requiredSpec(init: TSESTree.Node | null): ImportSpec | undefined {
+function requiredSpec(init: TSESTree.Node | undefined): ImportSpec | undefined {
   const direct = specFor(requireSource(init));
   if (direct !== undefined) {
     return direct;
   }
   const chained = specFor(requireSource(chainedRequire(init)));
-  return chained?.chained === true ? chained : undefined;
+  return chained !== undefined && CHAINED_KINDS.has(chained.kind) ? chained : undefined;
 }
 
 export function createRunnerApis(): RunnerApis {
@@ -203,7 +197,7 @@ export function calledMethod(apis: RunnerApis, callee: TSESTree.Node): CalledMet
 
 export { memberName as propertyName };
 
-function bindingKey(node: TSESTree.Node | null | undefined): string | undefined {
+function bindingKey(node: TSESTree.Node | undefined): string | undefined {
   if (node?.type === AST_NODE_TYPES.Identifier) {
     return node.name;
   }
@@ -239,7 +233,7 @@ export function kindOfObject(apis: RunnerApis, node: TSESTree.Node): string | un
   return memberName(node) === 'mock' ? 'node' : undefined;
 }
 
-function producedKind(apis: RunnerApis, value: TSESTree.Node | null): string | undefined {
+function producedKind(apis: RunnerApis, value: TSESTree.Node | undefined): string | undefined {
   const called =
     value?.type === AST_NODE_TYPES.CallExpression ? calledMethod(apis, value.callee) : undefined;
   if (called?.kind === undefined) {
@@ -249,7 +243,11 @@ function producedKind(apis: RunnerApis, value: TSESTree.Node | null): string | u
   return produced === undefined ? undefined : produced[called.method ?? ''];
 }
 
-function rememberProduced(apis: RunnerApis, target: TSESTree.Node, value: TSESTree.Node | null): void {
+function rememberProduced(
+  apis: RunnerApis,
+  target: TSESTree.Node,
+  value: TSESTree.Node | undefined,
+): void {
   const key = bindingKey(target);
   const kind = key === undefined ? undefined : producedKind(apis, value);
   if (key !== undefined && kind !== undefined) {
@@ -266,11 +264,11 @@ export function runnerApiVisitors(apis: RunnerApis): Visitors {
       }
     },
     VariableDeclarator(node) {
-      const spec = requiredSpec(node.init);
+      const spec = requiredSpec(node.init ?? undefined);
       if (spec !== undefined) {
         remember(apis, requireBindings(node, spec));
       }
-      rememberProduced(apis, node.id, node.init);
+      rememberProduced(apis, node.id, node.init ?? undefined);
     },
     AssignmentExpression(node) {
       rememberProduced(apis, node.left, node.right);
