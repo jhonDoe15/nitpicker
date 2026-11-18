@@ -208,6 +208,7 @@ function productionGuardRules({
     'nitpicker/promise-wait-deadline': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     'nitpicker/unbounded-reactive-fan-out': 'error',
+    'nitpicker/no-lossy-json-stringify': 'error',
     ...learnedRules(learned),
     ...securityRules({ react, security }),
   };

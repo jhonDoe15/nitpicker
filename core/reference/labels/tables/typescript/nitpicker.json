@@ -67,6 +67,7 @@
   "eslint/nitpicker/no-lookup-as-presence": ["bug", "performance"],
   "eslint/nitpicker/no-lookup-per-element": ["performance", "async"],
   "eslint/nitpicker/no-lossy-utf8-decode": ["bug", "reliability"],
+  "eslint/nitpicker/no-lossy-json-stringify": ["bug", "reliability"],
   "eslint/nitpicker/no-magic-numbers": ["maintainability"],
   "eslint/nitpicker/no-managed-resource-construction-outside-composition-roots": [
     "maintainability"
