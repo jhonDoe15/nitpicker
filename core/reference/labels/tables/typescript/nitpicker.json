@@ -46,6 +46,7 @@
   "eslint/nitpicker/no-forwarding-wrapper": ["simplification"],
   "eslint/nitpicker/no-generic-name": ["style", "maintainability"],
   "eslint/nitpicker/no-git-repository-per-test": ["tests", "performance"],
+  "eslint/nitpicker/no-hand-quoted-generated-code": ["bug", "reliability"],
   "eslint/nitpicker/no-handwritten-boundary-guard": ["maintainability", "reliability"],
   "eslint/nitpicker/no-hardcoded-secret": ["security"],
   "eslint/nitpicker/no-in-memory-query": ["performance", "persistence"],

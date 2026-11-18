@@ -45,6 +45,7 @@ import { rule as ruleNoForwardingMethodAlias } from '../rules/api-shape/no-forwa
 import { rule as ruleNoForwardingWrapper } from '../rules/api-shape/no-forwarding-wrapper.mts';
 import { rule as ruleNoGenericName } from '../rules/naming/no-generic-name.mts';
 import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/processes/no-git-repository-per-test.mts';
+import { rule as ruleNoHandQuotedGeneratedCode } from '../rules/generated-code/no-hand-quoted-generated-code.mts';
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/proce
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
-import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -147,6 +147,7 @@ export const partRules = {
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
   'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
+  'no-hand-quoted-generated-code': ruleNoHandQuotedGeneratedCode,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-service-locator': ruleNoServiceLocator,
   'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
-  'no-shared-test-state': ruleNoSharedTestState,
 };

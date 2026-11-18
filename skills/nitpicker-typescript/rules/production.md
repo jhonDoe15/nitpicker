@@ -191,6 +191,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Escaping for another syntax covers the escape character too: one regex with a callback over the backslash and the quote
   (`value.replace(/[\\"]/g, (c) => '\\' + c)`), or `JSON.stringify`, and unescaping is one pass with a callback
   (`nitpicker/no-incomplete-escaping`).
+- Generated source code writes a value as `JSON.stringify(value)`, not between hand-written quotes
+  (`nitpicker/no-hand-quoted-generated-code`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
