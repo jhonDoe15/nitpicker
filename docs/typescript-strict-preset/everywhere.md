@@ -1549,9 +1549,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `string`, `boolean`, `bigint`) turns `0`, `''` and `false` into the default. Write
   `limit ?? DEFAULT_LIMIT`, or test `limit === undefined`. Not reported: a fallback equal to the
   falsy value (`name || ''`, `count || 0`, `flag || false`, where `??` gives the same result), a
-  fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
-  parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
-  nothing.
+  fallback of `undefined` or `null` (except a boolean member, where `options.unique || undefined`
+  drops an explicit `false`), a condition (`if (a || b)`), and a value that is neither a parameter
+  nor a member read. The same test on a member of an options, config or request object
+  (`options.forceObject || config.forceObject`, `options?.unique || undefined`,
+  `options.ipv6Subnet || 64`, `update.referrer || this.referrer`, `query.expression ? query.expression : d`)
+  is reported when the member's type is optional or nullable and also has a falsy value; a text member with a
+  string literal fallback (`options.prefix || 'app'`) is not, because an empty text rarely means a value there.
+  Also not reported on a member: a text member whose name or fallback names an identifier or label
+  (`name`, `title`, `url`, `path`, `mode`, `token`, `id`, `scope`), a fresh-value fallback (`randomUUID()`),
+  a boolean member in a chain of flags (`a.network || b.network || c`), and an index read (`alias[type] || type`).
+  When `0`, `''` or `false` must take the default (a page size of 0 meaning "unset"), keep `||` with an
+  exception or normalise first. In the JavaScript preset the type comes from JSDoc; without JSDoc types the
+  rule sees nothing.
 - `nitpicker/strict-boolean-expressions` (type-aware, wraps typescript-eslint's
   `strict-boolean-expressions`; production and test files): a number tested for truthiness
   (`if (count)`, `retry ? a : b`, `!id`, `index && ...`, `cells[0] || ''`, `end - start ? a : b`, a

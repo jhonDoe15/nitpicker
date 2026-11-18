@@ -5,6 +5,8 @@ import { nullishDefaultFix } from '../../fixes/code/nullish-default-fix.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
 import { ancestorsOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { isFunction, unwrapped } from '../typed/syntax-views.mts';
+import { isComputedMember, isIntentionalMemberDefault } from '../truthiness/falsy-members.mts';
 import { ts } from '../typed/typescript-views.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
@@ -12,11 +14,6 @@ type MessageIds = 'falsyDefault' | 'useNullishCoalescing';
 type OrExpression = TSESTree.LogicalExpression & { readonly operator: '||' };
 type AndExpression = TSESTree.LogicalExpression & { readonly operator: '&&' };
 
-const FUNCTIONS = new Set<string>([
-  AST_NODE_TYPES.FunctionDeclaration,
-  AST_NODE_TYPES.FunctionExpression,
-  AST_NODE_TYPES.ArrowFunctionExpression,
-]);
 const TEST_PARENTS = new Set<string>([
   AST_NODE_TYPES.IfStatement,
   AST_NODE_TYPES.WhileStatement,
@@ -146,21 +143,24 @@ function isCondition(node: TSESTree.Node): boolean {
   return false;
 }
 
+function isMemberRead(node: TSESTree.Node): boolean {
+  return unwrapped(node).type === AST_NODE_TYPES.MemberExpression && !isComputedMember(node);
+}
+
 function isParameter(sourceCode: SourceCode, identifier: TSESTree.Identifier): boolean {
   const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
   return (
-    definition?.type === TSESLint.Scope.DefinitionType.Parameter &&
-    FUNCTIONS.has(definition.node.type)
+    definition?.type === TSESLint.Scope.DefinitionType.Parameter && isFunction(definition.node)
   );
 }
 
 type Scope = TypedScope<MessageIds>;
 
-function reportParameter({ context, sourceCode }: Scope, identifier: TSESTree.Identifier): void {
+function reportParameter({ context, sourceCode }: Scope, identifier: TSESTree.Node): void {
   const descriptor: TSESLint.ReportDescriptor<MessageIds> = {
     node: identifier,
     messageId: 'falsyDefault',
-    data: { name: identifier.name },
+    data: { name: sourceCode.getText(identifier) },
   };
   const plan = nullishDefaultFix(sourceCode, identifier);
   context.report(suggestible(descriptor, { messageId: 'useNullishCoalescing', plan }));
@@ -173,17 +173,32 @@ function checkDefault(
   report: TSESTree.Node,
   { identifiers, fallback }: Defaulted,
 ): void {
-  if (isAbsentValue(fallback)) {
-    return;
-  }
+  const clearsValue = isAbsentValue(fallback);
   const finalClass = literalClass(fallback);
-  const parameters = identifiers.flatMap((identifier) =>
-    identifier.type === AST_NODE_TYPES.Identifier && isParameter(scope.sourceCode, identifier)
-      ? [identifier]
-      : [],
+  const parameters = identifiers.filter((identifier) =>
+    identifier.type === AST_NODE_TYPES.Identifier
+      ? isParameter(scope.sourceCode, identifier)
+      : isMemberRead(identifier),
   );
   for (const identifier of parameters) {
     const classes = falsyClasses(scope.services.getTypeAtLocation(identifier));
+    if (
+      clearsValue &&
+      !(isMemberRead(identifier) && classes.size === 1 && classes.has('boolean'))
+    ) {
+      continue;
+    }
+    if (
+      isMemberRead(identifier) &&
+      isIntentionalMemberDefault({
+        member: identifier,
+        fallback,
+        classes,
+        operands: identifiers.length,
+      })
+    ) {
+      continue;
+    }
     const equal = classes.size === 1 && finalClass !== undefined && classes.has(finalClass);
     if (classes.size > 0 && !equal && !isCondition(report)) {
       reportParameter(scope, identifier);
@@ -202,7 +217,9 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     schema: [],
     messages: {
       falsyDefault:
-        "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.",
+        "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and " +
+        '`false` count as not given. Default only `undefined` with `??` ' +
+        '(`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.',
       useNullishCoalescing:
         'Default only `undefined` and `null` with `??`. Zero, the empty string and `false` then count as given.',
     },
@@ -225,9 +242,8 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       },
       ConditionalExpression(node: TSESTree.ConditionalExpression) {
         if (
-          node.test.type === AST_NODE_TYPES.Identifier &&
-          node.consequent.type === AST_NODE_TYPES.Identifier &&
-          node.test.name === node.consequent.name
+          (node.test.type === AST_NODE_TYPES.Identifier || isMemberRead(node.test)) &&
+          scope.sourceCode.getText(node.test) === scope.sourceCode.getText(node.consequent)
         ) {
           checkDefault(scope, node, { identifiers: [node.test], fallback: node.alternate });
         }
