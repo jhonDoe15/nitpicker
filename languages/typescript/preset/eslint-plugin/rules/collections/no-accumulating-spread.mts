@@ -8,6 +8,7 @@ import {
   type SpreadMessageId,
 } from './accumulating-spread-messages.mts';
 import { isFixedShape } from './spread-shapes.mts';
+import { reduceArrayFix } from '../../fixes/collections/reduce/reduce-array-fix.mts';
 import { reduceObjectFix } from '../../fixes/collections/reduce/reduce-object-fix.mts';
 import { fixable } from '../../fixes/support/descriptors.mts';
 import type { FixPlan } from '../../fixes/support/ranges.mts';
@@ -220,7 +221,7 @@ function fixPlanOf(
   if (report.kind === 'reduceObject') {
     return reduceObjectFix(context, report.callback);
   }
-  return undefined;
+  return report.kind === 'reduceArray' ? reduceArrayFix(context, report.callback) : undefined;
 }
 
 export const rule: TSESLint.RuleModule<SpreadMessageId> = {
