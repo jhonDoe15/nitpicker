@@ -210,4 +210,38 @@ return
             and empty($use/ancestor::MethodCall[@MethodName = ('onDispose', 'onCancel')]))]
 ]]></value></property></properties>
   </rule>
+
+  <rule name="ReactiveSubscribeAndReturn" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return the publisher and let the caller subscribe, or wrap the whole assembly in Flux.defer(() -&gt; ...) so each subscriber gets its own run, or share the source on purpose with cache(), share() or publish().autoConnect(2). This method calls subscribe(...) on a Mono or Flux and also returns that same publisher, so its caller subscribes a second time and the upstream work runs twice.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[ClassType[pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')
+    or pmd-java:typeIs('org.reactivestreams.Publisher')]]
+  /Block//MethodCall[@MethodName = 'subscribe'][*[1][self::VariableAccess]
+      [pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]]
+  [let $name := string(*[1]/@Name),
+       $method := ancestor::MethodDeclaration[1]
+   return empty(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][. >> $method])
+     and exists($method/Block//ReturnStatement[empty(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration])]
+       [exists(*[1]/descendant-or-self::VariableAccess[@Name = $name]
+                 [empty(ancestor::ArgumentList intersect ancestor::ReturnStatement[1]/descendant::ArgumentList)])])
+     and empty($method/Block//VariableDeclarator[VariableId/@Name = $name]/*[2]
+                 /descendant-or-self::MethodCall[@MethodName = ('cache', 'share', 'replay', 'autoConnect')])]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="ReactiveEagerFallback" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use Mono.defer(() -&gt; chain.filter(exchange).then(Mono.empty())) so it is built only when it is needed. This switchIfEmpty argument calls the filter chain while the pipeline is assembled, so the rest of the chain runs (and its side effects happen) even when the source is not empty.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = 'switchIfEmpty'][*[1][pmd-java:typeIs('reactor.core.publisher.Mono')
+    or pmd-java:typeIs('reactor.core.publisher.Flux')]]
+  /ArgumentList/MethodCall
+  [let $arg := .
+   return exists(descendant-or-self::MethodCall[@MethodName = 'filter']
+       [not(ancestor::ArgumentList intersect $arg/descendant::ArgumentList)]
+       [*[1][pmd-java:typeIs('org.springframework.web.server.WebFilterChain')
+           or pmd-java:typeIs('org.springframework.cloud.gateway.filter.GatewayFilterChain')]])]
+]]></value></property></properties>
+  </rule>
 </ruleset>
