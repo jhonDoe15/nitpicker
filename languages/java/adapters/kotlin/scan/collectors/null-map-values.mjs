@@ -31,6 +31,9 @@ const ENTRY_VALUE = new RegExp(`^(?:${ENTRY_REFERENCE}|${ENTRY_LAMBDA})$`);
 const ENTRY_SOURCE = /(\w+)\s*\.\s*(?:entries|entrySet\s*\(\s*\))\s*(?:\.|$)/g;
 const NULLS_REMOVED =
   /\.\s*(?:filter\s*[({][^;]*?value[^;]*?(?:!=\s*null|nonNull)|filterValues|filterNotNull|mapNotNull)/;
+const FILTER_LAMBDA = /\.\s*filter\s*\{([^{}]*)\}/g;
+const LAMBDA_PARAMETER = /^\w+\s*->/;
+const BRACES = /[{}]/;
 const LOOKBACK = 300;
 
 function statementBefore(code, offset) {
@@ -52,9 +55,42 @@ function nullableEntries(code, call) {
   return source !== undefined && nullableValueMap(code, source) && !NULLS_REMOVED.test(statement);
 }
 
+function testedExpressions(statement) {
+  return [...statement.matchAll(FILTER_LAMBDA)]
+    .filter((filter) => !filter[1].includes('||'))
+    .flatMap((filter) => filter[1].replace(/^\s*\w+\s*->/, '').split('&&'))
+    .map((part) => part.trim())
+    .flatMap((part) => {
+      const check =
+        /^(.+)!=\s*null$/.exec(part) ?? /^Objects\s*\.\s*nonNull\s*\((.+)\)$/.exec(part);
+      return check === null ? [] : [check[1].replace(/\s+/g, '')];
+    });
+}
+
+function lambdaBody(text) {
+  if (!(text.startsWith('{') && text.endsWith('}'))) {
+    return undefined;
+  }
+  const inner = text.slice(1, -1).trim();
+  const body = inner.replace(LAMBDA_PARAMETER, '');
+  return BRACES.test(body) ? undefined : body.replace(/\s+/g, '');
+}
+
+function filteredBefore(code, call, text) {
+  const body = lambdaBody(text);
+  if (body === undefined) {
+    return false;
+  }
+  const tested = testedExpressions(statementBefore(code, call.index));
+  return tested.includes(body);
+}
+
 function resultMayBeNull(code, call, text) {
   if (ELVIS_DEFAULT.test(text)) {
     return NULL_BRANCH.test(text);
+  }
+  if (filteredBefore(code, call, text)) {
+    return false;
   }
   return NULLABLE_RESULT.test(text) || (ENTRY_VALUE.test(text) && nullableEntries(code, call));
 }

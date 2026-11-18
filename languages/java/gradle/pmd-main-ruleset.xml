@@ -2603,8 +2603,38 @@ let $mapTypes := ('Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap', 'Na
                            | $function[self::LambdaExpression]/Block//ReturnStatement/*[1])
           satisfies $nullResult($result, $function))
     },
+    $shapeOf := function($expression, $parameters) {
+      string-join($expression/descendant-or-self::*/(@MethodName | @Name | self::*[self::StringLiteral or self::NumericLiteral]/@Image)
+                  ! (if (local-name(.) = 'Name' and . = $parameters) then '#' else string(.)), '.')
+    },
+    $testedShapes := function($filter) {
+      let $lambda := $filter/ArgumentList/LambdaExpression,
+          $parameters := $lambda/LambdaParameterList//VariableId/@Name,
+          $body := $lambda/*[last()][not(self::Block)]
+      return $body/descendant-or-self::*[self::InfixExpression[@Operator = '!='][NullLiteral]
+                                         or self::MethodCall[@MethodName = 'nonNull']]
+               [. is $body or ($body/self::InfixExpression[@Operator = '&&']
+                               and empty(ancestor::*[ancestor::*[. is $body]][not(self::InfixExpression[@Operator = '&&'])]))]
+             /(self::InfixExpression/*[not(self::NullLiteral)] | self::MethodCall/ArgumentList/*[1])
+             ! $shapeOf(., $parameters)
+    },
+    $valueShape := function($function) {
+      if ($function/self::MethodReference) then concat($function/@MethodName, '.#')
+      else $shapeOf($function/self::LambdaExpression/*[last()][self::MethodCall],
+                    $function/LambdaParameterList//VariableId/@Name)
+    },
+    $filteredBefore := function($call, $function) {
+      let $shape := $valueShape($function)
+      return exists($shape) and $shape != '' and
+        (some $collect in $call/parent::ArgumentList/parent::MethodCall[@MethodName = 'collect'] satisfies
+          (some $filter in $collect/*[1]/descendant-or-self::MethodCall[@MethodName = 'filter'] satisfies
+            $shape = $testedShapes($filter)
+            and (every $step in $filter/ancestor::* intersect $collect/descendant::* satisfies
+                  ($step is $step/../*[1] and $step[self::MethodCall][@MethodName = $passThrough]))))
+    },
     $reaches := function($call, $function) {
-      $nullFunction($function) or ($entryValue($function) and $nullEntries($call))
+      ($nullFunction($function) or ($entryValue($function) and $nullEntries($call)))
+      and not($filteredBefore($call, $function))
     },
     $helpers := //MethodDeclaration[.//MethodCall[@MethodName = $valueCollectors]
                   [pmd-java:typeIs('java.util.stream.Collector')]/ArgumentList/*[2][self::VariableAccess]]
