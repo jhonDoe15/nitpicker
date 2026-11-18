@@ -856,7 +856,8 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   or check the caller's access first.
 - Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
   the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
-  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,
+  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal, also one wrapped in `Readonly<...>` or an intersection
+  (`for...of`, an indexed `for` loop that reads `items[i]`, or an inline callback of `map`, `filter`,
   `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`, `forEach` or `flatMap`, which covers lookups and index
   computations) is judged against the whole checked program, not the changed file: it follows the flag when at least five
   iterations over that item type exist in non-test source and at least 80% of them skip flagged items. An iteration skips

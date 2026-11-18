@@ -1,5 +1,5 @@
 import { backward, between, forward, frameAt, startsNewLine } from './source-file.mjs';
-import { lookup, refAt, valueKind } from './values/values.mjs';
+import { accessorName, lookup, refAt, valueKind } from './values/values.mjs';
 import { isComparison, usedAsBound, usedLater } from './sinks.mjs';
 
 const DELIMITERS = new Set([
@@ -102,15 +102,33 @@ function sentinelSide(state, context, side) {
   return sentinel || tokens.slice(side.from, side.to).some(({ text }) => text === '-');
 }
 
-function boundCompared(state, context, index) {
+function chainStart(tokens, index) {
+  const starts = [index];
+  for (const start of starts) {
+    if (tokens[start - 1]?.text === '.' && tokens[start - 2]?.kind === 'identifier') {
+      starts.push(start - 2);
+    }
+  }
+  return starts.at(-1) ?? index;
+}
+
+function boundCompared(state, context, { start, end }) {
   const { source } = context;
   const { tokens } = source;
-  const after = isComparison(tokens[index + 1]?.text);
-  if (!(after || isComparison(tokens[index - 1]?.text))) {
+  const after = isComparison(tokens[end + 1]?.text);
+  if (!(after || isComparison(tokens[start - 1]?.text))) {
     return false;
   }
-  const side = after ? spanForward(source, index + 2, []) : spanBack(source, index - 2, []);
+  const side = after ? spanForward(source, end + 2, []) : spanBack(source, start - 2, []);
   return sentinelSide(state, context, side);
+}
+
+function accessorEnd(tokens, index, name) {
+  const call = tokens[index + 1]?.text === '(' && tokens[index + 2]?.text === ')';
+  if (tokens[index].text === name) {
+    return index;
+  }
+  return call && accessorName(tokens[index].text) === name ? index + 2 : undefined;
 }
 
 function guardedAt(state, context, { index, name }) {
@@ -121,8 +139,12 @@ function guardedAt(state, context, { index, name }) {
   const reassigned =
     tokens[index + 1]?.text === '=' &&
     statementTexts(source, index + 2).some((text) => CLAMPS.has(text));
+  const end = accessorEnd(tokens, index, name);
   return (
-    tokens[index].text === name && (clamped || reassigned || boundCompared(state, context, index))
+    end !== undefined &&
+    (clamped ||
+      reassigned ||
+      boundCompared(state, context, { start: chainStart(tokens, index), end }))
   );
 }
 

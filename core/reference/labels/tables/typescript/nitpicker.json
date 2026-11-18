@@ -34,7 +34,7 @@
   "eslint/nitpicker/no-dev-dependency-in-production": ["bug", "maintainability"],
   "eslint/nitpicker/no-disabled-tls-verification": ["security"],
   "eslint/nitpicker/no-dropped-subscription-handle": ["bug", "reliability"],
-  "eslint/nitpicker/no-dropped-test-callback": ["tests", "bug"],
+  "eslint/nitpicker/no-dropped-test-callback": ["tests"],
   "eslint/nitpicker/no-dual-write": ["reliability", "persistence"],
   "eslint/nitpicker/no-eager-relation": ["performance", "persistence"],
   "eslint/nitpicker/no-external-executables-in-unit-tests": ["tests"],

@@ -23,10 +23,16 @@ const MANIFEST = {
   kotlinAllOpen: { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] },
 };
 
-function lines(projectFiles: Loose[], { javaRoots = ['src/main/java'] } = {}): string[] {
+function lines(
+  projectFiles: Loose[],
+  {
+    javaRoots = ['src/main/java'],
+    manifest = MANIFEST,
+  }: { javaRoots?: string[]; manifest?: Loose } = {},
+): string[] {
   return springFindings(projectFiles, {
     finding: findingFactory(),
-    manifest: MANIFEST,
+    manifest,
     projectFiles,
     projectRoot: PROJECT,
     javaRoots,
@@ -177,6 +183,74 @@ describe('Spring Data rules on the forms the regression review found', () => {
 });
 
 describe('Spring Data rules on hand-built facts', () => {
+  it('reports a many-to-many list on the owning side only, not on the mappedBy side', () => {
+    const manyToMany = (args: Loose[]) => ({
+      name: 'ManyToMany',
+      type: 'jakarta.persistence.ManyToMany',
+      arguments: args,
+    });
+    const facts = sourceFile({
+      classes: [
+        klass('Course', {
+          annotations: [{ name: 'Entity', arguments: [], type: 'jakarta.persistence.Entity' }],
+        }),
+      ],
+      properties: [
+        property('students', 'Course', {
+          type: 'MutableList<Student>',
+          line: 3,
+          annotationEntries: [manyToMany([])],
+        }),
+        property('courses', 'Course', {
+          type: 'MutableList<Student>',
+          line: 5,
+          annotationEntries: [manyToMany([{ name: 'mappedBy', text: '"students"' }])],
+        }),
+      ],
+    });
+
+    expect(lines([facts]).filter((line) => line.endsWith(' JpaManyToManySet'))).toEqual([
+      'Sample.kt:3 JpaManyToManySet',
+    ]);
+  });
+
+  it('reports IDENTITY ids unless the project database has no sequences', () => {
+    const facts = sourceFile({
+      classes: [
+        klass('Course', {
+          annotations: [{ name: 'Entity', arguments: [], type: 'jakarta.persistence.Entity' }],
+        }),
+      ],
+      properties: [
+        property('id', 'Course', {
+          type: 'Long',
+          line: 3,
+          annotationEntries: [
+            {
+              name: 'GeneratedValue',
+              type: 'jakarta.persistence.GeneratedValue',
+              arguments: [{ name: 'strategy', text: 'GenerationType.IDENTITY' }],
+            },
+          ],
+        }),
+      ],
+    });
+    const sequenceIds = (allowed: boolean) =>
+      springFindings([facts], {
+        finding: findingFactory(),
+        manifest: MANIFEST,
+        projectFiles: [facts],
+        projectRoot: PROJECT,
+        javaRoots: ['src/main/java'],
+        sequenceIds: () => allowed,
+      })
+        .map(({ rule }) => rule)
+        .filter((rule) => rule === 'JpaSequenceIds');
+
+    expect(sequenceIds(true)).toEqual(['JpaSequenceIds']);
+    expect(sequenceIds(false)).toEqual([]);
+  });
+
   it('skips enums converted by a Java or a positional auto-applied converter', () => {
     const facts = sourceFile({
       package: 'shop.good',
@@ -300,5 +374,101 @@ describe('Spring Data rules on hand-built facts', () => {
     expect(lines([query('"$BASE where o.price > 1"')])).toEqual([
       'Sample.kt:1 SpringDataQueryTextBlock',
     ]);
+  });
+});
+
+describe('Kotlin Spring Data rules outside a Spring Data project', () => {
+  const sessionSaver = () =>
+    sourceFile({
+      imports: [{ path: 'org.hibernate.Session', all: false }],
+      classes: [
+        klass('Saver', {
+          primaryParameters: [parameter('session', 'Session', { property: true })],
+        }),
+      ],
+      functions: [
+        fn('saveAll', { owner: 'Saver', line: 3, parameters: [parameter('items', 'List<Order>')] }),
+      ],
+      scopes: [
+        scope(0, 'class', { name: 'Saver', qualified: 'Saver' }),
+        scope(1, 'fun', { parent: 0, name: 'saveAll', line: 3 }),
+        scope(2, 'foreach', { parent: 1, range: 'items', params: [{ name: 'item' }] }),
+      ],
+      invocations: [
+        { line: 4, scope: 2, name: 'persist', receiver: 'session', arguments: [{ text: 'item' }] },
+        { line: 5, scope: 2, name: 'flush', receiver: 'session', arguments: [] },
+      ],
+    });
+
+  it('stays silent on entity manager writes and flushes in a loop', () => {
+    const manifest = { ...MANIFEST, springClasspath: ['/m2/spring-context-6.1.0.jar'] };
+
+    expect(lines([sessionSaver()], { manifest })).toEqual([]);
+  });
+
+  it('keeps reporting them when the classpath is unknown', () => {
+    expect(lines([sessionSaver()])).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+    expect(lines([sessionSaver()], { manifest: { ...MANIFEST, springClasspath: [] } })).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+  });
+
+  it('reports them once a Spring Data jar is on the classpath', () => {
+    const manifest = { ...MANIFEST, springClasspath: ['/m2/spring-data-jpa-3.3.0.jar'] };
+
+    expect(lines([sessionSaver()], { manifest })).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+  });
+});
+
+describe('Kotlin SpringTypedConfiguration on System properties', () => {
+  const reader = (annotations: Loose[]) =>
+    sourceFile({
+      imports: [{ path: 'org.springframework.stereotype.Service', all: false }],
+      classes: [klass('Reader', { annotations })],
+      functions: [fn('mode', { owner: 'Reader', line: 3 })],
+      scopes: [
+        scope(0, 'class', { name: 'Reader', qualified: 'Reader' }),
+        scope(1, 'fun', { parent: 0, name: 'mode', line: 3 }),
+      ],
+      invocations: [
+        {
+          line: 4,
+          scope: 1,
+          name: 'getProperty',
+          receiver: 'System',
+          arguments: [{ text: '"app.mode"' }],
+        },
+      ],
+    });
+
+  it('ignores a class that is not a Spring bean', () => {
+    expect(lines([reader([])])).toEqual([]);
+  });
+
+  it.each([
+    ['jakarta.inject.Named', 'Named'],
+    ['javax.annotation.ManagedBean', 'ManagedBean'],
+    ['org.aspectj.lang.annotation.Aspect', 'Aspect'],
+  ])('reports the read in a class annotated with %s', (type, name) => {
+    expect(lines([reader([{ name, arguments: [], type }])])).toEqual([
+      'Sample.kt:4 SpringTypedConfiguration',
+    ]);
+  });
+
+  it('reports the read in a stereotype class', () => {
+    expect(
+      lines([
+        reader([
+          { name: 'Service', arguments: [], type: 'org.springframework.stereotype.Service' },
+        ]),
+      ]),
+    ).toEqual(['Sample.kt:4 SpringTypedConfiguration']);
   });
 });

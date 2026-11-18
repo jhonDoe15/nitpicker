@@ -6,6 +6,7 @@ import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { integerNames } from '../decided/decided.mjs';
 import { declaredTypes } from '../decided/models/types.mjs';
 import { conditionTerm } from '../decided/facts.mjs';
+import { isUnboxingGuard } from './unboxing.mjs';
 
 const CONNECTIVES = new Set(['&&', '||']);
 const TESTED = new Set(['if', 'while', 'conditional']);
@@ -54,11 +55,12 @@ function shorterSite(root, scope, context) {
   if (skeleton === undefined || leavesOf(skeleton).some(({ text }) => text === undefined)) {
     return [];
   }
-  const { style, solver, isPython, tests } = context;
+  const { style, solver, isPython, tests, isPinned } = context;
   const shorter = findShorter(skeleton, {
     style,
     solver,
     booleanContext: !isPython || tests.has(root),
+    isPinned,
   });
   return shorter === undefined
     ? []
@@ -90,6 +92,7 @@ export function shorterConditions(tree, { isPython, kotlin = false, references =
     solver: solverBudget(),
     isPython,
     tests,
+    isPinned: references && !kotlin ? isUnboxingGuard : undefined,
   };
   return all
     .filter((node) => isConnective(node) && !inner.has(node))

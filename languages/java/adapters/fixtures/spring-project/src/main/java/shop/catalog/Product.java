@@ -48,5 +48,7 @@ public class Product {
 
   @ManyToMany @OrderColumn private List<Tag> rankedBadges = new ArrayList<>();
 
+  @ManyToMany(mappedBy = "products") private List<Tag> inverseBadges = new ArrayList<>();
+
   protected Product() {}
 }

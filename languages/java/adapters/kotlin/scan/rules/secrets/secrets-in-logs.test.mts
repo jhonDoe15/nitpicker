@@ -77,6 +77,45 @@ describe('secretsInLogs', () => {
   });
 });
 
+describe('secretsInLogs on enum names', () => {
+  it.each([
+    ['an enum parsed by valueOf', 'Kind.valueOf(token)'],
+    ['an enum parsed by enumValueOf', 'enumValueOf<Kind>(token)'],
+  ])('passes %s', (_name, parse) => {
+    const source = `fun f(token: String) {\n    ${parse}\n    log.warn("unknown token $token")\n}\n`;
+
+    expect(found(source)).toEqual([]);
+  });
+
+  it('flags a token parsed as text, or in another function', () => {
+    const source = `fun f(token: String) {\n    String.valueOf(token)\n    log.warn("t $token")\n}\nfun g(token: String) {\n    Kind.valueOf(token)\n}\nfun h(token: String) {\n    log.warn("t $token")\n}\n`;
+
+    expect(found(source)).toEqual([
+      ['token', 3],
+      ['token', 9],
+    ]);
+  });
+});
+
+describe('secretsInLogs on valueOf of plain types and order', () => {
+  it.each([
+    'Integer.valueOf(token)',
+    'Long.valueOf(token)',
+    'UUID.valueOf(token)',
+    'Optional.valueOf(token)',
+  ])('flags a token logged after %s', (parse) => {
+    const source = `fun f(token: String) {\n    ${parse}\n    log.warn("t $token")\n}\n`;
+
+    expect(found(source)).toEqual([['token', 3]]);
+  });
+
+  it('flags a token logged before the enum parse', () => {
+    const source = `fun f(token: String) {\n    log.warn("t $token")\n    Kind.valueOf(token)\n}\n`;
+
+    expect(found(source)).toEqual([['token', 2]]);
+  });
+});
+
 describe('secretsInLogs on a long file', () => {
   it('runs in linear time', () => {
     const lines = Array.from(
