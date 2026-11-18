@@ -29,7 +29,10 @@ function ownArgumentIndexes() {
 function withoutOwnPreload() {
   const own = new Set(ownArgumentIndexes());
   const kept = execArguments.filter((_argument, index) => !own.has(index));
-  execArguments.splice(0, execArguments.length, ...kept);
+  execArguments.length = 0;
+  for (const argument of kept) {
+    execArguments.push(argument);
+  }
 }
 
 function newRecord() {

@@ -70,7 +70,7 @@ describe('translateRule', () => {
 
     const translated = translateRule(ruleId, { nativeRules: withPorts });
 
-    expect(translated.name).toBe(`${alias}/${ruleId.split('/')[1]}`);
+    expect(translated.name).toBe(`${alias}/${ruleId.slice(ruleId.indexOf('/') + 1)}`);
     expect(translated.plugin).toEqual({ namespace, alias });
   });
 

@@ -19,7 +19,7 @@ import {
 } from './react-rules.mjs';
 import { reactScopeConfigFor, reactSyntaxConfigFor } from './react-scope.mts';
 import { fileURLToPath } from 'node:url';
-import { runnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
+import { runnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
 
 const resolveLayout: (layout?: {
   readonly sourceRoots?: string[];

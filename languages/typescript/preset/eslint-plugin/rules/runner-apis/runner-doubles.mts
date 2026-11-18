@@ -1,5 +1,11 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { type CalledMethod, type RunnerApis, calledMethod, kindOfObject, propertyName } from './runner-apis.mts';
+import {
+  type CalledMethod,
+  type RunnerApis,
+  calledMethod,
+  kindOfObject,
+  propertyName,
+} from './runner-apis.mts';
 
 type Lists = Readonly<Record<string, readonly string[]>>;
 export type TimerChange = { readonly kind: string; readonly fake: boolean };
@@ -51,11 +57,13 @@ function nodeTimerMethod(apis: RunnerApis, callee: TSESTree.Node): string | unde
   return isTimers && kindOfObject(apis, timers.object) === 'node' ? method : undefined;
 }
 
-function fakeFlag(kind: string | undefined, method: string | undefined): boolean | undefined {
+type TimerSwitch = 'on' | 'off' | 'none';
+
+function timerSwitch(kind: string | undefined, method: string | undefined): TimerSwitch {
   if (listed(FAKE_TIMERS_ON, kind, method)) {
-    return true;
+    return 'on';
   }
-  return listed(FAKE_TIMERS_OFF, kind, method) ? false : undefined;
+  return listed(FAKE_TIMERS_OFF, kind, method) ? 'off' : 'none';
 }
 
 function timerMethod(apis: RunnerApis, callee: TSESTree.Node): CalledMethod | undefined {
@@ -77,11 +85,11 @@ export function calleeTimerChange(
   callee: TSESTree.Node,
 ): TimerChange | undefined {
   const called = timerMethod(apis, callee);
-  const fake = called === undefined ? undefined : fakeFlag(called.kind, called.method);
-  if (called?.kind === undefined || fake === undefined) {
+  const switched = called === undefined ? 'none' : timerSwitch(called.kind, called.method);
+  if (called?.kind === undefined || switched === 'none') {
     return undefined;
   }
-  return { kind: CLOCK_KINDS[called.kind] ?? called.kind, fake };
+  return { kind: CLOCK_KINDS[called.kind] ?? called.kind, fake: switched === 'on' };
 }
 
 const CLOCK_SETTERS: Lists = {

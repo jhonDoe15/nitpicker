@@ -107,7 +107,10 @@ function mockedHooks(
 
 function reactMock(
   node: TSESTree.CallExpression,
-  { apis, visitorKeys }: { readonly apis: RunnerApis; readonly visitorKeys: SourceCode['visitorKeys'] },
+  {
+    apis,
+    visitorKeys,
+  }: { readonly apis: RunnerApis; readonly visitorKeys: SourceCode['visitorKeys'] },
 ): string | undefined {
   const mock = moduleMocks(apis, node).find(
     ({ name }) => name !== undefined && mockedModules.has(name),

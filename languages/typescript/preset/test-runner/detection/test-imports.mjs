@@ -1,3 +1,4 @@
+import { largest } from '../../../../../shared/lists/items.mjs';
 import { TEST_RUNNERS } from '../runners.mjs';
 import { projectText } from '../../test-environment/dom-code/dom-tests.mjs';
 import {
@@ -49,7 +50,7 @@ function describeCount(count, specifier) {
 
 export function importEvidence(projectRoot, layout) {
   const counts = [...importCounts(projectRoot, layout)];
-  const most = Math.max(0, ...counts.map(([, count]) => count));
+  const most = largest([0, ...counts.map(([, count]) => count)]);
   return counts
     .filter(([, count]) => count === most)
     .map(([runner, count]) => ({

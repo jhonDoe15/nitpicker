@@ -1,5 +1,5 @@
 import type { Linter } from 'eslint';
-import { projectRunnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
+import { projectRunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
 
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';

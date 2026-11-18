@@ -30,12 +30,11 @@ export const rule: TSESLint.RuleModule<'repositoryPerTest'> = {
     const data = { sharedSetupHook: vocabularyOf(context).sharedSetupHook };
     return perTestSubprocessVisitors(
       context,
-      'repositoryPerTest',
+      { messageId: 'repositoryPerTest', data },
       (node, bindings) => {
         const direct = describeSubprocess(context, node, bindings);
         return createsRepository(direct ?? describeWrapperCall(context, node, bindings));
       },
-      data,
     );
   },
 };
