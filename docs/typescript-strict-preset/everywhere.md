@@ -1646,6 +1646,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\*\*` to `.*`), tokenise the
   pattern and map each token, or use a glob library. The same form runs as `pattern-translation` (Python and
   Go) and `pmd/PatternTranslation` (Java and Kotlin).
+- `nitpicker/no-unescaped-filter-value`: a value that is not constant and not escaped, used as the pattern of
+  a filter that reads `%`, `_`, `\` or regex characters as wildcards: a Prisma `contains`, `startsWith` or
+  `endsWith` (and `equals` or `not` next to `mode: 'insensitive'`, which Prisma turns into `ILIKE`) in the
+  `where` of `findMany`, `findFirst`, `count`, `deleteMany`, `updateMany`, `aggregate` or `groupBy`; the
+  operand of `LIKE`, `ILIKE` or `NOT LIKE` in a `sql`, `Prisma.sql` or `$queryRaw` template; the value of a
+  Knex `whereLike`, `whereILike` or `where(column, 'like', value)`, a Drizzle `like` or `ilike`, a TypeORM
+  `Like` or `ILike`, a Sequelize `[Op.like]` or `[Op.iLike]`, a `$like`, `$ilike` or `$regex` key. A template
+  or `+` around the value (`%${term}%`) is read through to the value. Reported: the first identifier or member
+  inside the pattern that is not escaped. Allowed: a call with `escape`, `quote` or `sanitize` in its name
+  (`escapeSqlLikePattern(term)`), a `replace` whose replacement holds `$&` or a backslash, an identifier named
+  `escaped...`, a constant, a `new RegExp(...)` value and an exception when wildcards are an intended feature
+  of the input. Not covered: a filter object built in another function, a value from a call that is not a text
+  method, and `new RegExp(value)` (`nitpicker/no-string-as-regex`). The Java, Python and Go presets have no
+  counterpart yet.
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of

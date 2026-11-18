@@ -182,6 +182,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target first
   (`escapeRegExp(value).replace(/\\\*/g, '.*')`), then the wildcards are restored from their escaped form
   (`nitpicker/no-unescaped-pattern-translation`).
+- User text used as a `LIKE`, `contains`, `startsWith` or `$regex` filter value is escaped first
+  (`startsWith: escapeSqlLikePattern(name)`): `%`, `_` and `\` in it are wildcards otherwise
+  (`nitpicker/no-unescaped-filter-value`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
