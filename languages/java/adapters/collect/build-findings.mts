@@ -20,6 +20,8 @@ import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modu
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
+import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
+import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -106,6 +108,7 @@ function gradleFindings(
     kotlinRun,
   });
   const report: unknown = readReportModules(reportBase, preset, projectRoot);
+  startGradleReuse(projectRoot, report, options.policy);
   const duplicates = {
     reportRoot: reportBase,
     manifest: fieldOf(report, 'manifest'),
@@ -150,6 +153,9 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     pitDeadline: options.budget?.pitDeadlineMs,
     configs: toolConfigChoices(projectRoot, options.policy),
+    onModules: (modules) => {
+      startMavenReuse(projectRoot, modules, options.policy);
+    },
   });
   const { moduleDirs } = run;
   const manifest = mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY);
@@ -177,7 +183,11 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
 }
 
 export function buildFindings(projectRoot: string, options: JavaRunOptions): JavaReport {
-  return detectJavaBuild(projectRoot, options.policy?.['buildTool']) === 'maven'
-    ? mavenFindings(projectRoot, options)
-    : withGradleReports(projectRoot, options);
+  try {
+    return detectJavaBuild(projectRoot, options.policy?.['buildTool']) === 'maven'
+      ? mavenFindings(projectRoot, options)
+      : withGradleReports(projectRoot, options);
+  } finally {
+    stopReuseAhead();
+  }
 }

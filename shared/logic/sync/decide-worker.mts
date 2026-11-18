@@ -45,9 +45,17 @@ async function drain(queue: DecisionRequest[], channels: DecisionChannels): Prom
   }
 }
 
+function isStop(message: object): boolean {
+  return 'stop' in message && message.stop === true;
+}
+
 export function serveDecisions(port: MessagePort, channels: DecisionChannels): void {
   const queue: DecisionRequest[] = [];
   port.on('message', (request: DecisionRequest) => {
+    if (isStop(request)) {
+      port.close();
+      return;
+    }
     queue.push(request);
     if (queue.length === 1) {
       void drain(queue, channels);

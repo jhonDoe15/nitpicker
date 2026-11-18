@@ -30,6 +30,7 @@ import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-r
 import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
 import { DESIGN_EVALUATORS } from '../design/design-findings.mjs';
+import { decidedAhead } from '../../logic/sync/ahead/decided-ahead.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
@@ -56,14 +57,14 @@ const EVALUATORS = {
     }),
   'near-duplicate': ({ facts, context }) =>
     nearDuplicateFindings(facts.nearDuplicateUnits, context),
-  'decided-condition': ({ facts, context }) =>
-    decidedConditionFindings(facts.nearDuplicateUnits, context),
+  'decided-condition': ({ facts, context, options }) =>
+    decidedAhead(() => decidedConditionFindings(facts.nearDuplicateUnits, context), options),
   'duplicate-branch': ({ facts, context }) =>
     duplicateBranchFindings(facts.nearDuplicateUnits, context),
   'result-slip': ({ facts, context }) => resultSlipFindings(facts.nearDuplicateUnits, context),
   'integer-slip': ({ facts, context }) => integerSlipFindings(facts.nearDuplicateUnits, context),
-  'shorter-condition': ({ facts, context }) =>
-    shorterConditionFindings(facts.nearDuplicateUnits, context),
+  'shorter-condition': ({ facts, context, options }) =>
+    decidedAhead(() => shorterConditionFindings(facts.nearDuplicateUnits, context), options),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
