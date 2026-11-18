@@ -1463,7 +1463,6 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
   `[force=false]` (a default given), `@property` tags and dotted option names
   (`@param {boolean} [options.verbose]`) are not reported.
-- `nitpicker/no-unhandled-url-parse`: `new URL(text)` or `new URL(text, base)` (also
   `new globalThis.URL`) where `text` or `base` is neither a constant string (a literal, a template
   or `+` of constants, or a `const` holding one) nor a `URL` value (a `new URL(...)` constant, a
   name annotated `URL`, an already parsed `.href`, `.url` or `.origin`) throws a
@@ -1636,6 +1635,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   this repository it flagged constant-derived patterns almost only, so the rule reports values
   built into a pattern and leaves whole patterns alone. Without types (plain JavaScript without JSDoc)
   the rule sees nothing.
+- `nitpicker/no-unescaped-pattern-translation`: a chain of two or more `replace` or `replaceAll` calls on one
+  value whose replacements are regex wildcards (`.*`, `[^/]*`, `.`) that is built into a `new RegExp(...)` or
+  `RegExp(...)` (directly, through a template literal, `+`, or a variable used that way), or whose
+  replacements are `LIKE` wildcards (`%` and `_`), when no step escapes the target language first: a root that
+  is a call with `escape` or `quote` in its name (`escapeRegExp(value)`), a `replace` with `$&` or a
+  backslash-prefixed `%` or `_` as its replacement, or a root that is constant text. A configured glob with a
+  `.` in it then matches any character and a `%` becomes a wildcard. A single `replace`, a chain that does not
+  reach a regex and a chain without a wildcard token are not reported. Allowed form: escape first
+  (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\*\*` to `.*`), tokenise the
+  pattern and map each token, or use a glob library. The same form runs as `pattern-translation` (Python and
+  Go) and `pmd/PatternTranslation` (Java and Kotlin).
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of

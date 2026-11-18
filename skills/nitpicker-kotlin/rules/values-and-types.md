@@ -114,6 +114,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/NullMapValue`).
 - A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
   fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).
+- A glob or pattern turned into a `Regex` or a `LIKE` pattern with `replace` calls is escaped for the target
+  first (`pmd/PatternTranslation`): `Regex.escape(glob).replace("*", ".*")`, never the raw value; for `LIKE`
+  escape `%`, `_` and the escape character, then map the wildcards.
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Int.MAX_VALUE`, a constant of it, a parameter that defaults to it or a caller passes it,
   overflows to a negative index or bound. Compare without adding (`width >= length - start`), widen first

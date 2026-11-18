@@ -479,6 +479,13 @@ rule runs as `unordered-query` in the Python preset (SQLAlchemy, Django queryset
 unsorted `PageRequest`) and `kotlin-source/UnorderedQuery` in the Kotlin preset. The text analysis is shared:
 [`shared/rules/queries/sql-order.mjs`](../shared/rules/queries/sql-order.mjs).
 
+Pattern translation: `nitpicker/no-unescaped-pattern-translation` (production source, in `eslint-lint`) reports a chain of
+two or more `replace` or `replaceAll` calls that turns a glob or pattern into a regex (reaching `new RegExp`) or into a
+SQL `LIKE` pattern (replacements `%` and `_`) when no step escapes the target language first. The same form runs as
+`pattern-translation` in the Python and Go presets and `pmd/PatternTranslation` in the Java and Kotlin presets (read from
+the sources of every module). Escaping first (`escapeRegExp`, `re.escape`, `regexp.QuoteMeta`, `Pattern.quote`), a single
+`replace` and constant text are allowed.
+
 Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
 multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL
 takes at most 65,535 bound parameters. One array parameter (`= any($1::uuid[])`) passes. The same rule runs as

@@ -88,6 +88,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
 - [Sums that overflow a maximum value](java-preset/sums-that-overflow-a-maximum-value.md)
+- [Patterns translated without escaping](java-preset/patterns-translated-without-escaping.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

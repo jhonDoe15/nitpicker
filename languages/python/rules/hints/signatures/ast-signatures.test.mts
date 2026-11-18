@@ -41,6 +41,16 @@ describe('signature rule messages', () => {
       '`OldOrder` is an alias that keeps the old name of `Order` working',
     ],
     ['compatibility-shim', 'odd', '`odd` keeps an old name working'],
+    [
+      'pattern-translation',
+      'regex|glob',
+      '`glob` is turned into a regular expression by `replace` calls that leave the target\'s metacharacters unescaped',
+    ],
+    [
+      'pattern-translation',
+      'like|term',
+      '`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target\'s metacharacters unescaped',
+    ],
   ])('describe %s for %s', (rule, subject, description) => {
     expect(describeRuleFinding(rule, subject)).toBe(description);
   });

@@ -179,6 +179,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target first
+  (`escapeRegExp(value).replace(/\\\*/g, '.*')`), then the wildcards are restored from their escaped form
+  (`nitpicker/no-unescaped-pattern-translation`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -44,6 +44,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- A glob or pattern turned into a regex or `LIKE` pattern with `replace` calls is escaped for the target first
+  (`re.escape(glob).replace("\\*", ".*")`), never rewritten from the raw value (`pattern-translation`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are

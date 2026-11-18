@@ -160,6 +160,13 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['repeated_string_literal', MAINTAINABILITY],
   ['credential_shape', SECURITY],
   ['get_prefixed_getter', STYLE],
+  ['unchecked_response_json', BUG],
+  ['wall_clock_elapsed', BUG],
+  ['backoff_shift_overflow', ['bug', RELIABILITY_LABEL]],
+  ['index_bound_off_by_one', BUG],
+  ['negative_count', BUG],
+  ['nan_only_guard', BUG],
+  ['pattern_translation', ['bug', 'security']],
 ]);
 
 function staticcheckLabels(rule: string): Labels {

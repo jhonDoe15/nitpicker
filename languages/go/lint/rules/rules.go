@@ -20,15 +20,33 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/resolvers"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/schema"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/secrets"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/translation"
 	"golang.org/x/tools/go/analysis"
 )
 
 const Tool = "go-rules"
 
 func Analyzers() []*analysis.Analyzer {
-	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers(),
-		database.Analyzers(), guards.Analyzers(), schema.Analyzers(), secrets.Analyzers(), honesty.Analyzers(),
-		lifecycles.Analyzers(), httpvalues.Analyzers(),
-		[]*analysis.Analyzer{copies.Analyzer, optional.Analyzer, overflow.Analyzer, requests.Analyzer, jobs.Analyzer,
-			resolvers.Analyzer})
+	return slices.Concat(
+		failures.Analyzers(),
+		concurrency.Analyzers(),
+		design.Analyzers(),
+		remote.Analyzers(),
+		database.Analyzers(),
+		guards.Analyzers(),
+		schema.Analyzers(),
+		secrets.Analyzers(),
+		honesty.Analyzers(),
+		lifecycles.Analyzers(),
+		httpvalues.Analyzers(),
+		[]*analysis.Analyzer{
+			copies.Analyzer,
+			optional.Analyzer,
+			overflow.Analyzer,
+			requests.Analyzer,
+			jobs.Analyzer,
+			resolvers.Analyzer,
+			translation.Analyzer,
+		},
+	)
 }
