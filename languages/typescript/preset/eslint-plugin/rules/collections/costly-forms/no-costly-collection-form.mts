@@ -4,6 +4,7 @@ import { optionalReporter } from '../../support/optional-report.mts';
 import { arrayMembership } from './array-membership.mts';
 import { keyedLookup } from './keyed-lookup.mts';
 import { sortedExtreme } from './sorted-extreme.mts';
+import { extremeFix } from './fixes/extreme/extreme-fix.mts';
 import { mapFix } from './fixes/map/map-fix.mts';
 import { setFix } from './fixes/set/set-fix.mts';
 
@@ -15,7 +16,9 @@ const costlyCollectionMessages = {
   arrayAsSet: `\`{{name}}\` is appended to and searched with \`{{method}}\`, so every search scans the whole array. Keep it in a \`Set\`: \`add\` to append and \`has\` to test (\`[...set]\` gives the items back in insertion order). ${EXCEPTION}`,
   lookupInLoop: `\`{{name}}.{{method}}\` compares \`{{key}}\` against every item, once per iteration, item or event. Build a \`Map\` keyed by \`{{key}}\` once, outside the loop or handler, and use \`get\` (for \`some\`, a \`Set\` of keys and \`has\`). ${EXCEPTION}`,
   useMap:
-    'Build the lookup once before the loop: a `Map` keyed by the property with `get` (a `Set` of keys with `has` for `some`).',
+    'Build a `Map` by the key once before the loop and use `get` (a `Set` of keys and `has` for `some`).',
+  useReduce:
+    'Take the first or last in one `reduce` pass, starting from `undefined`, instead of sorting the whole array.',
   useSet: 'Keep the items in a `Set`: `new Set<T>()`, `add`, `has` and `size`.',
   sortForExtreme: `\`{{method}}\` sorts the whole array only to take its first or last element. Take the smallest or largest in one pass: \`xs.reduce((best, x) => (compare(x, best) < 0 ? x : best))\`, or \`Math.min\`/\`Math.max\` for a few numbers. ${EXCEPTION}`,
 };
@@ -45,7 +48,9 @@ export const rule: TSESLint.RuleModule<MessageId> = {
       CallExpression(call) {
         const lookup = keyedLookup(sourceCode, call);
         if (lookup === undefined) {
-          report(sortedExtreme(sourceCode, call));
+          const extreme = sortedExtreme(sourceCode, call);
+          const plan = extreme === undefined ? undefined : extremeFix(context, call);
+          report(extreme && suggestible<MessageId>(extreme, { messageId: 'useReduce', plan }));
           return;
         }
         const plan = mapFix(context, call);
