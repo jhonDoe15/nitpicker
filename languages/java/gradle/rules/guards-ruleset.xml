@@ -5,11 +5,47 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's own PMD rules for main sources.</description>
   <rule name="OptionalGet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(), also after isPresent().">
+        message="Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get().">
     <description>Optional.get() hides the empty case.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[pmd-java:matchesSig('java.util.Optional#get()')]
+  [not(
+    let $get := ., $name := string(*[1][self::VariableAccess]/@Name),
+        $only := function($atom, $root, $op) {
+          $atom is $root or ($root/self::InfixExpression[@Operator = $op]
+            and not($atom/ancestor::*[ancestor::*[. is $root]][not(self::InfixExpression[@Operator = $op])]))
+        },
+        $present := function($root) {
+          $root/descendant-or-self::*[
+            self::MethodCall[@MethodName = 'isPresent'][*[1][self::VariableAccess][@Name = $name]]
+            or self::UnaryExpression[@Operator = '!']
+              [MethodCall[@MethodName = 'isEmpty'][*[1][self::VariableAccess][@Name = $name]]]
+          ][$only(., $root, '&&')]
+        },
+        $empty := function($root, $op) {
+          $root/descendant-or-self::*[
+            self::MethodCall[@MethodName = 'isEmpty'][*[1][self::VariableAccess][@Name = $name]]
+            or self::UnaryExpression[@Operator = '!']
+              [MethodCall[@MethodName = 'isPresent'][*[1][self::VariableAccess][@Name = $name]]]
+          ][$only(., $root, $op)]
+        },
+        $exits := function($branch) {
+          $branch/self::*[self::ReturnStatement or self::ThrowStatement or self::ContinueStatement
+              or self::BreakStatement]
+            or $branch/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement
+              or self::ContinueStatement or self::BreakStatement]
+        }
+    return $name != '' and (
+      (some $branch in ancestor-or-self::*[parent::IfStatement or parent::ConditionalExpression]
+        satisfies ($branch is $branch/../*[2] and exists($present($branch/../*[1])))
+          or ($branch is $branch/../*[3] and exists($empty($branch/../*[1], '||'))))
+      or (ancestor::*[parent::Block]/preceding-sibling::IfStatement[$exits(*[2])]
+        [exists($empty(*[1], '||'))]
+        [let $guard := . return empty(parent::Block//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]]
+          [. >> $guard][. << $get][empty(ancestor::*[. is $guard])])])
+    )
+  )]
 ]]></value></property></properties>
   </rule>
   <rule name="OptionalAsFieldOrParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
