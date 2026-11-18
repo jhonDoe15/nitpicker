@@ -5,6 +5,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 Applies when `react` is in `package.json`. Every React finding names the allowed form and its
 exception route in the message: write that form, don't work around the rule.
 
+- An effect that sets state has a dependency array: `useEffect(() => { setFilter(f); }, [f])`; with no array it
+  runs after every render and renders again (`nitpicker/react-effect-needs-dependencies`).
 - `useState` and `useRef` take a function or a lazy fill, not a built value: `useState(() => getTimes(range, now))`,
   `useRef<Runner | null>(null)`; a router, store or `QueryClient` is created once, not in the component body
   (`nitpicker/react-no-eager-initial-value`).

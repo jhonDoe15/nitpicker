@@ -123,6 +123,12 @@ In the Python preset `io-in-loop` reports a database call per element also insid
 groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
+React effects: `nitpicker/react-effect-needs-dependencies` (production source in a React project, in `eslint-lint`)
+reports a `useEffect`, `useLayoutEffect` or `useInsertionEffect` call with no dependency array whose callback calls a
+`useState` setter, a `useReducer` dispatch, a `set*` function from a hook result or a `set*` parameter. A callback that
+only reads or writes refs, an async callback, a setter under an `if`, ternary or `&&` guard, a layout effect that
+measures a ref and setters in nested functions are left alone.
+
 React initial values: `nitpicker/react-no-eager-initial-value` (production source in a React project, in
 `eslint-lint`) reports `useState(call())`, `useState(new X())` and `useRef(call())` or `useRef(new X())`, whose argument
 is built on every render (a `new` of a non-built-in class, or a call named like parse, compute, build, create,
