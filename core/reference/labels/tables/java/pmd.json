@@ -63,6 +63,7 @@
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/InconsistentFieldLocking": ["bug"],
   "pmd/InstantiationToGetClass": ["simplification"],
+  "pmd/IntProductWidenedLate": ["bug"],
   "pmd/JUnit4SuitesShouldUseSuiteAnnotation": ["tests"],
   "pmd/JUnit4TestShouldUseAfterAnnotation": ["tests"],
   "pmd/JUnit4TestShouldUseBeforeAnnotation": ["tests"],
