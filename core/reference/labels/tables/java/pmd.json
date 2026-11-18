@@ -221,6 +221,7 @@
   "pmd/UnnecessaryVarargsArrayCreation": ["simplification"],
   "pmd/UnorderedQuery": ["bug", "persistence"],
   "pmd/UnquotedRegexValue": ["bug", "security"],
+  "pmd/UnsynchronizedSharedCollection": ["bug", "async"],
   "pmd/UnusedAssignment": ["simplification"],
   "pmd/UnusedFormalParameter": ["simplification"],
   "pmd/UnusedLocalVariable": ["simplification"],

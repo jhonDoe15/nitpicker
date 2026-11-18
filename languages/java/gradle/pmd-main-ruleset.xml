@@ -2511,6 +2511,84 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="UnsynchronizedSharedCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This plain collection field (HashMap, ArrayList, HashSet and the like) is changed here without a lock, while the same class shows other threads use it: the change runs in a task handed to an executor, scheduler, thread or CompletableFuture, or other methods read the field under synchronized. Concurrent writers lose entries, readers throw ConcurrentModificationException and a HashMap can loop forever. Use ConcurrentHashMap, ConcurrentHashMap.newKeySet() or CopyOnWriteArrayList (for rarely changed listener lists), or take the same lock around every read and write. An exception fits a field that only one thread ever touches.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $plain := ('java.util.ArrayList', 'java.util.LinkedList', 'java.util.HashSet', 'java.util.LinkedHashSet',
+               'java.util.TreeSet', 'java.util.HashMap', 'java.util.LinkedHashMap', 'java.util.TreeMap',
+               'java.util.WeakHashMap', 'java.util.ArrayDeque', 'java.util.PriorityQueue'),
+    $writes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+                'putIfAbsent', 'computeIfAbsent', 'compute', 'merge', 'offer', 'push', 'pop', 'poll',
+                'addFirst', 'addLast', 'removeFirst', 'removeLast'),
+    $isRef := function($n, $name) {
+      ($n/self::VariableAccess[@Name = $name]
+         [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                  //VariableId[@Name = $name])])
+      | $n/self::FieldAccess[@Name = $name][*[1][self::ThisExpression[not(*)]]]
+    },
+    $single := function($init) {
+      exists($init/self::MethodCall[@MethodName = ('newSingleThreadExecutor', 'newSingleThreadScheduledExecutor')
+                                    or (@MethodName = ('newFixedThreadPool', 'newScheduledThreadPool')
+                                        and ArgumentList/NumericLiteral[1][@Image = '1'])])
+    },
+    $initMethod := function($m) {
+      exists($m[matches(@Name, '^(init|setup|configure|load|populate|build|afterPropertiesSet)')
+                or ModifierList/Annotation[matches(@SimpleName,
+                     '^(PostConstruct|BeforeEach|BeforeAll|Before|EventListener)$')]])
+    },
+    $async := function($lambda) {
+      let $call := $lambda/parent::ArgumentList/parent::*
+      return exists($call[self::MethodCall]
+                      [(@MethodName = ('submit', 'execute', 'schedule', 'scheduleAtFixedRate', 'scheduleWithFixedDelay')
+                        and *[1][pmd-java:typeIs('java.util.concurrent.Executor')]
+                             [not(self::VariableAccess and (some $f in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator
+                                    satisfies $f/VariableId/@Name = @Name and empty($f/*[2])))]
+                             [not((self::VariableAccess or self::FieldAccess)
+                                  and (some $f in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator
+                                       satisfies $f/VariableId/@Name = @Name and $single($f/*[2])))])
+                       or (@MethodName = ('runAsync', 'supplyAsync') and *[1][self::TypeExpression])
+                       or (matches(@MethodName, 'Async$') and *[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')])])
+          or exists($call[self::ConstructorCall][pmd-java:typeIsExactly('java.lang.Thread')]
+                      [empty(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = 'join'])])
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall
+                    [matches(@MethodName, 'lock|synchronized', 'i')])
+        or $initMethod($n/ancestor::MethodDeclaration[1])
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    }
+return
+  //ClassBody/(let $body := . return
+    for $d in $body/FieldDeclaration/VariableDeclarator
+              [*[2][self::ConstructorCall][some $t in $plain satisfies pmd-java:typeIsExactly($t)]]
+    return
+      let $name := $d/VariableId/@Name,
+          $refs := $body//(VariableAccess | FieldAccess)[@Name = $name][exists($isRef(., $name))]
+      return $body//MethodCall[@MethodName = $writes][ancestor::ClassBody[1] is $body]
+        [exists($isRef(*[1], $name))]
+        [not($guarded(.))]
+        [empty(ancestor::ConstructorDeclaration | ancestor::Initializer)]
+        [let $call := .
+         return
+           (some $l in ancestor::LambdaExpression satisfies
+              ($async($l) and (some $r in $refs satisfies empty($r/ancestor::LambdaExpression[. is $l]))))
+           or (exists(ancestor::MethodDeclaration[1][pmd-java:modifiers() = ('public', 'protected')]
+                        [empty(.//SynchronizedStatement)]
+                        [empty(.//MethodCall[@MethodName = ('holdsLock', 'lock', 'lockInterruptibly', 'tryLock')])])
+               and (some $w in $body//MethodCall[@MethodName = $writes][exists($isRef(*[1], $name))] satisfies
+                      (exists($w/ancestor::SynchronizedStatement)
+                       or exists($w/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized']))
+                      and empty($w/ancestor::ConstructorDeclaration)))]
+    )
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="UriCreateDynamic" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="URI.create throws IllegalArgumentException on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. Build the URI with an encoding builder (UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri(), or new URI(scheme, host, path, fragment)), or parse the text where the failure is handled: new URI(text) with URISyntaxException caught, or URI.create(text) in a try that catches IllegalArgumentException. A constant or a project helper that does one of these is fine. A value read from configuration at startup also matches, because a bad value fails only at runtime.">
     <priority>3</priority>
