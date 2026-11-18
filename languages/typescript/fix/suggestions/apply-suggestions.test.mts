@@ -31,6 +31,8 @@ const expected: Readonly<Record<string, string>> = {
   '@typescript-eslint/require-await':
     'function one(): number {\n  return 1;\n}\n\nexport async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n',
   'no-useless-escape': "export const dot = 'a.b';\n",
+  '@typescript-eslint/no-unnecessary-type-conversion':
+    'export function same(text: string): string {\n  return text;\n}\n',
   '@typescript-eslint/prefer-find':
     'export function first(names: readonly string[]): string | undefined {\n  return names.find((name) => name.length > 2);\n}\n',
   '@typescript-eslint/await-thenable':

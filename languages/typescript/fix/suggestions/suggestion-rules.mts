@@ -28,10 +28,12 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   '@typescript-eslint/switch-exhaustiveness-check': REVIEW,
   '@typescript-eslint/no-unnecessary-condition': REVIEW,
   '@typescript-eslint/prefer-find': REVIEW,
+  '@typescript-eslint/no-unnecessary-type-conversion': REVIEW,
 });
 
 export const pickedSuggestions: Readonly<Record<string, string>> = Object.freeze({
   'no-useless-escape': 'removeEscape',
+  '@typescript-eslint/no-unnecessary-type-conversion': 'suggestRemove',
 });
 
 const OWN_RULE_PREFIX = 'nitpicker/';
