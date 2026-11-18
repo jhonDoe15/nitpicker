@@ -101,8 +101,8 @@ export const STRUCTURE_NOTES = {
     'Write the file as `.ts` or `.tsx`.',
   ],
   'committed-env-file': [
-    'A committed `.env` file (templates such as `.env.example` are fine).',
-    'An env file holds real secrets and values that differ per machine.',
+    'A committed `.env` file with secret-looking values (templates, secret-manager references and placeholders are fine).',
+    'An env file with real secrets leaks them to everyone with repository access.',
     'Remove the file from version control, ignore it, and commit a `.env.example` template.',
   ],
   'committed-private-key': [

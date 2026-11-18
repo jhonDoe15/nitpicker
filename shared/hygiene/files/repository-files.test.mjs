@@ -23,13 +23,13 @@ describe('committed env files', () => {
   it('flags env files and their variants, but not templates or source files', () => {
     const findings = check({
       '.env': 'API_KEY=sk_live_1\n',
-      '.env.production': 'A=1\n',
-      '.env.sample.prod': 'A=1\n',
-      '.env.example.local': 'A=1\n',
-      '.env-staging': 'A=1\n',
+      '.env.production': 'DB_PASSWORD=hunter2\n',
+      '.env.sample.prod': 'DB_PASSWORD=hunter2\n',
+      '.env.example.local': 'DB_PASSWORD=hunter2\n',
+      '.env-staging': 'DB_PASSWORD=hunter2\n',
       '.envrc': 'export TOKEN=1\n',
-      'env.prod': 'A=1\n',
-      'config/prod.env': 'A=1\n',
+      'env.prod': 'DB_PASSWORD=hunter2\n',
+      'config/prod.env': 'DB_PASSWORD=hunter2\n',
       '.env.example': 'API_KEY=\n',
       '.env.local.sample': 'A=\n',
       'example.env': 'A=\n',
@@ -54,7 +54,7 @@ describe('committed env files', () => {
       path: '.env',
       identity: 'file:.env',
       message:
-        'Environment file .env is committed and usually holds secrets. Remove it, rotate what it held, ' +
+        'Environment file .env is committed and holds secret values. Remove it, rotate what it held, ' +
         'and commit a .env.example with placeholder values. If this is intended, add ' +
         '{"rule":"committed-env-file","paths":[".env"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
@@ -66,13 +66,56 @@ describe('committed env files', () => {
       '.env.development': '# shown in the browser\nVITE_API_URL=https://example.test\n\n',
       '.env.test': 'export NEXT_PUBLIC_SITE=demo\r\nPUBLIC_FLAG=1\n',
       '.env.empty': '# nothing yet\n',
-      '.env.local': 'VITE_API_URL=https://example.test\nDATABASE_URL=postgres://secret\n',
+      '.env.local':
+        'VITE_API_URL=https://example.test\nDATABASE_URL=postgres://app:hunter2@db/app\n',
       '.env.multiline': 'VITE_A=1\n  continued\n',
     });
 
     expect(summary(findings)).toEqual([
       'committed-env-file .env.local',
       'committed-env-file .env.multiline',
+    ]);
+  });
+});
+
+describe('committed env files without secret values', () => {
+  it('leaves references, placeholders and non-secret settings', () => {
+    const findings = check({
+      '.env.helm':
+        'DB_PASSWORD=ref+vault://secret/data/app#password\nAWS_DEFAULT_REGION=eu-west-1\n',
+      '.env.refs': `A_TOKEN=op://vault/item/field\nB_SECRET="\${B_SECRET}"\nC_KEY=ENC[AES256_GCM,data:abc]\n`,
+      '.env.compose': 'COMPOSE_PROJECT_NAME=myapp\n',
+      '.env.blank': 'API_KEY=\nDB_PASSWORD=changeme\nTOKEN=<token>\n',
+      '.env.mixed':
+        'DB_PASSWORD=ref+vault://x#y\nAWS_SECRET_ACCESS_KEY=hunter2\nSECRET_KEY=abc123\n',
+      '.env.aws': 'REGION=us-east-1\nAWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI\n',
+      '.env.binary': 'A=1\0\n',
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-env-file .env.aws',
+      'committed-env-file .env.binary',
+      'committed-env-file .env.mixed',
+    ]);
+  });
+});
+
+describe('committed env files with look-alike references and embedded secrets', () => {
+  it('reports literal values that only start with a dollar sign or hide in URLs and short names', () => {
+    const findings = check({
+      '.env.dollar': 'PASSWORD=$ecret123!\n',
+      '.env.redis': 'REDIS_URL=redis://:p4ssw0rd@h:6379\n',
+      '.env.pass': 'DB_PASS=Zx9!kLm2\n',
+      '.env.jwt': 'JWT=eyJhbGciOiJIUzI1NiJ9.e30.abc\n',
+      '.env.refs': `PASSWORD=\${PASSWORD}\nDB_PASS=$DB_PASS\nREDIS_URL=redis://:\${PW}@h\n`,
+      '.env.plain': 'COMPOSE_PROJECT_NAME=myapp\nPRIVATE_NETWORK=backend\n',
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-env-file .env.dollar',
+      'committed-env-file .env.jwt',
+      'committed-env-file .env.pass',
+      'committed-env-file .env.redis',
     ]);
   });
 });

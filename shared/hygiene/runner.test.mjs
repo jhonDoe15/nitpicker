@@ -19,7 +19,11 @@ afterEach(() => {
   }
 });
 
-const FILES = { '.env': 'A=1\n', 'vendor/.env': 'A=1\n', 'src/a.ts': 'export {};\n' };
+const FILES = {
+  '.env': 'DB_PASSWORD=hunter2\n',
+  'vendor/.env': 'DB_PASSWORD=hunter2\n',
+  'src/a.ts': 'export {};\n',
+};
 
 describe('runHygieneCheck', () => {
   it('drops excluded paths and excepted findings, and keeps the rest', () => {
@@ -251,6 +255,7 @@ describe('the hygiene configuration hash', () => {
       'messages/exception-sentence.mjs',
       'messages/terminal/terminal-text.mjs',
       'messages/troubleshooting.mjs',
+      'naming/secret-words.mjs',
       'paths/glob.mjs',
       'processes/deadlines.mjs',
       'project-rules/hygiene-rules.mjs',
