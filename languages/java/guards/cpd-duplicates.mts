@@ -34,6 +34,7 @@ type CoveredClone = {
   readonly lines?: number;
 };
 type Range = Pick<Side, 'file' | 'line' | 'endLine'>;
+type CoveredRanges = { readonly first: Range; readonly second: Range };
 type Reportable = CpdFinding & { readonly location?: unknown };
 type FindingsOptions = {
   readonly projectRoot: string;
@@ -113,13 +114,27 @@ function fileRange(element: XmlElement, projectRoot: string): Side {
   };
 }
 
-function linesOf(projectRoot: string, side: Side): string[] {
-  const absolute = projectFileOf(projectRoot, side.file);
-  return absolute !== undefined && existsSync(absolute)
-    ? readFileSync(absolute, 'utf8')
-        .split(/\r?\n/)
-        .slice(side.line - 1, side.endLine)
-    : [];
+type LineReader = (file: string) => readonly string[];
+
+function lineReader(projectRoot: string): LineReader {
+  const files = new Map<string, readonly string[]>();
+  return (file) => {
+    const known = files.get(file);
+    if (known !== undefined) {
+      return known;
+    }
+    const absolute = projectFileOf(projectRoot, file);
+    const lines =
+      absolute !== undefined && existsSync(absolute)
+        ? readFileSync(absolute, 'utf8').split(/\r?\n/)
+        : [];
+    files.set(file, lines);
+    return lines;
+  };
+}
+
+function linesOf(readLines: LineReader, side: Side): string[] {
+  return readLines(side.file).slice(side.line - 1, side.endLine);
 }
 
 function clonedText(lines: readonly string[], side: Side): string {
@@ -147,11 +162,11 @@ function byFile(left: Pick<Side, 'file'>, right: Pick<Side, 'file'>): number {
 
 function cloneOf(
   duplication: XmlElement,
-  projectRoot: string,
+  readLines: LineReader,
   sides: readonly [Side, Side],
 ): Clone {
   const [first, second] = sides;
-  const lines = linesOf(projectRoot, first);
+  const lines = linesOf(readLines, first);
   return {
     first,
     second,
@@ -162,17 +177,18 @@ function cloneOf(
   };
 }
 
+function sidesOf(duplication: XmlElement, projectRoot: string): [Side, Side][] {
+  const [first, ...others] = childrenNamed(duplication, 'file')
+    .map((element) => fileRange(element, projectRoot))
+    .sort(byFile);
+  return first === undefined ? [] : others.map((other): [Side, Side] => [first, other]);
+}
+
 export function cpdClones(xml: string, projectRoot: string): Clone[] {
-  const report = parseXml(xml);
-  return childrenNamed(report, 'duplication').flatMap((duplication) => {
-    const [first, ...others] = childrenNamed(duplication, 'file')
-      .map((element) => fileRange(element, projectRoot))
-      .sort(byFile);
-    if (first === undefined) {
-      return [];
-    }
-    return others.map((other) => cloneOf(duplication, projectRoot, [first, other]));
-  });
+  const readLines = lineReader(projectRoot);
+  return childrenNamed(parseXml(xml), 'duplication').flatMap((duplication) =>
+    sidesOf(duplication, projectRoot).map((sides) => cloneOf(duplication, readLines, sides)),
+  );
 }
 
 function byPairAndShape(left: Clone, right: Clone): number {
@@ -221,9 +237,13 @@ function cloneList(xml: string, projectRoot: string): Clone[] {
   return distinctClones(cpdClones(xml, projectRoot)).filter((clone) => !isBoilerplate(clone));
 }
 
-function readCpdClones(reportRoot: string, projectRoot: string): Clone[] {
+function readCpdRanges(reportRoot: string, projectRoot: string): CoveredRanges[] {
   const read = readCpdReport(reportRoot);
-  return read.kind === 'report' ? cpdClones(read.xml, projectRoot) : [];
+  return read.kind === 'report'
+    ? childrenNamed(parseXml(read.xml), 'duplication').flatMap((duplication) =>
+        sidesOf(duplication, projectRoot).map(([first, second]) => ({ first, second })),
+      )
+    : [];
 }
 
 export function coveredByCpd(
@@ -231,7 +251,7 @@ export function coveredByCpd(
   projectRoot: string,
 ): (clone: CoveredClone) => boolean {
   const cpdCloneList = modules.flatMap((module) =>
-    readCpdClones(textOf(fieldOf(module, 'reportRoot')), projectRoot),
+    readCpdRanges(textOf(fieldOf(module, 'reportRoot')), projectRoot),
   );
   return (clone) => {
     const range = {
