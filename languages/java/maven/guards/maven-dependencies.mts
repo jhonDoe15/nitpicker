@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { classFiles } from '../../builds/classes/class-file.mjs';
-import { referencedNames, usesArchive } from '../../builds/classes/class-references.mjs';
+import { classFiles } from '../../builds/classes/class-file.mts';
+import { referencedNames, usesArchive } from '../../builds/classes/class-references.mts';
 import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
@@ -13,7 +13,7 @@ type Declared = {
   readonly optional: boolean;
 };
 type Resolved = { readonly groupId: unknown; readonly artifactId: unknown };
-type Usage = { readonly resolved: readonly unknown[]; readonly names: unknown };
+type Usage = { readonly resolved: readonly unknown[]; readonly names: ReadonlySet<string> };
 type DependencyRun = Readonly<Record<string, unknown>> & {
   readonly module: unknown;
   readonly resolved: unknown;
@@ -75,7 +75,7 @@ export function dependencyReport(run: DependencyRun): Record<string, unknown> {
   const module = mavenModuleOf(run.module);
   const outputDirectory = textOf(module['outputDirectory']);
   const pomFile = textOf(module['pomFile']);
-  const names: unknown = referencedNames([outputDirectory]);
+  const names = referencedNames([outputDirectory]);
   const reactor = textsOf(run.reactor);
   const declared = declaredDependencies(readFileSync(pomFile, 'utf8')).filter(
     (dependency) =>

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createLineIdentity, projectFile } from '../../../shared/ingest/common.mjs';
 import { placeDeclarations } from './forbidden/declarations.mts';
-import { blanked } from '../ingest/source-text.mjs';
+import { blanked } from '../ingest/source-text.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { ForbiddenUse } from './forbidden/forbidden-types.mts';
 

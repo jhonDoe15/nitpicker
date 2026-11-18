@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { registerTemporaryRoots } from '../../../java/__tests__/temporary-roots.mts';
 import { detectFormatters, formatterChoiceFiles, formatterOptions } from './go-formatters.mts';
 
-const roots: string[] = [];
+const roots = registerTemporaryRoots();
 
 function project(files: Readonly<Record<string, string>>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-format-'));
@@ -14,12 +15,6 @@ function project(files: Readonly<Record<string, string>>) {
   }
   return root;
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('detectFormatters', () => {
   it('runs gofmt, which every Go project follows, when nothing names a formatter', () => {

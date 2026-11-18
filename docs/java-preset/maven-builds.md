@@ -4,7 +4,7 @@ Part of the [Java preset guide](../java-preset.md).
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
 (`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
-Maven, anything else Gradle (`detectJavaBuild` in `languages/java/builds/java-build.mjs`). The choice
+Maven, anything else Gradle (`detectJavaBuild` in `languages/java/builds/java-build.mts`). The choice
 is never a finding: both builds are valid. A project that has both can pick one with
 `"java": { "buildTool": "maven" }` (or `"gradle"`) in `nitpicker.config.json`; the setting replaces
 the detection for the Java and Kotlin presets. `nitpicker init` names the build it chose and why when

@@ -75,7 +75,7 @@ export function describeConventions(
 
 export const ignoredChoiceNote: (
   definition: ConventionDefinition,
-  entry: { readonly choice: string; readonly from: string },
+  entry: { readonly choice: unknown; readonly from: string },
 ) => string = untypedIgnoredChoiceNote;
 
 export const isValidChoice: (

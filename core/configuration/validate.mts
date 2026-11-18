@@ -1,4 +1,4 @@
-import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
+import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mts';
 import {
   configError,
   SCHEMA_KEY,
@@ -11,7 +11,7 @@ import {
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mts';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
-import { validateJavaBuildSetting } from '../../languages/java/builds/build-tool/build-tool-setting.mjs';
+import { validateJavaBuildSetting } from '../../languages/java/builds/build-tool/build-tool-setting.mts';
 import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mts';
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,

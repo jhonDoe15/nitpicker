@@ -5,7 +5,7 @@ import { trackTemporaryPath as untypedTrack } from '../../../../../core/tooling/
 import { withTroubleshooting as untypedTroubleshooting } from '../../../../../shared/messages/troubleshooting.mjs';
 import { applyRuleHints as untypedHints } from '../../../rules/rule-hints.mts';
 import { parseRunnerArguments as untypedParse } from '../../../../../core/tooling/runner-arguments.mjs';
-import { precedenceToolNames as untypedPrecedence } from '../../../../java/adapters/gradle-presets.mjs';
+import { precedenceToolNames as untypedPrecedence } from '../../../../java/adapters/gradle-presets.mts';
 import {
   createToolContext as untypedContext,
   runPythonTools as untypedRunTools,

@@ -6,7 +6,7 @@ import { recipeSpecs, runRecipes } from '../../../../core/fix/test-support/engin
 import type { RunResult } from '../../../../core/fix/test-support/engine-views.mts';
 import { callUntyped, findingsOf } from '../../adapters/typed/java-values.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
-import { readSpringConfigFindings } from '../../adapters/spring/java-spring.mjs';
+import { readSpringConfigFindings } from '../../adapters/spring/java-spring.mts';
 import { JVM_RECIPES } from '../recipes/jvm-recipes.mts';
 
 const ACCEPTED = /\.(?:java|kt|properties|ya?ml)$/u;

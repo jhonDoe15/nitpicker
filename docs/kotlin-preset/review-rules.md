@@ -215,7 +215,7 @@ Limits, all chosen to flag less rather than guess:
   as an argument and is not a logging call (`future.completeExceptionally(e)`, `Result.failure(e)`,
   `IllegalStateException("x", e)`), outside the arguments of a logging call. Reading the exception
   (`errors.add("failed: ${e.message}")`, `sink.update(e.toString())`, `"$e"`) is not a hand-off. The
-  logging calls are the levels and logger names of `languages/java/source/loggers.mjs` (shared with the
+  logging calls are the levels and logger names of `languages/java/source/loggers.mts` (shared with the
   Java rule and the source checks, a test keeps the three lists equal), `print`, `println` and
   `printStackTrace`. Code that may not run does not count: a lambda that is not called right there (only
   the lambdas of `run`, `let`, `also`, `apply`, `with`, `use`, `synchronized`, `withLock`, `withContext`,

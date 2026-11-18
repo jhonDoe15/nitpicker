@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { argumentFileToken } from './javac-options.mjs';
-import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mjs';
+import { argumentFileToken } from './javac-options.mts';
+import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mts';
 import {
   LINT_CACHE,
   LINT_FINGERPRINT,
@@ -10,7 +10,7 @@ import {
   reusableWarnings,
 } from './lint-baseline.mts';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
-import { posix, stageSources } from './lint-staging.mjs';
+import { posix, stageSources } from './lint-staging.mts';
 import { filesEndingWith } from '../../../../shared/filesystem.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { type LintPlan, lintPlanOf } from '../typed/lint-plan.mts';

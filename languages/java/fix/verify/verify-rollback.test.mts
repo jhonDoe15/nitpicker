@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { defineRecipes } from '../../../../core/fix/test-support/engine-views.mts';
 import type { RecipeSpec } from '../../../../core/fix/test-support/engine-views.mts';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
 import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import { fakeJvmTools } from '../test-support/fake-jvm-tools.mts';
 import { javaFixOptions } from '../test-support/fix-options.mts';
-import { topic } from '../test-support/jvm-fix-harness.mts';
+import { fixCache, topic } from '../test-support/jvm-fix-harness.mts';
 
 const JAVA = 'src/main/java/demo';
 const KT = 'src/main/kotlin/demo';
@@ -25,10 +25,6 @@ type Run = {
   readonly result: ReturnType<typeof fixWorkingTree>;
   readonly read: (name: string) => string;
 };
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
 
 function marker(tool: string, rule: string): string {
   return `QUALITY_FINDING {"tool":"${tool}","rule":"${rule}"}`;
@@ -106,6 +102,7 @@ function fixTopic({
   const result = fixWorkingTree(
     javaFixOptions({
       root: repository.root,
+      cacheHome: fixCache(),
       executeFixCommand: fakeJvmTools().executeFixCommand,
       recipes: RECIPES,
       headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
@@ -179,6 +176,7 @@ describe('--fix verifies the recipes it applied', () => {
     fixWorkingTree(
       javaFixOptions({
         root: repository.root,
+        cacheHome: fixCache(),
         executeFixCommand: fakeJvmTools().executeFixCommand,
         recipes: RECIPES,
         headPolicy: { exclude: [], conventions: {} },

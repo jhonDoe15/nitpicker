@@ -14,9 +14,9 @@ import {
   styleOf,
   toolsOf,
 } from '../typed/kotlin-setup-views.mts';
-import { writeDetektLists } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
-import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
-import { detektLayers } from '../../adapters/kotlin/style/kotlin-style-files.mjs';
+import { writeDetektLists } from '../../adapters/kotlin/detekt/detekt-lists.mts';
+import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mts';
+import { detektLayers } from '../../adapters/kotlin/style/kotlin-style-files.mts';
 
 const PSI_CLASSES = 'kotlin-psi-classes';
 const LISTS_FILE = 'detekt-lists.yml';

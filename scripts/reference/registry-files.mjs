@@ -18,6 +18,10 @@ function isWanted(item, extension) {
  * The files under `root` that end in `extension`, test files and the `skipped` folders left out,
  * as paths relative to `root` with forward slashes, in code-point order.
  */
+export function emittedFrom(sources) {
+  return (file) => file.endsWith('.mjs') && sources.has(`${file.slice(0, -'.mjs'.length)}.mts`);
+}
+
 export function registryFiles(root, extension, skipped = new Set()) {
   const files = [];
   const pending = [root];

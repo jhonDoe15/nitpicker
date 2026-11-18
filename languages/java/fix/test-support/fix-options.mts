@@ -10,6 +10,7 @@ type JavaFixRun = {
   readonly config: object;
   readonly recipes?: unknown;
   readonly analyzeFixes?: unknown;
+  readonly cacheHome: string;
 };
 
 export function javaFixOptions({
@@ -19,6 +20,7 @@ export function javaFixOptions({
   config,
   recipes,
   analyzeFixes,
+  cacheHome,
 }: JavaFixRun): FixOptions {
   return {
     repositoryRoot: root,
@@ -31,7 +33,7 @@ export function javaFixOptions({
     selectedRules: undefined,
     allFiles: false,
     verifyMode: 'narrow',
-    environment: ENVIRONMENT,
+    environment: { ...ENVIRONMENT, XDG_CACHE_HOME: cacheHome },
     headPolicy,
     config,
     recipes,

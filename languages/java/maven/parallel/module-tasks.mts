@@ -19,6 +19,7 @@ function runArchitecture(options: TaskOptions): void {
     springRoles,
     spawn: options['spawn'],
     timeoutMs: options['timeoutMs'],
+    environment: options['environment'],
   });
 }
 

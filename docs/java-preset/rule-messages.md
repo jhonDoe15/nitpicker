@@ -20,7 +20,7 @@ simplification rules (`SimplifyBooleanReturns`, `SimplifyBooleanExpressions`, `S
   style is not known), or to fix the layout by hand when none runs, instead of a fix of its own.
 
 `readJavaFindings` passes every finding through `applyRuleMessages`
-(`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
+(`languages/java/messages/rule-messages.mts`). It shortens Checkstyle rule names, then appends the
 fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
 the catalog does not know, from a project's own config) the exception route with the finding's own
 path. Error Prone, the guard tools (`javac`, `forbiddenapis`, `duplicates`, `coupling`,

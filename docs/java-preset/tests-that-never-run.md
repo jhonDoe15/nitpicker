@@ -3,7 +3,7 @@
 Part of the [Java preset guide](../java-preset.md).
 
 A test class that the build compiles but no test task runs is an enforceable `test-not-run`
-finding (tool `test-runtime`, `languages/java/adapters/test-runs/unrun-tests.mjs`), on Java, Kotlin
+finding (tool `test-runtime`, `languages/java/adapters/test-runs/unrun-tests.mts`), on Java, Kotlin
 and Groovy test sources alike. A class counts as a test when its source declares one (`@Test`,
 `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, a Spock `Specification` or
 a Kotest spec) and it is not abstract, an interface or an annotation.

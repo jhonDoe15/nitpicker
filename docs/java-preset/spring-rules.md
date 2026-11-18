@@ -59,7 +59,7 @@ with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do
 honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
 evaluates constant expressions there, so nitpicker reports each such annotation, and any whose
 arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
-`languages/java/adapters/suppressions/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
+`languages/java/adapters/suppressions/java-suppressions.mts`, for every Java project; unicode escapes are decoded
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.

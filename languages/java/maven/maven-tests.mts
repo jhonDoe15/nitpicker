@@ -1,9 +1,10 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { runJava } from './maven-command.mjs';
-import { failedCaseEntries, freshReports } from '../builds/test-failures.mjs';
+import { runJava } from './maven-command.mts';
+import { classEntries } from '../builds/classes/class-file.mts';
+import { failedCaseEntries, freshReports } from '../builds/test-failures.mts';
 import { callUntyped, type JavaSpawn } from '../adapters/typed/java-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 
@@ -63,13 +64,9 @@ export function archunitMatcher(includes: string = DEFAULT_ARCHUNIT_INCLUDES): A
 }
 
 export function classFiles(directory: string): string[] {
-  return existsSync(directory)
-    ? readdirSync(directory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-        .map((entry) =>
-          path.relative(directory, path.join(entry.parentPath, entry.name)).replaceAll('\\', '/'),
-        )
-    : [];
+  return classEntries(directory).map((entry) =>
+    path.relative(directory, path.join(entry.parentPath, entry.name)).replaceAll('\\', '/'),
+  );
 }
 
 export function testReportDirectories(module: ReportModule): [string, string][] {

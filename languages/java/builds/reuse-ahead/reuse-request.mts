@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   pathInside as untypedPathInside,
   projectSourceFiles as untypedProjectSourceFiles,
-} from '../../adapters/review-rules/java-sources.mjs';
+} from '../../adapters/review-rules/java-sources.mts';
 import { publishedOf } from '../../adapters/reuse/jvm-reuse-facts.mts';
 import {
   fieldOf,

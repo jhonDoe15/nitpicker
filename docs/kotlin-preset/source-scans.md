@@ -19,7 +19,7 @@ the exception (`e as Throwable`), and a catch that rethrows `e` or throws a new 
 argument (its cause) after logging. A call is a log call when its receiver (also as `logger?.error(...)`) is
 declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.getLogger` or
 `getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name is `log` or `logger` (any case) or ends in one at a
-camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mjs`. The
+camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mts`. The
 innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
 alone. Main and test sources are scanned. In main sources a catch that does nothing but log is
 `kotlin-source/CatchOnlyLogsOrReturnsDefault` and only that (logging alone is not handling, as in the
