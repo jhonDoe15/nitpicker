@@ -400,6 +400,18 @@ return
 //MethodCall[@MethodName = ('getenv', 'getProperty') and *[1][self::TypeExpression and pmd-java:typeIs('java.lang.System')]
   and not(ArgumentList/StringLiteral[1][matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])
   and (ArgumentList/* or parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')])]
+  [ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+    or pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')
+    or pmd-java:typeIs('jakarta.inject.Named') or pmd-java:typeIs('javax.inject.Named')
+    or pmd-java:typeIs('jakarta.annotation.ManagedBean') or pmd-java:typeIs('javax.annotation.ManagedBean')
+    or pmd-java:typeIs('org.aspectj.lang.annotation.Aspect')]]
   [not(ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
     pmd-java:typeIs('org.springframework.context.annotation.Configuration')
     or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
@@ -415,7 +427,10 @@ return
     or pmd-java:typeIs('org.springframework.stereotype.Service')
     or pmd-java:typeIs('org.springframework.stereotype.Repository')
     or pmd-java:typeIs('org.springframework.stereotype.Controller')
-    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('jakarta.inject.Named') or pmd-java:typeIs('javax.inject.Named')
+    or pmd-java:typeIs('jakarta.annotation.ManagedBean') or pmd-java:typeIs('javax.annotation.ManagedBean')
+    or pmd-java:typeIs('org.aspectj.lang.annotation.Aspect')]]
   //MethodCall[@MethodName = ('getProperty', 'getRequiredProperty') and *[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')]]
 ]]></value></property></properties>
   </rule>

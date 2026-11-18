@@ -9,13 +9,14 @@ import {
   CONFIGURATION_PROPERTIES,
   DEFAULT_VALUE,
   PROFILE,
+  PROPERTY_READERS,
   PROPERTY_RESOLVERS,
-  STEREOTYPES,
   VALUE,
 } from '../../spring-types.mjs';
 
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const SECRET_DEFAULT = /^\$\{([^}:]+):([^}]*)\}$/u;
+const CLASS_KIND = 'class';
 const READS = new Set(['getProperty', 'getRequiredProperty']);
 function isFallback(value) {
   return value !== '' && !/^[#$]/u.test(value);
@@ -45,7 +46,7 @@ export function stereotype(view, qualified) {
   const declared = view.classes.get(qualified);
   return (
     declared !== undefined &&
-    annotationIn(view.resolve, declared.annotations, STEREOTYPES) !== undefined
+    annotationIn(view.resolve, declared.annotations, PROPERTY_READERS) !== undefined
   );
 }
 
@@ -70,7 +71,7 @@ function valueParameters(view) {
 
 function propertyReads(view) {
   return view.file.invocations.flatMap((invocation) => {
-    const owner = view.chain(invocation.scope).findLast(({ k }) => k === 'class')?.qualified;
+    const owner = view.chain(invocation.scope).findLast(({ k }) => k === CLASS_KIND)?.qualified;
     const fn = view.functionAt(invocation.scope);
     const key = stringValue(invocation.arguments[0]?.text);
     const system =
@@ -79,12 +80,15 @@ function propertyReads(view) {
       view.is(invocation.receiver, new Set(['java.lang.System'])) &&
       !(key !== undefined && JVM_KEY.test(key)) &&
       !(owner !== undefined && configurationClass(view, owner)) &&
+      view
+        .chain(invocation.scope)
+        .some(({ k, qualified }) => k === CLASS_KIND && stereotype(view, qualified)) &&
       fn?.name !== 'main';
     const environment =
       (READS.has(invocation.name) || (invocation.name === 'get' && invocation.index === true)) &&
       view
         .chain(invocation.scope)
-        .some(({ k, qualified }) => k === 'class' && stereotype(view, qualified)) &&
+        .some(({ k, qualified }) => k === CLASS_KIND && stereotype(view, qualified)) &&
       view.is(view.typeOf(invocation.scope, invocation.receiver), PROPERTY_RESOLVERS);
     return system || environment
       ? [

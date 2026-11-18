@@ -1,7 +1,9 @@
 package shop.util;
 
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
+@Component
 public final class Env {
   private Env() {}
 
