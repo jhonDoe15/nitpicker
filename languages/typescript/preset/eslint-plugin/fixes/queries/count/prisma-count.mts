@@ -3,9 +3,10 @@ import { calleeFamily, PRISMA } from '../../../rules/queries/receivers/orm-calle
 import { memberName, type Context } from '../../../rules/security/security-values.mts';
 import type { TextEdit } from '../../edits/text.mts';
 import { isPlainObject, keyName } from '../../support/objects.mts';
-import { hasQueryInterception } from './interception.mts';
+import { projectMentions } from '../../support/project/program.mts';
 
 const WHERE = 'where';
+const HOOKS = ['$use(', '$extends('];
 const DROPPED = new Set(['orderBy', 'select', 'include', 'omit', 'relationLoadStrategy']);
 
 function optionEdits(
@@ -41,7 +42,7 @@ export function prismaCountEdits(
     callee.type !== AST_NODE_TYPES.MemberExpression ||
     call.arguments.length > 1 ||
     calleeFamily(context, call) !== PRISMA ||
-    hasQueryInterception(context)
+    projectMentions(context, HOOKS)
   ) {
     return undefined;
   }

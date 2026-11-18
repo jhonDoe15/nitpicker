@@ -7,6 +7,7 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'no-io-in-loop',
   'no-in-memory-query',
   'no-lazy-relation-in-loop',
+  'no-multiple-collection-joins',
   'no-raised-test-timeout',
   'no-shell-string-command',
   'no-wasted-collection-step',
