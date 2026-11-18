@@ -3,6 +3,13 @@ import type { RuleHint } from '../hint-types.mts';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;
+const TRANSLATED = /^(regex|like)\|(.*)$/u;
+
+function translationDescription(subject = ''): string {
+  const [, kind, value = subject] = TRANSLATED.exec(subject) ?? [];
+  const target = kind === 'like' ? 'a SQL `LIKE` pattern' : 'a regular expression';
+  return `\`${value}\` is turned into ${target} by \`replace\` calls that leave the target's metacharacters unescaped`;
+}
 
 function mutationDescription(subject = ''): string {
   const [, mutation = '', owner] = OWNED_MUTATION.exec(subject) ?? [];
@@ -80,5 +87,12 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: shimDescription,
     allowed:
       'When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['pattern-translation'],
+    describe: translationDescription,
+    allowed:
+      'Escape the value for the target language first (`re.escape(value)`, or `%`, `_` and the escape character for `LIKE`) and restore the wildcards from their escaped form (`\\*` to `.*`), tokenise the pattern and map each token, or use `fnmatch.translate`. A `.` in a configured glob then matches only a dot.',
   },
 ];

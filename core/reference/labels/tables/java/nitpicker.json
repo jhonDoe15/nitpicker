@@ -61,6 +61,7 @@
   "pmd/IoCallInLoop": ["performance"],
   "pmd/MaxValueOverflow": ["bug"],
   "pmd/NullMapValue": ["bug"],
+  "pmd/PatternTranslation": ["bug", "security"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UntestedRoundTrip": ["tests"],
   "spotbugs/InlineSuppression": ["maintainability"],

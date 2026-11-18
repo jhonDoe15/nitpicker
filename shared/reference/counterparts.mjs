@@ -62,6 +62,12 @@ const GROUPS = [
     jvm: 'MaxValueOverflow',
     go: 'go-rules/max-value-overflow',
   },
+  {
+    jvm: 'PatternTranslation',
+    typescript: 'nitpicker/no-unescaped-pattern-translation',
+    python: 'pattern-translation',
+    go: 'go-rules/pattern-translation',
+  },
 ];
 
 function spring(rule) {

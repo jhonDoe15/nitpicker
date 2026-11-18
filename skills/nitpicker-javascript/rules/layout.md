@@ -28,6 +28,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-shared-stateful-regex`); use `includes` or `startsWith` instead of `match` or
   `search` with a string, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target first
+  (`escapeRegExp(value).replace(/\\\*/g, '.*')`), then the wildcards are restored from their escaped form
+  (`nitpicker/no-unescaped-pattern-translation`).
   A pattern part that never changes the match or does not do what it looks like (an assertion that
   always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
   or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
