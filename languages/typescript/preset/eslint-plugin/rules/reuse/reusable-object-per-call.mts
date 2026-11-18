@@ -1,4 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { hoistFormatterFix } from '../../fixes/reuse/hoist-formatter-fix.mts';
+import { suggestible } from '../../fixes/support/descriptors.mts';
 import {
   findVariable,
   isFunctionNode,
@@ -191,12 +193,13 @@ function reportable(context: SourceContext, node: Call, type: string): boolean {
 }
 
 export const rule: TSESLint.RuleModule<
-  'perCall' | 'cacheValidator',
+  'perCall' | 'cacheValidator' | 'hoistFormatter',
   readonly [],
   { readonly requiresTypeChecking: boolean }
 > = {
   meta: {
     type: 'suggestion',
+    hasSuggestions: true,
     docs: {
       description:
         'Disallow building an Intl formatter or an Ajv instance with fixed options on every call',
@@ -208,6 +211,7 @@ export const rule: TSESLint.RuleModule<
         'Build `{{ type }}` once and reuse it: with fixed options it is safe to share, and building it loads locale data or compiles schemas on every call. Keep it in a module-level constant or a class field, or cache it by the value that varies.',
       cacheValidator:
         'Do not share one `{{ type }}` here: the schema changes per call, so a shared instance would keep every schema it compiles forever and reject a repeated `$id`. Cache the compiled validator by the schema or its key, and build `{{ type }}` once next to that cache.',
+      hoistFormatter: 'Move the formatter to the module constant `{{ name }}`.',
     },
   },
   create(context) {
@@ -216,12 +220,22 @@ export const rule: TSESLint.RuleModule<
       if (type === undefined || !reportable(context, node, type)) {
         return;
       }
-      context.report({
+      const descriptor = {
         node,
         messageId:
           type.startsWith('Intl.') || !varyingSchema(context, node) ? 'perCall' : 'cacheValidator',
         data: { type },
-      });
+      } as const;
+      const hoist = type.startsWith('Intl.')
+        ? hoistFormatterFix(context.sourceCode, node)
+        : undefined;
+      context.report(
+        suggestible(descriptor, {
+          messageId: 'hoistFormatter',
+          plan: hoist?.plan,
+          data: { name: hoist?.name },
+        }),
+      );
     }
     return { NewExpression: check, CallExpression: check };
   },
