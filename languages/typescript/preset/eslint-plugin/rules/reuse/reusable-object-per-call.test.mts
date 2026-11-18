@@ -47,6 +47,9 @@ tester.run('reusable-object-per-call', rule, {
     'export function show(date: Date) { return new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(date); }',
     'export function show(date: Date) { return new Intl.DateTimeFormat([], { hour: "numeric" }).format(date); }',
     'export function words(text: string) { return [...new Intl.Segmenter().segment(text)]; }',
+    'export function names() { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return new Intl.DisplayNames(["en"], { type: "language" }); } }',
+    'export function names() { try { return makeNames(); } catch { const display = new Intl.DisplayNames(["en"], { type: "region" }); return display.of("DE"); } }',
+    'export function names() { try { return makeNames(); } catch (error) { return new Intl.Collator("de").compare("a", "b") + String(error); } }',
     'class Ajv { compile() { return () => true; } } export function valid(data: unknown) { return new Ajv().compile()(data); }',
   ],
   invalid: [
@@ -119,5 +122,9 @@ tester.run('reusable-object-per-call', rule, {
       'Ajv',
     ),
     flagged(`${AJV}export function make() { return new Ajv().errors; }`, 'Ajv'),
+    flagged(
+      'export function show(value: number) { try { return String(value); } finally { new Intl.Collator("de").compare("a", "b"); } }',
+      'Intl.Collator',
+    ),
   ],
 });

@@ -115,9 +115,16 @@ function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
   return place !== undefined && isFunctionNode(place) ? place : undefined;
 }
 
+function inCatch(node: TSESTree.Node, fn: FunctionNode): boolean {
+  const path = ancestorsOf(node);
+  return path
+    .slice(0, path.indexOf(fn))
+    .some((ancestor) => ancestor.type === AST_NODE_TYPES.CatchClause);
+}
+
 function perCall(context: SourceContext, node: Call): boolean {
   const fn = enclosingFunction(node);
-  return fn !== undefined && !runsOnce(fn) && !kept(context, node, fn);
+  return fn !== undefined && !runsOnce(fn) && !inCatch(node, fn) && !kept(context, node, fn);
 }
 
 function memberOf(node: TSESTree.Node): TSESTree.MemberExpression | undefined {
