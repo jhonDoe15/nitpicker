@@ -216,6 +216,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   missing code is a failure), not `'exit'`, which can fire before the output is drained (`nitpicker/no-child-exit-event`).
 - A cache or query key names every input of the value stored under it: the environment, registry settings or table
   variant a computation reads belong in the `queryKey` array or the key string (`nitpicker/no-incomplete-cache-key`).
+- A record read or changed by an id from the request keeps the owner field the project's other queries on that model
+  carry (`{ _environmentId, _subscriberId, _id: command.notificationId }`), or checks the caller's access first
+  (`nitpicker/no-unscoped-record-access`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

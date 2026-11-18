@@ -68,4 +68,9 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/writes/stale-retries/no-stale-retry-after-conflict.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/stale-retries/stale-saves.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/write-sites.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/record-scope/no-unscoped-record-access.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/record-scope/ownership-checks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/record-scope/project-index.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/record-scope/query-sites.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/record-scope/request-values.mjs',
 ];

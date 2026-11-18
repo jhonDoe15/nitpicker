@@ -191,6 +191,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `return next()`), so the code below does not run too (`nitpicker/no-send-without-return`).
 - A cache or query key names every input of the value stored under it: the environment, registry settings or table
   variant a computation reads belong in the `queryKey` array or the key string (`nitpicker/no-incomplete-cache-key`).
+- A record read or changed by an id from the request keeps the owner field the project's other queries on that model
+  carry (`{ _environmentId, _subscriberId, _id: command.notificationId }`), or checks the caller's access first
+  (`nitpicker/no-unscoped-record-access`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
