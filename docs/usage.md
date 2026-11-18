@@ -2872,8 +2872,10 @@ checks every recipe that applied a fix:
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
-Formatters and `eslint --fix` are trusted and are not rolled back by themselves. `--fix --dry-run`
-verifies too, so the plan only lists the fixes that would stay.
+Formatters and plain `eslint --fix` output are trusted and are not rolled back by themselves. The one
+exception is a suggestion applied with `--rule` (see [ESLint rule fixes](#eslint-rule-fixes)): each file
+it changed is verified as the recipe `eslint-suggestion <rules> <file>`, so a type error or a finding of
+that rule that is still there rolls the file back. `--fix --dry-run` verifies too, so the plan only lists the fixes that would stay.
 
 `nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
 mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
@@ -2958,6 +2960,9 @@ A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes 
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
 (`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
 files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+A suggestion applied this way is verified like a recipe: for each file the run reports the rules it applied
+as `eslint-lint` findings, and [Verify the fixes](#verify-the-fixes) reruns `eslint-lint` and the type check
+on the file and rolls it back when a rule's finding is still there or a compile error is new.
 
 `nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
 `--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied
