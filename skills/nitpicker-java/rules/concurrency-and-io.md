@@ -92,6 +92,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   map, or use a prototype-scoped bean (`pmd/CallValueStoredInSharedField`).
 - A Netty `ByteBuf` that a method allocates, retains or encodes is released in a `finally` (`buf.release()`) or handed
   on (returned, stored, `ctx.write(buf)`, `out.add(buf)`), never only read and dropped (`pmd/BufferNeverReleased`).
+- A pooled object (a class that recycles itself through a `Recycler` or `ObjectPool` handle) resets every field it
+  assigns after creation before `handle.recycle(this)` (`position = null;`), or assigns it in every factory method
+  (`pmd/PooledFieldNotReset`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the

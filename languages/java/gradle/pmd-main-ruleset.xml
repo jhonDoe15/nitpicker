@@ -1480,6 +1480,52 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="PooledFieldNotReset" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field of a pooled object (the class recycles itself through a Recycler or ObjectPool handle) is assigned after creation, but recycle never resets it and not every factory method assigns it, so the next borrower sees the value of the last use (a cached position, an initialized flag, a reference that keeps its owner alive). Reset it before handle.recycle(this) (this.position = null;), assign it in every factory method that takes an object from the pool, or reset it where the object is returned to the pool. An exception fits a field that every reader overwrites before reading it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $isHandle := function($field) {
+      exists($field/ClassType[@SimpleName = 'Handle'][ClassType[@SimpleName = ('Recycler', 'ObjectPool')]
+             or pmd-java:typeIs('io.netty.util.Recycler.Handle') or pmd-java:typeIs('io.netty.util.internal.ObjectPool.Handle')])
+    },
+    $assigns := function($scope, $name) {
+      $scope//AssignmentExpression[*[1][(self::VariableAccess and empty(ancestor::MethodDeclaration[1]//VariableId[@Name = $name]))
+                              or self::FieldAccess][@Name = $name]]
+    }
+return
+  //ClassBody[FieldDeclaration[$isHandle(.)]]/
+    (let $body := .,
+         $handles := FieldDeclaration[$isHandle(.)]/VariableDeclarator/VariableId/@Name,
+         $pools := FieldDeclaration[ClassType[@SimpleName = ('Recycler', 'ObjectPool')]]/VariableDeclarator/VariableId/@Name,
+         $recycleCalls := .//MethodCall[@MethodName = ('recycle', 'unguardedRecycle')]
+                            [*[1][self::VariableAccess][@Name = $handles]][ArgumentList/*[1][self::ThisExpression]]
+                            [ancestor::ClassBody[1] is $body],
+         $recycleMethods := $recycleCalls/ancestor::MethodDeclaration[1],
+         $level1 := MethodDeclaration[@Name = $recycleMethods//MethodCall/@MethodName],
+         $level2 := MethodDeclaration[@Name = ($recycleMethods | $level1)//MethodCall/@MethodName],
+         $resetScope := $recycleMethods | $level1 | $level2,
+         $factories := MethodDeclaration[pmd-java:modifiers() = 'static']
+                         [.//MethodCall[@MethodName = 'get'][*[1][self::VariableAccess][@Name = $pools]]],
+         $declared := $body/MethodDeclaration/@Name,
+         $opaque := exists(($resetScope//MethodCall except $recycleCalls)
+                      [(*[1][self::ArgumentList or self::ThisExpression] and not(@MethodName = $declared))
+                       or ArgumentList/ThisExpression])
+     return
+       if (empty($recycleMethods) or empty($factories) or $opaque) then ()
+       else FieldDeclaration[not(pmd-java:modifiers() = ('final', 'static'))][not($isHandle(.))]/VariableDeclarator/VariableId
+         [let $name := @Name,
+              $setters := $body//MethodDeclaration[exists($assigns(., $name))]/@Name
+          return exists($assigns($body//MethodDeclaration, $name))
+            and empty($assigns($resetScope, $name))
+            and empty($resetScope//MethodCall[*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
+            and (some $f in $factories satisfies
+                   empty($assigns($f, $name)) and empty($f//MethodCall[@MethodName = $setters]))])
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ProcessWaitWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Wait with a deadline: process.waitFor(30, TimeUnit.SECONDS), and call process.destroyForcibly() when it returns false. Read the output on another thread (or redirect it to a file) before that wait. This waits for the child process without a deadline, so a command that never exits hangs this request, job or command for good. An exception fits only a program whose purpose is to run the child to completion, such as a build wrapper.">
     <priority>3</priority>

@@ -114,6 +114,7 @@
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
   "pmd/PlainCollectionInConcurrentMap": ["bug", "async"],
   "pmd/PlainTextRegex": ["simplification", "performance"],
+  "pmd/PooledFieldNotReset": ["bug", "reliability"],
   "pmd/PreserveStackTrace": ["reliability"],
   "pmd/PrimitiveWrapperInstantiation": ["simplification"],
   "pmd/ProcessWaitWithoutTimeout": ["reliability"],
