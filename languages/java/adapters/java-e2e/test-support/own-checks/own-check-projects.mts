@@ -1,5 +1,10 @@
-import { REVIEW_CASES } from './own-check-review-cases.mts';
-import { SAFE_CASES } from './own-check-safe-cases.mts';
+import { ownRule } from '../../../../fix/errorprone/own/own-checks.mts';
+import { REVIEW_CASES as BASIC_REVIEW_CASES } from './own-check-review-cases.mts';
+import { SAFE_CASES as BASIC_SAFE_CASES } from './own-check-safe-cases.mts';
+import {
+  PERFORMANCE_REVIEW_CASES,
+  PERFORMANCE_SAFE_CASES,
+} from './performance/performance-cases.mts';
 import { DEPENDENCIES, SUPPORT_FILES, type Dependency } from './own-check-support.mts';
 
 const SETTINGS = "rootProject.name = 'demo'\n";
@@ -47,7 +52,17 @@ ${DEPENDENCIES.map(mavenDependency).join('\n')}
   },
 };
 
-type OwnCheckCase = (typeof SAFE_CASES)[number];
+type OwnCheckCase = {
+  readonly check: string;
+  readonly file: string;
+  readonly before: string;
+  readonly after: string;
+  readonly lines: readonly number[];
+  readonly base?: string;
+};
+
+const SAFE_CASES: readonly OwnCheckCase[] = [...BASIC_SAFE_CASES, ...PERFORMANCE_SAFE_CASES];
+const REVIEW_CASES: readonly OwnCheckCase[] = [...BASIC_REVIEW_CASES, ...PERFORMANCE_REVIEW_CASES];
 type Outcome = { files: Record<string, string | undefined>; findings: string[] };
 
 const ALL_CASES: readonly OwnCheckCase[] = [...SAFE_CASES, ...REVIEW_CASES];
@@ -63,17 +78,27 @@ export function ownCheckRepository({
     committed: {
       ...build,
       ...SUPPORT_FILES,
+      ...Object.fromEntries(
+        ALL_CASES.flatMap(({ file, base }) => (base === undefined ? [] : [[file, base]])),
+      ),
       'nitpicker.config.json': `${JSON.stringify({ ...config, conventions: { 'java.formatter': 'none' } })}\n`,
     },
     changed: Object.fromEntries(ALL_CASES.map(({ file, before }) => [file, before])),
   };
 }
 
-export const ALL_RULES = ALL_CASES.flatMap(({ check }) => ['--rule', `pmd/${check}`]);
+function ruleName(check: string): string {
+  const { tool, rule } = ownRule(check);
+  return `${tool}/${rule}`;
+}
+
+export const ALL_RULES = [...new Set(ALL_CASES.map(({ check }) => ruleName(check)))].flatMap(
+  (rule) => ['--rule', rule],
+);
 
 function findingLines(cases: readonly OwnCheckCase[], recipe: string): string[] {
   return cases.flatMap(({ check, file, lines }) =>
-    lines.map((line) => `${file}:${String(line)} pmd/${check} (${recipe})`),
+    lines.map((line) => `${file}:${String(line)} ${ruleName(check)} (${recipe})`),
   );
 }
 

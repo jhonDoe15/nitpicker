@@ -47,7 +47,7 @@ public final class LogStringConcatenation extends BugChecker implements MethodIn
       return Description.NO_MATCH;
     }
     Split split = split(message, state);
-    if (split == null || split.values.isEmpty()) {
+    if (split == null || split.values.isEmpty() || spreadsArray(split, arguments.size() - index - 1, state)) {
       return Description.NO_MATCH;
     }
     String text = split.text.toString();
@@ -75,6 +75,22 @@ public final class LogStringConcatenation extends BugChecker implements MethodIn
   private static final class Split {
     final StringBuilder text = new StringBuilder();
     final List<String> values = new ArrayList<>();
+    final List<Type> types = new ArrayList<>();
+
+    void add(ExpressionTree value, VisitorState state) {
+      text.append("{}");
+      values.add(Support.source(Support.unparenthesized(value), state));
+      types.add(ASTHelpers.getType(value));
+    }
+  }
+
+  private static boolean spreadsArray(Split split, int others, VisitorState state) {
+    if (split.values.size() + others != 1) {
+      return false;
+    }
+    Type type = split.types.get(0);
+    return type == null
+        || type instanceof Type.ArrayType array && !array.getComponentType().isPrimitive();
   }
 
   private static Split split(ExpressionTree message, VisitorState state) {
@@ -98,15 +114,14 @@ public final class LogStringConcatenation extends BugChecker implements MethodIn
   }
 
   private static boolean operand(ExpressionTree tree, Split split, VisitorState state) {
-    if (tree instanceof LiteralTree literal && literal.getValue() instanceof String text) {
-      return appendText(split, text);
+    if (tree instanceof LiteralTree literal && literal.getValue() != null) {
+      return appendText(split, String.valueOf(literal.getValue()));
     }
     Type type = ASTHelpers.getType(tree);
     if (type == null || state.getTypes().isSubtype(type, state.getSymtab().throwableType)) {
       return false;
     }
-    split.text.append("{}");
-    split.values.add(Support.source(Support.unparenthesized(tree), state));
+    split.add(tree, state);
     return true;
   }
 
@@ -143,20 +158,22 @@ public final class LogStringConcatenation extends BugChecker implements MethodIn
         }
         continue;
       }
-      if (index + 1 >= pattern.length() || used >= values.size()) {
+      if (index + 1 >= pattern.length()) {
         return false;
       }
       char kind = pattern.charAt(++index);
-      Type type = ASTHelpers.getType(values.get(used));
-      boolean number = type != null && ASTHelpers.isSameType(ASTHelpers.getType(values.get(used)), state.getSymtab().intType, state);
       if (kind == '%') {
         split.text.append('%');
-      } else if (kind == 's' && type != null && !state.getTypes().isSubtype(type, state.getSymtab().throwableType)) {
-        split.text.append("{}");
-        split.values.add(Support.source(values.get(used++), state));
-      } else if (kind == 'd' && number) {
-        split.text.append("{}");
-        split.values.add(Support.source(values.get(used++), state));
+        continue;
+      }
+      if (used >= values.size()) {
+        return false;
+      }
+      Type type = ASTHelpers.getType(values.get(used));
+      boolean number = type != null && ASTHelpers.isSameType(ASTHelpers.getType(values.get(used)), state.getSymtab().intType, state);
+      if (kind == 's' && type != null && !state.getTypes().isSubtype(type, state.getSymtab().throwableType)
+          || kind == 'd' && number) {
+        split.add(values.get(used++), state);
       } else {
         return false;
       }
