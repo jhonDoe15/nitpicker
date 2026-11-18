@@ -11,6 +11,7 @@ nitpicker.fix.PrepareStatementInLoop
 nitpicker.fix.PreserveStackTrace
 nitpicker.fix.RetryInTest
 nitpicker.fix.ReusableObjectPerCall
+nitpicker.fix.SortForExtreme
 nitpicker.fix.SpringComposedMapping
 nitpicker.fix.SpringConstructorInjection
 nitpicker.fix.SpringDataBatchOfOne
