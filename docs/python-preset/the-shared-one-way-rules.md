@@ -1987,3 +1987,10 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `<=` or `>=` (an `if not isnan(x):` that only calls `add` or `append` on the value is a filter and is not reported): `float("inf")` and `float("1e999")` pass an `isnan` check, so the value goes on as a limit or an amount.
   A float division is not reported, since Python raises `ZeroDivisionError` for it. Check `math.isfinite(x)`. Test files
   are skipped.
+- `index-bound-off-by-one` reports `index > len(x)` (or `len(x) < index`) as an `or` operand or the test of an `if` with no
+  `else` whose body leaves (`return`, `raise`, `continue`, `break`), when `x[index]` is read in a later operand or later
+  in the same block, and `index <= len(x)` (or `len(x) >= index`) in an `and` chain or `if` whose later operand or body
+  reads `x[index]`: the value the check lets through, `index == len(x)`, raises `IndexError`. `x` is any expression
+  (`self.items`). Not reported: insertion positions (`x.insert(index, v)`), another list, a function that also checks
+  `index >= len(x)` or `index < len(x)`, a reassigned index, a branch that does not leave, and test files. Reject with
+  `>=` and accept with `<`.

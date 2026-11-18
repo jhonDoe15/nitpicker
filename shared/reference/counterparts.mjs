@@ -97,6 +97,12 @@ const GROUPS = [
     typescript: 'nitpicker/no-negative-count',
     go: 'go-rules/negative-count',
   },
+  {
+    jvm: 'IndexBoundOffByOne',
+    typescript: 'nitpicker/no-index-bound-off-by-one',
+    python: 'index-bound-off-by-one',
+    go: 'go-rules/index-bound-off-by-one',
+  },
 ];
 
 function spring(rule) {

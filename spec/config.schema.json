@@ -2393,6 +2393,7 @@
                             "pmd/UncheckedResponseBody",
                             "pmd/NanOnlyGuard",
                             "pmd/NegativeCountArgument",
+                            "pmd/IndexBoundOffByOne",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

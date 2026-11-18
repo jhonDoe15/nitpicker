@@ -47,6 +47,7 @@
   "python-rules/in-memory-query": ["performance", "persistence"],
   "python-rules/in-memory-update": ["performance", "persistence"],
   "python-rules/inconsistent-attribute-locking": ["bug"],
+  "python-rules/index-bound-off-by-one": ["bug"],
   "python-rules/io-in-domain": ["maintainability"],
   "python-rules/io-in-loop": ["performance"],
   "python-rules/job-item-failure-stops-run": ["reliability"],

@@ -101,6 +101,7 @@
   "languages/python/rules/e2e/honesty/test-switches/test-bodies.e2e.test.mts": 2,
   "languages/python/rules/e2e/honesty/weak/weak-assertion.e2e.test.mts": 3,
   "languages/python/rules/e2e/http/http-values.e2e.test.mts": 4,
+  "languages/python/rules/e2e/index-bounds/index-bound-off-by-one.e2e.test.mts": 2,
   "languages/python/rules/e2e/jobs/job-item-failure.e2e.test.mjs": 2,
   "languages/python/rules/e2e/lazy-relations/lazy-relation-helpers.e2e.test.mts": 2,
   "languages/python/rules/e2e/lazy-relations/lazy-relation-in-loop.e2e.test.mts": 3,

@@ -58,6 +58,7 @@
   "pmd/ExpandingReplacement": ["bug"],
   "pmd/HandSplitHttpHeader": ["bug"],
   "pmd/HttpValueCase": ["bug"],
+  "pmd/IndexBoundOffByOne": ["bug"],
   "pmd/InlineSuppression": ["maintainability"],
   "pmd/IoCallInLoop": ["performance"],
   "pmd/MaxValueOverflow": ["bug"],

@@ -44,6 +44,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-array-spread-arguments',
   'nitpicker/no-io-in-loop',
   'nitpicker/no-unchecked-response-json',
+  'nitpicker/no-index-bound-off-by-one',
   'nitpicker/no-negative-count',
   'nitpicker/no-nan-only-check',
   'nitpicker/no-costly-collection-form',

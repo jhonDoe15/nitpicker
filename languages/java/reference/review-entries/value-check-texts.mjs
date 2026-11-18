@@ -17,4 +17,10 @@ export const VALUE_CHECK_TEXTS = {
       "`repeat`, `copyOf`, `new ArrayList<>(n)` (Kotlin also `take`, `takeLast`, `drop`, `dropLast`, `List(n)`) called with a count that is a subtraction of two non-constants, directly or through a local, with no `Math.max`, `coerceAtLeast` or `coerceIn` and no earlier comparison of the two sides.",
     why: "A negative count throws `IllegalArgumentException` (or `NegativeArraySizeException`) as soon as the right side is the larger one. Nitpicker reads the sources of every module for it and prints it as a PMD rule.",
   },
+  IndexBoundOffByOne: {
+    anchor: 'index-checks-that-let-the-length-through',
+    summary:
+      "An `if` whose condition has the disjunct `i > x.size()` (also `x.length()`, `x.length`, `x.count` and the reversed `x.size() < i`), whose branch leaves, followed by `x.get(i)`, `x.charAt(i)` or `x[i]` in the same block or in a later disjunct; also `i <= x.size()` in an `&&` chain or `if` whose branch reads `x[i]`.",
+    why: "The one value the check lets through, `i == x.size()`, throws `IndexOutOfBoundsException` instead of getting the guard's intended error. `>` and `<=` are right only for insertion positions. Nitpicker reads the sources of every module for it and prints it as a PMD rule.",
+  },
 };

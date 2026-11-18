@@ -132,3 +132,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
 - A count that is a subtraction is clamped before `take`, `takeLast`, `drop`, `dropLast`, `repeat` or `List(n)`:
   `list.takeLast((a.size - b.size).coerceAtLeast(0))`; a negative count throws (`pmd/NegativeCountArgument`).
+- A bounds check before `get(index)` or `list[index]` rejects with `index >= size`: `index > size` lets `index == size`
+  through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is right only for an insertion position.

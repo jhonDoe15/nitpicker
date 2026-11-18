@@ -11,6 +11,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/guards"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/honesty"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/httpvalues"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/indexbound"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/jobs"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lifecycles"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/markup"
@@ -55,6 +56,7 @@ func Analyzers() []*analysis.Analyzer {
 			replacements.Analyzer,
 			markup.Analyzer,
 			responsejson.Analyzer,
+			indexbound.Analyzer,
 			negativecount.Analyzer,
 			nanguard.Analyzer,
 		},
