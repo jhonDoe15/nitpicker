@@ -34,6 +34,7 @@ import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/n
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
+import { rule as ruleNoDynamicImportOfPath } from '../rules/urls/paths/no-dynamic-import-of-path.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
 import { rule as ruleNoEmptyEverySignal } from '../rules/empty-lists/no-empty-every-signal.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
-import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -136,6 +136,7 @@ export const partRules = {
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
+  'no-dynamic-import-of-path': ruleNoDynamicImportOfPath,
   'no-eager-relation': ruleNoEagerRelation,
   'no-empty-every-signal': ruleNoEmptyEverySignal,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
-  'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
 };

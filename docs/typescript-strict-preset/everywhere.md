@@ -306,6 +306,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `...File` or `...Dir` in a file that uses Node modules and never mentions `pathToFileURL`. On Windows `C:\repo\plugin.mjs`
   reads `c:` as a URL scheme and the import fails with `ERR_UNSUPPORTED_ESM_URL_SCHEME`, while it works on Linux and macOS.
   A string literal, a bare package name, `pathToFileURL(file).href`, `new URL(...)`, `import.meta.resolve(...)` and a
+  parameter or property that is only named like a path, a template that starts with `file:` and files under `__test__` or
+  `playground` are not reported. Allowed form: `await import(pathToFileURL(file).href)`.
 - `nitpicker/no-unchecked-url-sink`: a runtime URL that becomes a link, a frame source or a navigation target without an
   `http(s)` scheme check. It reads `href` on `a`, `area` and components named `...Link` or `...Anchor`, `src` on `iframe`,
   `embed`, `object` and `frame`, `action` and `formAction` on `form`, `button` and `input`, `window.open(x)`,

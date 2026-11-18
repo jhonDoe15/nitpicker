@@ -453,6 +453,8 @@ allowed. Constant routes that keep slashes (`/archive/`, `/branch/`) and mock fi
 Dynamic import of a path: `nitpicker/no-dynamic-import-of-path` (production source, in `eslint-lint`) reports `import(x)` where `x`
 is a filesystem path (a `path.resolve`, `path.join`, `require.resolve`, `fileURLToPath` or `realpathSync` result, a current-directory
 concatenation, or a variable named like a path in a Node file that never builds a file URL). `import(pathToFileURL(x).href)`,
+literals, package names and `file:` templates are allowed.
+
 Unchecked URL sinks: `nitpicker/no-unchecked-url-sink` (production source, in `eslint-lint`) reports a runtime URL value (a member
 or variable named `...Url`, `...Uri`, `website`, `homepage` and the like) used as `href`, an `iframe`/`embed` `src`, a form `action`,
 `window.open` or a `location` assignment without a protocol check in the same function. Constants, relative and `http(s)` text,
