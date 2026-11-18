@@ -914,6 +914,7 @@
             { "type": "LedgerRepository", "vararg": false },
             { "type": "Posting", "vararg": false }
           ],
+          "frameId": 9,
           "line": 54
         },
         {
@@ -1022,7 +1023,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 73,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 18,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 13,
@@ -1045,7 +1048,9 @@
           "qualifier": "items",
           "argument": "mutableListOf()",
           "line": 77,
-          "reads": [{ "name": "items", "member": "mapTo" }]
+          "frameId": 20,
+          "reads": [{ "name": "items", "member": "mapTo" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 15,
@@ -1054,7 +1059,9 @@
           "host": "associateBy",
           "qualifier": "items",
           "line": 78,
-          "reads": [{ "name": "items", "member": "associateBy" }]
+          "frameId": 21,
+          "reads": [{ "name": "items", "member": "associateBy" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 16,
@@ -1067,7 +1074,9 @@
             { "name": "_", "component": 1 },
             { "name": "item", "component": 2 }
           ],
-          "reads": [{ "name": "items", "member": "associateBy" }, { "lambda": 15 }]
+          "frameId": 22,
+          "reads": [{ "name": "items", "member": "associateBy" }, { "lambda": 15 }],
+          "collection": { "root": "items", "links": [{ "name": "associateBy", "arguments": [] }] }
         },
         {
           "id": 17,
@@ -1076,7 +1085,9 @@
           "host": "map",
           "qualifier": "ledgers.findAll()",
           "line": 79,
-          "reads": [{ "name": "ledgers", "member": "findAll" }]
+          "frameId": 23,
+          "reads": [{ "name": "ledgers", "member": "findAll" }],
+          "collection": { "root": "ledgers", "links": [{ "name": "findAll", "arguments": [] }] }
         },
         {
           "id": 18,
@@ -1098,7 +1109,9 @@
           "host": "apply",
           "qualifier": "ledgers",
           "line": 81,
-          "reads": [{ "name": "ledgers", "member": "apply" }]
+          "frameId": 25,
+          "reads": [{ "name": "ledgers", "member": "apply" }],
+          "collection": { "root": "ledgers", "links": [] }
         },
         {
           "id": 20,
@@ -1145,6 +1158,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 29,
           "line": 95
         },
         {
@@ -1198,6 +1212,7 @@
             { "type": "LedgerRepository", "vararg": false },
             { "type": "Posting", "vararg": false }
           ],
+          "frameId": 33,
           "line": 102
         }
       ],
@@ -2317,6 +2332,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 5,
           "line": 40
         },
         {
@@ -2390,6 +2406,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 14,
           "line": 74
         }
       ],
@@ -3092,6 +3109,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 2,
           "line": 19
         },
         {
@@ -3102,6 +3120,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 3,
           "line": 22
         },
         {
@@ -3123,6 +3142,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "LegacyRepository", "vararg": false }],
+          "frameId": 5,
           "line": 28
         },
         {
@@ -3241,6 +3261,7 @@
           "topLevel": false,
           "annotations": ["Transactional", "Throws"],
           "parameters": [],
+          "frameId": 16,
           "line": 77
         }
       ],
@@ -4581,7 +4602,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 38,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 11,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 6,
@@ -4590,7 +4613,9 @@
           "host": "forEach",
           "qualifier": "ids",
           "line": 40,
-          "reads": [{ "name": "ids", "member": "forEach" }]
+          "frameId": 12,
+          "reads": [{ "name": "ids", "member": "forEach" }],
+          "collection": { "root": "ids", "links": [] }
         },
         {
           "id": 7,
@@ -4599,7 +4624,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 41,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 13,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 8,
@@ -4607,7 +4634,8 @@
           "k": "lambda",
           "host": "repeat",
           "argument": "ids.size",
-          "line": 42
+          "line": 42,
+          "frameId": 14
         },
         {
           "id": 9,
@@ -4652,6 +4680,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 18,
           "line": 62
         },
         {
@@ -4679,6 +4708,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 20,
           "line": 65
         },
         {
@@ -4700,6 +4730,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 22,
           "line": 68
         },
         {
@@ -4742,6 +4773,7 @@
           "annotations": [],
           "receiver": "InvoiceRepository",
           "parameters": [{ "type": "List<Invoice>", "vararg": false }],
+          "frameId": 28,
           "line": 116
         },
         {
@@ -4751,7 +4783,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 116,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 29,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 22,
@@ -4795,7 +4829,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 125,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 33,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 26,
@@ -4828,7 +4864,9 @@
           "host": "map",
           "qualifier": "batch.items",
           "line": 132,
-          "reads": [{ "name": "batch", "member": "items" }]
+          "frameId": 36,
+          "reads": [{ "name": "batch", "member": "items" }],
+          "collection": { "root": "batch", "links": [{ "name": "items" }] }
         },
         {
           "id": 29,
@@ -4848,7 +4886,9 @@
           "host": "map",
           "qualifier": "items.filter { it.status == Status.OPEN }",
           "line": 133,
-          "reads": [{ "name": "items", "member": "filter" }]
+          "frameId": 38,
+          "reads": [{ "name": "items", "member": "filter" }],
+          "collection": { "root": "items", "links": [{ "name": "filter", "arguments": [] }] }
         },
         {
           "id": 31,
@@ -4857,7 +4897,9 @@
           "host": "map",
           "qualifier": "items.asSequence()",
           "line": 134,
-          "reads": [{ "name": "items", "member": "asSequence" }]
+          "frameId": 39,
+          "reads": [{ "name": "items", "member": "asSequence" }],
+          "collection": { "root": "items", "links": [{ "name": "asSequence", "arguments": [] }] }
         },
         {
           "id": 32,
@@ -4866,7 +4908,9 @@
           "host": "map",
           "qualifier": "batch.byId.values",
           "line": 135,
-          "reads": [{ "name": "batch", "member": "byId" }]
+          "frameId": 40,
+          "reads": [{ "name": "batch", "member": "byId" }],
+          "collection": { "root": "batch", "links": [{ "name": "byId" }, { "name": "values" }] }
         },
         {
           "id": 33,
@@ -4875,7 +4919,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 137,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 41,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 34,
@@ -4884,7 +4930,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 139,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 42,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 35,
@@ -4939,7 +4987,9 @@
           "host": "forEach",
           "qualifier": "open",
           "line": 154,
-          "reads": [{ "name": "open", "member": "forEach" }]
+          "frameId": 47,
+          "reads": [{ "name": "open", "member": "forEach" }],
+          "collection": { "root": "open", "links": [] }
         },
         {
           "id": 40,
@@ -4948,7 +4998,9 @@
           "host": "groupBy",
           "qualifier": "ids",
           "line": 155,
-          "reads": [{ "name": "ids", "member": "groupBy" }]
+          "frameId": 48,
+          "reads": [{ "name": "ids", "member": "groupBy" }],
+          "collection": { "root": "ids", "links": [] }
         },
         {
           "id": 41,
@@ -4957,7 +5009,9 @@
           "host": "forEach",
           "qualifier": "groups.keys",
           "line": 156,
-          "reads": [{ "name": "groups", "member": "keys" }]
+          "frameId": 49,
+          "reads": [{ "name": "groups", "member": "keys" }],
+          "collection": { "root": "groups", "links": [{ "name": "keys" }] }
         },
         {
           "id": 42,
@@ -4970,7 +5024,9 @@
             { "name": "_", "component": 1 },
             { "name": "grouped", "component": 2 }
           ],
-          "reads": [{ "name": "groups", "member": "forEach" }]
+          "frameId": 50,
+          "reads": [{ "name": "groups", "member": "forEach" }],
+          "collection": { "root": "groups", "links": [] }
         },
         {
           "id": 43,
@@ -4979,7 +5035,9 @@
           "host": "forEach",
           "qualifier": "grouped",
           "line": 157,
-          "reads": [{ "name": "grouped", "member": "forEach" }]
+          "frameId": 51,
+          "reads": [{ "name": "grouped", "member": "forEach" }],
+          "collection": { "root": "grouped", "links": [] }
         },
         {
           "id": 44,
@@ -6741,6 +6799,7 @@
           "topLevel": false,
           "annotations": ["Cacheable"],
           "parameters": [{ "type": "Long", "vararg": true }],
+          "frameId": 6,
           "line": 37
         },
         {
@@ -6809,6 +6868,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 12,
           "line": 66
         },
         {
@@ -6819,6 +6879,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 13,
           "line": 68
         },
         {
@@ -6829,6 +6890,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 14,
           "line": 70
         },
         {
@@ -6839,6 +6901,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 15,
           "line": 72
         },
         {
@@ -6901,7 +6964,9 @@
           "host": "apply",
           "qualifier": "first",
           "line": 96,
-          "reads": [{ "name": "first", "member": "apply" }]
+          "frameId": 21,
+          "reads": [{ "name": "first", "member": "apply" }],
+          "collection": { "root": "first", "links": [] }
         },
         {
           "id": 19,
@@ -6910,6 +6975,7 @@
           "host": "with",
           "argument": "second",
           "line": 97,
+          "frameId": 22,
           "reads": [{ "name": "second" }]
         },
         {
@@ -6919,7 +6985,9 @@
           "host": "also",
           "qualifier": "third",
           "line": 98,
-          "reads": [{ "name": "third", "member": "also" }]
+          "frameId": 23,
+          "reads": [{ "name": "third", "member": "also" }],
+          "collection": { "root": "third", "links": [] }
         },
         {
           "id": 21,
@@ -6940,6 +7008,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 26,
           "line": 111
         },
         {
@@ -6960,6 +7029,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 28,
           "line": 117
         }
       ],
@@ -7930,6 +8000,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 8,
           "line": 40,
           "reads": ["hashCode", "id"]
         },
@@ -8201,6 +8272,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 5,
           "line": 18
         },
         {
@@ -8719,6 +8791,7 @@
           "topLevel": false,
           "annotations": ["PostMapping"],
           "parameters": [{ "type": "Map<String, Any>", "vararg": false }],
+          "frameId": 3,
           "line": 22
         },
         {
@@ -8739,6 +8812,7 @@
           "topLevel": false,
           "annotations": ["OnError"],
           "parameters": [{ "type": "IllegalStateException", "vararg": false }],
+          "frameId": 5,
           "line": 28
         },
         {
@@ -8759,6 +8833,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 7,
           "line": 35
         },
         {
@@ -8801,6 +8876,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 11,
           "line": 50
         },
         {
@@ -10169,7 +10245,9 @@
           "qualifier": "byName",
           "argument": "name",
           "line": 109,
-          "reads": [{ "name": "byName", "member": "getOrPut" }]
+          "frameId": 19,
+          "reads": [{ "name": "byName", "member": "getOrPut" }],
+          "collection": { "root": "byName", "links": [] }
         },
         {
           "id": 13,
@@ -10178,7 +10256,12 @@
           "host": "let",
           "qualifier": "caches.getCache(\"names\")",
           "line": 113,
-          "reads": [{ "name": "caches", "member": "getCache" }]
+          "frameId": 20,
+          "reads": [{ "name": "caches", "member": "getCache" }],
+          "collection": {
+            "root": "caches",
+            "links": [{ "name": "getCache", "arguments": ["\"names\""] }]
+          }
         },
         {
           "id": 14,
@@ -10188,6 +10271,7 @@
           "topLevel": false,
           "annotations": ["CachePut"],
           "parameters": [{ "type": "Order", "vararg": false }],
+          "frameId": 21,
           "line": 118
         },
         {
@@ -10198,6 +10282,7 @@
           "topLevel": false,
           "annotations": ["Caching"],
           "parameters": [{ "type": "Order", "vararg": false }],
+          "frameId": 22,
           "line": 121
         },
         {
@@ -10242,7 +10327,9 @@
           "host": "executeWithoutResult",
           "qualifier": "transactions",
           "line": 135,
-          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }]
+          "frameId": 26,
+          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }],
+          "collection": { "root": "transactions", "links": [] }
         }
       ],
       "invocations": [
@@ -11948,6 +12035,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 3,
           "line": 37
         },
         {
@@ -11980,6 +12068,7 @@
           "annotations": [],
           "receiver": "CoroutineScope",
           "parameters": [],
+          "frameId": 7,
           "line": 53
         },
         {
@@ -12000,6 +12089,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 9,
           "line": 59
         },
         {
@@ -12106,6 +12196,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 20,
           "line": 112
         },
         {
@@ -12116,6 +12207,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 21,
           "line": 114
         },
         {
@@ -12126,6 +12218,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 22,
           "line": 116
         },
         {
@@ -13768,6 +13861,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 5,
           "line": 41
         },
         {
@@ -13800,6 +13894,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 8,
           "line": 57
         },
         {
@@ -13809,7 +13904,9 @@
           "host": "uri",
           "qualifier": "web.get()",
           "line": 58,
-          "reads": [{ "name": "web", "member": "get" }]
+          "frameId": 9,
+          "reads": [{ "name": "web", "member": "get" }],
+          "collection": { "root": "web", "links": [{ "name": "get", "arguments": [] }] }
         },
         {
           "id": 8,
@@ -13819,6 +13916,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 10,
           "line": 60
         },
         {
@@ -13829,6 +13927,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 11,
           "line": 62
         },
         {
@@ -13839,6 +13938,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 12,
           "line": 64
         },
         {
@@ -13849,6 +13949,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 13,
           "line": 66
         },
         {
@@ -13869,6 +13970,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 16,
           "line": 76
         },
         {
@@ -13889,6 +13991,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 18,
           "line": 82
         },
         {
@@ -15260,7 +15363,7 @@
           "frameId": 3,
           "line": 22
         },
-        { "id": 3, "parent": 2, "k": "lambda", "host": "runCatching", "line": 28 },
+        { "id": 3, "parent": 2, "k": "lambda", "host": "runCatching", "line": 28, "frameId": 4 },
         {
           "id": 4,
           "parent": 0,
@@ -15269,6 +15372,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 5,
           "line": 32
         },
         {
@@ -15279,6 +15383,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 6,
           "line": 35
         },
         {
@@ -15300,6 +15405,7 @@
           "topLevel": false,
           "annotations": ["Transactional", "Throws"],
           "parameters": [],
+          "frameId": 8,
           "line": 45
         },
         {
@@ -15310,6 +15416,7 @@
           "topLevel": false,
           "annotations": ["Async"],
           "parameters": [],
+          "frameId": 9,
           "line": 48
         },
         {
@@ -15320,6 +15427,7 @@
           "topLevel": false,
           "annotations": ["Scheduled"],
           "parameters": [],
+          "frameId": 10,
           "line": 51
         },
         {
@@ -15341,6 +15449,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 12,
           "line": 55
         },
         {
@@ -15361,6 +15470,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 17,
           "line": 71
         }
       ],
@@ -16186,6 +16296,7 @@
             { "type": "ProceedingJoinPoint", "vararg": false },
             { "type": "Logged", "vararg": false }
           ],
+          "frameId": 4,
           "line": 33
         },
         {
@@ -16217,6 +16328,7 @@
           "topLevel": false,
           "annotations": ["Retry"],
           "parameters": [],
+          "frameId": 7,
           "line": 50
         },
         {
@@ -16227,6 +16339,7 @@
           "topLevel": false,
           "annotations": ["CircuitBreaker"],
           "parameters": [],
+          "frameId": 8,
           "line": 53
         },
         {
@@ -16237,6 +16350,7 @@
           "topLevel": false,
           "annotations": ["Timed"],
           "parameters": [],
+          "frameId": 9,
           "line": 56
         },
         {
@@ -16247,6 +16361,7 @@
           "topLevel": false,
           "annotations": ["Observed"],
           "parameters": [],
+          "frameId": 10,
           "line": 59
         },
         {
@@ -16257,6 +16372,7 @@
           "topLevel": false,
           "annotations": ["RolesAllowed"],
           "parameters": [],
+          "frameId": 11,
           "line": 62
         },
         {
@@ -16267,6 +16383,7 @@
           "topLevel": false,
           "annotations": ["Logged"],
           "parameters": [],
+          "frameId": 13,
           "line": 68
         },
         {
@@ -16277,6 +16394,7 @@
           "topLevel": false,
           "annotations": ["PermitAll"],
           "parameters": [],
+          "frameId": 14,
           "line": 71
         },
         {
@@ -16287,6 +16405,7 @@
           "topLevel": false,
           "annotations": ["Retry"],
           "parameters": [],
+          "frameId": 15,
           "line": 74
         },
         {
@@ -16297,6 +16416,7 @@
           "topLevel": false,
           "annotations": ["Logged"],
           "parameters": [],
+          "frameId": 16,
           "line": 77
         },
         {
@@ -16331,6 +16451,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "OrderForm", "vararg": false }],
+          "frameId": 19,
           "line": 90
         },
         {
@@ -16341,6 +16462,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Int", "vararg": false }],
+          "frameId": 20,
           "line": 92
         },
         {
@@ -16351,6 +16473,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "List<@NotBlank String>", "vararg": false }],
+          "frameId": 21,
           "line": 94
         },
         {
@@ -16361,6 +16484,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 22,
           "line": 96
         },
         {
@@ -16371,6 +16495,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 23,
           "line": 98
         },
         {
@@ -16381,6 +16506,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 24,
           "line": 100
         },
         {
@@ -16391,6 +16517,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 25,
           "line": 102
         },
         {
@@ -16946,6 +17073,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 4,
           "line": 23
         },
         {
@@ -16967,6 +17095,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 6,
           "line": 25
         },
         {
@@ -16977,6 +17106,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 7,
           "line": 27
         },
         {
@@ -16987,6 +17117,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 8,
           "line": 29
         },
         {
@@ -16997,6 +17128,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 9,
           "line": 31
         },
         {
@@ -17007,6 +17139,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 10,
           "line": 33
         },
         {
@@ -17017,6 +17150,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 11,
           "line": 35
         },
         {
@@ -17038,6 +17172,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 13,
           "line": 37
         },
         {
@@ -17048,6 +17183,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 14,
           "line": 39
         },
         {
@@ -17069,6 +17205,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 16,
           "line": 41
         }
       ],
@@ -18041,6 +18178,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 5,
           "line": 43
         },
         {
@@ -20488,6 +20626,7 @@
             { "type": "RestOperations", "vararg": false },
             { "type": "String", "vararg": false }
           ],
+          "frameId": 3,
           "line": 20
         },
         {
@@ -20518,7 +20657,9 @@
           "host": "let",
           "qualifier": "url",
           "line": 24,
-          "reads": [{ "name": "url", "member": "let" }]
+          "frameId": 6,
+          "reads": [{ "name": "url", "member": "let" }],
+          "collection": { "root": "url", "links": [] }
         },
         {
           "id": 4,
@@ -20528,7 +20669,9 @@
           "qualifier": "url",
           "line": 25,
           "params": [{ "name": "target" }],
-          "reads": [{ "name": "url", "member": "also" }]
+          "frameId": 7,
+          "reads": [{ "name": "url", "member": "also" }],
+          "collection": { "root": "url", "links": [] }
         },
         {
           "id": 5,
@@ -20537,7 +20680,9 @@
           "host": "run",
           "qualifier": "url",
           "line": 26,
-          "reads": [{ "name": "url", "member": "run" }]
+          "frameId": 8,
+          "reads": [{ "name": "url", "member": "run" }],
+          "collection": { "root": "url", "links": [] }
         },
         {
           "id": 6,
@@ -20546,6 +20691,7 @@
           "host": "with",
           "argument": "url",
           "line": 27,
+          "frameId": 9,
           "reads": [{ "name": "url" }]
         },
         {
@@ -20566,7 +20712,9 @@
           "host": "let",
           "qualifier": "url",
           "line": 31,
-          "reads": [{ "name": "url", "member": "let" }]
+          "frameId": 11,
+          "reads": [{ "name": "url", "member": "let" }],
+          "collection": { "root": "url", "links": [] }
         },
         {
           "id": 9,
@@ -20598,6 +20746,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 14,
           "line": 46
         },
         {
@@ -20608,6 +20757,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 16,
           "line": 48
         },
         {
@@ -20618,6 +20768,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Partner", "vararg": false }],
+          "frameId": 17,
           "line": 54
         },
         {
@@ -20642,7 +20793,9 @@
           "host": "uri",
           "qualifier": "web.get()",
           "line": 57,
-          "reads": [{ "name": "web", "member": "get" }]
+          "frameId": 19,
+          "reads": [{ "name": "web", "member": "get" }],
+          "collection": { "root": "web", "links": [{ "name": "get", "arguments": [] }] }
         },
         {
           "id": 16,
@@ -20651,7 +20804,9 @@
           "host": "uri",
           "qualifier": "web.get()",
           "line": 58,
-          "reads": [{ "name": "web", "member": "get" }]
+          "frameId": 20,
+          "reads": [{ "name": "web", "member": "get" }],
+          "collection": { "root": "web", "links": [{ "name": "get", "arguments": [] }] }
         },
         {
           "id": 17,
@@ -20671,6 +20826,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 23,
           "line": 70
         },
         {
@@ -20691,6 +20847,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 25,
           "line": 74
         },
         {
@@ -20701,6 +20858,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 26,
           "line": 76
         },
         {
@@ -20722,6 +20880,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 28,
           "line": 79
         },
         {
@@ -20732,6 +20891,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 29,
           "line": 83
         },
         {
@@ -20743,6 +20903,7 @@
           "annotations": [],
           "receiver": "String",
           "parameters": [],
+          "frameId": 30,
           "line": 85
         },
         {
@@ -20753,6 +20914,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 31,
           "line": 87
         },
         {
@@ -20763,6 +20925,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 32,
           "line": 89
         },
         {
@@ -20773,6 +20936,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 33,
           "line": 91
         },
         {
@@ -20783,6 +20947,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "URI", "vararg": false }],
+          "frameId": 34,
           "line": 93
         },
         {
@@ -20807,6 +20972,7 @@
             { "type": "RestOperations", "vararg": false },
             { "type": "String", "vararg": false }
           ],
+          "frameId": 36,
           "line": 98
         },
         {
@@ -20827,6 +20993,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 38,
           "line": 106
         },
         {
@@ -20872,6 +21039,7 @@
             { "type": "String", "vararg": false },
             { "type": "HttpServletResponse", "vararg": false }
           ],
+          "frameId": 42,
           "line": 122
         },
         {
@@ -20882,6 +21050,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 43,
           "line": 125
         },
         {
@@ -20892,6 +21061,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 44,
           "line": 129
         },
         {
@@ -20902,6 +21072,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 45,
           "line": 132
         },
         {
@@ -20926,6 +21097,7 @@
             { "type": "String", "vararg": false },
             { "type": "HttpServletResponse", "vararg": false }
           ],
+          "frameId": 47,
           "line": 143
         },
         {
@@ -20936,6 +21108,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "NextForm", "vararg": false }],
+          "frameId": 48,
           "line": 146
         },
         {
@@ -20946,6 +21119,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "Map<String, String>", "vararg": false }],
+          "frameId": 49,
           "line": 149
         },
         {
@@ -20956,6 +21130,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "HttpServletRequest", "vararg": false }],
+          "frameId": 50,
           "line": 152
         },
         {
@@ -20966,6 +21141,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 51,
           "line": 155
         },
         {
@@ -20975,7 +21151,9 @@
           "host": "let",
           "qualifier": "next",
           "line": 155,
-          "reads": [{ "name": "next", "member": "let" }]
+          "frameId": 52,
+          "reads": [{ "name": "next", "member": "let" }],
+          "collection": { "root": "next", "links": [] }
         },
         {
           "id": 48,
@@ -23562,6 +23740,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "E?", "vararg": false }],
+          "frameId": 8,
           "line": 23
         },
         {
@@ -23572,6 +23751,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String?", "vararg": false }],
+          "frameId": 9,
           "line": 25
         },
         {
@@ -23607,7 +23787,9 @@
           "qualifier": "items",
           "line": 57,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 17,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 6,
@@ -23616,7 +23798,9 @@
           "host": "let",
           "qualifier": "carton.id",
           "line": 57,
-          "reads": [{ "name": "carton", "member": "id" }]
+          "frameId": 18,
+          "reads": [{ "name": "carton", "member": "id" }],
+          "collection": { "root": "carton", "links": [{ "name": "id" }] }
         },
         {
           "id": 7,
@@ -23626,7 +23810,9 @@
           "qualifier": "items",
           "line": 58,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 19,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 8,
@@ -23635,7 +23821,9 @@
           "host": "executeWithoutResult",
           "qualifier": "transactions",
           "line": 58,
-          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }]
+          "frameId": 20,
+          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }],
+          "collection": { "root": "transactions", "links": [] }
         },
         {
           "id": 9,
@@ -23645,9 +23833,11 @@
           "qualifier": "items",
           "line": 59,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 21,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
-        { "id": 10, "parent": 9, "k": "lambda", "host": "run", "line": 59 },
+        { "id": 10, "parent": 9, "k": "lambda", "host": "run", "line": 59, "frameId": 22 },
         {
           "id": 11,
           "parent": 4,
@@ -23656,7 +23846,9 @@
           "qualifier": "items",
           "line": 60,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 23,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 12,
@@ -23665,10 +23857,15 @@
           "host": "also",
           "qualifier": "cartons.ship(carton.id)",
           "line": 60,
+          "frameId": 24,
           "reads": [
             { "name": "cartons", "member": "ship" },
             { "name": "carton", "member": "id", "calls": ["ship"] }
-          ]
+          ],
+          "collection": {
+            "root": "cartons",
+            "links": [{ "name": "ship", "arguments": ["carton.id"] }]
+          }
         },
         {
           "id": 13,
@@ -23677,7 +23874,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 61,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 25,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 14,
@@ -23687,7 +23886,9 @@
           "qualifier": "items",
           "line": 62,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 26,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 15,
@@ -23696,7 +23897,9 @@
           "host": "map",
           "qualifier": "items",
           "line": 63,
-          "reads": [{ "name": "items", "member": "map" }]
+          "frameId": 27,
+          "reads": [{ "name": "items", "member": "map" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 16,
@@ -23705,7 +23908,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 64,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 28,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 17,
@@ -23754,7 +23959,9 @@
           "qualifier": "items",
           "line": 68,
           "params": [{ "name": "carton" }],
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 32,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 21,
@@ -23763,7 +23970,9 @@
           "host": "let",
           "qualifier": "carton.id",
           "line": 68,
-          "reads": [{ "name": "carton", "member": "id" }]
+          "frameId": 33,
+          "reads": [{ "name": "carton", "member": "id" }],
+          "collection": { "root": "carton", "links": [{ "name": "id" }] }
         },
         {
           "id": 22,
@@ -23796,7 +24005,9 @@
           "qualifier": "chunks",
           "line": 74,
           "params": [{ "name": "chunk" }],
-          "reads": [{ "name": "chunks", "member": "forEach" }]
+          "frameId": 36,
+          "reads": [{ "name": "chunks", "member": "forEach" }],
+          "collection": { "root": "chunks", "links": [] }
         },
         {
           "id": 25,
@@ -23805,7 +24016,9 @@
           "host": "forEach",
           "qualifier": "chunk",
           "line": 74,
-          "reads": [{ "name": "chunk", "member": "forEach" }]
+          "frameId": 37,
+          "reads": [{ "name": "chunk", "member": "forEach" }],
+          "collection": { "root": "chunk", "links": [] }
         },
         {
           "id": 26,
@@ -23829,6 +24042,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Carton", "vararg": false }],
+          "frameId": 39,
           "line": 81
         },
         {
@@ -23896,7 +24110,9 @@
           "host": "map",
           "qualifier": "listOf(item)",
           "line": 94,
-          "reads": [{ "name": "item", "calls": ["listOf"] }]
+          "frameId": 46,
+          "reads": [{ "name": "item", "calls": ["listOf"] }],
+          "collection": { "links": [{ "name": "listOf", "arguments": ["item"] }] }
         },
         {
           "id": 34,
@@ -25251,9 +25467,16 @@
           "frameId": 2,
           "line": 16
         },
-        { "id": 2, "parent": 1, "k": "lambda", "host": "http", "line": 17 },
+        { "id": 2, "parent": 1, "k": "lambda", "host": "http", "line": 17, "frameId": 3 },
         { "id": 3, "parent": 2, "k": "lambda", "host": "csrf", "line": 18, "frameId": 4 },
-        { "id": 4, "parent": 2, "k": "lambda", "host": "authorizeHttpRequests", "line": 19 },
+        {
+          "id": 4,
+          "parent": 2,
+          "k": "lambda",
+          "host": "authorizeHttpRequests",
+          "line": 19,
+          "frameId": 5
+        },
         {
           "id": 5,
           "parent": 0,
@@ -25262,6 +25485,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "HttpSecurity", "vararg": false }],
+          "frameId": 6,
           "line": 28
         },
         {
@@ -25271,7 +25495,9 @@
           "host": "csrf",
           "qualifier": "http",
           "line": 29,
-          "reads": [{ "name": "http", "member": "csrf" }]
+          "frameId": 7,
+          "reads": [{ "name": "http", "member": "csrf" }],
+          "collection": { "root": "http", "links": [] }
         },
         {
           "id": 7,
@@ -25280,7 +25506,9 @@
           "host": "authorizeHttpRequests",
           "qualifier": "http.csrf { it.disable() }",
           "line": 29,
-          "reads": [{ "name": "http", "member": "csrf" }, { "lambda": 6 }]
+          "frameId": 8,
+          "reads": [{ "name": "http", "member": "csrf" }, { "lambda": 6 }],
+          "collection": { "root": "http", "links": [{ "name": "csrf", "arguments": [] }] }
         },
         {
           "id": 8,
@@ -25290,6 +25518,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 9,
           "line": 32
         },
         {
@@ -25300,6 +25529,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 10,
           "line": 35
         },
         {
@@ -26117,6 +26347,7 @@
           "topLevel": false,
           "annotations": ["PostMapping", "ResponseBody"],
           "parameters": [{ "type": "OrderRequest", "vararg": false }],
+          "frameId": 4,
           "line": 21
         },
         {
@@ -26127,6 +26358,7 @@
           "topLevel": false,
           "annotations": ["PutMapping"],
           "parameters": [{ "type": "Map<String, Any>", "vararg": false }],
+          "frameId": 5,
           "line": 24
         },
         {
@@ -26148,6 +26380,7 @@
           "topLevel": false,
           "annotations": ["PostMapping"],
           "parameters": [{ "type": "JsonNode", "vararg": false }],
+          "frameId": 7,
           "line": 33
         },
         {
@@ -26168,6 +26401,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "Exception", "vararg": false }],
+          "frameId": 10,
           "line": 45
         },
         {
@@ -26178,6 +26412,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "IllegalStateException", "vararg": false }],
+          "frameId": 11,
           "line": 51
         },
         {
@@ -26188,6 +26423,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "MyError", "vararg": false }],
+          "frameId": 12,
           "line": 57
         }
       ],
@@ -26835,9 +27071,10 @@
           "topLevel": false,
           "annotations": ["Bean", "ConfigurationPropertiesBinding"],
           "parameters": [],
+          "frameId": 6,
           "line": 28
         },
-        { "id": 5, "parent": 4, "k": "lambda", "host": "Converter", "line": 28 },
+        { "id": 5, "parent": 4, "k": "lambda", "host": "Converter", "line": 28, "frameId": 7 },
         {
           "id": 6,
           "parent": 0,
@@ -26857,6 +27094,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 9,
           "line": 32
         },
         {
@@ -26898,7 +27136,9 @@
           "host": "forEach",
           "qualifier": "decorators",
           "line": 43,
-          "reads": [{ "name": "decorators", "member": "forEach" }]
+          "frameId": 14,
+          "reads": [{ "name": "decorators", "member": "forEach" }],
+          "collection": { "root": "decorators", "links": [] }
         },
         {
           "id": 12,
@@ -26907,7 +27147,9 @@
           "host": "forEach",
           "qualifier": "decorators.stream()",
           "line": 44,
-          "reads": [{ "name": "decorators", "member": "stream" }]
+          "frameId": 15,
+          "reads": [{ "name": "decorators", "member": "stream" }],
+          "collection": { "root": "decorators", "links": [{ "name": "stream", "arguments": [] }] }
         },
         {
           "id": 13,
@@ -26929,7 +27171,9 @@
           "host": "map",
           "qualifier": "decorators",
           "line": 49,
-          "reads": [{ "name": "decorators", "member": "map" }]
+          "frameId": 17,
+          "reads": [{ "name": "decorators", "member": "map" }],
+          "collection": { "root": "decorators", "links": [] }
         },
         {
           "id": 15,
@@ -27479,6 +27723,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 6,
           "line": 32
         },
         {
@@ -27499,7 +27744,9 @@
           "host": "let",
           "qualifier": "audience",
           "line": 37,
-          "reads": [{ "name": "audience", "member": "let" }]
+          "frameId": 8,
+          "reads": [{ "name": "audience", "member": "let" }],
+          "collection": { "root": "audience", "links": [] }
         },
         {
           "id": 7,
@@ -28677,6 +28924,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "E?", "vararg": false }],
+          "frameId": 5,
           "line": 18
         },
         {
@@ -28687,6 +28935,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String?", "vararg": false }],
+          "frameId": 6,
           "line": 20
         },
         {
@@ -28696,7 +28945,9 @@
           "host": "let",
           "qualifier": "dbData",
           "line": 20,
-          "reads": [{ "name": "dbData", "member": "let" }]
+          "frameId": 7,
+          "reads": [{ "name": "dbData", "member": "let" }],
+          "collection": { "root": "dbData", "links": [] }
         },
         {
           "id": 4,
@@ -28708,7 +28959,7 @@
           "annotations": ["Entity"],
           "frameId": 10
         },
-        { "id": 5, "parent": 4, "k": "fun", "name": "shade" },
+        { "id": 5, "parent": 4, "k": "fun", "name": "shade", "frameId": 11 },
         {
           "id": 6,
           "k": "class",
@@ -28742,7 +28993,9 @@
           "host": "groupBy",
           "qualifier": "items",
           "line": 57,
-          "reads": [{ "name": "items", "member": "groupBy" }]
+          "frameId": 18,
+          "reads": [{ "name": "items", "member": "groupBy" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 9,
@@ -28755,7 +29008,9 @@
             { "name": "shade", "component": 1 },
             { "name": "group", "component": 2 }
           ],
-          "reads": [{ "name": "items", "member": "groupBy" }, { "lambda": 8 }]
+          "frameId": 19,
+          "reads": [{ "name": "items", "member": "groupBy" }, { "lambda": 8 }],
+          "collection": { "root": "items", "links": [{ "name": "groupBy", "arguments": [] }] }
         },
         {
           "id": 10,
@@ -28764,7 +29019,9 @@
           "host": "map",
           "qualifier": "group",
           "line": 57,
-          "reads": [{ "name": "group", "member": "map" }]
+          "frameId": 20,
+          "reads": [{ "name": "group", "member": "map" }],
+          "collection": { "root": "group", "links": [] }
         },
         {
           "id": 11,
@@ -28774,10 +29031,12 @@
           "qualifier": "ids.chunked(CHUNK)",
           "line": 58,
           "params": [{ "name": "chunk" }],
+          "frameId": 21,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": { "root": "ids", "links": [{ "name": "chunked", "arguments": ["CHUNK"] }] }
         },
         {
           "id": 12,
@@ -28786,10 +29045,15 @@
           "host": "forEach",
           "qualifier": "ids.chunked(size.coerceAtLeast(1))",
           "line": 59,
+          "frameId": 22,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "size", "member": "coerceAtLeast", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "ids",
+            "links": [{ "name": "chunked", "arguments": ["size.coerceAtLeast(1)"] }]
+          }
         },
         {
           "id": 13,
@@ -28802,10 +29066,18 @@
             { "name": "_", "component": 1 },
             { "name": "chunk", "component": 2 }
           ],
+          "frameId": 23,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "ids",
+            "links": [
+              { "name": "chunked", "arguments": ["CHUNK"] },
+              { "name": "withIndex", "arguments": [] }
+            ]
+          }
         },
         {
           "id": 14,
@@ -28815,7 +29087,9 @@
           "qualifier": "groups",
           "line": 62,
           "params": [{ "name": "entry" }],
-          "reads": [{ "name": "groups", "member": "forEach" }]
+          "frameId": 24,
+          "reads": [{ "name": "groups", "member": "forEach" }],
+          "collection": { "root": "groups", "links": [] }
         },
         {
           "id": 15,
@@ -28824,7 +29098,9 @@
           "host": "forEach",
           "qualifier": "items",
           "line": 64,
-          "reads": [{ "name": "items", "member": "forEach" }]
+          "frameId": 25,
+          "reads": [{ "name": "items", "member": "forEach" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 16,
@@ -28849,7 +29125,9 @@
             { "name": "shade", "component": 1 },
             { "name": "bucket", "component": 2 }
           ],
-          "reads": [{ "name": "buckets", "member": "forEach" }]
+          "frameId": 27,
+          "reads": [{ "name": "buckets", "member": "forEach" }],
+          "collection": { "root": "buckets", "links": [] }
         },
         {
           "id": 18,
@@ -28859,12 +29137,17 @@
           "qualifier": "items.chunked(CHUNK)",
           "line": 66,
           "params": [{ "name": "chunk" }],
+          "frameId": 28,
           "reads": [
             { "name": "items", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "items",
+            "links": [{ "name": "chunked", "arguments": ["CHUNK"] }]
+          }
         },
-        { "id": 19, "parent": 18, "k": "lambda", "host": "buildList", "line": 67 },
+        { "id": 19, "parent": 18, "k": "lambda", "host": "buildList", "line": 67, "frameId": 29 },
         {
           "id": 20,
           "parent": 19,
@@ -28872,7 +29155,9 @@
           "host": "forEach",
           "qualifier": "chunk",
           "line": 67,
-          "reads": [{ "name": "chunk", "member": "forEach" }]
+          "frameId": 30,
+          "reads": [{ "name": "chunk", "member": "forEach" }],
+          "collection": { "root": "chunk", "links": [] }
         },
         {
           "id": 21,
@@ -28888,8 +29173,24 @@
           "frameId": 31,
           "line": 73
         },
-        { "id": 22, "parent": 21, "k": "lambda", "host": "repeat", "argument": "2", "line": 74 },
-        { "id": 23, "parent": 21, "k": "lambda", "host": "repeat", "argument": "2", "line": 75 },
+        {
+          "id": 22,
+          "parent": 21,
+          "k": "lambda",
+          "host": "repeat",
+          "argument": "2",
+          "line": 74,
+          "frameId": 32
+        },
+        {
+          "id": 23,
+          "parent": 21,
+          "k": "lambda",
+          "host": "repeat",
+          "argument": "2",
+          "line": 75,
+          "frameId": 33
+        },
         {
           "id": 24,
           "parent": 21,
@@ -28917,7 +29218,9 @@
           "host": "associateWith",
           "qualifier": "shades",
           "line": 85,
-          "reads": [{ "name": "shades", "member": "associateWith" }]
+          "frameId": 36,
+          "reads": [{ "name": "shades", "member": "associateWith" }],
+          "collection": { "root": "shades", "links": [] }
         },
         {
           "id": 27,
@@ -28926,7 +29229,9 @@
           "host": "map",
           "qualifier": "shades",
           "line": 86,
-          "reads": [{ "name": "shades", "member": "map" }]
+          "frameId": 37,
+          "reads": [{ "name": "shades", "member": "map" }],
+          "collection": { "root": "shades", "links": [] }
         },
         {
           "id": 28,
@@ -28947,7 +29252,9 @@
           "qualifier": "items",
           "line": 92,
           "params": [{ "name": "index" }, { "name": "item" }],
-          "reads": [{ "name": "items", "member": "forEachIndexed" }]
+          "frameId": 39,
+          "reads": [{ "name": "items", "member": "forEachIndexed" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 30,
@@ -28957,10 +29264,15 @@
           "qualifier": "items.chunked(CHUNK)",
           "line": 99,
           "params": [{ "name": "chunk" }],
+          "frameId": 40,
           "reads": [
             { "name": "items", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "items",
+            "links": [{ "name": "chunked", "arguments": ["CHUNK"] }]
+          }
         },
         {
           "id": 31,
@@ -28969,10 +29281,15 @@
           "host": "forEach",
           "qualifier": "items.chunked(CHUNK)",
           "line": 103,
+          "frameId": 41,
           "reads": [
             { "name": "items", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "items",
+            "links": [{ "name": "chunked", "arguments": ["CHUNK"] }]
+          }
         },
         {
           "id": 32,
@@ -28981,10 +29298,15 @@
           "host": "forEach",
           "qualifier": "items.chunked(CHUNK)",
           "line": 104,
+          "frameId": 42,
           "reads": [
             { "name": "items", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": {
+            "root": "items",
+            "links": [{ "name": "chunked", "arguments": ["CHUNK"] }]
+          }
         },
         {
           "id": 33,
@@ -29024,10 +29346,12 @@
           "qualifier": "ids.chunked(CHUNK)",
           "line": 110,
           "params": [{ "name": "chunk" }],
+          "frameId": 45,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": { "root": "ids", "links": [{ "name": "chunked", "arguments": ["CHUNK"] }] }
         },
         {
           "id": 36,
@@ -31155,7 +31479,8 @@
           "k": "lambda",
           "host": "synchronized",
           "argument": "this",
-          "line": 45
+          "line": 45,
+          "frameId": 5
         },
         {
           "id": 4,
@@ -31165,6 +31490,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 6,
           "line": 48
         },
         {
@@ -31188,6 +31514,7 @@
             { "type": "RestClient.Builder", "vararg": false },
             { "type": "RemoteProperties", "vararg": false }
           ],
+          "frameId": 9,
           "line": 56
         },
         {
@@ -31198,6 +31525,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "RestTemplateBuilder", "vararg": false }],
+          "frameId": 10,
           "line": 60
         },
         {
@@ -31229,9 +31557,17 @@
           "topLevel": false,
           "annotations": ["Bean", "Profile"],
           "parameters": [{ "type": "OrderRepository", "vararg": false }],
+          "frameId": 13,
           "line": 69
         },
-        { "id": 11, "parent": 10, "k": "lambda", "host": "ApplicationRunner", "line": 69 },
+        {
+          "id": 11,
+          "parent": 10,
+          "k": "lambda",
+          "host": "ApplicationRunner",
+          "line": 69,
+          "frameId": 14
+        },
         {
           "id": 12,
           "parent": 5,
@@ -31240,6 +31576,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 15,
           "line": 72
         },
         {
@@ -31281,6 +31618,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 20,
           "line": 88
         },
         {
@@ -31291,6 +31629,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 21,
           "line": 91
         }
       ],
@@ -32617,6 +32956,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 2,
           "line": 23
         },
         {
@@ -32627,6 +32967,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 3,
           "line": 26
         },
         {
@@ -32648,6 +32989,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "HttpSecurity", "vararg": false }],
+          "frameId": 5,
           "line": 32
         },
         {
@@ -32657,7 +32999,9 @@
           "host": "sessionManagement",
           "qualifier": "http",
           "line": 33,
-          "reads": [{ "name": "http", "member": "sessionManagement" }]
+          "frameId": 6,
+          "reads": [{ "name": "http", "member": "sessionManagement" }],
+          "collection": { "root": "http", "links": [] }
         },
         {
           "id": 6,
@@ -32666,7 +33010,12 @@
           "host": "csrf",
           "qualifier": "http.sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }",
           "line": 34,
-          "reads": [{ "name": "http", "member": "sessionManagement" }, { "lambda": 5 }]
+          "frameId": 7,
+          "reads": [{ "name": "http", "member": "sessionManagement" }, { "lambda": 5 }],
+          "collection": {
+            "root": "http",
+            "links": [{ "name": "sessionManagement", "arguments": [] }]
+          }
         },
         {
           "id": 7,
@@ -32676,6 +33025,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "HttpSecurity", "vararg": false }],
+          "frameId": 8,
           "line": 38
         },
         {
@@ -32685,7 +33035,9 @@
           "host": "securityContext",
           "qualifier": "http",
           "line": 39,
-          "reads": [{ "name": "http", "member": "securityContext" }]
+          "frameId": 9,
+          "reads": [{ "name": "http", "member": "securityContext" }],
+          "collection": { "root": "http", "links": [] }
         },
         {
           "id": 9,
@@ -32694,7 +33046,12 @@
           "host": "csrf",
           "qualifier": "http.securityContext { it.securityContextRepository(NullSecurityContextRepository()) }",
           "line": 40,
-          "reads": [{ "name": "http", "member": "securityContext" }, { "lambda": 8 }]
+          "frameId": 10,
+          "reads": [{ "name": "http", "member": "securityContext" }, { "lambda": 8 }],
+          "collection": {
+            "root": "http",
+            "links": [{ "name": "securityContext", "arguments": [] }]
+          }
         },
         {
           "id": 10,
@@ -32713,7 +33070,9 @@
           "k": "lambda",
           "host": "apply",
           "qualifier": "SimpleClientHttpRequestFactory()",
-          "line": 44
+          "line": 44,
+          "frameId": 12,
+          "collection": { "links": [{ "name": "SimpleClientHttpRequestFactory", "arguments": [] }] }
         },
         {
           "id": 12,
@@ -32733,6 +33092,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 14,
           "line": 51
         },
         {
@@ -32786,6 +33146,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 19,
           "line": 73
         },
         {
@@ -32795,7 +33156,9 @@
           "host": "withLock",
           "qualifier": "lock",
           "line": 73,
-          "reads": [{ "name": "lock", "member": "withLock" }]
+          "frameId": 20,
+          "reads": [{ "name": "lock", "member": "withLock" }],
+          "collection": { "root": "lock", "links": [] }
         },
         {
           "id": 20,
@@ -32816,6 +33179,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 22,
           "line": 85
         },
         {
@@ -32848,6 +33212,7 @@
           "topLevel": false,
           "annotations": ["Transactional", "Throws"],
           "parameters": [],
+          "frameId": 25,
           "line": 102
         }
       ],
@@ -34360,6 +34725,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Mono<Shipment>", "vararg": false }],
+          "frameId": 9,
           "line": 48
         },
         {
@@ -34369,7 +34735,9 @@
           "host": "map",
           "qualifier": "next",
           "line": 48,
-          "reads": [{ "name": "next", "member": "map" }]
+          "frameId": 10,
+          "reads": [{ "name": "next", "member": "map" }],
+          "collection": { "root": "next", "links": [] }
         },
         {
           "id": 5,
@@ -34379,6 +34747,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 11,
           "line": 51
         },
         {
@@ -34388,10 +34757,15 @@
           "host": "map",
           "qualifier": "shipments.findById(id)",
           "line": 51,
+          "frameId": 12,
           "reads": [
             { "name": "shipments", "member": "findById" },
             { "name": "id", "calls": ["findById"] }
-          ]
+          ],
+          "collection": {
+            "root": "shipments",
+            "links": [{ "name": "findById", "arguments": ["id"] }]
+          }
         },
         {
           "id": 7,
@@ -34401,6 +34775,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 13,
           "line": 54
         },
         {
@@ -34411,6 +34786,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 14,
           "line": 57
         },
         {
@@ -34445,10 +34821,12 @@
           "qualifier": "ids.chunked(CHUNK)",
           "line": 74,
           "params": [{ "name": "chunk" }],
+          "frameId": 20,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": { "root": "ids", "links": [{ "name": "chunked", "arguments": ["CHUNK"] }] }
         },
         {
           "id": 12,
@@ -34473,10 +34851,12 @@
           "host": "forEach",
           "qualifier": "ids.chunked(CHUNK)",
           "line": 78,
+          "frameId": 22,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "CHUNK", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": { "root": "ids", "links": [{ "name": "chunked", "arguments": ["CHUNK"] }] }
         },
         {
           "id": 14,
@@ -34486,11 +34866,16 @@
           "qualifier": "ids.windowed(CHUNK, CHUNK, true)",
           "line": 79,
           "params": [{ "name": "chunk", "type": "List<Long>" }],
+          "frameId": 23,
           "reads": [
             { "name": "ids", "member": "windowed" },
             { "name": "CHUNK", "calls": ["windowed"] },
             { "name": "CHUNK", "calls": ["windowed"] }
-          ]
+          ],
+          "collection": {
+            "root": "ids",
+            "links": [{ "name": "windowed", "arguments": ["CHUNK", "CHUNK", "true"] }]
+          }
         },
         {
           "id": 15,
@@ -34503,7 +34888,9 @@
             { "name": "_", "component": 1 },
             { "name": "grouped", "component": 2 }
           ],
-          "reads": [{ "name": "groups", "member": "forEach" }]
+          "frameId": 24,
+          "reads": [{ "name": "groups", "member": "forEach" }],
+          "collection": { "root": "groups", "links": [] }
         },
         {
           "id": 16,
@@ -34513,6 +34900,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 25,
           "line": 84
         },
         {
@@ -34539,10 +34927,18 @@
           "host": "map",
           "qualifier": "shipments.findById(id).filter { it.status == Status.PAID }",
           "line": 85,
+          "frameId": 27,
           "reads": [
             { "name": "shipments", "member": "findById" },
             { "name": "id", "calls": ["findById"] }
-          ]
+          ],
+          "collection": {
+            "root": "shipments",
+            "links": [
+              { "name": "findById", "arguments": ["id"] },
+              { "name": "filter", "arguments": [] }
+            ]
+          }
         },
         {
           "id": 19,
@@ -34572,7 +34968,9 @@
           "host": "groupBy",
           "qualifier": "ids",
           "line": 96,
-          "reads": [{ "name": "ids", "member": "groupBy" }]
+          "frameId": 31,
+          "reads": [{ "name": "ids", "member": "groupBy" }],
+          "collection": { "root": "ids", "links": [] }
         },
         {
           "id": 22,
@@ -34585,7 +34983,9 @@
             { "name": "_", "component": 1 },
             { "name": "grouped", "component": 2 }
           ],
-          "reads": [{ "name": "groups", "member": "forEach" }]
+          "frameId": 32,
+          "reads": [{ "name": "groups", "member": "forEach" }],
+          "collection": { "root": "groups", "links": [] }
         },
         {
           "id": 23,
@@ -34594,7 +34994,9 @@
           "host": "forEach",
           "qualifier": "groups.values",
           "line": 98,
-          "reads": [{ "name": "groups", "member": "values" }]
+          "frameId": 33,
+          "reads": [{ "name": "groups", "member": "values" }],
+          "collection": { "root": "groups", "links": [{ "name": "values" }] }
         },
         {
           "id": 24,
@@ -34604,7 +35006,9 @@
           "qualifier": "groups.values",
           "line": 99,
           "params": [{ "name": "grouped" }],
-          "reads": [{ "name": "groups", "member": "values" }]
+          "frameId": 34,
+          "reads": [{ "name": "groups", "member": "values" }],
+          "collection": { "root": "groups", "links": [{ "name": "values" }] }
         },
         {
           "id": 25,
@@ -34630,10 +35034,12 @@
           "qualifier": "ids.chunked(BATCH)",
           "line": 103,
           "params": [{ "name": "chunk" }],
+          "frameId": 36,
           "reads": [
             { "name": "ids", "member": "chunked" },
             { "name": "BATCH", "calls": ["chunked"] }
-          ]
+          ],
+          "collection": { "root": "ids", "links": [{ "name": "chunked", "arguments": ["BATCH"] }] }
         },
         {
           "id": 27,
@@ -36443,7 +36849,7 @@
           "frameId": 6,
           "line": 43
         },
-        { "id": 5, "parent": 4, "k": "lambda", "host": "runCatching", "line": 44 },
+        { "id": 5, "parent": 4, "k": "lambda", "host": "runCatching", "line": 44, "frameId": 7 },
         {
           "id": 6,
           "parent": 4,
@@ -36463,9 +36869,10 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Order", "vararg": false }],
+          "frameId": 9,
           "line": 48
         },
-        { "id": 8, "parent": 7, "k": "lambda", "host": "runCatching", "line": 48 },
+        { "id": 8, "parent": 7, "k": "lambda", "host": "runCatching", "line": 48, "frameId": 10 },
         {
           "id": 9,
           "parent": 7,
@@ -36473,7 +36880,9 @@
           "host": "fold",
           "qualifier": "runCatching { orders.save(order) }",
           "line": 48,
-          "reads": [{ "lambda": 8 }]
+          "frameId": 11,
+          "reads": [{ "lambda": 8 }],
+          "collection": { "links": [{ "name": "runCatching", "arguments": [] }] }
         },
         {
           "id": 10,
@@ -36494,9 +36903,10 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Order", "vararg": false }],
+          "frameId": 13,
           "line": 51
         },
-        { "id": 12, "parent": 11, "k": "lambda", "host": "runCatching", "line": 51 },
+        { "id": 12, "parent": 11, "k": "lambda", "host": "runCatching", "line": 51, "frameId": 14 },
         {
           "id": 13,
           "parent": 11,
@@ -36519,7 +36929,7 @@
           "frameId": 16,
           "line": 54
         },
-        { "id": 15, "parent": 14, "k": "lambda", "host": "runCatching", "line": 55 },
+        { "id": 15, "parent": 14, "k": "lambda", "host": "runCatching", "line": 55, "frameId": 17 },
         {
           "id": 16,
           "parent": 0,
@@ -36528,6 +36938,7 @@
           "topLevel": false,
           "annotations": ["Async"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 18,
           "line": 60
         },
         {
@@ -36548,6 +36959,7 @@
           "topLevel": false,
           "annotations": ["Cacheable"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 20,
           "line": 68
         },
         {
@@ -36558,6 +36970,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 21,
           "line": 71
         },
         {
@@ -36568,6 +36981,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "List<Long>", "vararg": false }],
+          "frameId": 22,
           "line": 73
         },
         {
@@ -36577,7 +36991,9 @@
           "host": "map",
           "qualifier": "ids",
           "line": 73,
-          "reads": [{ "name": "ids", "member": "map" }]
+          "frameId": 23,
+          "reads": [{ "name": "ids", "member": "map" }],
+          "collection": { "root": "ids", "links": [] }
         },
         {
           "id": 22,
@@ -36586,7 +37002,9 @@
           "host": "run",
           "qualifier": "other",
           "line": 73,
-          "reads": [{ "name": "other", "member": "run" }]
+          "frameId": 24,
+          "reads": [{ "name": "other", "member": "run" }],
+          "collection": { "root": "other", "links": [] }
         },
         {
           "id": 23,
@@ -36596,6 +37014,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 25,
           "line": 75
         },
         {
@@ -36626,7 +37045,9 @@
           "host": "forEach",
           "qualifier": "input",
           "line": 79,
-          "reads": [{ "name": "input", "member": "forEach" }]
+          "frameId": 28,
+          "reads": [{ "name": "input", "member": "forEach" }],
+          "collection": { "root": "input", "links": [] }
         },
         {
           "id": 27,
@@ -36646,6 +37067,7 @@
           "topLevel": false,
           "annotations": ["Cacheable"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 30,
           "line": 87
         },
         {
@@ -36742,6 +37164,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [],
+          "frameId": 39,
           "line": 112
         },
         {
@@ -36762,6 +37185,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 44,
           "line": 127
         }
       ],
@@ -37922,6 +38346,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Currency?", "vararg": false }],
+          "frameId": 9,
           "line": 28
         },
         {
@@ -37932,6 +38357,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String?", "vararg": false }],
+          "frameId": 10,
           "line": 30
         },
         {
@@ -37941,7 +38367,9 @@
           "host": "let",
           "qualifier": "dbData",
           "line": 30,
-          "reads": [{ "name": "dbData", "member": "let" }]
+          "frameId": 11,
+          "reads": [{ "name": "dbData", "member": "let" }],
+          "collection": { "root": "dbData", "links": [] }
         },
         {
           "id": 4,
@@ -37961,6 +38389,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 13,
           "line": 42,
           "reads": ["hashCode", "javaClass"]
         },
@@ -38005,8 +38434,8 @@
           "annotations": ["Entity"],
           "frameId": 18
         },
-        { "id": 10, "parent": 9, "k": "fun", "name": "derivedStatus" },
-        { "id": 11, "parent": 9, "k": "lambda", "host": "lazy", "line": 77 }
+        { "id": 10, "parent": 9, "k": "fun", "name": "derivedStatus", "frameId": 19 },
+        { "id": 11, "parent": 9, "k": "lambda", "host": "lazy", "line": 77, "frameId": 20 }
       ],
       "invocations": [
         {
@@ -38391,6 +38820,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 5,
           "line": 19
         },
         {
@@ -40057,6 +40487,7 @@
             { "type": "Shipment", "vararg": false },
             { "type": "Boolean", "vararg": false }
           ],
+          "frameId": 15,
           "line": 92
         },
         {
@@ -40141,7 +40572,9 @@
           "host": "executeWithoutResult",
           "qualifier": "transactions",
           "line": 123,
-          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }]
+          "frameId": 22,
+          "reads": [{ "name": "transactions", "member": "executeWithoutResult" }],
+          "collection": { "root": "transactions", "links": [] }
         },
         {
           "id": 16,
@@ -40154,6 +40587,7 @@
             { "type": "Shipment", "vararg": false },
             { "type": "Shipment", "vararg": false }
           ],
+          "frameId": 23,
           "line": 129
         },
         {
@@ -40192,7 +40626,14 @@
           "frameId": 27,
           "line": 146
         },
-        { "id": 21, "parent": 18, "k": "lambda", "host": "afterCommit", "line": 152 },
+        {
+          "id": 21,
+          "parent": 18,
+          "k": "lambda",
+          "host": "afterCommit",
+          "line": 152,
+          "frameId": 28
+        },
         {
           "id": 22,
           "parent": 17,
@@ -42373,6 +42814,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 4,
           "line": 50
         },
         {
@@ -42393,6 +42835,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 6,
           "line": 57
         },
         {
@@ -42403,6 +42846,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 7,
           "line": 59
         },
         {
@@ -42423,6 +42867,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 9,
           "line": 66
         },
         {
@@ -42433,6 +42878,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 10,
           "line": 68
         },
         {
@@ -42453,6 +42899,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 12,
           "line": 75
         },
         {
@@ -42484,6 +42931,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 16,
           "line": 88
         },
         {
@@ -42494,6 +42942,7 @@
           "topLevel": false,
           "annotations": ["EventListener"],
           "parameters": [],
+          "frameId": 17,
           "line": 91
         },
         {
@@ -42535,6 +42984,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 21,
           "line": 104
         },
         {
@@ -42545,6 +42995,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 22,
           "line": 106
         },
         {
@@ -42565,6 +43016,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 24,
           "line": 114
         },
         {
@@ -42691,6 +43143,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 36,
           "line": 170
         },
         {
@@ -42701,6 +43154,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 37,
           "line": 172
         },
         {
@@ -42711,6 +43165,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 38,
           "line": 174
         },
         {
@@ -42731,6 +43186,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Runnable", "vararg": false }],
+          "frameId": 40,
           "line": 180
         }
       ],
@@ -44233,7 +44689,9 @@
           "host": "uri",
           "qualifier": "web.get()",
           "line": 27,
-          "reads": [{ "name": "web", "member": "get" }]
+          "frameId": 3,
+          "reads": [{ "name": "web", "member": "get" }],
+          "collection": { "root": "web", "links": [{ "name": "get", "arguments": [] }] }
         },
         {
           "id": 3,
@@ -44265,6 +44723,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 6,
           "line": 41
         },
         {
@@ -44275,6 +44734,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 7,
           "line": 43
         },
         {
@@ -44295,6 +44755,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 11,
           "line": 57
         },
         {
@@ -44318,6 +44779,7 @@
             { "type": "RestClient.Builder", "vararg": false },
             { "type": "PartnerProperties", "vararg": false }
           ],
+          "frameId": 13,
           "line": 64
         },
         {
@@ -44338,6 +44800,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 15,
           "line": 71
         },
         {
@@ -45333,7 +45796,7 @@
           "frameId": 2,
           "line": 14
         },
-        { "id": 2, "parent": 1, "k": "lambda", "host": "runCatching", "line": 22 },
+        { "id": 2, "parent": 1, "k": "lambda", "host": "runCatching", "line": 22, "frameId": 3 },
         {
           "id": 3,
           "parent": 0,
@@ -45353,6 +45816,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [],
+          "frameId": 5,
           "line": 31
         },
         {
@@ -45363,6 +45827,7 @@
           "topLevel": false,
           "annotations": ["Transactional", "Throws"],
           "parameters": [],
+          "frameId": 6,
           "line": 35
         },
         {
@@ -45373,6 +45838,7 @@
           "topLevel": false,
           "annotations": ["Async"],
           "parameters": [],
+          "frameId": 7,
           "line": 38
         },
         {
@@ -45383,6 +45849,7 @@
           "topLevel": false,
           "annotations": ["Scheduled"],
           "parameters": [],
+          "frameId": 8,
           "line": 41
         },
         {
@@ -45403,6 +45870,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 10,
           "line": 47
         }
       ],
@@ -45788,6 +46256,7 @@
           "topLevel": false,
           "annotations": ["Retry"],
           "parameters": [],
+          "frameId": 4,
           "line": 19
         },
         {
@@ -45798,6 +46267,7 @@
           "topLevel": false,
           "annotations": ["Timed"],
           "parameters": [],
+          "frameId": 5,
           "line": 22
         },
         {
@@ -45829,6 +46299,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Int", "vararg": false }],
+          "frameId": 8,
           "line": 31
         }
       ],
@@ -46204,6 +46675,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 4,
           "line": 21
         },
         {
@@ -46213,7 +46685,9 @@
           "host": "map",
           "qualifier": "reactive.findAll()",
           "line": 21,
-          "reads": [{ "name": "reactive", "member": "findAll" }]
+          "frameId": 5,
+          "reads": [{ "name": "reactive", "member": "findAll" }],
+          "collection": { "root": "reactive", "links": [{ "name": "findAll", "arguments": [] }] }
         },
         {
           "id": 3,
@@ -46223,6 +46697,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 6,
           "line": 23
         },
         {
@@ -46233,6 +46708,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 7,
           "line": 25
         },
         {
@@ -46243,6 +46719,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 8,
           "line": 27
         },
         {
@@ -46252,7 +46729,9 @@
           "host": "map",
           "qualifier": "coroutines.findAll()",
           "line": 27,
-          "reads": [{ "name": "coroutines", "member": "findAll" }]
+          "frameId": 9,
+          "reads": [{ "name": "coroutines", "member": "findAll" }],
+          "collection": { "root": "coroutines", "links": [{ "name": "findAll", "arguments": [] }] }
         },
         {
           "id": 7,
@@ -46262,6 +46741,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 10,
           "line": 29
         },
         {
@@ -46272,6 +46752,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 11,
           "line": 31
         }
       ],
@@ -47006,6 +47487,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 7,
           "line": 40
         },
         {
@@ -47027,6 +47509,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 9,
           "line": 46
         },
         {
@@ -47037,6 +47520,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 10,
           "line": 48
         },
         {
@@ -47083,9 +47567,11 @@
           "qualifier": "views",
           "line": 65,
           "params": [{ "name": "satchel" }],
-          "reads": [{ "name": "views", "member": "forEach" }]
+          "frameId": 14,
+          "reads": [{ "name": "views", "member": "forEach" }],
+          "collection": { "root": "views", "links": [] }
         },
-        { "id": 9, "parent": 7, "k": "lambda", "host": "run", "line": 66 },
+        { "id": 9, "parent": 7, "k": "lambda", "host": "run", "line": 66, "frameId": 15 },
         {
           "id": 10,
           "parent": 0,
@@ -48231,6 +48717,7 @@
             { "type": "String", "vararg": false },
             { "type": "List<Int>", "vararg": false }
           ],
+          "frameId": 3,
           "line": 15
         },
         {
@@ -48241,7 +48728,9 @@
           "qualifier": "ids",
           "line": 16,
           "params": [{ "name": "url" }],
-          "reads": [{ "name": "ids", "member": "map" }]
+          "frameId": 4,
+          "reads": [{ "name": "ids", "member": "map" }],
+          "collection": { "root": "ids", "links": [] }
         },
         {
           "id": 3,
@@ -48263,6 +48752,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 7,
           "line": 25
         },
         {
@@ -48273,6 +48763,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 8,
           "line": 27
         },
         {
@@ -48283,6 +48774,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 9,
           "line": 29
         },
         {
@@ -48292,7 +48784,9 @@
           "host": "run",
           "qualifier": "url",
           "line": 29,
-          "reads": [{ "name": "url", "member": "run" }]
+          "frameId": 10,
+          "reads": [{ "name": "url", "member": "run" }],
+          "collection": { "root": "url", "links": [] }
         },
         {
           "id": 9,
@@ -48302,6 +48796,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Partner", "vararg": false }],
+          "frameId": 11,
           "line": 31
         },
         {
@@ -48312,6 +48807,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 12,
           "line": 33
         },
         {
@@ -48322,6 +48818,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 13,
           "line": 35
         },
         {
@@ -48353,6 +48850,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 17,
           "line": 57
         },
         {
@@ -48363,6 +48861,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 18,
           "line": 60
         },
         {
@@ -49921,6 +50420,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "E?", "vararg": false }],
+          "frameId": 8,
           "line": 20
         },
         {
@@ -49931,6 +50431,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String?", "vararg": false }],
+          "frameId": 9,
           "line": 22
         },
         {
@@ -49951,6 +50452,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Finish?", "vararg": false }],
+          "frameId": 12,
           "line": 29
         },
         {
@@ -49961,6 +50463,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String?", "vararg": false }],
+          "frameId": 13,
           "line": 31
         },
         {
@@ -49970,7 +50473,9 @@
           "host": "let",
           "qualifier": "dbData",
           "line": 31,
-          "reads": [{ "name": "dbData", "member": "let" }]
+          "frameId": 14,
+          "reads": [{ "name": "dbData", "member": "let" }],
+          "collection": { "root": "dbData", "links": [] }
         },
         {
           "id": 7,
@@ -50005,7 +50510,9 @@
           "host": "map",
           "qualifier": "items",
           "line": 64,
-          "reads": [{ "name": "items", "member": "map" }]
+          "frameId": 23,
+          "reads": [{ "name": "items", "member": "map" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 10,
@@ -50027,10 +50534,15 @@
           "host": "forEach",
           "qualifier": "crates.idsLabelled(label)",
           "line": 66,
+          "frameId": 25,
           "reads": [
             { "name": "crates", "member": "idsLabelled" },
             { "name": "label", "calls": ["idsLabelled"] }
-          ]
+          ],
+          "collection": {
+            "root": "crates",
+            "links": [{ "name": "idsLabelled", "arguments": ["label"] }]
+          }
         },
         {
           "id": 12,
@@ -50052,7 +50564,9 @@
           "host": "forEach",
           "qualifier": "files",
           "line": 68,
-          "reads": [{ "name": "files", "member": "forEach" }]
+          "frameId": 27,
+          "reads": [{ "name": "files", "member": "forEach" }],
+          "collection": { "root": "files", "links": [] }
         },
         {
           "id": 14,
@@ -50075,7 +50589,9 @@
           "qualifier": "chunks",
           "line": 74,
           "params": [{ "name": "chunk" }],
-          "reads": [{ "name": "chunks", "member": "forEach" }]
+          "frameId": 29,
+          "reads": [{ "name": "chunks", "member": "forEach" }],
+          "collection": { "root": "chunks", "links": [] }
         },
         {
           "id": 16,
@@ -50085,7 +50601,9 @@
           "qualifier": "chunks",
           "line": 79,
           "params": [{ "name": "chunk" }],
-          "reads": [{ "name": "chunks", "member": "forEach" }]
+          "frameId": 30,
+          "reads": [{ "name": "chunks", "member": "forEach" }],
+          "collection": { "root": "chunks", "links": [] }
         },
         {
           "id": 17,
@@ -50131,7 +50649,9 @@
           "host": "map",
           "qualifier": "items",
           "line": 104,
-          "reads": [{ "name": "items", "member": "map" }]
+          "frameId": 38,
+          "reads": [{ "name": "items", "member": "map" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 21,
@@ -50141,7 +50661,9 @@
           "qualifier": "items.map { it.labels }",
           "line": 104,
           "params": [{ "name": "labels" }],
-          "reads": [{ "lambda": 20 }]
+          "frameId": 39,
+          "reads": [{ "lambda": 20 }],
+          "collection": { "root": "items", "links": [{ "name": "map", "arguments": [] }] }
         },
         {
           "id": 22,
@@ -50152,7 +50674,9 @@
           "argument": "others",
           "line": 105,
           "params": [{ "name": "shelf" }, { "name": "_" }],
-          "reads": [{ "name": "items", "member": "zip" }]
+          "frameId": 40,
+          "reads": [{ "name": "items", "member": "zip" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 23,
@@ -50161,11 +50685,13 @@
           "host": "forEach",
           "qualifier": "items.zip(others) { shelf, _ -> shelf.labels }",
           "line": 105,
+          "frameId": 41,
           "reads": [
             { "name": "items", "member": "zip" },
             { "name": "others", "calls": ["zip"] },
             { "lambda": 22 }
-          ]
+          ],
+          "collection": { "root": "items", "links": [{ "name": "zip", "arguments": ["others"] }] }
         },
         {
           "id": 24,
@@ -50174,7 +50700,9 @@
           "host": "associateBy",
           "qualifier": "items",
           "line": 106,
-          "reads": [{ "name": "items", "member": "associateBy" }]
+          "frameId": 42,
+          "reads": [{ "name": "items", "member": "associateBy" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 25,
@@ -50183,7 +50711,9 @@
           "host": "associateBy",
           "qualifier": "items",
           "line": 106,
-          "reads": [{ "name": "items", "member": "associateBy" }]
+          "frameId": 43,
+          "reads": [{ "name": "items", "member": "associateBy" }],
+          "collection": { "root": "items", "links": [] }
         },
         {
           "id": 26,
@@ -50192,11 +50722,16 @@
           "host": "forEach",
           "qualifier": "items.associateBy({ it.id }, { it.labels }).values",
           "line": 106,
+          "frameId": 44,
           "reads": [
             { "name": "items", "member": "associateBy" },
             { "lambda": 24 },
             { "lambda": 25 }
-          ]
+          ],
+          "collection": {
+            "root": "items",
+            "links": [{ "name": "associateBy", "arguments": [] }, { "name": "values" }]
+          }
         },
         {
           "id": 27,
@@ -51037,10 +51572,24 @@
           "frameId": 2,
           "line": 15
         },
-        { "id": 2, "parent": 1, "k": "lambda", "host": "http", "line": 16 },
+        { "id": 2, "parent": 1, "k": "lambda", "host": "http", "line": 16, "frameId": 3 },
         { "id": 3, "parent": 2, "k": "lambda", "host": "csrf", "line": 18, "frameId": 4 },
-        { "id": 4, "parent": 2, "k": "lambda", "host": "sessionManagement", "line": 19 },
-        { "id": 5, "parent": 2, "k": "lambda", "host": "authorizeHttpRequests", "line": 20 },
+        {
+          "id": 4,
+          "parent": 2,
+          "k": "lambda",
+          "host": "sessionManagement",
+          "line": 19,
+          "frameId": 5
+        },
+        {
+          "id": 5,
+          "parent": 2,
+          "k": "lambda",
+          "host": "authorizeHttpRequests",
+          "line": 20,
+          "frameId": 6
+        },
         {
           "id": 6,
           "parent": 0,
@@ -51049,6 +51598,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 7,
           "line": 29
         },
         {
@@ -51493,6 +52043,7 @@
           "topLevel": false,
           "annotations": ["Transactional"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 2,
           "line": 13
         },
         {
@@ -51513,6 +52064,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "NoSuchElementException", "vararg": false }],
+          "frameId": 4,
           "line": 25
         }
       ],
@@ -52116,6 +52668,7 @@
           "topLevel": false,
           "annotations": ["PostMapping"],
           "parameters": [{ "type": "OrderRequest", "vararg": false }],
+          "frameId": 5,
           "line": 22
         },
         {
@@ -52126,6 +52679,7 @@
           "topLevel": false,
           "annotations": ["PutMapping"],
           "parameters": [{ "type": "Map<String, String>", "vararg": false }],
+          "frameId": 6,
           "line": 25
         },
         {
@@ -52136,6 +52690,7 @@
           "topLevel": false,
           "annotations": ["PostMapping"],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 7,
           "line": 28
         },
         {
@@ -52146,6 +52701,7 @@
           "topLevel": false,
           "annotations": ["GetMapping"],
           "parameters": [{ "type": "Long", "vararg": false }],
+          "frameId": 8,
           "line": 31
         },
         {
@@ -52177,6 +52733,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "OrderMissing", "vararg": false }],
+          "frameId": 13,
           "line": 44
         },
         {
@@ -52187,6 +52744,7 @@
           "topLevel": false,
           "annotations": ["ExceptionHandler"],
           "parameters": [{ "type": "Exception", "vararg": false }],
+          "frameId": 14,
           "line": 47
         }
       ],
@@ -52860,6 +53418,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [{ "type": "ShipmentRepository", "vararg": false }],
+          "frameId": 3,
           "line": 18
         },
         {
@@ -52895,6 +53454,7 @@
           "topLevel": false,
           "annotations": ["Bean", "JvmStatic"],
           "parameters": [{ "type": "Environment", "vararg": false }],
+          "frameId": 6,
           "line": 28
         },
         {
@@ -52905,9 +53465,10 @@
           "topLevel": false,
           "annotations": ["Bean", "JvmStatic", "ConfigurationPropertiesBinding"],
           "parameters": [],
+          "frameId": 8,
           "line": 34
         },
-        { "id": 6, "parent": 5, "k": "lambda", "host": "Converter", "line": 34 },
+        { "id": 6, "parent": 5, "k": "lambda", "host": "Converter", "line": 34, "frameId": 9 },
         {
           "id": 7,
           "k": "class",
@@ -52936,7 +53497,12 @@
           "host": "forEach",
           "qualifier": "decorators.orderedStream()",
           "line": 41,
-          "reads": [{ "name": "decorators", "member": "orderedStream" }]
+          "frameId": 12,
+          "reads": [{ "name": "decorators", "member": "orderedStream" }],
+          "collection": {
+            "root": "decorators",
+            "links": [{ "name": "orderedStream", "arguments": [] }]
+          }
         },
         {
           "id": 10,
@@ -52945,7 +53511,9 @@
           "host": "ifAvailable",
           "qualifier": "decorators",
           "line": 42,
-          "reads": [{ "name": "decorators", "member": "ifAvailable" }]
+          "frameId": 13,
+          "reads": [{ "name": "decorators", "member": "ifAvailable" }],
+          "collection": { "root": "decorators", "links": [] }
         },
         {
           "id": 11,
@@ -52954,7 +53522,9 @@
           "host": "forEach",
           "qualifier": "extra",
           "line": 43,
-          "reads": [{ "name": "extra", "member": "forEach" }]
+          "frameId": 14,
+          "reads": [{ "name": "extra", "member": "forEach" }],
+          "collection": { "root": "extra", "links": [] }
         },
         {
           "id": 12,
@@ -53372,6 +53942,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [],
+          "frameId": 3,
           "line": 13
         },
         {
@@ -53403,6 +53974,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 7,
           "line": 27
         },
         {
@@ -53413,6 +53985,7 @@
           "topLevel": false,
           "annotations": ["Bean"],
           "parameters": [],
+          "frameId": 8,
           "line": 30
         },
         {
@@ -55012,6 +55585,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 16,
           "line": 65
         },
         {
@@ -55022,6 +55596,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 17,
           "line": 67
         },
         {
@@ -55032,6 +55607,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 18,
           "line": 69
         },
         {
@@ -55042,6 +55618,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 19,
           "line": 71
         },
         {
@@ -55051,10 +55628,15 @@
           "host": "sumOf",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 71,
+          "frameId": 20,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 8,
@@ -55064,6 +55646,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 21,
           "line": 73
         },
         {
@@ -55074,10 +55657,15 @@
           "qualifier": "receipts.forCustomer(customer)",
           "line": 73,
           "params": [{ "name": "receipt" }],
+          "frameId": 22,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 10,
@@ -55087,6 +55675,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 23,
           "line": 75
         },
         {
@@ -55096,10 +55685,15 @@
           "host": "groupingBy",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 76,
+          "frameId": 24,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 12,
@@ -55109,6 +55703,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 25,
           "line": 78
         },
         {
@@ -55118,10 +55713,15 @@
           "host": "sortedBy",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 78,
+          "frameId": 26,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 14,
@@ -55131,6 +55731,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 27,
           "line": 80
         },
         {
@@ -55141,10 +55742,11 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 28,
           "line": 82
         },
-        { "id": 16, "parent": 15, "k": "lambda", "host": "compareBy", "line": 83 },
-        { "id": 17, "parent": 15, "k": "lambda", "host": "compareBy", "line": 83 },
+        { "id": 16, "parent": 15, "k": "lambda", "host": "compareBy", "line": 83, "frameId": 29 },
+        { "id": 17, "parent": 15, "k": "lambda", "host": "compareBy", "line": 83, "frameId": 30 },
         {
           "id": 18,
           "parent": 2,
@@ -55156,6 +55758,7 @@
             { "type": "String", "vararg": false },
             { "type": "Long", "vararg": false }
           ],
+          "frameId": 31,
           "line": 85
         },
         {
@@ -55183,6 +55786,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 33,
           "line": 88
         },
         {
@@ -55213,6 +55817,7 @@
             { "type": "List<Long>", "vararg": false },
             { "type": "String", "vararg": false }
           ],
+          "frameId": 35,
           "line": 90
         },
         {
@@ -55243,6 +55848,7 @@
             { "type": "String", "vararg": false },
             { "type": "Pageable", "vararg": false }
           ],
+          "frameId": 37,
           "line": 93
         },
         {
@@ -55274,6 +55880,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 39,
           "line": 96
         },
         {
@@ -55284,6 +55891,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 40,
           "line": 98
         },
         {
@@ -55321,6 +55929,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 43,
           "line": 104
         },
         {
@@ -55331,6 +55940,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 44,
           "line": 106
         },
         {
@@ -55340,10 +55950,15 @@
           "host": "map",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 106,
+          "frameId": 45,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 33,
@@ -55353,6 +55968,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 46,
           "line": 108
         },
         {
@@ -55362,10 +55978,15 @@
           "host": "filter",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 108,
+          "frameId": 47,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 35,
@@ -55375,6 +55996,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 48,
           "line": 110
         },
         {
@@ -55384,10 +56006,15 @@
           "host": "filter",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 110,
+          "frameId": 49,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 37,
@@ -55397,6 +56024,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 50,
           "line": 112
         },
         {
@@ -55406,10 +56034,15 @@
           "host": "sumOf",
           "qualifier": "receipts.forCustomer(customer)",
           "line": 112,
+          "frameId": 51,
           "reads": [
             { "name": "receipts", "member": "forCustomer" },
             { "name": "customer", "calls": ["forCustomer"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "forCustomer", "arguments": ["customer"] }]
+          }
         },
         {
           "id": 39,
@@ -55419,6 +56052,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "String", "vararg": false }],
+          "frameId": 52,
           "line": 114
         },
         {
@@ -55449,6 +56083,7 @@
             { "type": "String", "vararg": false },
             { "type": "Pageable", "vararg": false }
           ],
+          "frameId": 54,
           "line": 116
         },
         {
@@ -55459,6 +56094,7 @@
           "topLevel": false,
           "annotations": [],
           "parameters": [{ "type": "Limit", "vararg": false }],
+          "frameId": 55,
           "line": 118
         },
         {
@@ -55468,10 +56104,15 @@
           "host": "sortedBy",
           "qualifier": "receipts.largest(limit)",
           "line": 118,
+          "frameId": 56,
           "reads": [
             { "name": "receipts", "member": "largest" },
             { "name": "limit", "calls": ["largest"] }
-          ]
+          ],
+          "collection": {
+            "root": "receipts",
+            "links": [{ "name": "largest", "arguments": ["limit"] }]
+          }
         },
         {
           "id": 44,
