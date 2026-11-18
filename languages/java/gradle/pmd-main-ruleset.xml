@@ -680,6 +680,78 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="HashOrderInOrderedOutput" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Hash order reaches ordered output here: a HashSet or HashMap (or an unsorted stream over it) is joined into a string or appended to a StringBuilder or StringJoiner in a loop, or, when its keys are Class, enum or Object values hashed by identity, copied into a returned list or array. The order differs between JVMs and library versions, so generated files, SQL and schemas change between builds and tests flake. Create a LinkedHashSet or LinkedHashMap (or a TreeSet or TreeMap) instead, or sort before the sink (`set.stream().sorted().collect(Collectors.joining(&quot;,&quot;))`). An exception fits only for output whose order is irrelevant, such as a set shown in a log line.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $isHash := function($ref, $identity) {
+      let $n := $ref/@Name,
+          $method := $ref/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+          $locals := $method//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $n],
+          $fields := $ref/ancestor::ClassBody[1]/FieldDeclaration[not(ModifierList/Annotation)]
+                       /VariableDeclarator[VariableId/@Name = $n],
+          $decl := if (exists($locals)) then $locals else if ($ref/self::FieldAccess or empty($method//VariableId[@Name = $n]))
+                   then $fields else (),
+          $scope := if (exists($locals)) then $method else $ref/ancestor::ClassBody[1],
+          $src := ($decl/*[last()][not(self::VariableId)],
+                   $scope//AssignmentExpression[@Operator = '='][*[1][(self::VariableAccess or self::FieldAccess)
+                                                                        and @Name = $n]]/*[2])
+      return count($decl) = 1 and exists($src)
+             and (not($identity)
+                  or exists($decl/parent::*/ClassType/TypeArguments/*[1]
+                              [self::ClassType][pmd-java:typeIsExactly('java.lang.Class')
+                                                or pmd-java:typeIs('java.lang.Enum')
+                                                or pmd-java:typeIsExactly('java.lang.Object')]))
+             and (every $s in $src satisfies $s[self::ConstructorCall]
+                    [pmd-java:typeIsExactly('java.util.HashSet') or pmd-java:typeIsExactly('java.util.HashMap')])
+    },
+    $views := ('keySet', 'values', 'entrySet'),
+    $hashRef := function($e, $identity) {
+      ($e[self::VariableAccess or self::FieldAccess[ThisExpression]][$isHash(., $identity)],
+       $e[self::MethodCall][@MethodName = $views][*[1][self::VariableAccess or self::FieldAccess[ThisExpression]]
+                              [$isHash(., $identity)]])
+    },
+    $hashChain := function($e, $identity) {
+      let $chain := ($e, $e/*[1], $e/*[1]/*[1], $e/*[1]/*[1]/*[1], $e/*[1]/*[1]/*[1]/*[1], $e/*[1]/*[1]/*[1]/*[1]/*[1])
+      return exists($chain[$hashRef(., $identity)])
+         and empty($chain/self::MethodCall[@MethodName = ('sorted', 'sort', 'collect')]
+                         [self::MethodCall[@MethodName = 'sorted']
+                          or ArgumentList//*[(self::MethodCall or self::MethodReference)
+                                              and @MethodName = ('toCollection', 'toSet', 'toMap', 'groupingBy',
+                                                                  'toUnmodifiableSet', 'counting', 'summingInt', 'new')]])
+    },
+    $plainSink := function($n) {
+      empty($n/ancestor::ThrowStatement)
+      and empty($n/ancestor::MethodCall[@MethodName = ('info', 'warn', 'error', 'debug', 'trace', 'log', 'fail', 'format',
+                                                       'formatted', 'println', 'print', 'as', 'describedAs', 'withFailMessage')])
+      and empty($n/ancestor::ConstructorCall[ClassType[matches(@SimpleName, '(Exception|Error)$')]])
+      and empty($n/ancestor::MethodDeclaration[matches(@Name, '^(toString|describe|dump|debug|print)|Message|Error|Description')])
+    }
+return (
+  //MethodCall[pmd-java:matchesSig('java.lang.String#join(_*)')][ArgumentList/*[2][$hashChain(., false())]]
+    [$plainSink(.)],
+  //MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'joining']]
+    [*[1][$hashChain(., false())]][$plainSink(.)],
+  //ForeachStatement[*[2][$hashChain(., false())]][$plainSink(.)]
+    [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//StringLiteral
+             [matches(@Image, '(^|[^a-z])(select|where)([^a-z]|$)|(^|[^a-z])in *\(', 'i')])]
+    [let $loopVar := *[1]//VariableId/@Name
+     return exists(*[3]//MethodCall[@MethodName = ('append', 'add')]
+       [pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.util.StringJoiner')]
+       [ArgumentList//VariableAccess[@Name = $loopVar]])],
+  //ReturnStatement/ConstructorCall[ClassType[@SimpleName = ('ArrayList', 'LinkedList')]]
+    /ArgumentList/*[1][$hashChain(., true())],
+  //ReturnStatement/MethodCall[pmd-java:matchesSig('java.util.List#copyOf(_*)')]/ArgumentList/*[1][$hashChain(., true())],
+  //ReturnStatement/MethodCall[@MethodName = ('toList', 'toArray')][$hashChain(*[1], true())],
+  //ReturnStatement/MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'toList']]
+    [$hashChain(*[1], true())]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HttpValueCase" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This compares exact text, but media types, charsets, encodings, URI schemes and hosts, cookie name prefixes and file extensions are case-insensitive, so Application/JSON, HTTPS or photo.PNG is missed. Lowercase the value first (value.toLowerCase(Locale.ROOT)) or use equalsIgnoreCase, or parse it: MediaType.parseMediaType(value) and MimeTypeUtils for media types, URI.getScheme() compared with equalsIgnoreCase. Header names read with getHeader or HttpHeaders ignore case already.">
     <priority>3</priority>
