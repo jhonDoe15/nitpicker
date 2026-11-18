@@ -278,6 +278,85 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-release-outside-finally`: a local assigned from `createQueryRunner()`, `getConnection()`, `await x.connect()`,
+  `await x.acquire()`, `await x.lock()`, `checkout()`, `getReader()`, `startSession()` or `rollup()` and released by a later
+  statement of the same block (`release`, `releaseLock`, `unlock`, `close`, `end`, `destroy`, `dispose`, `endSession`,
+  `disconnect`) when an `await`, `yield`, `return`, `throw` or a call on that resource sits between the two, so a failure or an
+  early return keeps a pooled connection, a lock or a bundle open. Allowed forms: `try { ... } finally { runner.release(); }`,
+  `await using`, a release in a `catch` or `finally` of the same function, a resource that is returned, stored in a field or
+  collection, or an unawaited `connect`/`acquire` call, a `try` whose `catch` neither rethrows nor returns, and an
+  `await x.query(...).catch(() => {})` whose handler cannot throw.
+- `nitpicker/no-unclosed-file-descriptor`: `fs.openSync` or a `FileHandle` from `fs/promises` `open` (or `fs.promises.open`)
+  whose result is dropped as an expression statement, or is kept in a local of a function that never closes it
+  (`closeSync(fd)`, `close(fd)`, `handle.close()`) and never hands it on. Passing the descriptor to `spawn` as `stdio`
+  or to another `fs` call does not transfer ownership, so the parent still has to close it. A descriptor that is
+  returned, stored in a field, passed to another function (`createReadStream(null, { fd })`, `register(fd)`), declared
+  with `await using`, or kept in a module-level variable is not reported, and neither is a `FileHandle` whose stream
+  owns it (`handle.createReadStream()`). Allowed forms: `writeFileSync(path, '')` to create or empty a file, and
+  `try { ... } finally { closeSync(fd); }`.
+- `nitpicker/no-pipe-dropping-errors`: a Node stream chained with `.pipe()` whose result is used (returned, assigned, awaited,
+  or followed by an `on('finish' | 'end' | 'close' | 'error')` listener) or that pipes through a second stream, when the source or a
+  middle stream has no `'error'` listener in the file and is not passed to `pipeline` or `finished`: `pipe` forwards no errors and
+  destroys no other stream, so the export ends short, the awaiting promise never settles and descriptors stay open. The source
+  must be recognizable as a Node stream without types: `createReadStream`, `createWriteStream`, zlib and crypto `create*`
+  streams from `fs`, `zlib` or `crypto`, `new Transform()`, `new PassThrough()` and the other `stream` classes,
+  `Readable.from` and `Readable.fromWeb`, a `.createReadStream()`, `.createWriteStream()` or `.stream()` call, or a local const
+  initialized from one. RxJS and Effect `pipe` calls, `process.stdin`, and a lone `a.pipe(b);` statement are not reported.
+  Allowed forms: `pipeline(a, b, c)` from `node:stream/promises`, or `node:stream` with a callback, or an `'error'` listener on every
+  stream before the last.
+- `nitpicker/no-child-exit-event`: an `'exit'` listener (`on`, `once`, `addListener`) on a child process from `spawn`, `exec`,
+  `execFile` or `fork` whose handler uses output the same function collects from `stdout` or `stderr` (a `'data'` listener or a
+  `for await` loop that appends to a variable the handler reads), or defaults the exit code (`code ?? 0`, `code || 0`).
+  `'exit'` can fire before the streams are drained, so the last chunk is lost, and a child killed by a signal passes `null`, which
+  the default turns into success. A handler that awaits, a function that also listens for `'close'`, and a listener that only
+  logs or cleans up are not reported. Allowed forms: `'close'` with `(code, signal)` treating a signal or missing code as failure,
+  `events.once(child, 'close')`, or `promisify(execFile)`.
+- `nitpicker/no-incomplete-cache-key`: a cache key that leaves out an input the cached value depends on, so
+  calls that differ in it share one entry. Two forms. A TanStack Query call (`useQuery`, `useInfiniteQuery`,
+  `queryOptions` and the like, in a file that imports `@tanstack/*-query` or `react-query`) whose inline `queryFn`
+  reads a variable of the enclosing function (a prop, parameter or hook result) that the `queryKey` array does not
+  mention; functions, `queryClient`, module-level values, imports, literals and services that are only called
+  (`api.get(id)` on a `useApi()` result) are not inputs. A memo cache in one function: a `const` key built by a
+  template with expressions, `+`, `[...].join()` or `JSON.stringify`, read with `cache.get(key)` or `cache.has(key)`
+  and stored with `cache.set(key, value)` on the same receiver, where the value is computed from a parameter that
+  the key never references (directly or through a local variable). Parameters named or typed as a logger, abort
+  signal or context, parameters that are only called, and parameters only passed to logging are left out.
+  Allowed form: every input of the computation is part of the key
+  (`` `${base}:${variant}:${table ?? ''}` ``, `['preview', environmentId, slug]`).
+- `nitpicker/no-listen-on-all-interfaces`: a local callback or companion server that calls `listen` without a host, which
+  binds every network interface, so a sign-in code or a local API is reachable from the rest of the network. It judges
+  `listen(port)`, `listen(port, callback)` and `listen({ port })` on a server made by `http`, `https`, `net` or `http2`
+  `createServer`, `express()`, `connect()`, `polka()` or `new Koa()` from a module the file imports (directly or through a
+  local variable or a `use`/`get`/`on` chain), and only when the file is a local helper: it imports `electron` or `vscode`,
+  sits under a `bin`, `cli`, `electron`, `desktop` or `extension` folder, or the server variable, the enclosing function,
+  its strings or the file name mention oauth, sso, redirect, authorize, login, loopback or an auth code. A host argument,
+  a `host`, `hostname` or `path` property, a spread, a string path, and any call with a host or an unknown second argument
+  pass, as does an ordinary server entry point. Allowed form: `server.listen(port, '127.0.0.1', callback)` or
+  `listen({ port, host: '127.0.0.1' })`; a service that must accept remote connections passes `'0.0.0.0'` explicitly.
+- `nitpicker/no-unguarded-cyclic-recursion` (needs the type checker): a function that calls itself with a value read
+  through a property that can lead back to an earlier node, and has no visited set or depth limit, so a cycle (an
+  error `cause` chain, a `parent` link of a route or scope graph, a recursive type) overflows the stack or never
+  finishes. The recursive call (also `this.name(...)`, and through a local variable, a `for...of` loop or a callback
+  of `map`, `filter`, `some`, `every`, `find`, `forEach`, `flatMap`) must pass a value reached from its own parameter
+  through `parent`, `parents`, `cause`, `causes`, `prev`, `previous`, `next`, `owner`, `ref`, `reference(s)`,
+  `dependencies`, `dependents`, `deps`, `importers`, `imports`, `edges`, `links`, `neighbors`, `supertype(s)`, `base`
+  or `bases`, or, for a parameter of the TypeScript API `Type`, through `types`, `target`, `constraint` or
+  `getTypeArguments`/`getBaseTypes`, with a typed argument that is assignable to the parameter. A function that mentions
+  a `Set`, `WeakSet`, `Map` or `WeakMap`, or a name such as `seen`, `visited`, `depth`, `level`, `stack`, `limit`, `cache`
+  or `memo`, is taken as guarded; untyped (`any`) parameters, tree children (`children`, `body`, `left`, `right`),
+  and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
+  visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
+- `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
+  so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
+  `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`
+  (or untyped on a stream-like receiver such as `child.stdout`, a socket or a request, in a file that never mentions
+  `encoding` or `setEncoding`), it reports `text += chunk` (also `chunk.toString()`, `String(chunk)` and
+  `chunk.toString('utf8')`) into a variable declared outside the callback, `decoder.decode(chunk)` on a `TextDecoder`
+  without `{ stream: true }`, and `includes`, `indexOf`, `startsWith`, `endsWith`, `match`, `search` or a regex `test` on
+  the chunk or on a local variable holding its text. A stream with `setEncoding(...)` on the same receiver, string
+  chunks, `hex` or `base64` conversions and an accumulated buffer are not reported. Allowed form: keep the chunks
+  (`parts.push(chunk)`) and decode once (`Buffer.concat(parts).toString('utf8')`), pass `{ stream: true }`, or search an
+  accumulated string.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

@@ -380,6 +380,14 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+
+Release outside finally: `nitpicker/no-release-outside-finally` (production source, in `eslint-lint`) reports a pooled
+connection, query runner, session, lock, stream reader or bundle taken from a known acquire call (`createQueryRunner`,
+`getConnection`, awaited `connect`, `acquire` or `lock`, `checkout`, `getReader`, `startSession`, `rollup`) and released by a
+later statement of the same block while an `await`, `return`, `throw` or a call on the resource sits in between. A release
+in `finally` or `catch`, `await using`, a resource that is returned or stored, and an awaited call that ends in a
+`.catch(() => {})` that cannot throw are allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
