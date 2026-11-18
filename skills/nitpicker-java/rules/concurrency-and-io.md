@@ -70,6 +70,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   composed stage, chain `.exceptionally(error -> ...)` that fails the result, or read the throwable in
   `handle`/`whenComplete` and call `completeExceptionally(error)`; a dropped `thenAccept(value -> result.complete(value))`
   or a `handle((value, ex) -> ...)` that never reads `ex` leaves the caller waiting (`pmd/CompletionWithoutFailurePath`).
+- A `thenAccept`, `thenApply`, `whenComplete` or other stage without the `Async` suffix never waits inside its lambda
+  (`join()`, `get()`, `await()`, `take()`, `Thread.sleep`): it runs on the thread that completed the source, often an
+  I/O thread. Use `thenAcceptAsync(fn, executor)`, `getNow`, or return the next stage from `thenCompose`
+  (`pmd/BlockingInCompletionStage`).
 - A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
   `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
 - A `close()` or `stop()` that releases a collection of delegates in a loop closes each one in its own `try`/`catch`,
