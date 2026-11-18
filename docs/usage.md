@@ -208,7 +208,10 @@ line under its folder:
   build, init takes the projects from there and writes no top config. A project gets its own
   `nitpicker.config.json` only where the run would give it the wrong preset (a JavaScript package
   in an npm workspace would otherwise get the TypeScript preset) or where it needs a setting (the
-  Java build tool when it has both builds).
+  Java build tool when it has both builds, or `layout.sourceRoots` for a package without a config
+  whose code is in folders other than `src`, such as `components`). A package whose code sits only
+  at its folder top gets a note instead: every run reports `source-roots/empty-sources` for it
+  until the code moves into a folder that `layout.sourceRoots` names.
 - When the top holds no project file but folders below it do (a `web/package.json`, an
   `api/pyproject.toml` and a `service/build.gradle`), init writes the top `nitpicker.config.json`
   with a `projects` list of `{ "path", "preset" }` entries. A top config that lists no projects

@@ -36,6 +36,14 @@ const HIDDEN_FOLDER = /(?:^|\/)\.[^/]+\//;
 const EXCLUDED_FOLDER = new RegExp(EXCLUDED_PATH_PATTERN);
 const PACKAGE_SOURCE = /^(.+?\/src)\//;
 const LISTED_FOLDERS = 3;
+const TOOLING_FOLDERS = new Set([
+  'scripts',
+  'bench',
+  'benchmarks',
+  'cypress',
+  'playwright',
+  'docs',
+]);
 
 function isCandidate(file: string, layout: Layout): boolean {
   return (
@@ -70,6 +78,25 @@ function suggestion(files: string[]): string {
   const more =
     folders.length > LISTED_FOLDERS ? `, and ${String(folders.length - LISTED_FOLDERS)} more` : '';
   return ` (this repository has ${kind} files under ${folders.slice(0, LISTED_FOLDERS).join(', ')}${more})`;
+}
+
+export type CodeFolders = { readonly folders: string[]; readonly topFiles: string[] };
+
+export function codeFolders(projectRoot: string, layout: Layout): CodeFolders {
+  const files = projectFilePaths(projectRoot).filter((file) => isCandidate(file, layout));
+  return {
+    folders: folderCounts(files)
+      .map(([folder]) => folder)
+      .filter(
+        (folder) =>
+          !(
+            folder.includes('/') ||
+            layout.testRoots.includes(folder) ||
+            TOOLING_FOLDERS.has(folder)
+          ),
+      ),
+    topFiles: files.filter((file) => !file.includes('/')),
+  };
 }
 
 export function sourcesElsewhere(projectRoot: string, layout: Layout): string {
