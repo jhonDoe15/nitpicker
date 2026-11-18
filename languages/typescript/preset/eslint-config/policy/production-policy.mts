@@ -144,6 +144,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-directory-passing-existence-check': 'error',
     'nitpicker/no-unresolved-relative-url': 'error',
     'nitpicker/no-slash-only-redirect-guard': 'error',
+    'nitpicker/no-case-mixed-header-merge': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

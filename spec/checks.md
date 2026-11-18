@@ -483,6 +483,7 @@ Slash-only redirect guards: `nitpicker/no-slash-only-redirect-guard` (production
 to in a function with no `//`, backslash or origin check, and `router.push(url.pathname + ...)` after an origin check that does not reject a `//` pathname.
 
 Case-mixed header merges: `nitpicker/no-case-mixed-header-merge` (production source, in `eslint-lint`) reports an object literal used as `headers` that spreads caller
+headers and also has a literal key for a known header name, so a caller key in another case is sent twice. `new Headers(init)` with `set`, lowercased keys, and a lowercase key next to `req.headers`, are allowed.
 Inconsistent comparators: `nitpicker/no-inconsistent-comparator` (production source, in `eslint-lint`) reports a
 `sort` or `toSorted` comparator whose every result is a non-zero number literal (equal items are never `0`), and a
 branch that returns one constant for both a missing `a` and a missing `b`. `a - b`, `localeCompare`, a `0` result and

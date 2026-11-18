@@ -65,6 +65,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-directory-passing-existence-check',
   'nitpicker/no-unresolved-relative-url',
   'nitpicker/no-slash-only-redirect-guard',
+  'nitpicker/no-case-mixed-header-merge',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',
