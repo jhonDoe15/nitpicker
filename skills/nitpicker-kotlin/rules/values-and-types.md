@@ -134,3 +134,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `list.takeLast((a.size - b.size).coerceAtLeast(0))`; a negative count throws (`pmd/NegativeCountArgument`).
 - A bounds check before `get(index)` or `list[index]` rejects with `index >= size`: `index > size` lets `index == size`
   through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is right only for an insertion position.
+- A backoff delay does not grow by `1L shl attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`); the shift
+  wraps and the delay turns negative (`pmd/BackoffShiftOverflow`).

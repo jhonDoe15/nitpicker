@@ -72,6 +72,7 @@
   "eslint/nitpicker/no-operand-slip": ["bug"],
   "eslint/nitpicker/no-orm-query-logging": ["performance", "persistence"],
   "eslint/nitpicker/no-orm-schema-sync": ["reliability", "persistence"],
+  "eslint/nitpicker/no-overflowing-backoff": ["bug", "reliability"],
   "eslint/nitpicker/no-parameter-mutation": ["maintainability"],
   "eslint/nitpicker/no-partial-output-assertion": ["tests"],
   "eslint/nitpicker/no-presence-truthiness": ["bug"],

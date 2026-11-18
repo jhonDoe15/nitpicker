@@ -88,6 +88,8 @@ the allowed form and ends with its exception entry.
   `make` (`go-rules/negative-count`): `if pad := width - len(text); pad > 0 { ... }` or `max(0, width-len(text))`.
 - A bounds check before an index read rejects with `i >= len(x)` (`go-rules/index-bound-off-by-one`): `i > len(x)`
   lets `i == len(x)` through and `x[i]` panics; `>` is right only for an insertion position.
+- A backoff delay does not grow by `1 << attempt` without a bound (`go-rules/backoff-shift-overflow`): cap the exponent
+  (`min(attempt, 20)`) or stop growing at a maximum delay; the shift wraps and the delay turns negative.
 - A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
   `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a

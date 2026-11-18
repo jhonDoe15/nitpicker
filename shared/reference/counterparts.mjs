@@ -103,6 +103,11 @@ const GROUPS = [
     python: 'index-bound-off-by-one',
     go: 'go-rules/index-bound-off-by-one',
   },
+  {
+    jvm: 'BackoffShiftOverflow',
+    typescript: 'nitpicker/no-overflowing-backoff',
+    go: 'go-rules/backoff-shift-overflow',
+  },
 ];
 
 function spring(rule) {

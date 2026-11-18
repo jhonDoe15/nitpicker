@@ -53,6 +53,7 @@
   "javac/removal": ["maintainability"],
   "javac/unchecked": ["maintainability"],
   "palantir-java-format/format": ["style"],
+  "pmd/BackoffShiftOverflow": ["bug", "reliability"],
   "pmd/CommentedOutCode": ["simplification"],
   "pmd/CopiedConstantInTest": ["tests", "maintainability"],
   "pmd/ExpandingReplacement": ["bug"],

@@ -119,3 +119,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A bounds check before `get(index)`, `charAt(index)` or `array[index]` rejects with `index >= size()` (or `>= length`):
   `index > size()` lets `index == size()` through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is
   right only for an insertion position.
+- A backoff delay does not grow by `1L << attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`) or use
+  `Math.multiplyExact` and fall back to the maximum delay; the shift wraps and the delay turns negative
+  (`pmd/BackoffShiftOverflow`).

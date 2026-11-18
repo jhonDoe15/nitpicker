@@ -1786,3 +1786,11 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   `index < list.length` or `index === list.length`, a function that reassigns `index`, and a branch that does not leave. Allowed form: `>=` to reject
   and `<` to accept. The same form runs as `IndexBoundOffByOne` (Java and Kotlin), `index-bound-off-by-one` (Python) and
   `go-rules/index-bound-off-by-one` (Go).
+- `nitpicker/no-overflowing-backoff`: an exponential backoff delay that overflows for a large attempt count. Rejecting
+  forms: `base * (1 << attempt)` wraps at 32 bits, so the delay turns negative or small, and `base * 2 ** attempt`
+  grows to `Infinity` (`setTimeout` treats a delay above 2147483647 ms as 1 ms, so the retries spin), when `attempt`
+  is a plain identifier that is not compared with a limit in the function and not capped by `Math.min`, and the product
+  is not itself clamped by `Math.min`. An exponent such as `attempt - 1` counts as `attempt`. Not reported: a literal exponent, a bounded exponent and a
+  clamped product.
+  Allowed form: `Math.min(maxDelay, base * 2 ** Math.min(attempt, 10))`. The same form runs as `BackoffShiftOverflow`
+  (Java and Kotlin) and `go-rules/backoff-shift-overflow` (Go).
