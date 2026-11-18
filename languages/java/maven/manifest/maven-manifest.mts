@@ -47,6 +47,15 @@ function relative(module: MavenModule, roots: readonly string[]): unknown {
   return relativeRoots(module, roots);
 }
 
+export function moduleSourceRoots(module: MavenModule): Readonly<Record<string, unknown>> {
+  return {
+    sourceRoots: relative(module, rootsOf(module, 'sourceRoots')),
+    kotlinSourceRoots: relative(module, kotlinOnly(module, 'sourceRoots')),
+    testSourceRoots: relative(module, rootsOf(module, 'testSourceRoots')),
+    kotlinTestSourceRoots: relative(module, kotlinOnly(module, 'testSourceRoots')),
+  };
+}
+
 export function moduleManifest({
   module,
   classpaths,
@@ -55,10 +64,7 @@ export function moduleManifest({
   return {
     versions: pinned,
     build: 'maven',
-    sourceRoots: relative(module, rootsOf(module, 'sourceRoots')),
-    kotlinSourceRoots: relative(module, kotlinOnly(module, 'sourceRoots')),
-    testSourceRoots: relative(module, rootsOf(module, 'testSourceRoots')),
-    kotlinTestSourceRoots: relative(module, kotlinOnly(module, 'testSourceRoots')),
+    ...moduleSourceRoots(module),
     resourceRoots: relative(module, rootsOf(module, 'resourceRoots')),
     ...fieldsOf(springFacts(classpaths)),
     springClasspath: springClasspath(classpaths),

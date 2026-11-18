@@ -50,6 +50,7 @@ function answerCache() {
 }
 
 const answers = answerCache();
+const ahead = { known: new Map(), asked: undefined };
 
 function pendingReplies(bridge) {
   return chainOf(receiveMessageOnPort(bridge.replies), () => receiveMessageOnPort(bridge.replies));
@@ -116,11 +117,53 @@ function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
   if (!spendRun(budget)) {
     return undefined;
   }
-  const result = ask(request, timeoutMs);
+  if (ahead.asked !== undefined) {
+    return ahead.known.get(id) ?? noted(ahead.asked, id, request);
+  }
+  const result = ahead.known.get(id) ?? ask(request, timeoutMs);
   if (result !== undefined) {
     answers.keep(id, result);
   }
   return result;
+}
+
+function noted(asked, id, request) {
+  asked.set(id, request);
+  return undefined;
+}
+
+/**
+ * Runs `run` with every question the solver has not answered yet noted instead of asked; such a
+ * question is 'open' in that run. The run leaves the answers kept by the terms asked as they were.
+ * Returns the questions noted, by the terms asked.
+ */
+export function noteQuestions(run) {
+  ahead.asked = new Map();
+  try {
+    run();
+    return [...ahead.asked];
+  } finally {
+    ahead.asked = undefined;
+  }
+}
+
+/**
+ * Answers found ahead, by the terms asked, for the next questions to take instead of asking the
+ * solver; `undefined` drops them all. A question still counts against its budget and is kept as
+ * if the solver had answered it, so the answers of a run do not change.
+ */
+export function answerAhead(found) {
+  if (found === undefined) {
+    ahead.known.clear();
+    return;
+  }
+  for (const [id, result] of found) {
+    ahead.known.set(id, result);
+  }
+}
+
+export function isNoting() {
+  return ahead.asked !== undefined;
 }
 
 function reply(asked, options) {

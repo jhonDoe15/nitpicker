@@ -175,11 +175,15 @@ function presetTools(run: MavenRun, request: ToolsRequest): unknown {
   });
 }
 
-function prepare(run: MavenRun, { policy, environment, configs, work }: PrepareRequest): Prepared {
+function prepare(
+  run: MavenRun,
+  { policy, environment, configs, work, onModules }: PrepareRequest,
+): Prepared {
   const { modules, built, scope, effectivePom } = readModules(run, {
     work,
     changedFiles: policy['changedFiles'],
   });
+  onModules?.(modules);
   const setup = { ...run, policy, modules: built, effectivePom, work, environment };
   const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - REPORT_CLOCK_SKEW_MS;
@@ -203,6 +207,7 @@ function presetInWork(
     spawn,
     timeoutMs,
     pitDeadline,
+    onModules,
   }: MavenPresetOptions,
   work: string,
 ): MavenPresetRun {
@@ -217,12 +222,8 @@ function presetInWork(
     quick: policy.quick === true,
     mutationOff: policy['mutationOff'] === true,
   };
-  const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {
-    policy,
-    environment,
-    configs,
-    work,
-  });
+  const request = { policy, environment, configs, work, onModules };
+  const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, request);
   const testsFailures = analyzeAll({
     ...run,
     ...prepared,

@@ -123,8 +123,18 @@ export function moduleProject(
   moduleDir: string,
   { reportDirectory }: { readonly reportDirectory: string },
 ): ModuleProject {
+  return moduleProjectOf(projectRoot, moduleDir, {
+    reportDirectory,
+    manifest: readManifest(moduleDir, reportDirectory),
+  });
+}
+
+export function moduleProjectOf(
+  projectRoot: string,
+  moduleDir: string,
+  { reportDirectory, manifest }: { readonly reportDirectory: string; readonly manifest: unknown },
+): ModuleProject {
   const prefix = prefixOf(projectRoot, moduleDir);
-  const manifest = readManifest(moduleDir, reportDirectory);
   return {
     reportRoot: path.join(moduleDir, reportDirectory),
     qualifier: prefix,
@@ -146,7 +156,7 @@ export function readModuleFindings(
   return readModuleReport(projectRoot, moduleDirs, options).findings;
 }
 
-function isProjectRoot(projectRoot: string, moduleDirs: readonly string[]): boolean {
+export function isProjectRoot(projectRoot: string, moduleDirs: readonly string[]): boolean {
   const [only] = moduleDirs;
   return (
     moduleDirs.length === 1 &&
