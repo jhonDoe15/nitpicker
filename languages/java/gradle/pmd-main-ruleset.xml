@@ -10,6 +10,40 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for main sources.</description>
   <rule ref="category/java/security.xml"/>
+  <rule name="AnnotationAttributeNotResolved" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This annotation attribute is used as it is, while other attributes of the same annotation instance in this method go through resolve(...), resolveEmbeddedValue, resolveStringValue, resolvePlaceholders or evaluate(...). A property placeholder or SpEL expression in its value is then taken literally. Resolve it like its siblings: endpoint.setConsumes(resolve(listener.consumes())). An attribute that is meant to be literal (a class name, an id) can stay raw; then read it before the resolved ones or pass it to a method that documents it as literal.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $resolving := '^(resolve|evaluate)',
+    $guards := ('equals', 'equalsIgnoreCase', 'hasText', 'hasLength', 'isEmpty', 'isBlank', 'isNotEmpty',
+                'isNotBlank', 'notNull', 'notEmpty', 'requireNonNull', 'contains', 'startsWith', 'endsWith',
+                'debug', 'trace', 'info', 'warn', 'error', 'format', 'valueOf'),
+    $member := function($c) {
+      exists($c[self::MethodCall][ArgumentList/@Size = 0]
+        [*[1][self::VariableAccess]]
+        [let $n := string(*[1]/@Name)
+         return exists(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                       //(FormalParameter | LocalVariableDeclaration)[.//VariableId/@Name = $n]/ClassType
+                       [pmd-java:typeIs('java.lang.annotation.Annotation')])]
+        [pmd-java:typeIs('java.lang.String') or pmd-java:typeIs('java.lang.String[]')])
+    }
+return
+//MethodCall[$member(.)]
+  [parent::ArgumentList[not(parent::*[self::MethodCall][@MethodName = $guards])]]
+  [not(ancestor::ArgumentList/parent::MethodCall[matches(@MethodName, $resolving)])]
+  [let $var := *[1]/@Name,
+       $name := @MethodName,
+       $siblings := distinct-values(
+         ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+           //MethodCall[matches(@MethodName, $resolving)]/ArgumentList//MethodCall
+           [$member(.)][*[1]/@Name = $var]/@MethodName)
+   return count($siblings) >= 2 and not($name = $siblings)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CachedFutureKeepsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This field caches a CompletableFuture and later calls return it, but nothing ever resets it after a failure, so a first attempt that fails is replayed to every later caller instead of being retried. Reset the field when the attempt fails, and only if it still holds this attempt: future.whenComplete((value, error) -&gt; reset(future, error)), or keep the future in an AtomicReference and call compareAndSet(future, null). An exception fits only when keeping the first failure is intended.">
     <priority>3</priority>

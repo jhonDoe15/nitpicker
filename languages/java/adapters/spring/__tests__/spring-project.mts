@@ -212,6 +212,7 @@ const REVIEW_RULES = new Set([
   'HashCodeDisagreesWithEquals',
   'EqualsLeavesOutField',
   'CopyMethodDropsField',
+  'AnnotationAttributeNotResolved',
 ]);
 const roots: string[] = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
