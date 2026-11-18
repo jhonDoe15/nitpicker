@@ -27,7 +27,7 @@ public final class Partners {
   private final HttpClient bare = HttpClient.newHttpClient(); // violation: HttpWithoutTimeout
   private final HttpClient timed = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
 
-  public HttpClient clients(boolean fast) {
+  public HttpClient clients(boolean fast) { // violation: BooleanFlagParameter
     return fast ? bare : timed;
   }
 
@@ -79,7 +79,7 @@ public final class Partners {
     return Partners.class.getResource("/orders.json").openStream();
   }
 
-  public CloseableHttpClient apacheClient(boolean configured) {
+  public CloseableHttpClient apacheClient(boolean configured) { // violation: BooleanFlagParameter
     if (configured) {
       RequestConfig config = RequestConfig.custom().setResponseTimeout(Timeout.ofSeconds(5)).build();
       return HttpClients.custom().setDefaultRequestConfig(config).build();
@@ -95,7 +95,7 @@ public final class Partners {
     return Mac.getInstance(LEGACY_SIGNATURE); // violation: WeakHmac
   }
 
-  public Mac signer(boolean protocolFixed) throws GeneralSecurityException {
+  public Mac signer(boolean protocolFixed) throws GeneralSecurityException { // violation: BooleanFlagParameter
     return Mac.getInstance(protocolFixed ? "HmacSHA1" : "HmacSHA256");
   }
 
