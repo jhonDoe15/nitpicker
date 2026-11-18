@@ -1,6 +1,7 @@
 import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { listSites, siteText } from '../design-index.mjs';
 import { receiverCalls } from './receiver-calls.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const RULE = DESIGN_RULE_IDS.callerProtocol;
 const MIN_STEPS = 3;
@@ -19,7 +20,10 @@ function stepsOf({ owner, calls }) {
 function subsequences(steps) {
   const found = [[]];
   for (const step of steps) {
-    found.push(...found.map((sequence) => [...sequence, step]));
+    appendAll(
+      found,
+      found.map((sequence) => [...sequence, step]),
+    );
   }
   return found.filter((sequence) => sequence.length >= MIN_STEPS);
 }

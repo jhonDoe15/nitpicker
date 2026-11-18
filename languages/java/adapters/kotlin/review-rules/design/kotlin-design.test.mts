@@ -1,14 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 import {
   DESIGN_RULE_IDS,
   DESIGN_RULES,
 } from '../../../../../../shared/project-rules/design/design-rules.mjs';
 import { fieldOf, listOf } from '../../../../../../shared/values/readers.mts';
 import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
-import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mjs';
+import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mts';
 import { bundleOf, callsOf, designFindings, recordedFacts } from './design-support.mts';
 import { DESIGN_FAILURE_RULE, DESIGN_TOOL } from './kotlin-design.mjs';
 
@@ -16,20 +17,12 @@ const RECORDED = recordedFacts('kotlin-design');
 const RECORDED_PUBLISHED = recordedFacts('kotlin-design-published');
 const EMPTY = { modules: [], types: [], callables: [] };
 const PREFIX = 'The design rules did not run on the Kotlin sources: ';
-const temporaryRoots: string[] = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function reportWith(facts: string) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-design-'));
-  temporaryRoots.push(root);
+  const root = temporaryRoot('nitpicker-kotlin-design-');
+  writeFiles(root, { 'build/nitpicker/kotlin-facts.json': facts });
   const reportRoot = path.join(root, 'build/nitpicker');
-  mkdirSync(reportRoot, { recursive: true });
-  writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), facts);
   return { root, reportRoot };
 }
 

@@ -179,7 +179,7 @@ describes the real dependency, or code that a contract replaces.
 
 ## Real operation: `lookUpCachedReport`
 
-`core/diff/cache/findings-cache.mts` (`lookUpCachedReport`), analyzed unchanged. Reviewed protocol:
+`core/diff/cache/entries/run-with-cache.mts` (`lookUpCachedReport`), analyzed unchanged. Reviewed protocol:
 
 - `resolvedAnalyzerMetadata(analyzer, context)` resolves the version and configuration
   hash of `analyzer` and returns them as a metadata object. It does not write to `analyzer`. It

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import {
   availabilityNotices,
   coChangeNotices,
@@ -13,8 +13,8 @@ import {
   type OutsideProject,
   pythonOutsideRootsNotices,
 } from '../../../languages/python/adapters/notices/outside-roots-notice.mts';
-import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mjs';
-import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mjs';
+import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mts';
+import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
 import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
 import {
@@ -22,8 +22,11 @@ import {
   unmatchedLayoutRootNotices,
 } from '../../../shared/notices/layout-roots-notice.mjs';
 
+import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
-import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+
+const EXCLUDE_KEY = 'exclude';
 
 type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };
 type Describer = (changedFiles: readonly string[], context?: NoticeContext) => readonly string[];
@@ -41,8 +44,9 @@ const coChangeNoticesOf: (request: {
   readonly ref: unknown;
   readonly changedPaths: readonly string[];
 }) => readonly string[] = coChangeNotices;
-const sourceRootsOf: (projectRoot: string, declared: unknown) => readonly string[] =
-  detectSourceRoots;
+function sourceRootsOf(projectRoot: string, declared: unknown): readonly string[] {
+  return detectSourceRoots(projectRoot, Array.isArray(declared) ? declared.map(textOf) : undefined);
+}
 const layoutRootKeys: readonly string[] = LAYOUT_ROOT_KEYS;
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
@@ -62,7 +66,7 @@ function jvmDescriber(
     ...renamed,
     ...jvmNotices(changedFiles, {
       preset: config.preset,
-      exclude: fieldOf(headPolicy, 'exclude'),
+      exclude: fieldOf(headPolicy, EXCLUDE_KEY),
       declaredRoots: declaredSourceRoots(projectRoot),
     }),
   ];
@@ -81,13 +85,26 @@ function languageDescriber(
       pythonNotices(changedFiles, {
         projectRoot,
         sourceRoots: sourceRootsOf(projectRoot, fieldOf(config.python, 'sourceRoots')),
-        exclude: textsOf(fieldOf(headPolicy, 'exclude')),
+        exclude: textsOf(fieldOf(headPolicy, EXCLUDE_KEY)),
         isTestFile: testFileMatcher(projectRoot),
       });
   }
   return config.preset === 'java' || config.preset === 'kotlin'
     ? jvmDescriber(config, headPolicy, projectRoot)
     : undefined;
+}
+
+function uncheckedDescriber(
+  config: NitpickerConfig,
+  headPolicy: unknown,
+  projectRoot: string,
+): Describer {
+  const request = {
+    preset: config.preset,
+    projectRoot,
+    exclude: textsOf(fieldOf(headPolicy, EXCLUDE_KEY)),
+  };
+  return (changedFiles) => uncheckedLanguageNotices(changedFiles, request);
 }
 
 function layoutDescriber(layout: unknown, projectRoot: string): Describer | undefined {
@@ -125,6 +142,7 @@ export function noticeDescriber(
 ): Describer | undefined {
   const describers = [
     languageDescriber(config, headPolicy, projectRoot),
+    uncheckedDescriber(config, headPolicy, projectRoot),
     coChangeDescriber(config, headPolicy, projectRoot),
     layoutDescriber(fieldOf(headPolicy, 'layout'), projectRoot),
   ].filter((describer) => describer !== undefined);

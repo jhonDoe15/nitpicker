@@ -5,7 +5,7 @@ import {
   sameCondition,
 } from '../../../../../../../shared/logic/normalize.mjs';
 import { print as untypedPrint } from '../../../../../../../shared/logic/print.mjs';
-import { toTerm as untypedToTerm } from './estree-terms.mjs';
+import { toTerm as untypedToTerm } from './estree-terms.mts';
 
 type Statement = { type: string; expression?: unknown; body?: unknown };
 type Program = { type: 'Program'; body: Statement[] };

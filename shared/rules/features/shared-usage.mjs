@@ -1,5 +1,6 @@
 import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 function importersByTarget(imports) {
   const importers = new Map();
@@ -21,10 +22,14 @@ function consumerRoles(start, importers, roleOf) {
       seen.add(importer);
     }
     const roles = direct.map((importer) => ({ importer, role: roleOf(importer) }));
-    pending.push(
-      ...roles.filter(({ role }) => role.kind === 'shared').map(({ importer }) => importer),
+    appendAll(
+      pending,
+      roles.filter(({ role }) => role.kind === 'shared').map(({ importer }) => importer),
     );
-    consumers.push(...roles.map(({ role }) => role).filter(({ kind }) => kind !== 'shared'));
+    appendAll(
+      consumers,
+      roles.map(({ role }) => role).filter(({ kind }) => kind !== 'shared'),
+    );
   }
   return consumers;
 }

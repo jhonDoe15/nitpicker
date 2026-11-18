@@ -1,6 +1,7 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { largest, smallest } from '../../../../shared/lists/lists.mts';
 
 const SURVIVED: unknown = RULE_IDS.mutantSurvived;
 const NO_COVERAGE: unknown = RULE_IDS.mutantNoCoverage;
@@ -97,8 +98,8 @@ function lineSpan(mutants: readonly ReportEntry[]): string {
   if (lines.length === 0) {
     return '';
   }
-  const first = Math.min(...lines);
-  const last = Math.max(...lines);
+  const first = smallest(lines);
+  const last = largest(lines);
   return first === last
     ? ` on line ${String(first)}`
     : ` on lines ${String(first)} to ${String(last)}`;

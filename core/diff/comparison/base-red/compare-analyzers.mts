@@ -1,4 +1,5 @@
 import { compareFindings } from '../compare.mjs';
+import type { Moves, MoveFields } from '../moved-names/declared/move-types.mts';
 import {
   analyzerMetadata as metadataOf,
   analyzerName as nameOf,
@@ -18,6 +19,7 @@ import {
 } from './unknown-findings.mts';
 import { type MetadataMap, mergeMetadata } from '../../execution/report/analyzer-metadata.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 export type AnalyzerRun = {
   readonly reports: ReadonlyMap<string, AnalyzerReport>;
@@ -27,15 +29,13 @@ export type AnalyzerRun = {
   readonly metadata?: MetadataMap | undefined;
 };
 
-export type Moves = Map<string, string>;
+export type { Moves };
 
-export type ComparisonRequest = {
+export type ComparisonRequest = MoveFields & {
   readonly analyzers: readonly unknown[];
   readonly baseRun: AnalyzerRun;
   readonly headRun: AnalyzerRun;
   readonly toolErrors: ReportEntry[];
-  readonly baseToHeadRenames?: Moves | undefined;
-  readonly baseToHeadDirectories?: Moves | undefined;
   readonly touchedCode?:
     { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
 };
@@ -69,14 +69,14 @@ type ComparedContext = NamedContext & {
   readonly unknownFailures: readonly Finding[] | undefined;
 };
 
-const findingsCompared: (request: {
-  readonly baseFindings: readonly Finding[];
-  readonly headFindings: readonly Finding[];
-  readonly baseToHeadRenames: Moves | undefined;
-  readonly baseToHeadDirectories: Moves | undefined;
-  readonly touchedCode: unknown;
-  readonly unknownOnBase: unknown;
-}) => Readonly<Record<string, readonly Finding[]>> = compareFindings;
+const findingsCompared: (
+  request: MoveFields & {
+    readonly baseFindings: readonly Finding[];
+    readonly headFindings: readonly Finding[];
+    readonly touchedCode: unknown;
+    readonly unknownOnBase: unknown;
+  },
+) => Readonly<Record<string, readonly Finding[]>> = compareFindings;
 const plainText: (text: string) => string = withoutAnsi;
 const redBaseOf: (request: {
   readonly names: readonly string[];
@@ -145,7 +145,8 @@ function baseFindingsOf({ name, baseRun, toolErrors, notes, redBase }: NamedCont
   if (failures === undefined) {
     return withoutEmittedToolErrors(findings, 'base', toolErrors);
   }
-  notes.push(...failures.map((failure) => noteOf(name, failure)));
+  const failureNotes = failures.map((failure) => noteOf(name, failure));
+  appendAll(notes, failureNotes);
   return withoutEmittedToolErrors(
     findings.filter((finding) => !failures.includes(finding)),
     'base',
@@ -221,6 +222,8 @@ function compareOrReportError(context: ComparedContext): FindingComparison {
       headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
+      baseToHeadPackages: context.baseToHeadPackages,
+      baseToHeadDeclared: context.baseToHeadDeclared,
       touchedCode: context.touchedCode,
       unknownOnBase: unknownOnBaseOf(context),
     });

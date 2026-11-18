@@ -2,17 +2,18 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { containedPath } from '../../../../../../core/fix/common/contained-path.mjs';
 import {
   ALLOWANCES_REPORT,
   RULES_REPORT,
   checkRules,
   readAllowances,
   readTestFiles,
-} from '../../../../adapters/analysis/python-ast-rules.mjs';
+} from '../../../../adapters/analysis/python-ast-rules.mts';
 import { ruffFindings } from '../../../../adapters/python-reports.mts';
-import { RUFF_REPORT, lint } from '../../../../adapters/python-tools.mjs';
+import { RUFF_REPORT, lint } from '../../../../adapters/python-tools.mts';
 import type { IngestedFinding } from '../../../../ingest/typed/ingest-types.mts';
-import { toolContext } from '../../../test-support/python-rule-scripts.mts';
+import { createToolContext } from '../../../../adapters/test-support/typed/tool-context.mts';
 import { PROBE_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mjs';
 
 const RULES_DIR = path.resolve(import.meta.dirname, '../../..');
@@ -28,31 +29,19 @@ type Sidecar = { readonly allowed: readonly unknown[]; readonly supportFiles: re
 type Interpreter = { readonly command: string; readonly files: Record<string, string> };
 const parseRules: (text: string) => RuleRow[] = JSON.parse;
 const parseSidecar: (text: string) => Sidecar = JSON.parse;
-const allowances: (root: string) => {
-  supportFiles: string[];
-  allowed: unknown[];
-} = readAllowances;
 const testFilesOf: (root: string) => string[] = readTestFiles;
 const parseJson: (text: string) => unknown = JSON.parse;
 
-function inside(root: string, file: string) {
-  const target = path.resolve(root, file);
-  if (!target.startsWith(`${root}${path.sep}`)) {
-    throw new Error(`${file} is outside ${root}`);
-  }
-  return target;
-}
-
 function writeFiles(root: string, files: Record<string, string>) {
   for (const [file, content] of Object.entries(files)) {
-    const target = inside(root, file);
+    const target = containedPath(root, file);
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, content);
   }
 }
 
 function readText(root: string, name: string): string {
-  return readFileSync(inside(root, name), 'utf8');
+  return readFileSync(containedPath(root, name), 'utf8');
 }
 
 function folder(roots: string[], prefix: string) {
@@ -73,7 +62,7 @@ function analyse(
   const projectRoot = folder(roots, 'nitpicker-runner-project-');
   const reportRoot = folder(roots, 'nitpicker-runner-report-');
   writeFiles(projectRoot, files);
-  const context = toolContext({
+  const context = createToolContext({
     projectRoot,
     liveRoot: projectRoot,
     settings: { environment: 'path', sourceRoots: ['.'] },
@@ -90,7 +79,7 @@ function analyse(
     roots: [projectRoot],
     projectRoot,
     testFiles: testFilesOf(reportRoot),
-    ...allowances(reportRoot),
+    ...readAllowances(reportRoot),
   });
   return { rules, sidecar, ruff: found };
 }

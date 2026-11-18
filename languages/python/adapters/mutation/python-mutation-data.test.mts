@@ -7,7 +7,7 @@ import {
   metaFiles as untypedMetaFiles,
   MUTANTS_DIRECTORY,
   NO_COVERAGE_EXIT_CODE,
-} from './python-mutation-data.mjs';
+} from './python-mutation-data.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 

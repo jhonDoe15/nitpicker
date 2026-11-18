@@ -80,8 +80,8 @@ describe('analyzer cache keys', () => {
       missing('eslint-lint', [
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
-        'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mjs',
-        ...['no-dev-dependency-in-production.mjs', 'package-manifest.mjs', 'test-support.mjs'].map(
+        'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mts',
+        ...['no-dev-dependency-in-production.mts', 'package-manifest.mts', 'test-support.mts'].map(
           (file) => `languages/typescript/preset/eslint-plugin/rules/dependencies/${file}`,
         ),
       ]),

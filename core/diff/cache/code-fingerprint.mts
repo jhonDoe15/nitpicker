@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type DirectoryEntry = { readonly name: string };
 
@@ -23,7 +24,7 @@ export function fingerprintPackageCode(packageRoot: string): string {
   const hash = createHash('sha256');
   const files = ['package.json'];
   for (const directory of ['core', 'shared', 'languages']) {
-    files.push(...shippedCodeFiles(packageRoot, directory));
+    appendAll(files, shippedCodeFiles(packageRoot, directory));
   }
   for (const file of files.sort()) {
     const content = readFileSync(path.join(packageRoot, file));

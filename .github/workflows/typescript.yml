@@ -199,6 +199,13 @@ jobs:
           else
             echo "::warning title=nitpicker::The policy approval is for ${APPROVED_SHA}, but the checkout is ${head}, so it accepts nothing in this run."
           fi
+      # ESLint over this repository takes about four and a half minutes on a CI runner, close to the
+      # five-minute default. The longer budget is set for CI only, in the checkout; a timeout is not
+      # policy, so it changes no digest and both snapshots run with it.
+      - name: Give eslint-lint a CI time budget
+        run: |
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          npx prettier --write nitpicker.config.json
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
       # policy is nitpicker.config.json.
       - name: nitpicker on itself

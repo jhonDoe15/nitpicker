@@ -2,9 +2,15 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { execute, failure, probeVersion } from './python-process.mjs';
-import { PYTEST_SCRIPT } from './python-test-runner.mjs';
-import { mutationVersions, toolVersions } from '../python-tools.mjs';
+import { execute, failure, probeVersion } from './python-process.mts';
+import type {
+  ProcessContext,
+  SpawnFunction,
+  SpawnOptions,
+  SpawnResult,
+} from './typed/process-types.mts';
+import { PYTEST_SCRIPT } from './python-test-runner.mts';
+import { mutationVersions, toolVersions } from '../python-tools.mts';
 import { runPythonTools } from '../typed/runner/runner-views.mts';
 import {
   callsLog,
@@ -196,7 +202,7 @@ describe('failure messages', () => {
     const error = failure({
       context,
       command: ['coverage', 'run'],
-      result: { error: { code: 'ETIMEDOUT' } },
+      result: { status: 1, stdout: '', stderr: '', error: { code: 'ETIMEDOUT' } },
       rule: 'x',
       timeoutMs: undefined,
     });
@@ -212,7 +218,7 @@ describe('failure messages', () => {
     const error = failure({
       context: { ...context, analyzerDeadlineMs: 90 * 60_000 },
       command: ['coverage', 'run'],
-      result: { error: { code: 'ETIMEDOUT' } },
+      result: { status: 1, stdout: '', stderr: '', error: { code: 'ETIMEDOUT' } },
       rule: 'x',
       timeoutMs: undefined,
     });
@@ -307,11 +313,9 @@ describe('tool versions', () => {
   });
 });
 
-type SpawnOptions = { readonly cwd: string; readonly env: Readonly<Record<string, string>> };
-
 function recordingSpawn(stdout = 'tool 1.2.3\n') {
   const calls: { command: string; args: readonly string[]; options: SpawnOptions }[] = [];
-  function spawn(command: string, args: readonly string[], options: SpawnOptions) {
+  function spawn(command: string, args: readonly string[], options: SpawnOptions): SpawnResult {
     calls.push({ command, args, options });
     return { status: 0, stdout, stderr: '' };
   }
@@ -322,12 +326,16 @@ function launch(tool: string, args: readonly string[]) {
   return { command: `/venv/bin/${tool}`, args, env: { VIRTUAL_ENV: '/venv' } };
 }
 
-function contextWith(spawn: unknown, overrides: Readonly<Record<string, unknown>> = {}) {
+function contextWith(
+  spawn: SpawnFunction,
+  overrides: Partial<ProcessContext> = {},
+): ProcessContext {
   return {
     spawn,
     projectRoot: '/work/head',
     env: { PYTHONPATH: '/work/head/src' },
-    launcher: { launch },
+    launcher: { description: 'test', launch },
+    probes: new Map(),
     ...overrides,
   };
 }
@@ -387,7 +395,7 @@ describe('probing a tool', () => {
       '--version',
     ]);
 
-    expect(calls.map(({ options }) => options.env['PYTHONPATH'])).toEqual([
+    expect(calls.map(({ options }) => options.env?.['PYTHONPATH'])).toEqual([
       '/work/head/src',
       '/work/head/lib',
     ]);
@@ -417,16 +425,6 @@ describe('probing a tool', () => {
     probe(contextWith(spawn, { probes: new Map() }), ['ruff', '--version']);
 
     expect(calls).toHaveLength(2);
-  });
-
-  it('works for a context built without a memo and keeps the memo on that context', () => {
-    const { calls, spawn } = recordingSpawn();
-    const context = contextWith(spawn);
-
-    probe(context, ['ruff', '--version']);
-    probe(context, ['ruff', '--version']);
-
-    expect(calls).toHaveLength(1);
   });
 
   it('reads the version from a memoized probe', () => {

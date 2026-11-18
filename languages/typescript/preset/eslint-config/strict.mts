@@ -7,47 +7,47 @@ import {
   type StrictOptions,
   linterConfigs,
 } from './typed/config-types.mts';
-import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mts';
+import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mts';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mts';
-import { nestSelectors } from './nest/nest-forms.mjs';
+import { nestSelectors } from './nest/nest-forms.mts';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
   escapeHatchSelectors,
   nullSelectorsFor,
-} from './strict/strict-escape-hatches.mjs';
+} from './strict/strict-escape-hatches.mts';
 import {
   declarationSelectorsFor,
   defaultExportSelectors,
   moduleSurfaceSelectors,
   typeDefinitionSelectors,
   typedDeclarationRules,
-} from './strict/strict-declarations.mjs';
+} from './strict/strict-declarations.mts';
 import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
   forEachSelectors,
   loopSelectors,
-} from './strict/strict-control-flow.mjs';
+} from './strict/strict-control-flow.mts';
 import {
   domainFunctionalRules,
   domainPurityRules,
   domainRestrictedSyntax,
   domainTypeAwareFunctionalRules,
-} from './strict/strict-domain.mjs';
+} from './strict/strict-domain.mts';
 import {
   adapterGlobsFor,
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mts';
 import { atomicUpdateConfigFor } from './concurrency/atomic-updates.mts';
-import { strictTestConfigFor } from './strict-tests.mjs';
+import { strictTestConfigFor } from './strict-tests.mts';
 import { configFileGlobsFor, domainGlobsFor, testAreaGlobsFor } from './typed/glob-views.mts';
 import { truthinessRules } from './truthiness/truthiness-rules.mts';
-import { productionPolicyConfigFor } from './policy/production-policy.mjs';
+import { productionPolicyConfigFor } from './policy/production-policy.mts';
 
 function everywhereSelectorsFor(options: StrictOptions) {
   return [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
@@ -202,6 +202,11 @@ function typedProductionRules(layout: ScopeLayout, options: StrictOptions) {
   };
 }
 
+const booleanLogicRules: Linter.RulesRecord = {
+  'nitpicker/simpler-boolean-logic': 'error',
+  'nitpicker/shorter-boolean-logic': 'error',
+};
+
 function strictTypedConfigFor(
   layout: ScopeLayout,
   parserOptions: ParserOptions,
@@ -234,7 +239,7 @@ function strictTypedConfigFor(
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
+      rules: { ...truthinessRules, ...booleanLogicRules },
     },
     {
       files: testAreaGlobsFor(layout),

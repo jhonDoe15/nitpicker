@@ -20,10 +20,12 @@ import type { KotlinProject } from './__tests__/kotlin-e2e-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules end to end', () => {
   let project: KotlinProject;
+  let result: ReturnType<typeof diffOf>;
 
   beforeAll(() => {
     project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-')) };
     commitBaseThenSpringBranch(project, fixtureBuild('build.gradle.kts', 'settings.gradle.kts'));
+    result = diffOf(project, 'spring');
   });
   afterAll(() => {
     if (typeof project === 'object') {
@@ -32,8 +34,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules end to end', () => {
   });
 
   it('reports the recorded fixture findings from the build, with the all-open plugin read from Gradle', () => {
-    const result = diffOf(project, 'spring');
-
     expect(result.failed).toBe(true);
     expect(springLines(result.newEnforceable)).toEqual(PINNED_SPRING_LINES);
   });

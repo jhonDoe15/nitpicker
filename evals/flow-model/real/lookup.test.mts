@@ -6,7 +6,7 @@ import type { AnalysisResult } from '../model/run-types.mts';
 import { LOOKUP_ENTRY, LOOKUP_FILE, lookupVariants } from './lookup.mts';
 import type { Variant } from './lookup.mts';
 
-const RESOLVER = '../execution/report/analyzer-metadata.mts#resolvedAnalyzerMetadata';
+const RESOLVER = '../../execution/report/analyzer-metadata.mts#resolvedAnalyzerMetadata';
 const SEEDED = [
   'seed-omit-resolution',
   'seed-read-before-resolution',

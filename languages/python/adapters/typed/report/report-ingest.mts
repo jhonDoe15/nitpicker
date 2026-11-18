@@ -2,7 +2,7 @@ import { normalizeReportPath } from '../../../../../shared/ingest/common.mjs';
 import { ingestFormatCheck } from '../../../../../shared/ingest/format-check.mjs';
 import { formatAdvice } from '../../../../../shared/messages/format/format-advice.mjs';
 import { ingestMypy, ingestPyright } from '../../../ingest/typed/type-check-views.mts';
-import { PYTHON_ANALYZER_NAME } from '../../python-analyzer.mjs';
+import { PYTHON_ANALYZER_NAME } from '../../python-analyzer.mts';
 import type { IngestedFinding, Manifest, TypesReport } from './report-types.mts';
 
 const FORMATTER_TOOLS: Readonly<Record<string, string>> = { ruff: 'ruff-format', black: 'black' };

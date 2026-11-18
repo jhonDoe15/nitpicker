@@ -11,6 +11,93 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] - 2026-11-17
+
+### Added
+
+- Monorepos and multi-project repositories: `projects` in the root config (folders, globs,
+  `{ "path", "preset" }` or `"."`), or detected from npm, Yarn, Bun and pnpm workspaces, uv
+  workspaces, Python projects and the outermost Gradle or Maven builds. A run checks the projects a
+  change touches and the projects that depend on them; `--project <path>` and `--all` choose
+  others. Each project reports under `<output>/<project>/`, with a combined summary and one exit
+  code. A config can `extends` a shared config file (#509).
+- `nitpicker --fix` fixes findings in every preset: safe recipes and tool fixers run on a plain
+  `--fix`, review recipes when their rule is named with `--fix --rule`, and `--fix --dry-run`
+  previews the edits. Findings and SARIF say which ones are fixable (#1206, #1246).
+- Labels on every rule and finding (`bug`, `security`, `performance`, `reliability`,
+  `simplification`, `maintainability`, `tests`, `style`, plus `spring`, `react`, `persistence`,
+  `async`). `--label <label>` runs only the analyzers and lists only the findings with that label;
+  the console prints counts by label, and `--json`, SARIF, `nitpicker explain` and
+  `nitpicker rules --label` carry them (#1223).
+- `nitpicker show` prints the last run's findings again, filtered by `--rule`, `--path` or
+  `--details`, without rerunning (#1193).
+- Per-item I/O rules in every preset: queries or requests once per loop item, lookups once per
+  element of a reactive or concurrent pipeline, GraphQL resolvers that query once per parent, rows
+  loaded only to change, delete or read one column, accumulators copied in a loop, remote calls in
+  transactions or under locks, retries without idempotency or with a stale object, dual writes,
+  check-then-write races, blocking work in async methods, scheduled jobs where one failing item
+  stops the rest, and queries or in-memory loops that skip the project's soft-delete filter (#1203,
+  #1244).
+- Rules for bugs that open-source projects fixed: null values in `Collectors.toMap`/`groupingBy`,
+  sums that overflow on a `MAX_VALUE` sentinel, HTTP values compared by exact case or split by
+  hand, request text that reaches a lookup untrimmed, validation, column and API spec limits that
+  disagree, and report-only presence checks by truthiness on optional strings and booleans (#1243).
+- Java and Kotlin tests that read the real clock, draw unseeded random values or call a real remote
+  host are reported, like in the TypeScript and Python presets (#960).
+- The logic rules decide more conditions: counted-loop, value, switch-arm and precondition facts,
+  same-file predicate helpers and exact integer arithmetic. New rules report conditions with a
+  shorter equivalent form and integer slips, and the logic rules run on Go (#1249).
+- JavaScript files that lose type-aware checking through a tsconfig change are reported as a policy
+  loosening (`checked-js-scope`) (#1212).
+
+### Changed
+
+- Comparisons check only what a change can affect: analyzers whose inputs did not change are
+  skipped, and Gradle multi-project and Maven reactor builds run tests, coverage and mutation only
+  on the affected modules. A docs-only change exits 0 at once (#1193).
+- One finding per mistake: overlapping rule pairs report once, and `any` chains collapse to one
+  finding per value (#1193).
+- `report.txt` separates failing from report-only findings and shows metric values; repeated tool
+  errors print once with project-relative paths (#1193).
+- A TypeScript `tsconfig.json` with only `references` resolves to the referenced config that covers
+  the most source and test files, and the run says which one it used. A Vitest config with its own
+  `projects` or `include` keeps its test selection (#1261).
+- Integration and end-to-end tests get a higher default timeout ceiling. Projects can opt in to the
+  test retries their pytest, Gradle or Maven config sets (#1190).
+- The Java formatter follows the version and options the build file pins (#1190).
+- `init` names peers that are installed but too old, pins TypeScript and picks a Vitest that fits
+  the project's Vite (#1190).
+- Gradle runs PIT with its own deadline: a slow PIT becomes a tool error and the other findings are
+  kept, as on Maven (#1193).
+- Container images are published for amd64 and arm64 (#1193).
+- Finding identities follow moved packages, folders and modules, so a move does not report old
+  findings as new (#1193, #1261).
+
+### Fixed
+
+- Fix false positives found by running nitpicker on open-source projects: Spring config properties
+  reported once per overlapping resource root, tab-indented lines reported twice, multi-write
+  methods whose callers all run in a transaction, SpotBugs findings on classes without project
+  source, ignored results of fluent methods that return `this`, Spring proxy self-calls that only
+  join the caller's transaction, and unused eslint-disable directives reported twice (#1190).
+- Fix the type check skipping the root files of the project's own tsconfig, dead-code findings on
+  published build output and nested packages, files started by path missing as entry points, and
+  unsafe-any rules running on files without type information (#1190).
+- Fix failing tests that only fail under the `restoreMocks` pin: the message now says so (#1190).
+- Fix the dependency-architecture crash on a module that imports itself, and formatting checks that
+  skipped hidden files (#1130).
+- Fix public-contract findings that were reported once per source root with the wrong paths
+  (#1128).
+- Fix the structure report of large projects being dropped for exceeding the analyzer output
+  limit (#1250, #1259).
+
+### Upgrade notes
+
+- Running at the root of a repository with workspaces or several builds now checks each project
+  separately. Add `"projects": []` to the root config to keep one project.
+- Expect new findings from the rules above. Only the findings a change adds fail it; existing code
+  stays baselined.
+
 ## [0.1.0-rc.2] - 2026-11-14
 
 ### Added
@@ -396,6 +483,7 @@ Other changes:
 - One agent skill per preset, shipped in the package.
 - Install from an attached tarball with a checksum, for versions that are not on npm.
 
-[Unreleased]: https://github.com/jhonDoe15/nitpicker/compare/v0.1.0-rc.2...HEAD
+[Unreleased]: https://github.com/jhonDoe15/nitpicker/compare/v0.1.0-rc.3...HEAD
+[0.1.0-rc.3]: https://github.com/jhonDoe15/nitpicker/releases/tag/v0.1.0-rc.3
 [0.1.0-rc.2]: https://github.com/jhonDoe15/nitpicker/releases/tag/v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/jhonDoe15/nitpicker/releases/tag/v0.1.0-rc.1

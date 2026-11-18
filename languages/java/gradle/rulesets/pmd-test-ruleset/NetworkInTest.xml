@@ -1,0 +1,88 @@
+  <rule name="NetworkInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This unit test calls a real remote host, so it fails without the network and depends on that service. Give the subject a fake client, or point it at a local stub: MockWebServer, WireMock or MockRestServiceServer on localhost. A test that needs the real service is an integration test: an IT class, an integration source set or @SpringBootTest.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $loopback := '^(localhost|[^/:@]*\.localhost|127\.[0-9.]+|0\.0\.0\.0|\[::1\]|::1|host\.docker\.internal)$',
+    $hostOf := function($url) {
+      let $authority := tokenize(replace($url, '^[a-zA-Z]+://([^/?#]+).*$', '$1'), '@')[last()]
+      return if (starts-with($authority, '[')) then concat(substring-before($authority, ']'), ']')
+             else tokenize($authority, ':')[1] },
+    $remoteUrl := function($s) {
+      let $v := lower-case(string($s/@ConstValue))
+      return matches($v, '^(https?|wss?)://[^/?#]') and not(matches(lower-case($hostOf($v)), $loopback)) },
+    $remoteHost := function($s) {
+      let $v := string($s/@ConstValue)
+      return matches($v, '^[A-Za-z0-9][A-Za-z0-9.-]*$') and not(matches(lower-case($v), $loopback)) },
+    $initializers := function($n) {
+      let $names := $n/descendant-or-self::*[self::VariableAccess or self::AmbiguousName]/@Name
+      return $n/ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $names]/*[last()] },
+    $literal := function($n) { exists($n/descendant-or-self::StringLiteral[$remoteUrl(.)]) },
+    $once := function($n) { $literal($n) or (some $i in $initializers($n) satisfies $literal($i)) },
+    $remote := function($n) { $once($n) or (some $i in $initializers($n) satisfies $once($i)) },
+    $mockMarks := ('Mock', 'MockBean', 'MockitoBean', 'Spy', 'SpyBean', 'MockitoSpyBean'),
+    $mocked := function($call) {
+      let $name := string($call/*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::AmbiguousName][1]/@Name),
+          $declarators := $call/ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $name]
+      return $name != ''
+        and (some $d in $declarators satisfies
+               ($d/../ModifierList/Annotation/@SimpleName = $mockMarks
+                or $d/*[last()][self::MethodCall][@MethodName = ('mock', 'spy')])) },
+    $unit := function($n) { $n/ancestor::CompilationUnit },
+    $realJdkClient := function($n) {
+      exists($unit($n)//MethodCall[pmd-java:matchesSig('java.net.http.HttpClient#newHttpClient()')
+                                   or pmd-java:matchesSig('java.net.http.HttpClient#newBuilder()')]) },
+    $realOkHttp := function($n) {
+      exists($unit($n)//ConstructorCall[pmd-java:typeIs('okhttp3.OkHttpClient')
+                                        or pmd-java:typeIs('okhttp3.OkHttpClient$Builder')]) },
+    $realApache := function($n) {
+      exists($unit($n)//MethodCall[*[1][pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')
+                                        or pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+                                        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClientBuilder')
+                                        or pmd-java:typeIs('org.apache.http.impl.client.HttpClientBuilder')]]) },
+    $fakeTransport := function($n) {
+      exists($unit($n)//MethodCall[@MethodName = ('exchangeFunction', 'requestFactory', 'clientConnector')]) },
+    $stubbed := function($call) {
+      exists($call/ancestor::ArgumentList/parent::MethodCall
+               [@MethodName = ('when', 'given', 'verify', 'then', 'thenReturn', 'willReturn', 'doReturn')]) }
+return
+(
+  //MethodCall[@MethodName = ('openConnection', 'openStream', 'getContent')][*[1][pmd-java:typeIs('java.net.URL')]]
+    [$remote(*[1])]
+  | //MethodCall[pmd-java:matchesSig('java.net.http.HttpRequest#newBuilder(java.net.URI)')
+                 or pmd-java:matchesSig('java.net.http.HttpRequest$Builder#uri(java.net.URI)')]
+      [$realJdkClient(.)][$remote(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = 'url'][*[1][pmd-java:typeIs('okhttp3.Request$Builder')]]
+      [$realOkHttp(.)][$remote(ArgumentList/*[1])]
+  | //ConstructorCall[pmd-java:typeIs('org.apache.hc.client5.http.classic.methods.HttpUriRequestBase')
+                      or pmd-java:typeIs('org.apache.http.client.methods.HttpRequestBase')]
+      [$realApache(.)][$remote(ArgumentList/*[1])]
+  | //MethodCall[pmd-java:matchesSig('org.springframework.web.reactive.function.client.WebClient#create(java.lang.String)')
+                 or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(java.lang.String)')
+                 or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(java.net.URI)')
+                 or (@MethodName = 'baseUrl'
+                     and *[1][pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient$Builder')
+                              or pmd-java:typeIs('org.springframework.web.client.RestClient$Builder')
+                              or pmd-java:typeIs('retrofit2.Retrofit$Builder')])
+                 or (@MethodName = 'rootUri' and *[1][pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')])
+                 or (@MethodName = 'uri'
+                     and *[1][pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient$UriSpec')
+                              or pmd-java:typeIs('org.springframework.web.client.RestClient$UriSpec')])]
+      [not($fakeTransport(.))][$remote(ArgumentList/*[1])]
+  | //MethodCall[pmd-java:matchesSig('org.jsoup.Jsoup#connect(java.lang.String)')
+                 or (@MethodName = ('getForObject', 'getForEntity', 'postForObject', 'postForEntity', 'postForLocation',
+                                    'exchange', 'put', 'delete', 'patchForObject', 'headForHeaders', 'optionsForAllow',
+                                    'execute')
+                     and *[1][pmd-java:typeIs('org.springframework.web.client.RestOperations')
+                              or pmd-java:typeIs('org.springframework.boot.test.web.client.TestRestTemplate')])]
+      [$remote(ArgumentList/*[1])]
+  | //ConstructorCall[pmd-java:typeIsExactly('java.net.Socket')]
+      [ArgumentList/@Size = 2][ArgumentList/*[1][self::StringLiteral][$remoteHost(.)]]
+)
+  [not($mocked(.) or $stubbed(.))]
+  [not(ancestor::CompilationUnit//ClassType[@SimpleName = ('MockRestServiceServer', 'MockServerRestTemplateCustomizer')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

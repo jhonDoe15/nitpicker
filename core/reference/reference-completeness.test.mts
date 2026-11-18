@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nitpickerRules as untypedNitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import {
   reactRuleIds as untypedReactRuleIds,
   reactTestRuleIds as untypedReactTestRuleIds,
 } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { SPRING_ARCH_RULES as UNTYPED_SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mjs';
-import { KOTLIN_EXCEPTION_RULES as UNTYPED_KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { KOTLIN_EXCEPTION_RULES as UNTYPED_KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
 import { KOTLIN_SOURCE_MESSAGES as UNTYPED_KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mjs';
 import { leftOutPmdRules as untypedLeftOutPmdRules } from '../../languages/java/reference/pmd-rules.mjs';
 import {
@@ -17,9 +17,9 @@ import {
 import {
   RUFF_IGNORE as UNTYPED_RUFF_IGNORE,
   RUFF_SELECT as UNTYPED_RUFF_SELECT,
-} from '../../languages/python/adapters/configuration/python-rule-ids.mjs';
-import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mjs';
+} from '../../languages/python/adapters/configuration/python-rule-ids.mts';
+import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mts';
+import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mts';
 import { RULES as UNTYPED_RULES } from '../../shared/policy.mjs';
 import {
   CODING_STANDARDS_RULES as UNTYPED_CODING_STANDARDS_RULES,
@@ -39,7 +39,6 @@ import { parseJson, textsOf } from '../../shared/values/readers.mts';
 
 type Hint = { tool: string; rules?: unknown; prefix?: unknown };
 
-const nitpickerRules: { rules: Readonly<Record<string, unknown>> } = untypedNitpickerRules;
 const i18nRuleIds: readonly string[] = untypedI18nRuleIds;
 const reactRuleIds: readonly string[] = untypedReactRuleIds;
 const reactTestRuleIds: readonly string[] = untypedReactTestRuleIds;

@@ -8,6 +8,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- The unsafe-any checks (`no-unsafe-member-access`, `no-unsafe-assignment`, `no-unsafe-call`,
+  `no-unsafe-argument`, `no-unsafe-return`, `restrict-template-expressions` and
+  `restrict-plus-operands`) run on TypeScript files and JavaScript files covered by a project
+  tsconfig with `checkJs: true`, including inherited options and referenced projects. Untyped
+  JavaScript in a TypeScript project is still reported by `javascript-in-typescript-project`.
+  Narrowing tsconfig coverage so existing JavaScript loses those checks is reported as a policy
+  loosening. The JavaScript preset keeps its own type-checked policy.
 - A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
   configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
   engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files
@@ -36,7 +43,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - The server scope lives in `languages/typescript/preset/eslint-config/server/server-scope.mjs`; see
   "Server code" above. Its rules, `nitpicker/no-local-time-zone` and
   `nitpicker/no-uncoerced-request-input`, are strict rules too.
-- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
+- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mts` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
@@ -78,7 +85,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
-  `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `exported-name-collision`,
+  `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `result-slip`, `exported-name-collision`,
   `redefined-library-component`, `new-icon-asset`),
   the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
   ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
@@ -90,7 +97,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `near-duplicate`, `duplicate-branch`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `near-duplicate`, `duplicate-branch`, `result-slip`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and

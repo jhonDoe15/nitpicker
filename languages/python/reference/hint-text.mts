@@ -1,4 +1,4 @@
-import { DEFAULT_LIBRARIES } from '../rules/libraries/project-libraries.mjs';
+import { DEFAULT_LIBRARIES } from '../rules/libraries/project-libraries.mts';
 import type { RuleHintView } from './typed/hint-views.mts';
 
 const SUBJECT = '<name>';

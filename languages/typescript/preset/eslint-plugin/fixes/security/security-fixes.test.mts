@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as requireHttpTimeout } from '../../rules/security/http/require-http-timeout.mjs';
-import { rule as noDisabledTlsVerification } from '../../rules/security/tls/no-disabled-tls-verification.mjs';
+import { rule as requireHttpTimeout } from '../../rules/security/http/require-http-timeout.mts';
+import { rule as noDisabledTlsVerification } from '../../rules/security/tls/no-disabled-tls-verification.mts';
 
 const tester = typescriptRuleTester();
 const timeoutOf = (call: string, output: string) => [

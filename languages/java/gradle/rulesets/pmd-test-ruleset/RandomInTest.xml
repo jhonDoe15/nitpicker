@@ -1,0 +1,31 @@
+  <rule name="RandomInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test draws unseeded random values, so it can pass on one run and fail on the next. Use fixed values, or a seeded generator the subject takes: new Random(42), or Collections.shuffle(list, random) with that generator. Compare a fixed UUID (UUID.fromString(...)), not UUID.randomUUID().">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $expecting := ('assertEquals', 'assertSame', 'assertArrayEquals', 'assertIterableEquals', 'isEqualTo', 'isSameAs',
+                    'hasToString'),
+    $faked := function($n, $types) {
+      $n/ancestor::CompilationUnit//MethodCall[@MethodName = 'mockStatic']
+        /ArgumentList/ClassLiteral/ClassType/@SimpleName = $types }
+return
+(
+  //ConstructorCall[pmd-java:typeIsExactly('java.util.Random') or pmd-java:typeIsExactly('java.util.SplittableRandom')]
+    [ArgumentList/@Size = 0
+     or ArgumentList/*[1][pmd-java:matchesSig('java.lang.System#nanoTime()')
+                          or pmd-java:matchesSig('java.lang.System#currentTimeMillis()')]]
+  | //MethodCall[pmd-java:matchesSig('java.lang.Math#random()') or pmd-java:matchesSig('java.lang.StrictMath#random()')]
+      [not($faked(., ('Math', 'StrictMath')))]
+  | //MethodCall[pmd-java:matchesSig('java.util.concurrent.ThreadLocalRandom#current()')]
+      [not($faked(., 'ThreadLocalRandom'))]
+  | //MethodCall[pmd-java:matchesSig('java.util.Collections#shuffle(java.util.List)')]
+  | //MethodCall[pmd-java:matchesSig('java.util.UUID#randomUUID()')]
+      [ancestor-or-self::*[not(parent::MethodCall and not(preceding-sibling::*))][1]
+         /parent::ArgumentList/parent::MethodCall[@MethodName = $expecting]]
+      [not($faked(., 'UUID'))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

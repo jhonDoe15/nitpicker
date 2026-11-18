@@ -85,14 +85,14 @@ func edgeMessage(schemas map[*types.TypeName]*entSchema, edge *entEdge) (string,
 		return "", false
 	}
 	if edge.inverse {
-		assoc, ok := assocOf(schemas, edge)
+		assoc, ok := partnerOf(schemas, edge)
 		if !ok || !edge.unique || assoc.unique {
 			return "", false
 		}
 		return keyMessage(schemas[edge.owner], edge)
 	}
 	if paired(schemas, edge) {
-		inverse, ok := inverseOf(schemas, edge)
+		inverse, ok := partnerOf(schemas, edge)
 		if !ok || !edge.unique || inverse.unique {
 			return "", false
 		}
@@ -126,27 +126,21 @@ func keyMessage(owner *entSchema, edge *entEdge) (string, bool) {
 		edge.owner.Name(), edge.name, edge.owner.Name(), edge.name, edge.owner.Name()), true
 }
 
-func assocOf(schemas map[*types.TypeName]*entSchema, inverse *entEdge) (*entEdge, bool) {
-	target := schemas[inverse.target]
-	if target == nil || target.opaque {
-		return nil, false
+func joinName(edge *entEdge) string {
+	if edge.inverse {
+		return edge.ref
 	}
-	for _, edge := range target.edges {
-		if !edge.inverse && edge.name == inverse.ref && edge.target == inverse.owner {
-			return edge, true
-		}
-	}
-	return nil, false
+	return edge.name
 }
 
-func inverseOf(schemas map[*types.TypeName]*entSchema, assoc *entEdge) (*entEdge, bool) {
-	target := schemas[assoc.target]
+func partnerOf(schemas map[*types.TypeName]*entSchema, edge *entEdge) (*entEdge, bool) {
+	target := schemas[edge.target]
 	if target == nil || target.opaque {
 		return nil, false
 	}
-	for _, edge := range target.edges {
-		if edge.inverse && edge.ref == assoc.name && edge.target == assoc.owner {
-			return edge, true
+	for _, candidate := range target.edges {
+		if candidate.inverse != edge.inverse && joinName(candidate) == joinName(edge) && candidate.target == edge.owner {
+			return candidate, true
 		}
 	}
 	return nil, false
@@ -160,7 +154,7 @@ func paired(schemas map[*types.TypeName]*entSchema, assoc *entEdge) bool {
 	if target.opaque {
 		return true
 	}
-	_, found := inverseOf(schemas, assoc)
+	_, found := partnerOf(schemas, assoc)
 	return found
 }
 

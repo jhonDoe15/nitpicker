@@ -1,6 +1,7 @@
 import { THRESHOLDS } from '../thresholds.mjs';
 import { skeletonKey } from './skeleton.mjs';
 import { bagOverlap, lcsLength, similarEnough } from './tokens.mjs';
+import { smallest } from '../../lists/items.mjs';
 
 export function partnerLimit(size) {
   return size > THRESHOLDS.fullBucket ? THRESHOLDS.bucketNeighbours : size;
@@ -10,7 +11,7 @@ function similar(left, right) {
   const percent = THRESHOLDS.minSharedPercent;
   const lengths = [left.tokens.length, right.tokens.length];
   return (
-    similarEnough(Math.min(...lengths), lengths, percent) &&
+    similarEnough(smallest(lengths), lengths, percent) &&
     similarEnough(bagOverlap(left.bag, right.bag), lengths, percent) &&
     similarEnough(lcsLength(left.masks, right.tokens), lengths, percent)
   );

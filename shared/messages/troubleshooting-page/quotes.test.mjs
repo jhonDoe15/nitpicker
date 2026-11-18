@@ -154,6 +154,30 @@ function producedBy(quoted, code) {
   return reached.some(({ literal }) => literal >= needed);
 }
 
+function runOwners(strings, wanted) {
+  const owners = new Map([...wanted].map((run) => [run, new Set()]));
+  for (const [owner, { text }] of strings.entries()) {
+    const runs = Array.from(
+      { length: Math.max(0, text.length - SHARED_RUN + 1) },
+      (_unused, start) => text.slice(start, start + SHARED_RUN),
+    );
+    for (const run of runs) {
+      owners.get(run)?.add(owner);
+    }
+  }
+  return owners;
+}
+
+function byHits(runs, owners) {
+  const hits = new Map();
+  for (const run of new Set(runs)) {
+    for (const owner of owners.get(run)) {
+      hits.set(owner, (hits.get(owner) ?? 0) + 1);
+    }
+  }
+  return [...hits].toSorted((left, right) => right[1] - left[1]).map(([owner]) => owner);
+}
+
 function quotedSpans() {
   return pageEntries().flatMap(({ slug, rawSymptom }) =>
     [...rawSymptom.replaceAll(/\s+/gu, ' ').matchAll(/`([^`]+)`/gu)]
@@ -172,14 +196,12 @@ describe('the symptoms of the troubleshooting page', () => {
     const sources = productionSources().map(parsed);
     const shared = sharedConstants(sources);
     const strings = sources.flatMap((source) => sourceStrings(source, shared));
-    const unmatched = quotedSpans()
-      .filter(({ span }) => {
+    const spans = quotedSpans().map((entry) => ({ ...entry, runs: runsOf(entry.span) }));
+    const owners = runOwners(strings, new Set(spans.flatMap(({ runs }) => runs)));
+    const unmatched = spans
+      .filter(({ span, runs }) => {
         const quoted = quotedTokens(span);
-        const runs = runsOf(span);
-        return !strings.some(
-          ({ tokens, text }) =>
-            runs.some((run) => text.includes(run)) && producedBy(quoted, tokens),
-        );
+        return !byHits(runs, owners).some((owner) => producedBy(quoted, strings[owner].tokens));
       })
       .map(({ slug, span }) => `${TROUBLESHOOTING_FILE}#${slug}: ${span}`);
 

@@ -1,6 +1,6 @@
 import type { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { type ParserOptions, linterConfigs } from '../typed/config-types.mts';
 
 const SYNTAX_RULES = {

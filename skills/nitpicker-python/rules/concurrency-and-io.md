@@ -3,12 +3,18 @@
 Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
-- Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather` over one database query per item is still one query per item (`io-in-loop`).
+- Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather`, a task group's `start_soon`, `asyncio.to_thread` or `run_in_executor` over one database query per item is still one query per item (`io-in-loop`).
 - Accumulators: `append`, `extend` or `update` one list or dict in the loop, or build it with a comprehension or `itertools.chain.from_iterable`; never rebuild it from a copy of itself (`acc = acc + [x]`, `[*acc, x]`, `{**acc, k: v}`) on every pass (`accumulator-copy`).
 - Relationships: load what a loop reads in the query that fetches the rows (`select_related` or `prefetch_related` in Django, `selectinload` or `joinedload` in SQLAlchemy); never read a lazy relationship on each row (`lazy-relation-in-loop`).
+- GraphQL resolvers: a Strawberry field or Graphene `resolve_*` method of a type returned as a list runs once per parent, so batch its lookup with a `DataLoader` (`info.context.customer_loader.load(self.customer_id)`) instead of querying in it (`resolver-query-per-parent`).
 - Remote calls: none inside a transaction or while a lock is held (`remote-call-in-transaction`, `remote-call-under-lock`); call before the transaction or after the commit (`transaction.on_commit`), copy what you need out of the lock first, or record an outbox row and send it from a worker.
 - Retried writes: a write inside a retry (`@retry`, a `Retrying` loop, a Celery task with `autoretry_for`) carries a stable key: an idempotency key for a payment, a deduplication or message id for a message (`task_id=` for Celery), an upsert for an insert; or retry only the read (`retry-without-idempotency`).
 - A database write and a message publish do not share a function: write an outbox row in the same transaction and let a relay publish it and mark that row sent (`dual-write-without-outbox`).
+- Related writes share one transaction (`with session.begin():`, `with transaction.atomic():`), written through the session the block opened; a check that decides a create is atomic (`get_or_create`, `ON CONFLICT`) or locks the row (`select_for_update()`, `with_for_update()`) (`related-writes-without-transaction`, `write-outside-transaction`, `check-then-write-race`).
+- Scheduled and queued jobs (Celery tasks, APScheduler jobs, Django management commands) isolate each item of a loop that does I/O: a `try`/`except` per item that records the failure, or one task per item with `.delay(item)` (`job-item-failure-stops-run`).
+- Reads of a model with a soft-delete or visibility column apply the filter the project's other reads use (`deleted_at__isnull=True`, `.alive()`, a filtering default manager, SQLAlchemy `with_loader_criteria`); trash, restore, purge and admin code reads deleted rows on purpose (`soft-delete-filter-missing`).
+- Loops and lookups over a collection of items with a deleted or hidden flag skip flagged items the way the project's other code does (a guard on the flag, a helper such as `live(items)`, a narrowed type); undo, restore and sync code reads them on purpose (`deleted-item-filter-missing`).
+- Route handlers declare the auth requirement the project's other handlers use: the same `Depends(get_current_user)` or `Security(...)` in FastAPI (or on the router), `permission_classes` in Django REST framework, the login decorator in Flask; public routes (login, health, webhooks) are the exception (`route-without-auth`).
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
@@ -55,9 +61,15 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   truth test on a queryset or `.all()` list, `.filter()`/`.where()` instead of a comprehension with an
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
+- Let the database change rows too: `Model.objects.filter(...).update(status="expired")` or `session.execute(update(Model).where(...).values(...))` instead of loading rows, assigning the same value to each and calling `bulk_update` or `commit` (`in-memory-update`).
+- Ask for what you use: `values_list("email", flat=True)` or `select(User.email)` instead of loading whole rows to read one column (`row-for-one-column`), and `.exists()` or `select(exists().where(...))` instead of `.count() > 0` or `.first() is not None` (`row-for-existence`).
+- Optimistic-lock retries: retry a `StaleDataError` by reading the row again inside each attempt (`order = session.get(Order, order_id)`, apply the change, `commit()`), never by committing the object loaded before the retry (`stale-retry`).
 - Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
   the column), with an index or primary key that starts with the column. PostgreSQL does not create one
   (`foreign-key-index`).
+- Give every field written from a request a validation bound at or below its column width
+  (`Field(max_length=30)` for `String(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to
+  the validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Join at most one collection into a query: `joinedload(Order.lines)` next to to-one relations, and
   `selectinload(Order.payments)` for the other collections (`multiple-collection-joins`).
 - Index every foreign key: `index=True` on a SQLAlchemy `mapped_column(ForeignKey(...))` or SQLModel

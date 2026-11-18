@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { factsBundle } from './facts-bundle.mjs';
+import type { Scanned, ScannedFile } from './typed/facts-types.mts';
+import { factsBundle } from './facts-bundle.mts';
 
 type Fields = Readonly<Record<string, unknown>>;
 
@@ -37,7 +38,7 @@ function definition(name: string, extra: Fields = {}) {
   };
 }
 
-function file(extra: Fields = {}) {
+function file(extra: Partial<ScannedFile> = {}): ScannedFile {
   return {
     imports: [],
     definitions: [],
@@ -79,7 +80,7 @@ function isBundle(value: unknown): value is Bundle {
   );
 }
 
-function bundle(scanned: Fields, options: Fields = {}): Bundle {
+function bundle(scanned: Scanned, options: Fields = {}): Bundle {
   const result: unknown = factsBundle({
     modules: MODULES,
     scanned,
@@ -99,9 +100,7 @@ describe('the Python facts bundle', () => {
         imports: [statement(1, 'shop.orders.cart', [['add'], ['_draft']])],
         exports: {
           all: null,
-          reexports: [
-            { name: 'add', imported: 'add', module: 'shop.orders.cart', level: 0, line: 1 },
-          ],
+          reexports: [{ name: 'add', line: 1 }],
         },
       }),
       'src/shop/orders/cart.py': file({ definitions: [definition('add'), definition('_draft')] }),
@@ -257,9 +256,7 @@ describe('the Python facts bundle', () => {
   });
 
   it('lists doc comments with their file', () => {
-    const docComments = [
-      { line: 2, name: 'add', qualifier: 'Cart.add', lines: ['Adds.'], detailed: true },
-    ];
+    const docComments = [{ line: 2, name: 'add', qualifier: 'Cart.add', lines: 1, detailed: true }];
 
     expect(bundle({ 'src/shop/orders/cart.py': file({ docComments }) }).docComments).toEqual([
       { file: 'src/shop/orders/cart.py', ...docComments[0] },
@@ -267,8 +264,8 @@ describe('the Python facts bundle', () => {
   });
   it('resolves references to the exact name and loads to the fetched names', () => {
     const references = [
-      { name: 'shop.orders.lines.helper', line: 2 },
-      { name: 'shop.orders.cart', line: 3 },
+      { name: 'shop.orders.lines.helper', line: 2, dynamic: false },
+      { name: 'shop.orders.cart', line: 3, dynamic: false },
       { name: 'shop.orders.*', line: 4, dynamic: true },
     ];
     const { imports } = bundle({
@@ -287,7 +284,7 @@ describe('the Python facts bundle', () => {
 
   it('counts only the attributes a migration reads', () => {
     const migration = 'src/shop/migrations/0001_initial.py';
-    const binding = { kind: 'module', module: 'shop', level: 0 };
+    const binding = { kind: 'module', module: 'shop', level: 0, name: 'shop' };
     const { imports, definitions } = bundle(
       {
         [migration]: file({

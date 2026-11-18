@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestPit } from '../pit.mjs';
+import { ingestPit } from '../pit.mts';
 import { createGeneratedFilter } from './generated-filter.mjs';
 
 const fixtures = path.resolve(import.meta.dirname, '../fixtures');

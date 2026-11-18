@@ -18,6 +18,7 @@ import {
   decodedMappings,
 } from '@jridgewell/trace-mapping';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type FunctionNode = FunctionDeclaration | FunctionExpression | ArrowFunctionExpression;
 
@@ -173,7 +174,7 @@ function enumArguments(ast: Program): Set<AnyNode> {
     const children = Object.values(node).flatMap((value: unknown) =>
       Array.isArray(value) ? listOf(value) : [value],
     );
-    pending.push(...children.filter(isAstNode));
+    appendAll(pending, children.filter(isAstNode));
   }
   return found;
 }

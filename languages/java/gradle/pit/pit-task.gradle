@@ -60,20 +60,27 @@ project.ext.nitpickerRegisterPit = { Map spec ->
         ignoreExitValue = true
         standardOutput = pitOutput
         errorOutput = pitOutput
+        def writePitFailure = { String text ->
+            new File(spec.reportDir().asFile, 'failure.txt').text = text
+        }
+        def pitExitFailure = { int exitValue, String output ->
+            def lines = output.readLines().findAll { it.trim() }
+            def tail = lines.takeRight(40).join('\n')
+            "PIT failed with exit code ${exitValue}${spec.failureSuffix()}: ${tail}".toString()
+        }
         doLast {
             def exitValue = executionResult.get().exitValue
             def output = pitOutput.toString('UTF-8')
             if (exitValue != 0) {
-                def retry = project.ext.nitpickerPitRetry(pitTask, execOperations, spec.reportDir().asFile, output)
+                def retry = project.ext.nitpickerPitRetry(spec.reportDir().asFile, output,
+                    project.ext.nitpickerPitExecRerun(pitTask, execOperations))
                 if (retry != null) {
                     exitValue = retry.exitValue
                     output = retry.output
                 }
             }
             if (exitValue != 0) {
-                def lines = output.readLines().findAll { it.trim() }
-                new File(spec.reportDir().asFile, 'failure.txt').text =
-                    "PIT failed with exit code ${exitValue}${spec.failureSuffix()}: ${lines.takeRight(40).join('\n')}"
+                writePitFailure(pitExitFailure(exitValue, output))
             }
         }
         doFirst {
@@ -166,6 +173,33 @@ project.ext.nitpickerRegisterPit = { Map spec ->
                 if (!source.options.excludeTags.isEmpty()) {
                     args '--excludedGroups', source.options.excludeTags.toList().sort().join(',')
                 }
+            }
+            if (context.deadline != null) {
+                def first = project.ext.nitpickerRunPit(pitTask, pitDir.asFile, context.deadline)
+                def basePitDir = baseRoot == null || !sameDrive ? null
+                    : new File(baseRoot, context.relativeToRoot(pitDir.asFile))
+                def retry = first.exitValue == 0 || first.timedOut ? null
+                    : project.ext.nitpickerPitRetry(pitDir.asFile, first.output, { ->
+                        pitTask.args '--skipFailingTests'
+                        project.ext.nitpickerRunPit(pitTask, pitDir.asFile, context.deadline)
+                    }, basePitDir)
+                def result = retry ?: first
+                def where = "${project.projectDir}${spec.failureSuffix()}"
+                def moreTime = 'Set NITPICKER_GRADLE_TIMEOUT_MINUTES'
+                if (result.baseRetryStopped) {
+                    writePitFailure('PIT did not run again without them: the same test classes failed on the base, ' +
+                        "where PIT without them did not finish in time. ${moreTime} to give PIT more time")
+                } else if (result.notStarted) {
+                    writePitFailure("PIT was not started in ${where}: less than a minute of the Gradle command's " +
+                        "time limit was left. ${moreTime}, or analyzerTimeoutMinutes when the config sets it, " +
+                        "to give the Java analyzer more time")
+                } else if (result.timedOut) {
+                    writePitFailure("PIT did not finish in ${where} within ${result.limit} and was stopped. " +
+                        "${moreTime} to give each Gradle command and Java tool more time")
+                } else if (result.exitValue != 0) {
+                    writePitFailure(pitExitFailure(result.exitValue, result.output))
+                }
+                throw new StopExecutionException()
             }
         }
         onlyIf { spec.enabled() }

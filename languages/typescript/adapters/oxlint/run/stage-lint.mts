@@ -4,6 +4,7 @@ import { eslintShapedResults } from '../oxlint-diagnostics.mts';
 import { oxlintBinary, spawnJsonAsync, tsgolintBinary } from '../oxlint-process.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import type { StageConfig } from '../stage/oxlint-stage.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export type LintTiming = {
   readonly environment: Environment;
@@ -36,8 +37,9 @@ export async function lintConfigs({
     if (failed !== undefined) {
       throw failed.reason;
     }
-    results.push(
-      ...reports.flatMap((report) => (report.status === 'fulfilled' ? report.value : [])),
+    appendAll(
+      results,
+      reports.flatMap((report) => (report.status === 'fulfilled' ? report.value : [])),
     );
   }
   return results;
@@ -94,7 +96,7 @@ async function lintStage({
         acceptedStatuses: [0, 1],
       },
     );
-    results.push(...eslintShapedResults(stage, diagnosticsOf(report), naming));
+    appendAll(results, eslintShapedResults(stage, diagnosticsOf(report), naming));
   }
   return results;
 }

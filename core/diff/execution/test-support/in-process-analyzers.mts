@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
+import { runJava } from '../../../../languages/java/adapters/java-runner.mts';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mts';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
@@ -14,6 +14,7 @@ import {
   checkoutModuleUrl,
 } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { callUntyped } from '../../../../languages/java/adapters/typed/java-values.mts';
 import type { GraphResult, Outcome } from '../graph/outcomes.mts';
 import { type AnalyzerTask, byDescendingExecutionPriority, indexTasks } from '../tasks.mts';
 import type {
@@ -26,8 +27,11 @@ import type {
   TaskMap,
 } from './in-process-types.mts';
 
-const javaRunner: Runner = runJava;
 const pythonRunner: Runner = runPython;
+
+function javaRunner(argv: readonly string[], options: { readonly spawn?: unknown }): unknown {
+  return callUntyped(runJava, argv, options);
+}
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const sourcePath: (file: string) => string = checkoutModulePath;
 const hygieneCli: (cli: HygieneCli) => number = runHygieneCli;
@@ -36,9 +40,8 @@ const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const fakeAnalyzerPath = fileURLToPath(
   checkoutModuleUrl(new URL('./fake-analyzer.mjs', import.meta.url)),
 );
-const javaRunnerPath = path.resolve(
-  import.meta.dirname,
-  '../../../../languages/java/adapters/java-runner.mjs',
+const javaRunnerPath = sourcePath(
+  path.resolve(import.meta.dirname, '../../../../languages/java/adapters/java-runner.mjs'),
 );
 const pythonRunnerPath = sourcePath(
   path.resolve(import.meta.dirname, '../../../../languages/python/adapters/python-runner.mjs'),
@@ -162,7 +165,7 @@ function settleTask(
 function missingDependency(dependencyName: string, task: AnalyzerTask): Outcome {
   return {
     name: dependencyName,
-    error: `Analyzer dependency ${dependencyName} is missing for ${task.name}`,
+    error: `${task.name} skipped: ${dependencyName} failed (see above)`,
     missing: true,
   };
 }

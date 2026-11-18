@@ -47,6 +47,8 @@ from kinds.receivers import callee_of, is_executor, plain_receiver, shares_metho
 from kinds.sites import outer_calls
 
 ITERATING = {"map", "filter"}
+SPAWN_METHODS = {"start_soon": 0, "run_in_executor": 1}
+SPAWN_FUNCTIONS = {"asyncio.to_thread"}
 KEYED = {"sorted", "min", "max"}
 
 
@@ -240,6 +242,26 @@ class IoScope:
             return {}
         names = chain_names(call.args[0])
         return self.callable_effects(call.args[0], names, call_text(call.args[0]))
+
+    def spawn_parts(self, call):
+        function = call.func
+        position = (
+            SPAWN_METHODS.get(function.attr)
+            if isinstance(function, ast.Attribute)
+            else None
+        )
+        if dotted_name(function, self.aliases) in SPAWN_FUNCTIONS:
+            position = 0
+        if position is None or len(call.args) <= position:
+            return None
+        return call.args[position], [
+            *call.args[position + 1 :],
+            *(k.value for k in call.keywords),
+        ]
+
+    def spawned_effects(self, callable_node):
+        names = chain_names(callable_node)
+        return self.callable_effects(callable_node, names, call_text(callable_node))
 
     def kind(self, call):
         return primary(self.effects(call))

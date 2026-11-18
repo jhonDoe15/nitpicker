@@ -1,6 +1,7 @@
 import { isPure } from '../../near-duplicates/canonical/effects.mjs';
 import { isBound, nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { branchKey, declaredNames } from './arm-keys.mjs';
+import { smallest } from '../../lists/items.mjs';
 
 const WRITES = new Set(['assign', 'update', 'declare']);
 const MOVABLE_GROUPS = new Set(['if', 'when']);
@@ -11,7 +12,7 @@ function block(children) {
 }
 
 function sharedCount(arms, pick) {
-  const shortest = Math.min(MAX_SHARED, ...arms.map(({ statements }) => statements.length));
+  const shortest = smallest([MAX_SHARED, ...arms.map(({ statements }) => statements.length)]);
   const counts = Array.from({ length: shortest }, (_, index) => index + 1);
   const differs = counts.find((count) => {
     const keys = arms.map((arm) => branchKey(block(pick(arm.statements, count)), arm.scope));

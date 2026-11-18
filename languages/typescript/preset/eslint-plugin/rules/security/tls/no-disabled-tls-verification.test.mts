@@ -1,11 +1,11 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule as noDisabledTlsVerification } from './no-disabled-tls-verification.mjs';
-import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
+import { ruleModule, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
+import { rule as noDisabledTlsVerification } from './no-disabled-tls-verification.mts';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();
 const off = [{ messageId: 'tlsVerificationOff' }];
 
-tester.run('no-disabled-tls-verification', withoutFixes(noDisabledTlsVerification), {
+tester.run('no-disabled-tls-verification', withoutFixes(ruleModule(noDisabledTlsVerification)), {
   valid: [
     'import https from "node:https"; export const agent = new https.Agent({ ca: readFileSync(caPath) });',
     'export const options = { rejectUnauthorized: true };',

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { type Invocation, validateAnalyzer, validateInvocation } from '../validation/analyzers.mts';
+import type { TaskCheckpoint } from '../tasks.mts';
 import {
   type AnalyzerMetadata,
   recoverAnalyzerVersion,
@@ -32,6 +33,7 @@ export type PreparedTask = {
   readonly reportedTools: readonly string[];
   readonly acceptedExitCodes: readonly number[];
   readonly invocation: Invocation;
+  readonly checkpoint?: TaskCheckpoint | undefined;
 };
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;

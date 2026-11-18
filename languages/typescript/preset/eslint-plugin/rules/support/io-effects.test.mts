@@ -1,25 +1,25 @@
-import type { Rule } from 'eslint';
+import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { IO_FILES, IO_STORE } from '../../test-support/projects/io-store-fixture.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
-import { chainOuterCall, describePath, ioEffect, ioKind } from './io-effects.mjs';
+import { chainOuterCall, describePath, ioEffect, ioKind } from './io-effects.mts';
 
-const probe = {
+const probe: TSESLint.RuleModule<'effect'> = {
   meta: {
     type: 'problem',
     schema: [],
     messages: { effect: '{{kind}}: {{path}}' },
   },
-  create(context: Rule.RuleContext) {
+  create(context) {
     return {
-      CallExpression(node: Rule.Node) {
-        const effect: { kind: string; path: string[] } | undefined = ioEffect(node, context);
-        const outer: unknown = chainOuterCall(node);
+      CallExpression(node: TSESTree.CallExpression) {
+        const effect = ioEffect(node, context);
+        const outer = chainOuterCall(node);
         const reportedByOuter = outer !== undefined && ioKind(outer, context) === effect?.kind;
         if (effect !== undefined && !reportedByOuter) {
           context.report({
             node,
             messageId: 'effect',
-            data: { kind: effect.kind, path: String(describePath(effect.path)) },
+            data: { kind: effect.kind, path: describePath(effect.path) },
           });
         }
       },

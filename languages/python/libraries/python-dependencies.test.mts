@@ -3,7 +3,7 @@ import {
   isDevelopmentGroup,
   normalizeRequirementName,
   requirementName,
-} from './python-dependencies.mjs';
+} from './python-dependencies.mts';
 import { readPythonDependencies } from './typed/dependency-views.mts';
 import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';

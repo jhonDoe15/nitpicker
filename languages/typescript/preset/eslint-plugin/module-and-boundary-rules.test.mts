@@ -1,12 +1,12 @@
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from './test-support/rule-tester.mts';
-import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
-import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
-import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
-import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
-import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
-import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
-import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
+import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mts';
+import { rule as noProductionConsole } from './rules/modules/no-production-console.mts';
+import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mts';
+import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mts';
+import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mts';
+import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mts';
+import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 
 const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

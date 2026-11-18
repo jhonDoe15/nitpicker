@@ -12,15 +12,11 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { testFailureFindings as untypedTestFailureFindings } from '../../../../languages/python/adapters/test-runs/test-failures.mjs';
+import { testFailureFindings } from '../../../../languages/python/adapters/test-runs/test-failures.mts';
 
 const failingTestsError: (
   failures: readonly { readonly module: string; readonly tests: readonly string[] }[],
 ) => Error = untypedFailingTestsError;
-const testFailureFindings: (run: {
-  readonly testRunner: string;
-  readonly testFailures: readonly { readonly id: string }[];
-}) => readonly { readonly message: string }[] = untypedTestFailureFindings;
 
 const HELP_LINE = `Help with tool errors: ${textOf(troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2))}`;
 
@@ -44,7 +40,7 @@ const JAVA_MESSAGE = failingTestsError([
 const PYTHON_MESSAGE = textOf(
   testFailureFindings({
     testRunner: 'unittest',
-    testFailures: [{ id: 'tests.test_cart.CartTest.test_adds' }],
+    testFailures: [{ id: 'tests.test_cart.CartTest.test_adds', file: undefined, notRun: false }],
   })[0]?.message,
 );
 

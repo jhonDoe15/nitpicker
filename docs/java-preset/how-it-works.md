@@ -6,7 +6,7 @@ Part of the [Java preset guide](../java-preset.md).
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
   -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
      (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
-  -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
+  -> languages/java/adapters/reporting/java-reports.mts       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
@@ -32,9 +32,14 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
   an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
   `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
-  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. A top build
+  that only includes builds with Java or Kotlin code is a monorepo: each included build is gated as
+  a project of its own (see [Monorepos](../usage.md#monorepos)), and a run inside a build where no
+  project applies the plugin names the included builds and the `projects` list that gates them. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
-  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
+  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies. A
+  comparison narrows this to the affected projects, see
+  [affected modules](multi-module-scope.md).
   File limits, coupling (with the stability direction) and package cycles are evaluated once over
   all projects, as for Maven modules, so a package dependency from one project to another counts
   and a cycle through two projects is one cycle. Packages and classes of a project other than the
@@ -110,3 +115,27 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   that is a note and the run goes on (see [A base whose tests fail](../usage.md#a-base-whose-tests-fail)).
   A base that fails for another reason, or whose tests fail without a named failing test, still
   fails.
+
+## Build cache and side-by-side tools
+
+- **Gradle build cache.** Every Gradle run, quick or full, passes `--build-cache` for Java and
+  Kotlin, so tasks whose inputs did not change between the base and the head snapshot (an unchanged
+  module, a repeated run) are restored from the build cache (the local one in the Gradle user home,
+  and a remote one only as the build's own `settings.gradle` configures it). The project's `Test`
+  tasks, the ArchUnit ones included, are never served from the cache (`outputs.doNotCacheIf` in the init script): a test can read
+  inputs Gradle does not track (a file read by a relative path, the environment), so the head
+  snapshot runs its own tests. Checkstyle tasks are not cached either, since their report names
+  files by absolute path and the guard rules are written while they run. An ArchUnit run can read
+  inputs Gradle does not track (a freeze store, `archunit.properties`), and a cache hit would skip
+  the check that it ran. Compilation and the JaCoCo report stay cacheable; the other nitpicker
+  tasks (PMD, SpotBugs, Error Prone, PIT, the report tasks) are not cacheable. Measured on the
+  multi-project fixture, a second run after a one-file edit took 20.8 s with the cache against
+  21.7 s without (median of 3): most of that time is in the analyzers, so the gain grows with the
+  number of unchanged modules and with compile time, Kotlin in particular.
+- **Maven tools side by side.** The per-module tools (PMD, SpotBugs, Error Prone, the format
+  check, Checkstyle, structure metrics, jdeps) run side by side in every Maven run, through the
+  process supervisor in `languages/java/maven/parallel/`, at most one per CPU. Measured against
+  running the same tools one after another (full runs, findings identical): 14.1 s against 17.0 s
+  on the single-module fixture (median of 4) and 23.0 s against 28.7 s on the three-module fixture
+  (median of 3). With an injected process runner (tests) the tools run one after another in the
+  calling process.

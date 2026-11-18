@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-add-only-collection.mjs';
+import { rule } from './no-add-only-collection.mts';
 
 type Build = (body: string) => { filename: string; code: string };
 

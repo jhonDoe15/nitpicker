@@ -55,6 +55,7 @@ type VitestProject = {
     readonly include: string[];
     readonly exclude: string[];
     readonly restoreMocks: boolean;
+    readonly globals?: unknown;
   };
 };
 
@@ -69,6 +70,7 @@ export type VitestConfig = {
     readonly setupFiles: string[];
     readonly dir: string | undefined;
     readonly restoreMocks: boolean;
+    readonly globals?: unknown;
     readonly coverage: {
       readonly provider: string;
       readonly thresholds: unknown;
@@ -150,7 +152,4 @@ export function parseTsconfig(text: string): Tsconfig {
   };
 }
 
-export type VitestConfigFactory = (environment: {
-  readonly command: string;
-  readonly mode: string;
-}) => Promise<VitestConfig>;
+export type VitestConfigFactory = (root: string) => Promise<VitestConfig>;

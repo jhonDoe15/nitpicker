@@ -1,3 +1,4 @@
+import { smallest } from '../../../../shared/lists/items.mjs';
 const MEASURES = ['lines', 'branches'];
 const LAMBDA_OWNER_SEGMENT = -2;
 
@@ -39,7 +40,7 @@ function percentOf(measures) {
   const percents = measures
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
-  return percents.length === 0 ? undefined : Math.min(...percents);
+  return percents.length === 0 ? undefined : smallest(percents);
 }
 
 function remainder(own, lent) {

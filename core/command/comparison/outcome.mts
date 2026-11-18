@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { absoluteTextReportPath } from '../../diff/reporting/reporters.mts';
 import { renderConsoleSummary } from '../../diff/reporting/summary.mts';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mts';
@@ -21,6 +22,7 @@ type OutcomeCli = {
   readonly stderr: TextOutput;
   readonly environment: NodeJS.ProcessEnv;
   readonly currentProjectRoot: string;
+  readonly currentFolder?: string | undefined;
   readonly config: unknown;
   readonly jsonOutput?: TextOutput;
 };
@@ -33,14 +35,20 @@ type Outcome = {
 };
 
 function isUnchanged(report: unknown): boolean {
-  return fieldOf(fieldOf(report, 'summary'), 'noChanges') === true;
+  const summary = fieldOf(report, 'summary');
+  return fieldOf(summary, 'noChanges') === true || fieldOf(summary, 'skippedAll') === true;
 }
 
 function consoleSummary({ cli, report, outputRoot }: Omit<Outcome, 'base'>): string {
   const color = colorEnabled(cli.stdout, cli.environment);
   const diagnosticsPath: unknown = displayPath(absoluteTextReportPath(outputRoot));
   return textOf(
-    renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath }),
+    renderConsoleSummary(report, {
+      color,
+      details: cli.options.details,
+      diagnosticsPath,
+      projectRoot: cli.currentProjectRoot,
+    }),
   );
 }
 
@@ -70,8 +78,17 @@ export function writeComparisonOutcome({ cli, report, base, outputRoot }: Outcom
   return exitCode;
 }
 
+export function projectHeader(currentFolder: string | undefined, projectRoot: string): string {
+  if (currentFolder === undefined) {
+    return '';
+  }
+  const relative = path.relative(currentFolder, projectRoot).split(path.sep).join('/');
+  return relative === '' ? '' : `Project: ${relative}\n`;
+}
+
 function writeConsoleOutcome({ cli, report, base, outputRoot }: Outcome): void {
   const unchanged = isUnchanged(report);
+  cli.stdout.write(projectHeader(cli.currentFolder, cli.currentProjectRoot));
   if (!unchanged) {
     cli.stdout.write(
       `Base: ${textOf(base.baseRef)} (${textOf(base.source)})\n${textOf(stagedHeader(fieldOf(report, 'summary')))}`,

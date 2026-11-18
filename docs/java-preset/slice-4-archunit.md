@@ -39,6 +39,6 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   per rule and offending class); a per-dependency identity would catch it but would make identities
   depend on the exact violation text.
 - **Tests.** `ingesters.test.mjs` (sample report `fixtures/archunit-junit.xml`, schema validity,
-  line-shift stability), `java-reports.test.mjs` (glue, path resolution), and a gated e2e case
+  line-shift stability), `java-reports.test.mts` (glue, path resolution), and a gated e2e case
   (`adapters/java`: a class and a nested class using `java.util.Date` against the fixture's
   `ArchitectureTest` rule).

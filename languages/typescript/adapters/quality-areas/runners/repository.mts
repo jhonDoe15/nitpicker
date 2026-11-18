@@ -20,15 +20,18 @@ import {
   baselinePathsOf,
   hash,
   layoutKnipConfig,
+  graphImports,
   moduleImportsSection,
-  projectImports,
   typescriptStructureProjectFindings,
+  wantsModuleImports,
 } from '../typed/repository.mts';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
-import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mjs';
+import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const CODING_STANDARDS = 'languages/typescript/preset/coding-standards/check.mjs';
 const TEST_RUNTIME = 'languages/typescript/preset/test-runtime/analyze.mjs';
@@ -59,7 +62,7 @@ export async function runCodingStandards(options: QualityAreaOptions): Promise<F
   }));
   if (options.snapshot === 'head' && options.baselineRoot !== undefined) {
     const baseBaseline = readOptionalBaseline(options.baselineRoot, baselineRelativePath);
-    findings.push(...normalizeBaselineExpansions(baseBaseline, baseline, options.analyzerName));
+    appendAll(findings, normalizeBaselineExpansions(baseBaseline, baseline, options.analyzerName));
   }
   return findings;
 }
@@ -115,7 +118,10 @@ export async function runCoupling(options: QualityAreaOptions): Promise<AreaRepo
       exceptions,
     ),
   );
-  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile), history) };
+  const imports = wantsModuleImports(history)
+    ? graphImports(graph, { isSourceFile: layout.isSourceFile, projectRoot: options.projectRoot })
+    : undefined;
+  return { findings, ...moduleImportsSection(imports, history) };
 }
 
 export async function runTestRuntime(options: QualityAreaOptions): Promise<Finding[]> {
@@ -134,7 +140,10 @@ export async function runTestRuntime(options: QualityAreaOptions): Promise<Findi
       ...fieldsOf(report),
       findings: listOf(fieldOf(report, 'findings')).map((finding) => ({
         ...fieldsOf(finding),
-        sourceHash: hash(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+        sourceHash: wholeFileHash(
+          textOf(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+          textOf(fieldOf(finding, 'test')),
+        ),
       })),
     },
     options.analyzerName,

@@ -14,6 +14,7 @@ import {
   type NativeRequest,
   apiConstructorOf,
 } from './native-api.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Started =
   | { readonly api: NativeApi; readonly startError?: undefined }
@@ -122,7 +123,7 @@ async function collectedDiagnostics(api: NativeApi, configPath: string): Promise
   );
   const diagnostics = (await program.getProgramDiagnostics()).map(withoutConfigLocation);
   for (const request of requests) {
-    diagnostics.push(...(await request()));
+    appendAll(diagnostics, await request());
   }
   return { hasRootFiles: project.rootFiles.length > 0, configErrors, diagnostics };
 }

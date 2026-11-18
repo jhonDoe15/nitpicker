@@ -2,6 +2,7 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { valueOr } from '../../spring-config-files.mjs';
 import { readJarEntries } from './jar-entries.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const METADATA_FILES = [
   'META-INF/spring-configuration-metadata.json',
@@ -12,7 +13,10 @@ const BOOT_JAR = /^spring-boot-\d[^/]*\.jar$/u;
 function directoryTexts(directory) {
   const texts = [];
   for (const name of METADATA_FILES) {
-    texts.push(...valueOr([], () => [readFileSync(path.join(directory, name), 'utf8')]));
+    appendAll(
+      texts,
+      valueOr([], () => [readFileSync(path.join(directory, name), 'utf8')]),
+    );
   }
   return texts;
 }

@@ -1,12 +1,12 @@
-import { rule as noWaitFor } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
-import { rule as noInternalMocks } from '../rules/testing/assertions/no-internal-module-mocks.mjs';
-import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
-import { rule as noMockingSubjectUnderTest } from '../rules/testing/assertions/no-mocking-subject-under-test.mjs';
-import { rule as testTsconfigPinsLibAndTypes } from '../rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
-import { rule as testMustUseProductionRuntime } from '../rules/testing/assertions/test-must-use-production-runtime.mjs';
-import { rule as integrationTestUsesApprovedHarness } from '../rules/testing/processes/integration-test-uses-approved-harness.mjs';
-import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
-import { typescriptRuleTester } from '../test-support/rule-tester.mts';
+import { rule as noWaitFor } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as noInternalMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
+import { rule as noPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
+import { rule as noMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { rule as testTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
+import { rule as testMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
+import { rule as integrationTestUsesApprovedHarness } from '../rules/test-runtime/processes/integration-test-uses-approved-harness.mts';
+import { withoutFixes } from '../../eslint-config/rule-hints.mts';
+import { typescriptRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();
 
@@ -139,64 +139,68 @@ ruleTester.run('integration-test-uses-approved-harness', integrationTestUsesAppr
     },
   ],
 });
-ruleTester.run('test-tsconfig-pins-lib-and-types', withoutFixes(testTsconfigPinsLibAndTypes), {
-  valid: [
-    {
-      filename: testFile,
-      code: "writeFileSync(file, JSON.stringify({ compilerOptions: { strict: true, lib: ['ES2022'], types: [] } }));",
-    },
-    {
-      filename: testFile,
-      code: 'const tsconfig = { compilerOptions: { noLib: true, types: [] } }; writeFileSync(file, JSON.stringify(tsconfig));',
-    },
-    {
-      filename: testFile,
-      code: lines(
-        "const pinned = { lib: ['ES2022'], types: [] };",
-        'writeFileSync(file, JSON.stringify({ compilerOptions: { ...pinned, strict: true } }));',
-      ),
-    },
-    {
-      filename: testFile,
-      code: "import { base } from './base.js'; JSON.stringify({ compilerOptions: { ...base } });",
-    },
-    {
-      filename: testFile,
-      code: "writeFileSync(file, JSON.stringify({ name: 'fixture', private: true }));",
-    },
-  ],
-  invalid: [
-    {
-      filename: '/repo/tests/integration/strict-adapters.test.ts',
-      code: lines(
-        'writeFileSync(',
-        "  path.join(root, 'tsconfig.json'),",
-        '  JSON.stringify({',
-        "    compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', lib: ['ES2022'] },",
-        "    include: ['src/**/*'],",
-        '  }),',
-        ');',
-      ),
-      errors: [{ messageId: 'unpinnedTsconfig', line: 4 }],
-    },
-    {
-      filename: '/repo/tests/integration/static-checks-diff-policy.test.ts',
-      code: lines(
-        'const typeScriptConfig = JSON.stringify({',
-        "  compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, skipLibCheck: true },",
-        "  include: ['src/**/*.ts'],",
-        '});',
-        "writeFiles(projectRoot, { 'tsconfig.json': `${typeScriptConfig}\\n` });",
-      ),
-      errors: [{ messageId: 'unpinnedTsconfig', line: 2 }],
-    },
-    {
-      filename: testFile,
-      code: 'const tsconfig = { compilerOptions: { types: [] } }; writeFileSync(file, JSON.stringify(tsconfig, undefined, 2));',
-      errors: [{ messageId: 'unpinnedTsconfig' }],
-    },
-  ],
-});
+ruleTester.run(
+  'test-tsconfig-pins-lib-and-types',
+  withoutFixes(ruleModule(testTsconfigPinsLibAndTypes)),
+  {
+    valid: [
+      {
+        filename: testFile,
+        code: "writeFileSync(file, JSON.stringify({ compilerOptions: { strict: true, lib: ['ES2022'], types: [] } }));",
+      },
+      {
+        filename: testFile,
+        code: 'const tsconfig = { compilerOptions: { noLib: true, types: [] } }; writeFileSync(file, JSON.stringify(tsconfig));',
+      },
+      {
+        filename: testFile,
+        code: lines(
+          "const pinned = { lib: ['ES2022'], types: [] };",
+          'writeFileSync(file, JSON.stringify({ compilerOptions: { ...pinned, strict: true } }));',
+        ),
+      },
+      {
+        filename: testFile,
+        code: "import { base } from './base.js'; JSON.stringify({ compilerOptions: { ...base } });",
+      },
+      {
+        filename: testFile,
+        code: "writeFileSync(file, JSON.stringify({ name: 'fixture', private: true }));",
+      },
+    ],
+    invalid: [
+      {
+        filename: '/repo/tests/integration/strict-adapters.test.ts',
+        code: lines(
+          'writeFileSync(',
+          "  path.join(root, 'tsconfig.json'),",
+          '  JSON.stringify({',
+          "    compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', lib: ['ES2022'] },",
+          "    include: ['src/**/*'],",
+          '  }),',
+          ');',
+        ),
+        errors: [{ messageId: 'unpinnedTsconfig', line: 4 }],
+      },
+      {
+        filename: '/repo/tests/integration/static-checks-diff-policy.test.ts',
+        code: lines(
+          'const typeScriptConfig = JSON.stringify({',
+          "  compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, skipLibCheck: true },",
+          "  include: ['src/**/*.ts'],",
+          '});',
+          "writeFiles(projectRoot, { 'tsconfig.json': `${typeScriptConfig}\\n` });",
+        ),
+        errors: [{ messageId: 'unpinnedTsconfig', line: 2 }],
+      },
+      {
+        filename: testFile,
+        code: 'const tsconfig = { compilerOptions: { types: [] } }; writeFileSync(file, JSON.stringify(tsconfig, undefined, 2));',
+        errors: [{ messageId: 'unpinnedTsconfig' }],
+      },
+    ],
+  },
+);
 ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
   valid: [
     { filename: '/repo/test/report.test.ts', code: "expect(output).toEqual('a\\nb');" },

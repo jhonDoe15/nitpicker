@@ -2,7 +2,7 @@ import {
   isRuleSelected as untypedIsRuleSelected,
   suggestionName as untypedSuggestionName,
   suggestionRules as untypedSuggestionRules,
-} from '../suggestion-rules.mjs';
+} from '../suggestion-rules.mts';
 
 type LintFix = {
   readonly range?: readonly number[] | undefined;

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-orm-query-logging.mjs';
+import { rule } from './no-orm-query-logging.mts';
 
 const tester = typescriptRuleTester();
 const logs = (form: string) => [{ messageId: 'queryLogging', data: { form } }];

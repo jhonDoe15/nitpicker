@@ -106,12 +106,6 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
     ]);
     expect(reportedGroups(violation.text)).toEqual([
       [
-        'ruff-format/format: ' +
-          'File is not formatted with ruff (detected; set "python.formatter" if wrong). ' +
-          RUFF_FORMAT_ADVICE,
-        'src/demo/bad.py',
-      ],
-      [
         'mypy/no-untyped-def: Function is missing a type annotation. ' +
           'Fix the type; inline ignores are banned.',
         'src/demo/bad.py:4:1',
@@ -121,6 +115,12 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
         'ruff/F401: `sys` imported but unused.',
         'src/demo/bad.py:1:8',
         pythonExceptionRoute('F401', 'src/demo/bad.py'),
+      ],
+      [
+        'ruff-format/format: ' +
+          'File is not formatted with ruff (detected; set "python.formatter" if wrong). ' +
+          RUFF_FORMAT_ADVICE,
+        'src/demo/bad.py',
       ],
     ]);
   });

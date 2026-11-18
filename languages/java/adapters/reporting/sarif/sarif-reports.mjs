@@ -15,6 +15,7 @@ import {
 } from '../../security/security-advice.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
+import { dropNetworkInIntegrationTests } from '../../../messages/isolation/unit-tests.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { dropComputedReads } from '../../spring/queries/persistent-reads.mjs';
 import {
@@ -103,27 +104,32 @@ function pmdFindings(raw, context) {
 function withProjectFilters(findings, context) {
   const { allSourceRoots, projectRoot } = context;
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
+  const testRoots = [
+    ...(context.manifest?.testSourceRoots ?? []),
+    ...(context.manifest?.kotlinTestSourceRoots ?? []),
+  ];
+  const ownFindings = dropNetworkInIntegrationTests(
+    withProjectTypeMocks(
+      dropInheritedVersions(
+        withJpaFilters(
+          withGeneratedMembers(
+            dropComputedReads(withSpringTransactionFilters(findings, context), {
+              projectRoot,
+              roots: springRoots(context),
+            }),
+            { projectRoot },
+          ),
+          { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+        ),
+        { projectRoot, sourceRoots: allSourceRoots },
+      ),
+      { projectRoot, mainRoots },
+    ),
+    { projectRoot, testRoots },
+  );
   return withFanOutDetails(
     withWaitAdvice(
-      dropSleepsInFakes(
-        withProjectTypeMocks(
-          dropInheritedVersions(
-            withJpaFilters(
-              withGeneratedMembers(
-                dropComputedReads(withSpringTransactionFilters(findings, context), {
-                  projectRoot,
-                  roots: springRoots(context),
-                }),
-                { projectRoot },
-              ),
-              { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
-            ),
-            { projectRoot, sourceRoots: allSourceRoots },
-          ),
-          { projectRoot, mainRoots },
-        ),
-        { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
-      ),
+      dropSleepsInFakes(ownFindings, { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots }),
       { manifest: context.manifest, projectRoot },
     ),
     { projectRoot },

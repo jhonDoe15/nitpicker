@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import path from 'node:path';
 import { typescriptApi } from '../typed/typescript-program.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Position = { readonly line: number; readonly column: number };
 
@@ -45,7 +46,7 @@ export function readCompilerConfigs(configPath: string): TypeScript.ParsedComman
     }
     const config = readCompilerConfig(file);
     configs.set(file, config);
-    pending.push(...(config.projectReferences ?? []).map(ts.resolveProjectReferencePath));
+    appendAll(pending, (config.projectReferences ?? []).map(ts.resolveProjectReferencePath));
   }
   return [...configs.values()];
 }

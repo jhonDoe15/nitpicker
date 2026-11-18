@@ -1,0 +1,72 @@
+  <rule name="HttpValueCase" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This compares exact text, but media types, charsets, encodings, URI schemes and hosts, cookie name prefixes and file extensions are case-insensitive, so Application/JSON, HTTPS or photo.PNG is missed. Lowercase the value first (value.toLowerCase(Locale.ROOT)) or use equalsIgnoreCase, or parse it: MediaType.parseMediaType(value) and MimeTypeUtils for media types, URI.getScheme() compared with equalsIgnoreCase. Header names read with getHeader or HttpHeaders ignore case already.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $names := 'accept(?:-charset|-encoding|-language)?|content-(?:type|encoding|language|disposition)|transfer-encoding|connection|upgrade|cache-control|pragma|authorization|proxy-authorization|www-authenticate|expect|te|host|origin|forwarded|x-forwarded-(?:proto|host|scheme)|sec-fetch-\w+|vary',
+    $headerArg := function($arg) {
+      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $names, ')"$'), 'i')]
+             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $names, ')$'), 'i')])
+    },
+    $direct := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1])
+        or @MethodName = 'getContentType' and ArgumentList/@Size = 0 and pmd-java:typeIs('java.lang.String')
+        or @MethodName = ('orElse', 'orElseThrow', 'get')
+           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1])]]
+        or @MethodName = ('getScheme', 'getHost') and ArgumentList/@Size = 0
+           and *[1][pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('org.springframework.web.util.UriComponents')]])
+    },
+    $extension := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = ('getExtension', 'getFilenameExtension', 'getFileExtension')
+        or @MethodName = 'substring' and .//MethodCall[@MethodName = 'lastIndexOf']/ArgumentList/StringLiteral[@Image = '"."']])
+    },
+    $local := function($e, $origin) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $name]]
+            [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$origin(*[2])]])
+    },
+    $parameter := function($e) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter[VariableId/@Name = $name]
+          [ClassType[@SimpleName = 'String']]
+          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1])]]])
+    },
+    $base := function($e) { $direct($e) or $local($e, $direct) or $parameter($e) },
+    $source := function($e) {
+      $base($e) or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1])])
+    },
+    $extensionSource := function($e) { $extension($e) or $local($e, $extension) },
+    $lit := function($e) {
+      exists($e[self::StringLiteral][matches(@Image, '[a-zA-Z]')]
+             | $e[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]+$')]
+                 [pmd-java:typeIs('java.lang.String')])
+    },
+    $plain := function($call) {
+      not($call/*[1][self::MethodCall[@MethodName = ('toLowerCase', 'toUpperCase')]])
+    }
+return (
+  //MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 1]
+      [$source(*[1]) and $lit(ArgumentList/*[1]) or $lit(*[1]) and $source(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 2][*[1][self::TypeExpression or self::AmbiguousName]]
+      [$source(ArgumentList/*[1]) and $lit(ArgumentList/*[2]) or $lit(ArgumentList/*[1]) and $source(ArgumentList/*[2])]
+  | //MethodCall[@MethodName = ('startsWith', 'endsWith', 'contains', 'matches', 'indexOf')][ArgumentList/@Size >= 1]
+      [$source(*[1]) and $lit(ArgumentList/*[1])]
+      [not(@MethodName = 'matches' and contains(ArgumentList/*[1]/@Image, '(?i)'))]
+  | (//SwitchStatement | //SwitchExpression)[$source(*[1])][.//SwitchLabel/StringLiteral]
+  | //MethodCall[@MethodName = ('contains', 'containsKey', 'get', 'getOrDefault', 'indexOf')]
+      [$source(ArgumentList/*[1]) and not($source(*[1]))]
+  | //MethodCall[@MethodName = 'startsWith'][$lit(ArgumentList/*[1])]
+      [ArgumentList/StringLiteral[matches(@Image, '^"__(?:Host|Secure)-')]][$plain(.)]
+  | //MethodCall[@MethodName = ('get', 'containsKey', 'getOrDefault')]
+      [*[1][self::VariableAccess or self::FieldAccess][matches(@Name, 'mime|content_?type', 'i')]]
+      [$extensionSource(ArgumentList/*[1])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

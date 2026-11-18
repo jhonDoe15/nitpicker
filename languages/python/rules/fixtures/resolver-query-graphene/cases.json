@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "resolver-query-per-parent",
+    "mention": "DataLoader",
+    "subject": "OrderType.customer|graphene|database|Customer.objects.get()"
+  }
+]

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { typedCaseProject } from '../../test-support/projects/typed-ts-project.mts';
-import { rule } from './exhaustive-union-predicate.mjs';
+import { rule } from './exhaustive-union-predicate.mts';
 
 type Errors = ReturnType<typeof partial>;
 

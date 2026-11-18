@@ -1,7 +1,7 @@
 import { isExplainedCycle } from '../../../../shared/graph/explained-cycles.mjs';
 import { stronglyConnected as untypedStronglyConnected } from '../../../../shared/graph/strongly-connected.mjs';
 import { listed as untypedListed } from '../../../../shared/rules/features/feature-boundaries.mjs';
-import { importEdges as untypedImportEdges } from '../analysis/python-coupling.mjs';
+import { importEdges as untypedImportEdges } from '../analysis/python-coupling.mts';
 import type {
   Finding,
   ImportEdge,

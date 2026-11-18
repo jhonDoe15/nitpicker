@@ -14,6 +14,7 @@ import { replaceIfUnchanged } from '../../common/rewrite/safe-write.mjs';
 import { sourceOf } from './check-fixes.mjs';
 import { checkRealPath } from './real-paths.mjs';
 import { indexListing, restoreIndex, untrackPath } from './untrack.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const SUFFIX_BYTES = 6;
 
@@ -185,7 +186,7 @@ function dropClosure(entries, initial) {
   const state = { failed: new Set(initial), dropped: new Set() };
   const pending = [...state.failed];
   for (const name of pending) {
-    pending.push(...newlyFailed(entries, name, state));
+    appendAll(pending, newlyFailed(entries, name, state));
   }
   return { dropped: [...state.dropped], failed: state.failed };
 }

@@ -128,6 +128,9 @@ function presetAllowedFacts(entry) {
   ];
 }
 
+const BROAD_ORDER =
+  'a broad pattern rule: reports list its findings after those of targeted rules, before style';
+
 /**
  * What the reference says about an entry in reading order: `{ label, text }`, `{ label, items }`
  * or `{ label, code, language }` facts. Texts are Markdown: code spans and links.
@@ -135,6 +138,8 @@ function presetAllowedFacts(entry) {
 export function entryFacts(entry) {
   const printed = printedTools(entry).map((tool) => `\`${tool}/${entry.rule}\``);
   const textFacts = [
+    ['Labels', entry.labels?.join(', ')],
+    ['Order', entry.tier === 'broad' ? BROAD_ORDER : undefined],
     [
       'Printed as',
       printed.length > 1 || entry.pattern !== undefined || FAMILY_TOOLS.has(entry.tool)

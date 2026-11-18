@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "row-for-existence",
+    "mention": "exists().where",
+    "subject": "Order|count|sqlalchemy"
+  }
+]

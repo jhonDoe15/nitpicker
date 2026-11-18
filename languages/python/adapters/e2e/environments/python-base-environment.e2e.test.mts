@@ -1,18 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { openSnapshotEnvironment } from '../../execution/python-environment.mjs';
-import type { Files } from '../test-support/python-e2e-types.mts';
+import { openSnapshotEnvironment } from '../../execution/python-environment.mts';
+import { writeFiles as write } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
@@ -22,13 +14,6 @@ function temporaryRoot() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-base-env-e2e-')));
   roots.push(root);
   return root;
-}
-
-function write(root: string, files: Files) {
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
 }
 
 function lock(root: string, program: string, args: readonly string[], lockFile: string) {
@@ -50,22 +35,8 @@ function pyproject(pythonRange: string, extra = '') {
   return `[project]\nname = "demo"\nversion = "0.1.0"\nrequires-python = "${pythonRange}"\ndependencies = ["${DEPENDENCY}"]\n${extra}`;
 }
 
-type Launcher = {
-  readonly description: string;
-  readonly launch: (
-    program: string,
-    args: readonly string[],
-  ) => { readonly command: string; readonly args: string[]; readonly env: NodeJS.ProcessEnv };
-};
-const openEnvironment: (options: {
-  projectRoot: string;
-  liveRoot: string;
-  setting: undefined;
-  spawn: undefined;
-}) => Launcher = openSnapshotEnvironment;
-
 function environmentOf(projectRoot: string, liveRoot: string) {
-  const launcher = openEnvironment({
+  const launcher = openSnapshotEnvironment({
     projectRoot,
     liveRoot,
     setting: undefined,
