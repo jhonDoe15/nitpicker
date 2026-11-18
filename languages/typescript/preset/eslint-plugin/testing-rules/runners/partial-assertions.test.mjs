@@ -1,6 +1,6 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { rule } from '../../rules/testing/assertions/no-partial-output-assertion.mjs';
+import { rule } from '../../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 
 const EXCEPTION_FOR_OUTPUT =
   'An exception fits only when the output is too large or unordered to pin.';

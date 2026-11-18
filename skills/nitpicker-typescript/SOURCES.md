@@ -155,12 +155,11 @@ become one call, so each signature stays.
   differs in its own name, a literal type and the like, and when the compiler finds an error in the
   edited file, for example because the body needs a member that only one type has. JavaScript has no
   types, so a JavaScript copy that constructs different classes (`new Foo(x)` against `new Bar(x)`)
-  keeps its fix plan.
+  stays a finding.
 - Copies in two files are left alone, unlike the Java recipe, which extracts a pair of two files of one
   folder into a new class. A TypeScript or JavaScript module needs an import in each file, and the
   specifier depends on the module system, the file extensions, `paths` aliases and the barrel files of
-  the project, so the recipe cannot write it without guessing. The fix plan says so, and puts the
-  function in the folder that holds both files.
+  the project, so the recipe cannot write it without guessing.
 - The compiler checks the edit before it is written, with the same in-memory comparison as the
   other project recipes.
 - A file that uses CRLF keeps CRLF in the inserted text.
@@ -183,14 +182,6 @@ one block of each function, with the two functions in one file.
   the same exception classes.
 - The compiler checks the edit before it is written. A narrowed type at the call site that the new
   function does not see makes the check fail, and the finding stays.
-
-## Fix plans for near-duplicates
-
-`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
-fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
-It gives the signature of the function to extract (the parameters of the first copy, then one
-parameter for each value that differs), the arguments each copy passes, the nearest shared folder
-that the layout allows (`main/shared`, or the configured `layout.sharedRoots`), or the nearest common folder of the copies when both are in one feature, because `shared-used-by-one-feature` would then report the new module and why no recipe made the change. The TypeScript and JavaScript presets share the plan. For a pair in one file the plan names `typescript-extract-near-duplicate` (or `typescript-extract-partial-run`) and the `nitpicker --fix --rule structure/near-duplicate` command, or the reason the facts show it declines (a type that differs). The names it picks avoid every name in the two copies, and the parameter list of the first copy is read past decorators, annotations and function expressions.
 
 ## Not fixed, on purpose
 

@@ -1,7 +1,7 @@
 import { SCHEMA_KEY, THRESHOLD_KEYS, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
 import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mjs';
+import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mts';
 import { conventionDefinitions } from '../../conventions/definitions.mts';
 import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mts';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
@@ -97,6 +97,44 @@ const TOP_LEVEL: SchemaTable = {
   conventions: {
     description: 'Pins a style that nitpicker otherwise measures from the project.',
     type: 'object',
+  },
+  extends: {
+    description:
+      'Path of the .json config this one builds on, relative to this file and inside the repository. Settings set here replace the shared ones.',
+    type: 'string',
+    minLength: 1,
+    pattern: '\\.json$',
+    not: { pattern: '^(/|[A-Za-z]:)' },
+  },
+  projects: {
+    description:
+      'At the top of a monorepo: the project folders (globs allowed), each with an optional preset. A folder that declares a workspace stands for its members unless "expand" is false. An empty array keeps the repository one project.',
+    type: 'array',
+    uniqueItems: true,
+    items: {
+      anyOf: [
+        projectPath,
+        {
+          type: 'object',
+          additionalProperties: false,
+          required: ['path'],
+          properties: {
+            path: projectPath,
+            preset: { enum: SUPPORTED_PRESETS },
+            expand: {
+              description:
+                'false keeps a folder that declares a workspace one project instead of gating each member.',
+              type: 'boolean',
+            },
+            settings: {
+              description:
+                "Settings of this entry's project, layered over its own config; a folder listed twice, with two presets, takes each entry's settings for that preset.",
+              type: 'object',
+            },
+          },
+        },
+      ],
+    },
   },
 };
 

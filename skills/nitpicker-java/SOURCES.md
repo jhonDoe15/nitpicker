@@ -23,7 +23,7 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
 ## Safe list (applied by a plain `--fix`)
 
 58 checks whose fix keeps behaviour and ends in the form the preset asks for. They are in
-`languages/java/fix/errorprone/checks/safe-checks.mjs`.
+`languages/java/fix/errorprone/checks/safe-checks.mts`.
 
 - Layout and syntax with no meaning of their own: `AnnotationPosition`, `MissingBraces`,
   `MixedArrayDimensions`, `MultiVariableDeclaration`, `OperatorPrecedence`,
@@ -201,20 +201,12 @@ two methods share.
 - its fix spans several places that must change together (`FieldCanBeLocal`, `BadImport`), and the
   hunk filter cannot tell a partly kept fix from a whole one. Select these on a file you reviewed.
 
-The full list is `languages/java/fix/errorprone/checks/review-checks.mjs`.
-
-## Fix plans for near-duplicates
-
-`structure/near-duplicate` has no recipe that rewrites a pair of copies across files, so a run writes a
-fix plan of kind `extract-shared-function` for each new finding (`fix-plans.json`, see `docs/usage.md`).
-It gives the signature of the function to extract (the parameters of the first copy, then one
-parameter for each value that differs), the arguments each copy passes, the nearest shared folder
-that the layout allows (`layout.sharedRoots`, else a `shared` folder), or the nearest common folder when both classes are in one feature and why no recipe made the change. The plan names a class in that folder, since a Java method needs one. For a pair in one class the plan names `java-extract-near-duplicate` (or `java-extract-partial-run`) and the `nitpicker --fix --rule structure/near-duplicate` command, or the reason the facts show it declines (a type or an expression that differs, two classes). The names it picks avoid every name in the two copies.
+The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
 
 ## Left out
 
 32 checks never get a fix from `--fix`, listed in
-`languages/java/fix/errorprone/checks/left-out-checks.mjs`:
+`languages/java/fix/errorprone/checks/left-out-checks.mts`:
 
 - the fix inserts a comment, which recipes never do: `MissingDefault`,
   `SuppressWarningsWithoutExplanation`, `MissingSummary`, `ArgumentSelectionDefectChecker`;
@@ -271,7 +263,7 @@ Prone `BugChecker` that suggests it. The sources are in `languages/java/gradle/e
 | `checkstyle/ArrayTypeStyle`, `checkstyle/MultipleVariableDeclarations`, `checkstyle/NeedBraces`, `checkstyle/AvoidStarImport`, `checkstyle/UpperEll` | skipped: the Error Prone twins above (`MixedArrayDimensions`, `MultiVariableDeclaration`, `MissingBraces`, `WildcardImport`) and `java-upper-ell` clear the finding                                                                                                                                                                                                                                                                                                                       |
 | PMD twins listed above (`UnusedPrivateMethod`, `MissingOverride`, `UselessParentheses`, ...)                                                         | skipped for the same reason                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Checkstyle and PMD naming rules                                                                                                                      | not built, see above                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| the rest of the roughly 68 rules with one rewrite                                                                                                    | not built yet: only the rules above have a check. Each further rule is one class in the fix-checks folder, one entry in `languages/java/fix/errorprone/own/own-checks.mjs` and one fixture                                                                                                                                                                                                                                                                                                |
+| the rest of the roughly 68 rules with one rewrite                                                                                                    | not built yet: only the rules above have a check. Each further rule is one class in the fix-checks folder, one entry in `languages/java/fix/errorprone/own/own-checks.mts` and one fixture                                                                                                                                                                                                                                                                                                |
 
 A hunk that merges the fixes of two checks (Error Prone writes one hunk for changes a few lines
 apart) is reported under the nearest rule. A fix that spans several places, such as the import a

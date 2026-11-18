@@ -8,6 +8,7 @@ import { exceptionMatcher } from '../typed/policy.mts';
 import { parseChangedLines, pathInside } from '../typed/mutation.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { diffAgainstBase } from '../runners/mutation-scope.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;
 
@@ -74,7 +75,7 @@ function testCallSpans(projectRoot: string, file: string): Map<string, number> {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const nodes: TypeScript.Node[] = [source];
   for (const node of nodes) {
-    nodes.push(...node.getChildren(source));
+    appendAll(nodes, node.getChildren(source));
   }
   return new Map(
     nodes.filter(ts.isCallExpression).map((call) => {

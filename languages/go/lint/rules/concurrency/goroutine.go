@@ -20,7 +20,7 @@ const goroutineMessage = "nothing waits for or stops this goroutine: start it wi
 	"or pass it a context the caller cancels or a channel the caller reads"
 
 func runGoroutine(pass *analysis.Pass) (any, error) {
-	declarations := functionBodies(pass)
+	declarations := support.FuncDecls(pass)
 	for cursor := range support.Root(pass).Preorder((*ast.GoStmt)(nil)) {
 		statement := cursor.Node().(*ast.GoStmt)
 		if owned(pass.TypesInfo, statement.Call, declarations) {
@@ -31,18 +31,7 @@ func runGoroutine(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-func functionBodies(pass *analysis.Pass) map[types.Object]*ast.BlockStmt {
-	bodies := map[types.Object]*ast.BlockStmt{}
-	for cursor := range support.Root(pass).Preorder((*ast.FuncDecl)(nil)) {
-		decl := cursor.Node().(*ast.FuncDecl)
-		if decl.Body != nil {
-			bodies[pass.TypesInfo.Defs[decl.Name]] = decl.Body
-		}
-	}
-	return bodies
-}
-
-func owned(info *types.Info, call *ast.CallExpr, bodies map[types.Object]*ast.BlockStmt) bool {
+func owned(info *types.Info, call *ast.CallExpr, declarations map[types.Object]*ast.FuncDecl) bool {
 	if mentionsOwner(info, call) {
 		return true
 	}
@@ -53,8 +42,8 @@ func owned(info *types.Info, call *ast.CallExpr, bodies map[types.Object]*ast.Bl
 	if !ok {
 		return false
 	}
-	body := bodies[callee.Origin()]
-	return body != nil && mentionsOwner(info, body)
+	declaration := declarations[callee.Origin()]
+	return declaration != nil && mentionsOwner(info, declaration.Body)
 }
 
 func mentionsOwner(info *types.Info, node ast.Node) bool {

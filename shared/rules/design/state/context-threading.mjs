@@ -2,6 +2,7 @@ import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs'
 import { quoted } from '../design-finding.mjs';
 import { displayName, listSites } from '../design-index.mjs';
 import { byText } from '../../../text-order/by-text.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const RULE = DESIGN_RULE_IDS.contextThreading;
 const MIN_FIELDS = 5;
@@ -53,7 +54,7 @@ function threadOf(start, type, index) {
   const thread = { fields: new Set(), passes: [], seen: new Set(), complete: true };
   const pending = [start];
   for (const step of pending) {
-    pending.push(...visitStep(step, { type, index, thread }));
+    appendAll(pending, visitStep(step, { type, index, thread }));
   }
   return thread.complete
     ? { fields: [...thread.fields].sort(byText), passes: thread.passes }

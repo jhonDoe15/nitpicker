@@ -64,12 +64,19 @@ export function describeConventions(detected, definitions, note = () => undefine
     .map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
+function needed(definition, files) {
+  const minimum = String(definition.minFiles);
+  return definition.minUnit === undefined
+    ? `at least ${minimum} of ${String(files)} measured files`
+    : `at least ${minimum} ${definition.minUnit} in ${String(files)} measured files`;
+}
+
 function describeOne(definition, { choice, source, counts, files, from, overrides }, note) {
   if (Array.isArray(choice)) {
     const names = `${definition.label}: ${choice.join(', ')}`;
     return source === 'pinned'
       ? `${names} (set in nitpicker.config.json)`
-      : `${names} (final call of at least ${String(definition.minFiles)} of ${String(files)} measured files)`;
+      : `${names} (final call of ${needed(definition, files)})`;
   }
   const extra = note(definition.id, choice);
   const option = optionLabel(definition, choice);

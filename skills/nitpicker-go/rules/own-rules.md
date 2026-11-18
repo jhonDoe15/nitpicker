@@ -35,6 +35,9 @@ the allowed form and ends with its exception entry.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).
+- Text read from the query string or a form (`r.URL.Query().Get`, `r.FormValue`) is trimmed before it reaches a
+  lookup: wrap the read in `strings.TrimSpace`, best in one helper that reads every query value, since a padded
+  `" Davis"` finds nothing (`go-rules/untrimmed-request-text`).
 - A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
   clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
 - A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
@@ -72,6 +75,11 @@ the allowed form and ends with its exception entry.
   managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
+- Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
+  constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
+  product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison
+  operand. Compare without adding (`width >= len(text)-start`), check the sentinel first
+  (`if width == math.MaxInt { ... }`), or clamp with `min` before the add.
 
 ## HTTP and databases
 
@@ -84,6 +92,19 @@ the allowed form and ends with its exception entry.
   concurrently under an errgroup with `SetLimit`. Inside one transaction, prepare the statement
   once and execute it per item. A loop over a fixed list (migrations), a retry loop over a count, a
   loop over a channel and a loop that stops at the first success are fine.
+- A gqlgen field resolver of a list parent does not query per parent
+  (`go-rules/query-per-parent-resolver`): a method such as `func (r *viewResolver) Owner(ctx, obj *View)`
+  that queries by `obj.OwnerID` costs one query per list item. Load through a batched dataloader, or read
+  what the parent already carries. A parent that is only returned alone is fine.
+- Related writes go through one transaction (`go-rules/writes-without-transaction`,
+  `go-rules/write-outside-transaction`): two writes on different tables in one function belong in
+  `db.BeginTx` (gorm `db.Transaction`) with every write on the `tx`, or in the caller's transaction
+  passed in. A write through the outer `db` while a `tx` is open runs outside the transaction. A
+  write that must survive a rollback (an audit row) is the exception.
+- One failing item does not stop a scheduled or queue job (`go-rules/failing-item-stops-job`): in a
+  robfig/cron, gocron, asynq or machinery job, a loop over tenants or accounts that calls the database
+  or a remote service records the error per item and continues (`errors.Join`, a failed-items slice),
+  or enqueues one task per item. A job that must be retried as a whole is the exception.
 
 ## Literals, comments and methods
 
@@ -129,3 +150,9 @@ the allowed form and ends with its exception entry.
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.
 - A goroutine a test starts is waited for before the test returns (`go-rules/unowned-goroutine`).
+- HTTP text is case-insensitive (`go-rules/http-value-case`): compare a header value, a `Host`, a cookie
+  name prefix or a file extension with `strings.EqualFold`, or lowercase it first, and parse
+  structured headers (`go-rules/hand-split-http-header`) with `mime.ParseMediaType` or
+  `http.ParseCookie` instead of `strings.Split(value, ",")`. `Header.Get` canonicalises the name; index
+  `Header` only with a canonical key (`http.CanonicalHeaderKey`). A library that is itself the parser
+  takes an exception. `url.Parse` already lowercases the scheme, so `u.Scheme == "https"` is fine.

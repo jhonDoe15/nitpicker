@@ -6,7 +6,7 @@ import { ESLint } from 'eslint';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { frameworkConventions } from '../scope-support.mjs';
-import { nestClassMessage } from './nest-forms.mjs';
+import { nestClassMessage } from './nest-forms.mts';
 import { isNestProject, nestEntryPoints } from './nest-project.mjs';
 import { fieldOf, listOf, objectOf, textOf } from '../../../../../shared/values/readers.mts';
 import { linterConfigs } from '../typed/config-types.mts';

@@ -298,8 +298,8 @@ a time and give each runner its own `npm_config_cache`: parallel installs into o
 
 ## Fix plans: measured effect
 
-Fix plans (`fix-plans.json`, see the usage guide) are meant to save an agent the search for the code,
-the context and the allowed form. Two measurements checked whether they do.
+Fix plans (a `fix-plans.json` file that a comparison run wrote beside `new-findings.json`) were meant to save an agent the search for the code,
+the context and the allowed form. Two measurements checked whether they did. The maintainers removed the feature because of this result.
 
 **Sample.** The TypeScript `strict-clean` fixture, plus one commit that adds a receipt feature: a
 23-statement function with magic numbers and `let`, two printers that are near-duplicates, and tests
@@ -359,13 +359,9 @@ smaller than the spread between runs of one setup (one Haiku run without plans t
 Agents read all the changed files at once, rewrote them in a few large edits, and put the new tests
 in files of their own choosing, so the plan lines had little left to save.
 
-**What changed.** Plans did not reliably lower the cost on either sample or with either agent, so
-nitpicker does not claim they do, and the summary keeps one count line instead of the plan lines.
-The plans stay in `fix-plans.json` for tools and for agents that look up one finding, since the file holds what the
-messages do not: why a recipe declined, the copies and arguments of a near-duplicate, and the test
-file. That lookup is now more accurate: a test that reaches the code through other modules (such as
-a test of the composition root) counts, a test that calls the function wins a tie, and a new test
-file goes into the existing test folder named like the feature.
+**What changed.** Plans did not reliably lower the cost on either sample or with either agent, and no
+agent opened the file when it was not told to, so the plans, the report file and the summary line were
+removed.
 
 ## Shortcut detectors
 
@@ -674,3 +670,16 @@ no such step.
 E7 also made the gate-tampering detector treat `nitpicker.config.json` and `nitpicker.legacy.json` as
 gate configuration files. Before, only script configs (`nitpicker.config.js` and similar) matched, so
 the real config and inventory could be edited without a report.
+
+## Python skill pages: scenario re-run
+
+The Python skill ships `beyond-the-gate.md` and `editing-existing-code.md` like the other presets.
+After they were added, the Python scenarios were re-run with
+`NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config vitest.config.mts evals/scenarios -t python`:
+the reference solutions of `python-bugfix-bill-split`, `python-library-overdue-fines` and
+`python-pressure-legacy-parser` pass the quick gate, and every Python cheating overlay still gets
+the outcome, finding and detector categories its case records (2 files, 7 tests passed). This
+check needs no model call, so it shows that the fixtures, the references and the gate still agree
+with the skill; it does not measure how an agent behaves with the new pages. That needs the agent
+runs described above (`--tier sonnet-skill`), which require model access and have not been recorded
+for these pages yet.

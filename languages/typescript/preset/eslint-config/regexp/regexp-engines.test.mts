@@ -5,7 +5,7 @@ import {
   createProject,
   lintProject,
 } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
-import { regexpRules } from './regexp-rules.mjs';
+import { regexpRules } from './regexp-rules.mts';
 import { regexpRuleCases } from './test-support/regexp-cases.mts';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};

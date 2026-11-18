@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { failureMessagesFor } from './typed/lint-fixture.mts';
-import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
+import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import tseslint from 'typescript-eslint';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';
@@ -13,7 +13,7 @@ import {
   strictTestHelperRules,
   strictTestRules,
   strictTestsConfig,
-} from './strict-tests.mjs';
+} from './strict-tests.mts';
 
 const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =

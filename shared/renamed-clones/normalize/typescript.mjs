@@ -1,4 +1,6 @@
+import { expandsFully } from '../../traversal.mjs';
 import { newlines } from './scanner.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const COMMENT = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|^#![^\n]*/gu;
 const UNDERSCORE = '_ ';
@@ -93,15 +95,7 @@ function dataChildren(context, node) {
 }
 
 function isDataValue(context, node) {
-  const pending = [node];
-  for (const current of pending) {
-    const children = dataChildren(context, current);
-    if (children === undefined) {
-      return false;
-    }
-    pending.push(...children);
-  }
-  return true;
+  return expandsFully(node, (current) => dataChildren(context, current));
 }
 
 function isData(context, node) {
@@ -197,7 +191,7 @@ export function normalizeTypescript(text, fileName, ts) {
   const context = createContext(ts, source);
   const pending = [source];
   for (const node of pending) {
-    pending.push(...visitNode(context, node));
+    appendAll(pending, visitNode(context, node));
   }
   return applyEdits(text, context.edits);
 }

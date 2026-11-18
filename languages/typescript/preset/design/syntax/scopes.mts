@@ -1,6 +1,7 @@
 import type { ModuleBody, ModuleDeclaration, Node, SourceFile, Statement } from 'typescript';
 import { ts } from './typed.mts';
 import type { NamespaceScope as Scope, ScopedStatement } from './scope-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 function hasExportModifier(declaration: Node): boolean {
   return (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Export) !== 0;
@@ -46,7 +47,7 @@ function expand(statements: readonly Statement[], scope: Scope): ScopedStatement
       flat.push({ statement: entry.statement, ...entry.scope });
     } else {
       const inner = innerScope(entry.statement, body, entry.scope);
-      pending.push(...scoped(inner.statements, inner.scope));
+      appendAll(pending, scoped(inner.statements, inner.scope));
     }
   }
   return flat.toSorted((left, right) => left.statement.pos - right.statement.pos);

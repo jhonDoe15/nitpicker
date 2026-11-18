@@ -1,17 +1,12 @@
-import { createRequire } from 'node:module';
-import { isStableRule as untypedStable } from '../../adapters/configuration/python-ruff-config.mjs';
+import { isStableRule as untypedStable } from '../../adapters/configuration/python-ruff-config.mts';
 import type { RuffRule } from '../../reference/typed/ruff-rule-views.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { toml } from '../../libraries/project-files.mts';
 
 export const isStableRuffRule: (rule: RuffRule) => boolean = untypedStable;
 
 function parseToml(text: string): unknown {
-  const toml: unknown = createRequire(import.meta.url)('smol-toml');
-  const parse = fieldOf(toml, 'parse');
-  if (typeof parse !== 'function') {
-    throw new TypeError('smol-toml has no parse');
-  }
-  return Reflect.apply(parse, toml, [text]);
+  return toml().parse(text);
 }
 
 export function ruffSelect(configText: string): string[] {

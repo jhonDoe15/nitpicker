@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { Parser } from 'web-tree-sitter';
+import { Parser, type Node } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
-import { loadGrammar } from './grammar/load-grammar.mjs';
-import { kotlinUnits } from './kotlin/units.mjs';
-import { javaExtractions } from './extract/file-extractions.mjs';
-import { javaUnits } from './tree/units.mjs';
+import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mjs';
+import { isText } from '../../../../shared/values/readers.mts';
+import { loadGrammar } from './grammar/load-grammar.mts';
+import { kotlinUnits } from './kotlin/units.mts';
+import { javaExtractions } from './extract/file-extractions.mts';
+import { javaUnits } from './tree/units.mts';
 
 type TreesRequest = {
   readonly root: string;
@@ -12,17 +14,15 @@ type TreesRequest = {
   readonly texts: Readonly<Record<string, string>> | undefined;
   readonly mode: string;
 };
-type UnitsOf = (program: unknown, file: string) => unknown;
+const fileRequest: (value: unknown) => { root: string; files: string[] } = untypedFileRequest;
+
+type UnitsOf = (program: Node, file: string) => unknown;
 type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
 const GRAMMARS = {
   java: javaUnits,
   kotlin: kotlinUnits,
 } as const;
-
-function isText(value: unknown): value is string {
-  return typeof value === 'string';
-}
 
 function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   if ('texts' in value && typeof value.texts === 'object' && value.texts !== null) {
@@ -38,13 +38,9 @@ function modeOf(value: object): string {
 }
 
 function treesRequest(value: unknown): TreesRequest {
-  if (typeof value === 'object' && value !== null && 'root' in value && 'files' in value) {
-    const { root, files } = value;
-    if (isText(root) && Array.isArray(files) && files.every(isText)) {
-      return { root, files, texts: textsOf(value), mode: modeOf(value) };
-    }
-  }
-  throw new TypeError('The JVM trees request must be { root, files } with text values');
+  const { root, files } = fileRequest(value);
+  const extras = typeof value === 'object' && value !== null ? value : {};
+  return { root, files, texts: textsOf(extras), mode: modeOf(extras) };
 }
 
 async function grammarOf(name: keyof typeof GRAMMARS): Promise<Grammar> {

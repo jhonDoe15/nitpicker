@@ -1,8 +1,8 @@
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { rule as noSwitchedOffTests } from './no-switched-off-tests.mjs';
-import { rule as noUnpinnedAssertion } from './no-unpinned-assertion.mjs';
+import { rule as noSwitchedOffTests } from './no-switched-off-tests.mts';
+import { rule as noUnpinnedAssertion } from './no-unpinned-assertion.mts';
 
 Object.assign(RuleTester, {
   afterAll,

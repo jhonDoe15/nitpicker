@@ -26,7 +26,7 @@ export type Placed = {
   readonly skillSource: string;
 };
 
-type CiContext = {
+export type CiContext = {
   readonly approval: PlacedFile | undefined;
   readonly workflowFile: string;
   readonly command: string;
@@ -43,7 +43,7 @@ function runCommandOf(project: Project): string {
     : 'npx nitpicker';
 }
 
-function skillsOf(project: Project): string[] {
+export function skillsOf(project: Project): string[] {
   const names = [`nitpicker-${project.preset}`];
   return project.preset === 'kotlin' && fieldOf(project, 'javaSources') === true
     ? [...names, 'nitpicker-java']
@@ -54,7 +54,7 @@ function headline(project: Project): string {
   return `nitpicker init: ${project.summary} (preset "${project.preset}")`;
 }
 
-function fileLines(result: PlacedFile): string[] {
+export function fileLines(result: PlacedFile): string[] {
   if (result.status === 'created') {
     return [`created ${result.relative}`];
   }
@@ -109,7 +109,7 @@ function installLines(peers: Peers): string[] {
   ];
 }
 
-function peerLines(peers: Peers): string[] {
+export function peerLines(peers: Peers): string[] {
   if (peers.requirements !== undefined) {
     return [`Needs ${peers.requirements}`];
   }
@@ -129,10 +129,9 @@ function skillLines(project: Project, source: string): string[] {
   ];
 }
 
-function agentsLines(
+export function agentsLines(
   agents: AgentsResult | undefined,
-  command: string,
-  offered: boolean,
+  { command, offered }: { readonly command: string; readonly offered: boolean },
 ): string[] {
   if (agents === undefined) {
     return offered
@@ -156,7 +155,7 @@ function approvalNote(approval: PlacedFile): string[] {
     : [];
 }
 
-function ciLines(
+export function ciLines(
   workflow: PlacedFile | undefined,
   { approval, workflowFile, command, offered }: CiContext,
 ): string[] {
@@ -180,7 +179,7 @@ export function renderReport(placed: Placed): string {
     fileLines(config),
     skillLines(project, skillSource),
     [
-      ...agentsLines(agents, command, offers.agents),
+      ...agentsLines(agents, { command, offered: offers.agents }),
       ...ciLines(workflow, { approval, workflowFile, command, offered: offers.workflow }),
     ],
     [

@@ -21,6 +21,20 @@ Part of the [Java preset guide](../java-preset.md).
   path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
   type may permit classes in another package. Test sources compile on the class path, without the
   descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Why it is a separate compile.** Error Prone runs as its own javac pass on both build tools, not
+  inside the project's compile. The pass uses `-XDcompilePolicy=simple` and
+  `--should-stop=ifError=FLOW`, so javac goes on through flow analysis (where Error Prone's checks
+  run) even when an earlier phase reported an error, and the diagnostics come back as a structured
+  report. Its classes go to a throwaway directory and are never used. Attaching Error Prone to the
+  project's own compile instead would need the findings to come from compiler diagnostics, the
+  project's Error Prone arguments to keep their precedence, error-level checks not to fail the
+  project's own build, and, on Maven, which has no user property for `compilerArgs` or
+  `annotationProcessorPaths`, a build extension or a POM rewrite. That is a redesign for the few
+  seconds the pass costs per module (5.8 to 6.0 s in total over the three modules of the Maven
+  multi-module fixture, in a run of about 29 s), and Error Prone's own analysis would run either
+  way. Gradle and Maven therefore behave the same: one compile for the build, one analysis pass for
+  Error Prone. On Maven the pass runs side by side with the module's other tools (PMD, SpotBugs,
+  Checkstyle, the format check, structure metrics, jdeps), so it adds little to the wall time.
 - **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
   reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
   per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
@@ -89,7 +103,7 @@ Part of the [Java preset guide](../java-preset.md).
   project's packages from its classes, and decides the language level and kept options, so the two
   builds cannot drift apart; the Maven e2e test checks that both give the same findings.
 - **Findings.** `languages/java/ingest/errorprone/errorprone.mjs`, through
-  `languages/java/adapters/errorprone/java-errorprone.mjs`: tool `errorprone`, rule the check
+  `languages/java/adapters/errorprone/java-errorprone.mts`: tool `errorprone`, rule the check
   name (`errorprone/FutureReturnValueIgnored`, `errorprone/NullAway`), every finding enforceable.
   The message is the diagnostic's first line plus Error Prone's `Did you mean ...` fix when it has
   one, rewritten by `ingest/errorprone/messages.mjs`: NullAway gets the allowed form (annotate with
@@ -147,7 +161,7 @@ Part of the [Java preset guide](../java-preset.md).
   with the called name and parameter count, in the compiled sources of every module of the
   project (main, test and generated, such as OpenAPI DTOs), returns only `this`, `(T) this` or a
   `self()` that does, calling it as a statement is not reported
-  (`adapters/errorprone/fluent/fluent-returns.mjs`). A record component counts as a zero-argument
+  (`adapters/errorprone/fluent/fluent-returns.mts`). A record component counts as a zero-argument
   declaration that returns a value. A method with another return, an overload with the same name
   and count that returns something else, or one without compiled source (a library or a class
   file, and Lombok-generated chain setters and `@Builder` methods) keeps Error Prone's own
@@ -173,7 +187,7 @@ Part of the [Java preset guide](../java-preset.md).
   `classExemptions` in `checks.json` names the checks a class annotation rules out, and those
   diagnostics are dropped; the table below gives the reason for each. `IdentifierName` also spares
   a class named the way Maven's Failsafe plugin finds integration tests (`AdderIT`, `ITAdder`,
-  `AdderITCase`; `exemptions/test-class-names.mjs`).
+  `AdderITCase`; `exemptions/test-class-names.mts`).
 - **No inline escape.** Error Prone honors `@SuppressWarnings`, because Lombok marks the members
   it generates with `@SuppressWarnings("all")` and Error Prone must skip them. The inline
   suppression scan reads the source the project wrote, where Lombok's annotations are not, and
@@ -247,24 +261,24 @@ Part of the [Java preset guide](../java-preset.md).
   addition; its Error Prone jars are taken off the processor path of the second compile.
 - **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report, schema validity, line-shift and
   suggested-fix stability, one finding with a stable identity for a repeated diagnostic),
-  `adapters/errorprone/java-errorprone.test.mjs` (paths, source roots, missing report, the
+  `adapters/errorprone/java-errorprone.test.mts` (paths, source roots, missing report, the
   exceptions route on test findings of certain bugs too, JDK forms without Guava, Lombok-generated
   diagnostics, streams closed by `Flux.using`),
-  `adapters/errorprone/reactive/closed-supplier.test.mjs` (which suppliers and cleanups count),
-  `adapters/errorprone/exemptions/class-exemptions.test.mjs` (which class annotations spare which
-  checks), `adapters/overlaps/static-overlaps.test.mjs` (each pair drops its secondary in its scope
-  and not outside it, and the table has no cycle), `resolved-overlaps.test.mjs` (the cross-tool
+  `adapters/errorprone/reactive/closed-supplier.test.mts` (which suppliers and cleanups count),
+  `adapters/errorprone/exemptions/class-exemptions.test.mts` (which class annotations spare which
+  checks), `adapters/overlaps/static-overlaps.test.mts` (each pair drops its secondary in its scope
+  and not outside it, and the table has no cycle), `resolved-overlaps.test.mts` (the cross-tool
   lines left on the probe, the partial-coverage cases kept, the order with policy, the docs list),
-  `java-spans.test.mjs` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
-  (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mjs`
+  `java-spans.test.mts` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
+  (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mts`
   (which positions and checks count as generated),
   `adapters/errorprone/checks/checks-policy.test.mts` (reviewed versions equal the pinned ones on
   Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
   the exceptions route or spared in annotated classes is documented below),
   `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,
-  processor-path errors, the JDK check), `suppressions/errorprone/errorprone-escapes.test.mjs` and
-  the inline suppression cases in `suppressions/java-suppressions.test.mjs`, and, in
-  `npm run test:java`: `adapters/errorprone/error-prone.e2e.test.mjs` (an ignored `Future`, ignored results
+  processor-path errors, the JDK check), `suppressions/errorprone/errorprone-escapes.test.mts` and
+  the inline suppression cases in `suppressions/java-suppressions.test.mts`, and, in
+  `npm run test:java`: `adapters/errorprone/error-prone.e2e.test.mts` (an ignored `Future`, ignored results
   of the project's methods in test code, a test-only package included, a returned `null` and a
   setter bean's field in main code, and no NullAway finding for `@Autowired`, `@Value`, a JPA
   entity's fields or a `null` passed in a test, while the entity's `null` return is reported; a
@@ -272,14 +286,14 @@ Part of the [Java preset guide](../java-preset.md).
   `@SuppressWarnings` in main code is honored; the regular classes are byte-identical; a source that
   only the second compile sees fails the build with javac's error and no report; projects on
   `--enable-preview` with `--release`, an `--add-exports` of `java.base`, and `-source`/`-target 8`
-  compile), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle, on Gradle with
+  compile), `adapters/errorprone/lombok.e2e.test.mts` (a Lombok project on Gradle, on Gradle with
   `lombok.addSuppressWarnings = false`, and on Maven runs the whole preset with no tool error and
   only the findings in written code, `import lombok.*;` with a `@Deprecated` method included),
-  `adapters/errorprone/checks/checks-catalog.e2e.test.mjs` (loads the pinned jar's checks: the
+  `adapters/errorprone/checks/checks-catalog.e2e.test.mts` (loads the pinned jar's checks: the
   reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
   `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,
   `suppressible` is every name of every enabled check),
-  `maven/errorprone/maven-errorprone.e2e.test.mjs` (a Spring Initializr style build with a local
+  `maven/errorprone/maven-errorprone.e2e.test.mts` (a Spring Initializr style build with a local
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
   `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
   class compiled into `target/classes` before the regular compile), and
@@ -297,6 +311,29 @@ Part of the [Java preset guide](../java-preset.md).
   read or written both with and without its lock) and `AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE`;
   its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
   updated from a blocking call (`this.total += future.join()`) is reported by none of them.
+
+## Large projects
+
+- **Slices.** `ErrorProneReport.java` splits the sources of each compile into up to
+  `-Dnitpicker.errorprone.workers` slices of about equal size (at least 40 files each) and compiles
+  them on that many threads of its one JVM. A slice sees the other slices through the project's
+  own compiled classes on its class path, as the Lombok split already does, and keeps its own
+  patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
+  pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
+  the number of cores. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
+  with the same 8027 diagnostics.
+- **`Immutable` only when it can match.** The check walks every supertype of every class, which
+  takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
+  types annotated with `com.google.errorprone.annotations.Immutable` and their subtypes, so the
+  runner turns it off (`-Xep:Immutable:OFF`, before the project's own flags, which can turn it back
+  on) when that annotation class is on neither the class path nor the module path and no source
+  names it. A library that uses the annotation brings its jar (`error_prone_annotations`) along, as
+  Guava does.
+- **Time limit.** `-Dnitpicker.errorprone.deadline=<epoch ms>` (Maven: the command limit less half a
+  minute; Gradle: the run's deadline) stops the compile when it is not done in time. The runner
+  then writes an empty report and `errorprone-skipped.txt` with the reason, so only Error Prone's
+  findings are lost, as an `Error Prone did not run` tool error, and the other tools of the Java
+  analyzer still report.
 
 ## Checks that are off
 
@@ -442,6 +479,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
   line of the parameter or the brace of a clause laid out over several lines still meets one on
   the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
+- `variable`: the same file, line and variable, the variable being the first quoted name in the
+  messages (PMD's `UnusedLocalVariable` and `UnusedAssignment` both quote it), so two variables
+  declared on one line stay separate findings.
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -479,12 +519,12 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mts` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
 for overlap), the pairs that drop a secondary on those findings (every pair of the table must have probe
 evidence, so a new pair comes with a probe source that makes both rules report the same site),
 the partial-coverage cases kept,
-and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
+and the policy order; `static-overlaps.test.mts` checks each pair in its scope; a unit test checks
 that this list is the table.
 
 `fixtures/probe-findings.json` holds the probe sources (`sources`) and the findings of a full Java
@@ -499,7 +539,7 @@ dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names ano
 The overlap table serves both builds, so both must report the same findings. To probe a new case,
 add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mts
 --check` writes nothing and exits 1 with the added and removed findings when the committed file
-differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
+differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mts` runs the same check for
 Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
 drift and on a finding one build reports and the other does not. After a regeneration, review the
 diff: a disappearing finding is a rule turned off or changed in the preset, and every pair must
@@ -651,6 +691,7 @@ The pairs:
 - line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 - line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
 - line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
+- variable: `pmd/UnusedLocalVariable` over `pmd/UnusedAssignment`
 - line: `checkstyle/FileTabCharacter` over `checkstyle/Indentation`
 - line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
 

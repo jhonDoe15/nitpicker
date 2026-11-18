@@ -1,4 +1,5 @@
 import type { ProjectGraph } from '../typed/reuse-views.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export function reachable(graph: ProjectGraph, from: string, target: string): boolean {
   const dependencies = new Map(
@@ -15,7 +16,7 @@ export function reachable(graph: ProjectGraph, from: string, target: string): bo
     }
     if (!seen.has(name)) {
       seen.add(name);
-      pending.push(...(dependencies.get(name) ?? []));
+      appendAll(pending, dependencies.get(name) ?? []);
     }
   }
   return false;

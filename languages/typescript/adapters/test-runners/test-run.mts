@@ -21,6 +21,7 @@ import type {
   TestRun,
   TimeoutLimits,
 } from './typed/runner-types.mts';
+import { largest } from '../../../../shared/lists/lists.mts';
 
 export const TEST_TIMEOUT_MS: number = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
@@ -74,13 +75,13 @@ export function testTimeoutMs(
       TROUBLESHOOTING_ANCHORS.testTimeoutsNeedVitest,
     );
   }
-  return Math.max(
+  return largest([
     ...relative.map((file) => {
       const { testTimeoutMs: test, hookTimeoutMs: hook } = testTimeouts(file, policy);
       return Math.max(test, hook ?? 0);
     }),
     timeout,
-  );
+  ]);
 }
 
 export function workerCount(options: TestOptions): number {

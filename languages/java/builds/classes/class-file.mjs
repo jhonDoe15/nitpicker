@@ -49,7 +49,7 @@ function decodeStep(state, byte) {
 function modifiedUtf8(bytes) {
   const state = [...bytes].reduce(decodeStep, { units: [], value: undefined, left: 0 });
   const units = state.value === undefined ? state.units : [...state.units, state.value];
-  return String.fromCharCode(...units);
+  return units.map((unit) => String.fromCharCode(unit)).join('');
 }
 
 export function classReader(buffer) {

@@ -30,6 +30,10 @@ export function withRange(node, range) {
   return { ...node, range };
 }
 
+export function rangeKey(range) {
+  return `${String(range[0])}:${String(range[1])}`;
+}
+
 export function literal(value, range) {
   return withRange(term('literal', value), range);
 }

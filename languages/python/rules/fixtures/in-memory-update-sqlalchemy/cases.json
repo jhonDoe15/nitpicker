@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "in-memory-update",
+    "mention": "one statement",
+    "subject": "Order|status|sqlalchemy"
+  }
+]

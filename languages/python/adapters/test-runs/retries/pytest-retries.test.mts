@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { pinnedPytestArguments } from '../pytest-pins.mjs';
-import { projectRetries, readPytestRetries, retriesNotices } from './pytest-retries.mjs';
+import { pinnedPytestArguments } from '../pytest-pins.mts';
+import { projectRetries, readPytestRetries, retriesNotices } from './pytest-retries.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

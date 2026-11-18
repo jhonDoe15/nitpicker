@@ -5,6 +5,8 @@ public interface EntityManager {
 
   <T> T merge(T entity);
 
+  void refresh(Object entity);
+
   void flush();
 
   void clear();

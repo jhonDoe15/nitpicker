@@ -1,5 +1,6 @@
 import { roundTripPairs } from '../../../../../shared/rules/round-trips/round-trips.mjs';
 import { bodyOf, LANGUAGE_RULES, parseStructure } from '../../reuse/source/jvm-declarations.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const INTERFACE = 'interface';
 
@@ -93,8 +94,9 @@ export function mainPairs(source, { kotlin }) {
     .filter(({ info }) => info.type)
     .map((entry) => ({ entry, owner: entry.info.name }));
   for (const { entry, owner } of pending) {
-    pairs.push(
-      ...roundTripPairs(typeFunctions(structure, entry, language)).map((pair) => ({
+    appendAll(
+      pairs,
+      roundTripPairs(typeFunctions(structure, entry, language)).map((pair) => ({
         ...pair,
         owner,
       })),

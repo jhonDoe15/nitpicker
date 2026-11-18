@@ -18,6 +18,7 @@ import {
   describeProcessEnd,
   failureDetail,
 } from '../../../../shared/processes/process-failure.mjs';
+import { nativeConfigFlags } from './compatibility/native-config.mts';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;
@@ -100,12 +101,16 @@ async function runEslintCli(
   extraEnvironment: Readonly<Record<string, string>> = {},
 ): Promise<unknown> {
   const { options } = invocation;
+  const config = fileURLToPath(
+    checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url)),
+  );
   const result = await spawnCollected(
     process.execPath,
     [
       invocation.eslintCliPath,
+      ...nativeConfigFlags(config).flatMap((flag) => ['--flag', flag]),
       '--config',
-      fileURLToPath(checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url))),
+      config,
       '--format',
       'json',
       '--no-color',

@@ -5,17 +5,22 @@ import {
   removeSnapshotDependencies,
 } from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
+import { type FindingsCache, createFindingsCache } from './findings-cache.mts';
+import { isCacheable } from './entries/run-with-cache.mts';
 import type { CacheStore } from './cache-stores.mts';
+import { withComparisonKeys } from './keys/comparison-keys.mts';
 import { runGit } from '../git/repository/command.mjs';
 import { analyzerName } from '../reporting/report-model.mts';
 import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 const withPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: unknown) => T) => T =
   withHeadPolicyFile;
+
+export const WITHOUT_CHANGED_TESTS = ' (without changed tests)';
 
 type PublishRequest = {
   readonly repositoryRoot: string;
@@ -75,6 +80,10 @@ export function publishBaseSnapshot({
       for (const [index, analyzer] of analyzers.entries()) {
         publishAnalyzer(analyzer, index, { run, cache, published, skipped });
       }
+      publishUnmutated({ analyzers, liveProjectRoot, headPolicy, runTasks, warn }, projectRoot, {
+        cache,
+        published,
+      });
     } finally {
       removeSnapshotDependencies(dependencies);
     }
@@ -88,8 +97,10 @@ function runBaseAnalyzers(
     liveProjectRoot,
     headPolicy,
     runTasks,
+    mutationScope,
   }: Pick<PublishRequest, 'analyzers' | 'liveProjectRoot' | 'runTasks'> & {
     readonly headPolicy: unknown;
+    readonly mutationScope?: readonly string[];
   },
   projectRoot: string,
 ): AnalyzerRun {
@@ -104,11 +115,71 @@ function runBaseAnalyzers(
       snapshot: 'base',
       baselineRoot: undefined,
       baselineMovesFile: undefined,
-      mutationScope: undefined,
+      mutationScope,
       logRoot: undefined,
       runTasks,
     }),
   );
+}
+
+function isAnalyzer(entry: unknown): entry is Analyzer {
+  return typeof entry === 'object' && entry !== null;
+}
+
+function keyedAnalyzers(candidates: readonly Analyzer[], headRoot: string): Analyzer[] {
+  const keyed: Analyzer[] = [];
+  for (const entry of withComparisonKeys(candidates, {
+    touchedPaths: [],
+    headRoot,
+    quick: false,
+  })) {
+    if (isAnalyzer(entry)) {
+      keyed.push(entry);
+    }
+  }
+  return keyed;
+}
+
+function publishUnmutated(
+  {
+    analyzers,
+    liveProjectRoot,
+    headPolicy,
+    runTasks,
+    warn,
+  }: Pick<PublishRequest, 'analyzers' | 'liveProjectRoot' | 'runTasks' | 'warn'> & {
+    readonly headPolicy: unknown;
+  },
+  projectRoot: string,
+  { cache, published }: Pick<Publication, 'cache' | 'published'>,
+): void {
+  const candidates = analyzers.filter(
+    (analyzer) => typeof analyzer['comparisonKey'] === 'function',
+  );
+  const keyed = keyedAnalyzers(candidates, projectRoot);
+  const unmutated = keyed.filter((analyzer, index) => analyzer !== candidates[index]);
+  if (unmutated.length === 0) {
+    return;
+  }
+  const labels: { published: string[]; skipped: string[] } = { published: [], skipped: [] };
+  try {
+    const run = runBaseAnalyzers(
+      { analyzers: unmutated, liveProjectRoot, headPolicy, runTasks, mutationScope: [] },
+      projectRoot,
+    );
+    for (const [index, analyzer] of unmutated.entries()) {
+      publishAnalyzer(analyzer, index, { run, cache, ...labels });
+    }
+  } catch (error) {
+    labels.skipped.push(error instanceof Error ? error.message : String(error));
+  }
+  appendAll(
+    published,
+    labels.published.map((name) => `${name}${WITHOUT_CHANGED_TESTS}`),
+  );
+  for (const detail of labels.skipped) {
+    warn(`the base without changed tests was not published: ${detail}`);
+  }
 }
 
 function snapshotDependencies(

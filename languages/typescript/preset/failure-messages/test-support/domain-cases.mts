@@ -1,5 +1,5 @@
 import type { FailureMessageCase } from './typed/case-types.mts';
-import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
+import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mts';
 import { policyFailureMessageCases } from './policy/policy-cases.mts';
 
 const filename = 'src/main/features/billing/domain/invoice.ts';

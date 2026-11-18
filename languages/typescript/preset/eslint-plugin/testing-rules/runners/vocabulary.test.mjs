@@ -1,9 +1,9 @@
 import { Linter } from 'eslint';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../../head-policy.mjs';
-import { rule as noRaisedTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
-import { rule as noIntervalPolling } from '../../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
-import { rule as noFixedSleep } from '../../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
+import { rule as noRaisedTimeout } from '../../rules/test-runtime/assertions/no-raised-test-timeout.mts';
+import { rule as noIntervalPolling } from '../../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
+import { rule as noFixedSleep } from '../../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { TEST_RUNNERS } from '../../../test-runner/runners.mjs';
 
 const SLEEP = "it('a', async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });";

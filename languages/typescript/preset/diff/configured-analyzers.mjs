@@ -7,11 +7,19 @@ import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
-import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
+import {
+  codeExtensionNames,
+  resolveLayout,
+  resolveLayoutFor,
+  stylesheetExtensionNames,
+} from '../layout.mjs';
 import { createQualityChecks } from '../quality-checks.mjs';
 import { eslintVersion } from '../checks/constants.mjs';
 import { hashFiles } from '../checks/hash.mjs';
+import { EXECUTION_INPUTS, sourceInputs } from '../../../../shared/input-sets/inputs.mjs';
 
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+const EXECUTION_ANALYZERS = new Set([...TEST_RUNNER_ANALYZERS, 'test-runtime', 'crap']);
 const ANALYZER_RUNTIME_FILES = [
   'core/diff/execution/analyzer-scheduler.mjs',
   'core/diff/execution/run-analyzers.mjs',
@@ -22,6 +30,7 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint/analyzer.mjs',
+  'languages/typescript/adapters/eslint/chains/any-chain.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-wrapper.config.mjs',
   'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
@@ -78,6 +87,7 @@ function buildAnalyzers(checks) {
           exclusions: check.exclusions,
           policyFiles: check.policyFiles,
           shardWeight: check.shardWeight,
+          colocatedWith: check.colocatedWith,
           policyFromPackage: true,
         }),
       ),
@@ -116,7 +126,17 @@ function createQualityAreaCheckAnalyzer(check, adapterArguments = check.adapterA
   );
 }
 
+const SOURCE_INPUTS = sourceInputs([
+  ...codeExtensionNames,
+  ...stylesheetExtensionNames,
+  'html',
+  'vue',
+  'svelte',
+  'astro',
+]);
+
 function withPackagePolicy(analyzer) {
+  analyzer.inputs = EXECUTION_ANALYZERS.has(analyzer.name) ? EXECUTION_INPUTS : SOURCE_INPUTS;
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
   return analyzer;
@@ -158,7 +178,6 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
 const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
 
 export function runsProjectTests(analyzerName) {

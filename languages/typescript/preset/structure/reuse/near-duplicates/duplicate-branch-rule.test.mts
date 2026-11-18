@@ -94,4 +94,54 @@ describe('duplicate-branch on TypeScript and JavaScript', () => {
       ],
     ]);
   });
+
+  it('reports, as report-only, adjacent guards with one body and an if whose inner else repeats the outer else', () => {
+    const file = 'src/orders/guards.ts';
+    const found = branches({
+      [file]: source(
+        'export function find(order: { items: string[] } | undefined, flag: boolean): number {',
+        '  if (order === undefined) {',
+        '    return 0;',
+        '  }',
+        '  if (order.items.length === 0) {',
+        '    return 0;',
+        '  }',
+        '  if (flag) {',
+        '    if (order.items.includes(String(flag))) {',
+        '      return 1;',
+        '    } else {',
+        '      return 2;',
+        '    }',
+        '  } else {',
+        '    return 2;',
+        '  }',
+        '}',
+        '',
+        'export function drain(queue: { pop(): number }, a: boolean): number {',
+        '  if (a) {',
+        '    return 1;',
+        '  }',
+        '  if (queue.pop() > 3) {',
+        '    return 1;',
+        '  }',
+        '  return 0;',
+        '}',
+      ),
+    });
+
+    expect(found).toEqual([
+      [
+        file,
+        2,
+        'descriptive',
+        'The guards `order === undefined` (line 2) and `order.items.length === 0` (line 5) have the same body. Merge them into one guard: `if (order === undefined || order.items.length === 0)`.',
+      ],
+      [
+        file,
+        8,
+        'descriptive',
+        'The `else` on line 14 repeats the inner `else` of the `if` on line 9. Use one test, `if (flag && order.items.includes(String(flag)))`, for the inner branch, and keep a single `else`.',
+      ],
+    ]);
+  });
 });

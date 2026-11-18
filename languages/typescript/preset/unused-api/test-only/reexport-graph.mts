@@ -13,6 +13,7 @@ import type {
   Reference,
   ResolvedModule,
 } from './typed/graph-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export const EVERYTHING = '<everything>';
 export const NAMED_EXPORTS = '<named exports>';
@@ -221,7 +222,7 @@ function declarationsFrom(
     if (isDeclaration) {
       found.push(node);
     }
-    pending.push(...next);
+    appendAll(pending, next);
   }
   return found;
 }

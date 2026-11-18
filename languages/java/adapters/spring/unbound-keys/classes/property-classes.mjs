@@ -1,6 +1,7 @@
 import { classesIn } from './class-members.mjs';
 import { lastArgument, typeParts } from './property-types.mjs';
 import { closingIndex } from './source-structure.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const BINDING = /@(?:[\w.]*\.)?ConfigurationProperties\b\s*/gu;
 const TARGET_CLASS = new RegExp(
@@ -62,8 +63,9 @@ function classSteps(context, { prefix, name, depth }) {
 function addClass(context, start) {
   const pending = [start];
   for (const step of pending) {
-    pending.push(
-      ...(step.key === undefined ? classSteps(context, step) : memberSteps(context, step)),
+    appendAll(
+      pending,
+      step.key === undefined ? classSteps(context, step) : memberSteps(context, step),
     );
   }
 }

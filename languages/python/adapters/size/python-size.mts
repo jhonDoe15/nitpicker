@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
-import { CLASSES_REPORT } from '../analysis/python-structure.mjs';
+import { CLASSES_REPORT } from '../analysis/python-structure.mts';
 import type {
   ClassEntry,
   ClassesReport,
@@ -24,6 +24,7 @@ import {
   type SettleContext,
   type SizeFinding,
 } from './typed/size-types.mts';
+import { largest } from '../../../../shared/lists/lists.mts';
 
 const SIZE_TOOL = 'structure';
 const WORDING = {
@@ -175,7 +176,7 @@ function countedParents(entry: ClassEntry, resolve: Resolve): ClassEntry[] {
 }
 
 function deepest(parents: ClassEntry[], depths: Map<ClassEntry, number>): number {
-  return Math.max(0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0)));
+  return largest([0, ...parents.map((parent) => 1 + (depths.get(parent) ?? 0))]);
 }
 
 function hierarchy(entries: ClassEntry[], resolve: Resolve): Hierarchy {

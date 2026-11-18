@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../../failure-messages/test-support/harness.mts';
 import { resolveLayout } from '../../layout.mjs';
-import { domProductionConfigFor, domTestedProductionFiles } from './dom-code.mjs';
+import { domProductionConfigFor, domTestedProductionFiles } from './dom-code.mts';
 import { hasDomDirectiveTests } from './dom-tests.mjs';
 
 const roots = [];

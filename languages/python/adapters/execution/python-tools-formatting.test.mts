@@ -7,7 +7,7 @@ import {
   RUFF_REPORT,
   runPythonTools,
   unformattedPaths,
-} from '../python-tools.mjs';
+} from '../python-tools.mts';
 import {
   callsLog,
   contextFor,
@@ -17,7 +17,7 @@ import {
   restoreTemporaryState,
 } from './test-support/python-tools-project.mts';
 import { fileURLToPath } from 'node:url';
-import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
+import { RUFF_CONFIG } from '../configuration/python-ruff-config.mts';
 
 afterEach(restoreTemporaryState);
 

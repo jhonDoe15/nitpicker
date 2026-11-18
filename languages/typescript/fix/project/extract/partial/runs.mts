@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { childrenOf, typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import type { LineSpan, Run, RunRegion, UnitNode } from '../typed/extract-types.mts';
 import { statementWindows } from '../typed/typed-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -27,7 +28,10 @@ function statementLists(body: TypeScript.Node): TypeScript.NodeArray<TypeScript.
     if (ts.isBlock(node)) {
       lists.push(node.statements);
     }
-    pending.push(...childrenOf(node).filter((child) => !isFunctionLike(child)));
+    appendAll(
+      pending,
+      childrenOf(node).filter((child) => !isFunctionLike(child)),
+    );
   }
   return lists;
 }

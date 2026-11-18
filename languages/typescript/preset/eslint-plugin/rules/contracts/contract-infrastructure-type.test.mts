@@ -1,4 +1,4 @@
-import { rule } from './contract-infrastructure-type.mjs';
+import { rule } from './contract-infrastructure-type.mts';
 import { typedProject, writeCustomPrismaClient } from './test-support/typed-project.mts';
 
 const { write, tester, folder } = typedProject('nitpicker-contract-types-');

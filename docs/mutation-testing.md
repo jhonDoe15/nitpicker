@@ -76,7 +76,12 @@ the TypeScript checker, since head's checker already accepted those mutants. The
 tests are intended, an exception for that rule with the module's path in `nitpicker.config.json`
 lifts it (the same exception lifts the usual mutant findings of that path). A change that touches
 no test mutates nothing extra, and when no mutant of those modules outside the changed lines
-escapes on head, the base run is skipped.
+escapes on head, the base run is skipped. Before such a finding is reported, the head runs the same
+mutants again with the same narrow scope as the base run, so both sides measure them the same way:
+a mutant whose result depends on which other mutants or tests ran with it (a stack-trace pattern,
+a warning guard on global state) and that head's narrow run kills is not reported. When that narrow
+run cannot finish (it times out or its tests fail), the run says so instead of reporting the
+weakened test.
 
 On the sandbox project (33 lines in three modules), deleting one assertion took about 2.5 minutes
 for the mutation analyzer, against about 1 minute for a one-line source change.

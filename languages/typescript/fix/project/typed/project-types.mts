@@ -8,6 +8,8 @@ export type FixLayout = {
   readonly sourceGlobs: readonly string[];
   readonly excludedGlobs: readonly string[];
   readonly unitTestGlobs: readonly string[];
+  readonly testGlobs: readonly string[];
+  readonly sourceTestDirectoryGlobs: readonly string[];
   readonly isSourceFile: (name: string) => boolean;
   readonly isTestFile: (name: string) => boolean;
   readonly isExcluded: (name: string) => boolean;

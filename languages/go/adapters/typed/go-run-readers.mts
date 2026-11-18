@@ -8,13 +8,13 @@ import {
   createGoContext as untypedCreateContext,
   readFormatReport as untypedReadFormat,
   runGoSteps as untypedRunSteps,
-} from '../go-steps.mjs';
-import { readMutationFindings as untypedReadMutation } from '../mutation/go-mutation.mjs';
-import { readDeadcodeFindings as untypedReadDeadcode } from '../dead-code/go-deadcode.mjs';
-import { readTidyFindings as untypedReadTidy } from '../dead-code/go-mod-tidy.mjs';
-import { readGoDuplicateFindings as untypedReadDuplicates } from '../duplicates/go-duplicates.mjs';
-import { formatFindings as untypedFormatFindings } from '../formatting/go-format.mjs';
-import { lintFindings as untypedLintFindings } from '../lint/go-lint.mjs';
+} from '../go-steps.mts';
+import { readMutationFindings as untypedReadMutation } from '../mutation/go-mutation.mts';
+import { readDeadcodeFindings as untypedReadDeadcode } from '../dead-code/go-deadcode.mts';
+import { readTidyFindings as untypedReadTidy } from '../dead-code/go-mod-tidy.mts';
+import { readGoDuplicateFindings as untypedReadDuplicates } from '../duplicates/go-duplicates.mts';
+import { formatFindings as untypedFormatFindings } from '../formatting/go-format.mts';
+import { lintFindings as untypedLintFindings } from '../lint/go-lint.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { isRow } from './row-readers.mts';

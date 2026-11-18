@@ -1,7 +1,8 @@
 import { isJump, nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { chainOf } from '../../traversal.mjs';
 
-const SWITCHES = new Set(['switch', 'when']);
+const SWITCHES = new Set(['switch', 'when', 'select']);
+const NEVER_FALLING = new Set(['when', 'select']);
 const ARM_PARTS = new Set(['case', 'rule', 'else']);
 
 function elseIfOf(node) {
@@ -37,7 +38,7 @@ function isDefault(part) {
 }
 
 function fallsThrough(group, part) {
-  if (group.value === 'when' || part.value === 'rule') {
+  if (NEVER_FALLING.has(group.value) || part.value === 'rule') {
     return false;
   }
   return !isJump(part.children.at(-1).children.at(-1));

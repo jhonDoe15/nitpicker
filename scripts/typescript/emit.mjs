@@ -9,6 +9,7 @@ import {
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { appendAll } from '../../shared/lists/items.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SHIPPED_FOLDERS = ['core', 'shared', 'languages'];
@@ -40,11 +41,13 @@ function filesIn(folder) {
   const pending = [folder];
   for (const directory of pending) {
     const entries = readdirSync(directory, { withFileTypes: true });
-    files.push(
-      ...entries.filter((entry) => entry.isFile()).map((entry) => entryPath(directory, entry)),
+    appendAll(
+      files,
+      entries.filter((entry) => entry.isFile()).map((entry) => entryPath(directory, entry)),
     );
-    pending.push(
-      ...entries
+    appendAll(
+      pending,
+      entries
         .filter((entry) => entry.isDirectory() && !UNSHIPPED_FOLDER.test(entry.name))
         .map((entry) => entryPath(directory, entry)),
     );

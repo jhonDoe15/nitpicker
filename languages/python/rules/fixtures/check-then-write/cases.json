@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "check-then-write-race",
+    "mention": "get_or_create",
+    "subject": "create_project|Project.objects.filter(...).exists()|Project.objects.create()"
+  }
+]

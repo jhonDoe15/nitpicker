@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './require-client-timeout.mjs';
+import { rule } from './require-client-timeout.mts';
 
 const tester = typescriptRuleTester();
 const database = (client: string) => [{ messageId: 'database', data: { client } }];

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mts';
-import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mts';
 import { applyRuleHints } from './typed/ingest-views.mts';
 
 const entry = (overrides?: object) => ({
@@ -28,6 +28,14 @@ describe('rules script report', () => {
         location: { line: 4 },
       },
     ]);
+  });
+
+  it('classifies presence-truthiness findings as descriptive', () => {
+    const report = [entry({ rule: 'presence-truthiness', subject: 'label(title)' })];
+
+    expect(
+      ingestRulesReport(JSON.stringify(report)).map(({ classification }) => classification),
+    ).toEqual(['descriptive']);
   });
 
   it('keeps two helpers with the same name apart by their qualified names', () => {

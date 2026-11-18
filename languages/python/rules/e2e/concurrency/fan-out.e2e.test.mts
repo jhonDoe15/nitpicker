@@ -4,7 +4,7 @@ import {
   type Verdicts,
   type OutcomeRow,
 } from '../../test-support/python-rule-scripts.mts';
-import { FAN_OUT_SEPARATOR as S } from '../../hints/ast/ast-smell-advice.mjs';
+import { FAN_OUT_SEPARATOR as S } from '../../hints/ast/ast-smell-advice.mts';
 
 const { outcomes, findingsOf, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',

@@ -14,8 +14,11 @@ import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling
 import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mts';
 import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mts';
 import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
-import { projectImports as untypedProjectImports } from '../../../preset/dependency-graph/cruise.mjs';
-import { moduleImportsSection as untypedModuleImportsSection } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
+import { graphImports as untypedGraphImports } from '../../../preset/dependency-graph/workspace-imports.mjs';
+import {
+  moduleImportsSection as untypedModuleImportsSection,
+  wantsModuleImports as untypedWantsModuleImports,
+} from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
 
 export type JscpdConfig = { readonly path: string[]; readonly [key: string]: unknown };
 
@@ -59,10 +62,15 @@ export const renamedDuplicatesReport: (run: {
 
 export const baselinePathsOf: (options: QualityAreaOptions) => unknown = untypedBaselinePathsOf;
 
-export const projectImports: (
+export const graphImports: (
   graph: CruiseReport,
-  isSourceFile: (relativePath: string) => boolean,
-) => unknown = untypedProjectImports;
+  project: {
+    readonly isSourceFile: (relativePath: string) => boolean;
+    readonly projectRoot: string;
+  },
+) => unknown = untypedGraphImports;
+
+export const wantsModuleImports: (history: unknown) => boolean = untypedWantsModuleImports;
 
 export const moduleImportsSection: (
   imports: unknown,

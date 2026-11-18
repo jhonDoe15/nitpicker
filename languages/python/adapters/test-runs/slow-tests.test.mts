@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { PYTEST_SCRIPT, UNITTEST_SCRIPT } from '../execution/python-test-runner.mjs';
+import { PYTEST_SCRIPT, UNITTEST_SCRIPT } from '../execution/python-test-runner.mts';
 import { pythonUsable } from '../../metrics/python-helpers.mts';
 import { readSlowTestFindings } from '../typed/report/report-views.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';

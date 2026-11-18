@@ -6,6 +6,7 @@ import { repositoryUrl } from './facts.mjs';
 import { ruleEntry } from './entry.mjs';
 import { PAGE_IDS } from './pages.mjs';
 import { TOOL_TIMEOUT_MS } from '../processes/deadlines.mjs';
+import { smallest } from '../lists/items.mjs';
 
 /** Where the entries are kept, one JSON file per page, relative to the repository root. */
 export const REFERENCE_DATA_DIRECTORY = 'shared/reference/rules';
@@ -191,7 +192,7 @@ export function closestIds(index, query, limit = FIRST_RESULTS) {
   const scored = index.entries
     .map((entry) => ({
       id: entry.id,
-      score: Math.min(...keysOf(entry).map((key) => nearness(text, key))),
+      score: smallest(keysOf(entry).map((key) => nearness(text, key))),
     }))
     .filter(({ score }) => score <= tolerance)
     .sort((a, b) => a.score - b.score || a.id.localeCompare(b.id));

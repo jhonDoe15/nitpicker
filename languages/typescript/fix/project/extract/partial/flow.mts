@@ -9,6 +9,7 @@ import { descendants, symbolAt } from '../syntax.mts';
 import type { Region, RunOutput, RunSide, SymbolSet } from '../typed/extract-types.mts';
 import { writesOf } from '../writes.mts';
 import { isFunctionLike, lastStatement } from './runs.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Analysis =
   | { readonly problem: string; readonly output?: undefined }
@@ -52,7 +53,7 @@ export function ownNodes(statements: readonly TypeScript.Node[]): TypeScript.Nod
   for (const node of pending) {
     found.push(node);
     if (!isFunctionLike(node)) {
-      pending.push(...childrenOf(node));
+      appendAll(pending, childrenOf(node));
     }
   }
   return found;

@@ -1,6 +1,7 @@
 import { groupBy, reexportSteps } from '../facts/fact-graph.mjs';
 import { packageLookup, roleLookup } from '../facts/reuse-modules.mjs';
 import { NEUTRAL_TEST_ONLY_MESSAGES, testOnlyFindings } from './test-only-judgement.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const TYPE_KINDS = new Set(['type', 'interface']);
 
@@ -42,7 +43,7 @@ function recordUses(graph, start, role) {
     const visit = `${step.file}\0${step.name}`;
     if (!seen.has(visit)) {
       seen.add(visit);
-      pending.push(...recordStep(graph, step, role));
+      appendAll(pending, recordStep(graph, step, role));
     }
   }
 }

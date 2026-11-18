@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { compiledProgram } from './helper-programs.mjs';
+import { compiledProgram } from './helper-programs.mts';
 
 const roots = [];
 

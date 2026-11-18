@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-operand-slip.mjs';
+import { rule } from './no-operand-slip.mts';
 
 const tester = typescriptRuleTester();
 

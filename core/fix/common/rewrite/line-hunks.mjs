@@ -152,10 +152,12 @@ export function touchedLinesFormatted({ base, live, formatted }) {
   const pieces = [];
   let next = 0;
   for (const hunk of kept) {
-    pieces.push(
+    for (const line of [
       ...liveLines.slice(next, hunk.aStart),
       ...formattedLines.slice(hunk.bStart, hunk.bEnd),
-    );
+    ]) {
+      pieces.push(line);
+    }
     next = hunk.aEnd;
   }
   return [...pieces, ...liveLines.slice(next)].join('');

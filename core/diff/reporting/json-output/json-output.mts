@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { areaCounts } from '../format/rule-groups/finding-areas.mts';
+import { areaCounts, areaOf } from '../format/rule-groups/finding-areas.mts';
 import { foldMutants as folded } from '../format/mutants.mts';
+import { inPriorityOrder } from '../format/rule-groups/finding-order.mts';
 import { printable } from '../format/text.mts';
 import { heldFindingsOf as heldFindings } from '../report-model.mts';
 import { errorHeadline as headlineOf, withoutSkipNotices as withoutSkips } from '../summary.mts';
@@ -8,6 +9,7 @@ import { withHelpUris } from '../../../../shared/reference/store.mjs';
 import { withoutExceptionRoute } from '../../../../shared/messages/exception-sentence.mjs';
 import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { findingLabeler, labelCounts } from '../../../labels/finding-labels.mts';
 
 type JsonReport = { readonly summary: unknown; readonly toolErrors: readonly ReportEntry[] };
 
@@ -43,6 +45,7 @@ const helpUris: (findings: readonly ReportEntry[]) => ReportEntry[] = withHelpUr
 const withoutRoute: (message: string) => string = withoutExceptionRoute;
 
 const STATUS_OF_EXIT_CODE = ['passed', 'failed', 'error'];
+const labelsOf = findingLabeler({ areaOf });
 
 export function comparisonJson({
   report,
@@ -56,6 +59,8 @@ export function comparisonJson({
     modeFields: {
       base: { ref: base.baseRef, source: base.source },
       ...(report.summary['noChanges'] === true ? { noChanges: true } : {}),
+      ...(report.summary['skippedAll'] === true ? { skippedAll: true } : {}),
+      ...skippedField(report.summary['skippedAnalyzers']),
     },
     findings: report.newFindings,
     held: heldFindings(report).length,
@@ -64,6 +69,10 @@ export function comparisonJson({
     gateExitCode,
     exitCode,
   });
+}
+
+function skippedField(skippedAnalyzers: unknown): object {
+  return Array.isArray(skippedAnalyzers) && skippedAnalyzers.length > 0 ? { skippedAnalyzers } : {};
 }
 
 export function snapshotJson({ report, outputRoot, exitCode }: SnapshotJson): string {
@@ -100,10 +109,11 @@ function renderJson({
       byArea: Object.fromEntries(
         [...countsByArea(failing)].map(([area, count]) => [textOf(area), count]),
       ),
+      byLabel: labelCounts(failing.map((finding) => ({ labels: labelsOf(finding) }))),
       reportOnly: findings.length - failing.length,
       ...(held === undefined ? {} : { held }),
     },
-    findings: helpUris(folded(failing)).map(findingEntry),
+    findings: helpUris(folded(inPriorityOrder(failing))).map(findingEntry),
     toolErrors: withoutSkips(report.toolErrors).map(toolErrorEntry),
     ...(partialRun === undefined
       ? {}
@@ -113,9 +123,16 @@ function renderJson({
             skipped: fieldOf(partialRun, 'skipped'),
           },
         }),
+    ...labelsField(fieldOf(report.summary, 'labels')),
     reports: path.resolve(outputRoot),
   };
   return `${JSON.stringify(output)}\n`;
+}
+
+function labelsField(labels: unknown): object {
+  return labels === undefined
+    ? {}
+    : { labels: { selected: fieldOf(labels, 'selected'), hidden: fieldOf(labels, 'hidden') } };
 }
 
 function present(name: string, value: unknown): object {
@@ -132,6 +149,7 @@ function findingEntry(finding: ReportEntry): object {
     ...present('line', fieldOf(location, 'line')),
     ...present('column', fieldOf(location, 'column')),
     message: exception === undefined ? message : withoutRoute(message),
+    labels: [...labelsOf(finding)],
     ...present('allowedForm', finding['allowedForm']),
     ...present('exception', exception),
     ...present('exceptionList', exceptionList === 'exceptions' ? undefined : exceptionList),

@@ -278,7 +278,9 @@ describe('the mutation run of a change', () => {
       calls,
       mutationReport: (options, targets) => {
         calls.push({ snapshot: options.snapshot, projectRoot: options.projectRoot, targets });
-        return Promise.resolve({ report: reports[options.snapshot] ?? {} });
+        const recheck = calls.filter(({ snapshot }) => snapshot === 'head').length > 1;
+        const side = recheck ? 'recheck' : options.snapshot;
+        return Promise.resolve({ report: reports[side] ?? reports[options.snapshot] ?? {} });
       },
     };
   }
@@ -327,11 +329,68 @@ describe('the mutation run of a change', () => {
         targets: ['src/classify.ts', 'src/unrelated.ts'],
       },
       { snapshot: 'base', projectRoot: options.baselineRoot, targets: ['src/classify.ts:1-1'] },
+      { snapshot: 'head', projectRoot: options.projectRoot, targets: ['src/classify.ts:1-1'] },
     ]);
     expect(findings.map(({ rule, path: file }) => [rule, file])).toEqual([
       ['mutation-summary', '.'],
       ['mutant-survived', 'src/classify.ts'],
     ]);
+  });
+
+  it('reports no weakened test when the head kills the mutant once it runs as on the base', async () => {
+    const options = {
+      ...snapshots({
+        headChanges: {
+          'test/unrelated.test.ts': "import { classify } from '../src/classify.js';\n",
+        },
+      }),
+      analyzerName: 'mutation',
+    };
+    const stryker = fakeStryker({
+      head: { files: { 'src/classify.ts': { mutants: [escaped('Survived', 1)] } } },
+      base: { files: { 'src/classify.ts': { mutants: [escaped('Killed', 1)] } } },
+      recheck: { files: { 'src/classify.ts': { mutants: [escaped('Killed', 1)] } } },
+    });
+
+    const findings = await run(options, stryker);
+
+    expect(stryker.calls.map(({ snapshot }) => snapshot)).toEqual(['head', 'base', 'head']);
+    expect(findings.filter(({ rule }) => rule === 'mutant-survived')).toEqual([]);
+  });
+
+  it('reports why the head recheck did not run instead of dropping the weakened test', async () => {
+    const options = {
+      ...snapshots({
+        headChanges: {
+          'test/unrelated.test.ts': "import { classify } from '../src/classify.js';\n",
+        },
+      }),
+      analyzerName: 'mutation',
+    };
+    const notice = {
+      tool: 'mutation',
+      rule: 'mutation-timeout',
+      path: '.',
+      identity: 'mutation-timeout',
+      message: 'The mutation run ran out of time.',
+      classification: 'descriptive' as const,
+    };
+    const reports: MutationReport[] = [
+      { files: { 'src/classify.ts': { mutants: [escaped('Survived', 1)] } } },
+      { files: { 'src/classify.ts': { mutants: [escaped('Killed', 1)] } } },
+    ];
+
+    const findings = await runScopedMutation(options, {
+      layout,
+      exceptions: [],
+      mutationReport: () => {
+        const report = reports.shift();
+        return Promise.resolve(report === undefined ? { skipped: [notice] } : { report });
+      },
+      normalize: normalizeMutation,
+    });
+
+    expect(findings.filter(({ rule }) => rule !== 'mutation-summary')).toEqual([notice]);
   });
 
   it('lifts weakened mutants with an exception and names the modules over the cap', async () => {

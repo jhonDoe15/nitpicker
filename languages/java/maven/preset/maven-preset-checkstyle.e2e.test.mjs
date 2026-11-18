@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 import {
   isFormatting,
@@ -12,7 +12,7 @@ import {
   TABBED,
   TABBED_SOURCE,
   withFourSpaces,
-} from '../test-support/style-sources.mjs';
+} from '../test-support/style-sources.mts';
 import {
   useMavenPresetProject,
   enabled,

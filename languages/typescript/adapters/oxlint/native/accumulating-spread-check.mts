@@ -1,13 +1,13 @@
 import type TypeScript from 'typescript';
 import { chainOf, parentOf, typescriptApi } from '../../typed/typescript-program.mts';
-import { accumulatingSpreadMessageId as untypedAccumulatingSpreadMessageId } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
+import {
+  accumulatingSpreadMessageId,
+  type SpreadKind,
+} from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mts';
 import { scriptKind } from '../../eslint/syntax.mts';
 import type { OxlintDiagnostic, SpreadCheck, SpreadReport } from '../plan/oxlint-shapes.mts';
 
 type Node = TypeScript.Node;
-
-const accumulatingSpreadMessageId: (kind: string, filePath: string) => string =
-  untypedAccumulatingSpreadMessageId;
 
 const ts = typescriptApi();
 
@@ -25,7 +25,7 @@ const FUNCTION_KINDS = new Set([
   ts.SyntaxKind.SetAccessor,
 ]);
 
-function nativeKind({ message, help = '' }: OxlintDiagnostic): string {
+function nativeKind({ message, help = '' }: OxlintDiagnostic): SpreadKind {
   if (message.includes('in loops')) {
     return help.includes('Object.assign') ? 'loopObject' : 'loopArray';
   }

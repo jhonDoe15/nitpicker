@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mjs';
+import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mts';
 
 const tester = typescriptRuleTester();
 const HEAD = 'import fs from "node:fs"; import path from "node:path"; ';

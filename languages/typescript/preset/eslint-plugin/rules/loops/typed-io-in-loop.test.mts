@@ -1,4 +1,4 @@
-import { rule as ioInLoop } from './no-io-in-loop.mjs';
+import { rule as ioInLoop } from './no-io-in-loop.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 
 const STORE = [

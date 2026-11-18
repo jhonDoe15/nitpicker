@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule as preserveErrorCause } from '../../rules/errors/preserve-error-cause.mjs';
-import { rule as structuredCatchLogging } from '../../rules/errors/structured-catch-logging.mjs';
+import { rule as preserveErrorCause } from '../../rules/errors/preserve-error-cause.mts';
+import { rule as structuredCatchLogging } from '../../rules/errors/structured-catch-logging.mts';
 
 const tester = typescriptRuleTester();
 const lost = [{ messageId: 'lostCause' }];

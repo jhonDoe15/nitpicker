@@ -12,13 +12,14 @@ const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE =
-  'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>] [--fixable]\n';
+  'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>] [--label <label>]... [--fixable]\n';
 type ReferenceEntry = {
   readonly id: string;
   readonly page: string;
   readonly tool: string;
   readonly fix: Readonly<Record<string, string>>;
   readonly analyzers: Readonly<Record<string, readonly string[] | undefined>>;
+  readonly labels: readonly string[];
 };
 
 const readReferenceEntries: () => readonly ReferenceEntry[] = readEntries;
@@ -86,11 +87,13 @@ describe('nitpicker explain', () => {
         'structure/function-lines-limit',
         'A function longer than the limit.',
         '',
+        'Labels: maintainability',
+        'Order: a broad pattern rule: reports list its findings after those of targeted rules, before style',
         'Presets: TypeScript, JavaScript, Java, Kotlin and Python',
         'Analyzers: structure (TypeScript and JavaScript); java (Java); kotlin (Kotlin); python (Python)',
         'Why it is on: Long functions hide several jobs in one place; agents grow them instead of splitting them.',
         'Allowed form: Split it into functions named for what each part does and put new code in a new function. A function, file or class already over its limit may be edited as long as the change does not make it worse.',
-        'Fix: Fix plan: nitpicker writes the steps for the finding, and --fix does not rewrite the code.',
+        'Fix: None: fix it by hand.',
         'Threshold: more than 50 lines',
         'Exception: If this is intended, add {"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."} to "exceptions" in nitpicker.config.json.',
         `Checks catalog: ${docsUrl('spec/checks.md') ?? ''}`,
@@ -316,6 +319,41 @@ describe('nitpicker rules', () => {
 
     expect(ids).toEqual(idsReportedBy('java').filter((id) => id.startsWith('checkstyle/')));
     expect(ids.length).toBeGreaterThan(10);
+  });
+
+  it('narrows the list to the rules with the labels, kinds matching any and frameworks narrowing', () => {
+    const labelsOf = new Map(ENTRIES.map(({ id, labels }) => [id, labels]));
+    const performance = run(['rules', '--preset', 'java', '--label', 'performance']);
+    const springBugs = listedIds(
+      run(['rules', '--preset', 'java', '--label', 'bug', '--label=spring']).stdout,
+    );
+
+    const performanceIds = idsReportedBy('java').filter((id) =>
+      (labelsOf.get(id) ?? []).includes('performance'),
+    );
+
+    expect(performance.stdout.split('\n')[0]).toBe(
+      `Java preset: ${String(performanceIds.length)} rules labeled performance. nitpicker explain <tool/rule> describes one.`,
+    );
+    expect(listedIds(performance.stdout)).toEqual(performanceIds);
+    expect(springBugs.slice(0, 2)).toEqual([
+      'archunit/spring-request-state',
+      'archunit/spring-scope-capture',
+    ]);
+    expect(
+      springBugs.filter(
+        (id) => !['bug', 'spring'].every((label) => (labelsOf.get(id) ?? []).includes(label)),
+      ),
+    ).toEqual([]);
+  });
+
+  it('refuses an unknown label', () => {
+    const { exitCode, stderr } = run(['rules', '--label', 'perf']);
+
+    expect(exitCode).toBe(2);
+    expect(stderr).toBe(
+      'nitpicker failed: Unknown --label: perf. Did you mean performance? Known labels: bug, security, performance, reliability, simplification, maintainability, tests, style, spring, react, persistence, async.\n',
+    );
   });
 
   it('uses the preset of the project config', () => {

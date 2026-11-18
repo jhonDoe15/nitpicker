@@ -7,6 +7,7 @@ import {
   withoutGenerics,
   withoutNested,
 } from '../../review-rules/java-sources.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const INHERITING_RULES = new Set([
   'SpringMultiWriteWithoutTransaction',
@@ -112,7 +113,10 @@ function inheritsTransaction(index, local, supers) {
     if (declarations.some(({ transactional }) => transactional)) {
       return true;
     }
-    pending.push(...declarations.flatMap(({ supers }) => supers));
+    appendAll(
+      pending,
+      declarations.flatMap(({ supers }) => supers),
+    );
   }
   return false;
 }

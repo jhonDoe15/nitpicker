@@ -1,4 +1,5 @@
 import { bracketGroups, indentOf } from '../../../../shared/conventions/lines.mjs';
+import { smallest } from '../../../../shared/lists/items.mjs';
 
 const WIDTHS = [100, 120, 140];
 const MIN_BEYOND = 2;
@@ -64,7 +65,7 @@ export function measuredLineLength(text, { unbreakable, joinLengths, wrappedOnly
   const longest = lengths.reduce((most, length) => Math.max(most, length), 0);
   const joins = joinLengths(lines);
   if (joins.length > 0) {
-    const shortestJoin = Math.min(...joins);
+    const shortestJoin = smallest(joins);
     const fitting = WIDTHS.filter((width) => longest <= width && width < shortestJoin);
     return fitting.length === 1 ? String(fitting[0]) : undefined;
   }

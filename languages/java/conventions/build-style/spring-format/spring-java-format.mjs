@@ -1,4 +1,5 @@
 import { childAt } from '../../../../../shared/ingest/common.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 export const SPRING_JAVA_FORMAT = 'spring';
 
@@ -22,8 +23,9 @@ export function declaresSpringJavaFormat(code) {
 export function springFormatInPom(root) {
   const queue = [{ node: root, skipped: false }];
   for (const { node, skipped } of queue) {
-    queue.push(
-      ...node.children.map((child) => ({
+    appendAll(
+      queue,
+      node.children.map((child) => ({
         node: child,
         skipped: skipped || NOT_RUN_IN_POM.has(child.name),
       })),

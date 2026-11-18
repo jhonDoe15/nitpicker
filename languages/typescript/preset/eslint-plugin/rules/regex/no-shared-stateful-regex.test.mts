@@ -1,4 +1,4 @@
-import { rule } from './no-shared-stateful-regex.mjs';
+import { rule } from './no-shared-stateful-regex.mts';
 import { typedRegexProject } from './test-support/typed-project.mts';
 
 const { tester, typed, typedJs } = typedRegexProject('nitpicker-stateful-regex-');

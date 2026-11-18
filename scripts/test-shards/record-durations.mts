@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import type { ModuleDiagnostic, Reporter } from 'vitest/node';
 import { type Durations, readDurations } from './sequencer.mts';
 import { durationFile } from './duration-profile.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..', '..');
 const RECORDED_ABOVE_SECONDS = 1;
@@ -50,8 +51,9 @@ async function recordDurations(argv: readonly string[]): Promise<void> {
   const modules: MeasuredModule[] = [];
   const reporter: Reporter = {
     onTestRunEnd: (testModules) => {
-      modules.push(
-        ...testModules.map((testModule) => ({
+      appendAll(
+        modules,
+        testModules.map((testModule) => ({
           moduleId: testModule.moduleId,
           diagnostic: testModule.diagnostic(),
         })),

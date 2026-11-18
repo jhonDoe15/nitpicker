@@ -1,5 +1,7 @@
 import type { Finding } from '../../../../../../shared/values/findings.mts';
-import { fieldsOf } from '../../../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../../../shared/values/readers.mts';
+import { callUntyped } from '../../../typed/java-values.mts';
+import { findingsOf } from '../../../kotlin/rules/test-support/findings-list.mts';
 import { resolveProjectHeadPolicy as untypedResolveProjectHeadPolicy } from '../../../../../../core/conventions/project-head-policy.mts';
 import {
   copyFixtureRepository as untypedCopyFixtureRepository,
@@ -8,13 +10,13 @@ import {
 import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
 import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mjs';
-import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mjs';
+import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mts';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
-import { collectJavaFindings as untypedCollectJavaFindings } from '../../../java-diff.mjs';
+import { collectJavaFindings as untypedCollectJavaFindings } from '../../../java-diff.mts';
 import {
   analyzeJavaSnapshot as untypedAnalyzeJavaSnapshot,
   withHeadPolicy as untypedWithHeadPolicy,
-} from '../../../java-runner.mjs';
+} from '../../../java-runner.mts';
 
 export type CollectOptions = Readonly<Record<string, unknown>>;
 export type SnapshotResult = {
@@ -29,9 +31,14 @@ type RouteInput = {
   readonly key?: string;
 };
 
-const collect: (root: string, options: CollectOptions) => Finding[] = untypedCollectJavaFindings;
-const analyze: (root: string, options: CollectOptions) => SnapshotResult =
-  untypedAnalyzeJavaSnapshot;
+function collect(root: string, options: CollectOptions): Finding[] {
+  return findingsOf(callUntyped(untypedCollectJavaFindings, root, options));
+}
+
+function analyze(root: string, options: CollectOptions): SnapshotResult {
+  const snapshot = callUntyped(untypedAnalyzeJavaSnapshot, root, options);
+  return { ...fieldsOf(snapshot), findings: findingsOf(fieldOf(snapshot, 'findings')) };
+}
 
 export function collectJavaFindings(root: string, options: CollectOptions = {}): Finding[] {
   return collect(root, options);
@@ -76,10 +83,19 @@ export const copyFixtureRepository: (input: {
   readonly ignored: string[];
 }) => string = untypedCopyFixtureRepository;
 export const runInitThenAll: (root: string) => InitThenAll = untypedRunInitThenAll;
-export const analyzeWithIncludedBuild: (
+export function analyzeWithIncludedBuild(
   fixture: string,
   options: { readonly gradle: string | undefined; readonly policy: CollectOptions },
-) => IncludedBuild = untypedAnalyzeWithIncludedBuild;
+): IncludedBuild {
+  const run = callUntyped(untypedAnalyzeWithIncludedBuild, fixture, options);
+  return {
+    status: fieldOf(run, 'status'),
+    output: textOf(fieldOf(run, 'output')),
+    mutations: textsOf(fieldOf(run, 'mutations')),
+    findings: findingsOf(fieldOf(run, 'findings')),
+    nested: findingsOf(fieldOf(run, 'nested')),
+  };
+}
 
 export function resolveProjectHeadPolicy(
   config: CollectOptions,

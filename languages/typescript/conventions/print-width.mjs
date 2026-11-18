@@ -1,4 +1,5 @@
 import { indentOf } from '../../../shared/conventions/lines.mjs';
+import { largest, smallest } from '../../../shared/lists/items.mjs';
 
 const WIDTHS = [80, 100, 120];
 const MAX_WIDTH = 120;
@@ -15,8 +16,8 @@ export function printWidth(text) {
     return undefined;
   }
   const lengths = lines.filter((line) => !UNBREAKABLE_LINE.test(line)).map((line) => line.length);
-  const longest = Math.max(0, ...lengths);
-  const shortestJoin = Math.min(...joinedGroupLengths(lines), ...joinedContinuations(lines));
+  const longest = largest([0, ...lengths]);
+  const shortestJoin = smallest([...joinedGroupLengths(lines), ...joinedContinuations(lines)]);
   if (shortestJoin !== Infinity) {
     const fitting = WIDTHS.filter((candidate) => longest <= candidate && candidate < shortestJoin);
     return fitting.length === 1 ? String(fitting[0]) : undefined;

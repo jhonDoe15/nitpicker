@@ -44,12 +44,12 @@ Visibility the compiler already enforces (a package-private class) needs no rule
 `internal` is visible in the whole Gradle module, so it is not treated as feature-private: what
 counts is the package.
 
-- **The graph.** `adapters/features/class-graph.mjs` reads the `jdeps.txt` and `jdeps-classes.txt`
+- **The graph.** `adapters/features/class-graph.mts` reads the `jdeps.txt` and `jdeps-classes.txt`
   of every project or module (see [Coupling and stability](coupling-and-stability-ticket-sh6.md)):
   production classes only, nested classes (`Invoice$Line`, a lambda, a companion object) folded
   into their top-level class, and each top-level class mapped to its source file, by the Kotlin
   PSI file list (`kotlin-metrics.json`, kotlin preset) or a scan of the declarations in the main
-  Java and Kotlin source roots (`review-rules/source-declarations.mjs`: classes, a second top-level
+  Java and Kotlin source roots (`review-rules/source-declarations.mts`: classes, a second top-level
   class in a file, the Kotlin file facade `RatesKt` or its `@file:JvmName`). The facts are file
   edges with the class names used, so a Java class that calls a top-level Kotlin function of
   another feature, or a Kotlin class that uses a Java one, is an edge between the two files. In a
@@ -60,7 +60,7 @@ counts is the package.
 - **Persistence of another feature.** `foreign-feature-persistence` keeps each feature the owner
   of its data: another feature calls its services, even when the entity or repository sits
   directly in the feature package (the public face). A file is persistence when one of its classes
-  carries the evidence in its bytecode (`adapters/features/persistence-classes.mjs`): an entity
+  carries the evidence in its bytecode (`adapters/features/persistence-classes.mts`): an entity
   annotation (`@Entity`, `@MappedSuperclass`, Spring Data `@Document`, `@Table`, `@RedisHash`,
   `@Node`), `@Repository`, a Spring Data repository or an Exposed table or entity as a supertype
   (the class depends on it and its declaration header names it, so a service that merely takes a
@@ -122,7 +122,7 @@ counts is the package.
 - **Tests.** `adapters/features/*.test.mjs`: the class graph (nested classes, Kotlin facades and
   PSI files, mixed Java and Kotlin, modules, generated and ambiguous classes), the rules over it,
   the Spring roles and the ArchUnit dedupe, `package-cycle`, and the persistence evidence
-  (`persistence-classes.test.mjs`, Java and Kotlin, with and without a Spring root).
+  (`persistence-classes.test.mts`, Java and Kotlin, with and without a Spring root).
 
 ## Domain boundaries
 

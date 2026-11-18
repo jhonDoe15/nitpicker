@@ -7,7 +7,7 @@ import {
   dependencyNames,
   detectLibraries,
   validatorsOf,
-} from './project-libraries.mjs';
+} from './project-libraries.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

@@ -1,10 +1,9 @@
 import { ALL_RECIPES } from '../engine/all-recipes.mts';
-import { FIX_PLAN_RULES } from './fix-plan-rules.mts';
 import { FORMATTER_RULES } from './tool-fixers.mts';
 import { SELECTED_FIXER_RULES } from './selected-fixers.mts';
 import { presetsOf } from '../../../shared/reference/facts.mjs';
 import { FIX_RANK, FIX_STATUS } from '../../../shared/reference/fix-status.mjs';
-import { matcherOf, presetRules, recipeListings, type Fields } from './status-types.mts';
+import { matcherOf, recipeListings, type Fields } from './status-types.mts';
 import type {
   FixStatusSources,
   PresetRule,
@@ -17,7 +16,6 @@ export const DEFAULT_FIX_SOURCES: FixStatusSources = {
   recipes: recipeListings(ALL_RECIPES),
   formatters: FORMATTER_RULES,
   selected: SELECTED_FIXER_RULES,
-  plans: presetRules(FIX_PLAN_RULES),
 };
 
 function namesRule(entry: RuleMatcher, { tool, rule }: RuleRef) {
@@ -74,7 +72,6 @@ export function fixStatusFor(
     recipeStatus(entry, preset, sources.recipes),
     toolFixerStatus(entry, preset, sources.formatters),
     selectedFixerStatus(entry, preset, sources.selected),
-    isListed(entry, preset, sources.plans) ? FIX_STATUS.plan : FIX_STATUS.none,
   ];
   return FIX_RANK.findLast((status) => statuses.includes(status));
 }

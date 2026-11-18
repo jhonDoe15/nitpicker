@@ -76,7 +76,7 @@ export function runScheduler(
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
     throw troubleshootingError(
       `Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`,
-      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      TROUBLESHOOTING_ANCHORS.runStopped,
     );
   }
   try {

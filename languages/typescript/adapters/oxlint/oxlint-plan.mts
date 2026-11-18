@@ -8,6 +8,7 @@ import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
 import { isInvokedModule } from '../typed/static-checks.mts';
 import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
+import { nativeConfigFlags } from '../lint-engine/compatibility/native-config.mts';
 
 type Settings = Readonly<Record<string, unknown>>;
 
@@ -61,7 +62,11 @@ async function lintPlan(root: string, globs: readonly string[]) {
 }
 
 async function filePlan(root: string, globs: readonly string[]) {
-  const eslint = new ESLint({ cwd: root, overrideConfigFile: wrapperConfigPath });
+  const eslint = new ESLint({
+    cwd: root,
+    overrideConfigFile: wrapperConfigPath,
+    flags: nativeConfigFlags(wrapperConfigPath),
+  });
   const plan: Plan = {
     groups: new Map(),
     noInlineConfig: [],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RULES_TOOL } from '../../rule-hints.mjs';
+import { RULES_TOOL } from '../../rule-hints.mts';
 import { describeRuleFinding, withHint } from '../../typed/rule-hint-views.mts';
 
 describe('signature rule messages', () => {

@@ -1,3 +1,4 @@
+import { isStableModel } from './models/models.mjs';
 import { foldTerm } from './terms.mjs';
 
 const OPERATORS = new Set([
@@ -59,12 +60,19 @@ const STRING_READS = new Set([
   'lastIndexOf',
   'isEmpty',
   'isBlank',
+  'trim',
+  'trimStart',
+  'trimEnd',
+  'strip',
+  'toLowerCase',
+  'toUpperCase',
+  'isPresent',
   'contains',
   'length',
 ]);
 
 const LEAVES = new Set(['literal', 'name', 'this']);
-const ALL_CHILDREN = new Set(['logical', 'conditional', 'index']);
+const ALL_CHILDREN = new Set(['logical', 'conditional', 'index', 'abs', 'cast']);
 
 export function isSideEffectFree(root) {
   return foldTerm(root, (node, children) => {
@@ -80,7 +88,11 @@ export function isSideEffectFree(root) {
     if (node.kind === 'member') {
       return children[0];
     }
-    return node.kind === 'call' && children.every(Boolean) && isPureCallee(node.children[0]);
+    return (
+      node.kind === 'call' &&
+      children.every(Boolean) &&
+      (isStableModel(node) || isPureCallee(node.children[0]))
+    );
   });
 }
 

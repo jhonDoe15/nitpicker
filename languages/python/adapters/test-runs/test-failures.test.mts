@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { unittestFailures } from './test-failures.mjs';
+import { unittestFailures } from './test-failures.mts';
 import { testFailureFindings } from '../typed/report/report-views.mts';
 
 describe('failing tests', () => {

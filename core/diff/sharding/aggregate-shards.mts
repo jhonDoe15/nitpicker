@@ -26,7 +26,6 @@ import {
   commonSummary,
   noChangesReport,
   sortByToolAndPath,
-  fixPlansFor,
   writeDiffReports,
   parseArguments,
   resolveProjectRoot,
@@ -34,13 +33,14 @@ import {
   describeError,
   displayPath,
   withoutAnsi,
+  outputRootFor,
 } from './aggregate-summary.mts';
 import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mts';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mts';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { presetAnalyzers, withRepositoryChecks } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
@@ -51,6 +51,7 @@ import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import { largest } from '../../../shared/lists/lists.mts';
 
 function resolvePolicyRoot({
   optionsPolicyRoot,
@@ -116,9 +117,8 @@ function writeAggregate(
   { outputRoot, liveProjectRoot }: ReportTarget,
 ): AggregateReport {
   const location = repositoryLocationOf(liveProjectRoot);
-  const planned: AggregateReport = { ...report, fixPlans: fixPlansFor(report, location) };
-  planned.text = writeDiffReports(outputRoot, planned, location);
-  return planned;
+  report.text = writeDiffReports(outputRoot, report, location);
+  return report;
 }
 
 function unchangedReport(
@@ -134,7 +134,7 @@ function unchangedReport(
       withoutRepeats(shards.flatMap(({ toolErrors }) => toolErrors)),
     ),
   });
-  report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
+  report.summary.elapsedMs = largest(shards.map(({ summary }) => summary.elapsedMs));
   return report;
 }
 
@@ -180,6 +180,7 @@ function mergeShardEntries(
 export function runAggregateCli({
   arguments_ = process.argv.slice(2),
   currentProjectRoot,
+  configOverlay,
   analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -194,10 +195,11 @@ export function runAggregateCli({
     }
     const projectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
-    outputRoot = path.resolve(projectRoot, options.outputRoot ?? 'reports/quality/diff/combined');
+    outputRoot = outputRootFor(projectRoot, options.outputRoot, 'diff/combined');
     clearDiffReports(outputRoot);
     const report = configuredReport(options, {
       currentProjectRoot: projectRoot,
+      configOverlay,
       outputRoot,
       analyzers,
       warn: (message) => stderr.write(`nitpicker: ${message}\n`),
@@ -246,19 +248,15 @@ if (
 
 function configuredReport(
   options: AggregateOptions,
-  { currentProjectRoot, outputRoot, analyzers, warn }: ConfiguredTarget,
+  { currentProjectRoot, configOverlay, outputRoot, analyzers, warn }: ConfiguredTarget,
 ): AggregateReport {
-  const config: NitpickerConfig = loadConfig(currentProjectRoot);
+  const config: NitpickerConfig = loadConfig(currentProjectRoot, { overlay: configOverlay });
+  const headPolicy: unknown = resolveHeadPolicy(config, currentProjectRoot);
+  const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
     outputRoot,
-    analyzers: analyzersOf(
-      configureAnalyzers(
-        presetAnalyzers(config, analyzers),
-        config,
-        resolveHeadPolicy(config, currentProjectRoot),
-      ),
-    ),
+    analyzers: analyzersOf(withRepositoryChecks(configured, configOverlay)),
     configOverrides: describeConfigOverrides(config),
     shardCount: options.shardCount,
     liveProjectRoot: currentProjectRoot,
@@ -280,6 +278,7 @@ function reportExitCode(
         color: colorEnabled(stdout, environment),
         details,
         diagnosticsPath: displayPath(absoluteTextReportPath(outputRoot)),
+        projectRoot: currentProjectRoot,
       }),
     ),
   );

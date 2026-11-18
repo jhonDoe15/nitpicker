@@ -68,6 +68,8 @@ def declared(node, function):
         return {node.name}
     if isinstance(node, FUNCTIONS + (ast.ClassDef,)) and node is not function:
         return {node.name}
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+        return {(alias.asname or alias.name.split(".")[0]) for alias in node.names if alias.name != "*"}
     return set()
 
 
@@ -142,6 +144,8 @@ class BaseConverter:
         if method is None:
             return None
         node = method(source)
+        if node is None:
+            return None
         if node["kind"] in SNIPPET_KINDS and "text" not in node:
             segment = ast.get_source_segment(self.text, source)
             if segment:

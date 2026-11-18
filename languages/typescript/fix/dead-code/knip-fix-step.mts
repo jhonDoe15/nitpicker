@@ -26,7 +26,7 @@ import {
   readBytes,
   runFixCommand,
   type Bytes,
-} from '../typed/fix-views.mts';
+} from '../../../../core/fix/typed/fix-views.mts';
 import { copyProject as untypedCopyProject } from './project-copy.mts';
 import { knipFixTypes as untypedKnipFixTypes } from './knip-fix-types.mts';
 

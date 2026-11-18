@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-wasted-collection-step.mjs';
+import { rule } from './no-wasted-collection-step.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/domain/totals.ts';

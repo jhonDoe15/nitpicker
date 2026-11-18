@@ -15,6 +15,7 @@ import type {
   Roots,
   ScoredFunction,
 } from './typed/coverage-types.mts';
+import { largest, smallest } from '../../../shared/lists/lists.mts';
 
 const FULLY_COVERED = 100;
 
@@ -107,8 +108,8 @@ function describeFunction(name: string, entry: CoverageFunctionData): FunctionCo
   ];
   return {
     name,
-    first: lines.length === 0 ? undefined : Math.min(...lines),
-    last: lines.length === 0 ? undefined : Math.max(...lines),
+    first: lines.length === 0 ? undefined : smallest(lines),
+    last: lines.length === 0 ? undefined : largest(lines),
     percent: coveragePercent(entry.summary ?? {}),
   };
 }
@@ -165,7 +166,7 @@ function coveragePercent(summary: CoverageSummary): number {
   const measures = pairs.filter(([, total]) => total > 0);
   return measures.length === 0
     ? 100
-    : Math.min(...measures.map(([covered, total]) => (covered / total) * 100));
+    : smallest(measures.map(([covered, total]) => (covered / total) * 100));
 }
 
 function namedLike(

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../../adapters/java-analyzer.mjs';
+import { configurationFiles } from '../../adapters/java-analyzer.mts';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');

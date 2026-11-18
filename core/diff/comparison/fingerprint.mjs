@@ -2,45 +2,92 @@ import { createHash } from 'node:crypto';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { remapRootPrefix } from '../git/patches/renames.mjs';
 import {
+  agreedPairs,
+  bareFileMoves,
   packageMoves,
   qualifiedNameMoves,
+  remapBareNames,
   remapQualifiedNames,
 } from './moved-names/qualified-names.mjs';
+import { headPlacesOf, movedFolder, remapModuleSuffix } from './moved-names/module-paths.mjs';
+import { canonicalSpecifiers, stemMoves } from './moved-names/relative-specifiers.mjs';
 
+const NO_DECLARED = {
+  names: new Map(),
+  bare: new Map(),
+  filePackages: new Map(),
+  covered: new Set(),
+  folders: new Map(),
+  packageDirs: new Set(),
+};
 const NO_MOVES = baseMoves(new Map());
 
-export function baseMoves(baseToHeadRenames, baseToHeadDirectories = new Map()) {
+export function baseMoves(
+  baseToHeadRenames,
+  {
+    baseToHeadDirectories: directories = new Map(),
+    baseToHeadPackages: packages = new Map(),
+    baseToHeadDeclared: declared = NO_DECLARED,
+    headFindings = [],
+  } = {},
+) {
+  const bare = new Map([
+    ...bareFileMoves(baseToHeadRenames, {
+      skip: declared.covered,
+      packageDirs: declared.packageDirs,
+    }),
+    ...declared.bare,
+  ]);
   return {
     files: baseToHeadRenames,
     longestFirst: [...baseToHeadRenames].sort(
       ([leftPath], [rightPath]) => rightPath.length - leftPath.length,
     ),
-    directories: baseToHeadDirectories,
-    names: qualifiedNameMoves(baseToHeadRenames),
+    directories,
+    names: new Map([
+      ...qualifiedNameMoves(baseToHeadRenames, { skip: declared.covered }),
+      ...declared.names,
+    ]),
+    bare,
+    bareNames: agreedPairs([...bare.values()]),
+    declared,
+    headPlaces: headPlacesOf(headFindings),
+    stems: stemMoves(baseToHeadRenames),
+    packageNames: packages,
   };
 }
 
 export function comparisonKey(finding, moves = NO_MOVES) {
   const normalizedPath = normalizeGitPath(finding.path);
-  const movedPath = moves.files.get(normalizedPath);
-  const packages = packageMoves(normalizedPath, movedPath);
+  const movedPath = moves.files.get(normalizedPath) ?? movedFolder(normalizedPath, moves);
+  const packages = packagesOf(normalizedPath, movedPath, moves);
   const cycle = parseCycleIdentity(finding.identity);
+  const packageIdentity = remapPackageIdentity(finding, moves.packageNames);
   const canonical =
     cycle === undefined
       ? sortedPair({
-          path: movedPath ?? normalizedPath,
-          identity: remapQualifiedNames(
-            remapRootPrefix(remapIdentityPaths(finding.identity, moves), moves.directories),
-            moves.names,
-            packages,
+          path: packageIdentity?.path ?? movedPath ?? normalizedPath,
+          identity: canonicalSpecifiers(
+            remapNames(
+              remapRootPrefix(
+                remapIdentityPaths(
+                  remapModuleSuffix(packageIdentity?.identity ?? finding.identity, moves),
+                  moves,
+                ),
+                moves.directories,
+              ),
+              { moves, packages, own: moves.bare.get(normalizedPath) },
+            ),
+            normalizedPath,
+            { stems: moves.stems, newFilePath: movedPath },
           ),
         })
       : remapCycle(cycle, moves);
-  const symbol = remapQualifiedNames(
-    remapIdentityPaths(finding.symbol ?? '', moves),
-    moves.names,
+  const symbol = remapNames(remapIdentityPaths(finding.symbol ?? '', moves), {
+    moves,
     packages,
-  );
+    own: moves.bare.get(normalizedPath),
+  });
   return JSON.stringify([
     finding.tool,
     finding.rule,
@@ -50,6 +97,37 @@ export function comparisonKey(finding, moves = NO_MOVES) {
     finding.classification,
     finding.metric?.name ?? '',
   ]);
+}
+
+function packagesOf(normalizedPath, movedPath, moves) {
+  return moves.declared.covered.has(normalizedPath)
+    ? (moves.declared.filePackages.get(normalizedPath) ?? new Map())
+    : packageMoves(normalizedPath, movedPath);
+}
+
+function remapNames(text, { moves, packages, own }) {
+  const dotted = remapQualifiedNames(text, moves.names, packages);
+  return dotted === text && own !== undefined ? remapBareNames(text, new Map([own])) : dotted;
+}
+
+const PACKAGE_EDGE = /^package-edge:(.+)->(.+)$/u;
+const PACKAGE_METRIC = /^package:(.+):([^:]+)$/u;
+
+function remapPackageIdentity({ identity, path: findingPath }, packageNames) {
+  if (packageNames.size === 0 || typeof identity !== 'string') {
+    return undefined;
+  }
+  const edge = PACKAGE_EDGE.exec(identity);
+  if (edge !== null) {
+    const [, source, target] = edge;
+    return {
+      identity: `package-edge:${packageNames.get(source) ?? source}->${packageNames.get(target) ?? target}`,
+      path: findingPath === source ? packageNames.get(source) : undefined,
+    };
+  }
+  const metric = PACKAGE_METRIC.exec(identity);
+  const moved = metric === null ? undefined : packageNames.get(metric[1]);
+  return moved === undefined ? undefined : { identity: `package:${moved}:${metric[2]}` };
 }
 
 const PAIR_IDENTITY = /^((?:[\w-]+:)*pair:)([^|]+)\|([^:]+)(:.*)?$/u;
@@ -73,7 +151,11 @@ function parseCycleIdentity(identity) {
 
 function remapCycle({ members, suffix }, moves) {
   const remapped = members.map(
-    (member) => moves.files.get(member) ?? remapQualifiedNames(member, moves.names),
+    (member) =>
+      moves.files.get(member) ??
+      moves.packageNames?.get(member) ??
+      moves.bareNames.get(member) ??
+      remapQualifiedNames(member, moves.names),
   );
   const rotations = remapped.map((_, index) => [
     ...remapped.slice(index),

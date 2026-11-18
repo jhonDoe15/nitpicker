@@ -2,35 +2,27 @@ import { describe, expect, it } from 'vitest';
 import { JSON_NULL } from '../analysis/typed/json-null.mts';
 import type {
   ImportsByFile,
-  ImportsReport,
   ImportStatement,
   JsonNull,
   OtherModule,
   PythonModule,
 } from '../analysis/typed/python-graph-types.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
-import { probedTops, unresolvedImportFindings as untypedFindings } from './unresolved-imports.mjs';
+import { probedTops, unresolvedImportFindings } from './unresolved-imports.mts';
+import type { DeclaredNames, DistributionScan } from './typed/import-scan-types.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
-type Row = Readonly<Record<string, unknown>>;
 type Files = Readonly<Record<string, string>>;
 type FindingsOptions = {
   readonly files?: Files;
-  readonly scan?: Row;
+  readonly scan?: DistributionScan;
   readonly modules?: readonly PythonModule[];
   readonly others?: readonly OtherModule[];
-  readonly declared?: Row;
+  readonly declared?: DeclaredNames;
 };
-
-const unresolvedImportFindings: (request: {
-  projectRoot: string;
-  imports: ImportsReport;
-  scan: Row;
-  declared: Row;
-}) => IngestedFinding[] = untypedFindings;
 
 function directory(files: Files): string {
   const root = temporaryRoot('nitpicker-python-unresolved-');
@@ -62,17 +54,27 @@ const OTHERS: OtherModule[] = [
   { file: 'tests/helpers.py', module: 'tests.helpers', kind: 'other', inRoots: false },
   { file: 'tests/test_orders.py', module: 'tests.test_orders', kind: 'test', inRoots: false },
 ];
-const SCAN: Row = {
+const SCAN: DistributionScan = {
   stdlib: ['os', 'json', 'logging'],
   modules: { requests: ['requests'], yaml: ['PyYAML'] },
   importable: ['editable_tool'],
 };
-const DECLARED: Row = {
+const DECLARED: DeclaredNames = {
   manifest: 'pyproject.toml',
   dependencies: [
-    { name: 'scikit-learn', normalized: 'scikit-learn', group: 'optional' },
-    { name: 'markdown-it-py', normalized: 'markdown-it-py', group: 'production' },
-    { name: 'python-dateutil', normalized: 'python-dateutil', group: 'optional' },
+    { name: 'scikit-learn', normalized: 'scikit-learn', group: 'optional', file: 'pyproject.toml' },
+    {
+      name: 'markdown-it-py',
+      normalized: 'markdown-it-py',
+      group: 'production',
+      file: 'pyproject.toml',
+    },
+    {
+      name: 'python-dateutil',
+      normalized: 'python-dateutil',
+      group: 'optional',
+      file: 'pyproject.toml',
+    },
   ],
 };
 
@@ -280,7 +282,7 @@ describe('Python unresolved imports', () => {
     const declared = {
       manifest: 'pyproject.toml',
       dependencies: ['pillow', 'opencv-python-headless', 'pywin32', 'django-environ'].map(
-        (name) => ({ name, normalized: name, group: 'optional' }),
+        (name) => ({ name, normalized: name, group: 'optional', file: 'pyproject.toml' }),
       ),
     };
     const files = {

@@ -1,4 +1,5 @@
 import { DUPLICATES_MODE, LANGUAGES, RULES } from './policy.mjs';
+import { largest } from './lists/items.mjs';
 
 const LANGUAGE_TITLES = {
   typescript: 'TypeScript',
@@ -58,7 +59,7 @@ export function renderCustomRulesTable() {
     ...LANGUAGES.map((language) => cellText(rule, language)),
   ]);
   const widths = header.map((title, column) =>
-    Math.max(title.length, ...body.map((row) => row[column].length)),
+    largest([title.length, ...body.map((row) => row[column].length)]),
   );
   const line = (cells) => `| ${cells.map((cell, i) => cell.padEnd(widths[i])).join(' | ')} |`;
   const separator = `| ${widths.map((width) => '-'.repeat(width)).join(' | ')} |`;

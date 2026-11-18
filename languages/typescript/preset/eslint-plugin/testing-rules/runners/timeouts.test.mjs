@@ -1,4 +1,4 @@
-import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as noRaisedTestTimeout } from '../../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();

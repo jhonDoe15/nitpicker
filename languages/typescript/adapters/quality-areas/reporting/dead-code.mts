@@ -2,6 +2,7 @@ import type { Finding } from '../../static-checks/shared.mts';
 import type { KnipReport } from '../typed/reporting.mts';
 import { escapeRegExp } from '../../typed/tooling.mts';
 import { readProjectSource, reportOf } from './source-hashes.mts';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import {
   exceptionHint as untypedExceptionHint,
@@ -209,7 +210,7 @@ export function withDeadCodeSourceHashes(parsed: unknown, projectRoot: string): 
     ...report,
     files: (report.files ?? []).map((file) => ({
       path: file,
-      sourceHash: hash(readProjectSource(projectRoot, file)),
+      sourceHash: wholeFileHash(readProjectSource(projectRoot, file), file),
     })),
     issues: (report.issues ?? []).map((issue) => {
       const lines = readProjectSource(projectRoot, String(issue['file'])).split('\n');

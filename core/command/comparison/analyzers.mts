@@ -26,7 +26,7 @@ export function requestedAnalyzers(
 
 export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelection): {
   readonly analyzers: readonly ProfiledAnalyzer[];
-  readonly partialRun: unknown;
+  readonly runFields: object;
 } {
   const selectedAnalyzers = requestedAnalyzers(options, analyzers);
   if (selectedAnalyzers.length === 0) {
@@ -36,6 +36,9 @@ export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelect
   }
   return {
     analyzers: selectedAnalyzers,
-    partialRun: partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers),
+    runFields: {
+      partialRun: partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers),
+      sharded: options.shardCount !== undefined,
+    },
   };
 }
