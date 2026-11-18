@@ -31,6 +31,7 @@
   "pmd/CompatibilityShim": ["maintainability"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
   "pmd/CopyConstructorSharesCollection": ["bug"],
+  "pmd/CopyMethodDropsField": ["bug"],
   "pmd/CredentialLiteral": ["security"],
   "pmd/DefaultLabelNotLastInSwitch": ["style"],
   "pmd/DefaultLabelNotLastInSwitchStmt": ["style"],
