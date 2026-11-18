@@ -109,7 +109,7 @@ remote or message call with no limiter created outside the worker and no fixed-s
 rule runs as `unbounded-fan-out` in the Python preset, `pmd/UnboundedFanOut` in the Java preset and
 `kotlin-source/UnboundedFanOut` in the Kotlin preset; each preset's document lists what it recognizes.
 Reactive fan-out has its own rule: `nitpicker/unbounded-reactive-fan-out` (RxJS `mergeMap` without a
-concurrency argument over a collection, `forkJoin` and friends over a mapped array),
+concurrency argument over a collection, `forkJoin` and `merge` over a mapped array),
 `pmd/UnboundedReactiveFanOut` and `kotlin-source/UnboundedReactiveFanOut` (Reactor `flatMap` without
 a concurrency argument over `Flux.fromIterable`, `Mono.zip`/`Mono.when`/`Flux.zip`/`Flux.merge` over a
 list built per element, and Kotlin `flatMapMerge(Int.MAX_VALUE)`). The Python preset has no reactive
