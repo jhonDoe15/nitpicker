@@ -22,14 +22,14 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
 
 ## Safe list (applied by a plain `--fix`)
 
-58 checks whose fix keeps behaviour and ends in the form the preset asks for. They are in
+57 checks whose fix keeps behaviour and ends in the form the preset asks for. They are in
 `languages/java/fix/errorprone/checks/safe-checks.mts`.
 
 - Layout and syntax with no meaning of their own: `AnnotationPosition`, `MissingBraces`,
   `MixedArrayDimensions`, `MultiVariableDeclaration`, `OperatorPrecedence`,
   `UnnecessaryParentheses`, `UnnecessarySemicolon`, `EmptyTopLevelDeclaration`,
   `UnicodeEscape`, `LongLiteralLowerCaseSuffix`.
-- Redundant code: `ExtendsObject`, `RedundantControlFlow`, `ReturnAtTheEndOfVoidFunction`,
+- Redundant code: `RedundantControlFlow`, `ReturnAtTheEndOfVoidFunction`,
   `UnnecessaryBreakInSwitch`, `UnnecessaryTypeArgument`, `UnnecessaryBoxedAssignment`,
   `ExplicitArrayForVarargs`, `MultipleParallelOrSequentialCalls`, `RedundantThrows`,
   `TransientMisuse`, `RecordComponentOverride`, `DeprecatedVariable`, `UnusedLabel`,
@@ -212,7 +212,7 @@ The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
 
 ## Left out
 
-32 checks never get a fix from `--fix`, listed in
+33 checks never get a fix from `--fix`, listed in
 `languages/java/fix/errorprone/checks/left-out-checks.mts`:
 
 - the fix inserts a comment, which recipes never do: `MissingDefault`,
@@ -228,7 +228,9 @@ The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
   `ComparisonContractViolated`, `DistinctVarargsChecker`, `FromTemporalAccessor`,
   `FuturesGetCheckedIllegalExceptionType`, `ClassInitializationDeadlock`, `DeeplyNested`,
   `MockNotUsedInProduction`, `MoreThanOneQualifier`, `PreferTestParameter`,
-  `RobolectricShadowDirectlyOn`, `UnnecessarySetDefault`, `WakelockReleasedDangerously`.
+  `RobolectricShadowDirectlyOn`, `UnnecessarySetDefault`, `WakelockReleasedDangerously`;
+- the fix adds what the check calls redundant: `ExtendsObject` suggests `T extends @NonNull Object`,
+  which needs the Checker Framework on the classpath and breaks the compile without it.
 
 A test keeps the three lists apart and checks that none names a check the preset turns off.
 
