@@ -11,6 +11,7 @@ export const OWN_CHECKS_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone', 'f
 
 const PMD = 'pmd';
 const EFFECTS = 'effects';
+const SPOTBUGS = 'spotbugs';
 
 export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'UseStandardCharsets', tool: PMD, safety: SAFE },
@@ -18,6 +19,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'SpringRestController', tool: PMD, safety: SAFE },
   { check: 'LogStringConcatenation', tool: PMD, safety: SAFE },
   { check: 'UseCollectionIsEmpty', tool: PMD, safety: SAFE },
+  { check: 'DMI_RANDOM_USED_ONLY_ONCE', tool: SPOTBUGS, safety: SAFE },
   { check: 'LiteralsFirstInComparisons', tool: PMD, safety: REVIEW },
   { check: 'PreserveStackTrace', tool: PMD, safety: REVIEW },
   { check: 'SpringConstructorInjection', tool: PMD, safety: REVIEW },
@@ -38,6 +40,15 @@ const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));
 
 export function ownCheck(check: string): OwnCheck | undefined {
   return BY_CHECK.get(check);
+}
+
+export function ownCheckClass(check: string): string {
+  return /^[A-Z0-9]+(_[A-Z0-9]+)+$/u.test(check)
+    ? check
+        .split('_')
+        .map((word) => `${word.slice(0, 1)}${word.slice(1).toLowerCase()}`)
+        .join('')
+    : check;
 }
 
 export function ownChecksOf(safety: string): string[] {
