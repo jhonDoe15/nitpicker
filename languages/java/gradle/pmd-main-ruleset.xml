@@ -2297,7 +2297,7 @@ return (
     </properties>
   </rule>
   <rule name="UnclosedInlineResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) are not reported.">
+        message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) and connections the framework binds to the thread (DataSourceUtils.getConnection) are not reported.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -2324,7 +2324,8 @@ let $closeable := 'java.lang.AutoCloseable',
                 and not($n[pmd-java:typeIs('java.util.Formatter')]
                           [empty(ArgumentList/*) or ArgumentList/*[1][pmd-java:typeIs('java.lang.StringBuilder')]])
            else (matches($n/@MethodName, $opening)
-                 and not(some $t in $owners satisfies exists($n/*[1][pmd-java:typeIs($t)]))))
+                 and not(some $t in $owners satisfies exists($n/*[1][pmd-java:typeIs($t)]))
+                 and not($n/*[1][self::TypeExpression/ClassType/@SimpleName = 'DataSourceUtils'])))
     }
 return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
   [not(self::MethodCall/*[1][$fresh(., $fresh)])]
