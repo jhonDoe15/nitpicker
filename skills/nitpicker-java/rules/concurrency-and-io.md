@@ -109,6 +109,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `URL` becomes a file through `new File(url.toURI())` or `Path.of(url.toURI())`, never `new File(url.getFile())`
   or `Paths.get(url.getPath())`: both getters keep the percent-encoding, so a directory with a space is not
   found (`pmd/UrlPathUsedAsFile`).
+- Directories are created with `Files.createDirectories(dir.toPath())`, which does not fail when the directory
+  exists; a `false` from `File.mkdirs()` is not a failure by itself (another thread may have created it), so
+  check `!dir.mkdirs() && !dir.isDirectory()` (`pmd/MkdirsResultAsFailure`).
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
   connection, request, file access, thread, pool, sleep or JVM-wide setting in a `static` field or
   block, an enum constant, or the constructor or initializer of a `static final INSTANCE = new X()`

@@ -105,6 +105,7 @@
   "pmd/MethodWithSameNameAsEnclosingClass": ["style"],
   "pmd/MissingSerialVersionUID": ["maintainability"],
   "pmd/MixedTimeUnits": ["bug"],
+  "pmd/MkdirsResultAsFailure": ["bug", "reliability"],
   "pmd/MockedSubjectInTest": ["tests"],
   "pmd/MoreThanOneLogger": ["maintainability"],
   "pmd/MutableStaticCollection": ["bug"],
