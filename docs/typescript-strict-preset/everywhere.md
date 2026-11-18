@@ -64,6 +64,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
   emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
   Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
+- `nitpicker/no-per-call-registration`: a method that runs once per event or item must not register a
+  disposable or process listener that lives as long as its owner. In a class method (not the constructor, a getter
+  or an `init*`, `setup*`, `activate*`, `register*`, `create*`, `start*` or mount-style method) that is an event
+  handler (named `on*` or `handle*`, also an arrow function field), runs in a loop or an iterator callback, is called
+  in a loop of another method or from a callback given to `on*`, `subscribe` or `addEventListener`, or is passed as a
+  handler there, it reports `this._register(x)` and `this.<store>.add(x)` (a field declared
+  or created as a `DisposableStore`, `CompositeDisposable` or `DisposableCollection`) when `x` is created in the
+  call (`new ...`, `toDisposable(...)`, an `on*` event subscription), and `process.on(...)` or
+  `process.addListener(...)` with a function created in the call. Lazy creation (an `if` on the field that is
+  assigned), a field released in the method (`dispose`, `clear`) or elsewhere in the class (`clear`, `delete`), a
+  store cleared by the class, a `process.off` in the method, a registered callback that removes its own entry from the
+  store, a method only called from the constructor or a field initializer, `once` and constructors are left alone. Allowed:
+  register once in the constructor or a field initializer, keep the per-call handle in a `MutableDisposable` or a
+  cleared store, or keep the handler in a variable and remove it when the work ends.
 - `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
   a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
   assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,

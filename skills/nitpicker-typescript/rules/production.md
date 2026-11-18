@@ -15,6 +15,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
   register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
   handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A method that runs once per event or item does not add to the owner's disposable store
+  (`this._register(...)`, `this._store.add(...)`) or to `process.on(...)`: register once in the constructor or keep
+  a per-call handle that is released when the work ends (`nitpicker/no-per-call-registration`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
