@@ -21,13 +21,42 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.TypeKind;
 
 /** Shared helpers of the fix-only checks: removals, imports and source text. */
 final class Support {
+  private static final ThreadLocal<Boolean> SCANNING = ThreadLocal.withInitial(() -> false);
+
   private Support() {}
+
+  static void dropImportIfUnused(SuggestedFix.Builder fix, VisitorState state, String simpleName, int[] removed,
+      Function<TreePath, int[]> rewrites) {
+    if (SCANNING.get()) {
+      return;
+    }
+    List<int[]> all = new ArrayList<>(List.of(removed));
+    SCANNING.set(true);
+    try {
+      new TreePathScanner<Void, Void>() {
+        @Override
+        public Void scan(Tree tree, Void unused) {
+          if (tree != null && getCurrentPath() != null) {
+            int[] range = rewrites.apply(new TreePath(getCurrentPath(), tree));
+            if (range != null) {
+              all.add(range);
+            }
+          }
+          return super.scan(tree, unused);
+        }
+      }.scan(new TreePath(state.getPath().getCompilationUnit()), null);
+    } finally {
+      SCANNING.set(false);
+    }
+    dropImportIfUnused(fix, state, simpleName, all);
+  }
 
   static boolean isAnnotation(AnnotationTree annotation, String qualifiedName) {
     Symbol symbol = ASTHelpers.getSymbol(annotation);
