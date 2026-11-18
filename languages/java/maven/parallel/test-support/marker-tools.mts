@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
 export function writeMarker({
@@ -15,5 +16,5 @@ export function failWith({ message }: { readonly message: string }): never {
 }
 
 export function writeJavaOptions({ file }: { readonly file: string }): void {
-  writeFileSync(file, process.env['JDK_JAVA_OPTIONS'] ?? '');
+  execFileSync('sh', ['-c', 'printf %s "$JDK_JAVA_OPTIONS" > "$1"', 'sh', file]);
 }

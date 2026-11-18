@@ -146,10 +146,9 @@ describe.runIf(enabled)(
 
       expect(run.status, run.stderr).toBe(0);
       expect(readFileSync(report, 'utf8')).toBe('[]\n');
-      expect(
-        readFileSync(path.join(path.dirname(report), 'errorprone-skipped.txt'), 'utf8'),
-      ).toMatch(
-        /^it was stopped after 1 minute, at the time limit of the run; NITPICKER_MAVEN_TIMEOUT_MINUTES/u,
+      expect(readFileSync(path.join(path.dirname(report), 'errorprone-skipped.txt'), 'utf8')).toBe(
+        'it was stopped after 1 minute, at the time limit of the run; ' +
+          'NITPICKER_MAVEN_TIMEOUT_MINUTES or NITPICKER_GRADLE_TIMEOUT_MINUTES give it more time\n',
       );
     });
   },
