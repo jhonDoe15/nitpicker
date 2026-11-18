@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { vi } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
@@ -33,8 +32,11 @@ export function linkSentence(key: string): string {
   return textOf(callUntyped(untypedLinkSentence, key));
 }
 
+export function fixCache(): string {
+  return temporaryRoot('nitpicker-fix-cache-');
+}
+
 export function topic(base: Files, changes: Files): Repository {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const repository = createGitRepository(base, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
@@ -52,6 +54,7 @@ export function fix(
       executeFixCommand: tools.executeFixCommand,
       headPolicy: { exclude: [], conventions: {}, ...headPolicy },
       config,
+      cacheHome: fixCache(),
     }),
   );
 }

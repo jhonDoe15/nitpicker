@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 import { requiredOption, type FakeInvocation } from '../../test-support/fake-maven-patch.mts';
 import { OWN_CHECKS_DIRECTORY } from '../own/own-checks.mts';
 import { gradleArguments, patchFlags, runGradlePatch } from './gradle-patch.mts';

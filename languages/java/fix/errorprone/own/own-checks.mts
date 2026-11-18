@@ -1,6 +1,6 @@
 import { REVIEW, SAFE } from '../../../../../core/fix/engine/safety.mjs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY as untypedGradleDirectory } from '../../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY as untypedGradleDirectory } from '../../../builds/java-build.mts';
 import type { RuleRef } from '../../../../../core/fix/typed/fix-types.mts';
 
 type OwnCheck = { readonly check: string; readonly tool: string; readonly safety: string };

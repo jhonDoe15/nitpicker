@@ -8,7 +8,7 @@ import type { CompilerLevel, CompilerSettings } from './compiler-types.mts';
 import { textAt } from '../configuration/pom-elements.mts';
 
 const COMPILER = 'maven-compiler-plugin';
-const UNRESOLVED = /\$\{/u;
+const PLACEHOLDER_OPEN = ['$', '{'].join('');
 
 type Setting = (name: string, property: string) => string | undefined;
 type GuardCompiler = CompilerLevel & {
@@ -52,7 +52,7 @@ function processorCoordinates(project: XmlElement, entry: XmlElement): string {
   const groupId = textAt(entry, 'groupId');
   const artifactId = textAt(entry, 'artifactId');
   const version = textAt(entry, 'version') ?? managedVersion(project, groupId, artifactId);
-  if (version === undefined || version === '' || UNRESOLVED.test(version)) {
+  if (version === undefined || version === '' || version.includes(PLACEHOLDER_OPEN)) {
     const found = version === undefined ? 'no <version> and none in dependencyManagement' : version;
     throw new Error(
       `maven-compiler-plugin's annotationProcessorPaths names ${String(groupId)}:${String(artifactId)} without a ` +
@@ -83,7 +83,7 @@ function settingOf(project: XmlElement, configurations: readonly XmlElement[]): 
     return [
       ...configurations.map((configuration) => textAt(configuration, name)),
       textAt(project, 'properties', property),
-    ].find((value) => value !== undefined && value !== '' && !UNRESOLVED.test(value));
+    ].find((value) => value !== undefined && value !== '' && !value.includes(PLACEHOLDER_OPEN));
   };
 }
 

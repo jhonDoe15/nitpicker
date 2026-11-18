@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { fakeJvmTools } from '../test-support/fake-jvm-tools.mts';
 import type { FakeJvmTools } from '../test-support/fake-jvm-tools.mts';
 import type { FakeInvocation } from '../test-support/fake-maven-patch.mts';
@@ -34,7 +34,6 @@ const MAVEN_DEPENDENCY_GOAL =
   'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath';
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -46,7 +45,6 @@ function project(files: readonly string[]): string {
   for (const file of files) {
     writeFileSync(path.join(root, file), '');
   }
-  vi.stubEnv('XDG_CACHE_HOME', path.join(root, 'cache'));
   return root;
 }
 
@@ -96,6 +94,7 @@ describe('resolveToolClasspaths', () => {
 
     const classpaths = resolveToolClasspaths({
       projectRoot: root,
+      environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
       tools: TOOLS,
       executeFixCommand: tools.executeFixCommand,
     });
@@ -153,6 +152,7 @@ describe('resolveToolClasspaths', () => {
     expect(() =>
       resolveToolClasspaths({
         projectRoot: root,
+        environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
         tools: TOOLS,
         executeFixCommand: ({ cwd }: FakeInvocation) => {
           written.push([
@@ -190,6 +190,7 @@ describe('resolveToolClasspaths', () => {
       const calls: (string | undefined)[] = [];
       const classpaths = resolveToolClasspaths({
         projectRoot: root,
+        environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
         tools: { ktlint: TOOLS.ktlint },
         executeFixCommand: (invocation: FakeInvocation) => {
           calls.push(invocation.operation);
@@ -218,7 +219,7 @@ describe('resolveToolClasspaths', () => {
     resolveToolClasspaths({
       projectRoot: root,
       tools: TOOLS,
-      environment: { NITPICKER_GRADLE: 'custom-gradle' },
+      environment: { NITPICKER_GRADLE: 'custom-gradle', XDG_CACHE_HOME: path.join(root, 'cache') },
       executeFixCommand: tools.executeFixCommand,
     });
 
@@ -231,7 +232,7 @@ describe('resolveToolClasspaths', () => {
     const classpaths = resolveToolClasspaths({
       projectRoot: root,
       tools: TOOLS,
-      environment: ENVIRONMENT,
+      environment: { ...ENVIRONMENT, XDG_CACHE_HOME: path.join(root, 'cache') },
       executeFixCommand: tools.executeFixCommand,
     });
 
@@ -248,6 +249,7 @@ describe('resolveToolClasspaths', () => {
     expect(() =>
       resolveToolClasspaths({
         projectRoot: root,
+        environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
         tools: TOOLS,
         executeFixCommand: () => ({ status: 0, stdout: 'nitpicker-fix-tool\tktlint\t/k.jar\n' }),
       }),
@@ -259,6 +261,7 @@ describe('resolveToolClasspaths', () => {
     expect(() =>
       resolveToolClasspaths({
         projectRoot: root,
+        environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
         tools: TOOLS,
         executeFixCommand: () => ({ status: 1, stderr: 'Could not resolve com.google' }),
       }),

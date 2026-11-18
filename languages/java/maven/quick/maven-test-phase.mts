@@ -6,14 +6,14 @@ import {
   runJacocoReport,
 } from '../maven-tests.mts';
 import { runPit } from '../pit/maven-pit.mts';
-import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from '../maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from '../maven-command.mts';
 import { springAotSkip } from '../spring/arch-rules-gate.mts';
 import { isTestsTimeout, timedOutTests } from '../../adapters/red-base/tests-failed.mts';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
 import { lifecycleArgs } from '../maven-project.mts';
-import { jacocoPlugin } from '../maven-tools.mjs';
+import { jacocoPlugin } from '../maven-tools.mts';
 import { relativeTo } from '../module/module-paths.mts';
-import { moduleName } from '../../builds/test-failures.mjs';
+import { moduleName } from '../../builds/test-failures.mts';
 import { type JavaPolicy, callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';

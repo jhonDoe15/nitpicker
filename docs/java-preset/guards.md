@@ -330,7 +330,7 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   | Sleep in a test            | `pmd/FixedSleepInTest`                 | `pmd/FixedSleepInTest`                | `sleep-in-test`                          | `nitpicker/no-fixed-sleep-synchronization`                        |
   | Assertion that may not run | `pmd/AssertionInControlFlow`           | `pmd/AssertionInControlFlow`          | `conditional-assertion-in-test`          | `nitpicker/no-assertion-in-loop`, `vitest/no-conditional-in-test` |
 
-- **Fixture.** `languages/java/guards/guards.e2e.test.mjs` runs the Gradle tasks on
+- **Fixture.** `languages/java/guards/guards.e2e.test.mts` runs the Gradle tasks on
   `languages/java/adapters/fixtures/guards-project`, whose sources hold one violating and one clean
   sample per rule with a `// violation: <tool>/<rule>` marker, and expects exactly the marked
   findings (part of `npm run test:java`). The clean samples include a `@RequestParam Optional`

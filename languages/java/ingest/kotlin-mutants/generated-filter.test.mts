@@ -11,7 +11,7 @@ import {
   removed,
   returns,
   type Fields,
-} from './test-support/filter-helpers.mts';
+} from './test-support/generated-filter-fixtures.mts';
 
 describe('rules that need no source facts', () => {
   const filter = filterFor();

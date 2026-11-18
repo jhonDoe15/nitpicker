@@ -16,9 +16,9 @@ import type {
   FixSettings,
   FixStep,
 } from '../../../core/fix/typed/fix-types.mts';
-import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
-import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
-import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mjs';
+import { isGeneratedJvm } from '../adapters/generated/generated-sources.mts';
+import { declaredSourceRoots } from '../adapters/notices/declared-roots.mts';
+import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mts';
 import { defineRecipes } from '../../../core/fix/engine/recipes.mjs';
 import { errorPronePatch } from './errorprone/run/error-prone-step.mts';
 import { type PatchEntries, errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mts';

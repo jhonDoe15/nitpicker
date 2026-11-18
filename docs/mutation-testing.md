@@ -119,7 +119,7 @@ Stryker runs every one of its mutators. PIT, run with no `--mutators`, uses an i
 reaches (`if (parts == 0) throw ...` survives when its condition is forced to `false`), a `trim()`
 no test needs, a switch case no test takes. So every PIT run, on Gradle (Java and Kotlin presets)
 and on Maven, passes `--mutators` with the list in the init script's `def pitMutators`, which the
-Maven build reads with `readPitMutators` (`languages/java/builds/java-build.mjs`):
+Maven build reads with `readPitMutators` (`languages/java/builds/java-build.mts`):
 
 | Stryker                                             | PIT                                                                                              |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |

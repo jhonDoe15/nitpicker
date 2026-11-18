@@ -1,8 +1,8 @@
 import { readCpdFindings } from './cpd-duplicates.mts';
 import { readDependencyFindings } from './dependencies.mts';
 import { readForbiddenApiFindings } from './forbidden-apis.mts';
-import { readLintFindings } from './javac-lint.mjs';
-import { liesInProject } from '../builds/module-path.mjs';
+import { readLintFindings } from './javac-lint.mts';
+import { liesInProject } from '../builds/module-path.mts';
 import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
 import { callUntyped } from '../adapters/typed/java-values.mts';
 

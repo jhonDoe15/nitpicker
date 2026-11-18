@@ -1,5 +1,5 @@
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
@@ -11,12 +11,7 @@ const JAVA = 'src/main/java/demo';
 const TOOLS_PROPERTY = '-Pnitpicker.fix.tools=';
 const TEMPORARY = new RegExp(`${tmpdir()}/nitpicker-fix-\\w+`, 'gu');
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 function fixWith(conventions: object): { args: string[]; tools: string | undefined } {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const repository = createGitRepository(
     { 'build.gradle': "plugins { id 'java' }\n" },
     { baseRef: 'base' },
@@ -30,6 +25,7 @@ function fixWith(conventions: object): { args: string[]; tools: string | undefin
       executeFixCommand: tools.executeFixCommand,
       headPolicy: { exclude: [], conventions },
       config: { preset: 'java' },
+      cacheHome: temporaryRoot('nitpicker-fix-cache-'),
     }),
   );
   const [launch] = tools.launches;

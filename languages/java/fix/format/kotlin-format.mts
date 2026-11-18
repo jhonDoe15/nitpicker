@@ -1,6 +1,6 @@
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { failureText } from '../../../../core/fix/common/fix-command.mjs';
-import { KOTLIN_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
+import { KOTLIN_FORMATTERS } from '../../adapters/style/jvm-formatters.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import {

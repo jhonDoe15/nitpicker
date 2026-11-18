@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../../maven-command.mjs';
-import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
+import { javaCommand, runJava } from '../../maven-command.mts';
+import { GRADLE_DIRECTORY } from '../../../builds/java-build.mts';
 import { kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { relativeRoots } from '../../module/module-paths.mts';
 import { type JavaSpawn, callUntyped } from '../../../adapters/typed/java-values.mts';

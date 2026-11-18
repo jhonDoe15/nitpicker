@@ -1,4 +1,4 @@
-import { readJavaExtractions as untypedReadJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees.mjs';
+import { readJavaExtractions as untypedReadJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees.mts';
 import type { FixFile, FixRecipe, RecipePlan } from '../../../../../core/fix/typed/fix-types.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';

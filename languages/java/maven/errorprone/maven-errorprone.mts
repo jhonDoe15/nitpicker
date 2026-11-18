@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
+import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
 import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
@@ -10,10 +10,10 @@ import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mt
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
-import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
+import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
 import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
-import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
+import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
 
 type Modular = boolean | 'all';
 type ErrorProneContext = {

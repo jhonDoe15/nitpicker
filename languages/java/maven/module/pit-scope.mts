@@ -3,7 +3,7 @@ import path from 'node:path';
 import { byCodeUnits, isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
 import { sourceFileOf } from '../kotlin/java-classes.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { posix } from '../../builds/lint/lint-staging.mjs';
+import { posix } from '../../builds/lint/lint-staging.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type PitScope = {
