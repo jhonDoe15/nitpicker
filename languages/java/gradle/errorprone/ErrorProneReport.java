@@ -24,6 +24,10 @@ public final class ErrorProneReport {
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
   private static final String PROJECT_FLAG = "--errorprone-flag=";
+  private static final String SKIP_GENERATED = "--skip-generated";
+  private static final String GENERATED_ROOT = "--generated-root=";
+  private static final String EXCLUDED_PATHS = PROJECT_FLAG + "-XepExcludedPaths:";
+  private static final String DISABLE_IN_GENERATED = PROJECT_FLAG + "-XepDisableWarningsInGeneratedCode";
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
   private static final String PROCESSOR_PATH = "-processorpath";
@@ -149,6 +153,55 @@ public final class ErrorProneReport {
   }
 
   /**
+   * With {@code --skip-generated}, adds {@code -XepDisableWarningsInGeneratedCode} and an {@code -XepExcludedPaths}
+   * pattern for each {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
+   * matches the pattern against the file's decoded path, and the plugin option is split at whitespace, so a
+   * directory's own whitespace is written as a hexadecimal escape.
+   */
+  static List<String> withoutGenerated(List<String> head, List<String> lines) {
+    if (!head.contains(SKIP_GENERATED)) {
+      return lines;
+    }
+    List<String> kept = new ArrayList<>();
+    List<String> patterns = new ArrayList<>();
+    for (String line : lines) {
+      if (line.startsWith(EXCLUDED_PATHS)) {
+        patterns.add(line.substring(EXCLUDED_PATHS.length()));
+      } else {
+        kept.add(line);
+      }
+    }
+    List<String> roots = head.stream().filter(line -> line.startsWith(GENERATED_ROOT))
+        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList();
+    if (!roots.isEmpty()) {
+      patterns.add(".*(?:" + String.join("|", roots) + ")/.*");
+    }
+    if (!kept.contains(DISABLE_IN_GENERATED)) {
+      kept.add(DISABLE_IN_GENERATED);
+    }
+    if (!patterns.isEmpty()) {
+      kept.add(EXCLUDED_PATHS + (patterns.size() == 1 ? patterns.get(0)
+          : patterns.stream().map(pattern -> "(?:" + pattern + ")").collect(Collectors.joining("|"))));
+    }
+    return kept;
+  }
+
+  static String pathPattern(String directory) {
+    StringBuilder pattern = new StringBuilder();
+    directory.replace(java.io.File.separatorChar, '/').codePoints().forEach(point -> {
+      if (Character.isWhitespace(point) || Character.isSpaceChar(point)) {
+        pattern.append("\\x{").append(Integer.toHexString(point)).append('}');
+      } else {
+        if ("\\^$.*+?()[]{}|".indexOf(point) >= 0) {
+          pattern.append('\\');
+        }
+        pattern.appendCodePoint(point);
+      }
+    });
+    return pattern.toString();
+  }
+
+  /**
    * Compiles the fix-only checks of the {@code -XepNitpickerFixChecks:<folder>} flag against the processor path and
    * returns the folder holding their classes and service file, or null when the flag is absent. They run only in
    * the patch compile of --fix and are never part of the findings run.
@@ -204,7 +257,8 @@ public final class ErrorProneReport {
         projectArgs.add(line.substring(PROJECT_ARG.length()));
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
-      } else if (!line.equals(TEST_ONLY) && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
+      } else if (!line.equals(TEST_ONLY) && !line.equals(SKIP_GENERATED) && !line.startsWith(GENERATED_ROOT)
+          && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }
     }
@@ -291,7 +345,7 @@ public final class ErrorProneReport {
         String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
             + (group == unsuppressed ? "-lombok" : "") + (slices.size() > 1 ? "-" + slice : "");
         options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-            group == unsuppressed, projectLines(head, patchDirectory), immutable));
+            group == unsuppressed, withoutGenerated(head, projectLines(head, patchDirectory)), immutable));
         jobs.add(new Job(argumentsFile, options, files, bytes(files)));
       }
     }

@@ -13,6 +13,7 @@ import { type CompilerSettings, type SourceModule, compilerOf } from './compiler
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
 import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
+import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 
 type Modular = boolean | 'all';
@@ -39,6 +40,7 @@ type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
   readonly compiler: CompilerSettings;
   readonly flags: readonly string[];
+  readonly skipRoots: readonly string[] | undefined;
 };
 
 const ERROR_PRONE = 'errorprone';
@@ -117,7 +119,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, roots, own, processors, compiler, test, modular, flags } = set;
+  const { name, roots, own, processors, compiler, test, modular, flags, skipRoots } = set;
   const sources = javaFiles(roots).filter(
     (file) => modular !== false || path.basename(file) !== MODULE_INFO,
   );
@@ -138,6 +140,9 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
     ...levelLines(compiler),
     ...(compiler.encoding === undefined ? [] : ['-encoding', compiler.encoding]),
     ...flags.map((flag) => `--errorprone-flag=${flag}`),
+    ...(skipRoots === undefined
+      ? []
+      : ['--skip-generated', ...skipRoots.map((root) => `--generated-root=${root}`)]),
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -212,6 +217,7 @@ function analyze(
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
   const compiler = compilerOf(module.compiler);
+  const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
   const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
@@ -220,7 +226,8 @@ function analyze(
         ...resolvedTool(tools, ERROR_PRONE),
         ...processorPath(set.classpath, compiler, tools),
       ],
-      flags: textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments')),
+      flags: declaredFlags,
+      skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
     }),
   );
   if (argumentFiles.length === 0) {

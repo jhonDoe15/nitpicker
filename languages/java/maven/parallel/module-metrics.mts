@@ -8,13 +8,14 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { handWrittenRoots } from '../generated/generated-roots.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
 
 type MetricsOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
 export function runStructure(options: MetricsOptions): void {
   const module = mavenModuleOf(options['module']);
-  const roots = textsOf(module['sourceRoots'])
+  const roots = handWrittenRoots(module, textsOf(module['sourceRoots']), options['configs'])
     .filter((root) => existsSync(root))
     .map((root) => textOf(relativeTo(module.basedir, root)));
   callUntyped(skipWithoutJdk, { reportDir: options.reportDir, file: STRUCTURE_SKIPPED }, () => {

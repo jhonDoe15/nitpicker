@@ -152,7 +152,10 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     pitDeadline: options.budget?.pitDeadlineMs,
-    configs: toolConfigChoices(projectRoot, options.policy),
+    configs: {
+      ...toolConfigChoices(projectRoot, options.policy),
+      generated: { analyze: options.policy?.analyzeGeneratedSources === true },
+    },
     onModules: (modules) => {
       startMavenReuse(projectRoot, modules, options.policy);
     },

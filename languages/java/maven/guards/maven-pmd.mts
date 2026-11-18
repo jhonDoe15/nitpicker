@@ -4,6 +4,7 @@ import { runJava } from '../maven-command.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { handWrittenRoots } from '../generated/generated-roots.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
 
 type CpdOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
@@ -44,10 +45,11 @@ export function runCpd(options: CpdOptions): void {
   const report = path.join(reportDir, CPD_REPORT);
   const failure = path.join(reportDir, CPD_FAILURE);
   removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
-  const directories = [
-    ...textsOf(module['sourceRoots']),
-    ...textsOf(module['testSourceRoots']),
-  ].filter((root) => existsSync(root));
+  const directories = handWrittenRoots(
+    module,
+    [...textsOf(module['sourceRoots']), ...textsOf(module['testSourceRoots'])],
+    options['configs'],
+  ).filter((root) => existsSync(root));
   if (directories.length === 0) {
     return;
   }

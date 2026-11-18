@@ -15,6 +15,8 @@ import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
+import { analyzesGenerated, handWrittenRoots } from './generated/generated-roots.mts';
+import { handWrittenClasses } from './generated/spotbugs-targets.mts';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -26,7 +28,7 @@ type Execution = {
   readonly timeoutMs?: number | undefined;
 };
 type PmdOptions = Execution & {
-  readonly module: SourceModule;
+  readonly module: SourceModule & { readonly buildDirectory?: string };
   readonly classpaths: Pick<Classpaths, 'mainCompile' | 'testCompile'>;
   readonly configs: unknown;
   readonly spring: unknown;
@@ -34,7 +36,7 @@ type PmdOptions = Execution & {
   readonly reactor?: unknown;
 };
 type SpotbugsOptions = Execution & {
-  readonly module: SourceModule;
+  readonly module: SourceModule & { readonly buildDirectory?: string };
   readonly configs: unknown;
   readonly auxClasspath?: readonly string[];
 };
@@ -66,7 +68,7 @@ function pmdRulesets(
     'module' | 'reportDir' | 'configs' | 'spring' | 'springRules' | 'reactor'
   >,
 ): string {
-  const { module, reportDir } = context;
+  const { module, reportDir, configs } = context;
   const written = callUntyped(writeRulesets, context);
   const layers = fieldOf(written, 'layers');
   const project = fieldOf(layers, 'project');
@@ -77,10 +79,25 @@ function pmdRulesets(
     fieldOf(written, 'mainRuleset'),
     ...writeGuardRulesets({
       reportDir,
-      testDirectories: module.testSourceRoots,
+      testDirectories: handWrittenRoots(module, module.testSourceRoots, configs),
       compiler: guardCompiler(compilerOf(module.compiler)),
     }),
   ].join(',');
+}
+
+type PmdRun = {
+  readonly report: string;
+  readonly rulesets: string;
+  readonly auxClasspath: string;
+  readonly linted: readonly string[];
+};
+
+function pmdArguments({ report, rulesets, auxClasspath, linted }: PmdRun): string[] {
+  return [
+    ...['check', '--no-cache', '--no-progress', '--format', 'sarif', '--report-file', report],
+    ...['--rulesets', rulesets, '--aux-classpath', `file:${auxClasspath}`],
+    ...['--suppress-marker', 'NITPICKER-NO-INLINE-SUPPRESSION', '--dir', linted.join(',')],
+  ];
 }
 
 export function runPmd(options: PmdOptions): void {
@@ -97,9 +114,11 @@ export function runPmd(options: PmdOptions): void {
     timeoutMs,
   } = options;
   const report = path.join(reportDir, 'pmd.sarif');
-  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
-    existsSync(root),
-  );
+  const linted = handWrittenRoots(
+    module,
+    [...module.sourceRoots, ...module.testSourceRoots],
+    configs,
+  ).filter((root) => existsSync(root));
   if (javaFiles(linted).length === 0) {
     writeFileSync(report, EMPTY_SARIF);
     return;
@@ -110,23 +129,7 @@ export function runPmd(options: PmdOptions): void {
     tool: 'PMD',
     classpath: tools['pmd'],
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      rulesets,
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: pmdArguments({ report, rulesets, auxClasspath, linted }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
@@ -150,6 +153,14 @@ export function runSpotbugs({
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
+  const targets = analyzesGenerated(configs)
+    ? undefined
+    : handWrittenClasses({ module, reportDir, spawn, timeoutMs });
+  if (targets?.empty === true) {
+    writeFileSync(report, EMPTY_SARIF);
+    return;
+  }
+  const aux = targets === undefined ? auxClasspath : [...auxClasspath, module.outputDirectory];
   runJava({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
@@ -163,13 +174,10 @@ export function runSpotbugs({
       report,
       '-sourcepath',
       module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      ...(auxClasspath.length === 0
+      ...(aux.length === 0
         ? []
-        : [
-            '-auxclasspath',
-            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
-          ]),
-      module.outputDirectory,
+        : ['-auxclasspath', aux.filter((entry) => existsSync(entry)).join(path.delimiter)]),
+      ...(targets === undefined ? [module.outputDirectory] : ['-analyzeFromFile', targets.list]),
     ],
     cwd: module.basedir,
     accept: () => existsSync(report),
