@@ -1,4 +1,6 @@
-import type { SourceCode } from 'eslint';
+import type { TSESLint } from '@typescript-eslint/utils';
+
+type SourceCode = TSESLint.SourceCode;
 
 export type Range = { readonly start: number; readonly end: number };
 

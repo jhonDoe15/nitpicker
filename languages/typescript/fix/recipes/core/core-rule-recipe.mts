@@ -1,11 +1,12 @@
-import type { TSESTree } from '@typescript-eslint/utils';
-import { Linter, type SourceCode } from 'eslint';
+import { TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import tseslint from 'typescript-eslint';
 import { SAFE as untypedSafe } from '../../../../../core/fix/engine/safety.mjs';
 import { isNode } from '../../../preset/eslint-plugin/rules/typed/node-views.mts';
 
 export type CoreEdit = { readonly start: number; readonly end: number; readonly text: string };
 export type CorePlan = { readonly edits: readonly CoreEdit[] } | { readonly declined: string };
+type SourceCode = TSESLint.SourceCode;
+
 export type CoreRequest = {
   readonly name: string;
   readonly text: string;
@@ -37,7 +38,7 @@ const SAFE: string = untypedSafe;
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 
 function lint(name: string, text: string, rule: string) {
-  const linter = new Linter({ configType: 'flat' });
+  const linter = new TSESLint.Linter({ configType: 'flat' });
   const messages = linter.verify(
     text,
     [
