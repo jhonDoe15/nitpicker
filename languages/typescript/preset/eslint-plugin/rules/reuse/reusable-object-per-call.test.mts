@@ -7,8 +7,17 @@ function flagged(code: string, type: string) {
   return { code, errors: [{ messageId: 'perCall', data: { type } }] };
 }
 
-function hoisted(code: string, type: string, ..._rest: string[]) {
-  return flagged(code, type);
+function hoisted(code: string, type: string, name: string, output: string) {
+  return {
+    code,
+    errors: [
+      {
+        messageId: 'perCall',
+        data: { type },
+        suggestions: [{ messageId: 'hoistFormatter', data: { name }, output }],
+      },
+    ],
+  };
 }
 
 function cached(code: string) {

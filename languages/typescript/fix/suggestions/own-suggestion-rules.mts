@@ -9,5 +9,6 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'no-wasted-collection-step',
   'require-http-timeout',
   'require-test-process-timeout',
+  'reusable-object-per-call',
   'strict-boolean-expressions',
 ]);
