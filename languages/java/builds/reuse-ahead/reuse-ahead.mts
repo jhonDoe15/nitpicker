@@ -7,7 +7,6 @@ import { readReusePart, withSharedUsage } from '../../adapters/reuse/jvm-reuse-f
 import type { ReusePart } from '../../adapters/reuse/jvm-reuse-types.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
-import { withCompileCache } from '../../../../shared/processes/environment.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   REQUEST_FILE,
@@ -36,12 +35,31 @@ const PROCESS = fileURLToPath(
   checkoutModuleUrl(new URL('reuse-ahead-process.mjs', import.meta.url)),
 );
 const POLL_MS = 50;
-const started = new Map<string, Started>();
+function startedRuns() {
+  const runs = new Map<string, Started>();
+  return {
+    has: (request: string): boolean => runs.has(request),
+    add(request: string, run: Started): void {
+      runs.set(request, run);
+    },
+    take(request: string): Started | undefined {
+      const run = runs.get(request);
+      runs.delete(request);
+      return run;
+    },
+    takeAll(): Started[] {
+      const all = [...runs.values()];
+      runs.clear();
+      return all;
+    },
+  };
+}
+
+const started = startedRuns();
 
 export function launchReuseProcess(folder: string): ChildProcess {
   return spawn(process.execPath, [PROCESS, String(process.pid), folder], {
     stdio: 'ignore',
-    env: withCompileCache(process.env),
   });
 }
 
@@ -54,7 +72,7 @@ export function startReuseAhead(request: string, launch: Launch = launchReusePro
   const child = launch(folder);
   child.on('error', () => undefined);
   child.unref();
-  started.set(request, { folder, child, since: Date.now() });
+  started.add(request, { folder, child, since: Date.now() });
 }
 
 function stop({ folder, child }: Started): void {
@@ -65,10 +83,9 @@ function stop({ folder, child }: Started): void {
 }
 
 export function stopReuseAhead(): void {
-  for (const run of started.values()) {
+  for (const run of started.takeAll()) {
     stop(run);
   }
-  started.clear();
 }
 
 function pause(milliseconds: number): void {
@@ -86,12 +103,21 @@ function isRunning({ folder, since }: Started): boolean {
   return Date.now() - last < SILENCE_LIMIT_MS;
 }
 
+function pollsWhile(isWaiting: () => boolean): Iterable<number> {
+  return {
+    [Symbol.iterator]: () => ({
+      next: (): IteratorResult<number, undefined> =>
+        isWaiting() ? { done: false, value: POLL_MS } : { done: true, value: undefined },
+    }),
+  };
+}
+
 function awaitStatus(run: Started): boolean {
   const status = path.join(run.folder, STATUS_FILE);
-  while (!existsSync(status) && isRunning(run)) {
-    pause(POLL_MS);
+  for (const milliseconds of pollsWhile(() => !existsSync(status) && isRunning(run))) {
+    pause(milliseconds);
   }
-  return existsSync(status) && fieldOf(JSON.parse(readFileSync(status, 'utf8')), 'code') === 0;
+  return existsSync(status) && fieldOf(JSON.parse(readFileSync(status, 'utf8')), 'passed') === true;
 }
 
 function readResult(folder: string, request: string): ReusePart | undefined {
@@ -104,8 +130,7 @@ function readResult(folder: string, request: string): ReusePart | undefined {
 }
 
 export function takeReuseAhead(request: string): ReusePart | undefined {
-  const run = started.get(request);
-  started.delete(request);
+  const run = started.take(request);
   stopReuseAhead();
   if (run === undefined) {
     return undefined;

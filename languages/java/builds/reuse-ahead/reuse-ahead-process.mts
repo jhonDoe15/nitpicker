@@ -61,14 +61,16 @@ function supervise(parent: number, folder: string): void {
     }
     heartbeat();
   }, HEARTBEAT_MS);
-  function finish(code: number | null): void {
+  function finish(passed: boolean): void {
     clearInterval(watch);
-    writeWhole(path.join(folder, STATUS_FILE), { code });
+    writeWhole(path.join(folder, STATUS_FILE), { passed });
   }
   child.on('error', () => {
-    finish(null);
+    finish(false);
   });
-  child.on('exit', finish);
+  child.on('exit', (code) => {
+    finish(code === 0);
+  });
   process.on('SIGTERM', stopChild);
 }
 

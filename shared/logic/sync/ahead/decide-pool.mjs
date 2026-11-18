@@ -1,21 +1,14 @@
-import { MessageChannel, Worker, receiveMessageOnPort } from 'node:worker_threads';
-import { checkoutModuleUrl } from '../../../paths/checkout-module.mjs';
+import { receiveMessageOnPort } from 'node:worker_threads';
 import { chainOf } from '../../../traversal.mjs';
+import { solverThread } from '../decide-sync.mjs';
 
 const SAFETY_NET_MS = 120_000;
 const IN_FLIGHT = 2;
-const WORKER = checkoutModuleUrl(new URL('../decide-worker.mjs', import.meta.url));
 
 function startMember(signal) {
-  const { port1, port2 } = new MessageChannel();
-  const worker = new Worker(WORKER, {
-    workerData: { signal, replies: port2 },
-    transferList: [port2],
-  });
-  worker.on('error', () => undefined);
-  worker.unref();
-  port1.unref();
-  return { worker, replies: port1 };
+  const member = solverThread(signal);
+  member.worker.on('error', () => undefined);
+  return member;
 }
 
 function repliesOf(member) {
@@ -46,14 +39,25 @@ function dispatcher(requests) {
   return { state, send, collect };
 }
 
-function waitForReplies(signal, pool, { state, collect }) {
-  let quietSince = Date.now();
-  while (state.answered < state.next && Date.now() - quietSince < SAFETY_NET_MS) {
-    Atomics.wait(signal, 0, 0, SAFETY_NET_MS);
+function waitsWhile(isWaiting) {
+  return {
+    [Symbol.iterator]() {
+      return this;
+    },
+    next() {
+      return isWaiting() ? { done: false, value: SAFETY_NET_MS } : { done: true, value: undefined };
+    },
+  };
+}
+
+function awaitReplies(signal, pool, { state, collect }) {
+  const quiet = { since: Date.now() };
+  const isWaiting = () => state.answered < state.next && Date.now() - quiet.since < SAFETY_NET_MS;
+  for (const limit of waitsWhile(isWaiting)) {
+    Atomics.wait(signal, 0, 0, limit);
     Atomics.store(signal, 0, 0);
-    const received = pool.reduce((sum, member) => sum + collect(member), 0);
-    if (received > 0) {
-      quietSince = Date.now();
+    if (pool.reduce((sum, member) => sum + collect(member), 0) > 0) {
+      quiet.since = Date.now();
     }
   }
 }
@@ -69,14 +73,14 @@ export function decideAll(requests, { workers }) {
   const pool = Array.from({ length: size }, () => startMember(signal));
   const dispatch = dispatcher(requests);
   try {
-    for (let round = 0; round < IN_FLIGHT; round += 1) {
-      pool.forEach(dispatch.send);
+    for (const member of Array.from({ length: IN_FLIGHT }, () => pool).flat()) {
+      dispatch.send(member);
     }
-    waitForReplies(signal, pool, dispatch);
+    awaitReplies(signal, pool, dispatch);
     return dispatch.state.results;
   } finally {
     for (const member of pool) {
-      void member.worker.terminate();
+      member.worker.postMessage({ stop: true });
     }
   }
 }
