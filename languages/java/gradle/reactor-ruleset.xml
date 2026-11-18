@@ -149,4 +149,65 @@ return
               [pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]])]
 ]]></value></property></properties>
   </rule>
+
+  <rule name="ReactorCleanupSkippedOnCancel" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use doFinally(signal -&gt; decoder.discard()) so the resource is released on complete, error and cancel, or wrap the resource in Mono.using or Flux.usingWhen, or add doOnCancel next to the cleanup. A callback of doOnTerminate, doAfterTerminate, or of doOnComplete together with doOnError, runs when the source completes or fails but not when the subscriber cancels (a client disconnects, take(n), a timeout), so a buffer, decoder or stream released there leaks on cancel. A callback that only logs or counts is fine.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $release := ('close', 'release', 'discard', 'dispose', 'releaseQuietly'),
+    $reactive := function($node) {
+      exists($node[pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')])
+    },
+    $releases := function($callback) {
+      $callback/descendant-or-self::*[(self::MethodCall or self::MethodReference) and @MethodName = $release]
+    },
+    $targets := function($callback) {
+      for $call in $releases($callback)
+      return if ($call/*[1][self::TypeExpression]) then string($call/ArgumentList/*[1]/@Name) else string($call/*[1]/@Name)
+    },
+    $chain := function($start) {
+      $start/descendant-or-self::MethodCall[not(ancestor::ArgumentList intersect $start/descendant::ArgumentList)]
+    },
+    $pipeline := function($call) {
+      ($call/ancestor-or-self::MethodCall[empty($call/ancestor::ArgumentList intersect descendant::ArgumentList)],
+       $chain($call/*[1]))
+    },
+    $cancellable := function($call) {
+      empty($call/ancestor::ArgumentList/parent::MethodCall[@MethodName = ('using', 'usingWhen')][*[1][self::TypeExpression]])
+        and empty($chain($call)[@MethodName = ('just', 'empty')][*[1][self::TypeExpression]]
+                    [ArgumentList[@Size = 0] or ArgumentList[@Size = 1]/*[self::StringLiteral or self::NumericLiteral
+                                                                          or self::BooleanLiteral or self::NullLiteral]])
+    }
+return
+  //MethodCall[@MethodName = ('doOnTerminate', 'doAfterTerminate')][$reactive(*[1])][$cancellable(.)]
+    [exists($releases(ArgumentList/*[1]))]
+    [empty($pipeline(.)[@MethodName = ('doOnCancel', 'doFinally', 'using', 'usingWhen')])]
+  |
+  //MethodCall[@MethodName = 'doOnComplete'][$reactive(*[1])][$cancellable(.)]
+    [let $mine := $targets(ArgumentList/*[1])
+     return exists($mine)
+       and empty($pipeline(.)[@MethodName = ('doOnCancel', 'doFinally', 'using', 'usingWhen')])
+       and (some $error in $pipeline(.)[@MethodName = 'doOnError']
+            satisfies exists($mine[. = $targets($error/ArgumentList/*[1])]))]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="ReactorResourceNotReleasedOnCancel" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add sink.onDispose(stream::close) (or sink.onCancel) right after opening the resource inside Flux.create, Flux.push or Mono.create, or close it in a try/finally that covers its whole use. This lambda opens an AutoCloseable or Disposable and never registers its release, so when the subscriber cancels (a client disconnects, take(n), a timeout) the stream stays open and its buffers and connection leak.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//LocalVariableDeclaration/VariableDeclarator
+  [VariableId[pmd-java:typeIs('java.lang.AutoCloseable') or pmd-java:typeIs('reactor.core.Disposable')]]
+  [*[2][self::ConstructorCall or self::MethodCall]]
+  [empty(ancestor::Resource)]
+  [let $lambda := ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][1][self::LambdaExpression],
+       $name := VariableId/@Name
+   return exists($lambda/parent::ArgumentList/parent::MethodCall[@MethodName = ('create', 'push')]
+                   [*[1][self::TypeExpression][pmd-java:typeIs('reactor.core.publisher.Mono')
+                       or pmd-java:typeIs('reactor.core.publisher.Flux')]])
+     and (every $use in $lambda//VariableAccess[@Name = $name]
+          satisfies exists($use/parent::MethodCall[*[1] is $use][not(@MethodName = ('close', 'dispose'))])
+            and empty($use/ancestor::MethodCall[@MethodName = ('onDispose', 'onCancel')]))]
+]]></value></property></properties>
+  </rule>
 </ruleset>
