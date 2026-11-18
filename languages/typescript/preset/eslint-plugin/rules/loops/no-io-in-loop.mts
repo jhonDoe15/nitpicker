@@ -10,6 +10,7 @@ import { isPushedForConcurrency } from './concurrent-batches.mts';
 import { enclosingLoop, isRetryAttempt, type EnclosingLoop } from './loop-shapes.mts';
 import { isPagingCall } from './paging-calls.mts';
 import { isDrainCall } from './repeats/drain-loops.mts';
+import { isPollingCall, isRereadInCatch } from './repeats/polling-loops.mts';
 import { IO_IN_LOOP_MESSAGES } from './advice/messages.mts';
 import { adviceOf, type Advice } from './advice/query-advice.mts';
 
@@ -36,7 +37,9 @@ function isLoopCall(node: Call, found: EnclosingLoop, context: Context): boolean
   return !(
     isRetryAttempt(node, found.loop, visitorKeys) ||
     isPagingCall(node, found.loop, visitorKeys) ||
-    isDrainCall(node, found.loop, context)
+    isDrainCall(node, found.loop, context) ||
+    isPollingCall(node, found.loop, context) ||
+    isRereadInCatch(node, found.loop, context)
   );
 }
 
