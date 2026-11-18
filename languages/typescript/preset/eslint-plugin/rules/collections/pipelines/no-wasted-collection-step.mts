@@ -19,11 +19,11 @@ const wastedStepMessages = {
     'Spreading `undefined` or `null` adds nothing, so the `{{operator}} {}` fallback is not needed: spread the value itself.',
   lengthCheck:
     '`{{method}}` already answers {{answer}} for an empty array, so this length check adds nothing. Drop it.',
-  singlePromise:
-    '`Promise.{{method}}` over one promise only waits for that promise. Write {{form}} instead.',
+  singlePromise: '`Promise.{{method}}` over one promise only waits for that promise. {{advice}}',
   awaitInPromiseMethod:
     'This `await` waits for its promise before `Promise.{{method}}` sees it, so the promises no longer run together. Pass the promise without `await`.',
   dropAwait: 'Remove the `await` so this promise starts together with the others.',
+  awaitPromise: 'Await the promise itself instead of wrapping it.',
 };
 
 export const rule: TSESLint.RuleModule<MessageId> = {

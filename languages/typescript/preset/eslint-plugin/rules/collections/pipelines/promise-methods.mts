@@ -1,16 +1,22 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { dropAwaitFix, mayRunTogether } from '../../../fixes/collections/promise-fixes.mts';
+import {
+  awaitPromiseFix,
+  dropAwaitFix,
+  mayRunTogether,
+} from '../../../fixes/collections/promise-fixes.mts';
 import { suggestible } from '../../../fixes/support/descriptors.mts';
 import type { Context } from '../../security/security-values.mts';
 import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mts';
 
 const PROMISE_METHODS = new Set(['all', 'allSettled', 'any', 'race']);
-const SINGLE_FORMS = new Map([
-  ['all', '`[await promise]`'],
-  ['race', '`await promise`'],
+const SINGLE_ADVICE = new Map([
+  ['all', 'Await the promise itself where the array result is not used.'],
+  ['race', 'Use the promise itself: `await promise`.'],
 ]);
 
-type Step = TSESLint.ReportDescriptor<'awaitInPromiseMethod' | 'singlePromise' | 'dropAwait'>;
+type Step = TSESLint.ReportDescriptor<
+  'awaitInPromiseMethod' | 'singlePromise' | 'dropAwait' | 'awaitPromise'
+>;
 
 function promiseMethod(call: TSESTree.CallExpression): string | undefined {
   const member = calledMember(call);
@@ -56,12 +62,17 @@ export function promiseSteps(context: Context, call: TSESTree.CallExpression): S
     return awaitedSteps(context, call, { method, awaited });
   }
   const [only] = list.elements;
-  const form = SINGLE_FORMS.get(method);
+  const advice = SINGLE_ADVICE.get(method);
   return list.elements.length === 1 &&
     only !== null &&
     only !== undefined &&
     only.type !== AST_NODE_TYPES.SpreadElement &&
-    form !== undefined
-    ? [{ node: call, messageId: 'singlePromise', data: { method, form } }]
+    advice !== undefined
+    ? [
+        suggestible(
+          { node: call, messageId: 'singlePromise', data: { method, advice } },
+          { messageId: 'awaitPromise', plan: awaitPromiseFix(context, call, only) },
+        ),
+      ]
     : [];
 }
