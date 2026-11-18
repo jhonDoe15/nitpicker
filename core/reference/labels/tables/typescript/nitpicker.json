@@ -95,6 +95,7 @@
   "eslint/nitpicker/no-runtime-exclusive-props-check": ["maintainability", "react"],
   "eslint/nitpicker/no-secret-in-log": ["security"],
   "eslint/nitpicker/no-self-recursion": ["reliability", "maintainability"],
+  "eslint/nitpicker/no-send-without-return": ["bug", "reliability"],
   "eslint/nitpicker/no-server-or-worker-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-service-locator": ["maintainability"],
   "eslint/nitpicker/no-shared-stateful-regex": ["bug"],

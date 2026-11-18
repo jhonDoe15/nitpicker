@@ -92,12 +92,12 @@ import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-wit
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
+import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
-import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -195,10 +195,10 @@ export const partRules = {
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
+  'no-send-without-return': ruleNoSendWithoutReturn,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
-  'no-silent-catch': ruleNoSilentCatch,
 };

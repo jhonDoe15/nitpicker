@@ -205,6 +205,11 @@ property typed `unknown`) that is tested by truthiness (also `!!e` and an option
 'object'` without a `null` check, because a thrown `undefined`, `null`, `0` or `''` then counts as no error. A separate
 presence flag, `!== undefined` and `'cause' in error` are allowed.
 
+Guards that send and fall through: `nitpicker/no-send-without-return` (production source, in `eslint-lint`) reports an `if`
+without `else` whose last statement sends a response (`res.json`, `res.status(...).send`, `reply.send`, `res.redirect`) or
+calls `next`, `callback`, `cb` or `done` (the last parameter of the function) when more statements follow the branch in
+the same block. `return res.status(400).json(...)`, `return next()`, a `return;` after the call and an `else` are allowed.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
