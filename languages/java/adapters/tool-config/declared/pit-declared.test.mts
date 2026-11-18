@@ -7,7 +7,7 @@ import {
   readDeclaredBuild,
   sourceOf,
 } from './test-support/declared-views.mts';
-import { readPitMutators } from '../../../builds/java-build.mjs';
+import { readPitMutators } from '../../../builds/java-build.mts';
 
 const declarationsOf = (files: Readonly<Record<string, string>>) =>
   pitDeclarations(readDeclaredBuild(sourceOf(files))).map(({ setting, value, file }) => ({
@@ -177,7 +177,7 @@ describe('the PIT settings each precedence runs with', () => {
       "PIT keeps nitpicker's targets, reports, thresholds and features, its default mutators and timeouts as the floor; not applied from your build: threads 4 (build.gradle)",
     ]);
     expect(PIT.notice(PIT.declarations(declared), { nitpickerFirst: false })).toEqual([]);
-    expect(() => PIT.choice(build, { layers: { nitpickerFirst: false } })).toThrow(
+    expect(() => PIT.choice(build, { layers: { nitpickerFirst: false }, root: '' })).toThrow(
       /^"tools\.pit\.precedence" lists "project" but PIT settings in the build .* is missing: .*$/u,
     );
   });

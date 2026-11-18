@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SPRING_ARCH_REPORT } from './spring-arch.mjs';
-import { CONTRACT_RULE } from './contract-types.mjs';
+import { SPRING_ARCH_REPORT } from './spring-arch.mts';
+import { CONTRACT_RULE } from './contract-types.mts';
 import {
   type ArchFinding,
   type ArchViolation,
@@ -16,7 +16,7 @@ const { temporaryRoot } = useGitFixtures();
 
 type ReadOptions = {
   readonly isFeatureFace?: (file: string) => boolean;
-  readonly spring?: boolean;
+  readonly spring?: false;
 };
 
 const RULE = CONTRACT_RULE;

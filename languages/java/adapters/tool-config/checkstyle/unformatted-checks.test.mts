@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { unformattedCheckstyle as untypedUnformattedCheckstyle } from './unformatted-checks.mjs';
+import { unformattedCheckstyle as untypedUnformattedCheckstyle } from './unformatted-checks.mts';
 
 const unformattedCheckstyle: (text: string, indentation: string) => string =
   untypedUnformattedCheckstyle;

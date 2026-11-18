@@ -2,11 +2,11 @@ import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaReport } from './java-diff.mts';
 import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
-import { detectJavaBuild } from '../builds/java-build.mjs';
+import { detectJavaBuild } from '../builds/java-build.mts';
 import { parseJavaRunnerArguments } from './java-policy.mts';
 import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
-import { javaStyle } from './style/java-style.mjs';
-import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { javaStyle } from './style/java-style.mts';
+import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mts';
 import {
   MINUTE_MS,
   analyzerDeadlineMs,
@@ -22,15 +22,20 @@ import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mts';
 import {
   compileErrorFindings,
   compileErrorsOf,
-} from '../builds/compile-errors/compile-findings.mjs';
-import { fieldOf, fieldsOf, listOf, objectOf, textOf } from '../../../shared/values/readers.mts';
+} from '../builds/compile-errors/compile-findings.mts';
+import {
+  fieldOf,
+  fieldsOf,
+  objectOf,
+  optionalText,
+  textOf,
+} from '../../../shared/values/readers.mts';
 import { type TimeBudget, budgetOf } from './typed/java-run-options.mts';
 import {
   type JavaEnvironment,
   type JavaFinding,
   type JavaPolicy,
   type JavaSpawn,
-  callUntyped,
   javaPolicyOf,
 } from './typed/java-values.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
@@ -118,8 +123,7 @@ export function analyzeJavaSnapshot(
     });
     return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
-    const compileErrors =
-      policy?.snapshot === 'base' ? [] : listOf(callUntyped(compileErrorsOf, error));
+    const compileErrors = policy?.snapshot === 'base' ? [] : compileErrorsOf(error);
     if (compileErrors.length > 0) {
       return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
     }
@@ -178,7 +182,7 @@ function failureRule(error: unknown, projectRoot: string, buildTool: unknown): s
   if (isInternalError(error)) {
     return INTERNAL_ERROR_RULE;
   }
-  return detectJavaBuild(projectRoot, buildTool) === 'maven'
+  return detectJavaBuild(projectRoot, optionalText(buildTool)) === 'maven'
     ? MAVEN_FAILURE_RULE
     : GRADLE_FAILURE_RULE;
 }

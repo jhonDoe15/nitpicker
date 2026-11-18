@@ -13,7 +13,7 @@ import {
   javaStyle,
   javaStyleProperties,
   NOT_YOUR_JAVA_FORMATTER,
-} from './java-style.mjs';
+} from './java-style.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
@@ -225,10 +225,10 @@ describe('the analyzer hash', () => {
 
   it('covers the style code and the Checkstyle suppressions it relies on', () => {
     const styleFiles = [
-      'languages/java/adapters/style/java-style.mjs',
+      'languages/java/adapters/style/java-style.mts',
       'languages/java/gradle/checkstyle-suppressions.xml',
       'languages/java/gradle/checkstyle-suppressions-unformatted.xml',
-      'languages/java/adapters/tool-config/checkstyle/unformatted-checks.mjs',
+      'languages/java/adapters/tool-config/checkstyle/unformatted-checks.mts',
     ];
     expect(
       configurationFiles()

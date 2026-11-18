@@ -5,13 +5,14 @@ import { collectJavaFindings } from '../../java-diff.mts';
 import {
   NITPICKER_SPOTBUGS as NITPICKER_SPOTBUGS_UNTYPED,
   spotbugsArguments as spotbugsArgumentsUntyped,
-} from '../../tool-config/declared/spotbugs-declared.mjs';
+} from '../../tool-config/declared/spotbugs-declared.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import {
   type BuildCommand,
   type Tools,
   classpathOf,
   compiled,
+  choiceArguments,
   declaredToolChoices,
   enabled,
   gradle,
@@ -89,7 +90,7 @@ const mavenFixture = path.resolve(import.meta.dirname, '../../../maven/fixtures/
 
 function spotbugsRules(root: string, precedence: readonly string[], tools: Tools): string[] {
   const choices = declaredToolChoices(root, { toolPrecedence: { spotbugs: precedence } });
-  const settings = choices['spotbugs']?.arguments ?? spotbugsArguments(NITPICKER_SPOTBUGS);
+  const settings = choiceArguments(choices, 'spotbugs', spotbugsArguments(NITPICKER_SPOTBUGS));
   const report = path.join(root, `spotbugs-${precedence.join('-')}.sarif`);
   runJar({
     classpath: classpathOf(tools, 'spotbugs'),

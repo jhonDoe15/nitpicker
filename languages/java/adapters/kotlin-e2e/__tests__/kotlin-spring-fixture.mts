@@ -2,13 +2,15 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { fieldOf, parseJson, textsOf } from '../../../../../shared/values/readers.mts';
-import { REVIEW_TOOL, findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
-import { springFindings as untypedSpringFindings } from '../../kotlin/review-rules/spring/spring-findings.mjs';
-import { SPRING_RULES } from '../../kotlin/review-rules/spring/spring-messages.mjs';
+import { callUntyped } from '../../typed/java-values.mts';
+import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
+import { REVIEW_TOOL, findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { springFindings as untypedSpringFindings } from '../../kotlin/review-rules/spring/spring-findings.mts';
+import { SPRING_RULES } from '../../kotlin/review-rules/spring/spring-messages.mts';
 import {
   VALIDATION_TARGET_RULE,
   validationTargetFindings as untypedValidationTargetFindings,
-} from '../../kotlin/review-rules/validation/validation-targets.mjs';
+} from '../../kotlin/review-rules/validation/validation-targets.mts';
 import { git, writeAll, type KotlinProject } from './kotlin-e2e-project.mts';
 
 type SpringOptions = {
@@ -19,9 +21,13 @@ type SpringOptions = {
   readonly javaRoots: string[];
 };
 
-const springFindings: (files: unknown, options: SpringOptions) => Finding[] = untypedSpringFindings;
-const validationTargetFindings: (files: unknown, options: { finding: unknown }) => Finding[] =
-  untypedValidationTargetFindings;
+function springFindings(files: unknown, options: SpringOptions): Finding[] {
+  return findingsOf(callUntyped(untypedSpringFindings, files, options));
+}
+
+function validationTargetFindings(files: unknown, options: { finding: unknown }): Finding[] {
+  return findingsOf(callUntyped(untypedValidationTargetFindings, files, options));
+}
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
 const FIXTURE = path.join(FIXTURES, 'kotlin-spring-project');

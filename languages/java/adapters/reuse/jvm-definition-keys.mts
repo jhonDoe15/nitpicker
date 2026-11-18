@@ -1,6 +1,7 @@
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { compareText } from '../../../../shared/paths/path-order.mjs';
-import { namesOf, type BoundEntry, type Definition, type Scope } from './jvm-reuse-types.mts';
+import { namesOf } from './source/jvm-tokens.mts';
+import { type BoundEntry, type Definition, type Scope } from './jvm-reuse-types.mts';
 import { isCallSeparator } from './jvm-references.mts';
 
 type KeyContext = {

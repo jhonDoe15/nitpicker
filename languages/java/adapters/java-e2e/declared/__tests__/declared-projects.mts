@@ -3,22 +3,30 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
+import { textsOf } from '../../../../../../shared/values/readers.mts';
 import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture-files.mts';
 import type { JavaFinding } from '../../../typed/java-values.mts';
-import { declaredToolChoices as declaredToolChoicesUntyped } from '../../../tool-config/declared/declared-choices.mjs';
-import { readPinnedTools as readPinnedToolsUntyped } from '../../../../builds/java-build.mjs';
-import { javaCommand as javaCommandUntyped } from '../../../../maven/maven-command.mjs';
-import { resolveTools as resolveToolsUntyped } from '../../../../maven/maven-tools.mjs';
+import { declaredToolChoices as declaredToolChoicesUntyped } from '../../../tool-config/declared/declared-choices.mts';
+import { readPinnedTools as readPinnedToolsUntyped } from '../../../../builds/java-build.mts';
+import { javaCommand as javaCommandUntyped } from '../../../../maven/maven-command.mts';
+import { resolveTools as resolveToolsUntyped } from '../../../../maven/maven-tools.mts';
 
 export type Tools = Readonly<Record<string, readonly string[]>>;
 export type BuildCommand = { readonly gradle: string } | { readonly maven: string | undefined };
-export type ToolChoices = Readonly<
-  Partial<Record<string, { readonly arguments?: readonly string[] }>>
->;
+export type ToolChoices = Readonly<Partial<Record<string, { readonly arguments?: unknown }>>>;
+
+export function choiceArguments(
+  choices: ToolChoices,
+  tool: string,
+  fallback: readonly string[],
+): readonly string[] {
+  const chosen = choices[tool]?.arguments;
+  return chosen === undefined ? fallback : textsOf(chosen);
+}
 
 export const declaredToolChoices: (
   projectRoot: string,
-  options: { toolPrecedence: Readonly<Record<string, readonly string[]>> },
+  options?: { toolPrecedence: Readonly<Record<string, readonly string[]>> },
 ) => ToolChoices = declaredToolChoicesUntyped;
 
 const readPinnedTools: () => unknown = readPinnedToolsUntyped;

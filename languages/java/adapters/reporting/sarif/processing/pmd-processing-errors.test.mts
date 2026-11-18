@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { textOf } from '../../../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../../typed/java-values.mts';
-import { pmdProcessingErrors } from './pmd-processing-errors.mjs';
+import { pmdProcessingErrors } from './pmd-processing-errors.mts';
 
 const context = { roots: ['/work/app'], sourceRoots: ['src/main/java'], projectRoot: '/work/app' };
 

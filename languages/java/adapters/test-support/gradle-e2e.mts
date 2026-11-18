@@ -2,7 +2,7 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mts';
 import { collectJavaFindings } from '../java-diff.mts';
 import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 

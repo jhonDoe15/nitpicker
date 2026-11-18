@@ -41,19 +41,19 @@ describe('the SpotBugs settings a run takes from the build', () => {
     const filter = path.join(head, 'config/spotbugs/exclude.xml');
 
     expect(choicesOf(base, ['nitpicker'], head)).toEqual({});
-    expect(choicesOf(base, ['project'], head).spotbugs?.arguments).toEqual([
+    expect(choicesOf(base, ['project'], head)['spotbugs']?.arguments).toEqual([
       '-effort:max',
       '-medium',
       '-exclude',
       filter,
     ]);
-    expect(choicesOf(base, ['project', 'nitpicker'], head).spotbugs?.arguments).toEqual([
+    expect(choicesOf(base, ['project', 'nitpicker'], head)['spotbugs']?.arguments).toEqual([
       '-effort:max',
       '-medium',
       '-exclude',
       filter,
     ]);
-    expect(choicesOf(base, ['nitpicker', 'project'], head).spotbugs).toEqual({
+    expect(choicesOf(base, ['nitpicker', 'project'], head)['spotbugs']).toEqual({
       arguments: ['-effort:default', '-medium', '-exclude', filter],
       files: [filter],
     });
@@ -122,7 +122,10 @@ describe('the SpotBugs settings a run takes from the build', () => {
     });
 
     expect(() => choicesOf(linked, ['project'])).toThrow(/is missing/u);
-    expect(choicesOf(nested, ['project']).spotbugs?.arguments).toEqual(['-effort:max', '-medium']);
+    expect(choicesOf(nested, ['project'])['spotbugs']?.arguments).toEqual([
+      '-effort:max',
+      '-medium',
+    ]);
   });
 });
 

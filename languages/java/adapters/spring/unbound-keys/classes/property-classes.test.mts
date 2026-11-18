@@ -1,19 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { readSource as readSourceUntyped } from '../source-keys.mjs';
-import { propertyClassKeys as keysUntyped } from './property-classes.mjs';
+import { readSource } from '../source-keys.mts';
+import { propertyClassKeys } from './property-classes.mts';
 import { byText } from '../../../../../../shared/text-order/by-text.mjs';
 import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
-
-const readSource: (file: string) => unknown = readSourceUntyped;
-const propertyClassKeys: (sources: unknown[]) => {
-  owned: string[];
-  exact: string[];
-  open: string[];
-} = keysUntyped;
 
 function keysOf(files: Readonly<Record<string, string[]>>): {
   owned: string[];

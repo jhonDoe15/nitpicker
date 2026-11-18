@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport as parseUntyped } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
-import { SPRING_ARCH_REPORT } from './spring-arch.mjs';
+import { SPRING_ARCH_REPORT } from './spring-arch.mts';
 import {
   type ArchFinding,
   type ArchResolve,
@@ -14,7 +14,7 @@ import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repos
 
 const { temporaryRoot } = useGitFixtures();
 
-type Excepted = (rule: string, file: string) => boolean;
+type Excepted = (rule: string, file: string | undefined) => boolean;
 
 const parseAnalyzerReport: (
   report: object,

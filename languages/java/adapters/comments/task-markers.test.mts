@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { TASK_MARKER_PATTERN, unreferencedMarker } from './task-markers.mjs';
+import { TASK_MARKER_PATTERN, unreferencedMarker } from './task-markers.mts';
 
 const DETEKT_CONFIG = path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml');
 

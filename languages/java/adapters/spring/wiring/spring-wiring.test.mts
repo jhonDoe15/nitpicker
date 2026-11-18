@@ -10,7 +10,7 @@ import {
   sourceRoots,
   readSpringConfigFindings,
 } from '../__tests__/spring-config-projects.mts';
-import { springWiringProblems as problemsUntyped } from './spring-wiring.mjs';
+import { springWiringProblems as problemsUntyped } from './spring-wiring.mts';
 
 type WiringProblem = {
   readonly path: string;

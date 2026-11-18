@@ -6,7 +6,7 @@ import {
   packageOf as untypedPackageOf,
   pathInside as untypedPathInside,
   sourceFilesUnder as untypedSourceFilesUnder,
-} from './java-sources.mjs';
+} from './java-sources.mts';
 
 type Declared = { readonly line: number; readonly entryPoint: boolean };
 type DeclaredEntry = readonly [string, Declared];

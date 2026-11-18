@@ -1,11 +1,9 @@
-import { namesOf as untypedNamesOf } from './source/jvm-tokens.mjs';
-import { readJvmDefinitions as untypedReadJvmDefinitions } from './source/jvm-definitions.mjs';
 import type { JavaFinding } from '../typed/java-values.mts';
 
 export type Token = {
   readonly text: string;
   readonly kind: string;
-  readonly line?: number;
+  readonly line: number;
   readonly names?: readonly string[];
 };
 
@@ -104,9 +102,3 @@ export type ReusePart = {
     readonly imports: readonly unknown[];
   };
 };
-
-export const namesOf: (token: Token) => string[] = untypedNamesOf;
-export const readJvmDefinitions: (
-  source: string,
-  options?: { kotlin?: true | false; nested?: true | false },
-) => Parsed = untypedReadJvmDefinitions;
