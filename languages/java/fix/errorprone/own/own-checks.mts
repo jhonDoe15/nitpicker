@@ -17,6 +17,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'SpringRestController', tool: PMD, safety: SAFE },
   { check: 'LogStringConcatenation', tool: PMD, safety: SAFE },
   { check: 'UseCollectionIsEmpty', tool: PMD, safety: SAFE },
+  { check: 'SimplifyBooleanReturns', tool: PMD, safety: SAFE },
   { check: 'LiteralsFirstInComparisons', tool: PMD, safety: REVIEW },
   { check: 'PreserveStackTrace', tool: PMD, safety: REVIEW },
   { check: 'SpringConstructorInjection', tool: PMD, safety: REVIEW },

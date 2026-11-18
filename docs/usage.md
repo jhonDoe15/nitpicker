@@ -3012,7 +3012,7 @@ them against the pinned Error Prone when it runs the patch compile above, so the
 compile, and they never run in the gate. Each check edits one file, so none renames a public symbol.
 
 `pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
-`pmd/LogStringConcatenation` and `pmd/UseCollectionIsEmpty` are on the safe list. The others
+`pmd/LogStringConcatenation`, `pmd/UseCollectionIsEmpty` and `pmd/SimplifyBooleanReturns` are on the safe list. The others
 (`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
