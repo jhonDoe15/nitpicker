@@ -216,6 +216,12 @@ line under its folder:
   `api/pyproject.toml` and a `service/build.gradle`), init writes the top `nitpicker.config.json`
   with a `projects` list of `{ "path", "preset" }` entries. A top config that lists no projects
   is left as it is; init prints the diff that adds the list and exits 1.
+- When the top holds a Maven or Gradle build of Java or Kotlin code and a `package.json` whose
+  TypeScript or JavaScript sources are under `src/main/webapp`, `src/main/frontend` or `frontend`
+  (as in JHipster, Vaadin and Hilla applications), and no config there sets a preset, init writes
+  the top `nitpicker.config.json` with the folder listed twice: once with the `java` or `kotlin`
+  preset, and once with the `typescript` or `javascript` preset, which checks the frontend folders
+  (see [Listing the projects](#listing-the-projects)).
 - `--ci github` writes one workflow for the whole repository: the setup step of every toolchain
   the projects need (Node.js, Java, Python) once, the install steps of each project with its
   `working-directory` (a workspace installs once, at its root), and one nitpicker step at the top

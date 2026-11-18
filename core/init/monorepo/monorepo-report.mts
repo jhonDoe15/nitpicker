@@ -27,6 +27,7 @@ const SOURCES: Readonly<Record<string, string>> = {
   declared: 'listed in "projects" of nitpicker.config.json',
   detected: 'found from the workspace or build declaration',
   suggested: 'found from their project files',
+  paired: 'the build and the frontend sources of one folder, each with its own preset',
 };
 
 function indented(lines: readonly string[]): string[] {
