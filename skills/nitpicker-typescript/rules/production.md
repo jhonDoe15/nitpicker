@@ -205,6 +205,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A URL that comes from data (a stored field, a profile, a document) becomes an `href`, an `iframe` `src` or a
   `window.open` target only through one helper that returns it for `http:` and `https:` and nothing else, with plain text
   as the fallback (`nitpicker/no-unchecked-url-sink`).
+- File paths and host names compared across sources are compared with case folded: `path.relative(a, b) === ''`, a normalize and
+  lowercase helper on win32 and darwin, or `toLowerCase()` on both hosts, never `===` or `startsWith` on plain strings
+  (`nitpicker/no-case-sensitive-path-compare`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

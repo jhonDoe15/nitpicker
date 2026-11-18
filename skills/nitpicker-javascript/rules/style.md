@@ -183,6 +183,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A URL that comes from data (a stored field, a profile, a document) becomes an `href`, an `iframe` `src` or a
   `window.open` target only through one helper that returns it for `http:` and `https:` and nothing else, with plain text
   as the fallback (`nitpicker/no-unchecked-url-sink`).
+- File paths and host names compared across sources are compared with case folded: `path.relative(a, b) === ''`, a normalize and
+  lowercase helper on win32 and darwin, or `toLowerCase()` on both hosts, never `===` or `startsWith` on plain strings
+  (`nitpicker/no-case-sensitive-path-compare`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
