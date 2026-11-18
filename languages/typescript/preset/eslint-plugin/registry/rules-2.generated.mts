@@ -34,6 +34,7 @@ import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-un
 import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
+import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
@@ -128,6 +129,7 @@ export const partRules = {
   'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
+  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,

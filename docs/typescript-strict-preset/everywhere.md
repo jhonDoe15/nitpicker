@@ -428,7 +428,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   older version throws a `SyntaxError` that takes down startup, a reducer or a migration. A `try` that has only
   `finally`, or a parse inside the `catch` block, does not count. Files of the project itself (a path that names
   `package`, `manifest`, `tsconfig`, a lock, a schema, a template, a fixture, translations or `import.meta`), standard
-  input, and files under `scripts`, `bin`, `tools`, `.github`, test support folders and `*.config.*` are not checked.
+  input, and files under `scripts`, `bin`, `tools`, `.github`, `templates`, `examples`, `benchmarks`, `docker`,
+  `playground`, `vendor`, test support folders, `*.min.js` and `*.config.*` are not checked. A path variable named
+  `*JsonPath` and files named `migrations`, `generators` or `executors` count as project files.
   Allowed form: parse inside `try { ... } catch { ... }` that returns a failure result or a default and names the
   source, then validate the parsed value. An exception fits a function whose contract is to throw on bad input. The
   rule reads no types. It sits next to `nitpicker/no-handwritten-boundary-guard`: a schema check after an unguarded
