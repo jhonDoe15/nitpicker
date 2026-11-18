@@ -161,6 +161,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
+  (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
+  with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

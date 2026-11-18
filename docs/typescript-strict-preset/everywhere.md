@@ -225,6 +225,28 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-dropped-log-arguments` (needs pino, bunyan or winston in `package.json`): a log call
+  (`trace` to `fatal`) whose message is a string or a template without expressions and whose values
+  are lost or left unfilled. pino and bunyan read the message as the first argument, or the second
+  when the first is an object (an object literal, an `Error`, or a value the type checker shows as an
+  object) and count `%s`, `%d`, `%i`, `%f`, `%j`, `%o`, `%O` (`%%` takes none). pino drops every
+  value past the last placeholder (`log.info('loaded config', config)`, `log.info('loaded %s', a, b)`;
+  a plain object is only merged when it comes first). pino and bunyan log a placeholder with no value
+  as written (`log.info('loaded %s %s', a)`); bunyan appends extra values, so those pass. winston
+  fills `%` placeholders only when the logger's format includes `format.splat()`, so values after a
+  message with a placeholder are dropped without it; after a placeholder-free message an object is
+  metadata and passes, while a string, number or any value after that object is dropped. Loggers are
+  found by their factory in the same file (`pino()`, `require('pino')()`, `bunyan.createLogger`,
+  `winston.createLogger`, `createLogger` imported from either, and `.child(...)` of those) and, with
+  the type checker, by a type declared in pino, bunyan or winston (`pino.Logger`, a `Logger` from
+  `winston`), including class fields. winston is reported only when the `createLogger` options are
+  readable in the file and contain no `splat()` (a `format` or `transports` value that is imported,
+  spread or built by another function counts as unknown); a typed winston logger from elsewhere is
+  not. `console.*`, `util.format`, a message built from a variable or a template with expressions,
+  and calls with a spread argument are not reported. Allowed forms: the values in the fields object
+  (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
+  winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
+  `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

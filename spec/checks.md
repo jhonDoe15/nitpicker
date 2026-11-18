@@ -386,6 +386,12 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+Dropped log arguments: `nitpicker/no-dropped-log-arguments` (production source, in `eslint-lint`, when the project
+depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose literal message has fewer placeholders than
+values (pino: the extra values are dropped; winston without `format.splat()`: every value after a message with a
+placeholder) and, for pino and bunyan, more placeholders than values. A fields object first (`log.info({ config }, 'x')`),
+one value per placeholder and a metadata object are allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
