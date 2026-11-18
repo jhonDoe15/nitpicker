@@ -469,6 +469,7 @@ host names of two URL objects are allowed.
 Double decoding: `nitpicker/no-double-decode` (production source, in `eslint-lint`) reports `decodeURIComponent` and `decodeURI` applied to a
 value read from `URLSearchParams`, `searchParams`, `router.query`, `req.query`, `ctx.query`, `req.params` or `c.req.query()`, which the framework has
 already decoded. Raw text from `location.search`, `request.url`, headers and cookies is allowed.
+
 Directory-passing existence checks: `nitpicker/no-directory-passing-existence-check` (production source, in `eslint-lint`) reports a
 file read of a configured or caller-supplied path whose guard is `existsSync`, `access` or `pathExists` alone, which a directory passes. A
 `stat` with `isFile()`, a `try` around the read, and paths the program builds itself are allowed.

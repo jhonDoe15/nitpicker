@@ -140,6 +140,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-dynamic-import-of-path': 'error',
     'nitpicker/no-unchecked-url-sink': 'error',
     'nitpicker/no-case-sensitive-path-compare': 'error',
+    'nitpicker/no-double-decode': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
