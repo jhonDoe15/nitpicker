@@ -104,7 +104,7 @@ again while the thread already holds it (a reentrant re-acquire) is not an inver
 atomic or concurrent type.
 
 Bounded fan-out: `nitpicker/unbounded-fan-out` (production source, in `eslint-lint`) reports
-`Promise.all`, `allSettled`, `any` and `race` over a runtime collection whose element work reaches a
+`Promise.all` and `allSettled` (`any` and `race` are not reported: bounding them changes what they return) over a runtime collection whose element work reaches a
 remote or message call with no limiter created outside the worker and no fixed-size chunk. The same
 rule runs as `unbounded-fan-out` in the Python preset, `pmd/UnboundedFanOut` in the Java preset and
 `kotlin-source/UnboundedFanOut` in the Kotlin preset; each preset's document lists what it recognizes.

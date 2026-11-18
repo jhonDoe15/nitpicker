@@ -401,7 +401,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   subscription, a server push channel) from one that must answer, so no exception would make the
   finding right. The adapter (`REPORT_ONLY_RULES` in `languages/typescript/adapters/eslint/normalize.mjs`)
   records it as a design note for review.
-- Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
+- Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all` and `allSettled` (`any` and `race` are not reported: bounding them changes what they return)
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
   a spread of one, or an array filled by `push` inside a `for...of`, `for...in`, `for` or `forEach`
