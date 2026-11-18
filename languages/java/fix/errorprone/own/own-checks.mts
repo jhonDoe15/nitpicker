@@ -31,6 +31,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'ListUsedAsSet', tool: PMD, safety: REVIEW },
   { check: 'LinearLookupInLoop', tool: PMD, safety: REVIEW },
   { check: 'ReusableObjectPerCall', tool: PMD, safety: REVIEW },
+  { check: 'IIL_PREPARE_STATEMENT_IN_LOOP', tool: 'spotbugs', safety: REVIEW },
 ]);
 
 const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));

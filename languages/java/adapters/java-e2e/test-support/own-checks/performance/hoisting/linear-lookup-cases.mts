@@ -139,7 +139,7 @@ public class LookupFixed {
   }
 }
 `,
-    lines: [20, 27, 43, 53],
+    lines: [20, 27, 43, 52],
   },
   {
     check: 'LinearLookupInLoop',
