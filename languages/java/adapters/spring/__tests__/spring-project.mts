@@ -131,6 +131,7 @@ const REVIEW_RULES = new Set([
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'ForwardingMethodAlias',
+  'ForwardDropsParameter',
   'ServiceLocatorLookup',
   'SingularAndPluralMember',
   'timeout-abandons-operation',

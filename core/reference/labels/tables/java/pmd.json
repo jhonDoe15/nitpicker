@@ -55,6 +55,7 @@
   "pmd/FixedSleepInTest": ["tests"],
   "pmd/FloatEqualityInTest": ["tests"],
   "pmd/ForLoopCanBeForeach": ["simplification"],
+  "pmd/ForwardDropsParameter": ["bug"],
   "pmd/ForwardingMethodAlias": ["simplification"],
   "pmd/ForwardingMethodAliasRename": ["simplification"],
   "pmd/FutureWithoutException": ["bug", "async"],
