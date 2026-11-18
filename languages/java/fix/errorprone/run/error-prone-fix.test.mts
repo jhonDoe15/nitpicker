@@ -27,6 +27,7 @@ type PatchSpec = readonly [string, (file: string) => string];
 type Repository = ReturnType<typeof createGitRepository>;
 type FixExtras = {
   readonly selectedRules?: readonly string[];
+  readonly allFiles?: boolean;
   readonly config?: unknown;
   readonly headPolicy?: Readonly<Record<string, unknown>>;
 };
@@ -125,10 +126,11 @@ function patchBoth(patches: readonly PatchSpec[]): PatchHooks['patch'] {
 function fix(
   repository: Repository,
   tools: FakeJvmTools,
-  { selectedRules, config = { preset: 'java' }, headPolicy = {} }: FixExtras = {},
+  { selectedRules, config = { preset: 'java' }, headPolicy = {}, allFiles = false }: FixExtras = {},
 ): FixOutcome {
   return fixWorkingTree({
     ...BASE_OPTIONS,
+    allFiles,
     repositoryRoot: repository.root,
     projectRoot: repository.root,
     baseRef: 'base',
@@ -273,6 +275,18 @@ describe('--fix with Error Prone on Gradle', () => {
     const result = fix(topic(LIVE), toolsWith([['MissingOverride', stale]]));
 
     expect(result.fixedFindings).toEqual([]);
+  });
+
+  it('fixes every file of the project for the named rule with --all', () => {
+    const repository = topic(LIVE);
+
+    const result = fix(repository, toolsWith([OVERRIDE]), {
+      allFiles: true,
+      selectedRules: ['errorprone/MissingOverride'],
+    });
+
+    expect(result.toolErrors).toEqual([]);
+    expect(result.fixedFiles).toEqual([`${JAVA}/Changed.java`, `${JAVA}/Untouched.java`]);
   });
 
   it('keeps every hunk of a file that is new on this branch', () => {
