@@ -53,7 +53,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
   `IllegalArgumentException`); `URI.create` on a non-constant string is flagged
-  (`pmd/UriCreateDynamic`).
+  (`pmd/UriCreateDynamic`). `URLDecoder.decode(text, charset)` throws the same exception on a stray `%`:
+  catch it too.
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
