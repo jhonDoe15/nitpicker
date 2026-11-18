@@ -326,11 +326,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `path.normalize`, `path.dirname`, `process.cwd()`, `fileURLToPath` or `realpath` result, `__dirname`, `import.meta.dirname`, a
   `.fsPath`, or a name ending in `Dir`, `Directory`, `Root`, `Cwd`, `Folder`, `FilePath`, `Filename` or `path`, and at least one side
   is a property of another object (`msg.workspaceRoot !== receiverWorkspaceRoot`, `f.path === editor.document.uri.fsPath`). It
-  also reads a host or authority on both sides (`uri.authority`, `url.host`, `url.hostname`, `remoteAuthority`). Windows and macOS
+  also reads an authority on both sides (`uri.authority`, `remoteAuthority`), or a host name (`host`, `hostname`) next to one of
+  them, because URL objects lowercase their host names. Windows and macOS
   file systems and host names ignore case, so the same file or host in another spelling counts as a different one: watches do
   not fire, editors are not found and messages from the same workspace are rejected. A side that is lowercased or passed through
   a helper named like `normalize...`, `canonical...`, `isEqual...` or `isSame...`, a comparison against a literal, two local
-  values from the same API (`parentDir === currentDir`), and code that checks `process.platform` in the same function are not
+  values from the same API (`parentDir === currentDir`, `a.cwd === b.cwd`, `paths.root === paths.dir`), constants named in
+  capitals, `rankDir`, `appsDir`, `libsDir` and `configDir`, and code that checks `process.platform` in the same function are not
   reported. Allowed forms: `path.relative(a, b) === ''`, one normalize-and-lowercase helper on win32 and darwin, a resource
   `isEqual` or `isEqualAuthority`, or `toLowerCase()` on both host names.
 - `nitpicker/no-double-decode`: `decodeURIComponent(x)` or `decodeURI(x)` on a value the framework has already percent-decoded:

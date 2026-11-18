@@ -463,6 +463,9 @@ call results, items of an array literal in the same file and a scheme-checking h
 Case-sensitive path comparison: `nitpicker/no-case-sensitive-path-compare` (production source, in `eslint-lint`) reports `===`,
 `!==`, `startsWith`, `endsWith` and `includes` on two file paths (one of them a property of another object, such as a message
 field or `.fsPath`) or two URI authorities or host names, when neither side is case-folded and no platform check is in
+the function. `path.relative(a, b) === ''`, lowercased sides, equality helpers, constants, two members of one object and
+host names of two URL objects are allowed.
+
 Double decoding: `nitpicker/no-double-decode` (production source, in `eslint-lint`) reports `decodeURIComponent` and `decodeURI` applied to a
 value read from `URLSearchParams`, `searchParams`, `router.query`, `req.query`, `ctx.query`, `req.params` or `c.req.query()`, which the framework has
 already decoded. Raw text from `location.search`, `request.url`, headers and cookies is allowed.

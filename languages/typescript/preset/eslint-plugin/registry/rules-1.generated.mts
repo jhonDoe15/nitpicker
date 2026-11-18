@@ -20,6 +20,7 @@ import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-fl
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
+import { rule as ruleNoCaseSensitivePathCompare } from '../rules/urls/paths/no-case-sensitive-path-compare.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
-import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -122,6 +122,7 @@ export const partRules = {
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-cached-rejection': ruleNoCachedRejection,
+  'no-case-sensitive-path-compare': ruleNoCaseSensitivePathCompare,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
-  'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
 };
