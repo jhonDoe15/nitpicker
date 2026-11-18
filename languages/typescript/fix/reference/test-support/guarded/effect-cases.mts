@@ -24,6 +24,11 @@ export const EFFECT_CASES: readonly GuardedCase[] = [
   {
     rule: FIND,
     input:
+      'export class Limits {\n  get floor(): number {\n    return 2;\n  }\n}\n\nexport function firstAbove(values: readonly number[], limits: Limits): number | undefined {\n  return values.filter((value) => value > limits.floor)[0];\n}\n',
+  },
+  {
+    rule: FIND,
+    input:
       "export function firstLong(names: readonly string[]): string | undefined {\n  return names.filter((name) => name.startsWith('a') && name.length > 2).at(0);\n}\n",
     selected: [
       "names.filter((name) => name.startsWith('a') && name.length > 2).at(0)",

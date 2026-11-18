@@ -1,0 +1,10 @@
+import { usedHelper, unusedHelper } from './helpers.js';
+import type { Shape } from './shapes.js';
+
+export function both(shape: Shape): number {
+  return usedHelper(1) + unusedHelper(1) + shape.kind.length;
+}
+
+export function probe(): unknown {
+  return both({ kind: 'ab' });
+}

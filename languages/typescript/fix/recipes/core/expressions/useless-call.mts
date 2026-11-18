@@ -1,11 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { REVIEW as untypedReview } from '../../../../../../core/fix/engine/safety.mjs';
-import { toTerm } from '../../../../preset/eslint-plugin/rules/analysis/logic/estree-terms.mts';
-import { isSideEffectFree } from '../../../../preset/eslint-plugin/rules/analysis/logic/term-views.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment } from '../text-ranges.mts';
 
 const REVIEW: string = untypedReview;
+const PLAIN_RECEIVERS = new Set<string>([AST_NODE_TYPES.Identifier, AST_NODE_TYPES.ThisExpression]);
 const PLAIN_CALLEES = new Set<string>([
   AST_NODE_TYPES.Identifier,
   AST_NODE_TYPES.MemberExpression,
@@ -40,6 +39,12 @@ function argumentsText(
     .join(', ');
 }
 
+function isReadOnce(receiver: TSESTree.Node | undefined, call: TSESTree.CallExpression): boolean {
+  return receiver === undefined
+    ? isUndefined(call.arguments[0])
+    : PLAIN_RECEIVERS.has(receiver.type);
+}
+
 function direct({ text, sourceCode, node }: CoreRequest): CorePlan {
   if (
     node.type !== AST_NODE_TYPES.CallExpression ||
@@ -51,13 +56,10 @@ function direct({ text, sourceCode, node }: CoreRequest): CorePlan {
   const { object: target, property } = node.callee;
   const method = property.type === AST_NODE_TYPES.Identifier ? property.name : '';
   const receiver = target.type === AST_NODE_TYPES.MemberExpression ? target.object : undefined;
-  if (
-    receiver === undefined
-      ? !isUndefined(node.arguments[0])
-      : !isSideEffectFree(toTerm(receiver, sourceCode))
-  ) {
+  if (!isReadOnce(receiver, node)) {
     return {
-      declined: 'the receiver is read twice and may have effects, or this would change from null',
+      declined:
+        'the receiver is read twice and a read may run a getter, or this would change from null',
     };
   }
   const args = argumentsText(text, node, method);
