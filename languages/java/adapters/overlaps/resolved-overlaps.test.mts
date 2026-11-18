@@ -158,8 +158,14 @@ describe('overlaps on the probe project', () => {
       ],
       ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
       ['G12Worker.java:8', ['forbiddenapis/new-thread', 'pmd/ClassLoadEffect']],
+      ['G13Guards.java:13', ['pmd/SqlConcatenation', 'spotbugs/SQL_INJECTION_JDBC']],
+      ['G13Guards.java:19', ['pmd/SqlConcatenation', 'spotbugs/SQL_INJECTION_JDBC']],
       ['G2Stored.java:7', ['errorprone/NullAway', 'pmd/UseVarargs']],
       ['GuardOverlaps.java:38', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
+      [
+        'GuardOverlaps.java:42',
+        ['forbiddenapis/java-deserialization', 'spotbugs/OBJECT_DESERIALIZATION'],
+      ],
       [
         'Hiding.java:12',
         [
@@ -179,13 +185,16 @@ describe('overlaps on the probe project', () => {
       ['Locks.java:17', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
       ['Numbers.java:10', ['checkstyle/MagicNumber', 'errorprone/ComparisonOutOfRange']],
+      ['Numbers.java:12', ['errorprone/MathAbsoluteNegative', 'spotbugs/PREDICTABLE_RANDOM']],
       ['Numbers.java:7', ['checkstyle/MagicNumber', 'errorprone/BadShiftAmount']],
+      ['Numbers.java:8', ['errorprone/RandomCast', 'spotbugs/PREDICTABLE_RANDOM']],
       [
         'Numbers.java:9',
         [
           'checkstyle/MagicNumber',
           'errorprone/RandomModInteger',
           'spotbugs/DMI_RANDOM_USED_ONLY_ONCE',
+          'spotbugs/PREDICTABLE_RANDOM',
         ],
       ],
       ['Obsolete.java:10', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
