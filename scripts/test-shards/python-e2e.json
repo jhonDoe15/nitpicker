@@ -108,6 +108,7 @@
   "languages/python/rules/e2e/lazy-relations/lazy-relation-helpers.e2e.test.mts": 2,
   "languages/python/rules/e2e/lazy-relations/lazy-relation-in-loop.e2e.test.mts": 3,
   "languages/python/rules/e2e/lazy-relations/lazy-relation-loaders.e2e.test.mts": 2,
+  "languages/python/rules/e2e/listings/unpaged-listing.e2e.test.mts": 2,
   "languages/python/rules/e2e/locators/service-locator-scopes.e2e.test.mts": 4,
   "languages/python/rules/e2e/locators/service-locator-values.e2e.test.mts": 2,
   "languages/python/rules/e2e/locators/service-locator.e2e.test.mts": 8,

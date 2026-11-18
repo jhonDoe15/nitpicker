@@ -198,6 +198,7 @@ function productionGuardRules({
     'nitpicker/no-case-mismatched-lookup': 'error',
     'nitpicker/no-mismatched-precondition-message': 'error',
     'nitpicker/no-malformed-query-text': 'error',
+    'nitpicker/no-unpaged-listing': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
     'nitpicker/require-promise-reject': 'error',

@@ -26,7 +26,6 @@ function affixDescription(subject?: string): string {
   );
 }
 
-
 function replaceDescription(subject?: string): string {
   const [kind = '', call = ''] = parts(subject);
   return kind === 'suffix'
@@ -37,7 +36,6 @@ function replaceDescription(subject?: string): string {
         `replace, which rewrites the first occurrence anywhere, not ` +
         `the leading part`;
 }
-
 
 function lookupDescription(subject?: string): string {
   const [kind = '', rest = ''] = parts(subject);
@@ -51,7 +49,6 @@ function lookupDescription(subject?: string): string {
         `${casing}-case never matches`;
 }
 
-
 function preconditionDescription(subject?: string): string {
   const [checked = '', named = ''] = parts(subject);
   return (
@@ -60,7 +57,6 @@ function preconditionDescription(subject?: string): string {
     `value the message names goes through unchecked`
   );
 }
-
 
 function queryDescription(subject?: string): string {
   const [kind = '', detail = ''] = parts(subject);
@@ -75,6 +71,12 @@ function queryDescription(subject?: string): string {
     : `The query parts join into \`...${detail}...\`, which runs two words together`;
 }
 
+function listingDescription(subject?: string): string {
+  const [kind = '', call = ''] = parts(subject);
+  return kind === 'search'
+    ? `\`${call}\` returns 10 documents by default, so the rest is ignored`
+    : `\`${call}\` returns one page (1000 keys), and the rest is silently ignored`;
+}
 
 export const MINED_HINTS: readonly RuleHint[] = [
   {
@@ -121,5 +123,15 @@ export const MINED_HINTS: readonly RuleHint[] = [
       'Give each comparison an operand or bind placeholder (`LIKE ' +
       '%s`), give each INSERT column one value, and start each ' +
       'appended fragment with a space.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unpaged-listing'],
+    describe: listingDescription,
+    allowed:
+      'Use `client.get_paginator("list_objects_v2")`, or loop on ' +
+      '`NextContinuationToken` and `IsTruncated`; for RediSearch ' +
+      'pass `Query(...).paging(offset, count)` and loop until a page ' +
+      'comes back short. An existence check passes `MaxKeys=1`.',
   },
 ];

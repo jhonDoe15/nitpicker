@@ -1087,7 +1087,8 @@ await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or
   `paginateListObjectsV2`) and whose input has no `MaxKeys`; and a node-redis `client.ft.search(index, query)` with no
   options or options without `LIMIT`. The API returns one page (1000 keys, or 10 search documents) and the rest is
   silently ignored. Allowed forms: `paginateListObjectsV2(config, input)`, a loop on `NextContinuationToken` and
-  `IsTruncated`, `MaxKeys: 1` for an existence check, a `LIMIT` option in a loop, and options passed as a variable.
+  `IsTruncated`, `MaxKeys: 1` for an existence check, a result only tested for presence (`r.KeyCount > 0`,
+  `r.Contents?.length === 0`), a `LIMIT` option in a loop, and options passed as a variable.
   The same form runs as `pmd/UnpagedListing` (Java and Kotlin).
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so

@@ -132,6 +132,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-case-mismatched-lookup',
   'nitpicker/no-mismatched-precondition-message',
   'nitpicker/no-malformed-query-text',
+  'nitpicker/no-unpaged-listing',
   'nitpicker/no-unmapped-exception',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',

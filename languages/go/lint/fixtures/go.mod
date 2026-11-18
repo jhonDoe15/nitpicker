@@ -15,6 +15,8 @@ require (
 	github.com/hibiken/asynq v0.0.0
 	github.com/99designs/gqlgen v0.17.0
 	github.com/RichardKnop/machinery/v2 v2.0.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v0.0.0
+	github.com/redis/go-redis/v9 v9.0.0
 )
 
 replace (
@@ -30,4 +32,6 @@ replace (
 	github.com/hibiken/asynq => ./stubs/asynq
 	github.com/99designs/gqlgen => ./stubs/gqlgen
 	github.com/RichardKnop/machinery/v2 => ./stubs/machinery
+	github.com/aws/aws-sdk-go-v2/service/s3 => ./stubs/s3
+	github.com/redis/go-redis/v9 => ./stubs/goredis
 )

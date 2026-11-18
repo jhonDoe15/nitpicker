@@ -145,6 +145,7 @@
   "python-rules/unindexed-foreign-key": ["performance", "persistence"],
   "python-rules/unmapped-exception": ["reliability"],
   "python-rules/unordered-query": ["bug", "persistence"],
+  "python-rules/unpaged-listing": ["bug"],
   "python-rules/unsafe-deserialization": ["security"],
   "python-rules/unsafe-path-join": ["security"],
   "python-rules/unshielded-cleanup-await": ["reliability", "async"],
