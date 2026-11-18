@@ -401,6 +401,12 @@ with `.pipe()` where the result is used or piped again, or where a lone `a.pipe(
 `finished`. `pipeline(...)`, an error listener on each stream before the last, RxJS `pipe` and a lone `a.pipe(b);` statement
 nobody waits on are allowed.
 
+Child process awaited on exit: `nitpicker/no-child-exit-event` (production source, in `eslint-lint`) reports an `'exit'` listener
+on a child from `spawn`, `exec`, `execFile` or `fork` whose handler reads output collected from `stdout` or `stderr` in the
+same function, or defaults the exit code to zero with `??` or `||`. `'close'`, `events.once(child, 'close')`, a handler that
+awaits or tests its `signal` argument, a child spawned with `stdio` `'inherit'` or `'ignore'`, and a listener that only logs
+or cleans up are allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

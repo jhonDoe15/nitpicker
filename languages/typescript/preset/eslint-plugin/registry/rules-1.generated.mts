@@ -19,6 +19,7 @@ import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-fl
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
+import { rule as ruleNoChildExitEvent } from '../rules/processes/events/no-child-exit-event.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
 import { rule as ruleNoComments } from '../rules/modules/no-comments.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-st
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
-import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -121,6 +121,7 @@ export const partRules = {
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-check-then-write': ruleNoCheckThenWrite,
+  'no-child-exit-event': ruleNoChildExitEvent,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
-  'no-sql-string-building': ruleNoSqlStringBuilding,
 };

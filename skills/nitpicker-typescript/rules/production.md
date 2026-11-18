@@ -201,6 +201,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-unclosed-file-descriptor`).
 - Node streams are chained with `pipeline(a, b, c)` from `node:stream/promises`, not `a.pipe(b).pipe(c)`, because `pipe`
   forwards no errors (`nitpicker/no-pipe-dropping-errors`).
+- A child process whose output or exit code you use is waited on with `'close'` (handler `(code, signal)`, a signal or
+  missing code is a failure), not `'exit'`, which can fire before the output is drained (`nitpicker/no-child-exit-event`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
