@@ -101,6 +101,7 @@
   "pmd/LogExceptionFirst": ["reliability"],
   "pmd/LogFormatArguments": ["bug"],
   "pmd/LogStringConcatenation": ["performance"],
+  "pmd/LoggerForOtherClass": ["bug", "maintainability"],
   "pmd/LogicInversion": ["simplification"],
   "pmd/MapValueCastToNumber": ["bug"],
   "pmd/MethodWithSameNameAsEnclosingClass": ["style"],
