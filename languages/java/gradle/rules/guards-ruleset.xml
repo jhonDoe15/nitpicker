@@ -102,14 +102,57 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
     <description>String-built SQL is open to injection.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodCall[
+let $upper := function($node) {
+  exists($node[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    [exists(@ConstValue)
+     or (let $name := @Name,
+             $declared := ancestor::CompilationUnit//(FieldDeclaration | LocalVariableDeclaration)
+               /VariableDeclarator[VariableId/@Name = $name]
+         return exists($declared) and (every $d in $declared satisfies
+           ($d/parent::LocalVariableDeclaration[pmd-java:modifiers() = 'final']
+            or $d/parent::FieldDeclaration[pmd-java:modifiers() = 'final'][pmd-java:modifiers() = 'static'])
+           and exists($d/*[2])
+           and (every $n in $d/*[2]/descendant-or-self::* satisfies $n[self::StringLiteral or self::NumericLiteral
+             or self::BooleanLiteral or self::CharLiteral or self::ArgumentList or self::TypeExpression or self::ClassType
+             or self::AmbiguousName or self::InfixExpression
+             or self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'unmodifiableList', 'unmodifiableSet')]])))])
+},
+    $fixed := function($node) {
+  exists($node[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
+    or $upper(.)
+    or self::MethodCall[@MethodName = 'join'][*[1][pmd-java:typeIs('java.lang.String')]]
+      [ArgumentList[count(*) ge 2]/*[1][self::StringLiteral]]
+      [every $item in ArgumentList/*[position() gt 1] satisfies $item[self::StringLiteral
+        or $upper(.)
+        or self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+    or self::MethodCall[@MethodName = ('getSimpleName', 'getName', 'getTypeName', 'getCanonicalName')][*[1][pmd-java:typeIs('java.lang.Class')]]
+    or self::MethodCall[@MethodName = ('name', 'toString', 'ordinal')][*[1][pmd-java:typeIs('java.lang.Enum')]]
+    or self::*[self::VariableAccess or self::FieldAccess or self::MethodCall or self::CastExpression or self::ArrayAccess]
+      [pmd-java:typeIs('java.lang.Number') or pmd-java:typeIs('java.lang.Boolean') or pmd-java:typeIs('java.lang.Character')
+       or pmd-java:typeIs('java.lang.Enum') or pmd-java:typeIs('int') or pmd-java:typeIs('long') or pmd-java:typeIs('short')
+       or pmd-java:typeIs('byte') or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('boolean')
+       or pmd-java:typeIs('char')]])
+},
+    $local := function($node) {
+  exists($node[self::VariableAccess]) and (
+    let $name := $node/@Name,
+        $within := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+        $values := $within//VariableDeclarator[VariableId/@Name = $name]/*[2]
+    return exists($values) and empty($within//AssignmentExpression[*[1][@Name = $name]])
+      and (every $value in $values satisfies $fixed($value)))
+},
+    $joined := function($expression) {
+  $expression/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])]
+    [every $up in ancestor::*[exists(ancestor-or-self::*[. is $expression])] satisfies $up[self::InfixExpression[@Operator = '+']]]
+}
+return //MethodCall[
     pmd-java:matchesSig('java.sql.Statement#executeQuery(_*)') or pmd-java:matchesSig('java.sql.Statement#execute(_*)')
     or pmd-java:matchesSig('java.sql.Statement#executeUpdate(_*)') or pmd-java:matchesSig('java.sql.Statement#executeLargeUpdate(_*)')
     or pmd-java:matchesSig('java.sql.Statement#addBatch(_*)') or pmd-java:matchesSig('java.sql.Connection#prepareStatement(_*)')
     or pmd-java:matchesSig('java.sql.Connection#prepareCall(_*)')]
   /ArgumentList/*[1][
-    self::InfixExpression[@Operator = '+'][@CompileTimeConstant = false()]
-    or self::MethodCall[@MethodName = ('format', 'formatted', 'concat', 'join')]]
+    self::InfixExpression[@Operator = '+'][@CompileTimeConstant = false()][some $part in $joined(.) satisfies not($fixed($part) or $local($part))]
+    or self::MethodCall[@MethodName = ('format', 'formatted', 'concat', 'join')][not($fixed(.))]]
 ]]></value></property></properties>
   </rule>
   <rule name="WeakHash" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
