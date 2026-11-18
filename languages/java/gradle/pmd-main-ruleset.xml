@@ -917,7 +917,16 @@ return ($rows | $rows/*[1]/descendant-or-self::MethodCall | $rows ! $queryCalls(
       [let $name := @Name
        return exists(ancestor::ForeachStatement/LocalVariableDeclaration//VariableId[@Name = $name]
          | ancestor::LambdaExpression/LambdaParameterList//VariableId[@Name = $name])],
-    $bound := $elements/parent::ArgumentList/parent::MethodCall,
+    $windows := //ForStatement//MethodCall[@MethodName = 'setFirstResult']
+      [ArgumentList//VariableAccess/@Name = ancestor::ForStatement/ForInit//VariableId/@Name]
+      [let $first := .
+       return exists(($first/*[1]/descendant-or-self::MethodCall
+         | $first/ancestor::MethodCall[*[1]/descendant-or-self::MethodCall intersect $first])
+         [@MethodName = 'setMaxResults'][not(ArgumentList/*[1][@ConstValue = 1 or @ValueAsInt = 1])])],
+    $stepped := $windows | //ForStatement//MethodCall[@MethodName = 'setParameter'
+        and ArgumentList/MethodCall[@MethodName = ('subList', 'partition')]]
+      [ArgumentList//VariableAccess/@Name = ancestor::ForStatement/ForInit//VariableId/@Name],
+    $bound := $elements/parent::ArgumentList/parent::MethodCall | $stepped,
     $chunks := $bound | $bound/*[1]/descendant-or-self::MethodCall
       | //MethodCall[exists(*[1]/descendant-or-self::MethodCall intersect $bound)],
     $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging except $chunks
@@ -927,7 +936,12 @@ return
     self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', 'detach',
            'header', 'headers', 'addHeader', 'addRequestProperty', 'setRequestProperty', $batches))]
          [not(ends-with(@MethodName, 'Async'))]
-         [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
+         [not(matches(@MethodName, '^set[A-Z]') and *[1][pmd-java:typeIs('java.sql.PreparedStatement')])]
+         [not(@MethodName = ('setParameter', 'setHint', 'setFlushMode', 'setLockMode', 'setFirstResult', 'setMaxResults')
+           and *[1][pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query')])]
+         [not(@MethodName = 'contains' and *[1][pmd-java:typeIs('jakarta.persistence.EntityManager')
+           or pmd-java:typeIs('javax.persistence.EntityManager') or pmd-java:typeIs('org.hibernate.Session')])]
+         [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
             or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
             or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')

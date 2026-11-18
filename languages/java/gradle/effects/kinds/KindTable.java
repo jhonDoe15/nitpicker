@@ -31,8 +31,8 @@ final class KindTable {
 
   static final List<Entry> ENTRIES = List.of(
       data("org/springframework/data/repository/Repository", null),
-      data("jakarta/persistence/EntityManager", "find|getReference|persist|merge|remove|refresh|flush|lock"),
-      data("javax/persistence/EntityManager", "find|getReference|persist|merge|remove|refresh|flush|lock"),
+      data("jakarta/persistence/EntityManager", "find|persist|merge|remove|refresh|flush|lock"),
+      data("javax/persistence/EntityManager", "find|persist|merge|remove|refresh|flush|lock"),
       data("jakarta/persistence/Query", "getResult\\w*|getSingleResult\\w*|executeUpdate"),
       data("javax/persistence/Query", "getResult\\w*|getSingleResult\\w*|executeUpdate"),
       data("java/sql/Statement", "execute\\w*"),
