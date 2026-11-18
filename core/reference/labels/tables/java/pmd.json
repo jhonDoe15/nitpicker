@@ -233,6 +233,7 @@
   "pmd/UnusedPrivateField": ["simplification"],
   "pmd/UnusedPrivateMethod": ["simplification"],
   "pmd/UriCreateDynamic": ["bug", "security"],
+  "pmd/UrlPathUsedAsFile": ["bug", "reliability"],
   "pmd/UseCollectionIsEmpty": ["simplification"],
   "pmd/UseCorrectExceptionLogging": ["reliability"],
   "pmd/UseEnumCollections": ["performance"],
