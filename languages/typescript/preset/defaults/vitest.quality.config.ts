@@ -46,24 +46,20 @@ const unpinned = process.env['NITPICKER_INTERNAL_UNPINNED_MOCKS'] === '1';
 const perProjectPins = { retry: 0, allowOnly: false, ...(unpinned ? {} : { restoreMocks: true }) };
 const MINIMUM_TIMEOUT = 10_000;
 type Timeouts = { testTimeout?: number; hookTimeout?: number };
-
 function timeoutPins(test: Timeouts | undefined) {
   return {
     testTimeout: Math.max(test?.testTimeout ?? 0, MINIMUM_TIMEOUT),
     hookTimeout: Math.max(test?.hookTimeout ?? 0, MINIMUM_TIMEOUT),
   };
 }
-
 const globalPins = {
   bail: 0,
   passWithNoTests: false,
   dangerouslyIgnoreUnhandledErrors: false,
   update: 'none' as const,
 };
-
 const coverageIgnoreHint =
   /\/\*\s*(?:v8|c8|istanbul)\s+ignore\b[\s\S]*?\*\/|\/\/\s*(?:v8|c8|istanbul)\s+ignore\b[^\n]*/gu;
-
 const stripCoverageIgnoreHints: Vite.Plugin = {
   name: 'nitpicker-strip-coverage-ignore-hints',
   enforce: 'pre',
@@ -75,7 +71,6 @@ const stripCoverageIgnoreHints: Vite.Plugin = {
     return stripped === code ? undefined : { code: stripped };
   },
 };
-
 type InlineProject = Exclude<
   TestProjectConfiguration,
   string | Promise<unknown> | ((...parameters: never[]) => unknown)
@@ -286,12 +281,19 @@ export async function layeredConfig(root = process.cwd()): Promise<ViteUserConfi
   return { ...config, test: { ...timeoutSettings(config.test), ...withProjects } };
 }
 
-export default defineConfig({
+async function projectPlugins(root: string) {
+  const file = configIn(root) ?? workspaceConfig(root);
+  return file === undefined ? [] : ((await loadConfigFromFile(file))?.config.plugins ?? []);
+}
+
+export default defineConfig(async () => ({
   plugins: [
+    ...(await projectPlugins(process.cwd())),
+    stripCoverageIgnoreHints,
     {
       name: 'nitpicker-quality-config',
       enforce: 'pre',
-      config: async (u) => layeredConfig(u.root),
+      config: async (u: ViteUserConfig) => layeredConfig(u.root),
     },
   ],
-});
+}));

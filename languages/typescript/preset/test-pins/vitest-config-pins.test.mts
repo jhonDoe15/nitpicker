@@ -35,10 +35,12 @@ type ResolvedConfig = {
 
 type QualityConfig = (root: string) => ResolvedConfig | Promise<ResolvedConfig>;
 
-const importQualityConfig: (url: string) => Promise<{ layeredConfig: QualityConfig }> = (url) =>
+const importQualityConfig: (
+  url: string,
+) => Promise<{ layeredConfig: QualityConfig; default: () => Promise<ResolvedConfig> }> = (url) =>
   import(url);
 
-const { layeredConfig: qualityConfig } = await importQualityConfig(
+const { layeredConfig: qualityConfig, default: defaultConfig } = await importQualityConfig(
   new URL('../defaults/vitest.quality.config.ts', import.meta.url).href,
 );
 
@@ -326,6 +328,30 @@ describe('a test run with the vitest config nitpicker runs tests with', () => {
       status: 0,
       passed: true,
     });
+  });
+});
+
+describe('the plugins of a test run of a project with its own Vite config', () => {
+  it('start with the project config plugins, as vite-tsconfig-paths needs for path aliases', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-vitest-plugins-'));
+    temporaryRoots.push(root);
+    writeFileSync(
+      path.join(root, 'vite.config.mjs'),
+      "export default { plugins: [{ name: 'alias' }] };",
+    );
+    const previous = process.cwd();
+    process.chdir(root);
+    try {
+      const config = await defaultConfig();
+
+      expect(config.plugins.map(({ name }) => name)).toEqual([
+        'alias',
+        'nitpicker-strip-coverage-ignore-hints',
+        'nitpicker-quality-config',
+      ]);
+    } finally {
+      process.chdir(previous);
+    }
   });
 });
 
