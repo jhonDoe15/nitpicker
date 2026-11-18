@@ -33,6 +33,11 @@ describe('mined rule messages', () => {
       'count|10 9',
       'The INSERT lists 10 columns but 9 values, so the statement fails',
     ],
+    [
+      'unpaged-listing',
+      'search|client.ft(index).search',
+      '`client.ft(index).search` returns 10 documents by default, so the rest is ignored',
+    ],
   ])('%s describes %s', (rule, subject, expected) => {
     expect(describeRuleFinding(rule, subject)).toBe(expected);
   });

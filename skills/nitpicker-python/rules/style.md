@@ -88,3 +88,5 @@ x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`. Remo
 - A precondition message names the checked value (`precondition-message-names-other-value`).
 - Query text built from parts is well formed once joined (`malformed-query-text`): a placeholder after each
   operator, one value per `INSERT` column, a leading space on each appended fragment.
+- A listing follows its page marker (`unpaged-listing`): `get_paginator("list_objects_v2")`, or a loop on
+  `NextContinuationToken`; RediSearch `Query(...).paging(offset, count)` in a loop.

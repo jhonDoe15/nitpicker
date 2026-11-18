@@ -197,3 +197,5 @@ the allowed form and ends with its exception entry.
   `if name == "" { return errors.New("name must not be empty") }`.
 - Query text built from parts is well formed once joined (`go-rules/malformed-query-text`): a bind placeholder
   after each operator (`LIKE ?`), one value for each `INSERT` column, a leading space on each appended fragment.
+- An object-store or search listing follows its page marker (`go-rules/unpaged-listing`): use
+  `s3.NewListObjectsV2Paginator`, or loop on `NextContinuationToken`; give `FTSearch` a `Limit` and an offset loop.

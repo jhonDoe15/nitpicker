@@ -172,6 +172,12 @@ const GROUPS = [
     python: 'malformed-query-text',
     go: 'go-rules/malformed-query-text',
   },
+  {
+    jvm: 'UnpagedListing',
+    typescript: 'nitpicker/no-unpaged-listing',
+    python: 'unpaged-listing',
+    go: 'go-rules/unpaged-listing',
+  },
 ];
 
 function spring(rule) {

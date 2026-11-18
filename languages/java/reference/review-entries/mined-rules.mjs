@@ -26,8 +26,14 @@ import {
   QUERY_TEXT_EXCEPTION_RULE,
   QUERY_TEXT_RULE,
 } from '../../adapters/review-rules/query-text/query-text.mjs';
+import {
+  OBJECT_LISTING_ALLOWED,
+  OBJECT_LISTING_EXCEPTION_RULE,
+  OBJECT_LISTING_RULE,
+} from '../../adapters/review-rules/object-listings/object-listings.mjs';
 
-const READ_FOR_IT = 'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
+const READ_FOR_IT =
+  'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
 
 const ENTRIES = [
   {
@@ -104,6 +110,21 @@ const ENTRIES = [
       'numbers of columns and values, or two parts joined with no ' +
       'space (`"... FROM t" + "WHERE ..."`).',
     why: `The statement fails on the path that uses the fragment, often an optional filter. ${READ_FOR_IT}`,
+  },
+  {
+    rule: OBJECT_LISTING_RULE,
+    exception: OBJECT_LISTING_EXCEPTION_RULE,
+    anchor: 'object-store-and-search-listings-read-once',
+    allowed: OBJECT_LISTING_ALLOWED,
+    summary:
+      'A `listObjectsV2` or `listObjects` call of the AWS, Aliyun or ' +
+      'Tencent SDK in a method that never reads a page marker ' +
+      '(`isTruncated`, `nextContinuationToken`, `getNextMarker`) and ' +
+      'sets no `maxKeys(1)`, or a Jedis `ftSearch(index, query)` ' +
+      'with no `limit` and no loop.',
+    why:
+      `The API returns one page (1000 keys, or 10 search documents), ` +
+      `and the rest is silently ignored. ${READ_FOR_IT}`,
   },
 ];
 

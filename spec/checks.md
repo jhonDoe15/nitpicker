@@ -338,6 +338,11 @@ Malformed query text: `nitpicker/no-malformed-query-text` (production source, in
 (Java and Kotlin), `malformed-query-text` (Python) and `go-rules/malformed-query-text` (Go) join the literal parts of SQL text (`+`, `+=`, templates) and report an operator with no operand, an
 `INSERT` whose literal column and value lists differ in length, and parts joined into a run-together word.
 
+Unpaged listings: `nitpicker/no-unpaged-listing` (production source, in `eslint-lint`) and `pmd/UnpagedListing` (Java and
+Kotlin), `unpaged-listing` (Python) and `go-rules/unpaged-listing` (Go) report an object-store listing (`ListObjectsV2Command`, `listObjectsV2`, `listObjects`) and a RediSearch
+`FT.SEARCH` read once, when the function never follows a page marker or sets a limit. A paginator, a marker loop and
+`MaxKeys: 1` are allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

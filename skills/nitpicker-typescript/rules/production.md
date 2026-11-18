@@ -216,6 +216,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Query text built from parts reads as one valid statement once joined: a bind placeholder after every `LIKE` and `=`,
   as many values as columns in an `INSERT`, and a space at the start of every appended fragment
   (`nitpicker/no-malformed-query-text`).
+- An object-store listing follows its pages: `paginateListObjectsV2`, or a loop on `NextContinuationToken`; a search
+  call sets its `LIMIT` and loops (`nitpicker/no-unpaged-listing`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

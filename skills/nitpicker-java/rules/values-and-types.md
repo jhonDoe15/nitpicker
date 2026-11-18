@@ -148,3 +148,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   says so, and the unit gets its own check and message.
 - SQL built from parts reads as one valid statement once joined (`pmd/MalformedQueryText`): a `?` after every `LIKE` and
   `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.
+- An object-store or search listing follows its pages (`pmd/UnpagedListing`): `listObjectsV2Paginator(request)` or a loop on
+  `isTruncated()` and `nextContinuationToken()`, and a RediSearch query sets `limit(offset, count)` and loops.

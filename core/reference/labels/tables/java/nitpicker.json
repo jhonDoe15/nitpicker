@@ -80,6 +80,7 @@
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UnescapedHtmlValue": ["bug", "security"],
   "pmd/UncheckedResponseBody": ["bug"],
+  "pmd/UnpagedListing": ["bug"],
   "pmd/UntestedRoundTrip": ["tests"],
   "pmd/WallClockElapsed": ["bug"],
   "spotbugs/InlineSuppression": ["maintainability"],
