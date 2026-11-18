@@ -233,6 +233,42 @@ describe('readCouplingFindings', () => {
   });
 });
 
+describe('two top-level classes in one file', () => {
+  it('reports one module per file, so a comparison sees each module metric once', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-coupling-'));
+    temporaryRoots.push(root);
+    const reportRoot = path.join(root, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(
+      path.join(reportRoot, 'jdeps.txt'),
+      `   index.Codec  -> index.CorruptedException  classes
+   index.CorruptedException  -> java.lang.RuntimeException  java.base
+   app.User  -> index.Codec  classes
+`,
+    );
+    writeFileSync(
+      path.join(reportRoot, 'jdeps-classes.txt'),
+      'index.Codec\nindex.CorruptedException\napp.User\n',
+    );
+    const codec = 'src/main/java/index/Codec.java';
+
+    const findings = readCouplingFindings(reportRoot, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java'],
+      files: new Map([['index.CorruptedException', codec]]),
+    });
+
+    const fanIn = findings.filter(
+      (finding) => finding.rule === 'module-coupling' && finding.identity === 'module:fanIn',
+    );
+    expect(fanIn.map((finding) => finding.path).toSorted()).toEqual([
+      'src/main/java/app/User.java',
+      codec,
+    ]);
+    expect(() => parseAnalyzerReport({ findings }, 'coupling')).not.toThrow();
+  });
+});
+
 describe('Kotlin classes', () => {
   const KOTLIN_CLASSES = [
     'client.Orders',
