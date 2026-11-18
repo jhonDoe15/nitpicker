@@ -38,6 +38,7 @@
   "eslint/nitpicker/no-eager-relation": ["performance", "persistence"],
   "eslint/nitpicker/no-external-executables-in-unit-tests": ["tests"],
   "eslint/nitpicker/no-falsy-default": ["bug"],
+  "eslint/nitpicker/no-falsy-error-check": ["bug", "reliability"],
   "eslint/nitpicker/no-first-test-charged-setup": ["tests"],
   "eslint/nitpicker/no-fixed-sleep-synchronization": ["tests"],
   "eslint/nitpicker/no-float-equality-in-tests": ["tests"],

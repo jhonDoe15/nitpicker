@@ -184,6 +184,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - An async method of a class with a `dispose`/`close`/`destroy` flag checks the flag after each `await` before it fires an
   event, registers a disposable or starts a timer or process: `if (this._isDisposed) return;`
   (`nitpicker/no-use-after-await-when-disposed`).
+- A caught error, rejection reason or `error`/`cause` property of type `unknown` is not tested by truthiness (`if (error)`,
+  `props.error || state.error`) or by `typeof e === 'object'` without `e !== null`, because code can throw `undefined`, `0` or
+  `''`: keep a presence flag, or compare with `!== undefined` or `'cause' in error` (`nitpicker/no-falsy-error-check`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

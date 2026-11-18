@@ -37,6 +37,7 @@ import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
+import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
-import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -139,6 +139,7 @@ export const partRules = {
   'no-eager-relation': ruleNoEagerRelation,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
+  'no-falsy-error-check': ruleNoFalsyErrorCheck,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
-  'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
 };
