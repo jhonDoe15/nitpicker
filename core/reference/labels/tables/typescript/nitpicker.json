@@ -83,6 +83,7 @@
   "eslint/nitpicker/no-raised-test-timeout": ["tests"],
   "eslint/nitpicker/no-raw-http-value": ["bug"],
   "eslint/nitpicker/no-real-time-random-or-network": ["tests"],
+  "eslint/nitpicker/no-release-outside-finally": ["bug", "reliability"],
   "eslint/nitpicker/no-remote-call-in-transaction": ["reliability", "persistence"],
   "eslint/nitpicker/no-remote-call-under-lock": ["reliability", "async"],
   "eslint/nitpicker/no-repeated-string-literal": ["maintainability"],
