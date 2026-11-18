@@ -5,6 +5,13 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'nitpicker/simpler-boolean-logic': {
+    path: 'src/main/samples/s46.ts',
+    input:
+      'export function neither(first: boolean, second: boolean): boolean {\n  return !first && !second;\n}\n',
+    output:
+      'export function neither(first: boolean, second: boolean): boolean {\n  return !(first || second);\n}\n',
+  },
   'no-duplicate-imports': {
     path: 'src/main/samples/s44.ts',
     input:

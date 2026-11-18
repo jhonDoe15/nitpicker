@@ -183,8 +183,12 @@ function printStatement(node, texts) {
   }
 }
 
-export function print(root) {
-  return foldTerm(root, (node, texts) =>
-    isStatement(node) ? printStatement(node, texts) : printExpression(node, texts),
+/** `root` as source text; `textOf` may give the text of a node, which is then used as is. */
+export function print(root, textOf = () => undefined) {
+  return foldTerm(
+    root,
+    (node, texts) =>
+      textOf(node) ??
+      (isStatement(node) ? printStatement(node, texts) : printExpression(node, texts)),
   );
 }
