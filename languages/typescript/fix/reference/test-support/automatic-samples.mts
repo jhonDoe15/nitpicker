@@ -5,6 +5,11 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'no-useless-concat': {
+    path: 'src/main/samples/s42.ts',
+    input: "export const greeting = 'hello ' + 'world';\n",
+    output: "export const greeting = 'hello world';\n",
+  },
   'no-useless-escape': {
     path: 'src/main/samples/s41.ts',
     input: "export const label = 'a\\-b';\n",
