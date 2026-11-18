@@ -46,6 +46,7 @@ import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-c
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
 import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field-has-label.mts';
+import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
 import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
 import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
 import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
@@ -129,6 +130,7 @@ export const partRules = {
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
   'react-field-has-label': ruleReactFieldHasLabel,
+  'react-i18next-escape-value': ruleReactI18nextEscapeValue,
   'react-mutation-drops-failure': ruleReactMutationDropsFailure,
   'react-no-direct-dom': ruleReactNoDirectDom,
   'react-no-eager-initial-value': ruleReactNoEagerInitialValue,

@@ -130,6 +130,11 @@ generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `create
 `configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
 type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
 
+React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
+`react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
+renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
+call itself, literal values and values formatted as numbers or dates are not reported.
+
 React mutations: `nitpicker/react-mutation-drops-failure` (production source in a React project, in `eslint-lint`)
 reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutation` options object, that passes
 `onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from
