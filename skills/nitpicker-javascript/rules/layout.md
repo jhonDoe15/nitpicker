@@ -22,6 +22,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A `Map`, `Set` or object key made of several runtime strings is not joined with a delimiter
   (`` `${row}-${col}` ``): use `JSON.stringify([row, col])` or a nested `Map`, since `'a-b'` with `'c'` and `'a'`
   with `'b-c'` are the same key. The check needs the type checker, which TypeScript projects have.
+- Read a host and port with ``new URL(`http://${host}`)`` (`hostname`, `port`), not `host.split(':')`: an IPv6
+  literal `[::1]:3000` has colons of its own (`nitpicker/no-host-port-colon-split`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,

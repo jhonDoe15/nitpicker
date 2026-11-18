@@ -22,6 +22,7 @@
   "kotlin-source/GenericTypeName": ["style"],
   "kotlin-source/HandSplitHttpHeader": ["bug"],
   "kotlin-source/HardcodedSecret": ["security"],
+  "kotlin-source/HostPortColonSplit": ["bug"],
   "kotlin-source/HttpValueCase": ["bug"],
   "kotlin-source/HttpWithoutTimeout": ["reliability"],
   "kotlin-source/JvmSyntheticOnHandWrittenCode": ["tests", "maintainability"],

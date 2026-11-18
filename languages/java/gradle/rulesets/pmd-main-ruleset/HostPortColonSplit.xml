@@ -1,0 +1,25 @@
+  <rule name="HostPortColonSplit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cuts a host and port at &quot;:&quot;. An IPv6 literal such as [::1]:3000 has colons of its own, so the host becomes &quot;[&quot; and the port is lost or wrong. Parse it with URI (new URI(&quot;http://&quot; + host).getHost() and getPort()), Guava HostAndPort.fromString(host), or cut after the closing bracket. A value that is known not to be an IPv6 address takes an exceptions entry.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $named := function($e) {
+      exists($e[self::VariableAccess or self::FieldAccess][matches(@Name, '^(?:host|hostname|authority|origin|[a-z0-9]+Host)$')]
+             | $e[self::MethodCall][@MethodName = ('getHeader', 'getHeaderString', 'getFirst')]
+                 [ArgumentList/StringLiteral[matches(@Image, '^"(?:host|x-forwarded-host|:authority)"$', 'i')]]
+             | $e[self::MethodCall][@MethodName = ('getAuthority', 'getRawAuthority')][ArgumentList/@Size = 0])
+    },
+    $colon := function($e) { exists($e[self::StringLiteral][@Image = '":"']) },
+    $text := function($e) { string-join($e/descendant-or-self::*/(@Name, @MethodName), '.') }
+return (
+  //MethodCall[@MethodName = 'split'][ArgumentList/@Size = (1, 2)][$colon(ArgumentList/*[1])]
+    [$named(*[1])]
+  | //MethodCall[@MethodName = ('substring', 'subSequence')][$named(*[1])]
+      [ArgumentList/MethodCall[@MethodName = 'indexOf'][$colon(ArgumentList/*[1])][$text(*[1]) = $text(../../*[1])]]
+)[not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+        //StringLiteral[@Image = ('"["', '"]"')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

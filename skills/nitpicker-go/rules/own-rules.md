@@ -180,3 +180,5 @@ the allowed form and ends with its exception entry.
   (`go-rules/pair-split-drops-rest`). Check `len(parts) != 2` when the shape is exact.
 - Key a map by a struct or an array (`map[[2]string]T`, `map[key]T`), not by two strings joined with `:` or `-`
   (`go-rules/delimited-lookup-key`): `"a-b"` with `"c"` and `"a"` with `"b-c"` give the same key.
+- Split a host and port with `net.SplitHostPort` (or `url.Hostname()` and `url.Port()`), not with
+  `strings.Split(host, ":")`, which breaks IPv6 literals such as `[::1]:3000` (`go-rules/host-port-colon-split`).

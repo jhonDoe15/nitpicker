@@ -1496,6 +1496,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   with `hostname` and `port`, or cutting after the closing bracket. A function (or module) that mentions `isIPv6`
   or a `'['` or `']'` literal is skipped, `lastIndexOf(':')` is not reported, and `address` and `addr` are not
   host names here, since a MAC or IPv6 address is split on `:` legitimately. The same form runs as
+  `pmd/HostPortColonSplit` (Java), `kotlin-source/HostPortColonSplit` (Kotlin), `host-port-colon-split`
+  (Python) and `go-rules/host-port-colon-split` (Go). A cut at an index read first
+  (`const i = host.indexOf(':'); host.slice(0, i)`) is reported like the inline form.
 - `nitpicker/no-newline-only-line-split`: `split('\n')`, `split(/\n/)`, `indexOf('\n')` or `lastIndexOf('\n')` on text
   read from a file (`readFile`, `readFileSync`, `readTextFile`, `Bun.file(..).text()`, awaited, `toString()` or
   trimmed, directly or through a `const`) or on a comment's `.value`. With CRLF line endings every line keeps a
