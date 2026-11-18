@@ -10,6 +10,7 @@ import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
 import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
+import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
 import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
@@ -81,6 +82,7 @@ export const partRules = {
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
+  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
   'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,

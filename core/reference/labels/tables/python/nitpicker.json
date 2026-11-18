@@ -130,6 +130,7 @@
   "python-rules/unbounded-wait": ["reliability"],
   "python-rules/unclosed-inline-resource": ["reliability"],
   "python-rules/uncollected-tests": ["tests"],
+  "python-rules/unescaped-html-value": ["bug", "security"],
   "python-rules/unindexed-foreign-key": ["performance", "persistence"],
   "python-rules/unmapped-exception": ["reliability"],
   "python-rules/unordered-query": ["bug", "persistence"],

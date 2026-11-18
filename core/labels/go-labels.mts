@@ -166,6 +166,7 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['index_bound_off_by_one', BUG],
   ['negative_count', BUG],
   ['nan_only_guard', BUG],
+  ['unescaped_html_value', ['bug', 'security']],
   ['expanding_replacement', BUG],
   ['pattern_translation', ['bug', 'security']],
 ]);

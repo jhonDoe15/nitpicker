@@ -103,4 +103,11 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Pass a function: `re.sub(pattern, lambda _: value, text)` inserts the value as it is. A constant template such as `r"\\1b"` is fine.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['unescaped-html-value'],
+    describe: (subject) => `The value \`${subject}\` goes into an HTML string without escaping`,
+    allowed:
+      'Escape it first (`html.escape(value)`, `markupsafe.escape(value)`) or build the page with a template engine that escapes, so a `<`, `&` or quote in the value cannot break the markup.',
+  },
 ];

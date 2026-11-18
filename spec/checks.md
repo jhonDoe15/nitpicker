@@ -498,6 +498,12 @@ replacement are expanded, so a value with a `$` is not inserted as written. A fu
 dollars are allowed. The same rule runs as `expanding-replacement` in the Python and Go presets and as
 `pmd/ExpandingReplacement` in the Java and Kotlin presets.
 
+HTML strings: `nitpicker/no-unescaped-html-interpolation` (production source, in `eslint-lint`) reports a template literal
+or `+` chain that holds an HTML tag and interpolates a value that is not a literal, a number or the result of an escaping
+call: a `<`, `&` or quote in the value breaks the markup or injects a tag. Escaping each value or a templating library is
+allowed. The same rule runs as `unescaped-html-value` in the Python and Go presets and as `pmd/UnescapedHtmlValue` in the
+Java and Kotlin presets.
+
 Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
 multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL
 takes at most 65,535 bound parameters. One array parameter (`= any($1::uuid[])`) passes. The same rule runs as

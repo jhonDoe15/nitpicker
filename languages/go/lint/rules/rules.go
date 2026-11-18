@@ -13,6 +13,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/httpvalues"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/jobs"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lifecycles"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/markup"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
@@ -49,6 +50,7 @@ func Analyzers() []*analysis.Analyzer {
 			resolvers.Analyzer,
 			translation.Analyzer,
 			replacements.Analyzer,
+			markup.Analyzer,
 		},
 	)
 }

@@ -642,7 +642,7 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
   `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
   re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
-  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
   Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
 - Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
   as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
@@ -1671,6 +1671,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   form: a function (`text.replace(pattern, () => value)`) or escaping the dollars. Without types (plain
   JavaScript without JSDoc) the rule sees nothing. The same form runs as `expanding-replacement` (Python and
   Go) and `pmd/ExpandingReplacement` (Java and Kotlin).
+- `nitpicker/no-unescaped-html-interpolation`: a template literal or `+` chain that holds an HTML tag (`<div`,
+  `</a>`, `<td>`) and interpolates a value that is not escaped. A `<`, `&` or quote in a name, a title or a
+  message breaks the markup or injects a tag into a page, an email or a report. Not reported: a literal, a
+  number, boolean or string literal type without markup characters (when types are available), a value that
+  is the result of a call with `escape`, `encode`, `sanitize` or `html` in its name, a name or property that says
+  it is markup (`html`, `escaped`, `safe`, `nonce`, `color`), a variable whose every assignment is escaped or
+  markup, a `.replace(...)` chain that writes entities, a nested markup fragment, `.map(...).join('')` of
+  fragments, the text of `throw`, `new Error(...)`, `console.*` and `invariant`, a template with a component tag
+  (`<Link`) and a tagged template. Allowed form: escape each value (`escapeHtml(title)`) or build the page with a templating
+  library that escapes. The same form runs as `unescaped-html-value` (Python and Go) and
+  `pmd/UnescapedHtmlValue` (Java and Kotlin).
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of

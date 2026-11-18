@@ -5,6 +5,8 @@ import {
   EXPANDING_REPLACEMENT_ALLOWED,
   EXPANDING_REPLACEMENT_RULE,
   PATTERN_TRANSLATION_ALLOWED,
+  UNESCAPED_HTML_ALLOWED,
+  UNESCAPED_HTML_RULE,
   PATTERN_TRANSLATION_RULE,
 } from '../../adapters/review-rules/string-calls/string-calls.mjs';
 
@@ -47,6 +49,14 @@ export function stringCallEntries() {
       why: 'The replacement is read as a template: `$1`, `${name}` and a backslash in a namespace, a tenant id or a table name are expanded or throw `IllegalArgumentException` instead of being inserted. Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
       allowed: EXPANDING_REPLACEMENT_ALLOWED,
       anchor: 'replacement-strings-that-expand',
+    }),
+    entry({
+      rule: UNESCAPED_HTML_RULE,
+      summary:
+        'A string literal holding an HTML tag that is concatenated, templated (`${value}` in Kotlin) or formatted (`%s`) with a value that is not a literal, a number or the result of an escape call.',
+      why: 'A `<`, `&` or quote in a name, a title or a message breaks the markup or injects a tag into a page, an email or a rendered report. Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
+      allowed: UNESCAPED_HTML_ALLOWED,
+      anchor: 'html-built-from-unescaped-values',
     }),
   ];
 }

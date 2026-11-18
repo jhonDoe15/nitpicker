@@ -98,6 +98,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A value put into an HTML string is escaped first (`HtmlUtils.htmlEscape`, `Encode.forHtml`) or the page comes
+  from an escaping template engine (`pmd/UnescapedHtmlValue`).
 - A replacement that comes from data goes through `Matcher.quoteReplacement(value)` in `replaceAll`,
   `replaceFirst` and `Matcher.replaceAll`, or use `String.replace(CharSequence, CharSequence)`
   (`pmd/ExpandingReplacement`): the replacement reads `$1` and `\\`.

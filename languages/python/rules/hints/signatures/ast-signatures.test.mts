@@ -41,6 +41,7 @@ describe('signature rule messages', () => {
       '`OldOrder` is an alias that keeps the old name of `Order` working',
     ],
     ['compatibility-shim', 'odd', '`odd` keeps an old name working'],
+    ['unescaped-html-value', 'name', 'The value `name` goes into an HTML string without escaping'],
     [
       'expanding-replacement',
       'name',

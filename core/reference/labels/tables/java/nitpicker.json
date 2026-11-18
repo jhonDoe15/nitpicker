@@ -64,6 +64,7 @@
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/TodoWithoutIssue": ["maintainability"],
+  "pmd/UnescapedHtmlValue": ["bug", "security"],
   "pmd/UntestedRoundTrip": ["tests"],
   "spotbugs/InlineSuppression": ["maintainability"],
   "spring/active-profile": ["maintainability", "spring"],

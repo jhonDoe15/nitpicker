@@ -74,6 +74,12 @@ const GROUPS = [
     python: 'expanding-replacement',
     go: 'go-rules/expanding-replacement',
   },
+  {
+    jvm: 'UnescapedHtmlValue',
+    typescript: 'nitpicker/no-unescaped-html-interpolation',
+    python: 'unescaped-html-value',
+    go: 'go-rules/unescaped-html-value',
+  },
 ];
 
 function spring(rule) {
