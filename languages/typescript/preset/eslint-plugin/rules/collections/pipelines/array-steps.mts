@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findBooleanFix } from '../../../fixes/collections/find-boolean-fix.mts';
 import { mapFlatFix } from '../../../fixes/collections/map-flat-fix.mts';
 import { lengthCheckFix } from '../../../fixes/collections/length-check-fix.mts';
 import { fixable } from '../../../fixes/support/descriptors.mts';
@@ -121,13 +122,14 @@ function isInlineCallback(node: TSESTree.Node | undefined): boolean {
 }
 
 export function findAsBoolean(
+  context: Context,
   call: TSESTree.CallExpression,
 ): TSESLint.ReportDescriptor<'findAsBoolean'> | undefined {
   const found = methodCall(call, 'find');
   const [test] = found?.call.arguments ?? [];
   const takesCallback = found?.call.arguments.length === 1 && isInlineCallback(test);
   return found !== undefined && takesCallback && isBooleanUse(outerOf(call))
-    ? { node: call, messageId: 'findAsBoolean' }
+    ? fixable({ node: call, messageId: 'findAsBoolean' }, findBooleanFix(context, found))
     : undefined;
 }
 

@@ -43,7 +43,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         report(filterFirst(member));
       },
       CallExpression(call) {
-        report(findAsBoolean(call) ?? mapFlat(context, call));
+        report(findAsBoolean(context, call) ?? mapFlat(context, call));
         for (const step of promiseSteps(call)) {
           report(step);
         }
