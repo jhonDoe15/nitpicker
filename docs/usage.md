@@ -3013,7 +3013,7 @@ compile, and they never run in the gate. Each check edits one file, so none rena
 
 `pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
 `pmd/LogStringConcatenation`, `pmd/UseCollectionIsEmpty`, `pmd/SimplifyBooleanReturns`,
-`pmd/SimplifiedTernary` and `pmd/SimplifyBooleanExpressions` are on the safe list. The others
+`pmd/SimplifiedTernary`, `pmd/SimplifyBooleanExpressions` and `pmd/CollapsibleIfStatements` are on the safe list. The others
 (`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
