@@ -178,6 +178,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   forwards no errors (`nitpicker/no-pipe-dropping-errors`).
 - A child process whose output or exit code you use is waited on with `'close'` (handler `(code, signal)`, a signal or
   missing code is a failure), not `'exit'`, which can fire before the output is drained (`nitpicker/no-child-exit-event`).
+- A function that receives an `AbortSignal` passes it on to the awaited calls that accept one (`await sleep(1000, { signal })`,
+  `fetch(url, { signal })`) and an endless polling loop checks `signal.aborted` or passes the signal on
+  (`nitpicker/require-abort-signal-forwarding`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

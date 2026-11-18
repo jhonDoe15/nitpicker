@@ -187,6 +187,12 @@ formatters, `Intl` formatters, Ajv, pydantic `TypeAdapter`, jinja2 `Environment`
 function that runs on every call, in production code. The Go preset has no rule engine of its own
 yet.
 
+Abort signal forwarding: `nitpicker/require-abort-signal-forwarding` (production source, in `eslint-lint`) reports an awaited
+call that has an `AbortSignal` parameter, or an options parameter with a `signal` property, that the call does not
+supply while the calling function has an `AbortSignal` in scope (types needed), and an endless loop that awaits and never
+reads that signal (without types for a parameter named `signal`). Passing `{ signal }` on, testing `signal.aborted`,
+awaiting a reader of a response fetched with the signal and listening for the signal's `abort` event are allowed.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited

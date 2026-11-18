@@ -156,6 +156,7 @@
   "eslint/nitpicker/react-test-no-implementation-details": ["tests", "react"],
   "eslint/nitpicker/release-listeners-on-close": ["reliability"],
   "eslint/nitpicker/report-module-load-effects": ["maintainability"],
+  "eslint/nitpicker/require-abort-signal-forwarding": ["bug", "reliability", "async"],
   "eslint/nitpicker/require-atomic-updates": ["bug", "async"],
   "eslint/nitpicker/require-client-timeout": ["reliability"],
   "eslint/nitpicker/require-error-listener": ["reliability"],
