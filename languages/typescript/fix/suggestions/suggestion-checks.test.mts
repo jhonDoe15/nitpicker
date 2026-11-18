@@ -15,7 +15,8 @@ describe('keepsBehaviour', () => {
     '#limit = -1;',
     '#next = () => register();',
     '#make = function () { return register(); };',
-    '#names = ["a", { b: 1, c }];',
+    '#names = ["a", { b: 1, c: undefined }];',
+    '#limit = Infinity;',
     '#mode = "a" as const;',
     '#count: number;',
     '#read() { return register(); }',
@@ -29,6 +30,8 @@ describe('keepsBehaviour', () => {
     '#text = `${count}`;',
     '#names = [...others];',
     '#value = store.current;',
+    '#value = undeclared;',
+    '#names = { c };',
     '#picked = { [key]: 1 };',
     '@tracked #id = 1;',
   ])('keeps the member %s, whose removal changes what runs', (member) => {

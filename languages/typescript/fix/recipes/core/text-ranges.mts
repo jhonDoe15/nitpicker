@@ -1,8 +1,19 @@
-import type { TSESLint } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
 type SourceCode = TSESLint.SourceCode;
 
 export type Range = { readonly start: number; readonly end: number };
+
+const STATEMENT_LISTS = new Set<string>([
+  AST_NODE_TYPES.Program,
+  AST_NODE_TYPES.BlockStatement,
+  AST_NODE_TYPES.StaticBlock,
+  AST_NODE_TYPES.SwitchCase,
+]);
+
+export function isInStatementList(node: TSESTree.Node): boolean {
+  return node.parent !== undefined && STATEMENT_LISTS.has(node.parent.type);
+}
 
 function lineStart(text: string, offset: number): number {
   return text.lastIndexOf('\n', offset - 1) + 1;

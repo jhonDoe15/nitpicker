@@ -44,6 +44,11 @@ export const EFFECT_CASES: readonly GuardedCase[] = [
   { rule: AWAIT, input: 'export async function one(): Promise<number> {\n  return 1;\n}\n' },
   {
     rule: AWAIT,
+    input:
+      'const one: () => Promise<number> = async () => 1;\n\nexport async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n',
+  },
+  {
+    rule: AWAIT,
     input: `${HELPER}export async function both(): Promise<number> {\n  const pending = one();\n  return (await pending) + 1;\n}\n`,
   },
   {

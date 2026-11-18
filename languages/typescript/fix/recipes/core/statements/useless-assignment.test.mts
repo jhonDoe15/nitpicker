@@ -34,6 +34,10 @@ describe('uselessAssignmentRecipe', () => {
       '  let value = read();\n  let other = (value = 2);\n  value = 3;\n  return value + other;',
       'not a plain assignment',
     ],
+    [
+      '  let value = read();\n  if (value > 0) value = 1;\n  value = 2;\n  return value;',
+      'the only statement of a branch',
+    ],
   ])('leaves %j with a note', (statements, reason) => {
     const fixed = applied(uselessAssignmentRecipe, body(statements));
 

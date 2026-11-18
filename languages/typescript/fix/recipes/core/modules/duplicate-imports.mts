@@ -72,7 +72,8 @@ function merged({ text, sourceCode, node }: CoreRequest): CorePlan {
   const [laterStart, laterEnd] = later.range;
   if (
     hasComment(sourceCode, { start: firstStart, end: firstEnd }) ||
-    hasComment(sourceCode, { start: laterStart, end: laterEnd })
+    hasComment(sourceCode, { start: laterStart, end: laterEnd }) ||
+    sourceCode.getCommentsBefore(later).length > 0
   ) {
     return { declined: 'a comment sits inside an import' };
   }

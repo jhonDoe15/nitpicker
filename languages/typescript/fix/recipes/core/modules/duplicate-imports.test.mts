@@ -45,6 +45,7 @@ describe('duplicateImportsRecipe', () => {
       'different attributes',
     ],
     ["import { a } from './x';\nimport { /* why */ b } from './x';\n", 'a comment'],
+    ["import { a } from './x';\n// @ts-expect-error\nimport { b } from './x';\n", 'a comment'],
   ])('leaves %j with a note', (text, reason) => {
     const fixed = applied(duplicateImportsRecipe, text);
 
