@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "nan-only-guard",
+    "mention": "isfinite"
+  }
+]

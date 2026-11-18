@@ -61,6 +61,7 @@ import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-l
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
+import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
-import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -164,6 +164,7 @@ export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
+  'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
   'no-operand-slip': ruleNoOperandSlip,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
-  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
 };

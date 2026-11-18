@@ -1755,3 +1755,14 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   non-2xx status themselves (axios, ky, got). Allowed forms: `if (!res.ok) throw new Error(...)` first, or read `res.text()`
   and parse it in `try`. The same form runs as `UncheckedResponseBody` (Java and Kotlin), `unchecked-response-json`
   (Python) and `go-rules/unchecked-response-json` (Go).
+- `nitpicker/no-nan-only-check`: `isNaN(x)` or `Number.isNaN(x)` used as a guard (the test of an `if`, `?:` or loop, a
+  `!`, `&&` or `||` operand, a returned or assigned boolean) on a number that is the result of `Number(...)`,
+  `parseFloat(...)`, a unary `+`, a division by something other than a non-zero literal, or a `*` or `**` of two
+  non-literals (a local with one assignment, or the expression itself), when the enclosing function never mentions
+  `isFinite`, `Number.isFinite` or `Infinity` and never compares the value with `<`, `>`, `<=` or `>=`. `Infinity` and
+  `-Infinity` pass an `isNaN` check (`Number('1e309')`, `x / 0`), so the value goes on as a limit or an amount, or is
+  written as `null` by `JSON.stringify`. `parseInt` and `Number.parseInt` results are not reported, since they are never
+  infinite, nor is a function that also calls `parseInt`, `Math.min`, `Math.max`, `Number.isInteger` or
+  `Number.isSafeInteger` (the value is clamped or truncated), a `+(value as Date)` conversion, or a probe on the
+  parameter of a `.filter` callback. Allowed form: `Number.isFinite(x)`. The same form runs as `NanOnlyGuard` (Java and Kotlin), `nan-only-guard`
+  (Python) and `go-rules/nan-only-guard` (Go).

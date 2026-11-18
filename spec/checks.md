@@ -285,6 +285,13 @@ JavaScript presets reports `res.json()` on a `fetch` response that nothing has r
 a JDK `HttpClient` or OkHttp body passed to a JSON parser before the status is read; `go-rules/unchecked-response-json` reports
 `json.NewDecoder(resp.Body).Decode` before `resp.StatusCode` is read. A read inside `try` with a handler is allowed.
 
+NaN-only checks: `nitpicker/no-nan-only-check` (production source, in `eslint-lint`) in the TypeScript and JavaScript
+presets reports `isNaN(x)` or `Number.isNaN(x)` as a guard on a number from `Number(...)`, `parseFloat`, a unary `+`, a
+division or a product of non-literals when the function never mentions `isFinite` or `Infinity` and never compares the
+value with `<` or `>`. `nan-only-guard` (script) reports `math.isnan(x)` on a `float(text)` result in Python,
+`pmd/NanOnlyGuard` `Double.isNaN` on a parsed double in Java and Kotlin, and `go-rules/nan-only-guard` `math.IsNaN` on a
+`strconv.ParseFloat` result or a float division or product in Go, under the same conditions.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

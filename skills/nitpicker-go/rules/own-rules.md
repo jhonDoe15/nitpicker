@@ -82,6 +82,8 @@ the allowed form and ends with its exception entry.
 - A glob or pattern turned into a regexp or a `LIKE` pattern with `strings.ReplaceAll` steps is quoted for the
   target first (`go-rules/pattern-translation`): `strings.ReplaceAll(regexp.QuoteMeta(glob), `\*`, ".*")`,
   never the raw value.
+- A parsed or computed float is checked for infinity as well as NaN (`go-rules/nan-only-guard`): `math.IsNaN(x)`
+  alone lets `+Inf` and `-Inf` through; add `math.IsInf(x, 0)` or a range check.
 - A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
   `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a

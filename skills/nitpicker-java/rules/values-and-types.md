@@ -112,3 +112,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
 - A JDK `HttpClient` or OkHttp response is checked (`statusCode()`, `isSuccessful()`) before its body is handed to a JSON
   parser (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.
+- A parsed double is checked with `Double.isFinite(x)`, not only `Double.isNaN(x)`: `"Infinity"` and `"1e999"` parse to
+  an infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).

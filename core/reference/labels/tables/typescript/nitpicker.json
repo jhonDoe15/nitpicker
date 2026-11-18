@@ -64,6 +64,7 @@
   "eslint/nitpicker/no-module-level-mutable-state": ["maintainability"],
   "eslint/nitpicker/no-multiple-collection-joins": ["performance", "persistence"],
   "eslint/nitpicker/no-mutating-method-in-domain": ["maintainability"],
+  "eslint/nitpicker/no-nan-only-check": ["bug"],
   "eslint/nitpicker/no-node-process-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-null": ["style"],
   "eslint/nitpicker/no-operand-slip": ["bug"],

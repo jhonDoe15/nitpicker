@@ -110,6 +110,10 @@ export function outermostOf(node: TSESTree.Node, kinds: readonly AST_NODE_TYPES[
   return outer.at(-1) ?? node;
 }
 
+export function isLiteral(node: TSESTree.Node): boolean {
+  return node.type === AST_NODE_TYPES.Literal;
+}
+
 export function unwrapped(node: TSESTree.Node): TSESTree.Node {
   return unwrapOf(node, NULLISH_WRAPPERS);
 }
