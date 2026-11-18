@@ -74,3 +74,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   position.
 - A duration or a timeout is measured with a monotonic clock, not two wall-clock reads (`wall-clock-elapsed`):
   read `time.monotonic()` for both ends of a duration or a timeout; keep `time.time()` for stored timestamps.
+- Split `key:value` text once (`text.partition(":")` or `text.split(":", 1)`), not with `text.split(":")[1]`,
+  which drops what follows the second separator (`pair-split-drops-rest`).

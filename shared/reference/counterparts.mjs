@@ -14,6 +14,17 @@ const PAGES = {
   go: { label: 'Go', path: 'docs/go-preset.md', anchor: 'own-rules' },
 };
 const GROUPS = [
+  { java: 'PairSplitDropsRest', typescript: 'nitpicker/no-truncating-pair-split' },
+  { java: 'SurrogateSplittingCut', typescript: 'nitpicker/no-surrogate-splitting-cut' },
+  { java: 'NewlineOnlyLineSplit', typescript: 'nitpicker/no-newline-only-line-split' },
+  { java: 'HostPortColonSplit', typescript: 'nitpicker/no-host-port-colon-split' },
+  { java: 'DelimitedLookupKey', typescript: 'nitpicker/no-ambiguous-lookup-key' },
+  {
+    java: 'PairSplitDropsRest',
+    typescript: 'nitpicker/no-truncating-pair-split',
+    python: 'pair-split-drops-rest',
+    go: 'go-rules/pair-split-drops-rest',
+  },
   {
     java: 'SpringDataFilterInQuery',
     typescript: 'nitpicker/no-in-memory-query',

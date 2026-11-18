@@ -54,6 +54,7 @@ are listed at the end.
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Key and value splits                            | `line.partition(':')` or `line.split(':', 1)`, so the rest of the value is kept                                                                                                        | `pair-split-drops-rest` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -1432,6 +1433,54 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `charset` or `boundary`. Allowed form: `email.message.Message`, `werkzeug.http`
   (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
   `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
+- `pair-split-drops-rest` reports `text.split(":")[1]` and `text.split("=")[1]` (no limit), the first two parts of the
+  split unpacked (`key, value = text.split(":")[:2]`), and a local assigned from such a split and then
+  read as `parts[1]` with no `len(parts)` comparison against 2 and no slice from the second part on: the
+  second part is cut at the next separator, so a URL, a message with several colons or base64 padding loses its
+  tail. Allowed form: `text.partition(":")`, `text.split(":", 1)`, `key, value = text.split(":")` (it raises
+  on a third part) or a length check. Not reported: other separators, constant receivers, clock names
+  (`time`, `clock`, `duration`, `hhmm`, `ratio`, `aspect`) and test files.
+- `delimited-lookup-key` reports a key of a dict or set (a name or attribute assigned `{}`, `dict()`, `defaultdict(...)`,
+  `set()` or similar in the module, or a parameter or annotation typed `dict`, `set`, `Mapping` and the like) built by
+  joining two `str`-annotated names (parameters or annotated locals) with punctuation, as an f-string, `a + ":" + b` or
+  `":".join([a, b])`, directly or through one local assigned once, and used in `d[key]`, `d.get`, `d.setdefault`,
+  `d.pop`, `add`, `discard`, `remove` or `key in d`: `"a-b"` with `"c"` and `"a"` with `"b-c"` give the same key. Allowed form:
+  a tuple key, a `NamedTuple` or a frozen dataclass. Not reported: parts that are not annotated `str`, id-like names (ending
+  in `id`, `uuid`, `hash`, `index`, `count`), one string part with a constant, `.format` and `%` keys, environment and
+  config mappings (not recognised as dicts) and test files.
+- `host-port-colon-split` reports `split(":")`, `partition(":")`, `index(":")` and `find(":")` on a value named `host`,
+  `hostname`, `authority`, `origin`, `netloc` or `*_host` (a name or an attribute), or on a read of the `Host` or
+  `X-Forwarded-Host` header (`headers.get("Host")`, `headers["x-forwarded-host"]`): an IPv6 literal (`[::1]:3000`) has
+  colons of its own, so the host becomes `[` and the port is lost. Allowed form: `urllib.parse.urlsplit("//" + host)`
+  with `.hostname` and `.port`, or `ipaddress.ip_address`. Not reported: `rsplit`, other names (`address` and `addr`
+  are left out, since MAC and IPv6 addresses are split on colons on purpose), a function that mentions `[` or `]` in a
+- `prefix-without-boundary` reports `x.startswith(base)` where the argument is named like a directory
+  (`dir`, `root`, `base`, `home`, `tmpdir`; not `path`, which is often plain text) or is built from a
+  path-shaped text and does not end in a separator, a bare origin literal (`"http://localhost"`),
+  `host.endswith(domain)` where the argument is a host name with no leading dot, and `"node_modules" in path`.
+  Not reported: an equality test of the same two values in the condition, a character check after the prefix
+  (`x[len(base)] == "/"`), an argument that ends in a separator, and `domain.startswith(".")` in the function.
+  Allowed form: `x == base or x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`.
+- `unanchored-affix-replace` reports `x.replace(".git", "")` (a file suffix literal removed) and
+  `x.replace(root_dir, "~")` where the pattern is a directory-named value, `os.getcwd()`, `Path.home()` or a
+  part of a parsed URL. Not reported: a replace in the same condition as `startswith` or `endswith` of the
+  pattern. Allowed form: `removesuffix`, `removeprefix`, or `urlsplit(...)._replace(...)`.
+- `case-mismatched-lookup` reports `x.lower() in values`, `values.get(x.upper())` and `values[x.lower()]`
+  where `values` is a literal collection with a member of another case, or a copy of a parameter, and a
+  collection filled with `x.lower()` that is read with `x`. Allowed form: normalize both sides where the
+  collection is built.
+- `precondition-message-names-other-value` reports `if x is None: raise ValueError("name must ...")` and
+  `assert x is not None, "name must ..."` where the message starts with the name of another parameter or local
+  of the function, camel and snake case alike (`TimeUnit` for `time_unit`). Not reported: a message that also
+- `malformed-query-text` joins the literal parts of query text (`+`, `+=`, f-strings with the values opaque)
+  and reports a comparison operator or `LIKE`/`IN`/`BETWEEN` with no operand, an `INSERT` whose literal column
+  and value lists differ in length, and two parts that join into one word. Parts given as implicit adjacent
+  literals are one string to the parser, so only the first two forms are seen there.
+- `unpaged-listing` reports `client.list_objects_v2(Bucket=...)`, `list_objects` and `list_object_versions` with
+  a `Bucket` argument, and `r.ft(index).search(query)`, read once in a function that never follows a marker
+  (`ContinuationToken`, `NextContinuationToken`, `IsTruncated`, `Marker`, `get_paginator`, `paginate`, `paging`)
+  and passes no `MaxKeys`. Allowed form: `get_paginator("list_objects_v2")`, a loop on the token, or
+  `Query(...).paging(offset, count)`.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

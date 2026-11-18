@@ -71,6 +71,7 @@
   "python-rules/number-truthiness": ["bug"],
   "python-rules/orm-query-logging": ["security", "persistence"],
   "python-rules/orm-schema-sync": ["reliability", "persistence"],
+  "python-rules/pair-split-drops-rest": ["bug"],
   "python-rules/parameter-mutation": ["maintainability"],
   "python-rules/patch-misses-lookup": ["tests"],
   "python-rules/pattern-translation": ["bug", "security"],

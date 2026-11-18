@@ -27,6 +27,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/responsejson"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/schema"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/secrets"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/textsplits"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/translation"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/wallclock"
 	"golang.org/x/tools/go/analysis"
@@ -47,6 +48,7 @@ func Analyzers() []*analysis.Analyzer {
 		honesty.Analyzers(),
 		lifecycles.Analyzers(),
 		httpvalues.Analyzers(),
+		textsplits.Analyzers(),
 		[]*analysis.Analyzer{
 			copies.Analyzer,
 			optional.Analyzer,

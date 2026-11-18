@@ -152,6 +152,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/counts/no-negative-count.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/flow/guard-forms.mjs',
   'languages/typescript/preset/eslint-plugin/rules/numbers/no-nan-only-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/pair-splits/no-truncating-pair-split.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/text-splits/split-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/assertions/test-must-use-production-runtime.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/test-code-analysis.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/processes/no-git-repository-per-test.mjs',

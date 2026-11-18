@@ -1463,6 +1463,58 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
   `[force=false]` (a default given), `@property` tags and dotted option names
   (`@param {boolean} [options.verbose]`) are not reported.
+- `nitpicker/no-truncating-pair-split`: `const [key, value] = text.split(':')` (two names, no rest element,
+  also an assignment or a default) and `text.split('=')[1]`, on a separator of `:` or `=`. The split keeps every
+  part, so a value that contains the separator (a URL, a message with colons, a base64 `=`) loses everything after
+  its second one; `split(sep, 2)` drops the rest the same way in JavaScript. Allowed forms: cut at the first
+  separator with `indexOf` and `slice`, `[key, ...rest]` with `rest.join(sep)`, or a regular expression with a
+  group for the rest. A constant receiver, a receiver named like a clock text (`time`, `clock`, `duration`,
+  `hhmm`, `ratio`, `aspect`), destructured names such as `hours` and `minutes`, a part that is only compared to a
+  string literal (`row.split('=')[1] === 'true'`) and a receiver that a `startsWith` check on the same text
+  in the same function already tied to the key (`arg.startsWith('--scope=')`) are not reported, and a split on
+  another separator is not. The same form runs as `pmd/PairSplitDropsRest` (Java),
+  `kotlin-source/PairSplitDropsRest` (Kotlin), `pair-split-drops-rest` (Python, with `partition` and `split(sep,
+  1)` as the allowed forms) and `go-rules/pair-split-drops-rest` (Go, with `strings.Cut`), which skip the same
+  clock-like names.
+- `nitpicker/no-ambiguous-lookup-key` (type-aware): a key of `Map` or `WeakMap` `set`, `get`, `has` and
+  `delete`, of `Set` `add`, `has` and `delete`, or a computed key written into a `Record<string, ...>`
+  (`groups[key] ??= []`), built from runtime values with a delimiter: a template with two or more
+  interpolations separated by punctuation, `[a, b].join('-')` or `a + ':' + b`, directly or through a `const`.
+  Reported when two parts have type `string` (not a literal, enum or literal union, and not named like an id,
+  `hash`, `index` or `count`) or a part is an object, which becomes `[object Object]`. Different tuples then
+  share one key (`'a-b'` with `'c'` and `'a'` with `'b-c'`), so one entry overwrites another. Allowed forms:
+  `JSON.stringify([a, b])`, a nested `Map`, an encoder that escapes the delimiter, or parts that are numbers.
+- `nitpicker/no-host-port-colon-split`: `host.split(':')` (with or without a limit) or
+  `host.slice(0, host.indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host` (also
+  as a property), or on a read of the `host`, `x-forwarded-host` or `:authority` header (`req.get('host')`,
+  `headers.get('host')`, `req.headers.host`, `req.headers['x-forwarded-host']`). An IPv6 literal (`[::1]:3000`)
+  has colons of its own, so the host becomes `[` and the port is lost or wrong. Allowed: ``new URL(`http://${host}`)``
+  with `hostname` and `port`, or cutting after the closing bracket. A function (or module) that mentions `isIPv6`
+  or a `'['` or `']'` literal is skipped, `lastIndexOf(':')` is not reported, and `address` and `addr` are not
+  host names here, since a MAC or IPv6 address is split on `:` legitimately. The same form runs as
+- `nitpicker/no-newline-only-line-split`: `split('\n')`, `split(/\n/)`, `indexOf('\n')` or `lastIndexOf('\n')` on text
+  read from a file (`readFile`, `readFileSync`, `readTextFile`, `Bun.file(..).text()`, awaited, `toString()` or
+  trimmed, directly or through a `const`) or on a comment's `.value`. With CRLF line endings every line keeps a
+  trailing `\r`, and text that uses a lone `\r` is not split at all. Allowed: `split(/\r\n|\r|\n/)`, `split(/\r?\n/)`,
+  `os.EOL`, or normalising the line endings once where the file is read; a function that mentions `\r` or `EOL` is
+  skipped, and text the program built itself is not reported. The write side (joining with `'\n'` and writing back)
+  is not checked. The same form runs as `pmd/NewlineOnlyLineSplit` (Java) and `kotlin-source/NewlineOnlyLineSplit`
+  (Kotlin).
+- `nitpicker/no-surrogate-splitting-cut`: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a string
+  (checked with the type checker; without types only a cut joined to a `...` or `…` literal) guarded by
+  `text.length > n` (also `>=`, a flipped comparison, `&&`, a conditional, or an earlier `if (text.length <= n) return`)
+  with the bound in the cut (`max - 3` counts). It counts UTF-16 code units, so a cut between the halves of a
+  surrogate pair (an emoji, many CJK characters) leaves a lone surrogate that renders as a replacement character
+  and fails strict UTF-8 encoding. Allowed: `Array.from(text).slice(0, n).join('')`, `Intl.Segmenter`, or stepping
+  back over a high surrogate; arrays, a cut of 0 or 1 characters, names like `hash`, `hex`, `uuid`, `token`, `id`,
+  and functions that use `charCodeAt`, `codePointAt`, `Segmenter` or `Array.from` are not reported. The same form
+  runs as `pmd/SurrogateSplittingCut` (Java) and `kotlin-source/SurrogateSplittingCut` (Kotlin). Python strings are
+  code points and the Go form (`s[:n]`) is not covered.
+- `nitpicker/no-unhandled-url-parse`: `decodeURIComponent(text)` and `decodeURI(text)` (also through `globalThis`) on
+  text that is not constant or built by `encodeURIComponent` throw `URIError: URI malformed` on a stray `%`, so a
+  `try` with a `catch` around the call in the same function is required (`.map(decodeURIComponent)` as a bare
+  reference is not reported; the Java and Kotlin presets report `URLDecoder.decode` the same way under
+  `UriCreateDynamic`). Also: `new URL(text)` or `new URL(text, base)` (also
   `new globalThis.URL`) where `text` or `base` is neither a constant string (a literal, a template
   or `+` of constants, or a `const` holding one) nor a `URL` value (a `new URL(...)` constant, a
   name annotated `URL`, an already parsed `.href`, `.url` or `.origin`) throws a

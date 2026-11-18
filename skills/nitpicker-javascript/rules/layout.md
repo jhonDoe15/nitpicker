@@ -16,6 +16,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
   Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
+  not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
+  separator (`nitpicker/no-truncating-pair-split`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,

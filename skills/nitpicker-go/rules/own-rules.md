@@ -175,3 +175,6 @@ the allowed form and ends with its exception entry.
   `http.ParseCookie` instead of `strings.Split(value, ",")`. `Header.Get` canonicalises the name; index
   `Header` only with a canonical key (`http.CanonicalHeaderKey`). A library that is itself the parser
   takes an exception. `url.Parse` already lowercases the scheme, so `u.Scheme == "https"` is fine.
+- Split `key:value` text once (`strings.Cut(text, ":")` or `strings.SplitN(text, ":", 2)`), not with
+  `strings.Split(text, ":")[1]`, which drops what follows the second separator
+  (`go-rules/pair-split-drops-rest`). Check `len(parts) != 2` when the shape is exact.

@@ -42,6 +42,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `fs`, `child_process`, `crypto` and `zlib`: they block the event loop for every other request
   (`nitpicker/no-sync-node-api-in-async`, entry points included). Module top level, a worker thread
   and a CLI `main` that is only called from startup code stay synchronous.
+- Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
+  not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
+  separator (`nitpicker/no-truncating-pair-split`).
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
