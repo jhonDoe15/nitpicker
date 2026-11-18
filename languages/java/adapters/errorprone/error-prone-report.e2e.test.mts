@@ -14,8 +14,10 @@ const REPORT_SOURCE = fileURLToPath(new URL('ErrorProneReport.java', RUNNER_DIRE
 const CHECKS_FILE = fileURLToPath(new URL('checks.json', RUNNER_DIRECTORY));
 const JAVA_TIMEOUT_MS = 120_000;
 const IMMUTABLE_CLASS = 'com/google/errorprone/annotations/Immutable.class';
-const PROBE = `import java.nio.file.*;
-import java.util.List;
+const PROBE = `import com.sun.source.util.JavacTask;
+import java.nio.file.*;
+import java.util.*;
+import javax.tools.*;
 
 public final class Probe {
   public static void main(String[] args) throws Exception {
@@ -24,8 +26,23 @@ public final class Probe {
       case "flags" -> System.out.print(ErrorProneReport.pluginArgument(Files.readString(Path.of(rest.get(0))),
           List.of(), true, false, List.of(), Boolean.parseBoolean(rest.get(1))));
       case "slices" -> ErrorProneReport.slices(rest).forEach(slice -> System.out.println(slice.size()));
+      case "options" -> System.out.print(ErrorProneReport.javacOptions(rest));
+      case "modular" -> System.out.print(ErrorProneReport.javacOptions(rest, List.of("src/module-info.java")));
+      case "record" -> record(rest);
       default -> System.out.print(
           ErrorProneReport.immutableInReach(List.of("-classpath", rest.get(0)), rest.subList(1, rest.size())));
+    }
+  }
+
+  static void record(List<String> rest) throws Exception {
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    try (StandardJavaFileManager files = compiler.getStandardFileManager(null, null, null)) {
+      List<String> options = List.of("-classpath", rest.get(0), "-d", rest.get(1));
+      JavacTask task = (JavacTask) compiler.getTask(
+          null, files, null, options, null, files.getJavaFileObjectsFromStrings(rest.subList(2, rest.size())));
+      Map<String, List<ErrorProneReport.ClassSpan>> classes = new TreeMap<>();
+      ErrorProneReport.recordClasses(task, classes);
+      System.out.print(task.call() + " " + classes.keySet());
     }
   }
 }
@@ -130,6 +147,33 @@ describe.runIf(enabled)(
       expect(
         probe(['slices', descriptor, ...files], ['-Dnitpicker.errorprone.workers=4']).trim(),
       ).toBe('101');
+    });
+
+    it('records only project sources when javac compiles a source from a dependency jar', () => {
+      const library = mkdtempSync(path.join(work, 'library-'));
+      writeFileSync(
+        path.join(library, 'Lib.java'),
+        'public class Lib { public static int one() { return 1; } }',
+      );
+      const jar = path.join(work, 'lib-sources.jar');
+      const packed = spawnSync('jar', ['cf', jar, '-C', library, 'Lib.java'], {
+        encoding: 'utf8',
+        timeout: JAVA_TIMEOUT_MS,
+      });
+      const [use = ''] = sources(1, 'class A0 { int value = Lib.one(); }');
+
+      expect(packed.status, packed.stderr).toBe(0);
+      expect(probe(['record', jar, mkdtempSync(path.join(work, 'out-')), use])).toBe(
+        `true [${use}]`,
+      );
+    });
+
+    it('keeps javac from compiling sources found on the class path', () => {
+      expect(probe(['options', '-classpath', work])).toBe(`[-classpath, ${work}, -sourcepath, ]`);
+    });
+
+    it('leaves the source path alone for a module, whose sources must stay on it', () => {
+      expect(probe(['modular', '-classpath', work])).toBe(`[-classpath, ${work}]`);
     });
 
     it('stops at the deadline with an empty report and the reason Error Prone was skipped', () => {
