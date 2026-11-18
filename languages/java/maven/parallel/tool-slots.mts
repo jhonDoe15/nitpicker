@@ -1,15 +1,9 @@
-import { availableParallelism, totalmem } from 'node:os';
+import { availableParallelism } from 'node:os';
+import { machineMemory } from '../../../../shared/processes/machine-capacity.mts';
 
 const GIB = 1024 ** 3;
 const MEMORY_PER_SLOT = 1.5 * GIB;
 const TOOL_MEMORY_PERCENT = 75;
-
-export function machineMemory(
-  constrained: number = process.constrainedMemory(),
-  total: number = totalmem(),
-): number {
-  return constrained > 0 && constrained < total ? constrained : total;
-}
 
 export function toolSlots(cpus = availableParallelism(), memory = machineMemory()): number {
   const byMemory = Math.floor((memory * TOOL_MEMORY_PERCENT) / 100 / MEMORY_PER_SLOT);
