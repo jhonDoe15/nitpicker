@@ -89,14 +89,17 @@ tester.run('no-wasted-collection-step', rule, {
     {
       code: 'const keys = [...Object.keys(record)];',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'const keys = Object.keys(record);',
     },
     {
       code: 'const pair = [...[first, second]];',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'const pair = [first, second];',
     },
     {
       code: 'async function f() { return [...(await Promise.all(tasks))]; }',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'async function f() { return await Promise.all(tasks); }',
     },
     {
       code: 'const unique = new Set([...items]);',

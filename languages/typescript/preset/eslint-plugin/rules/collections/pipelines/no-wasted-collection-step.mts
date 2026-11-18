@@ -49,7 +49,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         }
       },
       ArrayExpression(array) {
-        report(uselessSpread(array));
+        report(uselessSpread(context, array));
       },
       'ObjectExpression > SpreadElement'(spread) {
         report(fallbackSpread(context, spread));
