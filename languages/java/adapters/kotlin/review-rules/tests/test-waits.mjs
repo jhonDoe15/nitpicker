@@ -77,7 +77,6 @@ const TEST_ANNOTATIONS = new Set([
   'TestTemplate',
 ]);
 const SLEEP_ARGUMENTS = 2;
-
 function fixed(kind, exemptable = false) {
   return { rule: FIXED_SLEEP_RULE, kind, exemptable };
 }
@@ -154,7 +153,8 @@ const CLASSIFIERS = {
 };
 
 function classify(wait, file, declared) {
-  return CLASSIFIERS[wait.name]?.(wait, contextOf(file, wait, declared));
+  const classifier = Object.hasOwn(CLASSIFIERS, wait.name) ? CLASSIFIERS[wait.name] : undefined;
+  return classifier?.(wait, contextOf(file, wait, declared));
 }
 
 function isPolling(loop) {

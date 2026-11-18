@@ -57,7 +57,7 @@ function assertionCall(call) {
     assertNotEquals: () =>
       args.some((argument) => ZERO.test(squeezed(argument))) && args.some(isSizeExpression),
   };
-  return sized[name]?.() === true;
+  return Object.hasOwn(sized, name) && sized[name]();
 }
 
 function assertJ(scanned, call) {

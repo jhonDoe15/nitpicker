@@ -19,6 +19,7 @@ import {
   failureDetail,
 } from '../../../../shared/processes/process-failure.mjs';
 import { nativeConfigFlags } from './compatibility/native-config.mts';
+import { type RuleCrash, nextRuleCrash, skippedFileArguments } from './crashes/rule-crashes.mts';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;
@@ -32,6 +33,12 @@ type EslintInvocation = {
   readonly projectConfigPath: string | undefined;
   readonly eslintCliPath: string;
   readonly environment: Readonly<Record<string, string | undefined>>;
+  readonly crashes: RuleCrash[];
+};
+
+export type LintEngineResult = {
+  readonly results: unknown;
+  readonly crashes: readonly RuleCrash[];
 };
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -41,21 +48,24 @@ export async function runLintEngine({
   projectConfigPath,
   policyConfigPath,
   testEnvironments,
-}: LintEngineRun): Promise<unknown> {
+}: LintEngineRun): Promise<LintEngineResult> {
   const invocation = eslintInvocation({
     options,
     projectConfigPath,
     policyConfigPath,
     testEnvironments,
   });
-  if (lintEngine(options) === 'eslint') return runEslintCli(invocation, options.patterns);
-  return lintWithOxlint({
-    options,
-    environment: invocation.environment,
-    projectConfigPath,
-    runEslintCli: (patterns, extraEnvironment) =>
-      runEslintCli(invocation, patterns, extraEnvironment),
-  });
+  const results =
+    lintEngine(options) === 'eslint'
+      ? await runEslintCli(invocation, options.patterns)
+      : await lintWithOxlint({
+          options,
+          environment: invocation.environment,
+          projectConfigPath,
+          runEslintCli: (patterns, extraEnvironment) =>
+            runEslintCli(invocation, patterns, extraEnvironment),
+        });
+  return { results, crashes: invocation.crashes };
 }
 
 function lintEngine(options: LintEngineOptions): string {
@@ -74,6 +84,7 @@ function eslintInvocation({
     options,
     projectConfigPath,
     eslintCliPath: options.eslintCliPath ?? toolBinaryPath('eslint', { bin: 'bin/eslint.js' }),
+    crashes: [],
     environment: {
       ...process.env,
       ...options.environment,
@@ -98,6 +109,7 @@ async function runEslintCli(
   invocation: EslintInvocation,
   patterns: readonly string[],
   extraEnvironment: Readonly<Record<string, string>> = {},
+  skipped: readonly RuleCrash[] = [],
 ): Promise<unknown> {
   const { options } = invocation;
   const config = fileURLToPath(
@@ -114,6 +126,7 @@ async function runEslintCli(
       'json',
       '--no-color',
       '--no-error-on-unmatched-pattern',
+      ...skippedFileArguments(skipped),
       ...patterns,
     ],
     {
@@ -123,7 +136,12 @@ async function runEslintCli(
       timeoutMs: options.timeoutMs,
     },
   );
+  const crash = nextRuleCrash(result, options.projectRoot, skipped);
+  if (crash !== undefined) {
+    return runEslintCli(invocation, patterns, extraEnvironment, [...skipped, crash]);
+  }
   assertEslintCompleted(result, options);
+  invocation.crashes.push(...skipped);
   try {
     return parseJson(result.stdout);
   } catch (error) {

@@ -154,16 +154,19 @@ type PropertyCheck = (
   value: TSESTree.Node,
 ) => boolean;
 
-const PROPERTY_CHECKS: Readonly<Record<string, PropertyCheck>> = {
-  logging: (scope, object, value) => isOrmOptions(scope, object) && loggingOn(scope.context, value),
-  logQueryParameters: (scope, object, value) =>
-    isOrmOptions(scope, object) && isSwitchedOn(scope.context, value),
-  debug: (scope, object, value) => isOrmOptions(scope, object) && debugOn(scope.context, value),
-  log: (scope, object, value) =>
-    isPrismaOptions(scope.context, object) && prismaLogsQueries(scope.context, value),
-  logger: (scope, object, value) =>
-    isDrizzleOptions(scope, object) && drizzleLogs(scope.context, value),
-};
+const PROPERTY_CHECKS: ReadonlyMap<string, PropertyCheck> = new Map(
+  Object.entries({
+    logging: (scope, object, value) =>
+      isOrmOptions(scope, object) && loggingOn(scope.context, value),
+    logQueryParameters: (scope, object, value) =>
+      isOrmOptions(scope, object) && isSwitchedOn(scope.context, value),
+    debug: (scope, object, value) => isOrmOptions(scope, object) && debugOn(scope.context, value),
+    log: (scope, object, value) =>
+      isPrismaOptions(scope.context, object) && prismaLogsQueries(scope.context, value),
+    logger: (scope, object, value) =>
+      isDrizzleOptions(scope, object) && drizzleLogs(scope.context, value),
+  } satisfies Record<string, PropertyCheck>),
+);
 
 function optionsArgument(
   context: Context,
@@ -231,7 +234,7 @@ export const rule: TSESLint.RuleModule<'queryLogging'> = {
         if (key === undefined || parent.type !== AST_NODE_TYPES.ObjectExpression) {
           return;
         }
-        if (PROPERTY_CHECKS[key]?.(scope, parent, node.value) === true) {
+        if (PROPERTY_CHECKS.get(key)?.(scope, parent, node.value) === true) {
           report(context, node, key);
         }
       },
