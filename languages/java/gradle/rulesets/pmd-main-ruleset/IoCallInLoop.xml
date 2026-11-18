@@ -13,7 +13,7 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
     $bodies := (
       //ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
       | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'reduce', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong', 'collect')]
-          [not(*[1][pmd-java:typeIs('java.util.Optional')])]]),
+          [not(*[1][pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('reactor.core.publisher.Mono')])]]),
     $attempts := $loops/Block/TryStatement
       [Block[1]//(ReturnStatement | BreakStatement)]
       [CatchClause[not(Block/(ThrowStatement | ReturnStatement | BreakStatement))]]
@@ -129,7 +129,8 @@ return ($rows | $rows/*[1]/descendant-or-self::MethodCall | $rows ! $queryCalls(
 return
 (
   $calls[
-    self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', 'detach', $batches))]
+    self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', 'detach',
+           'header', 'headers', 'addHeader', 'addRequestProperty', 'setRequestProperty', $batches))]
          [not(ends-with(@MethodName, 'Async'))]
          [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
@@ -146,7 +147,8 @@ return
          [*[1][matches(@Name, '^(repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$')]]
   ]
   |
-  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')][not(*[1][pmd-java:typeIs('java.util.Optional')])]
+  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')]
+    [not(*[1][pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('reactor.core.publisher.Mono')])]
     /ArgumentList/MethodReference
     [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
     [not(@MethodName = ('hashCode', 'toString', 'equals'))]
