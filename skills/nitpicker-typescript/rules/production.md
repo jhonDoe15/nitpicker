@@ -18,6 +18,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A method that runs once per event or item does not add to the owner's disposable store
   (`this._register(...)`, `this._store.add(...)`) or to `process.on(...)`: register once in the constructor or keep
   a per-call handle that is released when the work ends (`nitpicker/no-per-call-registration`).
+- A `setTimeout` that rejects or aborts a promise keeps its handle and clears it when the promise settles
+  (`.finally(() => clearTimeout(timer))`), and a timer started in an event handler of a component or a disposable
+  class keeps its id and clears it on unmount or dispose (`nitpicker/no-uncleared-timeout`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).

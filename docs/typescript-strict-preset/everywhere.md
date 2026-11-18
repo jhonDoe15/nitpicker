@@ -78,6 +78,17 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   store, a method only called from the constructor or a field initializer, `once` and constructors are left alone. Allowed:
   register once in the constructor or a field initializer, keep the per-call handle in a `MutableDisposable` or a
   cleared store, or keep the handler in a variable and remove it when the work ends.
+- `nitpicker/no-uncleared-timeout`: a `setTimeout` whose handle is dropped must not guard work that can finish
+  first or whose owner can go away. It reports a statement `setTimeout(...)` directly in a `new Promise` executor
+  when the callback rejects (or calls `abort`, `destroy`, `close` or `kill`) and the executor settles the promise
+  by another path, so the timer stays armed after a success; a statement `setTimeout(...)` in an event handler
+  inside a React component or hook (not an effect) whose callback calls a state setter, when the component never
+  calls `clearTimeout`; and a statement `setTimeout(...)` in a per-event method of a class with a close, dispose,
+  `disconnectedCallback`, `ngOnDestroy` or `componentWillUnmount` method, whose callback uses `this`, when the
+  class never calls `clearTimeout`. A kept handle, `.unref()`, a sleep (`setTimeout(resolve, ms)`), timers that only
+  run plain functions and a callback that first tests a mounted or disposed flag (`if (mounted.current)`,
+  `if (!this._disposed)`) are left alone. Allowed: keep the handle and clear it when the work settles
+  (`finally`), on unmount or in dispose, or pass an `AbortSignal` the owner aborts.
 - `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
   a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
   assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,

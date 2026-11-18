@@ -439,6 +439,13 @@ the call, when the method does not guard the registration (`if (!this.f)`), rele
 the process listener or let the registered callback remove its own entry, and is not only called from the constructor. The owner's store
 then grows by one entry per call until the owner is disposed.
 
+Timers nothing clears: `nitpicker/no-uncleared-timeout` (strict preset, production source) reports a `setTimeout`
+statement (handle dropped) that rejects or aborts inside a `new Promise` executor that settles another way, one in a
+React event handler (not an effect) whose callback calls a state setter, and one in a per-event method of a class
+with a dispose-style method whose callback uses `this`, when no `clearTimeout` in the component or class could
+cancel it. Timers that keep their handle, `.unref()`ed timers, sleeps and callbacks that first test a mounted or disposed
+flag are left alone.
+
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
 guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a
