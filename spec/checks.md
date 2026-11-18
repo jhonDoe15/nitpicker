@@ -486,6 +486,12 @@ SQL `LIKE` pattern (replacements `%` and `_`) when no step escapes the target la
 the sources of every module). Escaping first (`escapeRegExp`, `re.escape`, `regexp.QuoteMeta`, `Pattern.quote`), a single
 `replace` and constant text are allowed.
 
+Filter values: `nitpicker/no-unescaped-filter-value` (production source, in `eslint-lint`) reports a value that is not
+constant and not escaped when it is the pattern of a Prisma `contains`, `startsWith`, `endsWith` or case-insensitive
+`equals`, the operand of `LIKE` in a SQL template, or the value of a Knex, Drizzle, TypeORM or Sequelize like filter or a
+`$regex`. Escaping the value first (`escapeSqlLikePattern`, `escapeRegExp`) is allowed. There is no counterpart in the
+other presets yet.
+
 Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
 multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL
 takes at most 65,535 bound parameters. One array parameter (`= any($1::uuid[])`) passes. The same rule runs as
