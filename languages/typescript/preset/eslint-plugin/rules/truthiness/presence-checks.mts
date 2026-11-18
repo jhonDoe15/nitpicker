@@ -5,6 +5,7 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
+import { ts } from '../typed/typescript-views.mts';
 import {
   ancestorsOf,
   depthFirst,
@@ -16,7 +17,13 @@ import {
 import { returnedExpression } from '../collections/costly-forms/repeated-runs.mts';
 import { patternNames } from '../decided/facts.mts';
 import { syntaxChildren } from '../decided/syntax.mts';
-import { isBooleanOnly, isPresenceElement, isPresenceType } from './presence-types.mts';
+import {
+  nodeEvidenceOf,
+  phraseFor,
+  typeEvidenceOf,
+  type Evidence,
+} from './evidence/presence-evidence.mts';
+import { isBooleanOnly } from './presence-types.mts';
 
 type MessageId = 'presence' | 'fallback' | 'filter';
 type Env = {
@@ -153,21 +160,33 @@ function textOf(env: Env, node: TSESTree.Node): string {
   return env.sourceCode.getText(node);
 }
 
-function isPresence(env: Env, node: TSESTree.Node): boolean {
-  return isReference(node) && isPresenceType(env.services.getTypeAtLocation(node), env.checker);
+function evidenceOf(env: Env, node: TSESTree.Node): Evidence | undefined {
+  return isReference(node) ? nodeEvidenceOf(env.services, env.checker, node) : undefined;
 }
 
-function isPresencePredicate(env: Env, predicate: TSESTree.Node, array: TSESTree.Node): boolean {
+function elementEvidence(env: Env, array: TSESTree.Node): Evidence | undefined {
+  const elements = env.checker.getIndexTypeOfType(
+    env.services.getTypeAtLocation(array),
+    ts.IndexKind.Number,
+  );
+  return elements === undefined ? undefined : typeEvidenceOf(elements, env.checker);
+}
+
+function predicateEvidence(
+  env: Env,
+  predicate: TSESTree.Node,
+  array: TSESTree.Node,
+): Evidence | undefined {
   if (predicate.type === AST_NODE_TYPES.Identifier) {
-    const elements = env.services.getTypeAtLocation(array);
-    return predicate.name === 'Boolean' && isPresenceElement(elements, env.checker);
+    return predicate.name === 'Boolean' ? elementEvidence(env, array) : undefined;
   }
   const subject = predicateSubject(predicate);
-  return subject !== undefined && isPresence(env, subject);
+  return subject === undefined ? undefined : evidenceOf(env, subject);
 }
 
-function reportPresence(env: Env, test: TSESTree.Node): void {
-  env.context.report({ node: test, messageId: 'presence', data: { value: textOf(env, test) } });
+function reportPresence(env: Env, test: TSESTree.Node, evidence: Evidence): void {
+  const data = { value: textOf(env, test), evidence: phraseFor(evidence) };
+  env.context.report({ node: test, messageId: 'presence', data });
 }
 
 function isHandledElsewhere(env: Env, test: TSESTree.Node, branch: TSESTree.Node): boolean {
@@ -176,22 +195,24 @@ function isHandledElsewhere(env: Env, test: TSESTree.Node, branch: TSESTree.Node
 }
 
 function checkTest(env: Env, test: TSESTree.Node, branch: TSESTree.Node): void {
-  const used = usesValue(branch, test, env.sourceCode);
-  if (!isHandledElsewhere(env, test, branch) && isPresence(env, test) && used) {
-    reportPresence(env, test);
+  const evidence = isHandledElsewhere(env, test, branch) ? undefined : evidenceOf(env, test);
+  if (evidence !== undefined && usesValue(branch, test, env.sourceCode)) {
+    reportPresence(env, test, evidence);
   }
 }
 
 function checkGuard(env: Env, node: TSESTree.IfStatement): void {
   const operand = negatedOperand(node.test);
-  if (operand === undefined || !exitsAtEnd(node.consequent) || !isPresence(env, operand)) {
+  const evidence =
+    operand !== undefined && exitsAtEnd(node.consequent) ? evidenceOf(env, operand) : undefined;
+  if (operand === undefined || evidence === undefined) {
     return;
   }
   const isUsedAfter = followingStatements(node).some((statement) =>
     usesValue(statement, operand, env.sourceCode),
   );
   if (isUsedAfter) {
-    reportPresence(env, operand);
+    reportPresence(env, operand, evidence);
   }
 }
 
@@ -205,17 +226,23 @@ function isPlainBooleanOr(env: Env, { left, right }: TSESTree.LogicalExpression)
 
 function checkAnd(env: Env, node: TSESTree.LogicalExpression): void {
   const { left, right } = node;
-  if (isPresence(env, left) && usesValue(right, left, env.sourceCode)) {
-    reportPresence(env, left);
+  const evidence = evidenceOf(env, left);
+  if (evidence !== undefined && usesValue(right, left, env.sourceCode)) {
+    reportPresence(env, left, evidence);
   }
 }
 
 function checkFallback(env: Env, node: TSESTree.LogicalExpression): void {
   const { left, right } = node;
   const isDefault = !(isEmptyDefault(right) || isInCondition(node));
-  const isCandidate = isDefault && !isParameter(left, env.sourceCode) && isPresence(env, left);
-  if (isCandidate && !isPlainBooleanOr(env, node)) {
-    const data = { value: textOf(env, left), fallback: textOf(env, right) };
+  const isCandidate = isDefault && !isParameter(left, env.sourceCode);
+  const evidence = isCandidate ? evidenceOf(env, left) : undefined;
+  if (evidence !== undefined && !isPlainBooleanOr(env, node)) {
+    const data = {
+      value: textOf(env, left),
+      fallback: textOf(env, right),
+      evidence: phraseFor(evidence),
+    };
     env.context.report({ node, messageId: 'fallback', data });
   }
 }
@@ -229,8 +256,11 @@ function checkLogical(env: Env, node: TSESTree.LogicalExpression): void {
 }
 
 function checkFilter(env: Env, node: TSESTree.CallExpression): void {
-  if (isFilterCall(node) && isPresencePredicate(env, node.arguments[0], node.callee.object)) {
-    const data = { predicate: textOf(env, node.arguments[0]) };
+  const evidence = isFilterCall(node)
+    ? predicateEvidence(env, node.arguments[0], node.callee.object)
+    : undefined;
+  if (isFilterCall(node) && evidence !== undefined) {
+    const data = { predicate: textOf(env, node.arguments[0]), evidence: phraseFor(evidence) };
     env.context.report({ node, messageId: 'filter', data });
   }
 }

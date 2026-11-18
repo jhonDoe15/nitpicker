@@ -1402,7 +1402,15 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
 - `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
   reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
   annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
-  or `False` reads as missing: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
+  or `False` reads as missing, and only when the project shows that falsy value is valid there (the
+  finding names the evidence): the annotation is a `TypeVar` or a `Literal[...]` that contains `''` or
+  `False`, or the name receives a literal `''`, `0` or `False` elsewhere in the project (a
+  keyword or positional argument passed to that very function (the callee is matched by its simple
+  name; an unresolved callee gives no evidence), a `**{...}` dict entry passed to it, or an
+  assignment to an attribute of another object for a class field of that name), tests included. An initial assignment, a class field or a parameter default is
+  the "not set yet" value and is not evidence. A
+  value with no such evidence, such as a `str | None` read from a request, is not reported. Reported
+  forms: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
   annotated local (a parameter is `falsy-default`'s), `filter(None, items)` and
   `[v for v in items if v]` over a `list`, `Sequence`, `Iterable` or `set` of such a type. The
   allowed form tests `None` only (`x is not None`, `x if x is not None else d`). Not reported: a
