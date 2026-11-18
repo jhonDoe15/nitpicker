@@ -442,7 +442,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   share an id. Reported for a `path.join` or `path.resolve` under `tmpdir()` (`join(tmpdir(), `pwa-${Date.now()}`)`)
   or a template with `tmpdir()` in it; for the first argument of `mkdir`, `writeFile`, `appendFile`,
   `createWriteStream`, `outputFile` and `ensureDir` (their sync forms too); for a property, assignment or variable
-  named `id`, `_id`, `uid`, `key` or `name` (a template, a concatenation, `String(Date.now())` or
+  named `id`, `_id`, `uid`, `key` or `name` (a `key` or `name` made from the date only, such as
+  `toISOString().slice(0, 10)`, is a label and is not reported; a template, a concatenation, `String(Date.now())` or
   `Date.now().toString()`, not the bare number); and for a fallback (`message._id || String(Date.now())`, `id ??
   Date.now()`). Not reported when anything else varies: a `randomUUID()`, `Math.random()`, `process.pid`, a counter, a
   parameter or any other variable in the name. Allowed forms: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))` for
