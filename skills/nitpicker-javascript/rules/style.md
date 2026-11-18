@@ -194,6 +194,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A record read or changed by an id from the request keeps the owner field the project's other queries on that model
   carry (`{ _environmentId, _subscriberId, _id: command.notificationId }`), or checks the caller's access first
   (`nitpicker/no-unscoped-record-access`).
+- A local callback or companion server listens on the loopback host
+  (`server.listen(port, '127.0.0.1', callback)`), and passes `'0.0.0.0'` only when it must accept remote
+  connections (`nitpicker/no-listen-on-all-interfaces`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

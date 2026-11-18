@@ -142,6 +142,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/resources/descriptors/descriptor-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/resources/release/no-release-outside-finally.mjs',
   'languages/typescript/preset/eslint-plugin/rules/resources/release/release-facts.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/listeners/no-listen-on-all-interfaces.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/listeners/server-origins.mjs',
   'languages/typescript/preset/eslint-plugin/rules/caches/no-incomplete-cache-key.mjs',
   'languages/typescript/preset/eslint-plugin/rules/caches/memo-key-inputs.mjs',
   'languages/typescript/preset/eslint-plugin/rules/caches/query-key-inputs.mjs',
