@@ -214,6 +214,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - `JSON.parse` of text read from a file, `localStorage`, a response body or a message runs inside `try { ... } catch {
   ... }` that returns a failure result or a default, then the value is validated
   (`nitpicker/no-unguarded-json-parse`).
+- A temp directory or record id is not made unique by the clock alone: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))`
+  and `crypto.randomUUID()`, or a timestamp next to a unique part (`nitpicker/no-time-only-unique-name`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

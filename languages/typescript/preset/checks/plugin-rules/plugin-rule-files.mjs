@@ -86,6 +86,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/regex/no-string-as-regex.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-parameter-mutation.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/unique-names/no-time-only-unique-name.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/unique-names/time-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/parsing/no-unguarded-json-parse.mjs',
   'languages/typescript/preset/eslint-plugin/rules/parsing/stored-text-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/split-limits/no-truncating-split-limit.mjs',

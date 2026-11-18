@@ -21,6 +21,7 @@ import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-
 import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mts';
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mts';
+import { rule as ruleNoTimeOnlyUniqueName } from '../rules/unique-names/no-time-only-unique-name.mts';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
 import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-truncating-split-limit.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
@@ -116,6 +117,7 @@ export const partRules = {
   'no-test-helpers-in-source': ruleNoTestHelpersInSource,
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
+  'no-time-only-unique-name': ruleNoTimeOnlyUniqueName,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-truncating-split-limit': ruleNoTruncatingSplitLimit,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,

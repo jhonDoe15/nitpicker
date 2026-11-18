@@ -66,6 +66,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unresolved-relative-url',
   'nitpicker/no-slash-only-redirect-guard',
   'nitpicker/no-case-mixed-header-merge',
+  'nitpicker/no-time-only-unique-name',
   'nitpicker/no-unguarded-json-parse',
   'nitpicker/no-truncating-split-limit',
   'nitpicker/no-lossy-json-stringify',
