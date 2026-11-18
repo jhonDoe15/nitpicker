@@ -219,6 +219,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/limits/field-limits.mjs',
       'hygiene/limits/messages.mjs',
       'hygiene/limits/request-bound.mjs',
+      'hygiene/limits/scanning/enum-names.mjs',
       'hygiene/limits/scanning/facts.mjs',
       'hygiene/limits/scanning/names.mjs',
       'hygiene/limits/scanning/pattern-length.mjs',
