@@ -8,12 +8,13 @@ import type { LoopCall } from '../../loops/loop-call.mts';
 import type { OrmCall } from '../../orm/orm-call.mts';
 import { CHUNK, pickNames } from '../text.mts';
 import { typeormWrite } from './typeorm-write.mts';
-import { chunkedLoop, writeStatement, type WriteSite } from './write-loop.mts';
-
-export type WriteSuggestion = {
-  readonly messageId: 'batchWrite';
-  readonly plan: FixPlans;
-};
+import { insertSuggestion } from './inserts/insert-suggestion.mts';
+import {
+  chunkedLoop,
+  writeStatement,
+  type WriteSite,
+  type WriteSuggestion,
+} from './write-loop.mts';
 
 function siteOf(
   context: Context,
@@ -28,17 +29,12 @@ function siteOf(
   return { context, call, loop, orm, repeated, statement };
 }
 
-export function writeSuggestion(
-  context: Context,
-  call: TSESTree.CallExpression,
-  found: { readonly orm: OrmCall; readonly loop: LoopCall },
-): WriteSuggestion | undefined {
-  const site = siteOf(context, call, found);
-  const write = site === undefined ? undefined : typeormWrite(site);
+function keyedSuggestion(site: WriteSite): WriteSuggestion | undefined {
+  const { context, call } = site;
+  const write = typeormWrite(site);
   const { sourceCode } = context;
-  const names =
-    site === undefined ? undefined : pickNames(sourceCode, site.loop.hoistBefore, 'rows');
-  if (site === undefined || write === undefined || names === undefined) {
+  const names = pickNames(sourceCode, site.loop.hoistBefore, 'rows');
+  if (write === undefined || names === undefined) {
     return undefined;
   }
   const iterable = sourceCode.getText(site.loop.iterable);
@@ -64,4 +60,13 @@ export function writeSuggestion(
     replacing(site.statement.range, block),
   ]);
   return plan === undefined ? undefined : { messageId: 'batchWrite', plan };
+}
+
+export function writeSuggestion(
+  context: Context,
+  call: TSESTree.CallExpression,
+  found: { readonly orm: OrmCall; readonly loop: LoopCall },
+): WriteSuggestion | undefined {
+  const site = siteOf(context, call, found);
+  return site === undefined ? undefined : (keyedSuggestion(site) ?? insertSuggestion(site));
 }

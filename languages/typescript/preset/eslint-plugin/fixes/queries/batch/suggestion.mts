@@ -9,7 +9,7 @@ import { mgetSuggestion } from './redis/mget-suggestion.mts';
 import { lookupSuggestion } from './lookups/lookup-suggestion.mts';
 
 export type BatchSuggestion = {
-  readonly messageId: 'batchLookup' | 'batchGroups' | 'batchMget' | 'batchWrite';
+  readonly messageId: 'batchLookup' | 'batchGroups' | 'batchMget' | 'batchWrite' | 'batchInsert';
   readonly plan: FixPlans;
 };
 

@@ -91,7 +91,8 @@ export function scalarOf(site: Pick<Site, 'context'>, node: TSESTree.Node): Scal
 
 export function keyedWhere(
   site: Pick<Site, 'context' | 'loop' | 'repeated'>,
-  where: TSESTree.Node | undefined): KeyedWhere | undefined {
+  where: TSESTree.Node | undefined,
+): KeyedWhere | undefined {
   const properties =
     where?.type === AST_NODE_TYPES.ObjectExpression ? propertiesOf(where) : undefined;
   const { sourceCode } = site.context;

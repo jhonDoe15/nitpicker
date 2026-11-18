@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../../../rules/security/security-values.mts';
+import type { FixPlans } from '../../../edits/plans.mts';
 import { hasCommentIn } from '../../../support/ranges.mts';
 import type { Repeated } from '../../loops/invariants.mts';
 import type { LoopCall } from '../../loops/loop-call.mts';
@@ -13,6 +14,11 @@ export type WriteSite = {
   readonly orm: OrmCall;
   readonly repeated: Repeated;
   readonly statement: TSESTree.ForOfStatement;
+};
+
+export type WriteSuggestion = {
+  readonly messageId: 'batchWrite' | 'batchInsert';
+  readonly plan: FixPlans;
 };
 
 export type Chunking = {

@@ -19,7 +19,7 @@ import {
 const ROW_METHODS = new Set(['findUnique', 'findFirst']);
 const ROW_OPTIONS = new Set(['where', 'select', 'include']);
 const LIST_OPTIONS = new Set(['where', 'select', 'include', 'orderBy']);
-const EXTENSIONS = /\$extends|\$use\b/u;
+export const EXTENSIONS = /\$extends|\$use\b/u;
 
 export function hasNoMiddleware(orm: OrmCall): boolean {
   const version = orm.version ?? packageVersion(orm.declarationFile, 'prisma');
