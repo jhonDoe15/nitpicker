@@ -129,4 +129,25 @@ describe('init at the top of a repository with several projects', () => {
     expect(readText(root, 'packages/b/nitpicker.config.json')).toBe('{ "exclude": [] }\n');
     expect(normalized(result.stdoutText)).toBe(lines(expected.KEPT_MEMBER_CONFIG_OUTPUT));
   });
+  it('writes the source roots of a member whose code is not under src', () => {
+    const root = createProject(
+      {
+        'package.json': '{"name":"root","private":true,"workspaces":["examples/*"]}\n',
+        'examples/app/package.json': '{"name":"app"}\n',
+        'examples/app/components/App.tsx': 'export const app = 1;\n',
+        'examples/top/package.json': '{"name":"top"}\n',
+        'examples/top/server.mjs': 'export const top = 1;\n',
+      },
+      { repository: true },
+    );
+
+    const result = init(root);
+
+    expect(JSON.parse(readText(root, 'examples/app/nitpicker.config.json'))).toEqual({
+      preset: 'typescript',
+      layout: { sourceRoots: ['components'] },
+    });
+    expect(existsSync(path.join(root, 'examples/top/nitpicker.config.json'))).toBe(false);
+    expect(result.stdoutText).not.toContain('No config of its own needed');
+  });
 });
