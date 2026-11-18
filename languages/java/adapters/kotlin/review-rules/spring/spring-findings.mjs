@@ -43,6 +43,27 @@ const RULES = [
   ...LOOP_RULES,
 ];
 
+const SPRING_DATA_RULES = new Set([
+  'SpringDataRowWriteInLoop',
+  'SpringDataNoFlush',
+  'SpringDataNoSaveInLoop',
+  'SpringDataSaveInLoopHelper',
+  'SpringDataNativeQuery',
+]);
+const SPRING_DATA_JAR = /(^|[\\/])spring-data-(commons|jpa)-[^\\/]*\.jar$/u;
+const SPRING_DATA_PACKAGE = 'org.springframework.data.';
+
+function usesSpringData(manifest, projectFiles) {
+  const classpath = manifest.springClasspath ?? [];
+  return (
+    classpath.length === 0 ||
+    classpath.some((entry) => SPRING_DATA_JAR.test(entry)) ||
+    projectFiles.some((file) =>
+      (file.imports ?? []).some(({ path }) => path.startsWith(SPRING_DATA_PACKAGE)),
+    )
+  );
+}
+
 export function springFindings(
   files,
   {
@@ -59,6 +80,7 @@ export function springFindings(
   if (manifest.spring !== true) {
     return [];
   }
+  const springData = usesSpringData(manifest, projectFiles);
   const options = {
     allOpen: manifest.kotlinAllOpen,
     projectFiles,
@@ -67,6 +89,7 @@ export function springFindings(
   return springViews({ files, projectFiles, projectRoot, javaRoots }).flatMap((view) =>
     rules
       .flatMap((rule) => rule(view, options))
+      .filter(({ rule }) => springData || !SPRING_DATA_RULES.has(rule))
       .toSorted((left, right) => left.line - right.line)
       .map(({ rule, line, symbol, key }) =>
         finding({

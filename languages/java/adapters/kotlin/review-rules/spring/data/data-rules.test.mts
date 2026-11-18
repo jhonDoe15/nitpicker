@@ -23,10 +23,16 @@ const MANIFEST = {
   kotlinAllOpen: { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] },
 };
 
-function lines(projectFiles: Loose[], { javaRoots = ['src/main/java'] } = {}): string[] {
+function lines(
+  projectFiles: Loose[],
+  {
+    javaRoots = ['src/main/java'],
+    manifest = MANIFEST,
+  }: { javaRoots?: string[]; manifest?: Loose } = {},
+): string[] {
   return springFindings(projectFiles, {
     finding: findingFactory(),
-    manifest: MANIFEST,
+    manifest,
     projectFiles,
     projectRoot: PROJECT,
     javaRoots,
@@ -300,5 +306,101 @@ describe('Spring Data rules on hand-built facts', () => {
     expect(lines([query('"$BASE where o.price > 1"')])).toEqual([
       'Sample.kt:1 SpringDataQueryTextBlock',
     ]);
+  });
+});
+
+describe('Kotlin Spring Data rules outside a Spring Data project', () => {
+  const sessionSaver = () =>
+    sourceFile({
+      imports: [{ path: 'org.hibernate.Session', all: false }],
+      classes: [
+        klass('Saver', {
+          primaryParameters: [parameter('session', 'Session', { property: true })],
+        }),
+      ],
+      functions: [
+        fn('saveAll', { owner: 'Saver', line: 3, parameters: [parameter('items', 'List<Order>')] }),
+      ],
+      scopes: [
+        scope(0, 'class', { name: 'Saver', qualified: 'Saver' }),
+        scope(1, 'fun', { parent: 0, name: 'saveAll', line: 3 }),
+        scope(2, 'foreach', { parent: 1, range: 'items', params: [{ name: 'item' }] }),
+      ],
+      invocations: [
+        { line: 4, scope: 2, name: 'persist', receiver: 'session', arguments: [{ text: 'item' }] },
+        { line: 5, scope: 2, name: 'flush', receiver: 'session', arguments: [] },
+      ],
+    });
+
+  it('stays silent on entity manager writes and flushes in a loop', () => {
+    const manifest = { ...MANIFEST, springClasspath: ['/m2/spring-context-6.1.0.jar'] };
+
+    expect(lines([sessionSaver()], { manifest })).toEqual([]);
+  });
+
+  it('keeps reporting them when the classpath is unknown', () => {
+    expect(lines([sessionSaver()])).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+    expect(lines([sessionSaver()], { manifest: { ...MANIFEST, springClasspath: [] } })).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+  });
+
+  it('reports them once a Spring Data jar is on the classpath', () => {
+    const manifest = { ...MANIFEST, springClasspath: ['/m2/spring-data-jpa-3.3.0.jar'] };
+
+    expect(lines([sessionSaver()], { manifest })).toEqual([
+      'Sample.kt:4 SpringDataNoSaveInLoop',
+      'Sample.kt:5 SpringDataNoFlush',
+    ]);
+  });
+});
+
+describe('Kotlin SpringTypedConfiguration on System properties', () => {
+  const reader = (annotations: Loose[]) =>
+    sourceFile({
+      imports: [{ path: 'org.springframework.stereotype.Service', all: false }],
+      classes: [klass('Reader', { annotations })],
+      functions: [fn('mode', { owner: 'Reader', line: 3 })],
+      scopes: [
+        scope(0, 'class', { name: 'Reader', qualified: 'Reader' }),
+        scope(1, 'fun', { parent: 0, name: 'mode', line: 3 }),
+      ],
+      invocations: [
+        {
+          line: 4,
+          scope: 1,
+          name: 'getProperty',
+          receiver: 'System',
+          arguments: [{ text: '"app.mode"' }],
+        },
+      ],
+    });
+
+  it('ignores a class that is not a Spring bean', () => {
+    expect(lines([reader([])])).toEqual([]);
+  });
+
+  it.each([
+    ['jakarta.inject.Named', 'Named'],
+    ['javax.annotation.ManagedBean', 'ManagedBean'],
+    ['org.aspectj.lang.annotation.Aspect', 'Aspect'],
+  ])('reports the read in a class annotated with %s', (type, name) => {
+    expect(lines([reader([{ name, arguments: [], type }])])).toEqual([
+      'Sample.kt:4 SpringTypedConfiguration',
+    ]);
+  });
+
+  it('reports the read in a stereotype class', () => {
+    expect(
+      lines([
+        reader([
+          { name: 'Service', arguments: [], type: 'org.springframework.stereotype.Service' },
+        ]),
+      ]),
+    ).toEqual(['Sample.kt:4 SpringTypedConfiguration']);
   });
 });
