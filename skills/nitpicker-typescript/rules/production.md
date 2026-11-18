@@ -208,6 +208,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - File paths and host names compared across sources are compared with case folded: `path.relative(a, b) === ''`, a normalize and
   lowercase helper on win32 and darwin, or `toLowerCase()` on both hosts, never `===` or `startsWith` on plain strings
   (`nitpicker/no-case-sensitive-path-compare`).
+- A query or route value is used as it arrives: `URLSearchParams`, `router.query`, `req.query`, `req.params` and `ctx.query` are
+  already decoded, so `decodeURIComponent` goes only on raw text such as `location.search` (`nitpicker/no-double-decode`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
