@@ -9,6 +9,7 @@ import {
   ROUTE_METHODS,
   SYNCHRONOUS_CALLBACK_METHODS,
 } from './sync-node-apis.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
@@ -217,7 +218,10 @@ export function isStartupFunction(context: Context, fn: FunctionNode): boolean {
     if (owners === undefined) {
       return false;
     }
-    pending.push(...owners.filter((owner) => owner !== undefined));
+    appendAll(
+      pending,
+      owners.filter((owner) => owner !== undefined),
+    );
   }
   return true;
 }

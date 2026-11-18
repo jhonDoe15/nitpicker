@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type Hunk, parseUnifiedDiff } from '../patch/unified-diff.mts';
 import type { Diagnostic } from './label-hunks.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Entry<T> = readonly [string, T];
 
@@ -15,15 +16,13 @@ function filesNamed(directory: string, name: string): string[] {
   const found: string[] = [];
   for (const current of pending) {
     const entries = existsSync(current) ? readdirSync(current, { withFileTypes: true }) : [];
-    pending.push(
-      ...entries
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => path.join(current, entry.name)),
+    appendAll(
+      pending,
+      entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(current, entry.name)),
     );
-    found.push(
-      ...entries
-        .filter((entry) => entry.name === name)
-        .map((entry) => path.join(current, entry.name)),
+    appendAll(
+      found,
+      entries.filter((entry) => entry.name === name).map((entry) => path.join(current, entry.name)),
     );
   }
   return found;

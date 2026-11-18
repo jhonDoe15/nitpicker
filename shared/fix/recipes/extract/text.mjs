@@ -1,3 +1,4 @@
+import { smallest } from '../../../lists/items.mjs';
 const LEADING_SPACE = /^[ \t]*/u;
 
 export function indentOf(text, offset) {
@@ -17,7 +18,7 @@ function dedented(text, width) {
 export function dedentedToLeast(text) {
   const [, ...rest] = text.split('\n');
   const widths = rest.filter((line) => line.trim() !== '').map(indentWidth);
-  return dedented(text, widths.length === 0 ? 0 : Math.min(...widths));
+  return dedented(text, widths.length === 0 ? 0 : smallest(widths));
 }
 
 export function indentedBy(text, prefix) {

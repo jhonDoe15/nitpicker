@@ -1,6 +1,7 @@
 import { acceptsArguments, isSelfCall } from '../../spring/spring-scopes.mjs';
 import { typeName } from '../../spring/spring-names.mjs';
 import { callKind, isSemaphoreType, kindOfType } from './clients.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 const DEPTH = 3;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
@@ -179,7 +180,7 @@ export function remoteWork(project, view, starter) {
   ];
   const reaches = [];
   for (const region of pending) {
-    reaches.push(...regionReaches(project, region, pending));
+    appendAll(reaches, regionReaches(project, region, pending));
   }
   const open = reaches.filter(({ bounded }) => !bounded);
   return open.length === 0 ? undefined : { ...open[0], lines: open.map(({ line }) => line) };

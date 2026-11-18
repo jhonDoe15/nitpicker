@@ -19,6 +19,7 @@ import type {
   ScannedFile,
   Site,
 } from './typed/facts-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const MAIN_FILE = '__main__.py';
 const ANY_NAME = '*';
@@ -95,7 +96,7 @@ function mergedStatements(
     }
     const key = `${to}\0${String(reexport)}`;
     const group: Group = groups.get(key) ?? { from: file, to, names: [], reexport, role };
-    group.names.push(...names);
+    appendAll(group.names, names);
     groups.set(key, group);
   }
   return [...groups.values()].map((group): ImportRecord => ({

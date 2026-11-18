@@ -1,6 +1,7 @@
 import { nodesOf } from '../../../../near-duplicates/tree/nodes.mjs';
 import { fact } from '../../facts.mjs';
 import { binaryOf, exitOf, sourceOf, statementsOf, valueEqualOf } from '../exits.mjs';
+import { appendAll } from '../../../../lists/items.mjs';
 
 const SWITCHES = new Set(['switch', 'when', 'match']);
 const ARMS = new Set(['case', 'rule', 'else']);
@@ -58,7 +59,7 @@ export function isSimpleSubject(subject) {
     if (!SUBJECTS.has(node.kind)) {
       return false;
     }
-    pending.push(...node.children);
+    appendAll(pending, node.children);
   }
   return true;
 }
@@ -181,10 +182,11 @@ function subjectArms(node, facts, flow) {
       children.push({ statements: body, facts: [...facts, ...takingFacts(group, context)] });
     }
     const before = [...facts, ...excluding(earlier, context)];
-    checks.push(
-      ...own.map((label) => ({ condition: valueEqualOf(subject, label), facts: before })),
+    appendAll(
+      checks,
+      own.map((label) => ({ condition: valueEqualOf(subject, label), facts: before })),
     );
-    earlier.push(...own);
+    appendAll(earlier, own);
   }
   return { children, checks };
 }
@@ -205,7 +207,7 @@ function conditionArms(node, facts, flow) {
           return factOf(label, flow, { holds: true, reason });
         });
     children.push({ statements: statementsOf(body), facts: [...facts, ...before, ...own] });
-    earlier.push(...(isDefault ? [] : labels));
+    appendAll(earlier, isDefault ? [] : labels);
   }
   return { children, checks: [] };
 }

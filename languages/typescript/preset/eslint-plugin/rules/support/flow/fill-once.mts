@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { childrenOf } from '../../loops/loop-shapes.mts';
 import { ancestorsOf, contains, nameOf, type SourceCode } from '../../typed/node-views.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 const SETTERS = new Set(['set', 'add', 'setItem', 'put']);
 const READERS = new Set(['has', 'get', 'getItem']);
@@ -9,7 +10,7 @@ const FILLS = new Set(['??=', '||=']);
 function nodesIn(root: TSESTree.Node, visitorKeys: SourceCode['visitorKeys']): TSESTree.Node[] {
   const pending = [root];
   for (const node of pending) {
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return pending;
 }

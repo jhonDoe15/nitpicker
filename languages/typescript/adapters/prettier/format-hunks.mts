@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../shared/lists/lists.mts';
 const MAX_TABLE_CELLS = 40_000_000;
 
 export type FormattingHunk = {
@@ -76,7 +77,7 @@ function editSteps(
   let column = 0;
   for (const [row, line] of left.entries()) {
     const insertions = insertionsBefore({ row, line, column }, right, lengthAt);
-    steps.push(...insertions);
+    appendAll(steps, insertions);
     column += insertions.length;
     const matches = column < right.length && line === right[column];
     steps.push({ kind: matches ? 'keep' : 'delete', row, line });

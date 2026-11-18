@@ -5,7 +5,8 @@ import {
   removeSnapshotDependencies,
 } from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
+import { type FindingsCache, createFindingsCache } from './findings-cache.mts';
+import { isCacheable } from './entries/run-with-cache.mts';
 import type { CacheStore } from './cache-stores.mts';
 import { withComparisonKeys } from './keys/comparison-keys.mts';
 import { runGit } from '../git/repository/command.mjs';
@@ -14,6 +15,7 @@ import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 const withPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: unknown) => T) => T =
   withHeadPolicyFile;
@@ -171,7 +173,10 @@ function publishUnmutated(
   } catch (error) {
     labels.skipped.push(error instanceof Error ? error.message : String(error));
   }
-  published.push(...labels.published.map((name) => `${name}${WITHOUT_CHANGED_TESTS}`));
+  appendAll(
+    published,
+    labels.published.map((name) => `${name}${WITHOUT_CHANGED_TESTS}`),
+  );
   for (const detail of labels.skipped) {
     warn(`the base without changed tests was not published: ${detail}`);
   }

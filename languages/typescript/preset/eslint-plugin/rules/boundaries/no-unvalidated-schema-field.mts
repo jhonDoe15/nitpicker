@@ -9,6 +9,7 @@ import {
   presenceOnlyDecorators,
   typiaTypeArgument,
 } from './schema-fields/typed-fields.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageId = 'unvalidatedField' | 'customWithoutValidator' | 'looseObject';
 type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
@@ -71,8 +72,9 @@ function shapeValues(
       (property) => property.type === AST_NODE_TYPES.Property,
     );
     queueNested(pending, owner?.forms.stringLeaves === undefined ? [] : properties);
-    values.push(
-      ...properties
+    appendAll(
+      values,
+      properties
         .map(({ value }) => value)
         .filter((value) => !(value.type === AST_NODE_TYPES.ObjectExpression && pending.has(value))),
     );

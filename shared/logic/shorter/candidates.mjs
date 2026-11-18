@@ -1,4 +1,5 @@
 import { leavesOf, chain, dualOf, negation, skeletonKey } from './skeleton.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const MAX_POOL = 6;
 
@@ -140,7 +141,7 @@ function hasTwins(root) {
     if (hasRepeatedKids(node)) {
       return true;
     }
-    pending.push(...childrenOf(node));
+    appendAll(pending, childrenOf(node));
   }
   return false;
 }

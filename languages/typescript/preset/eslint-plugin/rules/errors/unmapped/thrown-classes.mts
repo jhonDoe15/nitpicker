@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts, withoutParentheses } from '../../typed/typescript-views.mts';
 import { classDeclarationOf, isProjectDeclaration } from './nest-classes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type BodiedFunction = TypeScript.SignatureDeclaration & { readonly body: TypeScript.Node };
 type WalkItem = {
@@ -107,7 +108,7 @@ function visitBody(walk: Walk, item: WalkItem): void {
       const path = [...item.path, functionLabel(callee)];
       walk.pending.push({ declaration: callee, path, depth: item.depth + 1 });
     }
-    nodes.push(...childrenOf(node));
+    appendAll(nodes, childrenOf(node));
   }
 }
 

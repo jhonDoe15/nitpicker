@@ -12,6 +12,7 @@ import {
   installedJdks,
   projectJava,
 } from './jdk-probe.mts';
+import { largest } from '../../../../shared/lists/lists.mts';
 
 export { isNoFittingJdk, noFittingJdk, skipWithoutJdk } from './jdk-skip.mts';
 
@@ -87,7 +88,7 @@ export function sourceLevel(compiler: unknown): number | undefined {
     .map((value) => LEVEL.exec(levelText(value).trim())?.[1])
     .filter((value) => value !== undefined)
     .map(Number);
-  return levels.length === 0 ? undefined : Math.max(...levels);
+  return levels.length === 0 ? undefined : largest(levels);
 }
 
 function lowestFrom(installed: readonly Installed[], minimum: number): FeatureJdk | undefined {

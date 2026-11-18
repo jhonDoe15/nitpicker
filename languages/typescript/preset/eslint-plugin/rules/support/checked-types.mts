@@ -38,20 +38,45 @@ export function hasArrayType(context: Context, node: TSESTree.Node, withTuples =
 }
 
 const COLLECTION_NAME = /^(?:Readonly|Weak)?(?:Map|Set)$|Array$/u;
+const LIST_NAME = /^(?:Readonly)?(?:Map|Set)$|Array$/u;
 
-export function hasCollectionType(context: Context, node: TSESTree.Node): TypeAnswer {
+function someMember(
+  context: Context,
+  node: TSESTree.Node,
+  holds: (checker: TypeScript.TypeChecker, member: TypeScript.Type) => boolean,
+): TypeAnswer {
   const typed = memberTypes(context, node);
   if (typed === undefined) {
     return 'unknown';
   }
   const { checker, members } = typed;
-  return answer(
-    members.some(
-      (member) =>
-        (member.flags & ts.TypeFlags.Any) !== 0 ||
-        checker.isArrayType(member) ||
-        checker.isTupleType(member) ||
-        COLLECTION_NAME.test(member.getSymbol()?.name ?? ''),
-    ),
+  return answer(members.some((member) => holds(checker, member)));
+}
+
+function isAny(member: TypeScript.Type): boolean {
+  return (member.flags & ts.TypeFlags.Any) !== 0;
+}
+
+export function hasCollectionType(context: Context, node: TSESTree.Node): TypeAnswer {
+  return someMember(
+    context,
+    node,
+    (checker, member) =>
+      isAny(member) ||
+      checker.isArrayType(member) ||
+      checker.isTupleType(member) ||
+      COLLECTION_NAME.test(member.getSymbol()?.name ?? ''),
   );
+}
+
+export function hasListType(context: Context, node: TSESTree.Node): TypeAnswer {
+  return someMember(context, node, (checker, type) => {
+    const member = checker.getBaseConstraintOfType(type) ?? type;
+    return (
+      !checker.isTupleType(member) &&
+      (isAny(member) ||
+        checker.isArrayType(member) ||
+        LIST_NAME.test(member.getSymbol()?.name ?? ''))
+    );
+  });
 }

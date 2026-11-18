@@ -8,6 +8,7 @@ import {
   type SchemaLibrary,
 } from './library-nodes.mts';
 import { isNonValidatingMethod, type LooseForm } from './schema-forms.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 const MAX_ALIAS_DEPTH = 3;
 
@@ -162,7 +163,10 @@ export function unvalidatedRoot(
       return leaf;
     }
     const children = nestedSchemas(sourceCode, root, { depth, owner });
-    pending.push(...children.map((child) => ({ node: child, depth: depth + 1 })));
+    appendAll(
+      pending,
+      children.map((child) => ({ node: child, depth: depth + 1 })),
+    );
   }
   return undefined;
 }

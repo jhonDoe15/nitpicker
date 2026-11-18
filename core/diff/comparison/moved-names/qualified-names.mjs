@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { largest } from '../../../../shared/lists/items.mjs';
 
 const NAMED_SOURCES = /\.(java|kt|groovy|scala|py)$/u;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
@@ -129,7 +130,7 @@ function matchingRootLength(oldRoot, to, firstName) {
     length,
     shared: sharedTail(oldRoot, to.slice(0, length)),
   }));
-  const best = Math.max(...scored.map(({ shared }) => shared));
+  const best = largest(scored.map(({ shared }) => shared));
   if (best === 0) {
     return sharedHead(oldRoot, to) > 0 && oldRoot.length < to.length ? oldRoot.length : undefined;
   }

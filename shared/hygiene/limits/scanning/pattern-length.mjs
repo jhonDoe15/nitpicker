@@ -1,3 +1,4 @@
+import { largest, smallest } from '../../../lists/items.mjs';
 const NONE = [0, 0];
 const ONE = [1, 1];
 const UNBOUNDED = Number.POSITIVE_INFINITY;
@@ -53,7 +54,7 @@ function rangeOf(frame) {
   flush(frame);
   const mins = frame.branches.map(([min]) => min);
   const maxes = frame.branches.map(([, max]) => max);
-  return [Math.min(...mins), Math.max(...maxes)];
+  return [smallest(mins), largest(maxes)];
 }
 
 function attach(stack, closed) {

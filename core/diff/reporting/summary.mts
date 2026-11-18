@@ -28,6 +28,7 @@ import {
 export { errorHeadline, pluralize, withoutSkipNotices } from './console/tool-errors.mts';
 import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type ConsoleOptions = {
   readonly color: boolean;
@@ -152,18 +153,17 @@ function renderGateSummary(
       foldStyle: snapshot && fieldOf(report.summary, 'labels') === undefined,
     },
   );
-  lines.push(
-    ...reviewSummaryLines(consolePolicySummary(report), (text) =>
+  appendAll(
+    lines,
+    reviewSummaryLines(consolePolicySummary(report), (text) =>
       style(text, [ANSI.bold, ANSI.yellow], { color }),
     ),
   );
-  lines.push(
-    ...heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }),
-    ...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }),
-  );
+  appendAll(lines, heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }));
+  appendAll(lines, designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
   appendNoteSummary(lines, report.notes, color);
-  lines.push(...toolErrorSummaryLines(otherErrors, { color, projectRoot }));
-  lines.push(...closingLines(report, { color, diagnosticsPath, snapshot }));
+  appendAll(lines, toolErrorSummaryLines(otherErrors, { color, projectRoot }));
+  appendAll(lines, closingLines(report, { color, diagnosticsPath, snapshot }));
   return `${lines.join('\n')}\n`;
 }
 
@@ -248,15 +248,15 @@ function appendViolationSummary(
   if (counts !== undefined) {
     lines.push(`  by area: ${counts}`);
   }
-  lines.push(...labelCounts);
+  appendAll(lines, labelCounts);
   if (!details) {
     const { shown, lines: folded } = fold
       ? foldStyle(violations)
       : { shown: violations, lines: [] };
-    lines.push(
+    appendAll(lines, [
       ...ruleGroupLines(foldMutants(shown), (label) => style(label, [ANSI.yellow], { color })),
       ...folded,
-    );
+    ]);
     return;
   }
   for (const group of groupRepeatedFindings(inPriorityOrder(violations))) {

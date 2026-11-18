@@ -1,4 +1,5 @@
 import { patternLength } from '../scanning/pattern-length.mjs';
+import { largest, smallest } from '../../../lists/items.mjs';
 
 const IGNORED = new Set(['message', 'groups', 'payload', 'flags', 'inclusive']);
 const TEXT_TYPES = /^(?:String|string|str|CharSequence|char)\b/u;
@@ -67,9 +68,9 @@ export function combineBounds(list) {
   const maximums = defined('maximum').filter((value) => Number.isFinite(value));
   return {
     unresolved: list.some((bounds) => bounds.unresolved === true),
-    max: maxima.length === 0 ? undefined : Math.min(...maxima),
-    min: mins.length === 0 ? undefined : Math.max(...mins),
-    maximum: maximums.length === 0 ? undefined : Math.min(...maximums),
+    max: maxima.length === 0 ? undefined : smallest(maxima),
+    min: mins.length === 0 ? undefined : largest(mins),
+    maximum: maximums.length === 0 ? undefined : smallest(maximums),
   };
 }
 

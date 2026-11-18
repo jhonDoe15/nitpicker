@@ -1,4 +1,5 @@
 import { analyseSource } from './java-scopes.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const TRANSPARENT = new Set([
   'getBytes',
@@ -66,7 +67,7 @@ function expressionStep(expression, scopes, seen) {
       return undefined;
     }
     visited.add(token.name);
-    pending.push(...known);
+    appendAll(pending, known);
   }
   return { visited, pending };
 }
@@ -83,7 +84,7 @@ export function isRuntime(expression, { source, offset }) {
     for (const name of next.visited) {
       seen.add(name);
     }
-    queue.push(...next.pending);
+    appendAll(queue, next.pending);
   }
   return false;
 }

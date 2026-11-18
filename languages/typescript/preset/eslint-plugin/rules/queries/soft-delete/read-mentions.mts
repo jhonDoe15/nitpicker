@@ -12,6 +12,7 @@ import {
   isColumn,
   isHelperName,
 } from './columns.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Mention = { readonly prefix: string | undefined; readonly column: string };
 type Joined = { readonly table: string | undefined; readonly alias: string | undefined };
@@ -147,16 +148,16 @@ function collect(
   let acknowledged = false;
   const pending = [root];
   for (const node of pending) {
-    mentions.push(...textMentions(node));
+    appendAll(mentions, textMentions(node));
     if (isRelationKey(node)) {
       continue;
     }
-    mentions.push(...columnMentions(node));
+    appendAll(mentions, columnMentions(node));
     for (const name of helperNames(node)) {
       helpers.add(name);
     }
     acknowledged ||= acknowledges(node);
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return { mentions, helpers, acknowledged };
 }

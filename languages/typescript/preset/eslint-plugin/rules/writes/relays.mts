@@ -7,6 +7,7 @@ import type { Context } from '../security/security-values.mts';
 import { callEffects } from '../support/io-effects.mts';
 import { contains, type SourceCode } from '../typed/node-views.mts';
 import type { Site } from './write-sites.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 type Variable = TSESLint.Scope.Variable;
@@ -85,7 +86,7 @@ function argumentIdentifiers(
   const pending: TSESTree.Node[] =
     call.type === AST_NODE_TYPES.CallExpression ? [...call.arguments] : [];
   for (const node of pending) {
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return pending.filter((node) => node.type === AST_NODE_TYPES.Identifier);
 }

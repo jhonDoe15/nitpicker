@@ -13,6 +13,7 @@ import {
   summaryMetrics,
 } from '../typed/reporting.mts';
 import type { Mutant, MutationReport } from '../typed/mutation.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export function normalizeCoverage(
   report: Report.CoverageReport,
@@ -60,8 +61,9 @@ function addFileCoverage(
       symbol: coverage.branchFunctions?.[branchId],
     };
   });
-  findings.push(
-    ...branchCoverageFindings(branches, {
+  appendAll(
+    findings,
+    branchCoverageFindings(branches, {
       tool: analyzerName,
       identify: (key, occurrence) => `branch-source:${key}:occurrence:${String(occurrence)}`,
     }),
@@ -148,8 +150,9 @@ function addCrapFunction(
   { analyzerName, scoreLimit, occurrence, violationOccurrence }: Report.CrapSite,
 ): void {
   const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
-  findings.push(
-    ...crapFindings(
+  appendAll(
+    findings,
+    crapFindings(
       [
         {
           path: entry.source,

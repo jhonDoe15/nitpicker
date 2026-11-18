@@ -51,18 +51,18 @@ function planRecipe(recipe, snapshot, run) {
 }
 
 function planPass(run, snapshot) {
-  const entries = [];
-  const notes = [];
+  const planned = [];
   for (const recipe of run.active.filter(({ id }) => !run.failed.has(id))) {
     try {
-      const planned = planRecipe(recipe, snapshot, run);
-      entries.push(...planned.entries);
-      notes.push(...planned.notes);
+      planned.push(planRecipe(recipe, snapshot, run));
     } catch (error) {
       run.failed.set(recipe.id, fixerError(`fix-recipe ${recipe.id}`, error));
     }
   }
-  return { entries, notes };
+  return {
+    entries: planned.flatMap((plan) => plan.entries),
+    notes: planned.flatMap((plan) => plan.notes),
+  };
 }
 
 function movedNames(names, applied) {
@@ -110,8 +110,8 @@ function runPass(run) {
   for (const name of changedMeanwhile) {
     state.changedMeanwhile.add(name);
   }
-  state.applyErrors.push(...errors);
-  state.fixed.push(...applied);
+  state.applyErrors = state.applyErrors.concat(errors);
+  state.fixed = state.fixed.concat(applied);
   state.names = movedNames(state.names, applied);
   state.notes = planned.notes;
   return applied.length > 0;

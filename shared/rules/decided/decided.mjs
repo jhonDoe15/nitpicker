@@ -26,6 +26,7 @@ import { declaredTypes } from './models/types.mjs';
 import { shadowedNames } from './predicate-reading/shadowing.mjs';
 import { helperNote } from '../../logic/models/helper-note.mjs';
 import { probeSlips } from './slips/probe.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const MAX_CHECKS = 200;
@@ -182,7 +183,7 @@ function unitChecks(tree, flow) {
   for (const lambda of nodesOf(tree).filter((node) => node.kind === 'lambda')) {
     if (!flow.seen.has(lambda)) {
       flow.seen.add(lambda);
-      checks.push(...conditionChecks(lambdaStatements(lambda), flow));
+      appendAll(checks, conditionChecks(lambdaStatements(lambda), flow));
     }
   }
   return checks;

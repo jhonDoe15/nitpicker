@@ -1,5 +1,6 @@
 import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const ANY_NAME = '*';
 
@@ -41,8 +42,11 @@ function entriesOf(index, start) {
     const key = `${step.file}\0${step.name}`;
     const next = seen.has(key) ? [] : (index.get(key) ?? []);
     seen.add(key);
-    found.push(...next);
-    pending.push(...next.map(({ entry, name }) => ({ file: entry, name })));
+    appendAll(found, next);
+    appendAll(
+      pending,
+      next.map(({ entry, name }) => ({ file: entry, name })),
+    );
   }
   return found;
 }

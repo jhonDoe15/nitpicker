@@ -5,6 +5,7 @@ import { toTerm } from '../../analysis/logic/estree-terms.mts';
 import { chainOf, type SourceCode } from '../../typed/node-views.mts';
 import type { FlowContext } from '../effects.mts';
 import { factOfTerm, relevantFacts, solveFacts, type Fact } from '../facts.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Statement = TSESTree.Statement;
 type Expression = TSESTree.Expression;
@@ -158,8 +159,11 @@ export function switchFlow(
       statements: group.last.consequent,
       facts: [...facts, ...takingFacts(group, arms)],
     });
-    checks.push(...own.map((label) => ({ label: { node, label }, facts: [...facts, ...before] })));
-    earlier.push(...own);
+    appendAll(
+      checks,
+      own.map((label) => ({ label: { node, label }, facts: [...facts, ...before] })),
+    );
+    appendAll(earlier, own);
   }
   return { children, checks };
 }

@@ -1,5 +1,6 @@
 import { textOf } from '../../shared/values/readers.mts';
 import { FRAMEWORK_LABELS, KIND_LABELS } from '../labels/taxonomy.mts';
+import { largest } from '../../shared/lists/lists.mts';
 
 type Row = readonly [name: string, text: string];
 
@@ -119,7 +120,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
 ];
 
 function table(rows: readonly Row[]): string {
-  const width = Math.max(...rows.map(([name]) => name.length));
+  const width = largest(rows.map(([name]) => name.length));
   return rows.map(([name, text]) => `  ${name.padEnd(width)}  ${text}\n`).join('');
 }
 

@@ -17,6 +17,7 @@ import {
   declaresSpringJavaFormat,
   SPRING_JAVA_FORMAT,
 } from './spring-format/spring-java-format.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const PALANTIR_STYLE = 'palantir';
 const GOOGLE_STYLE = 'google';
@@ -174,7 +175,7 @@ export function declaredJavaFormatter(source) {
   const notes = [];
   const results = files.map((file) => ({ file: file.file, ...declaredIn(file, context) }));
   const declarations = results.flatMap(({ file, entries, notes: found }) => {
-    notes.push(...found);
+    appendAll(notes, found);
     const declaration = fileDeclaration(file, entries, notes);
     return declaration === undefined ? [] : [declaration];
   });

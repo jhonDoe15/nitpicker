@@ -19,6 +19,7 @@ import {
   ruleFilterSection,
   toolErrorSectionLines,
 } from './console/text-sections.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type Summary = ReportData['summary'];
 
@@ -53,13 +54,13 @@ export function renderTextReport(
     ...noticeSection(listOf(report.summary['notices'])),
     ...toolCountLines(report.summary),
   ];
-  lines.push(...failingFirstLines('New', report.newFindings));
-  lines.push(...ruleReferenceLines(report.newFindings, reference));
+  appendAll(lines, failingFirstLines('New', report.newFindings));
+  appendAll(lines, ruleReferenceLines(report.newFindings, reference));
   appendHeldSection(lines, report.unchangedFindings);
-  lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
+  appendAll(lines, findingSectionLines('Resolved findings', report.resolvedFindings));
   appendMetricSection(lines, report.changedMetrics);
-  lines.push(...toolErrorSectionLines(report.toolErrors));
-  lines.push(...noteLines(report.notes));
+  appendAll(lines, toolErrorSectionLines(report.toolErrors));
+  appendAll(lines, noteLines(report.notes));
   return `${lines.join('\n')}\n`;
 }
 
@@ -149,14 +150,12 @@ export function ruleReferenceLines(
 function appendHeldSection(lines: unknown[], unchangedFindings: readonly ReportEntry[]): void {
   const { metrics, lint } = heldGroups(unchangedFindings);
   if (metrics.length > 0) {
-    lines.push('', 'Touched, still over limit (not failing):', ...metrics.map(heldEntryLine));
+    lines.push('', 'Touched, still over limit (not failing):');
+    appendAll(lines, metrics.map(heldEntryLine));
   }
   if (lint.length > 0) {
-    lines.push(
-      '',
-      'Existing lint findings in edited code (not failing):',
-      ...lint.map(heldEntryLine),
-    );
+    lines.push('', 'Existing lint findings in edited code (not failing):');
+    appendAll(lines, lint.map(heldEntryLine));
   }
 }
 

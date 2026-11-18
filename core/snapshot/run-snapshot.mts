@@ -4,7 +4,7 @@ import {
 } from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
-import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
+import { resumedAnalyzerRun } from '../diff/cache/resume/snapshot-resume.mts';
 import { scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
@@ -12,6 +12,7 @@ import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type Finding = ReportEntry;
 
@@ -82,7 +83,7 @@ function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunR
   return withoutOverlaps(
     withSharedUnusedDirectives(
       withPolicyFile(headPolicy, (headPolicyFile) =>
-        runAnalyzers({
+        resumedAnalyzerRun(execution['resume'], {
           analyzers,
           ...roots,
           headPolicyFile,
@@ -260,8 +261,9 @@ function collectSnapshotFindings({
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
     const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
-    toolErrors.push(
-      ...reported
+    appendAll(
+      toolErrors,
+      reported
         .filter((finding) => finding.classification === 'tool-error')
         .map((finding) => toSnapshotToolError(finding)),
     );
@@ -269,7 +271,7 @@ function collectSnapshotFindings({
     const focused = inFocus(analyzed, scope, labels);
     outside += focused.outside;
     hidden += focused.hidden;
-    findings.push(...focused.findings);
+    appendAll(findings, focused.findings);
     tools.push(summarizeAnalyzer({ analyzer, name, metadata }, focused.findings));
   }
 

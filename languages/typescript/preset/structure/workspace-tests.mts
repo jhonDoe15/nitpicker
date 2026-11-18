@@ -11,6 +11,7 @@ import {
   firstFileIn,
   projectFilePaths,
 } from './typed/rule-views.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -130,7 +131,7 @@ function configSelection(configPath: string): Selection {
   const source = ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true);
   const nodes: TypeScript.Node[] = [source];
   for (const node of nodes) {
-    nodes.push(...node.getChildren(source));
+    appendAll(nodes, node.getChildren(source));
   }
   const owner = path.basename(configPath).startsWith('jest.') ? undefined : 'test';
   return {

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { chainOf, isNode, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { memberKeyOf } from '../typed/syntax-views.mts';
 import { reportedNode, ruleModule, withReportFilter, type Context } from './report-filter.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageId = 'nonAtomicUpdate' | 'nonAtomicObjectUpdate';
 type Options = readonly unknown[];
@@ -218,11 +219,14 @@ function readPaths(
   for (const { node, keys } of pending) {
     const chain = CHAIN_TYPES.has(node.type) ? memberChain(node) : undefined;
     if (chain === undefined) {
-      pending.push(...childrenOf(node).map((child) => ({ node: child, keys: [] })));
+      appendAll(
+        pending,
+        childrenOf(node).map((child) => ({ node: child, keys: [] })),
+      );
     } else {
       const { path: read, next } = chainReads(chain, keys, context);
       paths.push(read);
-      pending.push(...next);
+      appendAll(pending, next);
     }
   }
   return paths;

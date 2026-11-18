@@ -1,5 +1,6 @@
 import { isPlainObject } from '../../../../shared/config.mjs';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const LAYOUT_GLOB_KEYS = new Set(['excludedGlobs', 'entryPoints', 'sharedRoots', 'featureRoots']);
 const FOLDER_KEYS = new Set(['sourceRoots', 'testRoots']);
@@ -55,7 +56,7 @@ function expandedBraces(pattern) {
     if (alternatives === undefined) {
       expanded.push(current);
     } else {
-      pending.push(...alternatives);
+      appendAll(pending, alternatives);
     }
   }
   return expanded;

@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { ts, withoutParentheses } from '../typed/typescript-views.mts';
 import { isHelperName } from '../queries/soft-delete/columns.mts';
 import { assignsFlag, flagOf, mentionsFlag, type Flag } from './flags.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Callback = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
 type Parts = {
@@ -51,7 +52,7 @@ function callsHelperOn(body: TypeScript.Node, elementName: string | undefined): 
     if (taken) {
       return true;
     }
-    pending.push(...node.getChildren());
+    appendAll(pending, node.getChildren());
   }
   return false;
 }
@@ -177,7 +178,7 @@ export function iterationsIn(
     if (iteration !== undefined) {
       found.push(iteration);
     }
-    pending.push(...node.getChildren(sourceFile));
+    appendAll(pending, node.getChildren(sourceFile));
   }
   return found;
 }

@@ -15,6 +15,7 @@ import {
   type Declared,
   type InputSet,
 } from './plural-inputs/type-members.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type FunctionNode = ComponentFrame['node'];
 type ExportedFunction = ReturnType<typeof exportedFunctions>[number];
@@ -119,10 +120,10 @@ export const rule: TSESLint.RuleModule<'singularAndPlural'> = {
       'Program:exit'(program) {
         for (const fn of exportedFunctions(program)) {
           inputSets.push(optionalParameters(fn, sourceCode));
-          typeCandidates.push(...parameterTypes(fn));
+          appendAll(typeCandidates, parameterTypes(fn));
         }
         for (const candidate of typeCandidates) {
-          inputSets.push(...memberInputSets(candidate, declarations, sourceCode));
+          appendAll(inputSets, memberInputSets(candidate, declarations, sourceCode));
         }
         reportPairs(context, inputSets);
       },

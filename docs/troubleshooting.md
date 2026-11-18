@@ -243,6 +243,29 @@ its `command` in the checkout by hand and check that it prints only `{"findings"
 See [custom analyzers](usage.md#custom-analyzers). If a built-in analyzer crashes on a simple project,
 please open an issue with the message and the project's tool versions.
 
+### A run crashes or stops partway
+
+**Symptom.** A tool error named `analyzer-scheduler` after a long run, such as
+`Analyzer scheduler crashed with exit 2: <output>`, or a crash such as a `RangeError` (Maximum call
+stack size exceeded) followed by `at` lines and
+`This is a bug in nitpicker, not in the project.` On the rerun:
+`nitpicker: head: 3 analyzers resumed from an unfinished run (<folder>; use --no-cache to rerun)`.
+
+**Cause.** The analyzers run in one scheduler process. Each analyzer that finishes writes its report to
+the cache folder at once, so when the scheduler crashes, runs out of memory or is stopped with Ctrl-C,
+the run still reports the findings of the analyzers that finished and lists the scheduler failure as a
+tool error (exit code 2). The head side of a full comparison and an `--all` run keep these reports in
+`resume/` inside the cache folder until a run finishes, so the next run on the same working tree only
+runs the analyzers that did not finish. A crash with `at` lines is a defect in nitpicker itself, not in
+the project: the lines say where it happened.
+
+**Fix.**
+
+- Run again without changing files to continue where the run stopped. Any edit starts the head side
+  over, because the reports belong to the tree they were made from.
+- Use `--no-cache` for a run that starts from scratch and keeps nothing.
+- Report a crash with `at` lines at https://github.com/jhonDoe15/nitpicker/issues, including those lines.
+
 ### A stale or shared cache
 
 **Symptom.** A finding appears or disappears between runs without a change that explains it, two
@@ -252,7 +275,8 @@ machines disagree about the base, or a result looks like the old configuration. 
 
 **Cause.** The base side of a comparison is cached per analyzer, keyed by the merge-base commit, the
 project path, the analyzer name and version, the analyzer's configuration hash and the head policy. The
-head side always runs. The key does not cover everything the base result depends on: project files that
+head side runs every time, except that the analyzers an interrupted run finished are reused by a rerun
+on the same tree (see [A run crashes or stops partway](#a-run-crashes-or-stops-partway)). The key does not cover everything the base result depends on: project files that
 only feed the head policy (for example a `tsconfig.json` changed on the head branch) and the versions of
 the dependencies the project installed are not part of it. A cache directory shared between checkouts
 with different dependencies, or a remote cache written by a job with another toolchain, can therefore

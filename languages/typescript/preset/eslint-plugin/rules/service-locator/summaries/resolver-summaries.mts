@@ -13,6 +13,7 @@ import {
   type ResolvedFunction,
 } from './function-shapes.mts';
 import { isInRegistration, type RegistrationContext } from './registrations.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Evidence = { readonly api: ContainerApi; readonly file: string };
 type Context = RegistrationContext & {
@@ -148,7 +149,7 @@ function scanBody(context: Context, fn: ResolvedFunction): ScanResult {
     }
     const found = evidence === undefined ? resolvedCallees(context, node) : [];
     if (found.length > 0 && forwardsToCallee(context, node, parameters)) {
-      callees.push(...found);
+      appendAll(callees, found);
     }
   }
   return { callees };

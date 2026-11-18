@@ -21,6 +21,7 @@ import {
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mts';
 import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type ViolationText = {
   readonly violation: CruiseViolation;
@@ -42,7 +43,9 @@ if (
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (failure) {
     const error = withTypeScriptHint(failure);
-    process.stderr.write(`Static quality adapter failed: ${error.message}\n`);
+    process.stderr.write(
+      `Static quality adapter failed: ${withInternalFrames(error.message, failure)}\n`,
+    );
     process.exitCode = 2;
   }
 }

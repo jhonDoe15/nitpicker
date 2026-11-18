@@ -1,6 +1,7 @@
 import type { ParserServicesWithTypeInformation, TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { isType, ts } from '../../typed/typescript-views.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Scope = { readonly program: TypeScript.Program; readonly checker: TypeScript.TypeChecker };
 
@@ -44,7 +45,7 @@ function hasOnlyProjectBases(scope: Scope, type: TypeScript.Type): boolean {
   for (const current of pending) {
     const target = targetOf(current);
     if (target.isClassOrInterface()) {
-      pending.push(...scope.checker.getBaseTypes(target));
+      appendAll(pending, scope.checker.getBaseTypes(target));
     }
   }
   return pending

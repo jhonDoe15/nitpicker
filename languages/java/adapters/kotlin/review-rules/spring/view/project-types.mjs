@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { javaFilesUnder, pathInside } from '../../../../review-rules/java-sources.mjs';
 import { nameResolver, resolvesTo, typeName } from '../spring-names.mjs';
 import { ADVICE, ASPECT, DATA_REPOSITORIES } from '../spring-types.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 const SEARCH_LIMIT = 64;
 const META_DEPTH = 3;
@@ -187,7 +188,10 @@ export function extendsType(context, start, fqns) {
     if (found !== undefined && !seen.has(found) && queue.length < SEARCH_LIMIT) {
       seen.add(found);
       const own = resolverOf(context, found.file);
-      queue.push(...found.declared.supers.map((next) => ({ names: own, type: next })));
+      appendAll(
+        queue,
+        found.declared.supers.map((next) => ({ names: own, type: next })),
+      );
     }
   }
   return false;
@@ -205,7 +209,7 @@ export function projectFunctions(context, candidates, name) {
     const supers = found.declared.supers
       .map((type) => projectClass(context, resolve(typeName(type))))
       .filter((next) => next !== undefined && !queue.includes(next));
-    queue.push(...(queue.length < SEARCH_LIMIT ? supers : []));
+    appendAll(queue, queue.length < SEARCH_LIMIT ? supers : []);
   }
   return [];
 }

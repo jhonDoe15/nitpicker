@@ -3,6 +3,7 @@ import { cachedValue } from '../../../../../../shared/values/caching/cached-valu
 import { isReference, ts } from '../typed/typescript-views.mts';
 import { flagOf } from './flags.mts';
 import { iterationsIn, type Iteration } from './iterations.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Entry = {
   readonly name: string;
@@ -71,7 +72,7 @@ function recordHelpers(
       const counts = entries.get(helper.key)?.helpers;
       counts?.set(helper.name, (counts.get(helper.name) ?? 0) + 1);
     }
-    pending.push(...node.getChildren(sourceFile));
+    appendAll(pending, node.getChildren(sourceFile));
   }
 }
 

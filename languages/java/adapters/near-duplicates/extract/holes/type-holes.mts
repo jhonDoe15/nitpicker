@@ -9,6 +9,7 @@ import type {
 import { recordTypeHole, typePairProblem } from '../../jvm-views.mts';
 import { namedChildren, pairOf, present, squashed } from '../syntax.mts';
 import { TYPE_PARAMETER_NAMES } from '../../../../../../shared/fix/recipes/extract/names.mjs';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const NAMED = new Set(['type_identifier', 'scoped_type_identifier']);
 const DIFFERENT = 'the copies use different types';
@@ -59,7 +60,7 @@ function expand(state: AlignState, [x, y]: Pair, pending: Pair[]): string | unde
     return undefined;
   }
   const parts = partsOf(x, y);
-  pending.push(...(parts.pairs ?? []));
+  appendAll(pending, parts.pairs ?? []);
   return parts.declined;
 }
 

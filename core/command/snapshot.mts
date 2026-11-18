@@ -30,8 +30,10 @@ import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-te
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 import { projectHeader } from './comparison/outcome.mts';
+import { finishSnapshotResume, snapshotResume } from '../diff/cache/resume/snapshot-resume.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 
 const displayPath: (absolutePath: string) => string = untypedDisplayPath;
@@ -45,6 +47,7 @@ type SnapshotCli = {
     readonly details: boolean;
     readonly staged: boolean;
     readonly outputRoot?: string;
+    readonly cache: boolean;
   };
   readonly currentProjectRoot: string;
   readonly currentFolder?: string | undefined;
@@ -105,7 +108,7 @@ function stderrWarning(stderr: TextOutput): (message: string) => unknown {
 }
 
 export function runSnapshotCli(cli: SnapshotCli): number {
-  const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
+  const { options, currentProjectRoot, analyzers, headPolicy, runTasks, scope } = cli;
   const { setupErrors } = cli;
   const outputRoot = textOf(outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot'));
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
@@ -115,15 +118,10 @@ export function runSnapshotCli(cli: SnapshotCli): number {
   clearSnapshotReports(outputRoot);
   const stamp = runStampOf({ projectRoot: currentProjectRoot, outputRoot });
 
-  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
-    currentProjectRoot,
-    isCapture(cli.captureHead) ? cli.captureHead : capturedTree,
+  const { repositoryRoot, relativeProjectPath, capturedSha, snapshot, resume } = capturedRun(
+    cli,
+    selectedAnalyzers,
   );
-  const snapshot = {
-    commitSha: capturedSha,
-    directoryName: 'head',
-    warn: stderrWarning(stderr),
-  };
   const report = inWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree(
       {
@@ -134,7 +132,11 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         scope,
         setupErrors,
       },
-      { ...analyzerRunOptions({ outputRoot, runTasks }), labels: cli.labels },
+      {
+        ...analyzerRunOptions({ outputRoot, runTasks }),
+        labels: cli.labels,
+        resume,
+      },
     ),
   );
   addToolErrors(report, cli.additionalToolErrors ?? []);
@@ -146,18 +148,52 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     runProfileSummary({ quick: cli.quick, staged: options.staged }),
     { projectPath: relativeProjectPath.split(path.sep).join('/') },
   );
-  report.text = writeSnapshotReports(outputRoot, report, {
-    projectPath: relativeProjectPath,
-    repositoryRoot,
-  });
+  writeAndFinish(report, { outputRoot, relativeProjectPath, repositoryRoot, resume });
   return writeSnapshotOutcome(cli, report, outputRoot);
+}
+
+function capturedRun(cli: SnapshotCli, selectedAnalyzers: readonly unknown[]) {
+  const captured = captureSnapshot(
+    cli.currentProjectRoot,
+    isCapture(cli.captureHead) ? cli.captureHead : capturedTree,
+  );
+  const { repositoryRoot, relativeProjectPath, capturedSha } = captured;
+  return {
+    ...captured,
+    snapshot: { commitSha: capturedSha, directoryName: 'head', warn: stderrWarning(cli.stderr) },
+    resume: snapshotResume({
+      ...cli,
+      repositoryRoot,
+      relativeProjectPath,
+      capturedSha: textOf(capturedSha),
+      analyzers: selectedAnalyzers,
+    }),
+  };
+}
+
+function writeAndFinish(
+  report: SnapshotReport,
+  place: {
+    readonly outputRoot: string;
+    readonly relativeProjectPath: string;
+    readonly repositoryRoot: string;
+    readonly resume: unknown;
+  },
+): void {
+  report.text = writeSnapshotReports(place.outputRoot, report, {
+    projectPath: place.relativeProjectPath,
+    repositoryRoot: place.repositoryRoot,
+  });
+  finishSnapshotResume(place.resume, report.toolErrors);
 }
 
 function addToolErrors(report: SnapshotReport, errors: readonly unknown[]): void {
   if (errors.length === 0) {
     return;
   }
-  report.toolErrors.unshift(...errors.map((error) => ({ ...objectOf(error), path: '' })));
+  const existing = report.toolErrors.splice(0);
+  const added = errors.map((error) => ({ ...objectOf(error), path: '' }));
+  appendAll(appendAll(report.toolErrors, added), existing);
   Object.assign(report.summary, { overallStatus: 'tool-error' });
 }
 

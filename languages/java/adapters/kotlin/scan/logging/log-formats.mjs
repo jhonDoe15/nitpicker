@@ -1,3 +1,4 @@
+import { largest } from '../../../../../../shared/lists/items.mjs';
 const PRINTF_SPEC =
   /^(\d+\$)?[-#+ 0,(<]*(?:[1-9]\d*)?(?:\.\d+)?([bBhHsScCdoxXeEfgGaA]|[tT][HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc])/u;
 const RELATIVE = /^[-#+ 0,(<]*</u;
@@ -29,7 +30,7 @@ export function printfFormat(text) {
   }
   return {
     malformed: specs.some(({ match }) => match === null),
-    required: Math.max(0, ...conversions.map(({ argument }) => argument)),
+    required: largest([0, ...conversions.map(({ argument }) => argument)]),
     conversions: conversions.filter(({ conversion }) => conversion !== undefined),
     otherSyntax: MESSAGE_IN_PRINTF.test(text),
   };
@@ -42,7 +43,7 @@ export function messageFormat(text) {
   );
   return {
     malformed: MESSAGE_MALFORMED.test(unquoted),
-    required: indexes.length === 0 ? 0 : Math.max(...indexes) + 1,
+    required: indexes.length === 0 ? 0 : largest(indexes) + 1,
     conversions: [],
     otherSyntax: PRINTF_IN_MESSAGE.test(unquoted),
   };

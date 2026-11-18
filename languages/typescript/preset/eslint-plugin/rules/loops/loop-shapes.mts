@@ -4,6 +4,7 @@ import { hasCollectionType } from '../support/checked-types.mts';
 import { ancestorsOf, contains, isNode, nameOf, type VisitorKeys } from '../typed/node-views.mts';
 import { isFunction, type FunctionNode } from '../typed/syntax-views.mts';
 import { isConcurrentBatch } from './concurrent-batches.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type LoopNode =
   | TSESTree.ForOfStatement
@@ -92,7 +93,7 @@ export function descendants(
   for (const node of pending) {
     found.push(node);
     if (node === root || !isBoundary(node)) {
-      pending.push(...childrenOf(node, visitorKeys));
+      appendAll(pending, childrenOf(node, visitorKeys));
     }
   }
   return found;

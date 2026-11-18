@@ -6,18 +6,26 @@ import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repos
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mts';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
+import { finishResume, resumeDirectory } from '../cache/resume/resume-cache.mts';
 import {
   type DiffReport,
   allSkippedReport,
   combineAnalyzerReports,
   noChangesReport,
 } from './results.mts';
-import { quickScoped, runCached, runHeadAnalyzers, toolRoot } from './quick/head-run.mts';
+import {
+  headResumePlace,
+  quickScoped,
+  runCached,
+  runHeadAnalyzers,
+  toolRoot,
+} from './quick/head-run.mts';
 import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
 import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
 import type { CaptureHead } from './snapshots/run-types.mts';
+import type { Checkpoints } from '../execution/tasks.mts';
 import type {
   BaseSetup,
   DiffOptions,
@@ -59,6 +67,8 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
   });
   const location = { projectPath, repositoryRoot: settings.repositoryRoot };
   report.text = writeReports(settings.outputRoot, report, location);
+  const resumed = headResumePlace(settings, comparison);
+  finishResume(resumed === undefined ? undefined : resumeDirectory(resumed), report.toolErrors);
   return report;
 }
 
@@ -217,7 +227,11 @@ function runAndCombine(context: RunContext): DiffReport {
   });
 }
 
-function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]): AnalyzerRun {
+function runBaseAnalyzers(
+  context: RunContext,
+  baseAnalyzers: readonly unknown[],
+  checkpoints?: Checkpoints,
+): AnalyzerRun {
   const { settings, roots, basePolicyFile } = context;
   return unlessSkipped(baseAnalyzers, context.skipPlan, (analyzersToRun) =>
     runAnalyzers({
@@ -231,6 +245,7 @@ function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]
       baselineRoot: undefined,
       baselineMovesFile: undefined,
       mutationScope: undefined,
+      checkpoints,
       ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
     }),
   );
@@ -256,6 +271,6 @@ function runBaseSide(context: RunContext): unknown {
       quick: settings.quick !== undefined,
     }),
     policyRoot: roots.headSnapshotRoot,
-    run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
+    run: (baseAnalyzers, checkpoints) => runBaseAnalyzers(context, baseAnalyzers, checkpoints),
   });
 }

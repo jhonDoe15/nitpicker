@@ -1,6 +1,7 @@
 import { afterEffects, effectsOf, fact } from '../facts.mjs';
 import { isArm } from './arms/arms.mjs';
 import { textOf } from './exits.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const CHAINS = new Set(['&&', '||']);
 
@@ -48,11 +49,15 @@ export function sitesIn(root, flow) {
       sites.push({ node, extra });
     }
     const arms = whenArms(node);
-    sites.push(...arms.map((arm, index) => ({ node: arm, earlier: arms.slice(0, index), extra })));
+    appendAll(
+      sites,
+      arms.map((arm, index) => ({ node: arm, earlier: arms.slice(0, index), extra })),
+    );
     const chain = isChain(node) ? node.value : '';
     const branches = node.kind === 'conditional' ? branchFacts(node, flow) : [];
-    pending.push(
-      ...partsBelow(node).map((child) => ({
+    appendAll(
+      pending,
+      partsBelow(node).map((child) => ({
         node: child,
         within: chain,
         extra: [...extra, ...(branches[node.children.indexOf(child) - 1] ?? [])],

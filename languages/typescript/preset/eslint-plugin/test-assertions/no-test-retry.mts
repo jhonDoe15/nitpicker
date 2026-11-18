@@ -13,6 +13,7 @@ import {
   resolveConstant,
 } from '../rules/analysis/test-code-analysis.mts';
 import { isFunctionNode } from '../rules/analysis/constant-resolution.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Context = Readonly<TSESLint.RuleContext<'retry', []>>;
 type Bindings = ReturnType<typeof moduleBindings>;
@@ -111,8 +112,14 @@ function retryValues(context: Context, node: TSESTree.Node | undefined): TSESTre
     if (resolved.type === AST_NODE_TYPES.ConditionalExpression) {
       pending.push(resolved.consequent, resolved.alternate);
     }
-    pending.push(...spreads.map((spread) => spread.argument));
-    values.push(...retries.map((property) => property.value));
+    appendAll(
+      pending,
+      spreads.map((spread) => spread.argument),
+    );
+    appendAll(
+      values,
+      retries.map((property) => property.value),
+    );
   }
   return values;
 }

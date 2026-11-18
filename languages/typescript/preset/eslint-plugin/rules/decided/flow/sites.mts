@@ -3,6 +3,7 @@ import type { SourceCode } from '../../typed/node-views.mts';
 import { afterEffects, effectsOf, type FlowContext } from '../effects.mts';
 import { fact, type Fact } from '../facts.mts';
 import { isFunction, syntaxChildren } from '../syntax.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type SiteScan = { readonly sourceCode: SourceCode; readonly flow: FlowContext };
 type Site = { readonly node: TSESTree.Node; readonly extra: readonly Fact[] };
@@ -59,7 +60,7 @@ export function sitesIn(expression: TSESTree.Node, scan: SiteScan): Site[] {
     } else if (node.type === AST_NODE_TYPES.LogicalExpression && isChainHead(node)) {
       sites.push({ node, extra });
     }
-    pending.push(...childSites(node, extra, scan));
+    appendAll(pending, childSites(node, extra, scan));
   }
   return sites;
 }

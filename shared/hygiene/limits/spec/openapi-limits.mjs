@@ -2,6 +2,7 @@ import { parsedConfig } from '../../schema/sources/sqlc-schemas.mjs';
 import { makeFact } from '../scanning/facts.mjs';
 import { patternLength } from '../scanning/pattern-length.mjs';
 import { combineBounds } from '../validators/bounds.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const SPEC_FILE = /\.(?:ya?ml|json)$/iu;
 const SPEC_MARKER = /["']?(?:openapi|swagger|\$schema)["']?\s*:/u;
@@ -31,7 +32,10 @@ function propertiesOf(schema, schemas) {
     if (isObject(current) && !seen.has(current)) {
       seen.add(current);
       visited.push(current);
-      queue.push(...[current.allOf ?? []].flat().map((part) => schemaTarget(part, schemas)));
+      appendAll(
+        queue,
+        [current.allOf ?? []].flat().map((part) => schemaTarget(part, schemas)),
+      );
     }
   }
   return Object.assign(

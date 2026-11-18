@@ -33,6 +33,7 @@ import {
   ruleFilterSection,
   toolErrorSectionLines,
 } from '../diff/reporting/console/text-sections.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type ConsoleOptions = {
   readonly diagnosticsPath: string;
@@ -158,10 +159,10 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  lines.push(...prioritySectionLines('Enforceable findings', enforceable));
-  lines.push(...findingSectionLines('Descriptive findings', descriptive));
-  lines.push(...referenceLinesOf(report.findings, reference));
-  lines.push(...toolErrorSectionLines(report.toolErrors));
+  appendAll(lines, prioritySectionLines('Enforceable findings', enforceable));
+  appendAll(lines, findingSectionLines('Descriptive findings', descriptive));
+  appendAll(lines, referenceLinesOf(report.findings, reference));
+  appendAll(lines, toolErrorSectionLines(report.toolErrors));
   const help = helpLineOf(report.toolErrors.map(({ message }) => message));
   if (help !== undefined) {
     lines.push(help);
@@ -190,7 +191,7 @@ function renderJunitReport(report: SnapshotReport): string {
     );
   }
   const profile = profileOf(report.summary, 'quality.snapshot', escapeXml);
-  testCases.push(...profile.skippedCases);
+  appendAll(testCases, profile.skippedCases);
   if (testCases.length === 0) {
     testCases.push(
       '  <testcase classname="quality.snapshot" name="framework" time="0"></testcase>',

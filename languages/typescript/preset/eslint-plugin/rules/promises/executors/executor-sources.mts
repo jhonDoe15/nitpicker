@@ -3,6 +3,7 @@ import { isNode, type SourceCode } from '../../typed/node-views.mts';
 import { isCall, type CallLike } from '../../typed/syntax-views.mts';
 import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mts';
 import { memberName } from '../../analysis/test-code-analysis.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 const LISTENERS = new Set<string>([
   'on',
@@ -138,7 +139,7 @@ export function nodesInside(
     for (const key of keys[node.type] ?? []) {
       const value: unknown = Reflect.get(node, key);
       const children: unknown[] = Array.isArray(value) ? value : [value];
-      pending.push(...children.filter(isNode));
+      appendAll(pending, children.filter(isNode));
     }
   }
   return nodes;

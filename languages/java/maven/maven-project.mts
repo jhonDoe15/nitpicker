@@ -25,6 +25,7 @@ import { kotlinRoots } from './kotlin/kotlin-roots.mts';
 import { testJvmArguments } from './configuration/surefire-jvm.mts';
 import { isStrictlyInside } from '../../../shared/filesystem.mjs';
 import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
@@ -216,7 +217,10 @@ export function readReactor(projectRoot: string, effectivePom: string): ReactorM
     const children = childrenAt(project, 'modules', 'module').flatMap((module) =>
       module.text === undefined ? [] : [pomFileOf(basedir, module.text)],
     );
-    pending.push(...children.filter((file) => !pending.includes(file)));
+    appendAll(
+      pending,
+      children.filter((file) => !pending.includes(file)),
+    );
   }
   return modules;
 }

@@ -7,6 +7,7 @@ import { assertionFacts } from './flow/assertions.mts';
 import { assignedFacts } from './flow/assignments.mts';
 import { recordCaptures } from './flow/closures.mts';
 import { switchFlow, type LabelCheck } from './flow/switch.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Statement = TSESTree.Statement;
 type Task = { readonly statements: readonly Statement[]; readonly facts: readonly Fact[] };
@@ -260,8 +261,11 @@ export function conditionChecks(body: readonly Statement[], context: FlowContext
     let facts: readonly Fact[] = shadowed(task.facts, task.statements);
     for (const statement of task.statements) {
       const flow = statementFlow(statement, facts, context);
-      checks.push(...flow.checks);
-      pending.push(...flow.children.filter(({ statements }) => statements.length > 0));
+      appendAll(checks, flow.checks);
+      appendAll(
+        pending,
+        flow.children.filter(({ statements }) => statements.length > 0),
+      );
       facts = flow.after;
     }
   }

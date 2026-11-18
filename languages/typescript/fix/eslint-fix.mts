@@ -25,6 +25,7 @@ import {
   type Bytes,
 } from '../../../core/fix/typed/fix-views.mts';
 import type { Layout } from './typed/fix-views.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -180,10 +181,9 @@ function plannedTexts(settings: EslintSettings, before: Bytes, reported: readonl
   const planned = reported.flatMap((file) => {
     const original = before.get(file.name)?.toString('utf8') ?? '';
     const { text: fixed, applied } = fixedText(settings, original, file);
-    findings.push(
-      ...applied.map(
-        ({ rule, line }) => `${file.name}:${String(line)} ${rule} (eslint-suggestion)`,
-      ),
+    appendAll(
+      findings,
+      applied.map(({ rule, line }) => `${file.name}:${String(line)} ${rule} (eslint-suggestion)`),
     );
     const text = withFixedLineEndingsOf(original, fixed);
     return text === original ? [] : [{ name: file.name, text }];

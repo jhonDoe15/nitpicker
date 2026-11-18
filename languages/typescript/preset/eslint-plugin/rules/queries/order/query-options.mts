@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { memberName, staticKey, unwrapped } from '../../security/security-values.mts';
 import { QUERY_BUILDER, type ChainScope } from '../chains/chain-libraries.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 
@@ -68,8 +69,9 @@ function relationPages(object: TSESTree.ObjectExpression): TSESTree.Property[] {
       pages.push(page);
     }
     if (depth < MAX_NESTING) {
-      pending.push(
-        ...nestedObjects(relation).map((child) => ({ relation: child, depth: depth + 1 })),
+      appendAll(
+        pending,
+        nestedObjects(relation).map((child) => ({ relation: child, depth: depth + 1 })),
       );
     }
   }

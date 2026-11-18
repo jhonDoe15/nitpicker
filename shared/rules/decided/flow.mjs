@@ -3,6 +3,7 @@ import { exitOf, statementsOf, textOf } from './flow/exits.mjs';
 import { loopEntry } from './flow/loops.mjs';
 import { nestedFlow } from './flow/nested.mjs';
 import { statementFacts } from './flow/values/statement-facts.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const LOOPS = new Set(['for', 'foreach', 'while', 'do']);
 
@@ -121,8 +122,11 @@ export function conditionChecks(body, flow) {
     let facts = shadowed(task.facts, task.statements);
     for (const statement of task.statements) {
       const next = statementFlow(statement, facts, flow);
-      checks.push(...next.checks);
-      pending.push(...next.children.filter(({ statements }) => statements.length > 0));
+      appendAll(checks, next.checks);
+      appendAll(
+        pending,
+        next.children.filter(({ statements }) => statements.length > 0),
+      );
       facts = next.after;
     }
   }

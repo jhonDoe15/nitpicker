@@ -22,8 +22,11 @@ export function importClosure(relativePaths, root, { stopAt = new Set() } = {}) 
     if (files.has(relativePath)) continue;
     const contents = readFileSync(checkoutModulePath(path.join(root, relativePath)), 'utf8');
     files.set(relativePath, contents);
-    if (SCRIPT_FILE.test(relativePath) && !stopAt.has(relativePath)) {
-      pending.push(...importedFiles(relativePath, contents, root));
+    if (!SCRIPT_FILE.test(relativePath) || stopAt.has(relativePath)) {
+      continue;
+    }
+    for (const imported of importedFiles(relativePath, contents, root)) {
+      pending.push(imported);
     }
   }
   return files;

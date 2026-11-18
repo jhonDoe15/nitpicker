@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const FEATURE_FILE = '.feature';
 const STEP_FOLDERS = ['steps', 'step_defs'];
@@ -24,8 +25,9 @@ function holdsFeatureFiles(absolute: string): boolean {
     if (entries.some((entry) => entry.isFile() && entry.name.endsWith(FEATURE_FILE))) {
       return true;
     }
-    pending.push(
-      ...entries
+    appendAll(
+      pending,
+      entries
         .filter((entry) => entry.isDirectory() && !entry.name.startsWith(HIDDEN_PREFIX))
         .map((entry) => path.join(directory, entry.name)),
     );

@@ -4,6 +4,7 @@ import { byCodeUnits, isInMutationScope } from '../../../../core/scope/mutation-
 import { sourceFileOf } from '../kotlin/java-classes.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { posix } from '../../builds/lint/lint-staging.mjs';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type PitScope = {
   readonly projectRoot: string;
@@ -90,8 +91,9 @@ export function pitTargets(classDirectory: string): string[] {
     for (const name of classes) {
       targets.add(name);
     }
-    pending.push(
-      ...entries
+    appendAll(
+      pending,
+      entries
         .filter((entry) => entry.isDirectory())
         .map((entry) => ({
           directory: path.join(directory, entry.name),

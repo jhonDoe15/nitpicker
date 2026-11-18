@@ -4,6 +4,7 @@ import {
   GENERIC_NAME_WORDS,
 } from '../../../../../../shared/naming/smell-words.mjs';
 import { braceDepths, closingIndex, parenDepths } from '../kotlin-source.mjs';
+import { smallest } from '../../../../../../shared/lists/items.mjs';
 
 const OBJECT_BODY =
   /(?<![\w.])(?:companion\s+object(?:\s+[A-Za-z_]\w*)?|object\s+[A-Za-z_]\w*)(?:\s*:[^{}=]*|\s*)\{/g;
@@ -115,7 +116,7 @@ function objectBodies(code) {
 
 function declarationParts(rest) {
   const marks = [rest.indexOf('='), rest.search(DELEGATION)].filter((index) => index !== -1);
-  const at = marks.length === 0 ? rest.length : Math.min(...marks);
+  const at = marks.length === 0 ? rest.length : smallest(marks);
   const head = rest.slice(0, at);
   if (head.trim() !== '' && !head.trimStart().startsWith(':')) {
     return undefined;

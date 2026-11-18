@@ -1,4 +1,5 @@
 import { labelOfTag } from '../../../logic/bitvectors/widths.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const COMPARISONS = new Set(['<', '<=', '>', '>=', '==', '!=', '===', '!==']);
 const EQUALITIES = new Set(['==', '!=', '===', '!==']);
@@ -89,7 +90,7 @@ function plainNodes(root) {
     const isChain = node.kind === 'binary' && (node.value === '&&' || node.value === '||');
     nodes.push(node);
     if (node === root || (!isChain && node.kind !== 'lambda' && node.kind !== 'block')) {
-      pending.push(...node.children);
+      appendAll(pending, node.children);
     }
   }
   return nodes;

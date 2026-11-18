@@ -1,4 +1,5 @@
 import { blankComments, closingIndex, lineAt, parseArguments } from '../scanning/scan.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const ANNOTATION = /@(?:\w+:)?([\w.]+)/uy;
 const SPACE = /\s+/uy;
@@ -123,7 +124,10 @@ export function fieldsWithAncestors(entity, byName) {
       continue;
     }
     seen.add(current.name);
-    fields.push(...current.fields.map((field) => ({ ...field, file: current.file })));
+    appendAll(
+      fields,
+      current.fields.map((field) => ({ ...field, file: current.file })),
+    );
     const parent = byName.get(current.parent);
     queue.push(...(parent === undefined ? [] : [parent]));
   }

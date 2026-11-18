@@ -3,6 +3,7 @@ import path from 'node:path';
 import { type LineLocation, lineLocator } from './java-spans.mts';
 import type { JavaFinding, SourceReader } from '../typed/java-values.mts';
 import { fieldOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Scope = 'file' | 'line' | 'variable' | 'class' | 'member' | 'javadoc' | 'catch' | 'field';
 export type OverlapPair = {
@@ -189,7 +190,7 @@ function droppedFindings(findings: readonly JavaFinding[], covering: Covering): 
     if (covering.get(finding)?.some((primary) => !dropped.has(primary)) === true) {
       dropped.add(finding);
     }
-    pending.push(...released(finding, covers, undecided));
+    appendAll(pending, released(finding, covers, undecided));
   }
   return dropped;
 }

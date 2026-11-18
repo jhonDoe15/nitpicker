@@ -26,6 +26,7 @@ import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts
 import type { TextOutput } from '../../cli-context.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
 import { textOf, textsOf } from '../../../shared/values/readers.mts';
+import { largest } from '../../../shared/lists/lists.mts';
 
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
@@ -174,7 +175,7 @@ export function aggregateSummary({
     ...summaryFields(configOverrides, firstSummary(shardReports)),
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),
-    elapsedMs: Math.max(...shardReports.map(({ summary: shardSummary }) => shardSummary.elapsedMs)),
+    elapsedMs: largest(shardReports.map(({ summary: shardSummary }) => shardSummary.elapsedMs)),
     overallStatus:
       toolErrors.length === 0 &&
       shardReports.every(({ summary: shardSummary }) => shardSummary.overallStatus === 'completed')

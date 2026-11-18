@@ -3,6 +3,7 @@ import type { TSESTree } from '@typescript-eslint/utils';
 import { ts } from '../../typed/typescript-views.mts';
 import { typeServices, type Context } from '../../security/security-values.mts';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 const HOOK_NAME =
   /^(?:Before|After)(?:Insert|Update|Remove|SoftRemove|Recover|Create|Delete|Destroy|Save|Upsert|Bulk\w*)$/u;
@@ -66,7 +67,10 @@ function returnedNames(method: TypeScript.MethodDeclaration): string[] {
     if (ts.isReturnStatement(node) && node.expression !== undefined) {
       const value = node.expression;
       const items = ts.isArrayLiteralExpression(value) ? [...value.elements] : [value];
-      names.push(...items.filter(ts.isIdentifier).map((item) => item.text));
+      appendAll(
+        names,
+        items.filter(ts.isIdentifier).map((item) => item.text),
+      );
     }
     if (!ts.isFunctionLike(node) || node === method) {
       ts.forEachChild(node, visit);

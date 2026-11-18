@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;
 type Next = { readonly input?: true; readonly value?: Node | undefined };
@@ -80,8 +81,9 @@ function referencedIdentifiers(
     if (node.type === AST_NODE_TYPES.Identifier && !isNameOnly(parent, node)) {
       identifiers.push(node);
     }
-    pending.push(
-      ...valueChildren(visitorKeys, node).map((child) => ({ node: child, parent: node })),
+    appendAll(
+      pending,
+      valueChildren(visitorKeys, node).map((child) => ({ node: child, parent: node })),
     );
   }
   return identifiers;
@@ -137,10 +139,9 @@ export function dependsOnInput(context: SourceContext, node: Node): boolean {
     if (next.some(({ input }) => input)) {
       return true;
     }
-    pending.push(
-      ...next.flatMap(({ value }) =>
-        value === undefined ? [] : [{ node: value, depth: depth + 1 }],
-      ),
+    appendAll(
+      pending,
+      next.flatMap(({ value }) => (value === undefined ? [] : [{ node: value, depth: depth + 1 }])),
     );
   }
   return false;

@@ -1,5 +1,6 @@
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
+import { appendAll } from '../lists/items.mjs';
 
 const MODULE_HEADER_LINE = new RegExp(
   [
@@ -90,7 +91,7 @@ export function evaluateDuplicates(clones, analyzerName) {
     const fragment = hash(withoutModuleHeaders(clone.fragment ?? ''));
     const occurrence = nextOccurrence(pairOccurrences, pairKey);
     const fragmentOccurrence = nextOccurrence(fragmentOccurrences, `${pairKey}\0${fragment}`);
-    findings.push(
+    appendAll(findings, [
       {
         tool: analyzerName,
         rule: RULE_IDS.duplicateClone,
@@ -104,7 +105,7 @@ export function evaluateDuplicates(clones, analyzerName) {
         ...sizeRatchet(pair, clone, sides),
       },
       ...cloneMetrics({ analyzerName, sides, clone, pair, occurrence }),
-    );
+    ]);
   }
   return findings;
 }

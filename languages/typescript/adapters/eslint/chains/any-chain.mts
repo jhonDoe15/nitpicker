@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { nodeChain, enclosingSymbol, findReportedNode, stableSyntaxAnchor } from '../syntax.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Node = TypeScript.Node;
 type SourceFile = TypeScript.SourceFile;
@@ -124,7 +125,7 @@ function bindingNames(name: TypeScript.BindingName): Identifier[] {
     if (ts.isIdentifier(current)) {
       names.push(current);
     } else {
-      pending.push(...innerNames(current));
+      appendAll(pending, innerNames(current));
     }
   }
   return names;

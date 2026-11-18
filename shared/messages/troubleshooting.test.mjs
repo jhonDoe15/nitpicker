@@ -41,7 +41,12 @@ const registered = Object.entries(TROUBLESHOOTING_ANCHORS);
 
 async function helpersWithoutRepository() {
   const copy = mkdtempSync(path.join(tmpdir(), 'troubleshooting-'));
-  for (const file of ['messages/troubleshooting.mjs', 'messages/docs-url.mjs', 'paths/glob.mjs']) {
+  for (const file of [
+    'messages/troubleshooting.mjs',
+    'messages/docs-url.mjs',
+    'paths/glob.mjs',
+    'lists/items.mjs',
+  ]) {
     mkdirSync(path.dirname(path.join(copy, 'shared', file)), { recursive: true });
     copyFileSync(path.join(root, 'shared', file), path.join(copy, 'shared', file));
   }

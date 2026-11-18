@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const FASTIFY_OPTIONS = new Set([
   'preHandler',
@@ -47,7 +48,7 @@ export function middlewareIn(arg: TSESTree.Node): string[] {
   for (const item of pending) {
     const nested = nestedItems(item);
     const name = nested === undefined ? middlewareName(item) : undefined;
-    pending.push(...(nested ?? []));
+    appendAll(pending, nested ?? []);
     if (name !== undefined) {
       names.push(name);
     }
