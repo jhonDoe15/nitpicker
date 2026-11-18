@@ -8,6 +8,7 @@ import { kotlinUnits } from './kotlin/units.mts';
 import { javaExtractions } from './extract/file-extractions.mts';
 import { javaUnits } from './tree/units.mts';
 import { shorterFixes, type Grammar } from './simplify/shorter-fixes.mts';
+import { switchLabelFixes } from './simplify/switch-labels.mts';
 
 type TreesRequest = {
   readonly root: string;
@@ -31,7 +32,8 @@ function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   return undefined;
 }
 
-const MODES = new Set(['partial', 'shorter']);
+const MODES = new Set(['partial', 'shorter', 'switches']);
+const FIXERS = { shorter: shorterFixes, switches: switchLabelFixes } as const;
 
 function modeOf(value: object): string {
   return 'mode' in value && typeof value.mode === 'string' && MODES.has(value.mode)
@@ -96,11 +98,12 @@ async function main(): Promise<unknown> {
   await Parser.init();
   const java = await grammarOf('java');
   const { texts } = request;
-  if (texts !== undefined && request.mode === 'shorter') {
+  if (texts !== undefined && (request.mode === 'shorter' || request.mode === 'switches')) {
     const kotlin = await grammarOf('kotlin');
+    const fixer = FIXERS[request.mode];
     return {
       fixes: request.files.flatMap((file) =>
-        shorterFixes(file.endsWith('.kt') ? kotlin : java, { file, text: texts[file] ?? '' }),
+        fixer(file.endsWith('.kt') ? kotlin : java, { file, text: texts[file] ?? '' }),
       ),
     };
   }

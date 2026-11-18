@@ -185,6 +185,14 @@ it, and skips a condition that holds a comment or whose text appears twice on it
 form evaluates fewer operands, so an operand that could throw or has a side effect no longer runs;
 that is why a person selects it.
 
+`jvm-merge-switch-labels` is a review recipe for the `structure/duplicate-branch` findings on Java
+switch cases and Kotlin `when` entries with the same body (compared as text without whitespace). It
+moves the later labels onto the first case and removes the later cases, only when no case involved
+falls through or is entered by one that does, declares a local, holds a comment, or uses a pattern,
+a guard, `null`, `default` or `else`. Java colon cases get stacked labels (`case 1: case 3:`), which
+compile on every release. Kotlin entries merge only when they are next to each other and test no
+type. A switch inside a case that another merge removes is left alone.
+
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
 method. It takes the locals and parameters the run reads, and copies the `throws` clause that the
