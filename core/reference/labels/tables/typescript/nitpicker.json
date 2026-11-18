@@ -113,6 +113,7 @@
   "eslint/nitpicker/no-uncollected-tests": ["tests"],
   "eslint/nitpicker/no-undefined-only-env-check": ["bug"],
   "eslint/nitpicker/no-unescaped-filter-value": ["bug", "persistence"],
+  "eslint/nitpicker/no-unescaped-html-interpolation": ["bug", "security"],
   "eslint/nitpicker/no-unescaped-pattern-translation": ["bug", "security"],
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],

@@ -114,6 +114,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/NullMapValue`).
 - A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
   fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).
+- A value put into an HTML string is escaped first (`HtmlUtils.htmlEscape`, `Encode.forHtml`) or the page is built
+  with `kotlinx.html` (`pmd/UnescapedHtmlValue`).
 - A replacement that comes from data goes through `Regex.escapeReplacement(value)`, or use the lambda overload
   `regex.replace(text) { value }`, or `String.replace(String, String)` (`pmd/ExpandingReplacement`): the
   replacement reads `$1` and `\\`.

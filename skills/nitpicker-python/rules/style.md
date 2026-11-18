@@ -44,6 +44,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- A value put into an HTML string is escaped first, `f"<td>{html.escape(name)}</td>"`
+  (`unescaped-html-value`).
 - A replacement that comes from data goes to `re.sub` as a function, `re.sub(pattern, lambda _: value, text)`:
   a string template reads `\1` and `\g<name>` (`expanding-replacement`).
 - A glob or pattern turned into a regex or `LIKE` pattern with `replace` calls is escaped for the target first

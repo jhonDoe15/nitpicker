@@ -2389,6 +2389,7 @@
                             "pmd/MaxValueOverflow",
                             "pmd/PatternTranslation",
                             "pmd/ExpandingReplacement",
+                            "pmd/UnescapedHtmlValue",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

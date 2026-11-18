@@ -40,6 +40,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   shorter one.
 - A replacement that comes from data is passed as a function, `text.replace(pattern, () => value)`: a string
   replacement reads `$&`, `$1` and `$$` (`nitpicker/no-expanding-replacement-string`).
+- A value put into an HTML string is escaped first, `<td>${escapeHtml(name)}</td>`
+  (`nitpicker/no-unescaped-html-interpolation`).
 - `src/main/composition-root.mjs` (or `main`/`server`) only passes things in, through named
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.
