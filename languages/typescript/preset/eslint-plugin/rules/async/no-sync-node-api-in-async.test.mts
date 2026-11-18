@@ -28,8 +28,11 @@ const FS = 'import { readFileSync, writeFileSync } from "node:fs";';
 
 const blockers: CaseRow[] = [
   [
-    `${FS} export async function load(path) { return readFileSync(path, "utf8"); }`,
-    blocking('readFileSync'),
+    `${FS} export async function load(path) { return readFileSync("a.txt", "utf8"); }`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export async function load(path) { return await readFile("a.txt", "utf8"); }`,
+    ),
   ],
   [
     'import * as fs from "fs"; export const save = async (path, data) => { fs.writeFileSync("a.txt", data); };',
@@ -46,8 +49,11 @@ const blockers: CaseRow[] = [
     ),
   ],
   [
-    'import { readFileSync as read } from "node:fs"; export async function load(path) { return read(path); }',
-    blocking('readFileSync'),
+    'import { readFileSync as read } from "node:fs"; export async function load(path) { return read("a.txt"); }',
+    suggested(
+      'readFileSync',
+      'import { readFileSync as read } from "node:fs";\nimport { readFile } from "node:fs/promises"; export async function load(path) { return await readFile("a.txt"); }',
+    ),
   ],
   [
     'const fs = require("fs"); exports.load = async function (path) { return fs.readFileSync("a.txt"); };',
@@ -106,7 +112,13 @@ const blockers: CaseRow[] = [
   ],
   [
     'import { readdirSync, statSync } from "node:fs"; export async function dirs(root) { return readdirSync(root).filter((name) => statSync(root + name).isDirectory()); }',
-    [...blocking('readdirSync'), ...inCallback('statSync')],
+    [
+      ...suggested(
+        'readdirSync',
+        'import { readdirSync, statSync } from "node:fs";\nimport { readdir } from "node:fs/promises"; export async function dirs(root) { return (await readdir(root)).filter((name) => statSync(root + name).isDirectory()); }',
+      ),
+      ...inCallback('statSync'),
+    ],
   ],
   [
     'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => fs.readFileSync("a.txt"))); }',
@@ -120,17 +132,32 @@ const blockers: CaseRow[] = [
     inCallback('readFileSync'),
   ],
   [
-    `${FS} export class Store { async load(path) { return readFileSync(path); } }`,
-    blocking('readFileSync'),
+    `${FS} export class Store { async load(path) { return readFileSync("a.txt"); } }`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export class Store { async load(path) { return await readFile("a.txt"); } }`,
+    ),
   ],
   [
     `${FS} async function main() { readFileSync("a"); } export function start() { return main(); }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; async function main() { await readFile("a"); } export function start() { return main(); }`,
+    ),
   ],
-  [`${FS} export async function main() { readFileSync("a"); } main();`, blocking('readFileSync')],
   [
-    `${FS} export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), writeFileSync(path, "")]); }`,
-    blocking('writeFileSync'),
+    `${FS} export async function main() { readFileSync("a"); } main();`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export async function main() { await readFile("a"); } main();`,
+    ),
+  ],
+  [
+    `${FS} export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), writeFileSync("a.txt", "")]); }`,
+    suggested(
+      'writeFileSync',
+      `${FS}\nimport { writeFile } from "node:fs/promises"; export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), await writeFile("a.txt", "")]); }`,
+    ),
   ],
   [
     'import express from "express"; import { readFileSync } from "node:fs"; const app = express(); app.get("/", (req, res) => { res.send(readFileSync("a")); });',
@@ -154,7 +181,10 @@ const blockers: CaseRow[] = [
   ],
   [
     `${FS} export function start() { return (async () => readFileSync("a"))(); }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export function start() { return (async () => await readFile("a"))(); }`,
+    ),
   ],
   [
     'import fs from "node:fs"; export async function real(p) { return fs.realpathSync.native(p); }',
@@ -186,7 +216,10 @@ const blockers: CaseRow[] = [
   ],
   [
     `${WORKER} ${FS} export async function run() { if (isMainThread) { readFileSync("a"); } }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${WORKER} ${FS}\nimport { readFile } from "node:fs/promises"; export async function run() { if (isMainThread) { await readFile("a"); } }`,
+    ),
   ],
   [
     'import { Controller, Get as Route } from "@nestjs/common"; import { readFileSync } from "node:fs"; @Controller() export class A { @Route() show() { return readFileSync("a"); } }',
