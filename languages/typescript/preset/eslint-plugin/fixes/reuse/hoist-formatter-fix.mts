@@ -14,6 +14,7 @@ export type Hoist = { readonly name: string; readonly plan: FixPlans };
 
 const NAMES: Readonly<Record<string, string>> = {
   Collator: 'COLLATOR',
+  DateTimeFormat: 'DATE_TIME_FORMAT',
   DisplayNames: 'DISPLAY_NAMES',
   ListFormat: 'LIST_FORMAT',
   NumberFormat: 'NUMBER_FORMAT',
@@ -48,6 +49,14 @@ function constructs(type: string, call: Call, values: readonly unknown[]): boole
   }
 }
 
+function namesTimeZone(type: string, options: unknown): boolean {
+  if (type !== 'DateTimeFormat') {
+    return true;
+  }
+  const zone = isObject(options) ? options['timeZone'] : undefined;
+  return typeof zone === 'string' && zone !== '';
+}
+
 function validArguments(type: string, call: Call): boolean {
   const { arguments: nodes } = call;
   if (nodes.length === 0 || nodes.length > 2) {
@@ -60,6 +69,7 @@ function validArguments(type: string, call: Call): boolean {
     found.every((item) => item !== undefined) &&
     isLocale(locale) &&
     (options === undefined || isObject(options)) &&
+    namesTimeZone(type, options) &&
     constructs(type, call, values)
   );
 }
