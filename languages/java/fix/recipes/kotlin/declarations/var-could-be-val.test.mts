@@ -58,4 +58,12 @@ describe('varCouldBeValRecipe', () => {
 
     expect(fix(text)).toBe(text);
   });
+  it('is not misled by a brace-less declaration before the function', () => {
+    expect(fix('class Box(var n: Int = 0)\n\nfun f() {\n    var a = 1\n    use(a)\n}\n')).toBe(
+      'class Box(var n: Int = 0)\n\nfun f() {\n    val a = 1\n    use(a)\n}\n',
+    );
+    expect(fix('val log = Foo::class.java\nfun f() {\n    var a = 1\n    use(a)\n}\n')).toBe(
+      'val log = Foo::class.java\nfun f() {\n    val a = 1\n    use(a)\n}\n',
+    );
+  });
 });
