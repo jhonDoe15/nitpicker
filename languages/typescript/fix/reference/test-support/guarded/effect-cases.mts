@@ -2,8 +2,13 @@ import type { GuardedCase } from './guarded-case.mts';
 
 const FIND = '@typescript-eslint/prefer-find';
 const AWAIT = '@typescript-eslint/require-await';
+const PRIVATE = 'no-unused-private-class-members';
 const HELPER = 'async function one(): Promise<number> {\n  return 1;\n}\n\n';
 const UNASYNC = ['async function one(): Promise<number>', 'function one(): number'] as const;
+
+function counter(member: string): string {
+  return `declare function register(): number;\n\nexport class Counter {\n  ${member}\n}\n`;
+}
 
 export const EFFECT_CASES: readonly GuardedCase[] = [
   {
@@ -49,5 +54,17 @@ export const EFFECT_CASES: readonly GuardedCase[] = [
     rule: AWAIT,
     input: `${HELPER}export async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n\nexport async function three(): Promise<number> {\n  return one();\n}\n`,
     selected: UNASYNC,
+  },
+  { rule: PRIVATE, input: counter('readonly #id = register();') },
+  { rule: PRIVATE, input: counter('readonly #created = new Date();') },
+  {
+    rule: PRIVATE,
+    input: counter("readonly #label = 'counter';"),
+    selected: ["{\n  readonly #label = 'counter';\n}", '{}'],
+  },
+  {
+    rule: PRIVATE,
+    input: counter('readonly #next = (): number => register();'),
+    selected: ['{\n  readonly #next = (): number => register();\n}', '{}'],
   },
 ];

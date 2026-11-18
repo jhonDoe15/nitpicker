@@ -35,14 +35,18 @@ function fixEdit({ fix }: LintMessage): Pick<SuggestionEdit, 'start' | 'end' | '
     : undefined;
 }
 
-function editsOf(messages: readonly LintMessage[], ruleIds: readonly string[]): Edit[] {
+function editsOf(
+  body: string,
+  messages: readonly LintMessage[],
+  ruleIds: readonly string[],
+): Edit[] {
   return messages
     .filter(({ ruleId }) => ruleId !== undefined && ruleIds.includes(ruleId))
     .flatMap((message): Edit[] => {
       const fix = fixEdit(message);
       const suggestion =
         fix === undefined && isListedSuggestion(message.ruleId, message.suggestions?.[0]?.messageId)
-          ? singleSuggestionEdit(message)
+          ? singleSuggestionEdit(message, body)
           : undefined;
       const edit = fix ?? suggestion;
       return edit === undefined ? [] : [{ ...edit, suggested: fix === undefined, message }];
@@ -64,7 +68,7 @@ export function selectedOutput(
   let output = '';
   let position = 0;
   let lastEnd = -Infinity;
-  for (const edit of editsOf(messages, ruleIds)) {
+  for (const edit of editsOf(body, messages, ruleIds)) {
     if (lastEnd < edit.start) {
       output += body.slice(position, edit.start) + edit.text;
       position = edit.end;
