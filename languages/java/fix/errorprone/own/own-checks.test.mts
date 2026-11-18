@@ -23,7 +23,11 @@ const NAMES = OWN_CHECKS.map(({ check }) => check);
 describe('the own fix checks', () => {
   it('have one Java class each, registered as Error Prone services', () => {
     const classes = readdirSync(SOURCES)
-      .filter((name) => name.endsWith('.java') && name !== 'Support.java')
+      .filter(
+        (name) =>
+          name.endsWith('.java') &&
+          readFileSync(path.join(SOURCES, name), 'utf8').includes('@BugPattern('),
+      )
       .map((name) => name.replace(/\.java$/u, ''));
     const services = readFileSync(SERVICES, 'utf8').split('\n').filter(Boolean);
 
