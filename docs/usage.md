@@ -2959,7 +2959,9 @@ finding as it is. No fix adds a comment.
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
 (`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
-files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+files, and the other ESLint rules are not fixed in that run. ESLint reruns on the files it changed until no
+selected fix applies, at most 10 passes, so fixes whose ranges overlap are all applied; a "Fix notes:" line says when
+the cap was hit. Prettier runs after ESLint as usual.
 A suggestion applied this way is verified like a recipe: for each file the run reports the rules it applied
 as `eslint-lint` findings, and [Verify the fixes](#verify-the-fixes) reruns `eslint-lint` and the type check
 on the file and rolls it back when a rule's finding is still there or a compile error is new.

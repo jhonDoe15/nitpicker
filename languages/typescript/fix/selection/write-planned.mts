@@ -6,7 +6,7 @@ import {
 } from '../../../../core/fix/typed/fix-views.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 import { applySuggestions } from '../suggestions/apply-suggestions.mts';
-import type { LintMessage } from '../suggestions/typed/suggestion-views.mts';
+import { suggestionName, type LintMessage } from '../suggestions/typed/suggestion-views.mts';
 import { selectedEslintRules, selectedOutput } from './selected-fixes.mts';
 
 export const TOOL = 'eslint --fix';
@@ -23,6 +23,35 @@ export type Reported = {
   readonly fatal: boolean;
 };
 type Applied = { readonly rule: string; readonly line: number | undefined };
+export type PassBudget = { readonly seeded: Set<string>; readonly left: Map<string, number> };
+
+export function newPassBudget(): PassBudget {
+  return { seeded: new Set(), left: new Map() };
+}
+
+function budgetKey(name: string, rule: string): string {
+  return `${name}\0${rule}`;
+}
+
+function recordable(
+  budget: PassBudget,
+  file: Reported,
+  applied: readonly Applied[],
+): readonly Applied[] {
+  if (!budget.seeded.has(file.name)) {
+    budget.seeded.add(file.name);
+    for (const { ruleId } of file.messages) {
+      const key = budgetKey(file.name, suggestionName(ruleId));
+      budget.left.set(key, (budget.left.get(key) ?? 0) + 1);
+    }
+  }
+  return applied.filter(({ rule }) => {
+    const key = budgetKey(file.name, rule);
+    const left = budget.left.get(key) ?? 0;
+    budget.left.set(key, left - 1);
+    return left > 0;
+  });
+}
 
 function fixedText(settings: PlanSettings, original: string, reported: Reported) {
   const { output, messages, fatal } = reported;
@@ -45,7 +74,12 @@ function analyzerRule(rule: string): string {
   return rule.slice(ANALYZER.length + 1);
 }
 
-function recipeOf(settings: PlanSettings, name: string, applied: readonly Applied[]) {
+function recipeOf(
+  settings: PlanSettings,
+  name: string,
+  applied: readonly Applied[],
+  recorded: readonly Applied[],
+) {
   if (settings.selectedRules.length === 0 || applied.length === 0) {
     return {};
   }
@@ -53,7 +87,7 @@ function recipeOf(settings: PlanSettings, name: string, applied: readonly Applie
   return {
     recipe: `${SUGGESTION_RECIPE} ${rules.join(',')} ${name}`,
     safety: REVIEW,
-    findings: applied.map(({ rule, line }) => ({
+    findings: recorded.map(({ rule, line }) => ({
       tool: ANALYZER,
       rule: analyzerRule(rule),
       path: name,
@@ -62,7 +96,12 @@ function recipeOf(settings: PlanSettings, name: string, applied: readonly Applie
   };
 }
 
-function plannedTexts(settings: PlanSettings, before: Bytes, reported: readonly Reported[]) {
+function plannedTexts(
+  settings: PlanSettings,
+  before: Bytes,
+  reported: readonly Reported[],
+  budget: PassBudget,
+) {
   const findings: string[] = [];
   const planned = reported.flatMap((file) => {
     const original = before.get(file.name)?.toString('utf8') ?? '';
@@ -74,13 +113,24 @@ function plannedTexts(settings: PlanSettings, before: Bytes, reported: readonly 
     const text = withFixedLineEndingsOf(original, fixed);
     return text === original
       ? []
-      : [{ name: file.name, text, ...recipeOf(settings, file.name, applied) }];
+      : [
+          {
+            name: file.name,
+            text,
+            ...recipeOf(settings, file.name, applied, recordable(budget, file, applied)),
+          },
+        ];
   });
   return { planned, findings };
 }
 
-export function writeOutputs(settings: PlanSettings, before: Bytes, reported: readonly Reported[]) {
-  const { planned, findings } = plannedTexts(settings, before, reported);
+export function writeOutputs(
+  settings: PlanSettings,
+  before: Bytes,
+  reported: readonly Reported[],
+  budget: PassBudget,
+) {
+  const { planned, findings } = plannedTexts(settings, before, reported, budget);
   const { written, changedMeanwhile, unwritable } = writeTexts(
     settings.writer,
     planned.map((file) => ({ ...file, bytes: before.get(file.name) })),
