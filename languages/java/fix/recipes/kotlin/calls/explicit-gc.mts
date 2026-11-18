@@ -1,5 +1,5 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { closingIndex, enclosingOpen } from '../shared/kotlin-scan.mts';
+import { closingIndex, enclosingOpen, matchingOpenParen } from '../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';
 
@@ -12,27 +12,11 @@ const CONTINUING_WORD = /^(?:else|catch|finally|as|is|in)\b/u;
 const STATEMENT_ENDS = /[\w)\]"'}{;]/u;
 const OPEN_KEYWORD = /\b(?:else|do|try|finally|return|throw|in|is|as|if|while|for|when)$/u;
 const CONTROL_HEADER = /\b(?:if|for|while|when|catch)\s*$/u;
-const PAREN_STEP: Readonly<Record<string, number>> = { ')': 1, '(': -1 };
 const FUNCTION_HEADER = /(?<![\w.])fun\s/u;
 
 function shadowedNames(source: string): ReadonlySet<string> {
   const found = [...source.matchAll(SHADOWING_IMPORT), ...source.matchAll(SHADOWING_TYPE)];
   return new Set(found.map((match) => match[1] ?? ''));
-}
-
-function matchingOpenParen(code: string, close: number): number {
-  let depth = 0;
-  for (const [offset, character] of code
-    .slice(0, close + 1)
-    .split('')
-    .reverse()
-    .entries()) {
-    depth += PAREN_STEP[character] ?? 0;
-    if (depth === 0) {
-      return close - offset;
-    }
-  }
-  return -1;
 }
 
 function startsStatement(code: string, start: number): boolean {

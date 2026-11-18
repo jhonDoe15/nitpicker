@@ -50,15 +50,21 @@ function planFile(options: KotlinOptions, file: RecipeSource): readonly RecipeFi
   }
   return find(scanned, file)
     .filter(({ edits }) => !(keepComments === true && touchesComment(scanned, edits)))
-    .map(({ rule, offset, edits }) => {
+    .map(({ rule, offset, alsoOffsets, edits }) => {
       const entry = byRule.get(rule ?? '') ?? rules[0];
-      return {
-        finding: {
+      function findingAt(at: number): RecipeFix['finding'] {
+        return {
           tool: entry?.tool ?? '',
           rule: entry?.rule ?? '',
           path: name,
-          line: lineAt(text, offset),
-        },
+          line: lineAt(text, at),
+        };
+      }
+      return {
+        finding: findingAt(offset),
+        ...(alsoOffsets === undefined || alsoOffsets.length === 0
+          ? {}
+          : { alsoFixes: alsoOffsets.map(findingAt) }),
         edits: edits.map(({ start, end, text: replacement }) => ({
           type: 'replace',
           path: name,
