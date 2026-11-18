@@ -210,6 +210,12 @@ two methods share.
 
 The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
 
+Even when the rule is selected, `--fix` skips two review fixes that break code it can see:
+`FieldCanBeFinal` on a field whose name a string in a project source or config file holds, as a
+reflective or framework injection names it, and `PrivateConstructorForUtilityClass` on a class that
+another project class extends, which then no longer compiles. The declines are in
+`languages/java/fix/errorprone/declines/`.
+
 ## Left out
 
 33 checks never get a fix from `--fix`, listed in

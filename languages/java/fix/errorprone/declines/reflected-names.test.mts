@@ -68,7 +68,21 @@ describe('inProjectStrings', () => {
     expect(quoted('hidden')).toBe(false);
   });
 
+  it('finds a class that a Java or Kotlin class extends', () => {
+    const { extended } = projectNames(
+      project({
+        'Child.java': 'class Child extends demo.Helpers {}\n',
+        'Other.kt': 'class Other : Base()\n',
+        'Plain.java': 'class Plain { Helpers2 h; Tool t; }\n',
+      }),
+    );
+
+    expect([extended('Helpers'), extended('Base'), extended('Tool')]).toEqual([true, true, false]);
+  });
+
   it('treats every name as used when it cannot search the project', () => {
-    expect(projectNames(undefined).quoted('anything')).toBe(true);
+    const names = projectNames(undefined);
+
+    expect([names.quoted('anything'), names.extended('anything')]).toEqual([true, true]);
   });
 });

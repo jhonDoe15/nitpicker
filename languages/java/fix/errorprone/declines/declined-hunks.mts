@@ -5,6 +5,8 @@ type Decline = (entry: LabeledHunk, names: ProjectNames) => boolean;
 
 const DECLARED_METHOD = /^\s*(?:@\S+\s+)*(?:[\w$<>[\],.?]+\s+)+([A-Za-z_$][\w$]*)\s*\(/u;
 const NOT_TYPES = /(?:^|\s)(?:return|new|throw|else|case)\s+[A-Za-z_$][\w$]*\s*\($/u;
+const DECLARED_FIELD = /([A-Za-z_$][\w$]*)\s*(?:=|;|,)/gu;
+const ADDED_CONSTRUCTOR = /\bprivate\s+([A-Za-z_$][\w$]*)\s*\(\s*\)/gu;
 const DECLARED_TYPE = /\b(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)/gu;
 const ARRAY_START = /\bnew\s[\w$.<>?,\s]*\[\]\s*\{/gu;
 const QUOTED = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/gu;
@@ -21,8 +23,12 @@ const KEYWORDS = new Set([
   'this',
 ]);
 
-function removedTexts({ hunk }: LabeledHunk): string[] {
-  return hunk.lines.filter(({ kind }) => kind === '-').map(({ text }) => text);
+function textsOf({ hunk }: LabeledHunk, wanted: string): string[] {
+  return hunk.lines.filter(({ kind }) => kind === wanted).map(({ text }) => text);
+}
+
+function removedTexts(entry: LabeledHunk): string[] {
+  return textsOf(entry, '-');
 }
 
 function namesIn(texts: readonly string[], pattern: RegExp): string[] {
@@ -33,6 +39,10 @@ function namesIn(texts: readonly string[], pattern: RegExp): string[] {
 
 function removesQuotedName(pattern: RegExp): Decline {
   return (entry, { quoted }) => namesIn(removedTexts(entry), pattern).some(quoted);
+}
+
+function closesExtendedClass(entry: LabeledHunk, { extended }: ProjectNames): boolean {
+  return namesIn(textsOf(entry, '+'), ADDED_CONSTRUCTOR).some(extended);
 }
 
 function depthOf(character: string): number {
@@ -80,6 +90,8 @@ const DECLINES: ReadonlyMap<string, Decline> = new Map([
   ['UnusedMethod', removesQuotedMethod],
   ['UnusedNestedClass', removesQuotedName(DECLARED_TYPE)],
   ['ExplicitArrayForVarargs', dropsArrayOfOne],
+  ['FieldCanBeFinal', removesQuotedName(DECLARED_FIELD)],
+  ['PrivateConstructorForUtilityClass', closesExtendedClass],
 ]);
 
 export function isDeclined(entry: LabeledHunk, names: ProjectNames): boolean {
