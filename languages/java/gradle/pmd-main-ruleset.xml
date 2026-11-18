@@ -1566,6 +1566,34 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LoggerForOtherClass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This logger is created for a class with a similar name (same last word, or same first two words and the same number of words) other than the one that declares it, usually a copy-paste slip, so its log lines carry the wrong category: the level settings of this class do not apply and searches for its logs miss them. Use the enclosing class literal (private static final Logger LOG = LoggerFactory.getLogger(Orders.class)), MethodHandles.lookup().lookupClass(), or getClass() for an instance logger. An exception fits when a facade class deliberately logs as its public type.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//FieldDeclaration/VariableDeclarator/MethodCall
+  [@MethodName = ('getLogger', 'getLog', 'get', 'getFormatterLogger')]
+  [*[1][(self::TypeExpression/ClassType/@SimpleName, self::AmbiguousName/@Name)
+        = ('LoggerFactory', 'LogManager', 'Logger', 'LogFactory', 'Log', 'Logging', 'System')]]
+  [ArgumentList[@Size = 1]/*[1][self::ClassLiteral
+        or (self::MethodCall[@MethodName = ('getName', 'getCanonicalName')][*[1][self::ClassLiteral]])]]
+  [let $named := ArgumentList/*[1]/descendant-or-self::ClassLiteral/*[1]/@SimpleName,
+       $own := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
+                           or self::InterfaceDeclaration or self::AnnotationTypeDeclaration],
+       $inFile := ancestor::CompilationUnit//*[self::ClassDeclaration or self::EnumDeclaration
+                           or self::RecordDeclaration or self::InterfaceDeclaration]/@SimpleName,
+       $parents := $own/(ExtendsList | ImplementsList)/ClassType/@SimpleName,
+       $words := function($n) { tokenize(replace($n, '([a-z0-9])([A-Z])', '$1 $2'), ' ') },
+       $a := $words($own[last()]/@SimpleName),
+       $b := $words($named)
+   return exists($named) and not($named = ($inFile, $parents))
+     and not(contains($own[last()]/@SimpleName, $named) or contains($named, $own[last()]/@SimpleName))
+     and ($a[last()] = $b[last()] or ($a[1] = $b[1] and $a[2] = $b[2] and count($a) = count($b)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="MapValueCastToNumber" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A value read from a Map&lt;String, Object&gt; or a Properties is cast straight to a number or java.time type. The runtime type depends on the source (a JDBC driver returns Long or BigDecimal for an integer column, YAML and JSON give Integer, Long, Double or String), so the cast works in one setup and throws ClassCastException in another. Convert instead: ((Number) row.get(&quot;count&quot;)).intValue(), Integer.parseInt(String.valueOf(value)), a typed accessor (rs.getObject(column, LocalDate.class)) or a typed binding (@ConfigurationProperties, a record mapper). Maps that come from a method parameter or that this class fills itself (put, putAll, setProperty) are not reported, and neither is a get that an instanceof test of the cast type on the same get expression guards.">
     <priority>3</priority>
