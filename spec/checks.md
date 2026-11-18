@@ -407,6 +407,12 @@ a changed loop or inline array callback over items that carry a deleted or visib
 flagged items and this one does not. The finding names the flag and the project's guard form: a helper such as
 `getNonDeletedElements` or a narrowed type such as `NonDeleted<T>`.
 
+Record scope: `nitpicker/no-unscoped-record-access` (production source, in `eslint-lint`, type-aware) reports a changed
+repository or ORM read, update or delete whose filter holds an id taken from the request and lacks an owner field
+(organization, environment, team, user, subscriber, tenant, project and the like) that at least 75% of the project's
+queries on the same model carry (at least five). An earlier access-check call, a comparison of the record's owner,
+an unreadable filter and admin or internal code are not reported.
+
 Route auth: `nitpicker/no-route-without-auth` (production source, in `eslint-lint`) reports a NestJS handler that lacks the
 auth decorator shape almost every handler declares (90%, for example `@Authenticated({ permission })`), or, when no
 shape has a majority but some handlers use a guard and there is no global guard, a handler with no guard and no public

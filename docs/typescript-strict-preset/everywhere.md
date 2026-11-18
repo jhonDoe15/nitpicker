@@ -837,6 +837,20 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   uses; a table below the threshold, or a project with no majority, is never reported. Relation loads (`include`,
   `select`, `relations`), ordering and a query built in one expression and run elsewhere are not judged, and
   a trash, restore, purge or admin query takes the exception.
+- Record scope (`nitpicker/no-unscoped-record-access`, needing the type checker): a read, update or delete through
+  a repository or ORM delegate (`this.messageRepository.findOne({...})`, `prisma.booking.update({ where: {...} })`; the
+  methods `find`, `findOne`, `findFirst`, `findUnique`, `update*`, `delete*` and their `OrThrow`/`By` forms) whose
+  filter object holds an id taken from the request (a parameter named `command`, `dto`, `input`, `body`, `params`,
+  `req` or `request`, typed as a Command, Dto, Input, Request, Body, Params or Payload, or decorated `@Param`,
+  `@Body`, `@Query`, including a value read from it into a local variable) and lacks an owner field the project's
+  other queries on the same model carry. The model is the last name of the receiver (`messageRepository`, `booking`);
+  an owner field is `organizationId`, `environmentId`, `teamId`, `userId`, `subscriberId`, `tenantId`, `projectId`,
+  `workspaceId`, `accountId`, `ownerId` and the like (with or without a leading underscore), and one is followed
+  when it appears in at least 75% of the model's filters in non-test source (at least five). A function that calls
+  an access or permission check before the query or compares an owner field of the record, a filter with a spread,
+  `AND`/`OR`/`NOT` or computed keys, and admin, internal, worker and cron code are not reported. Allowed form: add
+  the field from the authenticated caller to the filter (`{ _environmentId, _subscriberId, _id: command.notificationId }`),
+  or check the caller's access first.
 - Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
   the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
   `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,

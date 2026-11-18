@@ -171,6 +171,7 @@ function productionGuardRules({
     'nitpicker/no-dual-write': 'error',
     'nitpicker/no-unisolated-job-loop': 'error',
     'nitpicker/no-unguarded-deleted-items': 'error',
+    'nitpicker/no-unscoped-record-access': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
