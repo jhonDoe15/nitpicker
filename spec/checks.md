@@ -458,6 +458,8 @@ literals, package names and `file:` templates are allowed.
 Unchecked URL sinks: `nitpicker/no-unchecked-url-sink` (production source, in `eslint-lint`) reports a runtime URL value (a member
 or variable named `...Url`, `...Uri`, `website`, `homepage` and the like) used as `href`, an `iframe`/`embed` `src`, a form `action`,
 `window.open` or a `location` assignment without a protocol check in the same function. Constants, relative and `http(s)` text,
+call results, items of an array literal in the same file and a scheme-checking helper are allowed.
+
 Case-sensitive path comparison: `nitpicker/no-case-sensitive-path-compare` (production source, in `eslint-lint`) reports `===`,
 `!==`, `startsWith`, `endsWith` and `includes` on two file paths (one of them a property of another object, such as a message
 field or `.fsPath`) or two URI authorities or host names, when neither side is case-folded and no platform check is in
@@ -503,6 +505,7 @@ directory, file name or record id whose only varying part is the current time (`
 Date().toISOString()`, `performance.now()`): a path under `tmpdir()`, the path given to `mkdir` or `writeFile`, and an
 `id`, `_id`, `uid`, `key` or `name` value or fallback. A random or counter part, or any other variable in the name, is
 allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

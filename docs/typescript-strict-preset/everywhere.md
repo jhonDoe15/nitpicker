@@ -316,7 +316,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `address`, `redirect` or `returnTo` (or is `src` or `source`). A `javascript:` or `data:` value then runs script in the
   origin when it is clicked or embedded; `react-dom/no-script-url` sees only a literal. Not reported: constants, text that
   starts with `http://`, `https://`, `/` (not `//`), `#`, `mailto:` or `tel:`, call results (`getSafeHttpUrl(x)`), props passed
-  through a wrapper component (`props.href`), and a value that an `if`, a conditional, a `&&`, or a `URL.parse` or `new URL`
+  through a wrapper component (`props.href`), a member of an item of an array literal that is listed in the same file, files under
+  `emails/`, and a value that an `if`, a conditional, a `&&`, or a `URL.parse` or `new URL`
   declaration in the same function checks with a protocol test, `sanitize...`, `isSafe...` or `canParse`. Allowed form: one
   helper that returns the URL only for `http:` and `https:` (and `mailto:` where wanted), used at every sink, with plain text as
   the fallback.

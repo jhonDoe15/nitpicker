@@ -180,6 +180,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   and an encoded user name and password in a connection URL (`nitpicker/no-unencoded-url-part`).
 - A dynamic `import()` of a file goes through a file URL: `await import(pathToFileURL(file).href)`, never a path from
   `path.resolve`, `path.join` or `require.resolve`, which fails on Windows drive paths (`nitpicker/no-dynamic-import-of-path`).
+- A URL that comes from data (a stored field, a profile, a document) becomes an `href`, an `iframe` `src` or a
+  `window.open` target only through one helper that returns it for `http:` and `https:` and nothing else, with plain text
+  as the fallback (`nitpicker/no-unchecked-url-sink`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
