@@ -98,8 +98,47 @@ describe('unorderedQueries', () => {
       'a PageRequest that goes elsewhere',
       `${REPOSITORY}    fun page(n: Int): Pageable = PageRequest.of(n, 20)\n}\n`,
     ],
+    [
+      'an existence probe on the result list',
+      `${REPOSITORY}    fun taken(name: String) = em.createQuery("select a.id from Account a where a.name = :name").setMaxResults(1).resultList.isEmpty()\n}\n`,
+    ],
+    [
+      'a uniqueness check with setMaxResults(2) and size',
+      `${REPOSITORY}    fun clash(name: String) = em.createQuery("select a.id from Account a where a.name = :name")\n        .setMaxResults(2)\n        .resultList.size > 1\n}\n`,
+    ],
+    [
+      'a result held in a local that is only tested for emptiness',
+      `${REPOSITORY}    fun taken(name: String): Boolean {\n        val rows = em.createQuery("select a.id from Account a where a.name = :name").setMaxResults(1).resultList\n        return rows.isNotEmpty()\n    }\n}\n`,
+    ],
+    [
+      'a criteria page ordered through a chained select',
+      `${REPOSITORY}    fun page(): List<Account> {\n        val criteria = em.criteriaBuilder.createQuery(Account::class.java)\n        criteria.select(criteria.from(Account::class.java)).orderBy(em.criteriaBuilder.asc(criteria.from(Account::class.java).get<Long>("id")))\n        return em.createQuery(criteria).setFirstResult(20).setMaxResults(20).resultList\n    }\n}\n`,
+    ],
   ])('allows %s', (_, source) => {
     expect(lines(unorderedQueries, source)).toEqual([]);
+  });
+
+  it.each([
+    ['a row read before the emptiness test', '.setMaxResults(1).resultList.first().tags.isEmpty()'],
+    ['a stream that returns an element', '.setMaxResults(1).resultList.stream().findAny().get()'],
+  ])('reports setMaxResults(1) with %s', (_, tail) => {
+    const source = `${REPOSITORY}    fun probe(name: String) = em.createQuery("select a from Account a where a.name = :name")${tail}\n}\n`;
+    expect(lines(unorderedQueries, source)).toEqual([2]);
+  });
+
+  it('reports a held row that is read before the test', () => {
+    const source = `${REPOSITORY}    fun taken(name: String): Boolean {\n        val first = em.createQuery("select a.tags from Account a where a.name = :name").setMaxResults(1).resultList.first()\n        return first.isEmpty()\n    }\n}\n`;
+    expect(lines(unorderedQueries, source)).toEqual([3]);
+  });
+
+  it('allows a stream test on the result list', () => {
+    const source = `${REPOSITORY}    fun taken(name: String) = em.createQuery("select a.id from Account a where a.name = :name").setMaxResults(1).resultList.stream().anyMatch { true }\n}\n`;
+    expect(lines(unorderedQueries, source)).toEqual([]);
+  });
+
+  it('reports setMaxResults(1) whose row is read, not only tested', () => {
+    const source = `${REPOSITORY}    fun first(name: String): Account {\n        val rows = em.createQuery("select a from Account a where a.name = :name").setMaxResults(1).resultList\n        return rows[0]\n    }\n}\n`;
+    expect(lines(unorderedQueries, source)).toEqual([3]);
   });
 });
 
