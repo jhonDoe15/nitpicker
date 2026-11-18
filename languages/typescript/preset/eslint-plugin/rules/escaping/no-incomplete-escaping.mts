@@ -58,7 +58,8 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     messages: {
       escapeBackslash:
         'This `replace` adds a backslash before a character but nothing escapes the backslash itself, ' +
-        'so a value holding `\\` round-trips wrong. Match both in one pattern: `value.replace(/[\\\\"]/g, (c) => `\\\\${c}`)`.',
+        'so a value holding `\\` round-trips wrong. Match both in one pattern: ' +
+        '`value.replace(/[\\\\"]/g, (c) => `\\\\${c}`)`.',
       unescapeOrder:
         'This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order ' +
         'decides the result. Decode in one pass: `text.replace(/\\\\(["\'nt\\\\])/g, (_, c) => table[c])`.',
