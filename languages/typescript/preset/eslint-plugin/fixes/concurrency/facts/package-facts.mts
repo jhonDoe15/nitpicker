@@ -1,7 +1,17 @@
 import path from 'node:path';
+import type { TSESTree } from '@typescript-eslint/utils';
 import { nearestManifest } from '../../../rules/dependencies/package-manifest.mts';
+import type { Context } from '../../../rules/security/security-values.mts';
+import { importingDefault, type ImportEdit } from '../../edits/imports.mts';
+import { allOf, type FixPlans } from '../../edits/plans.mts';
+import type { FixPlan } from '../../support/ranges.mts';
 
 type Requirement = { readonly name: string; readonly esmOnlyFrom: number };
+type Dependency = {
+  readonly module: string;
+  readonly local: string;
+  readonly esmOnlyFrom: number;
+};
 type Source = { readonly filename: string };
 
 const MODULE_FILE = /\.m[jt]s$/u;
@@ -20,7 +30,7 @@ function isModuleFile(filename: string, moduleType: string | undefined): boolean
   return MODULE_FILE.test(filename) || moduleType === 'module';
 }
 
-export function isUsableDependency(source: Source, { name, esmOnlyFrom }: Requirement): boolean {
+function isUsableDependency(source: Source, { name, esmOnlyFrom }: Requirement): boolean {
   const manifest = nearestManifest(path.dirname(source.filename));
   if (manifest?.kind !== 'manifest' || !manifest.runtime.has(name)) {
     return false;
@@ -30,4 +40,27 @@ export function isUsableDependency(source: Source, { name, esmOnlyFrom }: Requir
   }
   const major = majorOf(manifest.runtimeVersions.get(name));
   return major !== undefined && major < esmOnlyFrom;
+}
+
+export function importingDependency(
+  context: Context,
+  call: TSESTree.Node,
+  { module, local, esmOnlyFrom }: Dependency,
+): (ImportEdit & { readonly local: string }) | undefined {
+  if (!isUsableDependency(context, { name: module, esmOnlyFrom })) {
+    return undefined;
+  }
+  const { sourceCode } = context;
+  return importingDefault(sourceCode, sourceCode.ast, {
+    sources: [module],
+    name: local,
+    sites: [call],
+  });
+}
+
+export function planWithImport(
+  edit: ImportEdit,
+  plans: readonly (FixPlan | undefined)[],
+): FixPlans | undefined {
+  return allOf(edit.present ? plans : [edit.plan, ...plans]);
 }

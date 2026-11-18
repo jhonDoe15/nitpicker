@@ -11,7 +11,7 @@ const { typed } = project;
 function wrapped(code: string, output: string) {
   return typed(code, [
     { messageId: 'unbounded', suggestions: [{ messageId: 'useLimit', output }] },
-  ] as never);
+  ]);
 }
 
 project.tester.run('Promise.allSettled gets a per-call limiter', rule, {

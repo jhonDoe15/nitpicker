@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { typeServices, type Context } from '../../rules/security/security-values.mts';
+import type { Context } from '../../rules/security/security-values.mts';
 import type { SourceCode } from '../../rules/typed/node-views.mts';
 import { importingName } from '../edits/imports.mts';
 import { allOf } from '../edits/plans.mts';
@@ -115,7 +115,11 @@ function twinOf(callee: ModuleCallee): FsTwin | undefined {
   return table.get(callee.method);
 }
 
-function rewriteOf(sourceCode: SourceCode, site: Site, callee: ModuleCallee, twin: FsTwin) {
+function rewriteOf(
+  sourceCode: SourceCode,
+  site: Site,
+  { callee, twin }: { readonly callee: ModuleCallee; readonly twin: FsTwin },
+): Rewrite | undefined {
   return callee.kind === 'member'
     ? memberRewrite(sourceCode, site.call, { callee, twin })
     : namedRewrite(sourceCode, site, { callee, twin });
@@ -137,7 +141,7 @@ export function syncFsFix(context: Context, site: Site): SyncFsFix | undefined {
   ) {
     return undefined;
   }
-  const rewrite = rewriteOf(sourceCode, site, callee, twin);
+  const rewrite = rewriteOf(sourceCode, site, { callee, twin });
   const text = rewrite === undefined ? undefined : awaiting(sourceCode, call, rewrite.expression);
   const plan =
     rewrite === undefined || text === undefined

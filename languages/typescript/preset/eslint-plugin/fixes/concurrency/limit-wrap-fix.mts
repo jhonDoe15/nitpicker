@@ -2,9 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode } from '../../rules/analysis/constant-resolution.mts';
 import type { Context } from '../../rules/security/security-values.mts';
 import { ancestorsOf } from '../../rules/typed/node-views.mts';
-import { importingDefault } from '../edits/imports.mts';
 import { freeName } from '../edits/names.mts';
-import { allOf } from '../edits/plans.mts';
 import {
   hasCommentIn,
   inserting,
@@ -14,12 +12,10 @@ import {
 } from '../support/ranges.mts';
 import { isUnderDeadline } from './facts/deadline-guard.mts';
 import { mapShape } from './facts/map-shape.mts';
-import { isUsableDependency } from './facts/package-facts.mts';
+import { importingDependency, planWithImport } from './facts/package-facts.mts';
 import { FAN_OUT_LIMIT } from './p-map-fix.mts';
 
-const MODULE = 'p-limit';
-const DEFAULT_LOCAL = 'pLimit';
-const ESM_ONLY_FROM = 4;
+const DEPENDENCY = { module: 'p-limit', local: 'pLimit', esmOnlyFrom: 4 };
 
 function statementOf(call: TSESTree.CallExpression): TSESTree.Node | undefined {
   for (const ancestor of ancestorsOf(call)) {
@@ -52,13 +48,13 @@ function wrappingBody(
   limiter: string,
 ): FixPlan | undefined {
   const { sourceCode } = context;
-  const arrow = sourceCode.getTokenBefore(callback.body, {
-    filter: (token) => token.value === '=>',
-  });
-  const start = arrow === null ? null : sourceCode.getTokenAfter(arrow);
+  const arrow =
+    sourceCode.getTokenBefore(callback.body, { filter: (token) => token.value === '=>' }) ??
+    undefined;
+  const start = arrow === undefined ? undefined : (sourceCode.getTokenAfter(arrow) ?? undefined);
   if (
-    arrow === null ||
-    start === null ||
+    arrow === undefined ||
+    start === undefined ||
     hasCommentIn(sourceCode, [arrow.range[0], start.range[0]])
   ) {
     return undefined;
@@ -80,26 +76,18 @@ export function limitWrapFix(
     shape.callback.type !== AST_NODE_TYPES.ArrowFunctionExpression ||
     statement === undefined ||
     !isInsideFunction(statement) ||
-    isUnderDeadline(context, call) ||
-    !isUsableDependency(context, { name: MODULE, esmOnlyFrom: ESM_ONLY_FROM })
+    isUnderDeadline(context, call)
   ) {
     return undefined;
   }
-  const edit = importingDefault(sourceCode, sourceCode.ast, {
-    sources: [MODULE],
-    name: DEFAULT_LOCAL,
-    sites: [call],
-  });
+  const edit = importingDependency(context, call, DEPENDENCY);
   const limiter = freeName(sourceCode, { sites: [call], within: call, base: 'limit' });
   if (edit === undefined || limiter === undefined) {
     return undefined;
   }
   const creation = `const ${limiter} = ${edit.local}(${String(FAN_OUT_LIMIT)});`;
   const body = wrappingBody(context, shape.callback, limiter);
-  const plans = [
-    edit.present ? undefined : edit.plan,
-    declaring(context, statement, creation),
-    body,
-  ].filter((plan) => plan !== undefined);
-  return body === undefined ? undefined : allOf(plans);
+  return body === undefined
+    ? undefined
+    : planWithImport(edit, [declaring(context, statement, creation), body]);
 }

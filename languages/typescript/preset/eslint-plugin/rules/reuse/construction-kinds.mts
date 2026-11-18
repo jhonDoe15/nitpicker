@@ -5,7 +5,9 @@ export type Call = TSESTree.NewExpression | TSESTree.CallExpression;
 
 const { DefinitionType } = TSESLint.Scope;
 
-export const INTL_TYPES = new Set([
+export const INTL_PREFIX = 'Intl.';
+
+export const INTL_TYPES: ReadonlySet<string> = new Set([
   'Collator',
   'DateTimeFormat',
   'DisplayNames',
@@ -26,7 +28,7 @@ export function globalName(context: SourceContext, node: TSESTree.Node, name: st
   return variable === undefined || variable.defs.length === 0;
 }
 
-export function intlType(context: SourceContext, callee: TSESTree.Node): string | undefined {
+function intlType(context: SourceContext, callee: TSESTree.Node): string | undefined {
   if (
     callee.type !== AST_NODE_TYPES.MemberExpression ||
     callee.computed ||
@@ -41,7 +43,9 @@ export function intlType(context: SourceContext, callee: TSESTree.Node): string 
       !owner.computed &&
       globalName(context, owner.object, 'globalThis') &&
       owner.property.name === 'Intl');
-  return intl && INTL_TYPES.has(callee.property.name) ? `Intl.${callee.property.name}` : undefined;
+  return intl && INTL_TYPES.has(callee.property.name)
+    ? `${INTL_PREFIX}${callee.property.name}`
+    : undefined;
 }
 
 function ajvType(context: SourceContext, callee: TSESTree.Node): string | undefined {

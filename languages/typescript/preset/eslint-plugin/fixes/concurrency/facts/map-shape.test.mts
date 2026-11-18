@@ -1,16 +1,30 @@
-import { parse } from '@typescript-eslint/parser';
-import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { mapShape, mayBeSparse } from './map-shape.mts';
 
 function callOf(code: string): TSESTree.CallExpression {
-  const [statement] = parse(code, { range: true }).body;
-  const expression: unknown =
-    statement?.type === 'ExpressionStatement' ? statement.expression : undefined;
-  if (typeof expression !== 'object' || expression === null || !('callee' in expression)) {
+  const calls: TSESTree.CallExpression[] = [];
+  const probe: TSESLint.RuleModule<'unused'> = {
+    meta: { type: 'problem', schema: [], messages: { unused: 'unused' }, defaultOptions: [] },
+    create: () => ({
+      ExpressionStatement(node) {
+        if (node.expression.type === AST_NODE_TYPES.CallExpression) {
+          calls.push(node.expression);
+        }
+      },
+    }),
+  };
+  new TSESLint.Linter().verify(code, {
+    languageOptions: { parser: tseslint.parser },
+    plugins: { probe: { rules: { probe } } },
+    rules: { 'probe/probe': 'error' },
+  });
+  const [call] = calls;
+  if (call === undefined) {
     throw new TypeError('The code is not a call statement.');
   }
-  return expression as TSESTree.CallExpression;
+  return call;
 }
 
 function receiverOf(code: string): TSESTree.Node {
@@ -23,9 +37,8 @@ function receiverOf(code: string): TSESTree.Node {
 
 describe('mapShape', () => {
   it('accepts exactly one mapped collection with a plain callback', () => {
-    expect(mapShape(callOf('Promise.all(xs.map((x) => f(x)))'))?.receiver).toMatchObject({
-      name: 'xs',
-    });
+    const receiver = mapShape(callOf('Promise.all(xs.map((x) => f(x)))'))?.receiver;
+    expect(receiver?.type === AST_NODE_TYPES.Identifier ? receiver.name : undefined).toBe('xs');
   });
 
   it.each([

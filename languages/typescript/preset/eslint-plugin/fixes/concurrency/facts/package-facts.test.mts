@@ -43,7 +43,7 @@ for (const { range, project } of projects) {
         accepted
           ? { messageId: 'unbounded', suggestions: [{ messageId: 'usePMap', output: OUTPUT }] }
           : { messageId: 'unbounded' },
-      ] as never),
+      ]),
     ],
   });
 }

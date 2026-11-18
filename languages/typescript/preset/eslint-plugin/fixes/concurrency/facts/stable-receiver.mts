@@ -1,7 +1,9 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../../rules/analysis/constant-resolution.mts';
 import { unwrapped, type Context } from '../../../rules/security/security-values.mts';
 import { contains } from '../../../rules/typed/node-views.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 const MUTATORS = new Set([
   'push',
@@ -18,6 +20,18 @@ const FRESH = new Set<string>([
   AST_NODE_TYPES.ArrayExpression,
   AST_NODE_TYPES.CallExpression,
   AST_NODE_TYPES.NewExpression,
+]);
+
+const ALWAYS_WRITES = new Set<string>([
+  AST_NODE_TYPES.UpdateExpression,
+  AST_NODE_TYPES.ArrayPattern,
+  AST_NODE_TYPES.RestElement,
+]);
+const LEFT_TARGETS = new Set<string>([
+  AST_NODE_TYPES.AssignmentExpression,
+  AST_NODE_TYPES.AssignmentPattern,
+  AST_NODE_TYPES.ForOfStatement,
+  AST_NODE_TYPES.ForInStatement,
 ]);
 
 function calledName(member: TSESTree.MemberExpression): string | undefined {
@@ -37,30 +51,26 @@ function isCalledMutator(member: TSESTree.MemberExpression, parent: TSESTree.Nod
 }
 
 function isWriteTarget(member: TSESTree.MemberExpression, parent: TSESTree.Node): boolean {
-  switch (parent.type) {
-    case AST_NODE_TYPES.AssignmentExpression:
-    case AST_NODE_TYPES.AssignmentPattern:
-      return parent.left === member;
-    case AST_NODE_TYPES.UpdateExpression:
-    case AST_NODE_TYPES.ArrayPattern:
-    case AST_NODE_TYPES.RestElement:
-      return true;
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === 'delete';
-    case AST_NODE_TYPES.ForOfStatement:
-    case AST_NODE_TYPES.ForInStatement:
-      return parent.left === member;
-    case AST_NODE_TYPES.Property:
-      return parent.parent.type === AST_NODE_TYPES.ObjectPattern && parent.value === member;
-    default:
-      return false;
+  if (ALWAYS_WRITES.has(parent.type)) {
+    return true;
   }
+  if (LEFT_TARGETS.has(parent.type)) {
+    return 'left' in parent && parent.left === member;
+  }
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === 'delete';
+  }
+  return (
+    parent.type === AST_NODE_TYPES.Property &&
+    parent.parent.type === AST_NODE_TYPES.ObjectPattern &&
+    parent.value === member
+  );
 }
 
 function isReadOnlyUse(identifier: TSESTree.Identifier | TSESTree.JSXIdentifier): boolean {
   const { parent } = identifier;
   if (parent.type === AST_NODE_TYPES.MemberExpression && parent.object === identifier) {
-    return !isCalledMutator(parent, parent.parent) && !isWriteTarget(parent, parent.parent);
+    return !(isCalledMutator(parent, parent.parent) || isWriteTarget(parent, parent.parent));
   }
   if (parent.type === AST_NODE_TYPES.SpreadElement) {
     return parent.parent.type === AST_NODE_TYPES.ArrayExpression;
@@ -72,7 +82,7 @@ function isStableConstant(variable: TSESLint.Scope.Variable, callback: TSESTree.
   const [definition] = variable.defs;
   return (
     variable.defs.length === 1 &&
-    definition?.type === 'Variable' &&
+    definition?.type === DefinitionType.Variable &&
     definition.parent.kind === 'const' &&
     variable.references.every(
       (reference) =>

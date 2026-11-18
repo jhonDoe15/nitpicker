@@ -9,7 +9,7 @@ import {
 } from '../../testing-rules/test-support/environment-project.mts';
 
 const tester = typescriptRuleTester();
-const tag = (name: string, tool = 'vitest') => `@${tool}${'-environment'} ${name}`;
+const tag = (name: string, tool = 'vitest') => ['@', tool, '-environment ', name].join('');
 const directive = (name: string) => ['// @vitest', `-environment ${name}`].join('');
 const root = createProject();
 const filename = path.join(root, 'src/widgets/widget.test.ts');

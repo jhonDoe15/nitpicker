@@ -1,32 +1,15 @@
-import { afterAll } from 'vitest';
 import { rule } from '../../rules/concurrency/unbounded-fan-out.mts';
-import { typedProject } from './typed-project.mts';
+import { dependencyProjects, kept } from './typed-project.mts';
 
 const IMPORT = "import pLimit from 'p-limit';\n";
-const esm = typedProject('p-limit-keep-', {
-  type: 'module',
-  dependencies: { 'p-limit': '^6.0.0' },
-});
-const none = typedProject('p-limit-none-', { type: 'module', dependencies: { 'p-map': '^7.0.0' } });
-const dev = typedProject('p-limit-dev-', {
-  type: 'module',
-  devDependencies: { 'p-limit': '^6.0.0' },
-});
-const cjs = typedProject('p-limit-cjs-', { dependencies: { 'p-limit': '^4.0.0' } });
-const oldCjs = typedProject('p-limit-old-', { dependencies: { 'p-limit': '^3.1.0' } });
-afterAll(() => {
-  for (const project of [esm, none, dev, cjs, oldCjs]) {
-    project.cleanup();
-  }
+const { esm, missing, devOnly, commonjs, oldCommonjs } = dependencyProjects('p-limit', {
+  esm: '^6.0.0',
+  commonjs: '^4.0.0',
+  oldCommonjs: '^3.1.0',
 });
 
-const KEPT = [{ messageId: 'unbounded' }] as never;
 const CALL =
   'export async function d(us: string[]) { return Promise.allSettled(us.map((u) => fetch(u))); }';
-
-function kept(project: typeof esm, code: string) {
-  return project.typed(code, KEPT);
-}
 
 esm.tester.run('limiter suggestion declines on the call shape', rule, {
   valid: [],
@@ -83,22 +66,22 @@ esm.tester.run('limiter suggestion declines on the call shape', rule, {
   ],
 });
 
-none.tester.run('limiter suggestion needs the dependency', rule, {
+missing.tester.run('limiter suggestion needs the dependency', rule, {
   valid: [],
-  invalid: [kept(none, CALL)],
+  invalid: [kept(missing, CALL)],
 });
-dev.tester.run('limiter suggestion needs a runtime dependency', rule, {
+devOnly.tester.run('limiter suggestion needs a runtime dependency', rule, {
   valid: [],
-  invalid: [kept(dev, CALL)],
+  invalid: [kept(devOnly, CALL)],
 });
-cjs.tester.run('limiter suggestion needs an ES module for p-limit 4 and later', rule, {
+commonjs.tester.run('limiter suggestion needs an ES module for p-limit 4 and later', rule, {
   valid: [],
-  invalid: [kept(cjs, CALL)],
+  invalid: [kept(commonjs, CALL)],
 });
-oldCjs.tester.run('limiter suggestion keeps p-limit 3 in a CommonJS project', rule, {
+oldCommonjs.tester.run('limiter suggestion keeps p-limit 3 in a CommonJS project', rule, {
   valid: [],
   invalid: [
-    oldCjs.typed(CALL, [
+    oldCommonjs.typed(CALL, [
       {
         messageId: 'unbounded',
         suggestions: [
@@ -108,6 +91,6 @@ oldCjs.tester.run('limiter suggestion keeps p-limit 3 in a CommonJS project', ru
           },
         ],
       },
-    ] as never),
+    ]),
   ],
 });

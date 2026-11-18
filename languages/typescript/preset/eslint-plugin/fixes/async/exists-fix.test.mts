@@ -1,7 +1,7 @@
 import { typescriptRuleTester, configuredRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from '../../rules/async/no-sync-node-api-in-async.mts';
 import tseslint from 'typescript-eslint';
-import { declines, fixes, FS } from './sync-fs-test-support.mts';
+import { declines, fixes, FS } from './test-support/sync-fs-cases.mts';
 
 const CHECK = '.then(() => true, () => false)';
 const NAMED = 'import { existsSync } from "node:fs";\n';

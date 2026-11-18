@@ -32,9 +32,9 @@ function isReadOnlyMember(node: TSESTree.Node): boolean {
   }
   const outer = parent.parent;
   return !(
-    (outer?.type === AST_NODE_TYPES.AssignmentExpression && outer.left === parent) ||
-    outer?.type === AST_NODE_TYPES.UpdateExpression ||
-    (outer?.type === AST_NODE_TYPES.UnaryExpression && outer.operator === 'delete')
+    (outer.type === AST_NODE_TYPES.AssignmentExpression && outer.left === parent) ||
+    outer.type === AST_NODE_TYPES.UpdateExpression ||
+    (outer.type === AST_NODE_TYPES.UnaryExpression && outer.operator === 'delete')
   );
 }
 

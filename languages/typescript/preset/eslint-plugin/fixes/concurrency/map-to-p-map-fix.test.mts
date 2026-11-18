@@ -10,13 +10,11 @@ afterAll(project.cleanup);
 const { typed } = project;
 
 function rewritten(code: string, output: string) {
-  return typed(code, [
-    { messageId: 'unbounded', suggestions: [{ messageId: 'usePMap', output }] },
-  ] as never);
+  return typed(code, [{ messageId: 'unbounded', suggestions: [{ messageId: 'usePMap', output }] }]);
 }
 
 function kept(code: string) {
-  return typed(code, [{ messageId: 'unbounded' }] as never);
+  return typed(code, [{ messageId: 'unbounded' }]);
 }
 
 project.tester.run('Promise.all over map becomes pMap', rule, {
@@ -27,7 +25,7 @@ project.tester.run('Promise.all over map becomes pMap', rule, {
   ],
   invalid: [
     rewritten(
-      'declare const ids: string[];\nexport async function a() { return await Promise.all(ids.map((id) => fetch(`/x/${id}`))); }',
+      `declare const ids: string[];\nexport async function a() { return await Promise.all(ids.map((id) => fetch(\`/x/\${id}\`))); }`,
       `${IMPORT}declare const ids: string[];\nexport async function a() { return await pMap(ids, (id) => fetch(\`/x/\${id}\`), ${LIMIT}); }`,
     ),
     rewritten(
@@ -82,7 +80,7 @@ project.tester.run('Promise.all over map becomes pMap', rule, {
       `${IMPORT}declare const ids: string[];\nexport async function j() { return pMap(ids, function (id) { return fetch(id); }, ${LIMIT}); }`,
     ),
     kept(
-      'declare const ids: string[];\nexport async function k() { return Promise.all(ids.map((id, index) => fetch(`${id}${index}`))); }',
+      `declare const ids: string[];\nexport async function k() { return Promise.all(ids.map((id, index) => fetch(\`\${id}\${index}\`))); }`,
     ),
   ],
 });

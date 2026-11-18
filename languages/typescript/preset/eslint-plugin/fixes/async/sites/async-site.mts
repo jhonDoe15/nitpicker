@@ -1,7 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { findVariable } from '../../../rules/analysis/constant-resolution.mts';
+import { findVariable, stringValue } from '../../../rules/analysis/constant-resolution.mts';
 import { isDirectlyIn } from '../../../rules/async/async-contexts.mts';
-import { stringValue } from '../../../rules/analysis/constant-resolution.mts';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { ancestorsOf } from '../../../rules/typed/node-views.mts';
 import { isStampede } from './stampede-guard.mts';
@@ -69,7 +68,7 @@ function registersFinalListener(node: TSESTree.Node): boolean {
   const call: TSESTree.Node | undefined = node.parent;
   if (
     call?.type !== AST_NODE_TYPES.CallExpression ||
-    !call.arguments.includes(node as TSESTree.CallExpressionArgument) ||
+    !call.arguments.some((argument) => argument === node) ||
     call.callee.type !== AST_NODE_TYPES.MemberExpression ||
     call.callee.computed ||
     call.callee.property.type !== AST_NODE_TYPES.Identifier
