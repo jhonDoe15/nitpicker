@@ -157,6 +157,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- Base64 of text goes through UTF-8 bytes (`Buffer.from(text, 'utf8').toString('base64')` or `TextEncoder` with a
+  bytes-to-base64 step), because `btoa` throws for any character above U+00FF (`nitpicker/no-btoa-on-runtime-text`).
+- A header value made from a path, route, user name, request data or JSON is encoded first (`encodeURIComponent`, base64),
+  because headers throw for characters above U+00FF (`nitpicker/no-non-latin1-header-value`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
