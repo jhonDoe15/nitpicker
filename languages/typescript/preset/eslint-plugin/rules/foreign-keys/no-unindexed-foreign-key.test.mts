@@ -69,10 +69,6 @@ function at(
   };
 }
 
-function flagged(messageId: string, property: string, code: string, root = postgres) {
-  return at(root, code, [{ messageId, data: { property, columns: '' } }]);
-}
-
 function suggested(
   messageId: string,
   property: string,

@@ -1,5 +1,5 @@
 import type { CallView } from './call-views.mts';
-import { isExpressionHelper } from './names/expression-helpers.mts';
+import { isExpressionHelper } from './names/query-fragments.mts';
 
 export type IoKind = 'database' | 'remote' | 'message';
 export type AsyncCheck = (builder: boolean) => boolean;

@@ -7,7 +7,6 @@ import { isReadOnlyResult } from './result-uses.mts';
 
 const rule: TSESLint.RuleModule<'facts'> = {
   meta: { type: 'problem', schema: [], messages: { facts: '{{text}}' } },
-  defaultOptions: [],
   create(context) {
     return {
       CallExpression(call) {

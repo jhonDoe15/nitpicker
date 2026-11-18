@@ -26,7 +26,6 @@ function firstKey(call: TSESTree.CallExpression): string | undefined {
 
 const rule: TSESLint.RuleModule<'facts'> = {
   meta: { type: 'problem', schema: [], messages: { facts: '{{text}}' } },
-  defaultOptions: [],
   create(context) {
     return {
       CallExpression(call) {

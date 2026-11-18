@@ -1,13 +1,14 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../security/security-values.mts';
 import { estreeCallView } from '../../support/io/call-views.mts';
-import { ancestorsOf, contains, nameOf } from '../../typed/node-views.mts';
+import { ancestorsOf, chainOf, contains, nameOf } from '../../typed/node-views.mts';
 import { calleeName } from '../../typed/syntax-views.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
 import type { Call } from '../builders/chain-execution.mts';
 import {
   descendants,
   enclosingLoop,
+  isTestedLoop,
   type EnclosingLoop,
   type LoopNode,
   type VisitorKeys,
@@ -52,13 +53,10 @@ function pacesItself(loop: LoopNode, visitorKeys: VisitorKeys): boolean {
 }
 
 function outerNames(loop: LoopNode, context: Context): string[] {
-  const names: string[] = [];
-  let found: EnclosingLoop | undefined = enclosingLoop(loop, context);
-  while (found !== undefined) {
-    names.push(...itemNames(found, context.sourceCode.visitorKeys));
-    found = enclosingLoop(found.callback ?? found.loop, context);
-  }
-  return names;
+  const outer = chainOf<EnclosingLoop>(enclosingLoop(loop, context), (found) =>
+    enclosingLoop(found.callback ?? found.loop, context),
+  );
+  return outer.flatMap((found) => [...itemNames(found, context.sourceCode.visitorKeys)]);
 }
 
 function usesIterationState(call: Call, loop: LoopNode, context: Context): boolean {
@@ -77,11 +75,7 @@ function usesIterationState(call: Call, loop: LoopNode, context: Context): boole
 }
 
 export function isPollingCall(call: Call, loop: LoopNode | undefined, context: Context): boolean {
-  if (
-    loop === undefined ||
-    loop.type === AST_NODE_TYPES.ForOfStatement ||
-    loop.type === AST_NODE_TYPES.ForInStatement
-  ) {
+  if (!isTestedLoop(loop)) {
     return false;
   }
   const { visitorKeys } = context.sourceCode;

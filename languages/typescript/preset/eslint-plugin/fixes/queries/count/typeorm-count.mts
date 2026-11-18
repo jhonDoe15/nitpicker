@@ -4,7 +4,8 @@ import { TYPEORM } from '../../../rules/database/orm-modules.mts';
 import { memberName, type Context } from '../../../rules/security/security-values.mts';
 import type { TextEdit } from '../../edits/text.mts';
 import { isPlainObject, keyName } from '../../support/objects.mts';
-import { hasMember, ownerIndex } from '../typeorm-receivers.mts';
+import { hasProperty } from '../../../rules/support/checked-types.mts';
+import { ownerIndex } from '../typeorm-receivers.mts';
 
 const KEPT = new Set(['where', 'withDeleted']);
 const DROPPED = new Set(['relations', 'order', 'loadEagerRelations', 'select']);
@@ -28,10 +29,9 @@ function optionEdits(
   if (options === undefined) {
     return [];
   }
-  if (
-    !isPlainObject(options) ||
-    !allowed(options.properties.map((property) => keyName(property)))
-  ) {
+  if (!(
+    isPlainObject(options) && allowed(options.properties.map((property) => keyName(property)))
+  )) {
     return undefined;
   }
   const kept = options.properties.filter((property) => KEPT.has(keyName(property) ?? ''));
@@ -60,7 +60,7 @@ export function typeormCountEdits(
     renamed !== undefined &&
     index !== undefined &&
     calleeFamily(context, call) === TYPEORM &&
-    hasMember(context, callee.object, renamed) &&
+    hasProperty(context, callee.object, renamed) &&
     call.arguments.length <= index + 1 &&
     call.arguments.every((argument) => argument.type !== AST_NODE_TYPES.SpreadElement);
   if (!fits) {

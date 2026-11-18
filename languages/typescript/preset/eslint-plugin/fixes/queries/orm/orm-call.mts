@@ -8,7 +8,9 @@ import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { packageVersion } from './project-files.mts';
 import { TYPEORM_PACKAGES } from './typeorm-columns.mts';
 
-export type Orm = 'typeorm' | 'prisma' | 'ioredis' | 'node-redis';
+const IOREDIS = 'ioredis';
+
+type Orm = 'typeorm' | 'prisma' | typeof IOREDIS | 'node-redis';
 
 export type OrmCall = {
   readonly orm: Orm;
@@ -133,8 +135,8 @@ function redisFound(
   const type = services.program
     .getTypeChecker()
     .getNonNullableType(services.getTypeAtLocation(receiver));
-  const plain = pkg === 'ioredis' && isNamedClient(type, 'Redis', new Set([pkg]));
-  return plain ? { orm: 'ioredis', entity: undefined, model: undefined } : undefined;
+  const plain = pkg === IOREDIS && isNamedClient(type, 'Redis', new Set([pkg]));
+  return plain ? { orm: IOREDIS, entity: undefined, model: undefined } : undefined;
 }
 
 function foundOf(
@@ -148,7 +150,7 @@ function foundOf(
   if (PRISMA_PACKAGES.has(pkg) && owner?.endsWith('Delegate') === true) {
     return prismaFound(context, receiver, owner);
   }
-  if (pkg === 'ioredis') {
+  if (pkg === IOREDIS) {
     return redisFound(context, receiver, pkg);
   }
   const isClientCommand =

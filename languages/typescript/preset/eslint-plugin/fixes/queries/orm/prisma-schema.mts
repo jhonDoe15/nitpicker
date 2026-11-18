@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mjs';
+import { readStamped, type StampedCache } from '../../../rules/contracts/prisma-client.mts';
+import { readFileText } from '../../support/project/read-file.mts';
 
 export type PrismaField = {
   readonly type: string;
@@ -24,17 +24,9 @@ export type PrismaKey = {
   readonly comparable: boolean;
 };
 
-type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
-
-const readStamped: <Value>(
-  cache: Cache<Value>,
-  file: string,
-  read: (file: string) => Value,
-) => Value | undefined = untypedReadStamped;
-
-const schemas: Cache<PrismaSchema> = new Map();
+const schemas: StampedCache<PrismaSchema | undefined> = new Map();
 const BLOCK = /^(model|enum|datasource|view|type)\s+(\w+)\s*\{([\s\S]*?)^\}/gmu;
-const FIELD = /^\s*(\w+)\s+(\w+)(\?|\[\])?(.*)$/u;
+const FIELD = /^\s*(\w+)\s+(\w+)(\?|\[\])?((?:[^\w\n\r\u2028\u2029].*)?)$/u;
 const PROVIDER = /provider\s*=\s*"([^"]+)"/u;
 const NATIVE = /@db\.(\w+)/u;
 const SCALARS = new Set([
@@ -48,8 +40,9 @@ const SCALARS = new Set([
   'Json',
   'Bytes',
 ]);
+const STRING_KEY = 'string';
 const KEY_TYPES = new Map<string, 'string' | 'number'>([
-  ['String', 'string'],
+  ['String', STRING_KEY],
   ['Int', 'number'],
 ]);
 const EXACT_PROVIDERS = new Set(['postgresql', 'cockroachdb', 'sqlite', 'mysql', 'sqlserver']);
@@ -82,8 +75,12 @@ function fieldOf(line: string): [string, PrismaField] | undefined {
   ];
 }
 
-function parseSchema(file: string): PrismaSchema {
-  const text = readFileSync(file, 'utf8').split('\n').map(stripComment).join('\n');
+function parseSchema(file: string): PrismaSchema | undefined {
+  const read = readFileText(file);
+  if (read.kind === 'unreadable') {
+    return undefined;
+  }
+  const text = read.text.split('\n').map(stripComment).join('\n');
   const models = new Map<string, ReadonlyMap<string, PrismaField>>();
   const enums = new Set<string>();
   let provider: string | undefined;
@@ -109,11 +106,7 @@ function parseSchema(file: string): PrismaSchema {
 
 export function prismaSchema(declarationFile: string): PrismaSchema | undefined {
   const file = path.join(path.dirname(declarationFile), 'schema.prisma');
-  try {
-    return readStamped(schemas, file, parseSchema);
-  } catch {
-    return undefined;
-  }
+  return readStamped(schemas, file, parseSchema);
 }
 
 export function isScalarField(schema: PrismaSchema, field: PrismaField): boolean {
@@ -131,11 +124,11 @@ export function prismaKey(
     return undefined;
   }
   const { provider } = schema;
-  const natives = type === 'string' ? TEXT_NATIVES : NUMBER_NATIVES;
+  const natives = type === STRING_KEY ? TEXT_NATIVES : NUMBER_NATIVES;
   const exact =
     provider !== undefined &&
     EXACT_PROVIDERS.has(provider) &&
     (field.native === undefined || natives.has(field.native)) &&
-    !(type === 'string' && CASE_FOLDING_PROVIDERS.has(provider));
+    !(type === STRING_KEY && CASE_FOLDING_PROVIDERS.has(provider));
   return { primary: field.id, unique: field.unique, type, comparable: exact };
 }

@@ -28,8 +28,5 @@ export function batchSuggestion(
       writeSuggestion(context, call, { orm, loop })
     );
   }
-  if (orm.orm === 'ioredis' || orm.orm === 'node-redis') {
-    return mgetSuggestion(context, call, { orm, loop });
-  }
-  return undefined;
+  return mgetSuggestion(context, call, { orm, loop });
 }

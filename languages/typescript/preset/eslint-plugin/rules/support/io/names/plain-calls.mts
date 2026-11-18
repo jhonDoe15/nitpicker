@@ -1,23 +1,9 @@
-import type { CallView } from '../call-views.mts';
+import { ownerName, type CallView } from '../call-views.mts';
+import { REPLACERS, STRING_STEPS } from './text-receivers.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../../../shared/naming/secret-words.mjs';
 
 const wordsOf: (name: string) => string[] = untypedWordsOf;
 
-export const REPLACERS = new Set(['replace', 'replaceAll']);
-export const STRING_STEPS = new Set([
-  'trim',
-  'trimStart',
-  'trimEnd',
-  'toLowerCase',
-  'toUpperCase',
-  'slice',
-  'substring',
-  'split',
-  'concat',
-  'padStart',
-  'padEnd',
-  'normalize',
-]);
 const SOCKETS = new Set(['connection', 'socket', 'ws', 'websocket', 'peer']);
 const DRIVER_HELPERS = new Set(['createParameter', 'createGeneratedMap']);
 
@@ -31,12 +17,12 @@ function replacesText(view: CallView): boolean {
 }
 
 function sendsOverSocket(view: CallView): boolean {
-  const owner = view.names.at(-2);
+  const owner = ownerName(view);
   return view.method === 'send' && owner !== undefined && SOCKETS.has(wordsOf(owner).at(-1) ?? '');
 }
 
 export function isPlainCall(view: CallView): boolean {
-  const { method, names } = view;
+  const { method } = view;
   return (
     method !== undefined &&
     (DRIVER_HELPERS.has(method) ||

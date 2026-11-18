@@ -1,9 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { descendants } from '../../../rules/loops/loop-shapes.mts';
-import type { SourceCode } from '../../../rules/typed/node-views.mts';
+import { chainOf, contains, type SourceCode } from '../../../rules/typed/node-views.mts';
 import { visibleVariable } from '../../support/scope.mts';
 
-const MUTATORS = new Set([
+const DELETE = 'delete';
+export const MUTATING_METHODS: ReadonlySet<string> = new Set([
   'push',
   'pop',
   'shift',
@@ -15,11 +16,11 @@ const MUTATORS = new Set([
   'copyWithin',
   'set',
   'add',
-  'delete',
+  DELETE,
   'clear',
   'assign',
 ]);
-const PLAIN = new Set<string>([
+export const PLAIN_NODE_TYPES: ReadonlySet<string> = new Set<string>([
   AST_NODE_TYPES.Identifier,
   AST_NODE_TYPES.Literal,
   AST_NODE_TYPES.ThisExpression,
@@ -43,23 +44,36 @@ export type Repeated = {
   readonly target: TSESTree.Node;
 };
 
-function isInside(inner: TSESTree.Range, outer: TSESTree.Range): boolean {
-  return inner[0] >= outer[0] && inner[1] <= outer[1];
+function isPlainLink(node: TSESTree.Node): boolean {
+  return (
+    node.type === AST_NODE_TYPES.MemberExpression &&
+    !node.computed &&
+    !node.optional &&
+    node.property.type === AST_NODE_TYPES.Identifier
+  );
 }
 
+export function plainChainRoot(node: TSESTree.Node): TSESTree.Node | undefined {
+  const links = chainOf<TSESTree.Node>(node, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return links.slice(0, -1).every(isPlainLink) ? links.at(-1) : undefined;
+}
+
+export type InvariantScope = Repeated & { readonly except?: string };
+
 function innerOf(node: TSESTree.Node): TSESTree.Node | undefined {
-  switch (node.type) {
-    case AST_NODE_TYPES.MemberExpression:
-      return node.object;
-    case AST_NODE_TYPES.CallExpression:
-      return node.callee;
-    case AST_NODE_TYPES.TSNonNullExpression:
-    case AST_NODE_TYPES.TSAsExpression:
-    case AST_NODE_TYPES.ChainExpression:
-      return node.expression;
-    default:
-      return undefined;
+  if (node.type === AST_NODE_TYPES.MemberExpression) {
+    return node.object;
   }
+  if (node.type === AST_NODE_TYPES.CallExpression) {
+    return node.callee;
+  }
+  return node.type === AST_NODE_TYPES.TSNonNullExpression ||
+    node.type === AST_NODE_TYPES.TSAsExpression ||
+    node.type === AST_NODE_TYPES.ChainExpression
+    ? node.expression
+    : undefined;
 }
 
 function rootName(node: TSESTree.Node): string | undefined {
@@ -98,7 +112,7 @@ function callMutation(node: TSESTree.CallExpression): string | undefined {
     return LOGGING.test(memberNames(callee).join('.')) ? undefined : 'this';
   }
   const [method = ''] = memberNames(callee);
-  return MUTATORS.has(method) ? rootName(callee.object) : undefined;
+  return MUTATING_METHODS.has(method) ? rootName(callee.object) : undefined;
 }
 
 function targetOf(node: TSESTree.Node): TSESTree.Node | undefined {
@@ -108,7 +122,7 @@ function targetOf(node: TSESTree.Node): TSESTree.Node | undefined {
   if (node.type === AST_NODE_TYPES.UpdateExpression) {
     return node.argument;
   }
-  return node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete'
+  return node.type === AST_NODE_TYPES.UnaryExpression && node.operator === DELETE
     ? node.argument
     : undefined;
 }
@@ -121,12 +135,12 @@ function mutationRoot(node: TSESTree.Node): string | undefined {
   return target?.type === AST_NODE_TYPES.MemberExpression ? rootName(target) : undefined;
 }
 
-export function mutatedRoots(
+function mutatedRoots(
   sourceCode: SourceCode,
   { body, target }: Pick<Repeated, 'body' | 'target'>,
 ): ReadonlySet<string> {
   const roots = descendants(body, sourceCode.visitorKeys, () => false)
-    .filter((node) => !isInside(node.range, target.range))
+    .filter((node) => !contains(target, node))
     .map(mutationRoot)
     .filter((root) => root !== undefined);
   return new Set(roots);
@@ -154,19 +168,20 @@ function isStable(
   if (variable === undefined) {
     return true;
   }
-  const declaredInside = variable.defs.some((def) => isInside(def.name.range, range));
+  const region = { range };
+  const declaredInside = variable.defs.some((def) => contains(region, def.name));
   const writtenInside = variable.references.some(
-    (reference) => reference.isWrite() && isInside(reference.identifier.range, range),
+    (reference) => reference.isWrite() && contains(region, reference.identifier),
   );
-  return !declaredInside && !writtenInside;
+  return !(declaredInside || writtenInside);
 }
 
 function isPlainNode(node: TSESTree.Node): boolean {
-  if (!PLAIN.has(node.type)) {
+  if (!PLAIN_NODE_TYPES.has(node.type)) {
     return false;
   }
   if (node.type === AST_NODE_TYPES.UnaryExpression) {
-    return node.operator !== 'delete';
+    return node.operator !== DELETE;
   }
   return (
     node.type !== AST_NODE_TYPES.Property ||
@@ -177,9 +192,9 @@ function isPlainNode(node: TSESTree.Node): boolean {
 export function isInvariant(
   sourceCode: SourceCode,
   node: TSESTree.Node,
-  repeated: Repeated,
-  except?: string,
+  repeated: InvariantScope,
 ): boolean {
+  const { except } = repeated;
   const nodes = descendants(node, sourceCode.visitorKeys, () => false);
   if (!nodes.every(isPlainNode)) {
     return false;

@@ -1,26 +1,14 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { descendants } from '../../../rules/loops/loop-shapes.mts';
-import { typeServices, type Context } from '../../../rules/security/security-values.mts';
+import type { Context } from '../../../rules/security/security-values.mts';
+import { hasOnlyTypeFlags } from '../../../rules/support/checked-types.mts';
+import { ancestorsOf } from '../../../rules/typed/node-views.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
+import { MUTATING_METHODS } from './invariants.mts';
 
 export type ResultKind = 'row' | 'list';
 
-const MUTATORS = new Set([
-  'push',
-  'pop',
-  'shift',
-  'unshift',
-  'splice',
-  'sort',
-  'reverse',
-  'fill',
-  'copyWithin',
-  'set',
-  'add',
-  'delete',
-  'clear',
-  'assign',
-]);
+const DELETE = 'delete';
 const LIST_READS = new Set([
   'map',
   'filter',
@@ -89,15 +77,13 @@ function isTransparent(node: TSESTree.Node): boolean {
 function climb(identifier: TSESTree.Identifier): Chain | undefined {
   const names: string[] = [];
   let top: TSESTree.Node = identifier;
-  let parent: TSESTree.Node | undefined = top.parent;
-  while (parent !== undefined) {
+  for (const parent of ancestorsOf(identifier)) {
     if (parent.type === AST_NODE_TYPES.MemberExpression && parent.object === top) {
       names.push(propertyName(parent));
     } else if (!isTransparent(parent)) {
       return { top, parent, names };
     }
     top = parent;
-    parent = top.parent;
   }
   return undefined;
 }
@@ -113,68 +99,58 @@ function isWrite({ top, parent }: Chain): boolean {
   return (
     (parent.type === AST_NODE_TYPES.AssignmentExpression && parent.left === top) ||
     parent.type === AST_NODE_TYPES.UpdateExpression ||
-    (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === 'delete') ||
+    (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === DELETE) ||
     (parent.type === AST_NODE_TYPES.ForOfStatement && parent.left === top) ||
     (parent.type === AST_NODE_TYPES.ForInStatement && parent.left === top)
   );
 }
 
-function settled(chain: Chain): Chain | undefined {
+function settled(chain: Chain): Chain {
   let { top, parent } = chain;
-  while (parent.type === AST_NODE_TYPES.LogicalExpression) {
-    top = parent;
-    if (top.parent === undefined) {
-      return undefined;
+  for (const ancestor of ancestorsOf(parent)) {
+    if (parent.type !== AST_NODE_TYPES.LogicalExpression) {
+      break;
     }
-    parent = top.parent;
+    top = parent;
+    parent = ancestor;
   }
   return { ...chain, top, parent };
 }
 
-function isSafeFlow(start: Chain, kind: ResultKind): boolean {
-  const chain = settled(start);
-  if (chain === undefined) {
-    return false;
+function isSafeFlow(start: Chain): boolean {
+  const { top, parent } = settled(start);
+  if (parent.type === AST_NODE_TYPES.CallExpression) {
+    return parent.callee !== top && ESCAPES.has(lastName(parent.callee));
   }
-  const { top, parent } = chain;
-  switch (parent.type) {
-    case AST_NODE_TYPES.ReturnStatement:
-    case AST_NODE_TYPES.TemplateLiteral:
-    case AST_NODE_TYPES.BinaryExpression:
-    case AST_NODE_TYPES.SpreadElement:
-      return true;
-    case AST_NODE_TYPES.IfStatement:
-    case AST_NODE_TYPES.ConditionalExpression:
-      return parent.test === top;
-    case AST_NODE_TYPES.UnaryExpression:
-      return READ_OPERATORS.has(parent.operator);
-    case AST_NODE_TYPES.ForOfStatement:
-      return false;
-    case AST_NODE_TYPES.CallExpression:
-      return parent.callee !== top && ESCAPES.has(lastName(parent.callee));
-    default:
-      return false;
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return READ_OPERATORS.has(parent.operator);
   }
+  if (
+    parent.type === AST_NODE_TYPES.IfStatement ||
+    parent.type === AST_NODE_TYPES.ConditionalExpression
+  ) {
+    return parent.test === top;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.ReturnStatement ||
+    parent.type === AST_NODE_TYPES.TemplateLiteral ||
+    parent.type === AST_NODE_TYPES.BinaryExpression ||
+    parent.type === AST_NODE_TYPES.SpreadElement
+  );
 }
 
 function isPrimitive(context: Context, node: TSESTree.Node): boolean {
-  const services = typeServices(context);
-  if (services === undefined) {
-    return false;
-  }
-  const type = services.getTypeAtLocation(node);
-  const members = type.isUnion() ? type.types : [type];
-  return members.every((member) => (member.flags & PRIMITIVE_FLAGS) !== 0);
+  return hasOnlyTypeFlags(context, node, PRIMITIVE_FLAGS);
 }
 
 function isWritingNode(node: TSESTree.Node): boolean {
   return (
     node.type === AST_NODE_TYPES.AssignmentExpression ||
     node.type === AST_NODE_TYPES.UpdateExpression ||
-    (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete') ||
+    (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === DELETE) ||
     (node.type === AST_NODE_TYPES.CallExpression &&
       node.callee.type === AST_NODE_TYPES.MemberExpression &&
-      MUTATORS.has(propertyName(node.callee)))
+      MUTATING_METHODS.has(propertyName(node.callee)))
   );
 }
 
@@ -199,7 +175,7 @@ function isCallRead(names: readonly string[], kind: ResultKind): boolean {
   if (names.length === 1) {
     return kind === 'list' && LIST_READS.has(method);
   }
-  return !MUTATORS.has(method);
+  return !MUTATING_METHODS.has(method);
 }
 
 function isAllowedUse(
@@ -220,7 +196,7 @@ function isAllowedUse(
   }
   return (
     (names.length > 0 && isPrimitive(context, top)) ||
-    isSafeFlow(chain, kind) ||
+    isSafeFlow(chain) ||
     (names.length > 0 && isCondition(chain))
   );
 }

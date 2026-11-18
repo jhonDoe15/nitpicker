@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { bindingsOf, isModuleValue } from '../imported-names.mts';
 import { memberName, unwrapped } from '../security-values.mts';
+import { importedName } from '../../typed/node-views.mts';
 import {
   CRYPTO_JS_WEAK,
   callFinding,
@@ -66,14 +67,6 @@ function checkPackage(
   if (hmacAlgorithm !== undefined) {
     report(scope, node, { algorithm: hmacAlgorithm, hmac: true });
   }
-}
-
-function importedName(specifier: TSESTree.ImportClause): string | undefined {
-  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
-    return undefined;
-  }
-  const { imported } = specifier;
-  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
 }
 
 function checkNamedImports(scope: Scope, node: TSESTree.ImportDeclaration): void {

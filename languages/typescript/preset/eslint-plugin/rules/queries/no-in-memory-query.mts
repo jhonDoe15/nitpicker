@@ -36,8 +36,7 @@ export const rule: TSESLint.RuleModule<
       AwaitExpression(node) {
         const call = unwrapped(node.argument);
         const query = call.type === AST_NODE_TYPES.CallExpression ? call : undefined;
-        const skipped =
-          query === undefined || isForeignCall(context, query) || isLockedRead(query);
+        const skipped = query === undefined || isForeignCall(context, query) || isLockedRead(query);
         if (skipped || !isQueryResult(scope, node)) {
           return;
         }

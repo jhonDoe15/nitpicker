@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../security/security-values.mts';
 import { estreeCallView } from '../../support/io/call-views.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
-import { nameOf } from '../../typed/node-views.mts';
+import { contains, nameOf } from '../../typed/node-views.mts';
 import { calleeName, isFunction } from '../../typed/syntax-views.mts';
 import {
   chainArguments,
@@ -15,6 +15,19 @@ import { descendants, type EnclosingLoop, type VisitorKeys } from '../loop-shape
 import { itemNames, referencedNames } from '../repeats/loop-names.mts';
 
 export type Advice = 'query' | 'setQuery' | 'foreignKeyQuery' | 'dependentQuery';
+
+const BATCHABLE: Readonly<Record<Advice, boolean>> = {
+  query: true,
+  setQuery: false,
+  foreignKeyQuery: true,
+  dependentQuery: false,
+};
+
+export function isBatchable(advice: Advice): boolean {
+  return BATCHABLE[advice];
+}
+
+type ItemScope = { readonly items: ReadonlySet<string>; readonly keys: VisitorKeys };
 
 const wordsOf: (name: string) => string[] = untypedWordsOf;
 
@@ -58,10 +71,6 @@ function isItemKeys(
   return mentionsItem && operand.type === AST_NODE_TYPES.ArrayExpression;
 }
 
-function isInside(node: TSESTree.Node, container: TSESTree.Node): boolean {
-  return node.range[0] >= container.range[0] && node.range[1] <= container.range[1];
-}
-
 function isPropertyKey(node: TSESTree.Node): boolean {
   const { parent } = node;
   return (
@@ -75,8 +84,7 @@ function isPropertyKey(node: TSESTree.Node): boolean {
 function usesItemOutside(
   call: Call,
   operands: readonly TSESTree.Node[],
-  items: ReadonlySet<string>,
-  keys: VisitorKeys,
+  { items, keys }: ItemScope,
 ): boolean {
   return chainArguments(call)
     .flatMap((argument) => descendants(argument, keys, isFunction))
@@ -85,19 +93,14 @@ function usesItemOutside(
         node.type === AST_NODE_TYPES.Identifier &&
         items.has(node.name) &&
         !isPropertyKey(node) &&
-        !operands.some((operand) => isInside(node, operand)),
+        !operands.some((operand) => contains(operand, node)),
     );
 }
 
-function isItemQuery(
-  call: Call,
-  operands: readonly TSESTree.Node[],
-  items: ReadonlySet<string>,
-  keys: VisitorKeys,
-): boolean {
+function isItemQuery(call: Call, operands: readonly TSESTree.Node[], scope: ItemScope): boolean {
   return (
-    operands.some((operand) => isItemKeys(operand, items, keys)) ||
-    usesItemOutside(call, operands, items, keys)
+    operands.some((operand) => isItemKeys(operand, scope.items, scope.keys)) ||
+    usesItemOutside(call, operands, scope)
   );
 }
 
@@ -140,7 +143,7 @@ export function adviceOf(call: Call, found: EnclosingLoop, context: Context): Ad
   const items = itemNames(found, keys);
   const operands = setOperands(call, keys);
   if (operands.length > 0) {
-    return isItemQuery(call, operands, items, keys) ? 'query' : 'setQuery';
+    return isItemQuery(call, operands, { items, keys }) ? 'query' : 'setQuery';
   }
   return isRead(call, context) && hasForeignKey(call, items, keys) ? 'foreignKeyQuery' : 'query';
 }

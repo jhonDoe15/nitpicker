@@ -14,7 +14,7 @@ export function rewritten(
   const separate = ordered.every(
     ({ range }, index) => index === 0 || (ordered[index - 1]?.range[1] ?? 0) <= range[0],
   );
-  if (!inside || !separate) {
+  if (!(inside && separate)) {
     return undefined;
   }
   let cursor = region[0];

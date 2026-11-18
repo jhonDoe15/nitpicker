@@ -1,15 +1,8 @@
 import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as ioInLoop } from '../no-io-in-loop.mts';
+import { inLoop, onceFor } from './loop-cases.mts';
 
 const ruleTester = typescriptRuleTester();
-
-function inLoop(statement: string) {
-  return `for (const id of ids) { ${statement} }`;
-}
-
-function onceFor(code: string, messageId = 'query') {
-  return { code, errors: [{ messageId }] };
-}
 
 ruleTester.run('no-io-in-loop unexecuted builders', ioInLoop, {
   valid: cases([
@@ -17,7 +10,7 @@ ruleTester.run('no-io-in-loop unexecuted builders', ioInLoop, {
     inLoop("query.select(db.raw('? as ??', [expression, id]));"),
     inLoop("const fragment = knex.raw('?? (?)', [id, length]); fragments.push(fragment);"),
     "const fragments = columns.map((column) => knex.raw('?? (?)', [column, length]));",
-    'const fragments = ids.map((id) => this.knex.raw(`MIN(${id})`));',
+    `const fragments = ids.map((id) => this.knex.raw(\`MIN(\${id})\`));`,
     inLoop("update.set({ amount: knex.raw('?::numeric', [id]) });"),
     inLoop("const rows = { total: this.knex.raw('count(*)') }; use(rows);"),
     inLoop("const qb = repo.createQueryBuilder('a'); builders.push(qb);"),

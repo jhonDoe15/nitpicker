@@ -68,7 +68,7 @@ function withHelpers(body: string) {
 
 function suggestion(output: string | undefined, helpers = false) {
   const code = helpers
-    ? `${HEADER}${HELPERS}export async function run() { ${output} }`
+    ? `${HEADER}${HELPERS}export async function run() { ${output ?? ''} }`
     : inRun(output ?? '');
   return output === undefined ? {} : { suggestions: [{ messageId: 'addRelation', output: code }] };
 }

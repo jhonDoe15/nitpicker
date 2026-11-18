@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { hasArrayType } from '../../../rules/support/checked-types.mts';
-import { isReference } from './invariants.mts';
+import { isReference, plainChainRoot } from './invariants.mts';
 import { isItemStable, isIterableStable } from './item-uses.mts';
 import { descendants, enclosingLoop } from '../../../rules/loops/loop-shapes.mts';
 import { ancestorsOf, contains, type SourceCode } from '../../../rules/typed/node-views.mts';
@@ -24,17 +24,9 @@ export type LoopCall = {
 
 const CALLBACK_METHODS = new Set(['map', 'forEach']);
 
-export function isPlainChain(node: TSESTree.Node): boolean {
-  if (node.type === AST_NODE_TYPES.Identifier || node.type === AST_NODE_TYPES.ThisExpression) {
-    return true;
-  }
-  return (
-    node.type === AST_NODE_TYPES.MemberExpression &&
-    !node.computed &&
-    !node.optional &&
-    node.property.type === AST_NODE_TYPES.Identifier &&
-    isPlainChain(node.object)
-  );
+function isPlainChain(node: TSESTree.Node): boolean {
+  const root = plainChainRoot(node);
+  return root?.type === AST_NODE_TYPES.Identifier || root?.type === AST_NODE_TYPES.ThisExpression;
 }
 
 function isStatementIn(node: TSESTree.Node): boolean {
@@ -97,7 +89,7 @@ function leaves(node: TSESTree.Node, body: TSESTree.Node): boolean {
   return node.label !== null || !nested;
 }
 
-export function exitsEarly(sourceCode: SourceCode, body: TSESTree.Node): boolean {
+function exitsEarly(sourceCode: SourceCode, body: TSESTree.Node): boolean {
   return descendants(body, sourceCode.visitorKeys, isFunction).some((node) => leaves(node, body));
 }
 
@@ -124,8 +116,8 @@ function forOfCall(
     !isStatementIn(loop) ||
     !isArrayOf(context, loop.right) ||
     touchesIterable(context.sourceCode, loop.right, loop.body) ||
-    !isItemStable(context, declarator.id, loop.body, call) ||
-    !isIterableStable(context, loop.right, loop.body, call) ||
+    !isItemStable(context, declarator.id, { body: loop.body, target: call }) ||
+    !isIterableStable(context, loop.right, { body: loop.body, target: call }) ||
     exitsEarly(context.sourceCode, loop.body)
   ) {
     return undefined;
@@ -158,11 +150,7 @@ function holderOf(mapCall: TSESTree.CallExpression): TSESTree.Statement | undefi
   const { parent } = node;
   if (parent.type === AST_NODE_TYPES.VariableDeclarator) {
     const declaration = parent.parent;
-    return parent.init === node &&
-      declaration.type === AST_NODE_TYPES.VariableDeclaration &&
-      declaration.declarations.length === 1
-      ? declaration
-      : undefined;
+    return parent.init === node && declaration.declarations.length === 1 ? declaration : undefined;
   }
   const isStatement =
     (parent.type === AST_NODE_TYPES.ExpressionStatement && parent.expression === node) ||
@@ -230,8 +218,8 @@ function callbackCall(
     !isAsyncContext(context.sourceCode, hoistBefore) ||
     touchesIterable(context.sourceCode, iterable, body) ||
     !isArrayOf(context, iterable) ||
-    !isItemStable(context, item, body, call) ||
-    !isIterableStable(context, iterable, body, call) ||
+    !isItemStable(context, item, { body, target: call }) ||
+    !isIterableStable(context, iterable, { body, target: call }) ||
     awaitsBefore(context.sourceCode, body, statement)
   ) {
     return undefined;
@@ -268,7 +256,7 @@ export function resultDeclarator(
     return undefined;
   }
   const [declarator] = statement.declarations;
-  const init = declarator?.init;
+  const { init } = declarator;
   const awaited = init?.type === AST_NODE_TYPES.AwaitExpression && init.argument === call;
-  return declarator?.id.type === AST_NODE_TYPES.Identifier && awaited ? declarator : undefined;
+  return declarator.id.type === AST_NODE_TYPES.Identifier && awaited ? declarator : undefined;
 }

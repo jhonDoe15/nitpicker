@@ -1,7 +1,4 @@
-import type { ormProject } from '../projects/orm-project.mts';
-import { batchCases } from './batch-cases.mts';
-
-type Project = ReturnType<typeof ormProject>;
+import { headedCases, type HeadedCases, type Project } from './batch-cases.mts';
 
 export const IOREDIS_HEAD = [
   "import Redis, { Cluster } from 'ioredis';",
@@ -25,18 +22,11 @@ export const NODE_REDIS_HEAD = [
   '',
 ].join('\n');
 
-export function redisCases(project: Project, head: string) {
-  const cases = batchCases(project, 'batchMget');
-  return {
-    ...cases,
-    pair(body: string, expected: string) {
-      return cases.fixes(`${head}${body}`, `${head}${expected}`, { report: 'cacheQuery' });
-    },
-    clean(body: string) {
-      return cases.clean(`${head}${body}`);
-    },
-    declines(body: string, report: readonly string[] = ['cacheQuery']) {
-      return cases.declines(`${head}${body}`, report);
-    },
-  };
+export function redisCases(project: Project, head: string): HeadedCases {
+  return headedCases(project, {
+    before: head,
+    after: head,
+    suggestion: 'batchMget',
+    report: 'cacheQuery',
+  });
 }

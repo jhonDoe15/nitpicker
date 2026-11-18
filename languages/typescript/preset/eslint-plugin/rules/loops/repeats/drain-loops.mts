@@ -4,7 +4,7 @@ import { nameOf } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { chainArguments, chainFrom, outerCalls, type Call } from '../builders/chain-execution.mts';
-import { descendants, type LoopNode, type VisitorKeys } from '../loop-shapes.mts';
+import { descendants, isTestedLoop, type LoopNode, type VisitorKeys } from '../loop-shapes.mts';
 import { bodyDeclaredNames, itemNames, referencedNames } from './loop-names.mts';
 
 const PAGE_KEYS = new Set(['take', 'limit', 'batchSize', 'pageSize', 'perPage', 'first', 'size']);
@@ -78,9 +78,9 @@ function leaves(node: TSESTree.Node, tested: ReadonlySet<string>, keys: VisitorK
 }
 
 function endsOnEmpty(loop: LoopNode, name: string, visitorKeys: VisitorKeys): boolean {
-  const test = 'test' in loop ? loop.test : null;
-  const tested = test === null ? new Set<string>() : referencedNames(test, visitorKeys);
-  if (test !== null && measuresEmptiness(test, name, visitorKeys)) {
+  const test = 'test' in loop ? (loop.test ?? undefined) : undefined;
+  const tested = test === undefined ? new Set<string>() : referencedNames(test, visitorKeys);
+  if (test !== undefined && measuresEmptiness(test, name, visitorKeys)) {
     return true;
   }
   return descendants(loop.body, visitorKeys, isFunction).some((node) => {
@@ -130,11 +130,7 @@ function drainResults(loop: LoopNode, visitorKeys: VisitorKeys): ReadonlySet<str
 }
 
 export function isDrainCall(call: Call, loop: LoopNode | undefined, context: Context): boolean {
-  if (
-    loop === undefined ||
-    loop.type === AST_NODE_TYPES.ForOfStatement ||
-    loop.type === AST_NODE_TYPES.ForInStatement
-  ) {
+  if (!isTestedLoop(loop)) {
     return false;
   }
   const { visitorKeys } = context.sourceCode;

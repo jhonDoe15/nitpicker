@@ -20,7 +20,8 @@ import {
   switchedOff,
   typeormLogging,
 } from './logging-values.mts';
-import { boundFamily, optionsFamily, PRISMA } from './orm-call-sites.mts';
+import { PRISMA } from '../../rules/queries/receivers/orm-callee.mts';
+import { boundFamily, optionsFamily } from './orm-call-sites.mts';
 
 const LOGGING_OFF = 'logging: false';
 const POSITIONAL_ARITY = 3;
@@ -47,27 +48,23 @@ function drizzleLogger(scope: ModuleScope, value: TSESTree.Node): FixPlan | unde
     : undefined;
 }
 
+type Fixer = (scope: ModuleScope, value: TSESTree.Node) => FixPlan | undefined;
+
+const FAMILY_FIXES = new Map<string, Fixer>([
+  [`logging:${TYPEORM}`, ({ context }, value) => typeormLogging(context, value)],
+  [`logging:${SEQUELIZE}`, ({ context }, value) => sequelizeLogging(context, value)],
+  [`logQueryParameters:${TYPEORM}`, ({ context }, value) => switchedOff(context, value)],
+  [`logQueryParameters:${SEQUELIZE}`, ({ context }, value) => switchedOff(context, value)],
+  [`debug:${MIKRO_ORM}`, ({ context }, value) => mikroDebug(context, value)],
+  [`log:${PRISMA}`, ({ context }, value) => prismaLog(context, value)],
+  [`logger:${DRIZZLE}`, drizzleLogger],
+]);
+
 function byFamily(
   scope: ModuleScope,
   { family, key, value }: { family: string; key: string; value: TSESTree.Node },
 ): FixPlan | undefined {
-  const { context } = scope;
-  if (key === 'logging') {
-    if (family === TYPEORM) {
-      return typeormLogging(context, value);
-    }
-    return family === SEQUELIZE ? sequelizeLogging(context, value) : undefined;
-  }
-  if (key === 'logQueryParameters') {
-    return family === TYPEORM || family === SEQUELIZE ? switchedOff(context, value) : undefined;
-  }
-  if (key === 'debug') {
-    return family === MIKRO_ORM ? mikroDebug(context, value) : undefined;
-  }
-  if (key === 'log') {
-    return family === PRISMA ? prismaLog(context, value) : undefined;
-  }
-  return key === 'logger' && family === DRIZZLE ? drizzleLogger(scope, value) : undefined;
+  return FAMILY_FIXES.get(`${key}:${family}`)?.(scope, value);
 }
 
 export function propertyFix(scope: ModuleScope, property: TSESTree.Property): FixPlan | undefined {
@@ -141,9 +138,7 @@ export function factoryFix(
 ): FixPlan | undefined {
   const call = factoryCall(object);
   const fn =
-    object.parent.type === AST_NODE_TYPES.ReturnStatement
-      ? object.parent.parent?.parent
-      : undefined;
+    object.parent.type === AST_NODE_TYPES.ReturnStatement ? object.parent.parent.parent : undefined;
   const single = fn === undefined || returnCount(fn) === 1;
   if (call === undefined || !single || boundFamily(scope, call.callee) !== SEQUELIZE) {
     return undefined;

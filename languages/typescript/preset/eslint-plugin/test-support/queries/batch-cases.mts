@@ -1,6 +1,8 @@
-import { ormProject } from '../projects/orm-project.mts';
+import type { ormProject } from '../projects/orm-project.mts';
 
-type Project = ReturnType<typeof ormProject>;
+const QUERY = 'query';
+
+export type Project = ReturnType<typeof ormProject>;
 export type SuggestionId =
   'batchLookup' | 'batchGroups' | 'batchMget' | 'batchWrite' | 'batchInsert';
 
@@ -25,17 +27,17 @@ export function batchCases(project: Project, defaultSuggestion: SuggestionId): B
       const suggestion = { messageId: ids.suggestion ?? defaultSuggestion, output };
       return {
         ...project.typed(code),
-        errors: [{ messageId: ids.report ?? 'query', suggestions: [suggestion] }],
+        errors: [{ messageId: ids.report ?? QUERY, suggestions: [suggestion] }],
       };
     },
-    declines(code, report = ['query']) {
+    declines(code, report = [QUERY]) {
       return { ...project.typed(code), errors: report.map((messageId) => ({ messageId })) };
     },
     clean: (code) => project.typed(code),
   };
 }
 
-export const TYPEORM_HEAD = [
+const TYPEORM_HEAD = [
   "import { Repository } from 'typeorm';",
   "import { User, Code } from './entities';",
   'declare const repo: Repository<User>;',
@@ -53,17 +55,44 @@ export const TYPEORM_HEAD = [
 
 export const TYPEORM_HEAD_WITH_IN = TYPEORM_HEAD.replace('{ Repository }', '{ Repository, In }');
 
-export function typeormCases(project: Project, suggestion: SuggestionId = 'batchLookup') {
+type Heads = { readonly before: string; readonly after: string };
+type HeadedOptions = Heads & { readonly suggestion: SuggestionId; readonly report?: string };
+type Ids = { readonly report?: string };
+
+export type HeadedCases = {
+  readonly project: Project;
+  readonly fixes: BatchCases['fixes'];
+  readonly pair: (body: string, expected: string, ids?: Ids) => ReturnType<BatchCases['fixes']>;
+  readonly declines: (
+    body: string,
+    report?: readonly string[],
+  ) => ReturnType<BatchCases['declines']>;
+  readonly clean: (body: string) => ReturnType<Project['typed']>;
+};
+
+export function headedCases(project: Project, options: HeadedOptions): HeadedCases {
+  const { before, after, suggestion, report = QUERY } = options;
   const cases = batchCases(project, suggestion);
   return {
-    ...cases,
-    pair(body: string, expected: string, ids?: { readonly report?: string }) {
-      return cases.fixes(`${TYPEORM_HEAD}${body}`, `${TYPEORM_HEAD_WITH_IN}${expected}`, ids);
-    },
-    declines(body: string, report?: readonly string[]) {
-      return cases.declines(`${TYPEORM_HEAD}${body}`, report);
-    },
+    project,
+    fixes: cases.fixes,
+    pair: (body, expected, ids) =>
+      cases.fixes(`${before}${body}`, `${after}${expected}`, { report, ...ids }),
+    declines: (body, reports = [report]) => cases.declines(`${before}${body}`, reports),
+    clean: (body) => cases.clean(`${before}${body}`),
   };
+}
+
+export function typeormCases(
+  project: Project,
+  suggestion: SuggestionId = 'batchLookup',
+): HeadedCases {
+  const headed = headedCases(project, {
+    before: TYPEORM_HEAD,
+    after: TYPEORM_HEAD_WITH_IN,
+    suggestion,
+  });
+  return { ...headed, clean: batchCases(project, suggestion).clean };
 }
 
 export const PRISMA_HEAD = [
@@ -79,15 +108,10 @@ export const PRISMA_HEAD = [
   '',
 ].join('\n');
 
-export function prismaCases(project: Project, suggestion: SuggestionId = 'batchLookup') {
-  const cases = batchCases(project, suggestion);
-  return {
-    ...cases,
-    pair(body: string, expected: string, ids?: { readonly report?: string }) {
-      return cases.fixes(`${PRISMA_HEAD}${body}`, `${PRISMA_HEAD}${expected}`, ids);
-    },
-    declines(body: string, report?: readonly string[]) {
-      return cases.declines(`${PRISMA_HEAD}${body}`, report);
-    },
-  };
+export function prismaCases(
+  project: Project,
+  suggestion: SuggestionId = 'batchLookup',
+): HeadedCases {
+  const headed = headedCases(project, { before: PRISMA_HEAD, after: PRISMA_HEAD, suggestion });
+  return { ...headed, clean: batchCases(project, suggestion).clean };
 }

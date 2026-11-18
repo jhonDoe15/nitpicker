@@ -6,7 +6,9 @@ import { PRISMA_HEAD, prismaCases } from '../../../../test-support/queries/batch
 const { project, declines } = prismaCases(ormProject('prisma-declines'));
 const mysql = prismaCases(ormProject('prisma-mysql', { provider: 'mysql' }));
 const prisma5 = prismaCases(ormProject('prisma-v5', { prismaVersion: '5.22.0' }));
-const unversioned = prismaCases(ormProject('prisma-unversioned', { prismaVersion: null }));
+const unversioned = prismaCases(
+  ormProject('prisma-unversioned', { prismaManifest: 'unversioned' }),
+);
 
 project.tester.run('prisma lookups that stay as they are', ioInLoop, {
   valid: [],

@@ -72,7 +72,7 @@ export function avoidsRelations(
     return true;
   }
   const keys = topLevelKeys(node);
-  return keys !== undefined && keys.every((key) => !relations.has(key) && !key.startsWith('$'));
+  return keys !== undefined && keys.every((key) => !(relations.has(key) || key.startsWith('$')));
 }
 
 function isEagerOption(argument: TypeScript.Node): boolean {

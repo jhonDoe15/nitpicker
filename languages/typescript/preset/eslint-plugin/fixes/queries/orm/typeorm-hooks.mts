@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
-import { decoratorsOf, typeormName } from './typeorm-columns.mts';
+import { decoratorsOf } from '../../../rules/request-inputs/bindings/ts-nodes.mts';
+import { typeormName } from './typeorm-columns.mts';
 
 const LISTENERS = new Set([
   'BeforeInsert',

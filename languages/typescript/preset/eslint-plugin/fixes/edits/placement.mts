@@ -13,20 +13,21 @@ const STANDALONE = new Set<string>([
 ]);
 
 function isOperand(node: TSESTree.Node, parent: TSESTree.Node): boolean {
-  switch (parent.type) {
-    case AST_NODE_TYPES.CallExpression:
-    case AST_NODE_TYPES.NewExpression:
-      return parent.arguments.some((argument) => argument === node);
-    case AST_NODE_TYPES.Property:
-      return parent.value === node && parent.parent.type === AST_NODE_TYPES.ObjectExpression;
-    case AST_NODE_TYPES.ArrayExpression:
-    case AST_NODE_TYPES.TemplateLiteral:
-      return true;
-    case AST_NODE_TYPES.AssignmentExpression:
-      return parent.right === node;
-    default:
-      return false;
+  if (
+    parent.type === AST_NODE_TYPES.CallExpression ||
+    parent.type === AST_NODE_TYPES.NewExpression
+  ) {
+    return parent.arguments.some((argument) => argument === node);
   }
+  if (parent.type === AST_NODE_TYPES.Property) {
+    return parent.value === node && parent.parent.type === AST_NODE_TYPES.ObjectExpression;
+  }
+  if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
+    return parent.right === node;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.ArrayExpression || parent.type === AST_NODE_TYPES.TemplateLiteral
+  );
 }
 
 export function placed(node: TSESTree.Node, text: string): string {

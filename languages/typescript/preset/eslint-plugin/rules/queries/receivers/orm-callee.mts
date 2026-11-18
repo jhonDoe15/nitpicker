@@ -10,7 +10,7 @@ import {
 } from '../../database/orm-modules.mts';
 import { typeServices, type Context } from '../../security/security-values.mts';
 
-export type CalleeOrigin = 'orm' | 'foreign' | 'unknown';
+type CalleeOrigin = 'orm' | 'foreign' | 'unknown';
 
 export const PRISMA = 'prisma';
 
@@ -53,7 +53,7 @@ export function calleeFamily(context: Context, call: TSESTree.CallExpression): F
   return file.text.includes(PRISMA_RUNTIME) ? PRISMA : undefined;
 }
 
-export function calleeOrigin(context: Context, call: TSESTree.CallExpression): CalleeOrigin {
+function calleeOrigin(context: Context, call: TSESTree.CallExpression): CalleeOrigin {
   if (calleeDeclaration(context, call) === undefined) {
     return 'unknown';
   }

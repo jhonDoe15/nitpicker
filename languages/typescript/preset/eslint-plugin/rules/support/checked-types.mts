@@ -80,3 +80,26 @@ export function hasListType(context: Context, node: TSESTree.Node): TypeAnswer {
     );
   });
 }
+
+export function hasOnlyTypeFlags(
+  context: Context,
+  node: TSESTree.Node,
+  flags: TypeScript.TypeFlags,
+): boolean {
+  const type = typeServices(context)?.getTypeAtLocation(node);
+  if (type === undefined) {
+    return false;
+  }
+  const members = type.isUnion() ? type.types : [type];
+  return members.every((member) => (member.flags & flags) !== 0);
+}
+
+export function hasProperty(context: Context, node: TSESTree.Node, name: string): boolean {
+  const services = typeServices(context);
+  if (services === undefined) {
+    return false;
+  }
+  const checker = services.program.getTypeChecker();
+  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
+  return checker.getPropertyOfType(type, name) !== undefined;
+}

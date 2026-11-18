@@ -5,7 +5,7 @@ import { cachedValue } from '../../../../../../../shared/values/caching/cached-v
 import { ts } from '../../typed/typescript-views.mts';
 import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
-export type RelationShape = {
+type RelationShape = {
   readonly many: boolean;
   readonly eagerMany: boolean;
   readonly siblings: ReadonlyMap<string, boolean>;

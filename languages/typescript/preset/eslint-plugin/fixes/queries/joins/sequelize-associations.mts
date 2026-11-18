@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
+import { isProjectFile } from '../../support/project/program.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
 
 type Association = { readonly owner: string; readonly name: string };
@@ -50,9 +51,7 @@ function decoratorAssociation(node: TypeScript.Node): Association | undefined {
 function indexOf(program: TypeScript.Program): Association[] {
   return cachedValue(indexes, program, () => {
     const found: Association[] = [];
-    const pending: TypeScript.Node[] = program
-      .getSourceFiles()
-      .filter((file) => !file.isDeclarationFile && !file.fileName.includes('/node_modules/'));
+    const pending: TypeScript.Node[] = program.getSourceFiles().filter(isProjectFile);
     for (const node of pending) {
       const association = callAssociation(node) ?? decoratorAssociation(node);
       if (association !== undefined) {

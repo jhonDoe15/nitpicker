@@ -11,7 +11,7 @@ const BLOCKING_KEYS = new Set(['select', 'join', 'loadRelationIds', 'relationLoa
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 const RELATIONS = 'relations';
 
-function nameOfElement(element: TSESTree.Node | null): string | undefined {
+function nameOfElement(element: TSESTree.Node | undefined): string | undefined {
   return element?.type === AST_NODE_TYPES.Literal && typeof element.value === 'string'
     ? element.value
     : undefined;
@@ -22,7 +22,7 @@ function loadedNames(relations: TSESTree.Node | undefined): string[] | undefined
     return [];
   }
   if (relations.type === AST_NODE_TYPES.ArrayExpression) {
-    const names = relations.elements.map(nameOfElement);
+    const names = relations.elements.map((element) => nameOfElement(element ?? undefined));
     return names.every((name) => name !== undefined) ? names : undefined;
   }
   if (isPlainObject(relations)) {
