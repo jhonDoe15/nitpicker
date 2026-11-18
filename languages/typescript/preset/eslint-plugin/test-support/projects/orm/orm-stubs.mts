@@ -1,0 +1,112 @@
+const TYPEORM = [
+  'export type FindOptionsWhere<E> = { [P in keyof E]?: E[P] | object };',
+  'type Relations<E> = string[] | { [P in keyof E]?: boolean | object };',
+  'export interface FindOneOptions<E = any> {',
+  '  where?: FindOptionsWhere<E> | FindOptionsWhere<E>[];',
+  '  select?: { [P in keyof E]?: boolean } | string[];',
+  '  relations?: Relations<E>;',
+  "  order?: { [P in keyof E]?: 'ASC' | 'DESC' | object };",
+  '  withDeleted?: boolean;',
+  '  lock?: { mode: string };',
+  "  relationLoadStrategy?: 'join' | 'query';",
+  '  loadEagerRelations?: boolean;',
+  '  cache?: boolean;',
+  '  transaction?: boolean;',
+  '  take?: number;',
+  '  skip?: number;',
+  '}',
+  'export interface FindManyOptions<E = any> extends FindOneOptions<E> {}',
+  'export declare class SelectQueryBuilder<T> {',
+  '  where(condition: string, values?: object): this;',
+  '  leftJoinAndSelect(property: string, alias: string): this;',
+  '  setLock(mode: string): this;',
+  '  take(count: number): this;',
+  '  getMany(): Promise<T[]>;',
+  '  getCount(): Promise<number>;',
+  '}',
+  'export declare class Repository<T> {',
+  '  find(options?: FindManyOptions<T>): Promise<T[]>;',
+  '  findBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T[]>;',
+  '  findOne(options: FindOneOptions<T>): Promise<T | null>;',
+  '  findOneBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<T | null>;',
+  '  findAndCount(options?: FindManyOptions<T>): Promise<[T[], number]>;',
+  '  count(options?: FindManyOptions<T>): Promise<number>;',
+  '  countBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<number>;',
+  '  exists(options?: FindManyOptions<T>): Promise<boolean>;',
+  '  existsBy(where: FindOptionsWhere<T> | FindOptionsWhere<T>[]): Promise<boolean>;',
+  '  createQueryBuilder(alias: string): SelectQueryBuilder<T>;',
+  '}',
+  'export declare class EntityManager {',
+  '  find<T>(target: new () => T, options?: FindManyOptions<T>): Promise<T[]>;',
+  '  findOneBy<T>(target: new () => T, where: FindOptionsWhere<T>): Promise<T | null>;',
+  '  existsBy<T>(target: new () => T, where: FindOptionsWhere<T>): Promise<boolean>;',
+  '  getRepository<T>(target: new () => T): Repository<T>;',
+  '}',
+  'export declare class DataSource {',
+  '  constructor(options: object);',
+  '  getRepository<T>(target: new () => T): Repository<T>;',
+  '}',
+  'export declare function Entity(): ClassDecorator;',
+  'export declare function Column(): PropertyDecorator;',
+  'export declare function Index(): PropertyDecorator;',
+  'export declare function ManyToOne(type: () => Function, options?: object): PropertyDecorator;',
+  'export declare function OneToMany(',
+  '  type: () => Function, inverse: (value: any) => unknown, options?: object,',
+  '): PropertyDecorator;',
+].join('\n');
+
+const TYPEORM_OLD = TYPEORM.replace(/.*existsBy.*\n|.*exists\(.*\n/gu, '');
+
+const PRISMA = [
+  'type User = { id: string; email: string; name: string | null };',
+  'type Args = {',
+  '  where?: object; select?: object; include?: object; omit?: object; orderBy?: object;',
+  '  take?: number; skip?: number; cursor?: object; distinct?: string[];',
+  '};',
+  'type Delegate = {',
+  '  findFirst(args?: Args): Promise<User | null>;',
+  '  findUnique(args: Args): Promise<User | null>;',
+  '  findMany(args?: Args): Promise<User[]>;',
+  '  count(args?: Args): Promise<number>;',
+  '};',
+  'export declare class PrismaClient {',
+  '  constructor(options?: object);',
+  '  user: Delegate;',
+  '  order: Delegate;',
+  '  $extends(extension: object): PrismaClient;',
+  '}',
+].join('\n');
+
+const SEQUELIZE = [
+  'export declare class Model {',
+  '  static findAll<M extends Model>(this: new () => M, options?: object): Promise<M[]>;',
+  '  static findOne<M extends Model>(this: new () => M, options?: object): Promise<M | null>;',
+  '  static count(options?: object): Promise<number>;',
+  '}',
+  'export declare class Sequelize {',
+  '  constructor(...args: unknown[]);',
+  '}',
+].join('\n');
+
+const MIKRO = [
+  'export declare class EntityManager {',
+  '  find<T>(entity: new () => T, where?: object, options?: object): Promise<T[]>;',
+  '  findOne<T>(entity: new () => T, where?: object, options?: object): Promise<T | null>;',
+  '  count<T>(entity: new () => T, where?: object): Promise<number>;',
+  '}',
+].join('\n');
+
+const DRIZZLE = [
+  'export declare function eq(left: unknown, right: unknown): unknown;',
+  'export declare function count(): unknown;',
+].join('\n');
+
+export const ORM_PACKAGES = {
+  typeorm: TYPEORM,
+  sequelize: SEQUELIZE,
+  '@prisma/client': PRISMA,
+  '@mikro-orm/core': MIKRO,
+  'drizzle-orm': DRIZZLE,
+};
+
+export const OLD_TYPEORM_PACKAGES = { ...ORM_PACKAGES, typeorm: TYPEORM_OLD };

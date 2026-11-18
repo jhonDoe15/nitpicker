@@ -81,7 +81,7 @@ function statementBindings(statement: TSESTree.Node): Entry[] {
   });
 }
 
-function isOrmModule(source: string): boolean {
+export function isOrmModule(source: string): boolean {
   return FAMILIES.some(([, matches]) => matches(source));
 }
 
