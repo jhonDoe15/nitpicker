@@ -401,13 +401,17 @@ let $unitOf := function($n) {
         [$typeOf(.) is $t]
       satisfies exists($held($c))
     }
-return //(AssignmentExpression | UnaryExpression[@Operator = ('++', '--')])[$unitOf(.)[self::MethodDeclaration]]
-  [let $t := $typeOf(.), $name := $fieldOf(.),
-       $volatile := $fields($t)[pmd-java:modifiers() = 'volatile']/VariableDeclarator/VariableId/@Name
-   return exists($name) and empty($held(.))
-     and not($name = $volatile and $single(., $name))
-     and not($calledLocked($unitOf(.), $t))
-     and (some $w in $writes($t) satisfies $fieldOf($w) = $name and exists($held($w)[. != '?']))]
+return (//(ClassDeclaration | EnumDeclaration | RecordDeclaration | AnonymousClassDeclaration) ! (
+  let $t := .,
+      $all := $writes($t),
+      $locked := for $w in $all[exists($held(.)[. != '?'])] return $fieldOf($w)
+  return if (empty($locked)) then () else
+    let $volatile := $fields($t)[pmd-java:modifiers() = 'volatile']/VariableDeclarator/VariableId/@Name
+    return $all[let $name := $fieldOf(.)
+      return exists($name) and $name = $locked and empty($held(.))
+        and not($name = $volatile and $single(., $name))
+        and not($calledLocked($unitOf(.), $t))]
+)) | ()
 ]]></value>
       </property>
     </properties>
