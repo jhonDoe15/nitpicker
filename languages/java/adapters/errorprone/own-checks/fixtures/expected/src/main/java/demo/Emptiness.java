@@ -9,6 +9,7 @@ public class Emptiness {
     boolean some = !index.isEmpty() && !names.isEmpty();
     boolean single = names.size() == 1;
     boolean length = text.length() == 0;
-    return none || some || single || length;
+    boolean negated = names.isEmpty() || !index.isEmpty();
+    return none || some || single || length || negated;
   }
 }
