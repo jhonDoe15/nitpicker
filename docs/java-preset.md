@@ -101,6 +101,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Suffixes and prefixes removed by replace](java-preset/suffixes-and-prefixes-removed-by-replace.md)
 - [Case-normalized keys in collections that are not](java-preset/case-normalized-keys-in-collections-that-are-not.md)
 - [Preconditions whose message names another value](java-preset/preconditions-whose-message-names-another-value.md)
+- [Query text that is malformed once joined](java-preset/query-text-that-is-malformed-once-joined.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

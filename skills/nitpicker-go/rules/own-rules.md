@@ -195,3 +195,5 @@ the allowed form and ends with its exception entry.
   the keys where the map is filled when the lookup uses `strings.ToLower`.
 - A precondition message names the checked value (`go-rules/precondition-message-names-other-value`):
   `if name == "" { return errors.New("name must not be empty") }`.
+- Query text built from parts is well formed once joined (`go-rules/malformed-query-text`): a bind placeholder
+  after each operator (`LIKE ?`), one value for each `INSERT` column, a leading space on each appended fragment.

@@ -28,6 +28,11 @@ describe('mined rule messages', () => {
         'failure points at the wrong value, or the value the message ' +
         'names goes through unchecked',
     ],
+    [
+      'malformed-query-text',
+      'count|10 9',
+      'The INSERT lists 10 columns but 9 values, so the statement fails',
+    ],
   ])('%s describes %s', (rule, subject, expected) => {
     expect(describeRuleFinding(rule, subject)).toBe(expected);
   });

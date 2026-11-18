@@ -4,6 +4,7 @@ import { pathInside, projectSourceFiles } from '../java-sources.mjs';
 import { parseSource } from '../max-value-sums/source-file.mjs';
 import { affixBoundaryRule } from '../affix-boundaries/affix-boundaries.mjs';
 import { preconditionMessageRule } from '../precondition-messages/precondition-messages.mjs';
+import { queryTextRule } from '../query-text/query-text.mjs';
 import { caseLookupRule } from '../case-lookups/case-lookups.mjs';
 import { affixReplaceRule } from '../affix-replace/affix-replace.mjs';
 
@@ -12,6 +13,7 @@ export const MINED_RULES = [
   affixReplaceRule,
   caseLookupRule,
   preconditionMessageRule,
+  queryTextRule,
 ];
 export const MINED_EXCEPTION_RULES = MINED_RULES.map(({ id }) => `pmd/${id}`);
 

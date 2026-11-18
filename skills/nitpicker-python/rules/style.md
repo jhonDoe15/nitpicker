@@ -86,3 +86,5 @@ x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`. Remo
 - A lookup key and its collection are normalized the same way (`case-mismatched-lookup`): build the set with
   `{v.lower() for v in values}` when the key is `x.lower()`.
 - A precondition message names the checked value (`precondition-message-names-other-value`).
+- Query text built from parts is well formed once joined (`malformed-query-text`): a placeholder after each
+  operator, one value per `INSERT` column, a leading space on each appended fragment.

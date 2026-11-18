@@ -213,6 +213,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-case-mismatched-lookup`).
 - A precondition message names the value it checks: `if (!timeUnit) throw new Error('timeUnit must be set')`, not
   another parameter (`nitpicker/no-mismatched-precondition-message`).
+- Query text built from parts reads as one valid statement once joined: a bind placeholder after every `LIKE` and `=`,
+  as many values as columns in an `INSERT`, and a space at the start of every appended fragment
+  (`nitpicker/no-malformed-query-text`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
