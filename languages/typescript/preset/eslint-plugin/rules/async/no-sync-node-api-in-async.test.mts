@@ -196,6 +196,22 @@ describe('the allowed form of each call', () => {
       '`await pathExists()` from "fs-extra"',
     );
     expect(alternativeOf('fs-extra', 'existsSync')).toBe('`await pathExists()` from "fs-extra"');
+    const shell = alternativeOf('child_process', 'execSync');
+    expect(shell).toContain(
+      '`await promisify(exec)(command)` with `exec` from "node:child_process"',
+    );
+    expect(shell).toContain('keeps the shell');
+    expect(shell).toContain('`&&`, pipes and globs would fail');
+    expect(shell).toContain('`{ stdout, stderr }` strings instead of a Buffer');
+    expect(shell).toContain('rejects with a different error shape');
+    expect(shell).not.toContain('promisify(execFile)');
+    for (const name of ['execFileSync', 'spawnSync']) {
+      const file = alternativeOf('child_process', name);
+      expect(file).toContain('`await promisify(execFile)(file, args)` with `execFile`');
+      expect(file).toContain('without a shell');
+      expect(file).toContain('`{ stdout, stderr }` strings instead of a Buffer');
+      expect(file).not.toContain('promisify(exec)(command)');
+    }
     expect(alternativeOf('crypto', 'scryptSync')).toBe(
       '`await promisify(scrypt)(...)` with `promisify` from "node:util"',
     );
