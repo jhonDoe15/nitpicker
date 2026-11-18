@@ -1337,6 +1337,44 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
     3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
     `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
     `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
+- `nitpicker/require-abort-signal-forwarding` (production files): a function with an `AbortSignal` in scope (a parameter or
+  local typed `AbortSignal`, in an enclosing function too) that awaits a call without giving it the signal, and an endless
+  loop that never reads it. With types, an awaited call is reported when its resolved signature has an `AbortSignal`
+  parameter that is not supplied, or an options parameter with a `signal` property (`sleep(ms, { signal })`, `fetch(url,
+  { signal })`) that is missing, not an object literal with `signal` or a spread, or not passed. An endless loop
+  (`while (true)`, `for (;;)`, `do ... while (true)`) that awaits and has no reference to the signal in its body is
+  reported too; without types the loop check runs for a parameter named `signal` or `abortSignal`. Calls that are not
+  awaited, calls with a spread argument, bounded loops and loops that read `signal.aborted`, call `throwIfAborted()`,
+  pass the signal on, await a value derived from a request made with the signal (a reader of a `fetch(url, { signal })`
+  response), or belong to a function that listens for the signal's `abort` event are not reported. Allowed forms: pass
+  `{ signal }` on, test `!signal.aborted` in the loop condition.
+- `nitpicker/no-use-after-await-when-disposed` (production files): an `async` method (or async arrow field) of a class whose
+  `dispose`, `close`, `destroy` or `ngOnDestroy` sets a flag (`this._isDisposed = true`, `this.closed = true`,
+  `this.destroyed = true`) that fires an event (`this._onDidStart.fire()`, `this.emitter.emit(...)`), registers a
+  disposable (`this._register(...)`) or starts a timer or process (`setTimeout`, `setInterval`, `spawn`, `fork`,
+  `createModel`, `createTerminal`) after an `await` on the same path, with no read of the flag (or of a name with
+  `dispos`, `destroy`, `closed`, `cancel`, `abort` or `unmount` in it, such as `token.isCancellationRequested`) between
+  that `await` and the use. Plain field writes after the `await`, calls inside nested callbacks, methods only called from
+  the constructor and classes whose teardown sets no flag are not reported. Allowed form: `if (this._isDisposed) return;`
+  after the `await`, before the state change.
+- `nitpicker/no-falsy-error-check` (production files): a caught or rejected value tested by truthiness, so a thrown
+  `undefined`, `null`, `0` or `''` counts as no error. It reports `if (e)`, `if (!e)`, `e ? a : b` and `while (e)` for a
+  `catch` clause variable and for the parameter of a `.catch(...)` handler or the second argument of `.then(...)` that has
+  no type or is `unknown` or `any`, unless the branch reads a member of it (`e ? e.message : ...` guards a property read);
+  `typeof e === 'object'` for those values without a `null` check, `instanceof` or `e &&` in the same function; and, with
+  types, an `error` or `cause` property typed `unknown` (or a declared `any`) tested the same way or used as the left
+  side of `||` (`props.error || state.error`). `e && e.code === 'X'`, `e instanceof Error`, `e !== undefined`, `??` and
+  Node-style callbacks (`(err, data) => { if (err) ... }`) are not reported. Allowed forms: a separate presence flag,
+  `!== undefined` when `undefined` means no error by contract, `'cause' in error`.
+- `nitpicker/no-send-without-return` (production files): an `if` without `else` whose last statement sends the response or
+  hands control on, with more statements after it in the same block, so those statements run too (a second response, or
+  the work the guard meant to refuse). The sending call is `res`, `response` or `reply` (a parameter of the enclosing
+  function) with `send`, `json`, `end`, `redirect`, `sendStatus`, `sendFile` or `jsonp`, also behind `status(...)`,
+  `code(...)`, `set(...)`, `header(...)`, `type(...)` or `cookie(...)`; or a call of `next`, `callback`, `cb` or `done` that is
+  the last parameter of the enclosing function. The code after the branch must contain a statement that is not a
+  logging call, `return;`, `break` or `continue`. `res.write`, a branch that returns or throws, an `else`, and a branch
+  that is the last statement of its block are not reported. Allowed forms: `return res.status(400).json(...)`,
+  `return next()`, a `return;` after the call, or an `else` around the rest.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a

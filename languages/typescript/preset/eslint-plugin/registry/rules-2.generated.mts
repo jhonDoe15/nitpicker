@@ -53,6 +53,7 @@ import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-sin
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
 import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
+import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
 import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
@@ -130,6 +131,7 @@ export const partRules = {
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'release-listeners-on-close': ruleReleaseListenersOnClose,
   'report-module-load-effects': ruleReportModuleLoadEffects,
+  'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
   'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,
   'require-error-listener': ruleRequireErrorListener,

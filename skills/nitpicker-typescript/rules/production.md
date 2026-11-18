@@ -79,6 +79,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
   `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
   socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
+- A function that receives an `AbortSignal` passes it on to the awaited calls that accept one (`await sleep(1000, { signal })`,
+  `fetch(url, { signal })`) and an endless polling loop checks `signal.aborted` or passes the signal on
+  (`nitpicker/require-abort-signal-forwarding`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
