@@ -153,6 +153,7 @@
   "eslint/nitpicker/react-no-direct-dom": ["bug", "react"],
   "eslint/nitpicker/react-no-effect-data-fetching": ["bug", "react"],
   "eslint/nitpicker/react-no-effect-derived-state": ["simplification", "react"],
+  "eslint/nitpicker/react-no-eager-initial-value": ["bug", "performance", "react"],
   "eslint/nitpicker/react-no-effect-event-handling": ["bug", "react"],
   "eslint/nitpicker/react-no-hardcoded-colors": ["maintainability", "react"],
   "eslint/nitpicker/react-no-random-key": ["bug", "react"],

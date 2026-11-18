@@ -48,6 +48,7 @@ import { rule as ruleReactControlledInput } from '../rules/react/forms/react-con
 import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field-has-label.mts';
 import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
 import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
+import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
 import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-effect-data-fetching.mts';
 import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
@@ -130,6 +131,7 @@ export const partRules = {
   'react-field-has-label': ruleReactFieldHasLabel,
   'react-mutation-drops-failure': ruleReactMutationDropsFailure,
   'react-no-direct-dom': ruleReactNoDirectDom,
+  'react-no-eager-initial-value': ruleReactNoEagerInitialValue,
   'react-no-effect-data-fetching': ruleReactNoEffectDataFetching,
   'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,

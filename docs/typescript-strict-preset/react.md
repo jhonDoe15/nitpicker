@@ -55,6 +55,21 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   rule needs no type information. The message names the form for each kind of work: data through
   `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
   causes it, a redirect by rendering `<Navigate />`.
+- **No initial value built on every render** (`nitpicker/react-no-eager-initial-value`).
+  `useState(getTimes(range, now))` and `useRef(new Runner())` evaluate their argument on every
+  render and keep only the first result; a runner, worker or subscription is created and thrown
+  away each time, which also breaks under StrictMode. Write `useState(() => getTimes(range, now))`,
+  or `useRef<Runner | null>(null)` filled on first use. Only a `new` of a class that is not a
+  built-in (collections, `Date`, `Error`, `Promise`, `AbortController`, `URLSearchParams`) and a call
+  whose name says it does work (`parse*`, `compute*`, `build*`, `create*`, `generate*`, `load*`,
+  `read*`, `init*`, `JSON.parse`, `structuredClone`, `localStorage.getItem`, `crypto.randomUUID`) are
+  reported; getters, `t(...)`, `Promise.resolve`, array methods, type conversions, hook calls and
+  `Date.now()` are left alone. The same rule reports `createBrowserRouter`,
+  `createMemoryRouter`, `createHashRouter`, `createStore`, `configureStore` and `new QueryClient()`
+  called in a component or hook body outside `useState`, `useMemo`, `useRef` and any `if`,
+  ternary or `&&` guard, since each render builds a new one (not in an async component or a
+  `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
+  `createRef()` in a function component.
 - **No mutation that drops failure** (`nitpicker/react-mutation-drops-failure`). A React Query
   mutation (`useMutation`, `api.x.useMutation()`, or a hook imported from a project file that wraps
   `useMutation` without handling failure itself) whose `onSuccess` is passed in the hook or the call
