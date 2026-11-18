@@ -4,6 +4,7 @@ import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { firstFileIn, projectFilePaths, propertyName } from '../typed/files/file-views.mts';
 import { VITEST_CONFIG_NAMES } from './setup-files.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type RestoreScope = { readonly scope: string; readonly restores: 'globals' | 'envs' };
 type Restores = { scope: string; globals: boolean; envs: boolean };
@@ -35,7 +36,7 @@ function flagScope(flag: TypeScript.Node, base: string): string {
 function nodesOf(sourceFile: TypeScript.SourceFile): TypeScript.Node[] {
   const nodes: TypeScript.Node[] = [sourceFile];
   for (const node of nodes) {
-    nodes.push(...node.getChildren(sourceFile));
+    appendAll(nodes, node.getChildren(sourceFile));
   }
   return nodes;
 }

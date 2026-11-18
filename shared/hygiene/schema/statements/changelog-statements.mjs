@@ -1,4 +1,5 @@
 import { sqlSchema } from './sql-statements.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const BLANKED = /<!--[\s\S]*?-->|<rollback\b[\s\S]*?<\/rollback>/gu;
 const TAG = /<(\/?)([\w:.-]+)((?:[\s/][^<>]*)?)>/gu;
@@ -139,8 +140,8 @@ export function xmlSchema(raw) {
   );
   for (const block of blocks) {
     const sql = sqlSchema(block[2], block.index + block[0].indexOf('>') + 1);
-    schema.foreignKeys.push(...sql.foreignKeys);
-    schema.indexes.push(...sql.indexes);
+    appendAll(schema.foreignKeys, sql.foreignKeys);
+    appendAll(schema.indexes, sql.indexes);
   }
   return schema;
 }

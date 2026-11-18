@@ -1,4 +1,4 @@
-import { scopeLine } from '../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
 import {
   type ReferenceLinks,
@@ -11,21 +11,43 @@ import {
 import { quickLines, stagedLines } from '../quick/summary.mts';
 import { junitRunProfile } from '../quick/report-formats.mts';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
-import { designNoteLines as designNotesOf } from '../diff/reporting/format/design-notes.mts';
 import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
-import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
+import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
   renderCodeQualityReport as codeQualityOf,
 } from '../diff/reporting/format/codequality.mts';
 
+import {
+  cleanLine as untypedCleanLine,
+  isActiveSnapshotTool as untypedIsActive,
+  splitTools as untypedSplitTools,
+} from '../diff/reporting/console/tool-table.mts';
+import { renderSnapshotConsole } from '../diff/reporting/summary.mts';
+
 import { textOf } from '../../shared/values/readers.mts';
 import {
   findingSectionLines,
+  prioritySectionLines,
   ruleFilterSection,
   toolErrorSectionLines,
 } from '../diff/reporting/console/text-sections.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
+
+type ConsoleOptions = {
+  readonly diagnosticsPath: string;
+  readonly color: boolean;
+  readonly details: boolean;
+  readonly projectRoot: string;
+};
+
+const cleanLineOf: (clean: number) => string = untypedCleanLine;
+const isActiveTool: (tool: ToolCount) => boolean = untypedIsActive;
+const splitTools: (
+  tools: readonly ToolCount[],
+  isActive: (tool: ToolCount) => boolean,
+) => { readonly active: readonly ToolCount[]; readonly clean: number } = untypedSplitTools;
 
 type ReportFinding = {
   readonly tool?: unknown;
@@ -67,6 +89,7 @@ type JunitProfile = {
 const linesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const projectLinesOf: (summary: unknown) => readonly string[] = projectLine;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const profileOf: (
   summary: unknown,
@@ -74,7 +97,6 @@ const profileOf: (
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
-const linksOf: () => ReferenceLinks = referenceLinks;
 
 const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
@@ -115,24 +137,17 @@ export function writeSnapshotReports(
 
 export function renderSnapshotConsoleSummary(
   report: SnapshotReport,
-  diagnosticsPath: string,
+  options: ConsoleOptions,
 ): string {
-  return renderTextReport(
-    report,
-    linksOf(),
-    designNotesOf(report.findings, diagnosticsPath, { snapshot: true }),
-  );
+  return renderSnapshotConsole(report, options);
 }
 
-function renderTextReport(
-  report: SnapshotReport,
-  reference: ReferenceLinks,
-  descriptiveLines?: readonly string[],
-): string {
+function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): string {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
+    ...projectLinesOf(report.summary),
     ...linesOf(report.summary),
     `Status: ${textOf(report.summary.overallStatus)}`,
     ...scopeLinesOf(report.summary),
@@ -144,14 +159,10 @@ function renderTextReport(
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  lines.push(...findingSectionLines('Enforceable findings', enforceable));
-  if (descriptiveLines === undefined) {
-    lines.push(...findingSectionLines('Descriptive findings', descriptive));
-  } else if (descriptiveLines.length > 0) {
-    lines.push('', ...descriptiveLines);
-  }
-  lines.push(...referenceLinesOf(report.findings, reference));
-  lines.push(...toolErrorSectionLines(report.toolErrors));
+  appendAll(lines, prioritySectionLines('Enforceable findings', enforceable));
+  appendAll(lines, findingSectionLines('Descriptive findings', descriptive));
+  appendAll(lines, referenceLinesOf(report.findings, reference));
+  appendAll(lines, toolErrorSectionLines(report.toolErrors));
   const help = helpLineOf(report.toolErrors.map(({ message }) => message));
   if (help !== undefined) {
     lines.push(help);
@@ -180,7 +191,7 @@ function renderJunitReport(report: SnapshotReport): string {
     );
   }
   const profile = profileOf(report.summary, 'quality.snapshot', escapeXml);
-  testCases.push(...profile.skippedCases);
+  appendAll(testCases, profile.skippedCases);
   if (testCases.length === 0) {
     testCases.push(
       '  <testcase classname="quality.snapshot" name="framework" time="0"></testcase>',
@@ -202,12 +213,16 @@ function appendToolCountSection(lines: string[], tools: readonly ToolCount[]): v
     lines.push('Analyzers: none configured');
     return;
   }
+  const { active, clean } = splitTools(tools, isActiveTool);
   lines.push('', 'Per-tool counts:');
-  for (const tool of tools) {
+  for (const tool of active) {
     lines.push(
       `${textOf(tool.name)}: total=${textOf(tool.total)} enforceable=${String(tool.enforceable)} ` +
         `descriptive=${textOf(tool.descriptive)}`,
     );
+  }
+  if (clean > 0) {
+    lines.push(cleanLineOf(clean));
   }
 }
 

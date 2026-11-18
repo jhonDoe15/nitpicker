@@ -6,7 +6,7 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { truthinessRuleOptions } from '../../../eslint-config/truthiness/truthiness-rules.mts';
-import { rule } from './strict-boolean-expressions.mjs';
+import { rule } from './strict-boolean-expressions.mts';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-truthiness-')));

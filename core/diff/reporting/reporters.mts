@@ -5,8 +5,6 @@ import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
 import { heldFindingsOf as heldFindings } from './report-model.mts';
 import { referenceLinks, withHelpUris } from '../../../shared/reference/store.mjs';
-import { fixPlansOf as planFixes } from '../../../shared/fix-plans/report-plans.mjs';
-import { FIX_PLANS_FILE_NAME as FIX_PLANS_FILE } from '../../../shared/fix-plans/render.mjs';
 import { pathInside } from '../../../shared/filesystem.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
@@ -27,12 +25,6 @@ export type ReportFile<R> = {
   readonly render: (report: R, options: RenderOptions) => string;
 };
 
-type PlanLocation = {
-  readonly projectPath: string | undefined;
-  readonly repositoryRoot: string | undefined;
-  readonly reference: ReferenceLinks;
-};
-
 type ReportLocation = {
   readonly projectPath?: string | undefined;
   readonly repositoryRoot?: string | undefined;
@@ -40,7 +32,6 @@ type ReportLocation = {
 
 const helpUris: (findings: readonly unknown[], reference: ReferenceLinks) => unknown = withHelpUris;
 const links: () => ReferenceLinks = referenceLinks;
-const plansOf: (report: ReportData, location: PlanLocation) => unknown[] = planFixes;
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
@@ -63,7 +54,6 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
     name: 'held-findings.json',
     render: (report, { reference }) => json(helpUris(heldFindings(report), reference)),
   },
-  { name: FIX_PLANS_FILE, render: (report) => json(report.fixPlans ?? []) },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'notes.json', render: (report) => json(report.notes ?? []) },
   { name: TEXT_REPORT_FILE_NAME, render: textReport },
@@ -149,13 +139,6 @@ export function writeDiffReports(
     report,
     options: { projectPath, repositoryRoot },
   }).get(TEXT_REPORT_FILE_NAME);
-}
-
-export function fixPlansFor(
-  report: ReportData,
-  { projectPath, repositoryRoot }: ReportLocation = {},
-): unknown[] {
-  return plansOf(report, { projectPath, repositoryRoot, reference: links() });
 }
 
 export function absoluteTextReportPath(outputRoot: string): string {

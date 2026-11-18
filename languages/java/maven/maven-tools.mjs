@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
@@ -12,6 +20,7 @@ export const MAVEN_PLUGINS = {
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
 };
 const TOOLS_KEY_LENGTH = 16;
+const POM = 'pom.xml';
 const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.junit.platform',
   'org.junit.jupiter',
@@ -134,14 +143,14 @@ function writeToolsProject(directory, tools) {
   for (const [name, dependencies] of Object.entries(tools)) {
     mkdirSync(path.join(directory, name), { recursive: true });
     writeFileSync(
-      path.join(directory, name, 'pom.xml'),
+      path.join(directory, name, POM),
       pom(name, `<dependencies>${dependencies.join('')}</dependencies>`),
     );
   }
   const modules = Object.keys(tools)
     .map((name) => `<module>${name}</module>`)
     .join('');
-  writeFileSync(path.join(directory, 'pom.xml'), pom('tools', `<modules>${modules}</modules>`));
+  writeFileSync(path.join(directory, POM), pom('tools', `<modules>${modules}</modules>`));
 }
 
 export function readClasspaths(directory, names) {
@@ -184,13 +193,8 @@ export function publishDirectory(staging, target) {
   }
 }
 
-export function resolveToolSet({ projectRoot, maven, tools, spawn, timeoutMs }) {
-  const directory = cacheDirectory(`maven-tools-${toolsKey(tools)}`);
-  const cached = readClasspaths(directory, Object.keys(tools));
-  if (missing(cached).length === 0) {
-    return cached;
-  }
-  writeToolsProject(directory, tools);
+function resolveInto(staging, { projectRoot, maven, tools, spawn, timeoutMs }) {
+  writeToolsProject(staging, tools);
   runMaven({
     projectRoot,
     maven,
@@ -199,19 +203,35 @@ export function resolveToolSet({ projectRoot, maven, tools, spawn, timeoutMs }) 
     args: [
       '--quiet',
       '--file',
-      path.join(directory, 'pom.xml'),
+      path.join(staging, POM),
       `${MAVEN_PLUGINS.dependency}:build-classpath`,
       '-Dmdep.outputFile=classpath.txt',
     ],
   });
-  const resolved = readClasspaths(directory, Object.keys(tools));
-  const unresolved = missing(resolved);
-  if (unresolved.length > 0) {
-    throw new Error(
-      `Maven resolved no jars for ${unresolved.join(', ')} under ${directory}. Check that Maven can download from its repositories, then rerun`,
-    );
+  return readClasspaths(staging, Object.keys(tools));
+}
+
+export function resolveToolSet(request) {
+  const directory = cacheDirectory(`maven-tools-${toolsKey(request.tools)}`);
+  const cached = readClasspaths(directory, Object.keys(request.tools));
+  if (missing(cached).length === 0) {
+    return cached;
   }
-  return resolved;
+  const staging = mkdtempSync(`${directory}.staging-`);
+  try {
+    const resolved = resolveInto(staging, request);
+    const unresolved = missing(resolved);
+    if (unresolved.length > 0) {
+      throw new Error(
+        `Maven resolved no jars for ${unresolved.join(', ')} under ${directory}. Check that Maven can download from its repositories, then rerun`,
+      );
+    }
+    rmSync(directory, { recursive: true, force: true });
+    publishDirectory(staging, directory);
+    return resolved;
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 export function resolveTools({

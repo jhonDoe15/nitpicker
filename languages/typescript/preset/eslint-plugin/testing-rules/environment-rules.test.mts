@@ -1,10 +1,10 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
-import { rule } from '../rules/testing/environment/no-unused-dom-environment.mjs';
+import { rule } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { createProject, docblock, lines, logic } from './test-support/environment-project.mts';
-import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
-import { configuredRuleTester } from '../test-support/rule-tester.mts';
+import { withoutFixes } from '../../eslint-config/rule-hints.mts';
+import { configuredRuleTester, ruleModule } from '../test-support/rule-tester.mts';
 
 const ruleTester = configuredRuleTester({
   languageOptions: {
@@ -90,7 +90,7 @@ const support = (name: string) => path.join(root, 'src/support', name);
 const withSetup = (environment: string, ...setupFiles: string[]) => [{ environment, setupFiles }];
 const unusedInJsdom = (...parts: string[]) => ({ ...inJsdom(...parts), errors: projectReport() });
 
-ruleTester.run('no-unused-dom-environment', withoutFixes(rule), {
+ruleTester.run('no-unused-dom-environment', withoutFixes(ruleModule(rule)), {
   valid: [
     { filename, code: lines(docblock('jsdom'), rendered), options: [node] },
     { filename, code: lines(docblock('happy-dom'), rendered) },

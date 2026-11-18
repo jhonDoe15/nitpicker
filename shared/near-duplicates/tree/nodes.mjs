@@ -1,4 +1,5 @@
 import { depthFirst } from '../../traversal.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const STATEMENTS = new Set([
   'block',
@@ -37,16 +38,11 @@ const JUMP_KINDS = new Set(['return', 'throw', 'break', 'continue']);
 
 const LOOP_KINDS = new Set(['for', 'while', 'do', 'foreach']);
 
+export { appendAll };
+
 const COMPARED = ['kind', 'value', 'binding', 'literal', 'commutes'];
 
 const TYPE_SLOTS = { function: 0, parameter: 0, declare: 0, foreach: 0 };
-
-export function appendAll(target, items) {
-  for (const item of items) {
-    target.push(item);
-  }
-  return target;
-}
 
 export const NONE = Object.freeze({ kind: 'none', children: Object.freeze([]) });
 

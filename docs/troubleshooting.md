@@ -16,6 +16,7 @@ checkout of the repository links to `main`. Findings about your code are explain
 - [Tests](#tests)
 - [TypeScript and JavaScript](#typescript-and-javascript)
 - [Python](#python)
+- [Go](#go)
 - [Java and Kotlin](#java-and-kotlin)
 - [Platforms](#platforms)
 
@@ -184,7 +185,7 @@ files count, or remove stray copies of those files, such as vendored dependencie
 ### Another run is in progress
 
 **Symptom.** `nitpicker: another run is in progress in this project (pid 1234); wait for it to
-finish.` Exit code 2. Or `Could not take the run lock <path>`.
+finish.` Exit code 2. Or `Could not take the lock <path>`.
 
 **Cause.** Only one run can work in a project at a time, because the runs write the same report folder
 and share temporary state. The first run writes its process id to
@@ -242,6 +243,29 @@ its `command` in the checkout by hand and check that it prints only `{"findings"
 See [custom analyzers](usage.md#custom-analyzers). If a built-in analyzer crashes on a simple project,
 please open an issue with the message and the project's tool versions.
 
+### A run crashes or stops partway
+
+**Symptom.** A tool error named `analyzer-scheduler` after a long run, such as
+`Analyzer scheduler crashed with exit 2: <output>`, or a crash such as a `RangeError` (Maximum call
+stack size exceeded) followed by `at` lines and
+`This is a bug in nitpicker, not in the project.` On the rerun:
+`nitpicker: head: 3 analyzers resumed from an unfinished run (<folder>; use --no-cache to rerun)`.
+
+**Cause.** The analyzers run in one scheduler process. Each analyzer that finishes writes its report to
+the cache folder at once, so when the scheduler crashes, runs out of memory or is stopped with Ctrl-C,
+the run still reports the findings of the analyzers that finished and lists the scheduler failure as a
+tool error (exit code 2). The head side of a full comparison and an `--all` run keep these reports in
+`resume/` inside the cache folder until a run finishes, so the next run on the same working tree only
+runs the analyzers that did not finish. A crash with `at` lines is a defect in nitpicker itself, not in
+the project: the lines say where it happened.
+
+**Fix.**
+
+- Run again without changing files to continue where the run stopped. Any edit starts the head side
+  over, because the reports belong to the tree they were made from.
+- Use `--no-cache` for a run that starts from scratch and keeps nothing.
+- Report a crash with `at` lines at https://github.com/jhonDoe15/nitpicker/issues, including those lines.
+
 ### A stale or shared cache
 
 **Symptom.** A finding appears or disappears between runs without a change that explains it, two
@@ -251,7 +275,8 @@ machines disagree about the base, or a result looks like the old configuration. 
 
 **Cause.** The base side of a comparison is cached per analyzer, keyed by the merge-base commit, the
 project path, the analyzer name and version, the analyzer's configuration hash and the head policy. The
-head side always runs. The key does not cover everything the base result depends on: project files that
+head side runs every time, except that the analyzers an interrupted run finished are reused by a rerun
+on the same tree (see [A run crashes or stops partway](#a-run-crashes-or-stops-partway)). The key does not cover everything the base result depends on: project files that
 only feed the head policy (for example a `tsconfig.json` changed on the head branch) and the versions of
 the dependencies the project installed are not part of it. A cache directory shared between checkouts
 with different dependencies, or a remote cache written by a job with another toolchain, can therefore
@@ -770,6 +795,73 @@ set `"disable": ["mutation"]`. On native Windows mutmut does not run; see
 [Windows and WSL](#windows-and-wsl). See also
 [mutation testing for Python](python-preset.md#slice-6-mutation-testing).
 
+## Go
+
+### Go is missing from the PATH
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-missing`: `go was not found on the
+PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH`, or `go version could not
+run: <message>`.
+
+**Cause.** Every step of the Go preset starts with `go version`. The `go` that nitpicker runs is the
+one on the `PATH` of the process that started it, which is not always the one your shell has: a CI
+job that has not installed Go, an editor or a Git hook that starts with a shorter `PATH`.
+
+**Fix.** Install Go (https://go.dev/dl/) or add its `bin` folder to the `PATH` of the process that
+runs nitpicker, for example with `actions/setup-go` in GitHub Actions, and check that `go version`
+works from there. The project's `GOTOOLCHAIN`, `GOFLAGS` and `GOPROXY` apply to every Go command
+nitpicker runs. See [the Go preset](go-preset.md#selection).
+
+### A Go module does not load
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-mod-tidy-failed`, `go-list-failed`,
+`go-env-failed` or `go-inspect-failed`: `go mod exited 1: <output>` or `go list exited 1: <output>`,
+where the output names a `go.mod` that cannot be parsed, a module that cannot be found, or a package
+that cannot be loaded.
+
+**Cause.** The `go` command could not resolve the module of the snapshot: a `go.mod` with a syntax
+error or a `go` line newer than the installed toolchain, a requirement that cannot be downloaded
+(no network, a private module without `GOPRIVATE`, a `GOFLAGS=-mod=vendor` without a `vendor`
+folder), or a `go.sum` that does not match. The base snapshot is a checkout of the merge base, so a
+`go.mod` that only the head repairs fails on the base.
+
+**Fix.** Run the command from the message in the project (`go mod tidy -diff`, `go list ./...`) and
+fix what it prints. Download the modules before nitpicker runs in CI (`go mod download`) and set
+`GOPRIVATE` and the credentials for private modules. When the `go` line asks for a newer Go than the
+one installed, install it or leave `GOTOOLCHAIN` at its default so `go` fetches it.
+
+### `go vet` or `go test` fails to run
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-vet-failed` or `go-test-failed`:
+`go vet exited 1: <output>` or `go test exited 1: <output>`, where the output holds no diagnostic or
+failing test that nitpicker can read.
+
+**Cause.** `go vet -json ./...` and `go test -json ./...` ran but ended without a result nitpicker
+can use: the module does not load (see [A Go module does not load](#a-go-module-does-not-load)), a
+build tag set that excludes every file, a package that fails to build in a way that has no file
+position, or an environment problem such as a read-only module cache or no disk space. A test that
+fails normally is not this error: it is reported as a failing test, see [Tests fail](#tests-fail).
+
+**Fix.** Run the command from the message in the project with the same `GOFLAGS` and build tags
+(`go.buildTags` in `nitpicker.config.json` is passed as `-tags`) and fix what it prints. When the
+timeout is the cause, see [An analyzer times out](#an-analyzer-times-out).
+
+### A pinned Go tool fails to build
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-tool-install-failed`,
+`go-lint-build-failed` or `go-inspect-build-failed`. The message starts with the failed command, `go install`
+or `go build`, then `exited` with its status and the command's output.
+
+**Cause.** nitpicker builds gofumpt, goimports, deadcode and its own lint and inspect programs once
+into the cache (`~/.cache/nitpicker`, or `nitpicker` under `XDG_CACHE_HOME`). The pinned gofumpt and goimports need
+Go 1.26 or later and the lint program needs Go 1.27. With an older `go` and `GOTOOLCHAIN=local` the build
+fails; so does a build with no network or no access to the module proxy.
+
+**Fix.** Use a `go` of the required version, or leave `GOTOOLCHAIN` at its default so an older `go`
+downloads the newer toolchain for the build. Make the module proxy reachable (`GOPROXY`) the first time,
+and keep the cache between CI runs. A project that pins the formatter with a `tool` directive in its
+`go.mod` runs its own version instead, see [the Go preset](go-preset.md#selection).
+
 ## Java and Kotlin
 
 ### The Gradle build fails
@@ -791,6 +883,11 @@ build does not support, a plugin that needs a network the runner does not have, 
 the merge base, so check it out to reproduce. A runner without network access needs the Gradle
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
+
+When a package repository answers `429 Too Many Requests`, the message ends with `A package
+repository rate-limited the build (HTTP 429)`: nothing is wrong with the project, so rerun later. The
+`Caused by:` lines in the message come from the failure itself; a stack trace that a tool logged as a
+warning and went past (PMD's "continuing with next rule", for example) is left out.
 
 A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
 output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
@@ -884,14 +981,23 @@ its config) and keeps the mutation findings of the remaining tests. A `pit-skipp
 an error, says `15 tests in ExampleTest did not pass without mutation under PIT; they pass under the
 build's test task`, names the first five skipped tests and the count of the rest, and warns that
 mutants only the skipped tests would kill may count as surviving. When the second run fails too, the
-`pit-failure` tool error leads with that same summary line. On Maven the retry uses only the analyzer
-time that is left and is not started with less than a minute left.
+`pit-failure` tool error leads with that same summary line. When the tests are in more than one test
+class, the summary names the first five classes. The retry shares the time limit of the first run, as
+on Gradle: on Maven it gets what is left of that limit (and of the analyzer's time) and is not started
+with less than a minute left. In a comparison, when the retry on the base ran out of time and the same
+test classes fail on the head, the head does not run it again and says so in its `pit-failure` error,
+so the run pays for the retry once.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
-keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
-inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
+keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs inside the analysis
+command and gets the time left of `NITPICKER_GRADLE_TIMEOUT_MINUTES` after a one minute reserve for the
+reports (and never past the same two minute cut before the analyzer's deadline). When that time runs out
+nitpicker stops PIT and its minion JVMs, and the module reports a `pit-failure` tool error while the other
+findings are kept (also when the build is cancelled, PIT is stopped; on a Gradle daemon running Java 8 only
+the main PIT process can be stopped, not its minion JVMs). When the whole Gradle command times out, nitpicker
+reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure,
+read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
 
 To run the Java or Kotlin gate without mutation testing when PIT is too slow for the project, add

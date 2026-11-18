@@ -10,6 +10,7 @@ import type {
 import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
 import { aliases } from '../imports/import-aliases.mts';
 import { entryOf } from '../imports/typed/import-rule-types.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const escapeRegExp: (value: string) => string = untypedEscape;
 
@@ -197,8 +198,9 @@ function isEntityClass(entry: KnownClass, context: PersistenceContext): boolean 
       return true;
     }
     reachesTableModel ||= bases.includes(TABLE_MODEL);
-    pending.push(
-      ...bases.map((name) => context.index.known.get(name)).filter((found) => found !== undefined),
+    appendAll(
+      pending,
+      bases.map((name) => context.index.known.get(name)).filter((found) => found !== undefined),
     );
   }
   return reachesTableModel && isTableModel(entry, context);

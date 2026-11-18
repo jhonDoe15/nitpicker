@@ -1,6 +1,5 @@
-import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mjs';
+import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mts';
 import { fakeGoFormat as untypedFakeGoFormat } from '../../../languages/go/fix/test-support/fake-go-format.mts';
-import { fakeJvmTools as untypedFakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { fakePythonTools as untypedFakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mts';
 import { recipeSpecs } from './engine-views.mts';
 import type { PlanContext, RecipeSpec } from './engine-views.mts';
@@ -26,10 +25,7 @@ export type PythonTools = FakeTools & {
 
 export const fakeGoFormat: () => ToolSet = untypedFakeGoFormat;
 
-export const fakeJvmTools: (options?: {
-  readonly failure?: Readonly<Record<string, unknown>>;
-  readonly unparsable?: string;
-}) => FakeTools = untypedFakeJvmTools;
+export { fakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mts';
 
 export const fakePythonTools: (options?: {
   readonly lintEdit?: (file: string, input: string) => string;

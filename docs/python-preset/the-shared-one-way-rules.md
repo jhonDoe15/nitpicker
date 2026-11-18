@@ -46,11 +46,14 @@ are listed at the end.
 | ORM schema at startup                           | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                               | `orm-schema-sync` (script)                                                                                                                                                                                                                                                                                                                                                          |
 | ORM query logging                               | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                            | `orm-query-logging` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Query rows in memory                            | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                                | `in-memory-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| Rows changed in memory                          | `Model.objects.filter(...).update(...)`, `.delete()` (Django); `update(Model).where(...).values(...)`, `delete(Model).where(...)` (SQLAlchemy)                                         | `in-memory-update` (script)                                                                                                                                                                                                                                                                                                                                                         |
+| Whole rows for one column or a yes              | `values_list("email", flat=True)`, `.exists()` (Django); `select(User.email)`, `select(exists().where(...))` (SQLAlchemy)                                                              | `row-for-one-column`, `row-for-existence` (script)                                                                                                                                                                                                                                                                                                                                  |
 | Boolean logic                                   | the printed simpler form: `return a < b`, `if a and b:`, `a != b`, `if ready:` first, `not (a or b)`                                                                                   | `simpler-boolean-logic` (script), ruff `SIM` (below)                                                                                                                                                                                                                                                                                                                                |
 | Collection joins                                | one collection per `joinedload`/`contains_eager` query; the others with `selectinload` or `subqueryload`                                                                               | `multiple-collection-joins` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Foreign key indexes                             | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                        | `unindexed-foreign-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -60,9 +63,16 @@ are listed at the end.
 | Input or output per item                        | one batch call or fixed-size chunks; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, `ThreadPoolExecutor(max_workers=n)`)                                | `io-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                               |
 | Accumulator copies                              | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                                                       | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                                                                                                                                                                                                                                                     |
 | Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                                                  | `lazy-relation-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Field resolvers per parent                      | a `DataLoader` created once per request (`strawberry.dataloader.DataLoader`, `aiodataloader`); data already on the parent                                                              | `resolver-query-per-parent` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
 | Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Retries after a stale row                       | read the row again by id inside each attempt and apply the change again (`session.get(Order, order_id)`, then `commit()`)                                                              | `stale-retry` (script)                                                                                                                                                                                                                                                                                                                                                              |
 | Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                                                 | `dual-write-without-outbox` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Related writes                                  | one transaction through the block's session; an atomic form or a row lock for a check that decides a write                                                                             | `related-writes-without-transaction`, `write-outside-transaction`, `check-then-write-race` (script)                                                                                                                                                                                                                                                                                 |
+| Job items                                       | a `try`/`except` that records the failure around the work of one item, or one task per item (`task.delay(item)`)                                                                       | `job-item-failure-stops-run` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Soft-delete filters                             | the filter or helper the project applies to most reads of the model (`deleted_at__isnull=True`, `.alive()`, a filtering default manager)                                               | `soft-delete-filter-missing` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Deleted items in memory                         | the guard on the flag, the project's helper (`live(items)`) or the narrowed type that the other loops and lookups over the same items use                                              | `deleted-item-filter-missing` (script)                                                                                                                                                                                                                                                                                                                                              |
+| Route auth                                      | the auth requirement that at least 90% of the project's handlers declare (`Depends(get_current_user)`, `permission_classes`, `@login_required`)                                        | `route-without-auth` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Shareable objects                               | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets                              | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows                                   | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -329,6 +339,10 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   properties, `from helper import *` and a helper whose module is outside the project are not followed. Two
   calls to the same helper on one line are one finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers:
   detekt `SleepInsteadOfDelay` covers a direct `Thread.sleep` in a suspend function.
+  Sync code that runs the async twin of a method and waits for it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()`
+  when `fetch(x)` exists) has no rule: the project's own sync wrapper over the async implementation
+  (`def fetch(x): return asyncio.run(fetch_async(x))`) is the legitimate form of the same call, and a rule cannot
+  tell the two apart by reading the twin's name and parameters.
 - `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
   come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
   `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,
@@ -835,7 +849,10 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   or an executor: running one query per item concurrently is still one query per item, so fetch them
   in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in those
   concurrent forms is left to `unbounded-fan-out`, which checks the bound, so one remote call has one
-  owner. In a sequential loop, or a task awaited at once, it is reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
+  owner. A query function handed to a task group or a thread once per item counts the same way:
+  `group.start_soon(find, item)` of AnyIO and Trio, `asyncio.to_thread(find, item)` and
+  `loop.run_in_executor(None, find, item)`, when the item reaches the call (a fixed pool of workers that
+  all get the same queue is not one call per item). In a sequential loop, or a task awaited at once, it is reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
   endpoint, bounded concurrency (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or a
   `ThreadPoolExecutor(max_workers=n)`). A `message` call (Kafka `send` and `produce`, pika
   `basic_publish`, aio-pika, SQS `send_message`, SNS `publish`, Pub/Sub, NATS, Celery `delay`,
@@ -882,6 +899,21 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   and the relationship. A function that reads only a column (`o.customer_id`) or runs over rows that
   fetch the relationship stays quiet, and a relationship read both in the loop and in the function is
   reported once, at the read in the loop.
+- `resolver-query-per-parent` reports a GraphQL field resolver that sends a `database` or `remote` call
+  (a project helper that makes one counts, the path named in the message), because a resolver runs once
+  per parent and a list of N parents costs N queries that no loop in the code shows. Strawberry: a
+  method decorated with `strawberry.field` (also `strawberry.django.field`, `strawberry.federation.field`
+  and `strawberry_django.field`) in a class decorated with `strawberry.type` or `strawberry.interface`.
+  Graphene: a `resolve_<field>` method, in a file that imports `graphene`, of a class whose base name ends
+  with `ObjectType` (`ObjectType`, `DjangoObjectType`, `SQLAlchemyObjectType`, a project base). The parent
+  type must be returned as a list in the GraphQL schema: `list[Order]`, `List`, `Sequence`, `Iterable`,
+  `Connection` or `ListConnection` of it in the annotation of a Strawberry field or of a field of a Strawberry
+  type (also as a string; a function elsewhere that returns `list[Order]` does not count), `graphene.List(...)` (also `NonNull` inside it or a `lambda`),
+  `DjangoListField`, a connection field, or the `node` of a connection `Meta`. A type that is only ever
+  returned alone (the `Query` and `Mutation` roots, `currentUser`) is not reported. A `DataLoader`
+  `load`, `load_many` or `prime`, a read from a `cache`, data already on the parent and tests are left
+  alone. One finding is reported for each resolver, on its first such call. A parent list that is
+  always tiny takes an `exceptions` entry.
 - `remote-call-in-transaction` reports a `remote` call (`requests`, `httpx`, `aiohttp`, `boto3` clients,
   or a project helper that makes one, the path named in the message) inside a transaction scope:
   `with transaction.atomic():` or `@transaction.atomic` (also the imported `atomic`), SQLAlchemy
@@ -923,6 +955,20 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   has `ON CONFLICT`, `ON DUPLICATE KEY`, `INSERT IGNORE`, `INSERT OR IGNORE`, `REPLACE INTO` or `MERGE` (or
   `on_conflict_do_*` on the construct). An HTTP `POST` alone, an ORM `save()` and any write whose
   contract is unknown are not reported.
+- `stale-retry` reports a `commit()` or `flush()` that a retry runs again after a SQLAlchemy
+  `StaleDataError` (an optimistic-lock conflict on a `version_id_col`) without reading the row again:
+  every attempt sends the object it already had, with the old version, so it fails the same way, or,
+  after a `rollback()`, the change is dropped and a later commit loses it. Retry scopes: a `for` or
+  `while` loop with a `try` that leaves on success and whose handlers catch `StaleDataError` (alone,
+  in a tuple, or as `exc.StaleDataError`) without raising; a function decorated with `tenacity.retry`,
+  `retrying.retry`, `backoff.on_exception`, `backoff.on_predicate` or `stamina.retry` whose decorator
+  names `StaleDataError` (`retry=retry_if_exception_type(StaleDataError)`); and the loop of a tenacity
+  `Retrying` or `AsyncRetrying` that names it. The scope is quiet when it makes any call besides `commit`,
+  `flush`, `rollback`, `close` and `sleep`: a `get`, a query, a `refresh`, a helper that receives the session or
+  the id, a session or unit of work opened inside the scope, or a call on a unit of work. A handler that raises, a retry that does not name the stale error,
+  a file that does not import SQLAlchemy and tests are left alone. A retry that re-reads the row and
+  then writes it back without re-applying the change (the lost update) is not reported: the change
+  being re-applied cannot be told from the code.
 - `dual-write-without-outbox` reports a function that has a database write (a repository, ORM or
   client `save`, `create`, `update`, `delete`, `merge`, `session.add`, `bulk_*`, Django `save()` and
   `delete()` in a file that imports `django.db`, an `INSERT`, `UPDATE` or `DELETE` statement) and a
@@ -935,6 +981,82 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   relay itself (a loop over rows read from the database that publishes each row and then writes a mark
   keyed on it, `row.sent = True; row.save()`) is not reported. A callback registered to run later (a
   signal handler, a timer, a scheduled job) is judged as its own function.
+- `related-writes-without-transaction` reports a function with two writes that no transaction holds together.
+  Django: two writes (`Model.objects.create`, `update`, `delete`, `bulk_create`, `save()` and `delete()` in a file
+  that imports `django.db`) to different models outside `with transaction.atomic():` and a `@transaction.atomic`
+  decorator; a view is left alone when the project sets `ATOMIC_REQUESTS` to `True`. SQLAlchemy: two writes
+  (`session.add`, `session.execute` of an insert, update or delete, `conn.execute`) on a session, connection
+  or `with Session(...)` name with a `commit()` between them, or in two separate `session.begin()` blocks. The same
+  object written twice, writes in a loop, in an `except` or `finally` body or in exclusive branches, and test and
+  migration files are not reported.
+- `write-outside-transaction` reports, inside `with session.begin():`, `with engine.begin() as conn:` or
+  `transaction.atomic(using=...)`, a write through another session or connection name that the function did
+  not create (a parameter or a `self` attribute whose name ends in `session`, `conn`, `connection` or `db`), or a
+  Django write on another `using(...)` alias. A session opened inside the block is an independent write and is not
+  reported; a repository whose session is not visible is not judged.
+- `check-then-write-race` reports a read that decides an insert of the same model without a transaction or a lock:
+  a Django `exists()`, `count()`, `first()`, `last()` or `get()` (or a `get` with an `except Model.DoesNotExist`
+  that creates) or a SQLAlchemy `query(...)`, `select(...)` or `session.get` read, tested in an `if` directly or
+  through the name it was assigned to, followed by `Model.objects.create`, `bulk_create`, `insert(Model)` or a
+  `session.add(Model(...))` in the branch or, when the branch exits, after it. `get_or_create` and `update_or_create`,
+  `select_for_update()` and `with_for_update()`, a write inside a transaction block or an atomic function and a
+  write wrapped in `except IntegrityError` stay quiet. Other ORMs (peewee, Tortoise) and writes through project
+  repositories are not judged, because the session they share is not visible.
+- `job-item-failure-stops-run` reports, in a Celery task (a `shared_task` or `app.task` function), an APScheduler job
+  (a function given to `add_job` or decorated with `scheduled_job`) or the `handle` method of a Django
+  `BaseCommand`, a `for` or `async for` loop whose body makes a database or remote call (direct or through
+  project helpers) that no `try` with a handler that goes on encloses inside the loop: one item that raises stops
+  every later item until the next run. A `try` per item, `contextlib.suppress`, an enqueue-only loop
+  (`task.delay(item)` is a message, not I/O), a loop without I/O and a loop over a literal list are not reported; a
+  handler that re-raises and a `try` around the whole loop do not isolate the item. A loop in a helper the job calls
+  is judged only if the helper is a job itself. dramatiq, rq and arq jobs are not recognized, because the effect
+  kinds do not know those libraries.
+- `soft-delete-filter-missing` reports a read of a model that the project filters on a soft-delete or visibility
+  column in most reads and this read does not. The column is one of `deleted_at`, `is_deleted`, `deleted`,
+  `archived`, `is_archived`, `archived_at`, `hidden`, `is_hidden`, `is_visible` or `visibility`, declared on a Django
+  model or a SQLAlchemy model (also through a mixin class of the project). A Django model is judged when its
+  `objects` manager does not filter (no custom manager, a plain `Manager`, an `as_manager()` queryset); a manager
+  whose `get_queryset` mentions the column, or one of unknown origin, leaves the model alone, and so does a
+  SQLAlchemy `with_loader_criteria` for the model or a base class. The reads are `Model.objects...` chains and
+  SQLAlchemy `query(Model)`, `select(Model)` and `select_from(Model)` statements. A read applies the filter when its
+  chain names the column (a keyword such as `deleted_at__isnull=True`, an attribute such as `Model.deleted_at`) or
+  calls a project function or method whose body reads the column (`.alive()`); a queryset that is returned
+  unfinished, passed to a project function or filtered later in the function is not judged. The rule fires only
+  when at least five reads of the model are counted and at least 80% of them filter; the message names the
+  column, the helper or column most reads use and the share. Writes, trash, restore, purge, cleanup and admin
+  functions, `admin` and `migrations` files and tests are not counted. Joins of a second model and models whose
+  class name exists twice in the project are not judged.
+- `deleted-item-filter-missing` reports a loop, comprehension, generator or `filter` call over a collection of items that carry a deletion or visibility flag (`deleted_at`, `is_deleted`,
+  `deleted`, `archived`, `hidden`, `is_visible` and the other names of `soft-delete-filter-missing`, declared on a
+  dataclass, pydantic model, plain class, Django or SQLAlchemy model of the project, also through a base class) when
+  most iterations over that type skip flagged items. The collection is known from a parameter or a local annotation
+  (`list[Item]`, `Sequence[Item]`, `Iterable[Item]`, `set`, `tuple`, `deque`, also optional or quoted), a class
+  attribute annotated that way and read as `self.items`, or a project function with such a return annotation.
+  An iteration skips flagged items when its loop body, comprehension or call names the flag, when it goes over
+  a call of a project function that reads the flag (`live(items)`), or when the collection is typed with a
+  narrowed type (`NonDeleted[Item]`, `Live[Item]`). A name that says the collection is narrowed (`visible_items`, `active`, `live`, `non_deleted`) and a name the function reassigns are not judged; a plain copy, `sorted(...)` and a dict index builder are not iterations that select items. The rule fires only
+  with at least five iterations over the type and at least 80% of them skipping flagged items; undo, redo, sync,
+  restore, trash, purge, history, snapshot, export and serialize functions and tests are not counted. Collections
+  without an annotation and the rows of a query are not judged (`soft-delete-filter-missing` covers the query).
+- `route-without-auth` reports a route handler without the auth requirement that at least 90% of the project's
+  handlers declare, with at least five handlers counted and at least one without it. FastAPI: a function
+  decorated `@router.get`, `post`, `put`, `patch`, `delete`, `api_route` or `websocket` on a name assigned from
+  `FastAPI(...)` or `APIRouter(...)`; it declares auth with a `Depends(...)` or `Security(...)` default or
+  `Annotated[..., Depends(...)]` annotation (directly or through a project alias such as `CurrentUser`), with
+  `dependencies=[...]` on the decorator, or through `dependencies=` on its `APIRouter(...)`, on `include_router(...)`
+  or on `FastAPI(...)`; a dependency counts as auth when its name has a word such as `auth`, `current`, `token`,
+  `permission`, `role`, `login`, `jwt`, `oauth2`, `bearer`, `scope`, `require` or `security`. Django REST framework: a
+  class view (a base ending in `APIView` or `ViewSet`) or an `@api_view` function declares auth with
+  `permission_classes` (class attribute, also inherited from a project base class, `get_permissions`, or the
+  `@permission_classes` decorator); `AllowAny` and an empty list are explicit public choices, and nothing is
+  reported when `DEFAULT_PERMISSION_CLASSES` in a settings dictionary or an assignment to `REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"]` names a class other than `AllowAny`. Flask:
+  a function decorated `route`, `get`, `post`, `put`, `patch` or `delete` on a `Flask(...)` or `Blueprint(...)` name
+  declares auth with another decorator whose name has such a word (`login_required`, `jwt_required`), or through a
+  `before_request` function of its application that reads auth. Handlers named or routed with words such as login, logout,
+  register, token, health, webhook, callback, docs, metrics, status, reset or public, and FastAPI routes with
+  `include_in_schema=False`, are public and are not counted. Django function and class views with
+  `login_required` or mixins, Flask `MethodView.decorators` and the service-level form (a request id that reaches a
+  repository without an access check) are not judged.
 - `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
   at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
   comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
@@ -952,6 +1074,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `C419` for `any([...])`), `PERF` and `RUF015` (`list(xs)[0]` instead of `next(iter(xs))`). The
   same forms run as `nitpicker/no-wasted-collection-step` (TypeScript), `pmd/RedundantStreamStep`
   (Java) and `kotlin-source/RedundantStreamStep` (Kotlin).
+- Python has no map collector that fails on a `None` value (the Java `pmd/NullMapValue` rule for
+  `Collectors.toMap` and `groupingBy`): `dict` comprehensions and `defaultdict` accept it.
 - `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
   over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
   `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,
@@ -1231,6 +1355,38 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   models are left to the migrations when the project has an Alembic `versions/` folder with a
   revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
   revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
+- `in-memory-update` reports rows loaded only to set model fields to the same value and write them back, where one update
+  statement does it without loading anything. The rows are a query result as `in-memory-query` reads it
+  (a Django queryset or `list()` of one, a SQLAlchemy `.all()` list, or `session.scalars(select(Model))`
+  and `session.query(Model)` iterated directly). The loop body only assigns known model columns to values
+  that do not read the row: constants, names and attribute reads (`settings.LIMIT`), never a call, because
+  `secrets.token_hex()`, `uuid4()` or `now()` gives each row its own value; the rows are read nowhere else;
+  and the write-back follows the loop: Django `Model.objects.bulk_update(rows, [...])`, SQLAlchemy
+  `session.commit()` or `flush()` (also awaited) or `bulk_save_objects(rows)`. A body that reads the row,
+  calls a function, assigns a property, or saves inside the loop is left alone (a per-row `save()` is
+  `io-in-loop`'s, and so is a loop of per-row deletes: `row.delete()`, `session.delete(row)`, so this rule
+  reports no delete shape). A model whose bulk statement would skip behavior is left alone: a `save()`
+  override, a `validates` method, a `pre_save` or `post_save` receiver for it (or one without a sender), a
+  SQLAlchemy `before_update`, `after_update`, `before_flush` or `after_flush` listener, an `auto_now` or
+  `auto_now_add` field, `HistoricalRecords`, a `version`, `version_id`, `row_version` or `revision` column
+  and `version_id_col`. Tests and migrations are skipped.
+- `row-for-one-column` and `row-for-existence` report rows that a query loads whole when the database can
+  return far less. A query result is read as `in-memory-update` reads it. `row-for-one-column` reports a
+  comprehension (`list`, `set` or generator, one `for`, no `if`) whose element is one attribute of the row
+  (`[u.email for u in User.objects.filter(team=team)]`, `[u.email for u in session.scalars(select(User))]`),
+  over the query directly or a local that is assigned once and read once; the allowed form is
+  `values_list("email", flat=True)` or `select(User.email)`. The attribute must be a column the project
+  declares on the model: a relationship, a foreign key accessor, a property or a method is left alone, and
+  so are queries that already narrow the columns (`only`, `values`, `values_list`, `load_only`,
+  `with_entities`, a `select` of columns). `row-for-existence` reports a count or one row that is only
+  tested: `.count()` compared with `> 0`, `>= 1`, `!= 0`, `== 0`, `< 1` or `<= 0` or used as a truth test,
+  and `.first()` compared with `None` or used as a truth test, on `Model.objects` or a queryset, a
+  SQLAlchemy `session.query(Model)`, `session.scalars(select(Model))` or `session.execute(select(Model))`;
+  and `session.scalar(select(func.count()).select_from(Model)...)` or
+  `session.execute(select(func.count(...))).scalar()` with the same comparisons. A `first()` kept in a
+  local counts when the local is read once and that read is the test; a related manager
+  (`team.user_set.count()`) and a model the project does not declare are left alone. The list emptiness
+  forms (`len(rows)`, `if rows:`) are `in-memory-query`'s. Tests and migrations are skipped.
 - `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
   `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
   `None` by default or by its type, when the body writes `param or default` or
@@ -1241,6 +1397,38 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
+- `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
+  reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
+  annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
+  or `False` reads as missing: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
+  annotated local (a parameter is `falsy-default`'s), `filter(None, items)` and
+  `[v for v in items if v]` over a `list`, `Sequence`, `Iterable` or `set` of such a type. The
+  allowed form tests `None` only (`x is not None`, `x if x is not None else d`). Not reported: a
+  plain `str` or `bool`, `x or ''` and `x or False`, a test that does not use the value, a name the
+  function binds again, and test files. When an empty string or `False` must take the same path as
+  a missing value, add an exception for the rule.
+- `http-value-case` reports HTTP text compared by exact case, in production code. A value read by
+  `request.headers["x"]`, `request.headers.get("x")` (any mapping or attribute named `*headers`) or
+  `request.content_type`, of a header whose value is case-insensitive (`Content-Type`, `Accept*`,
+  `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`, `Cache-Control`, `Authorization`,
+  `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like), a `urlparse(...).netloc`,
+  directly or through a local assigned once, is reported when it meets a string literal with a
+  letter in `==`, `!=`, `in`, `startswith`, `endswith`, `find`, a `match` statement, a
+  `re.match`, `search` or `fullmatch` without `re.I`, or as the key of a table. Also reported:
+  `name.startswith("__Host-")` or `"__Secure-"` without `lower()`, a file extension from
+  `os.path.splitext(...)[1]`, `Path(...).suffix` or `split(".")[-1]` used as the key of a table named
+  `mime` or `content_type` without `lower()`, and a capitalised header name read from a plain copy of
+  the request headers (`dict(request.headers)["Content-Type"]`). Not reported: `.lower()`,
+  `.casefold()` or a parser on the way (`email.message.Message.get_content_type`,
+  `werkzeug.http.parse_options_header`), the request header mapping itself (it ignores case), an HTTP
+  method (case-sensitive) and a parsed URL's `scheme` and `hostname`, which `urllib` lowercases.
+  Allowed form: `value.lower()` or `casefold()` first, or a parser.
+- `hand-split-http-header` reports a structured header (`Accept*`, `Content-Type`, `Cache-Control`,
+  `If-None-Match`, `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by hand: `split`,
+  `rsplit` or `partition` on `,` or `;`, or a `re` call whose pattern has a separator, `q=`,
+  `charset` or `boundary`. Allowed form: `email.message.Message`, `werkzeug.http`
+  (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
+  `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a
@@ -1256,6 +1444,22 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
   `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
   `nitpicker/strict-boolean-expressions`.
+- `untrimmed-request-text` reports request text that reaches a lookup without `strip()`, in a route
+  handler (a decorated FastAPI or Flask function) or a function taking `request` (a Django view) of a module
+  that imports a web framework. The text is a `str` (or `str | None`, `Optional[str]`) route parameter that
+  is not a path parameter, header, cookie or dependency; a field typed `str` of a project class used as a
+  parameter (a pydantic request model, `payload.name`); or a value read from `request.args`, `request.form`,
+  `request.values`, `request.json`, `request.GET` or `request.POST` (`get` or subscript, directly or through
+  a variable assigned once). It reaches a lookup when it is a keyword of a `filter`, `filter_by`, `get` or
+  `where` method call (not an identifier such as `id` or `status`), an operand of `==`, `like`, `ilike` or
+  `contains` inside one, an argument of a `find_...`, `search...` or `get_..._by_...` call, or a parameter of
+  an `execute` or `fetch` call after its SQL. A name the function binds again (`name = name.strip()`), a
+  model field typed `Annotated[str, StringConstraints(strip_whitespace=True)]`, a model whose class or a base
+  class of the project sets `str_strip_whitespace=True` (`model_config = ConfigDict(...)` or an inner
+  `Config` with `anystr_strip_whitespace`), and text that reaches no lookup are not reported. Django forms
+  and DRF serializer `CharField` strip by default, so they are not read. The allowed form is
+  `name = name.strip()` before the lookup, or one shared base model with
+  `ConfigDict(str_strip_whitespace=True)` that the request models extend.
 - `simpler-boolean-logic` and ruff's `SIM` rules report boolean logic with a strictly simpler
   exact form (#905; the counterpart of the TypeScript `nitpicker/simpler-boolean-logic` and of the
   Java PMD rules `SimplifyBooleanReturns`, `SimplifiedTernary`, `CollapsibleIfStatements`,
@@ -1481,7 +1685,8 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
-  `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
+  `integration`, `e2e` and the like. The Java and Kotlin presets have the same three checks as `RealClockInTest`,
+  `RandomInTest` and `NetworkInTest`. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
   reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an
@@ -1741,3 +1946,5 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
+- Integer overflow on a "no limit" maximum (`MaxValueOverflow` in the Java and Kotlin presets,
+  `go-rules/max-value-overflow` in Go) does not apply to Python: `int` has arbitrary precision, so a sum never wraps.

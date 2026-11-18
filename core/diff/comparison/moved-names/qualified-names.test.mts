@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { textOf } from '../../../../shared/values/readers.mts';
-import { packageMoves, qualifiedNameMoves, remapQualifiedNames } from './qualified-names.mjs';
+import {
+  bareFileMoves,
+  packageMoves,
+  qualifiedNameMoves,
+  remapBareNames,
+  remapQualifiedNames,
+} from './qualified-names.mjs';
+
+const bareFileMovesOf: (
+  renames: Map<string, string>,
+  options: { packageDirs: Set<string> },
+) => Map<string, string[]> = bareFileMoves;
+
+function bareMoves(renames: Map<string, string>, packageDirs: Set<string>) {
+  return bareFileMovesOf(renames, { packageDirs });
+}
 
 const MOVED = new Map([
   ['src/main/java/shop/service/Audit.java', 'src/main/java/shop/audit/Audit.java'],
@@ -98,5 +113,32 @@ describe('qualified names of moved sources', () => {
       remapQualifiedNames('shop.service.Order#total(Lshop/service/Stays;)I', new Map(), packages),
     ).toBe('shop.audit.Order#total(Lshop/service/Stays;)I');
     expect(packageMoves('src/main/kotlin/shop/service/Models.kt', undefined).size).toBe(0);
+  });
+
+  it('names a top-level Python module only from a one-segment path and a package root', () => {
+    const bare = (from: string, to: string, ...directories: string[]) => [
+      ...bareMoves(new Map([[from, to]]), new Set(directories)).values(),
+    ];
+
+    expect(bare('tax.py', 'shop/tax.py', 'shop')).toEqual([['tax', 'shop.tax']]);
+    expect(bare('tax.py', 'src/shop/tax.py', 'src/shop')).toEqual([['tax', 'shop.tax']]);
+    expect(bare('tax.py', 'lib/tax.py', 'lib')).toEqual([['tax', 'lib.tax']]);
+    expect(bare('tax.py', 'lib/tax.py')).toEqual([]);
+    expect(bare('utils.py', 'src/utils.py')).toEqual([]);
+    expect(bare('pkg/utils.py', 'pkg/sub/utils.py', 'pkg', 'pkg/sub')).toEqual([]);
+    expect(bare('utils.py', 'helpers.py')).toEqual([['utils', 'helpers']]);
+    expect(bare('tax/__init__.py', 'shop/tax/__init__.py', 'shop', 'shop/tax')).toEqual([
+      ['tax', 'shop.tax'],
+    ]);
+  });
+
+  it('keeps a bare module name for the class, test and module-cycle identities only', () => {
+    const bare = new Map([['utils', 'helpers']]);
+
+    expect(remapBareNames('module-cycle:utils', bare)).toBe('module-cycle:helpers');
+    expect(remapBareNames('class:utils#run', bare)).toBe('class:helpers#run');
+    expect(remapBareNames('cov:utils#run', bare)).toBe('cov:helpers#run');
+    expect(remapBareNames('var:utils#3', bare)).toBe('var:utils#3');
+    expect(remapBareNames('param:utils', bare)).toBe('param:utils');
   });
 });

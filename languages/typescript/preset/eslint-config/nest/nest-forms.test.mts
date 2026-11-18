@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
-import { nestClassMessage } from './nest-forms.mjs';
+import { nestClassMessage } from './nest-forms.mts';
 
 const nestConfig = strictSyntaxConfigFor(defaultResolvedLayout, { nest: true });
 const ADAPTER = 'src/main/features/cats/adapters/cats.ts';

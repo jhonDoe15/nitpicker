@@ -1,10 +1,11 @@
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mjs';
+import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { createToolContext } from '../../adapters/python-tools.mjs';
+import { createToolContext } from '../../adapters/python-tools.mts';
+import type { ToolContext } from '../../adapters/typed/context/tool-context-types.mts';
 
 export type RuleEntry = {
   readonly rule: string;
@@ -27,7 +28,6 @@ type UseOptions = ScriptOptions & { readonly enabled: boolean };
 type DescribeRules = (name: string, body: () => void) => void;
 
 const rulesReport: (text: string) => readonly RuleEntry[] = JSON.parse;
-const runRules: (context: unknown) => void = checkRules;
 export type ContextOptions = {
   readonly projectRoot: string;
   readonly liveRoot: string;
@@ -35,20 +35,8 @@ export type ContextOptions = {
   readonly reportRoot: string;
 };
 
-export type ToolContext = { readonly projectRoot: string; readonly reportRoot: string };
-
 export function toolContext(options: ContextOptions): ToolContext {
-  return createToolContext({
-    ...options,
-    duplicateSkippedFolders: undefined,
-    baselineRoot: undefined,
-    policyRoot: undefined,
-    toolPrecedence: undefined,
-    spawn: undefined,
-    pytestAddopts: undefined,
-    mutationScope: undefined,
-    analyzerDeadlineMs: undefined,
-  });
+  return createToolContext(options);
 }
 
 function rawFindingsOf(
@@ -69,7 +57,7 @@ function rawFindingsOf(
     settings: { environment: 'path', sourceRoots: ['.'], ...settings },
     reportRoot,
   });
-  runRules(context);
+  checkRules(context);
   return rulesReport(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).filter(
     ({ rule }) => !hidden.includes(rule),
   );
@@ -227,7 +215,7 @@ export function ruleLine(rule: string): (line: number, subject: string) => strin
   return (line, subject) => `${rule}:${String(line)} ${subject}`;
 }
 
-const RELATION_SCHEMA_RULES = ['unindexed-foreign-key', 'eager-relationship'];
+const RELATION_SCHEMA_RULES = ['unindexed-foreign-key', 'eager-relationship', 'row-for-one-column'];
 
 export function useRelationScripts(enabled: boolean): ReturnType<typeof useScripts> {
   return useScripts({ enabled, hidden: RELATION_SCHEMA_RULES });

@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "row-for-one-column",
+    "mention": "select(User.email)",
+    "subject": "Order|status|sqlalchemy"
+  }
+]

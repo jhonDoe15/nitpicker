@@ -33,8 +33,35 @@ platform variants of one Kotlin Multiplatform declaration are not reported (see 
 or `&&`/`||` operand that the guards before it in the same function decide fails, when a solver
 proves it always true (a redundant check) or always false (dead code). The guards are enclosing
 `if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
-of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
-lambda captures, forgets what was known.
+of a `when` without a subject, `require`, `check`, `requireNotNull` and `assert` calls, the arms of `when (subject)` over literals, the left side of `&&` and `||`, the bounds of a `for` over `until`,
+`..` or `downTo`, the branches of an `if` expression, facts about `val` names a lambda captures, `==` or `equals` on a string, and a `val` or `var` set to a literal until it is written again; a write, or a call on a `var` a
+lambda captures, forgets what was known. `x == true` under `if (x == true)`, or in the arm of a
+conditional that tests it, is reported too: it is always `true` there. Sizes, `length`, `count()`, `indexOf` results, the absolute
+value of a `Double` and `Math.random()` are known by the declared type of the name they are read
+from (a size is never negative, `isEmpty()` is a size of 0, `indexOf` is at least -1), and a
+same-file getter that only returns a field gives the same value until something may change it. A
+call of a same-file function that cannot be overridden and only returns a side-effect-free condition
+is read as that condition (at most 2 levels, no recursion) and the message names the helper.
+
+`integer-slip` (tool `structure`) reads them with fixed-width `Int` and `Long` values: a difference
+compared with 0 or returned from `compareTo`/`compare` overflows for some inputs, `Math.abs(x)` of an
+`Int` used as an index or `%` bucket stays negative for `Int.MIN_VALUE`, and `x % 2 == 1` on a
+parameter that can be negative never matches it; the message names the inputs. Use `compareValues`
+or `Int.compareTo`, `mod`, or compare the remainder with 0. `decided-condition` uses the same
+fixed-width arithmetic, so `n + 1 > 0` is decided only where `n` cannot reach the maximum.
+
+`result-slip` (tool `structure`) reads the same trees: the result of `compareTo`, `compare` or
+`compareValues` compared with a value other than 0 (`== 1`, `== -1`, `> 1`) fails, because only its
+sign is defined, and so does `indexOf(x) > 0`, which misses a match at position 0; compare with 0
+or test `>= 0`.
+
+`shorter-condition` (tool `structure`) reads them as well: an `&&`/`||` condition with at most 6
+distinct operands, none with an effect or able to fail, that a truth table or a solver proves equal to
+a condition with fewer operands fails, and the message prints it from the original operands in their
+order: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)` is `a`, `(x >= 0 && x < 10) || (x >= 10 && x < 20)`
+is `x >= 0 && x < 20`. A null check before a member read stays, a float comparison is not negated into
+another, and an operand that the operands before it decide is left to `decided-condition`. detekt has
+no rule for this.
 
 `duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
 bodies have the same canonical tree (locals declared in the arm may have other names) fail, except

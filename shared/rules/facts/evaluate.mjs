@@ -20,13 +20,17 @@ import { uniqueFindings } from '../reuse/reuse-finding.mjs';
 import { siblingCopyEditFindings } from '../reuse/sibling-copy-edits.mjs';
 import { nearDuplicateFindings } from '../near-duplicates/near-duplicates.mjs';
 import { decidedConditionFindings } from '../decided/decided-conditions.mjs';
+import { resultSlipFindings } from '../slips/slip-findings.mjs';
+import { integerSlipFindings } from '../decided/slips/integer-slips.mjs';
 import { duplicateBranchFindings } from '../branches/duplicate-branches.mjs';
+import { shorterConditionFindings } from '../shorter/shorter-conditions.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
 import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
 import { DESIGN_EVALUATORS } from '../design/design-findings.mjs';
+import { decidedAhead } from '../../logic/sync/ahead/decided-ahead.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
@@ -51,16 +55,16 @@ const EVALUATORS = {
       baselineFile: options.baselineFile,
       acrossPackages: options.siblingCopiesAcrossPackages === true,
     }),
-  'near-duplicate': ({ facts, context, options }) =>
-    nearDuplicateFindings(facts.nearDuplicateUnits, {
-      ...context,
-      roleOf: layoutRoles(options),
-      files: (facts.modules ?? []).map(({ file }) => file),
-    }),
-  'decided-condition': ({ facts, context }) =>
-    decidedConditionFindings(facts.nearDuplicateUnits, context),
+  'near-duplicate': ({ facts, context }) =>
+    nearDuplicateFindings(facts.nearDuplicateUnits, context),
+  'decided-condition': ({ facts, context, options }) =>
+    decidedAhead(() => decidedConditionFindings(facts.nearDuplicateUnits, context), options),
   'duplicate-branch': ({ facts, context }) =>
     duplicateBranchFindings(facts.nearDuplicateUnits, context),
+  'result-slip': ({ facts, context }) => resultSlipFindings(facts.nearDuplicateUnits, context),
+  'integer-slip': ({ facts, context }) => integerSlipFindings(facts.nearDuplicateUnits, context),
+  'shorter-condition': ({ facts, context, options }) =>
+    decidedAhead(() => shorterConditionFindings(facts.nearDuplicateUnits, context), options),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),

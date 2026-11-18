@@ -9,7 +9,8 @@ import { parseJson } from '../../../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { onTestFinished, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -45,9 +46,9 @@ function isVitestFactory(value: unknown): value is VitestConfigFactory {
 }
 
 function vitestFactoryOf(module: object): VitestConfigFactory {
-  const factory: unknown = Reflect.get(module, 'default');
+  const factory: unknown = Reflect.get(module, 'layeredConfig');
   if (!isVitestFactory(factory)) {
-    throw new TypeError('The vitest config does not export a factory');
+    throw new TypeError('The vitest config does not export layeredConfig');
   }
   return factory;
 }
@@ -73,7 +74,9 @@ export function temporaryProject(files: Readonly<Record<string, string>>): strin
   const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-'));
   trackTemporaryRoot(projectRoot);
   for (const [name, text] of Object.entries(files)) {
-    writeFileSync(containedPath(projectRoot, name), text);
+    const file = containedPath(projectRoot, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, text);
   }
   return projectRoot;
 }
@@ -82,13 +85,16 @@ export async function resolveVitestConfig(
   relativePath: string,
   policy: Policy | undefined,
   projectFiles: Readonly<Record<string, string>> = {},
+  member = '.',
 ): Promise<VitestConfig> {
   const config = await loadConfig(relativePath, policy, vitestFactoryOf);
-  const projectRoot = temporaryProject(projectFiles);
+  const root = temporaryProject(projectFiles);
+  const projectRoot = member === '.' ? root : containedPath(root, member);
+  await mkdir(projectRoot, { recursive: true });
   const previousDirectory = process.cwd();
   process.chdir(projectRoot);
   try {
-    return await config({ command: 'serve', mode: 'test' });
+    return await config(projectRoot);
   } finally {
     process.chdir(previousDirectory);
   }

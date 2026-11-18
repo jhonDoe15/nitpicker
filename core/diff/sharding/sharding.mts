@@ -1,5 +1,6 @@
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, textsOf } from '../../../shared/values/readers.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type Shard<T> = { readonly analyzers: T[]; weight: number };
 
@@ -27,7 +28,7 @@ export function planAnalyzerShards<T extends Analyzer>(
     const shard = shards.reduce((lightest, candidate) =>
       candidate.weight < lightest.weight ? candidate : lightest,
     );
-    shard.analyzers.push(...component.analyzers);
+    appendAll(shard.analyzers, component.analyzers);
     shard.weight += component.weight;
   }
 
@@ -127,7 +128,7 @@ function collectComponent(
     }
     visited.add(name);
     component.add(name);
-    pending.push(...(neighbors.get(name) ?? []));
+    appendAll(pending, neighbors.get(name) ?? []);
   }
   return component;
 }

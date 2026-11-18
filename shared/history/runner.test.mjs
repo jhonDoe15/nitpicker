@@ -78,6 +78,7 @@ describe('the history configuration hash', () => {
       'hygiene/cli.mjs',
       'hygiene/rules.mjs',
       'hygiene/tracked-files.mjs',
+      'lists/items.mjs',
       'messages/docs-url.mjs',
       'messages/error-chain.mjs',
       'messages/exception-sentence.mjs',

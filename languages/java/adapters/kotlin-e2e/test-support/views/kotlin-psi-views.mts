@@ -1,3 +1,4 @@
+import { isPlainObject } from '../../../../../../shared/values/readers.mts';
 import {
   compilePsiProgram as untypedCompilePsiProgram,
   gradleClasspath as untypedGradleClasspath,
@@ -5,7 +6,7 @@ import {
   prepareCompiler as untypedPrepareCompiler,
   runPsiProgram as untypedRunPsiProgram,
   writeSources as untypedWriteSources,
-} from '../../../test-support/kotlin/kotlin-psi-program.mjs';
+} from '../../../test-support/kotlin/kotlin-psi-program.mts';
 
 type Named = {
   readonly id: string;
@@ -60,9 +61,25 @@ export const compilePsiProgram: (input: {
   readonly workspace: string;
 }) => string = untypedCompilePsiProgram;
 export const prepareCompiler: (input: PrepareInput) => PsiCompiler = untypedPrepareCompiler;
-export const runPsiProgram: (
+function isMetrics(value: unknown): value is PsiRun['metrics'] {
+  return isPlainObject(value) && Array.isArray(value['functions']);
+}
+
+function isFacts(value: unknown): value is PsiRun['facts'] {
+  return isPlainObject(value) && isPlainObject(value['design']);
+}
+
+export function runPsiProgram(
   compiler: PsiCompiler,
   project: string,
-  roots?: string[],
-  properties?: string[],
-) => PsiRun = untypedRunPsiProgram;
+  roots?: readonly string[],
+  properties?: readonly string[],
+): PsiRun {
+  const run = untypedRunPsiProgram(compiler, project, roots, properties);
+  return {
+    status: run.status,
+    log: run.log,
+    metrics: isMetrics(run.metrics) ? run.metrics : { functions: [] },
+    facts: isFacts(run.facts) ? run.facts : { design: { types: [], callables: [], modules: [] } },
+  };
+}

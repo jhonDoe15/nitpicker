@@ -2,9 +2,9 @@ import path from 'node:path';
 
 const NO_TYPE = { kind: 'none', children: [] };
 const SPECIALIZED_VERDICTS = new Set(['parameterizable', 'partial-run']);
-const JVM_FILE = /\.(?:java|kts?)$/u;
-const GENERIC_TYPE = /^(?:Object|[A-Z]\d?)(?:\[\])*(?:\.\.\.)?$/u;
-const SEGMENT = /[A-Z]?[a-z]+|[A-Z]+(?![a-z])/gu;
+const FAMILY_FILE = /\.(?:java|kts?|go)$/u;
+const GENERIC_TYPE = /^(?:Object|any|[A-Z]\d?)(?:\[\])*(?:\.\.\.)?$/u;
+const SEGMENT = /[A-Z]?[a-z]+\d*|[A-Z]+(?![a-z])\d*/gu;
 const TYPE_WORDS = new Map([
   ['boolean', 'boolean'],
   ['byte', 'byte'],
@@ -16,6 +16,18 @@ const TYPE_WORDS = new Map([
   ['long', 'long'],
   ['float', 'float'],
   ['double', 'double'],
+  ['int8', 'int8'],
+  ['int16', 'int16'],
+  ['int32', 'int32'],
+  ['int64', 'int64'],
+  ['uint', 'uint'],
+  ['uint8', 'uint8'],
+  ['uint16', 'uint16'],
+  ['uint32', 'uint32'],
+  ['uint64', 'uint64'],
+  ['float32', 'float32'],
+  ['float64', 'float64'],
+  ['rune', 'rune'],
 ]);
 
 function typeWordOf(segment) {
@@ -60,8 +72,13 @@ function isTypeHole({ a, b }) {
   return (typed || isOwnFamilyReference(a, b)) && !isSameWords(left, right);
 }
 
+function isNumber(node) {
+  const converted = node.kind === 'expression' && node.value === 'cast' ? node.children[1] : node;
+  return converted?.kind === 'literal' && converted.literal === 'number';
+}
+
 function isSizeHole({ a, b }) {
-  return [a, b].every((node) => node.kind === 'literal' && node.literal === 'number');
+  return isNumber(a) && isNumber(b);
 }
 
 function isTypeNamedSibling(left, right) {
@@ -94,7 +111,7 @@ function isFamilyPair(finding, [here, other]) {
 export function isTypeSpecialized(finding, [here, other]) {
   return (
     SPECIALIZED_VERDICTS.has(finding.verdict) &&
-    [here.file, other.file].every((file) => JVM_FILE.test(file)) &&
+    [here.file, other.file].every((file) => FAMILY_FILE.test(file)) &&
     (here.file === other.file || isTypeNamedSibling(here.file, other.file)) &&
     isFamilyPair(finding, [here, other])
   );

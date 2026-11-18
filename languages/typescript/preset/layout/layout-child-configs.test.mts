@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
+import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mts';
 import {
   customPolicy as policy,
   loadConfig,

@@ -3,7 +3,7 @@ import {
   escapeGlob,
   exceptionSentence,
 } from '../../../../../shared/messages/exception-sentence.mjs';
-import { areaRank } from './finding-areas.mts';
+import { inPriorityOrder } from './finding-order.mts';
 import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
@@ -44,22 +44,6 @@ function isParsedEntry(parsed: ParsedEntry): parsed is { kind: 'entry'; entry: E
   return parsed.kind === 'entry';
 }
 
-export function byFixOrder(left: ReportEntry, right: ReportEntry): number {
-  return areaRank(left.tool) - areaRank(right.tool) || byPosition(left, right);
-}
-
-function byPosition(left: ReportEntry, right: ReportEntry): number {
-  const leftPath = textOf(left.path);
-  const rightPath = textOf(right.path);
-  return (
-    Number(leftPath > rightPath) - Number(leftPath < rightPath) ||
-    Number(fieldOf(left['location'], 'line') ?? Infinity) -
-      Number(fieldOf(right['location'], 'line') ?? Infinity) ||
-    Number(fieldOf(left['location'], COLUMN_FIELD) ?? 0) -
-      Number(fieldOf(right['location'], COLUMN_FIELD) ?? 0)
-  );
-}
-
 export function ruleGroupLines(
   findings: readonly ReportEntry[],
   styleLabel: (label: string) => string,
@@ -73,7 +57,7 @@ function groupByRule(
   findings: readonly ReportEntry[],
 ): { readonly label: string; readonly members: ReportEntry[] }[] {
   const groups = new Map<string, ReportEntry[]>();
-  for (const finding of findings.toSorted(byFixOrder)) {
+  for (const finding of inPriorityOrder(findings)) {
     const label = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
     groups.set(label, [...(groups.get(label) ?? []), finding]);
   }

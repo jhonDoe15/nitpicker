@@ -70,6 +70,19 @@ export function cachedLine({
   return `nitpicker: ${label} ${countAnalyzers(count)} cached (${location}; use --no-cache to rerun)\n`;
 }
 
+export function resumedLine({
+  label,
+  count,
+  directory,
+}: {
+  readonly label: string;
+  readonly count: unknown;
+  readonly directory: string;
+}): string {
+  const location = textOf(shownPath(directory));
+  return `nitpicker: ${label}: ${countAnalyzers(count)} resumed from an unfinished run (${location}; use --no-cache to rerun)\n`;
+}
+
 const QUIET_BELOW_MS = 10_000;
 
 function isQuick({ status, elapsedMs }: SettledTask): boolean {

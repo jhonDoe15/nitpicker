@@ -84,10 +84,10 @@ function switchProject({ fixture, gitTemplateRoot, removed = [] }, baseFiles) {
   });
   if (removed.length > 0) {
     removeFiles(root, removed);
-    git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'base');
+    git(root, process.env, 'add', '-A');
+    git(root, process.env, 'commit', '-q', '-m', 'base');
   }
-  git(root, 'switch', '-q', '-c', 'switch');
+  git(root, process.env, 'switch', '-q', '-c', 'switch');
   return root;
 }
 

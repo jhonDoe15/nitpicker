@@ -23,6 +23,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
   (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
   zone (`kotlin-source/LegacyCalendarApi`).
+- HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
+  host, cookie name or file extension (`lowercase()`, `equals(x, ignoreCase = true)`) before comparing it, and
+  parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `ContentDisposition.parse` or
+  `HttpCookie.parse` instead of `split(",")` or `split(";")` (`kotlin-source/HttpValueCase`,
+  `kotlin-source/HandSplitHttpHeader`). A library that is itself the parser takes an exception.
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
   milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never
@@ -104,5 +109,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   and `size` or `isEmpty()` on the source instead of on a `toList()` copy
   (`kotlin-source/RedundantStreamStep`); `any { }` instead of `find { } != null` and `filter { }`
   before `first()` or `count()` are detekt's.
+- A `java.util.stream.Collectors` `toMap` value function or `groupingBy` classifier that can be `null`
+  throws: use `associate` or `groupBy`, or filter or map the nulls first
+  (`kotlin-source/NullMapValue`).
 - A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
   fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).
+- A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
+  `width` that is `Int.MAX_VALUE`, a constant of it, a parameter that defaults to it or a caller passes it,
+  overflows to a negative index or bound. Compare without adding (`width >= length - start`), widen first
+  (`start.toLong() + width`), use `Math.addExact`, or check the sentinel before the arithmetic.

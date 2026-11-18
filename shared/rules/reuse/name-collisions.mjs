@@ -1,6 +1,7 @@
 import { RULE_IDS } from '../../policy.mjs';
 import { groupBy, reexportSteps } from '../facts/fact-graph.mjs';
 import { listPaths, reuseFinding } from './reuse-finding.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const COLLISION_FIX = 'Rename one, or alias both imports.';
 
@@ -67,7 +68,7 @@ function findOrigin(index, start) {
     if (local !== undefined && entry.definitions.has(local)) {
       return { path: step.file, name: local };
     }
-    pending.push(...reexportSteps(entry?.reexports ?? [], step.name));
+    appendAll(pending, reexportSteps(entry?.reexports ?? [], step.name));
   }
   return undefined;
 }

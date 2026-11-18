@@ -55,17 +55,30 @@ export function runNodeTool({
   return result;
 }
 
-export function projectFile(projectRoot: string, filePath: string): string {
-  const resolvedPath = realpathSync(path.resolve(projectRoot, filePath));
-  const relativePath = path.relative(projectRoot, resolvedPath);
-  if (
+function isOutside(relativePath: string): boolean {
+  return (
     relativePath.length === 0 ||
     relativePath === '..' ||
     relativePath.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relativePath)
-  ) {
+  );
+}
+
+export function isProjectFile(projectRoot: string, filePath: string): boolean {
+  const resolvedPath = path.resolve(projectRoot, filePath);
+  if (!resolvedPath.startsWith(projectRoot + path.sep)) {
+    return false;
+  }
+  return !isOutside(path.relative(projectRoot, realpathSync(resolvedPath)));
+}
+
+export function projectFile(projectRoot: string, filePath: string): string {
+  const resolvedPath = realpathSync(path.resolve(projectRoot, filePath));
+  const relativePath = path.relative(projectRoot, resolvedPath);
+  if (isOutside(relativePath)) {
+    const shown = relativePath.length === 0 ? '.' : relativePath.replaceAll('\\', '/');
     throw new Error(
-      `Analyzer path must stay within ${projectRoot}: ${filePath} resolved to ${resolvedPath}`,
+      `Analyzer path must stay within the project folder ${projectRoot}: ${filePath} is ${shown} from it`,
     );
   }
   const entry = lstatSync(resolvedPath);

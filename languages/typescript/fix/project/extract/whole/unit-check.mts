@@ -7,6 +7,7 @@ import {
   type Region,
   type UnitNode,
 } from '../typed/extract-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -70,7 +71,7 @@ function tokensUnder(root: TypeScript.Node, sourceFile: TypeScript.SourceFile): 
   const pending = [root];
   for (const node of pending) {
     found.push(node);
-    pending.push(...node.getChildren(sourceFile));
+    appendAll(pending, node.getChildren(sourceFile));
   }
   return found;
 }

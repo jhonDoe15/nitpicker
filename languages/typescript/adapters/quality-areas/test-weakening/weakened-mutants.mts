@@ -199,22 +199,67 @@ function weakenedFinding(
   };
 }
 
-export function weakenedTestFindings({
-  headReport,
-  baseReport,
-  mutationScope,
-  analyzerName,
-}: {
+type Compared = {
   readonly headReport: MutationReport;
   readonly baseReport: MutationReport;
   readonly mutationScope: MutationScope;
-  readonly analyzerName: string;
-}): Finding[] {
+};
+
+export type WeakenedMutant = KeyedMutant & { readonly filePath: string };
+
+export function weakenedMutants({
+  headReport,
+  baseReport,
+  mutationScope,
+}: Compared): WeakenedMutant[] {
   const scope = scopeOf(mutationScope);
   return escapedMutants(headReport, scope).flatMap(({ filePath, escaped }) => {
     const caught = caughtKeys(baseReport.files?.[filePath]);
     return keyedMutants(escaped, baseLineMapper(scope, filePath))
       .filter(({ key }) => caught.has(key))
-      .map((entry) => weakenedFinding(analyzerName, filePath, entry));
+      .map((entry) => ({ ...entry, filePath }));
   });
+}
+
+function sameLines(line: number | undefined): number | undefined {
+  return line;
+}
+
+export function headRecheckTargets(weakened: readonly WeakenedMutant[]): string[] {
+  return [
+    ...new Set(
+      weakened.flatMap(({ filePath, mutant }) =>
+        baseRange(sameLines, mutant).map((range) => `${filePath}:${range}`),
+      ),
+    ),
+  ];
+}
+
+function headKey(mutant: Mutant): string | undefined {
+  return keyedMutants([mutant], (line) => line)[0]?.key;
+}
+
+export function stillEscapedOnHead(
+  weakened: readonly WeakenedMutant[],
+  recheck: MutationReport,
+): WeakenedMutant[] {
+  return weakened.filter(({ filePath, mutant }) => {
+    const key = headKey(mutant);
+    return (recheck.files?.[filePath]?.mutants ?? []).some(
+      (rerun) => ESCAPED_STATUSES.has(rerun.status) && headKey(rerun) === key,
+    );
+  });
+}
+
+export function weakenedFindings(
+  weakened: readonly WeakenedMutant[],
+  analyzerName: string,
+): Finding[] {
+  return weakened.map((entry) => weakenedFinding(analyzerName, entry.filePath, entry));
+}
+
+export function weakenedTestFindings(
+  compared: Compared & { readonly analyzerName: string },
+): Finding[] {
+  return weakenedFindings(weakenedMutants(compared), compared.analyzerName);
 }

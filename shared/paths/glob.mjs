@@ -154,9 +154,12 @@ function closure(states, starts) {
   const reached = new Set();
   const pending = [...starts];
   for (const index of pending) {
-    if (!reached.has(index)) {
-      reached.add(index);
-      pending.push(...(states[index].split ?? []));
+    if (reached.has(index)) {
+      continue;
+    }
+    reached.add(index);
+    for (const next of states[index].split ?? []) {
+      pending.push(next);
     }
   }
   return [...reached].filter((index) => states[index].split === undefined).toSorted();

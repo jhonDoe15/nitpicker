@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "presence-truthiness",
+    "mention": "is not None"
+  }
+]

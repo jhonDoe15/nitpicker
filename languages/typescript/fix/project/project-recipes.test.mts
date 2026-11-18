@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { PROJECT_RECIPES as UNTYPED_RECIPES } from './project-recipes.mjs';
+import { PROJECT_RECIPES as UNTYPED_RECIPES } from './project-recipes.mts';
 
 type ProjectRecipe = {
   readonly id: string;

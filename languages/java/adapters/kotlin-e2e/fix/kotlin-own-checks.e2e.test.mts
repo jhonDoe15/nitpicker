@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { useFixProject } from './test-support/kotlin-fix-views.mts';
 import type { FixResult } from './test-support/kotlin-fix-views.mts';
-import { KOTLIN_BUILDS } from '../../java-e2e/test-support/own-checks/own-check-kotlin-builds.mjs';
+import { KOTLIN_BUILDS } from '../../java-e2e/test-support/own-checks/own-check-kotlin-builds.mts';
 import {
   ALL_RULES as untypedAllRules,
   expectedOutcome as untypedExpectedOutcome,
   outcomeOf as untypedOutcomeOf,
   ownCheckRepository as untypedOwnCheckRepository,
-} from '../../java-e2e/test-support/own-checks/own-check-projects.mjs';
+} from '../../java-e2e/test-support/own-checks/own-check-projects.mts';
 
 type BuildTool = 'gradle' | 'maven';
 type OwnCheckRepository = {

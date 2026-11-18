@@ -5,6 +5,7 @@ import {
   libraryBinding,
   variableOf,
 } from './module-bindings.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const SCHEMA_NAME = /schema|codec|validat|type|ajv|struct|parser/i;
 const PASS_THROUGH = new Set([
@@ -81,7 +82,7 @@ function isDerived({ sourceCode }, start, packages) {
     if (parents === true) {
       return true;
     }
-    pending.push(...parents);
+    appendAll(pending, parents);
   }
   return false;
 }
@@ -256,7 +257,7 @@ export function isParsedBySchema(ctx, expression, libraries) {
     if (targets === true) {
       return true;
     }
-    pending.push(...targets);
+    appendAll(pending, targets);
   }
   return false;
 }

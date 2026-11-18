@@ -2,6 +2,7 @@ import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs'
 import { quoted } from '../design-finding.mjs';
 import { listSites } from '../design-index.mjs';
 import { byText } from '../../../text-order/by-text.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const RULE = DESIGN_RULE_IDS.disjointConsumerGroups;
 const MIN_USED_MEMBERS = 4;
@@ -33,7 +34,7 @@ function componentOf(start, { links, seen }) {
     for (const linked of next) {
       seen.add(linked);
     }
-    group.push(...next);
+    appendAll(group, next);
   }
   return group.sort(byText);
 }
@@ -69,7 +70,7 @@ function internalResources(member, index) {
   const pending = [member];
   const seen = new Set([member.id]);
   for (const current of pending) {
-    pending.push(...ownHelpers(current, member, { index, seen }));
+    appendAll(pending, ownHelpers(current, member, { index, seen }));
   }
   return new Set(
     pending.flatMap((callable) => [

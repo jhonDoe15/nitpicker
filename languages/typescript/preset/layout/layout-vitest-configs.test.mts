@@ -93,13 +93,7 @@ describe('copied vitest configs', () => {
     expect(coverage.test.dir).toBeUndefined();
     expect(coverage.test.maxWorkers).toBe(4);
     expect(coverage.test.restoreMocks).toBe(true);
-    expect(coverage.test.include).toEqual([
-      'tests/**/*.test.tsx',
-      'lib/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-    ]);
+    expect(coverage.test.include).toEqual(['tests/**/*.test.tsx']);
     expect(sortedUnique(coverage.test.exclude)).toEqual([
       '**/.git/**',
       '**/node_modules/**',
@@ -115,5 +109,60 @@ describe('copied vitest configs', () => {
     });
     expect(coverage.test.environment).toBe('happy-dom');
     expect(coverage.test.projects).toBeUndefined();
+  });
+  it('a workspace member without its own config takes the workspace root config', async () => {
+    const rootConfig = [
+      'export default {',
+      "  resolve: { alias: { '@acme/common': '/workspace/packages/common/src/index.ts' } },",
+      '  test: {',
+      '    globals: true,',
+      "    setupFiles: ['./setup.ts', 'vitest-localstorage-mock'],",
+      "    include: ['packages/**/*.test.ts'],",
+      '  },',
+      '};',
+    ].join('\n');
+    const files = {
+      'package.json': JSON.stringify({ workspaces: ['packages/*'] }),
+      'packages/common/.gitkeep': '',
+      'vitest.config.mjs': rootConfig,
+      'packages/common/package.json': '{}',
+    };
+
+    const coverage = await resolveVitestConfig(
+      'defaults/vitest.quality.config.ts',
+      policy,
+      files,
+      'packages/common',
+    );
+
+    expect(coverage.resolve.alias).toEqual({
+      '@acme/common': '/workspace/packages/common/src/index.ts',
+    });
+    expect(coverage.test.globals).toBe(true);
+    expect(coverage.test.setupFiles).toEqual([
+      expect.stringMatching(/^(?:(?!packages).)*[/\\]setup\.ts$/u),
+      'vitest-localstorage-mock',
+    ]);
+    expect(coverage.test.include).toEqual([
+      'lib/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'lib/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'spec/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'spec/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
+  });
+  it('a project does not take a workspace config from above its repository root', async () => {
+    const coverage = await resolveVitestConfig(
+      'defaults/vitest.quality.config.ts',
+      policy,
+      {
+        'package.json': JSON.stringify({ workspaces: ['repo/*'] }),
+        'vitest.config.mjs': 'export default { test: { globals: true } };',
+        'repo/.git': 'gitdir: elsewhere',
+        'repo/app/a.ts': '',
+      },
+      'repo/app',
+    );
+
+    expect(coverage.test.globals).toBeUndefined();
   });
 });

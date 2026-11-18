@@ -1,12 +1,8 @@
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  cacheKey,
-  createFindingsCache,
-  resolveCacheDirectory,
-  runBaseWithCache,
-} from './findings-cache.mts';
+import { cacheKey, createFindingsCache, resolveCacheDirectory } from './findings-cache.mts';
+import { runBaseWithCache } from './entries/run-with-cache.mts';
 import type { AnalyzerReport } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { useGitFixtures } from '../git/test-support/git-repository.mts';
@@ -61,6 +57,32 @@ describe('cache directory', () => {
     expect(
       resolveCacheDirectory({ projectRoot: root, environment: { NITPICKER_CACHE_DIR: 'c' } }),
     ).toBe(path.join(root, 'c'));
+  });
+
+  it('keeps a workspace member with hoisted dependencies under the workspace root, by member', () => {
+    const root = temporaryRoot();
+    mkdirSync(path.join(root, '.git'));
+    mkdirSync(path.join(root, 'node_modules'));
+    mkdirSync(path.join(root, 'packages/a'), { recursive: true });
+    mkdirSync(path.join(root, 'packages/b/node_modules'), { recursive: true });
+    const member = (folder: string) =>
+      resolveCacheDirectory({ projectRoot: path.join(root, folder), environment: {} });
+
+    expect([member('packages/a'), member('packages/b'), member('.')]).toEqual([
+      path.join(root, 'node_modules/.cache/nitpicker/members/packages%2Fa'),
+      path.join(root, 'packages/b/node_modules/.cache/nitpicker'),
+      path.join(root, 'node_modules/.cache/nitpicker'),
+    ]);
+  });
+
+  it('looks for no dependencies above the repository', () => {
+    const outer = temporaryRoot();
+    mkdirSync(path.join(outer, 'node_modules'));
+    mkdirSync(path.join(outer, 'repository/.git'), { recursive: true });
+
+    expect(
+      resolveCacheDirectory({ projectRoot: path.join(outer, 'repository'), environment: {} }),
+    ).toBeUndefined();
   });
 });
 

@@ -2,6 +2,7 @@ import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 import { fieldsOf, listOf } from '../json/fields.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 const fullVersionTag = /^[\w.-]+\/[\w./-]+@v\d+\.\d+\.\d+$/u;
 const fullCommitSha = /^[\w.-]+\/[\w./-]+@[\da-f]{40}$/u;
@@ -23,7 +24,7 @@ function references(value: unknown): unknown[] {
     if (fields !== undefined && Object.hasOwn(fields, 'uses')) {
       found.push(fields['uses']);
     }
-    pending.push(...(fields === undefined ? listOf(node) : Object.values(fields)));
+    appendAll(pending, fields === undefined ? listOf(node) : Object.values(fields));
   }
   return found;
 }

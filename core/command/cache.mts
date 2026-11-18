@@ -3,7 +3,11 @@ import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { publishHeadPolicy } from '../conventions/resolve.mts';
 import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
-import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
+import {
+  configureAll,
+  presetAnalyzers,
+  withRepositoryChecks,
+} from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mts';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
@@ -12,7 +16,7 @@ import {
   createLayeredStore,
   resolveCacheStore,
 } from '../diff/cache/cache-stores.mts';
-import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
+import { publishBaseSnapshot, WITHOUT_CHANGED_TESTS } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
@@ -24,7 +28,7 @@ import {
 } from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 
 const HELP = '--help';
 
@@ -43,6 +47,7 @@ type CacheCli = {
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
+  readonly configOverlay?: ProjectOverlay | undefined;
 };
 
 type ShardOptions = {
@@ -131,8 +136,11 @@ function writeOutcome({
   readonly result: PublishOutcome;
   readonly selected: readonly Analyzer[];
 }): number {
+  const analyzersPublished = result.published.filter(
+    (name) => !name.endsWith(WITHOUT_CHANGED_TESTS),
+  );
   stdout.write(
-    `Published ${String(result.published.length)} of ${String(selected.length)} base snapshots` +
+    `Published ${String(analyzersPublished.length)} of ${String(selected.length)} base snapshots` +
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
@@ -144,11 +152,14 @@ function writeOutcome({
 }
 
 function configuredAnalyzers(
-  analyzers: CacheCli['analyzers'],
+  cli: CacheCli,
   config: NitpickerConfig,
   policy: unknown,
 ): readonly ProfiledAnalyzer[] {
-  return configureAll(presetAnalyzers(config, analyzers), config, policy);
+  return withRepositoryChecks(
+    configureAll(presetAnalyzers(config, cli.analyzers), config, policy),
+    cli.configOverlay,
+  );
 }
 
 type PublishTarget = {
@@ -167,14 +178,11 @@ function publishedAnalyzers(
   const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {
     projectRoot,
     liveProjectRoot: projectRoot,
-    analyzers: selectedAnalyzers(
-      configuredAnalyzers(cli.analyzers, config, detectedPolicy),
-      options,
-    ),
+    analyzers: selectedAnalyzers(configuredAnalyzers(cli, config, detectedPolicy), options),
   });
   return {
     headPolicy,
-    selected: selectedAnalyzers(configuredAnalyzers(cli.analyzers, config, headPolicy), options),
+    selected: selectedAnalyzers(configuredAnalyzers(cli, config, headPolicy), options),
   };
 }
 
@@ -192,7 +200,7 @@ export function runCacheCommand(cli: CacheCli): number {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot),
   );
-  const config: NitpickerConfig = loadConfig(projectRoot);
+  const config: NitpickerConfig = loadConfig(projectRoot, { overlay: cli.configOverlay });
   const { headPolicy, selected } = publishedAnalyzers(cli, { config, projectRoot, options });
   const store = writableStore(projectRoot, cli);
   const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());

@@ -17,7 +17,7 @@ import {
   missingRunnerTypes,
 } from '../../preset/test-runner/vocabulary/runner-types.mjs';
 import type { StaticCheckOptions } from './arguments.mts';
-import { type Finding, projectFile, hash, policyFile } from './shared.mts';
+import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
@@ -39,11 +39,11 @@ type TypeScriptDiagnostics = {
 };
 
 type DiagnosticFilter = {
-  readonly layout: ReturnType<typeof readLayout>;
+  readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded' | 'isTestFile'>;
   readonly contextOnly: ReadonlySet<string>;
   readonly projectRoot: string;
-  readonly runner: unknown;
-  readonly untyped: boolean;
+  readonly runner?: unknown;
+  readonly untyped?: boolean;
 };
 
 function diagnosticFilter(
@@ -58,16 +58,19 @@ function diagnosticFilter(
   return { layout, contextOnly, projectRoot, runner, untyped };
 }
 
-function isReportedDiagnostic(
+export function isReportedDiagnostic(
   diagnostic: TypeScript.Diagnostic,
   filter: DiagnosticFilter,
 ): boolean {
   if (diagnostic.file === undefined) {
     return true;
   }
+  if (!isProjectFile(filter.projectRoot, diagnostic.file.fileName)) {
+    return false;
+  }
   const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
   const untypedGlobal =
-    filter.untyped &&
+    filter.untyped === true &&
     filter.layout.isTestFile(file) &&
     isUntypedRunnerGlobal(diagnostic, filter.runner);
   return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);

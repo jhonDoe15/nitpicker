@@ -1,5 +1,5 @@
-import { rule as noInternalMocks } from '../../rules/testing/assertions/no-internal-module-mocks.mjs';
-import { rule as noMockingSubjectUnderTest } from '../../rules/testing/assertions/no-mocking-subject-under-test.mjs';
+import { rule as noInternalMocks } from '../../rules/test-runtime/assertions/no-internal-module-mocks.mts';
+import { rule as noMockingSubjectUnderTest } from '../../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const ruleTester = typescriptRuleTester();

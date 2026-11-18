@@ -10,6 +10,7 @@ import type {
   ReplaceEdit,
 } from '../typed/project-types.mts';
 import { declined, replaceEdit } from '../typed/project-views.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -59,7 +60,7 @@ export function repointImport(
     if (planned.declined !== undefined) {
       return planned;
     }
-    edits.push(...planned.edits);
+    appendAll(edits, planned.edits);
   }
   return { edits };
 }

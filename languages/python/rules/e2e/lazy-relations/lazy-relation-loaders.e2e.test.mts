@@ -3,7 +3,13 @@ import { useScripts, pythonLines as code } from '../../test-support/python-rule-
 
 const { findingsOf, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['unindexed-foreign-key', 'eager-relationship', 'io-in-loop', 'unordered-query'],
+  hidden: [
+    'unindexed-foreign-key',
+    'eager-relationship',
+    'io-in-loop',
+    'unordered-query',
+    'row-for-one-column',
+  ],
 });
 
 const MODELS = code(

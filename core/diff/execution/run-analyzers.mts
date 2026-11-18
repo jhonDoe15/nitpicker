@@ -5,12 +5,15 @@ import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
+import type { Checkpoints } from './tasks.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
 import type { AnalyzerMetadata, MetadataMap } from './report/analyzer-metadata.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
 export { selectAnalyzers } from './selection/select-analyzers.mts';
+
+export const SCHEDULER_TOOL = 'analyzer-scheduler';
 export { runScheduler } from './scheduler/run-scheduler.mts';
 
 export type AnalyzerRun = {
@@ -34,6 +37,7 @@ export type AnalyzerRequest = {
   readonly mutationScope: unknown;
   readonly logRoot: unknown;
   readonly runTasks: unknown;
+  readonly checkpoints?: Checkpoints | undefined;
 };
 
 type ScheduledRun = Omit<AnalyzerRun, 'reports' | 'metadata'> & {
@@ -67,22 +71,27 @@ export function runAnalyzers({
   mutationScope,
   logRoot,
   runTasks,
+  checkpoints = new Map(),
 }: AnalyzerRequest): AnalyzerRun {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
     throw new TypeError('liveProjectRoot is required');
   }
 
-  const { tasks, toolErrors, metadata } = prepareTasks(analyzers, {
-    projectRoot,
-    policyRoot,
-    toolRoot,
-    snapshot,
-    baselineRoot,
-    baselineMovesFile,
-    liveProjectRoot,
-    mutationScope,
-    logRoot,
-  });
+  const { tasks, toolErrors, metadata } = prepareTasks(
+    analyzers,
+    {
+      projectRoot,
+      policyRoot,
+      toolRoot,
+      snapshot,
+      baselineRoot,
+      baselineMovesFile,
+      liveProjectRoot,
+      mutationScope,
+      logRoot,
+    },
+    checkpoints,
+  );
 
   const scheduled = scheduleTasks(tasks, {
     runTasks: isRunTasks(runTasks) ? runTasks : runScheduler,
@@ -160,7 +169,7 @@ function scheduleTasks(
     recordScheduled(outcome, runTasks(tasks, headPolicyFile, { snapshot }), snapshot);
   } catch (error) {
     outcome.toolErrors.push({
-      tool: 'analyzer-scheduler',
+      tool: SCHEDULER_TOOL,
       snapshot,
       message: errorText(error),
     });
@@ -171,6 +180,7 @@ function scheduleTasks(
 function prepareTasks(
   analyzers: readonly unknown[],
   context: TaskContext,
+  checkpoints: Checkpoints,
 ): {
   readonly tasks: PreparedTask[];
   readonly toolErrors: ReportEntry[];
@@ -185,7 +195,8 @@ function prepareTasks(
     const preparation = prepareTask(analyzer, context, metadata.get(analyzer));
     metadata.set(analyzer, preparation.metadata);
     if (preparation.kind === 'ready') {
-      tasks.push(preparation.task);
+      const checkpoint = checkpoints.get(name);
+      tasks.push(checkpoint === undefined ? preparation.task : { ...preparation.task, checkpoint });
       continue;
     }
     toolErrors.push({

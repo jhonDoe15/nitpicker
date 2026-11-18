@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './react-test-no-implementation-details.mjs';
+import { rule } from './react-test-no-implementation-details.mts';
 
 const tester = typescriptRuleTester();
 const testFilename = '/repo/test/ui/panel.test.tsx';

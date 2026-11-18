@@ -1,0 +1,177 @@
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
+import { describe, expect, it } from 'vitest';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import {
+  dropEntityAssociations as dropAssociationsUntyped,
+  dropInheritedVersions as dropVersionsUntyped,
+} from './jpa-source-filters.mjs';
+
+type SarifResult = {
+  readonly ruleId: string;
+  readonly message: { readonly arguments: readonly string[] };
+  readonly locations: readonly unknown[];
+};
+type SarifLog = { readonly runs: readonly { readonly results: readonly SarifResult[] }[] };
+type VersionFinding = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly location?: { readonly line: number };
+};
+type FilterOptions = { projectRoot: string; sourceRoots: string[] };
+
+const dropEntityAssociations: (log: SarifLog, projectRoot: string) => SarifLog =
+  dropAssociationsUntyped;
+const dropInheritedVersions: (
+  findings: readonly VersionFinding[],
+  options: FilterOptions,
+) => VersionFinding[] = dropVersionsUntyped;
+
+const { gitCheckout } = useGitCheckouts();
+const { temporaryRoot } = useGitFixtures();
+const SOURCE_ROOTS = ['src/main/java'];
+
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('jpa-filters-');
+  writeFiles(
+    root,
+    Object.fromEntries(
+      Object.entries(files).map(([name, text]) => [`src/main/java/${name}`, text]),
+    ),
+  );
+  return root;
+}
+
+function exposure(field: string, ruleId = 'EI_EXPOSE_REP', file = 'Order.java'): SarifResult {
+  return {
+    ruleId,
+    message: { arguments: ['getItems()', `demo.Order.${field}`] },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: `src/main/java/${file}` },
+          region: { startLine: 5 },
+        },
+      },
+    ],
+  };
+}
+
+function ruleIds(log: SarifLog): string[] {
+  return log.runs
+    .flatMap((run) => run.results)
+    .map((result) => `${result.ruleId}:${String(result.message.arguments[1])}`);
+}
+
+describe('dropEntityAssociations', () => {
+  const order = `
+class Order {
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "customer_id")
+  private Customer customer;
+  @OneToOne private Address address;
+  @OneToMany private List<Item> items;
+  // @ManyToOne private Customer commented;
+  private Customer commented;
+}
+`;
+
+  it('drops associations to one entity and keeps collections and plain fields', () => {
+    const root = project({ 'Order.java': order });
+    const results = ['customer', 'address', 'items', 'commented'].map((field) => exposure(field));
+    const kept = dropEntityAssociations({ runs: [{ results }] }, root);
+    expect(ruleIds(kept)).toEqual([
+      'EI_EXPOSE_REP:demo.Order.items',
+      'EI_EXPOSE_REP:demo.Order.commented',
+    ]);
+  });
+
+  it('covers EI_EXPOSE_REP2 and leaves other rules and unreadable sources alone', () => {
+    const root = project({ 'Order.java': order });
+    const results = [
+      exposure('customer', 'EI_EXPOSE_REP2'),
+      exposure('customer', 'URF_UNREAD_FIELD'),
+      exposure('customer', 'EI_EXPOSE_REP', 'Missing.java'),
+    ];
+    const kept = dropEntityAssociations({ runs: [{ results }] }, root);
+    expect(kept.runs.flatMap((run) => run.results).map((result) => result.ruleId)).toEqual([
+      'URF_UNREAD_FIELD',
+      'EI_EXPOSE_REP',
+    ]);
+  });
+});
+
+describe('dropInheritedVersions', () => {
+  function versionFinding(file: string): VersionFinding {
+    return {
+      tool: 'pmd',
+      rule: 'JpaVersion',
+      path: `src/main/java/${file}`,
+      location: { line: 1 },
+    };
+  }
+  function options(root: string): FilterOptions {
+    return { projectRoot: root, sourceRoots: SOURCE_ROOTS };
+  }
+
+  it('drops the finding when a mapped superclass declares @Version', () => {
+    const root = project({
+      'Base.java': '@MappedSuperclass\nclass Base {\n @Version long version;\n}\n',
+      'Mid.java': '@MappedSuperclass\nclass Mid extends Base {\n}\n',
+      'Invoice.java': '@Entity\nclass Invoice extends Mid {\n @Id Long id;\n}\n',
+    });
+    expect(dropInheritedVersions([versionFinding('Invoice.java')], options(root))).toEqual([]);
+  });
+
+  it('keeps the finding when no ancestor has a version, or the ancestor is unknown', () => {
+    const root = project({
+      'Base.java': '@MappedSuperclass\nclass Base {\n @Id Long id;\n}\n',
+      'Invoice.java': '@Entity\nclass Invoice extends Base {\n @Id Long id;\n}\n',
+      'Quote.java': '@Entity\nclass Quote extends Library {\n @Id Long id;\n}\n',
+      'Plain.java': '@Entity\nclass Plain {\n @Id Long id;\n}\n',
+    });
+    const findings = ['Invoice.java', 'Quote.java', 'Plain.java'].map(versionFinding);
+    expect(dropInheritedVersions(findings, options(root))).toEqual(findings);
+  });
+
+  it('ignores other findings', () => {
+    const other = { tool: 'pmd', rule: 'SpringFieldInjection', path: 'x' };
+    expect(dropInheritedVersions([other], options('/nonexistent'))).toEqual([other]);
+  });
+});
+
+describe('dropInheritedVersions in a Git checkout', () => {
+  const finding: VersionFinding = {
+    tool: 'pmd',
+    rule: 'JpaVersion',
+    path: 'src/main/java/Invoice.java',
+    location: { line: 1 },
+  };
+  const base = '@MappedSuperclass\nclass Base {\n @Version long version;\n}\n';
+  const invoice = '@Entity\nclass Invoice extends Base {\n @Id Long id;\n}\n';
+  function options(root: string): FilterOptions {
+    return { projectRoot: root, sourceRoots: SOURCE_ROOTS };
+  }
+
+  it('looks for the superclass in the checkout, not in ignored folders or nested checkouts', () => {
+    const hidden = gitCheckout(
+      {
+        'src/main/java/Invoice.java': invoice,
+        'src/main/java/gen/Base.java': base,
+        ...nestedCheckout('src/main/java/agent', { 'Base.java': base }),
+      },
+      ['src/main/java/gen/'],
+    );
+    const visible = gitCheckout({
+      'src/main/java/Invoice.java': invoice,
+      'src/main/java/Base.java': base,
+    });
+
+    expect(dropInheritedVersions([finding], options(hidden))).toEqual([finding]);
+    expect(dropInheritedVersions([finding], options(visible))).toEqual([]);
+  });
+});

@@ -1,3 +1,4 @@
+import { appendAll } from '../../lists/items.mjs';
 export const ROUND_TRIP_DIRECTIONS = [
   ['to', 'from'],
   ['dumps', 'loads'],
@@ -78,7 +79,7 @@ export function reachableNames(names, helpers) {
     for (const inner of fresh) {
       seen.add(inner);
     }
-    pending.push(...fresh);
+    appendAll(pending, fresh);
   }
   return seen;
 }

@@ -16,8 +16,8 @@ import {
 } from '../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { runFormat } from './format/maven-format.mjs';
-import { javaFiles, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
+import { runFormat } from './format/maven-format.mts';
+import { javaFiles, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mts';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 

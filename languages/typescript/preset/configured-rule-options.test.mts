@@ -140,6 +140,7 @@ async function ruleSettings(policy?: object) {
     fileNames: settingOf('nitpicker/file-name-casing'),
     assertFunctionNames: fieldOf(optionsOf('vitest/expect-expect'), 'assertFunctionNames'),
     detachedWorkRunners: fieldOf(optionsOf('nitpicker/no-unhandled-void-promise'), 'runners'),
+    opensTransactions: fieldOf(optionsOf('nitpicker/no-unatomic-writes'), 'opensTransactions'),
   };
 }
 
@@ -150,6 +151,7 @@ describe('rules configured from the followed conventions', () => {
       fileNames: ['error', { casing: 'kebab-case' }],
       assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'],
       detachedWorkRunners: [],
+      opensTransactions: false,
     });
   });
 
@@ -161,6 +163,7 @@ describe('rules configured from the followed conventions', () => {
           'typescript.fileNames': 'snake_case',
           'typescript.assertionHelpers': ['assertOk', 'verifyCalled'],
           'typescript.detachedWorkRunners': ['runDetached'],
+          'typescript.transactions': 'used',
         },
       }),
     ).toEqual({
@@ -175,6 +178,7 @@ describe('rules configured from the followed conventions', () => {
         'verifyCalled',
       ],
       detachedWorkRunners: ['runDetached'],
+      opensTransactions: true,
     });
   });
 

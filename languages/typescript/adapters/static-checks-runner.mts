@@ -21,6 +21,7 @@ import {
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mts';
 import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type ViolationText = {
   readonly violation: CruiseViolation;
@@ -42,7 +43,9 @@ if (
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (failure) {
     const error = withTypeScriptHint(failure);
-    process.stderr.write(`Static quality adapter failed: ${error.message}\n`);
+    process.stderr.write(
+      `Static quality adapter failed: ${withInternalFrames(error.message, failure)}\n`,
+    );
     process.exitCode = 2;
   }
 }
@@ -81,15 +84,27 @@ function runArchitecture(options: StaticCheckOptions): Finding[] {
   return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }
 
+function ownedBySnapshot(violation: CruiseViolation): boolean {
+  if (typeof violation.from !== 'string' || isInSnapshot(displayedPath(violation.from))) {
+    return true;
+  }
+  return (
+    violation.type === 'cycle' && (canonicalCycle(violation.cycle)?.some(isInSnapshot) ?? false)
+  );
+}
+
 function reportedViolations(violations: readonly unknown[], modules: unknown): CruiseViolation[] {
   const moduleList: unknown[] = Array.isArray(modules) ? modules : [];
-  return violations.map(violationOf).flatMap((violation): CruiseViolation[] => {
-    if (nameOf(violation.rule) !== REACH_THROUGH_SHARED_RULE) {
-      return [violation];
-    }
-    const via = sharedReachPath(violation, moduleList);
-    return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
-  });
+  return violations
+    .map(violationOf)
+    .filter(ownedBySnapshot)
+    .flatMap((violation): CruiseViolation[] => {
+      if (nameOf(violation.rule) !== REACH_THROUGH_SHARED_RULE) {
+        return [violation];
+      }
+      const via = sharedReachPath(violation, moduleList);
+      return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
+    });
 }
 
 export function normalizeArchitectureViolations(
@@ -106,9 +121,11 @@ export function normalizeArchitectureViolations(
     const context = `dependency-cruiser violation ${String(index)}`;
     const rule = requiredString(nameOf(violation.rule), `${context}.rule.name`);
     const severity = requiredString(severityOf(violation.rule), `${context}.rule.severity`);
-    const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
+    const fromText = requiredString(violation.from, `${context}.from`);
+    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle) : undefined;
+    const from =
+      cycle === undefined ? normalizedRelativePath(fromText, context) : displayedPath(fromText);
     const to = displayedPath(requiredString(violation.to, `${context}.to`));
-    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
     const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
     const first = cycle?.[0];
     const canonicalPath = first !== undefined && isInSnapshot(first) ? first : from;
@@ -143,15 +160,17 @@ function isInSnapshot(value: string): boolean {
   return !value.startsWith('../') && !path.posix.isAbsolute(value) && !/^[A-Za-z]:\//.test(value);
 }
 
-function canonicalCycle(value: unknown, context: string): string[] | undefined {
-  if (!Array.isArray(value) || value.length < 2) {
-    throw new TypeError(`${context}.cycle must contain at least two modules`);
+function canonicalCycle(value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
   }
   const items: unknown[] = value;
-  const names = items.map((item, index) =>
-    displayedPath(requiredString(nameOf(item), `${context}.cycle[${String(index)}].name`)),
-  );
-  const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
+  const names = items.map(nameOf);
+  if (!names.every((name): name is string => typeof name === 'string' && name.length > 0)) {
+    return undefined;
+  }
+  const paths = names.map(displayedPath);
+  const rotations = paths.map((_, index) => [...paths.slice(index), ...paths.slice(0, index)]);
   const inSnapshot = rotations.filter(([first]) => first !== undefined && isInSnapshot(first));
   return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) =>
     left.join('\0').localeCompare(right.join('\0')),

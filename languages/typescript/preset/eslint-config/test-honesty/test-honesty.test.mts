@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
-import { strictTestConfigFor } from '../strict-tests.mjs';
+import { strictTestConfigFor } from '../strict-tests.mts';
 import { type ResolvedLayout, linterConfigs } from '../typed/config-types.mts';
 import { failureMessagesFor } from '../typed/lint-fixture.mts';
 import { applyRuleExceptions } from '../typed/policy-views.mts';

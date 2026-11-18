@@ -1,4 +1,5 @@
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const CHECKSTYLE_DEFAULT_MAX = '80';
 
@@ -12,7 +13,7 @@ function moduleName(module) {
 function allModules(root) {
   const found = [root];
   for (const module of found) {
-    found.push(...childrenNamed(module, 'module'));
+    appendAll(found, childrenNamed(module, 'module'));
   }
   return found;
 }

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-generic-name.mjs';
+import { rule } from './no-generic-name.mts';
 
 const tester = typescriptRuleTester();
 

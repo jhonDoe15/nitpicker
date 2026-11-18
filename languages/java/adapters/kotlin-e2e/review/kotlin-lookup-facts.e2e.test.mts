@@ -7,10 +7,7 @@ import { assigned } from '../test-support/views/assigned.mts';
 import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { serviceLookupFindings as untypedServiceLookupFindings } from '../../kotlin/review-rules/main/service-lookups/service-lookups.mjs';
 import { composeMessage } from '../../kotlin/review-rules/test-support/lookup-facts.mts';
-import {
-  prepareKotlinPsi as untypedPrepareKotlinPsi,
-  runKotlinPsi as untypedRunKotlinPsi,
-} from '../../test-support/kotlin/kotlin-psi-program.mjs';
+import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin/kotlin-psi-program.mts';
 import {
   EXPECTED_LOOKUP_FACT_FINDINGS,
   LOOKUP_FACT_SOURCES,
@@ -21,9 +18,6 @@ const serviceLookupFindings: (
   files: unknown,
   options: { finding: unknown },
 ) => { path: string; symbol: string; message: string }[] = untypedServiceLookupFindings;
-const prepareKotlinPsi: (workspace: string, project: string, gradle: string) => unknown =
-  untypedPrepareKotlinPsi;
-const runKotlinPsi: (psi: unknown, sources: string) => { facts: unknown } = untypedRunKotlinPsi;
 
 const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';

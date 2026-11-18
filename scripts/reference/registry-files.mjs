@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { appendAll } from '../../shared/lists/items.mjs';
 
 /** Compares strings by code point, so a generated file sorts the same on every machine. */
 export function byCodePoint(left, right) {
@@ -23,9 +24,13 @@ export function registryFiles(root, extension, skipped = new Set()) {
   for (const directory of pending) {
     const items = readdirSync(directory, { withFileTypes: true });
     const folders = items.filter((item) => item.isDirectory() && !skipped.has(item.name));
-    pending.push(...folders.map((item) => path.join(directory, item.name)));
-    files.push(
-      ...items
+    appendAll(
+      pending,
+      folders.map((item) => path.join(directory, item.name)),
+    );
+    appendAll(
+      files,
+      items
         .filter((item) => isWanted(item, extension))
         .map((item) => path.join(directory, item.name)),
     );

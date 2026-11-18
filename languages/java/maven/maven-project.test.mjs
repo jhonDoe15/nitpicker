@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lifecycleArgs, readReactor } from './maven-project.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mts';
 import { jacocoPlugin } from './maven-tools.mjs';
-import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mjs';
+import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mts';
 
 const { reactor, soloModule, removeReactors } = reactorKit();
 
@@ -116,6 +116,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
     compiler,
+    requires: [],
   };
 }
 
@@ -159,6 +160,13 @@ describe('readReactor', () => {
         processorPaths: undefined,
         test: { ...CORE_LEVEL, compilerArgs: CORE_ARGS },
       },
+      requires: [
+        'org.codehaus.mojo:build-helper-maven-plugin',
+        'org.jacoco:jacoco-maven-plugin',
+        'org.apache.maven.plugins:maven-compiler-plugin',
+        'org.apache.maven.plugins:maven-surefire-plugin',
+        'org.apache.maven.plugins:maven-failsafe-plugin',
+      ],
     });
     expect(app).toEqual(
       defaultModule(path.join(root, 'tools'), {
@@ -167,6 +175,30 @@ describe('readReactor', () => {
         pomFile: 'app-pom.xml',
       }),
     );
+  });
+
+  it('lists the parent, the dependencies and the plugins of a module as what it requires', () => {
+    const root = reactor({ 'pom.xml': raw('app') });
+    const [app] = readReactor(
+      root,
+      '<project><parent><groupId>demo</groupId><artifactId>parent</artifactId></parent>' +
+        '<groupId>demo</groupId><artifactId>app</artifactId><dependencies><dependency>' +
+        '<groupId>demo</groupId><artifactId>core</artifactId></dependency></dependencies></project>',
+    );
+
+    expect(app.requires).toEqual(['demo:parent', 'demo:core']);
+  });
+
+  it('counts a BOM imported in dependencyManagement as required', () => {
+    const root = reactor({ 'pom.xml': raw('app') });
+    const [app] = readReactor(
+      root,
+      '<project><groupId>demo</groupId><artifactId>app</artifactId><dependencyManagement><dependencies>' +
+        '<dependency><groupId>demo</groupId><artifactId>bom</artifactId><type>pom</type>' +
+        '<scope>import</scope></dependency></dependencies></dependencyManagement></project>',
+    );
+
+    expect(app.requires).toEqual(['demo:bom']);
   });
 
   it('reads a single-module effective POM', () => {

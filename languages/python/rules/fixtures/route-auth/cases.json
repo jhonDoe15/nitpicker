@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "route-without-auth",
+    "mention": "Depends(get_current_user)",
+    "subject": "list_reports|FastAPI|Depends(get_current_user)|9 of 10"
+  }
+]

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-unhandled-url-parse.mjs';
+import { rule } from './no-unhandled-url-parse.mts';
 
 const tester = typescriptRuleTester();
 

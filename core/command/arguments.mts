@@ -6,6 +6,7 @@ import {
 } from '../diff/comparison/cli.mts';
 import { validateRunProfile } from '../quick/validate.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
+import { labelFilter } from '../labels/taxonomy.mts';
 
 type BooleanOption =
   'all' | 'details' | 'dryRun' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
@@ -43,7 +44,7 @@ const VALUES = new Map<string, ValueOption>([
   ['--output', 'outputRoot'],
   ['--verify', 'verify'],
 ]);
-const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init'];
+const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init', 'projects', 'show'];
 
 export const COMPARISON_OPTIONS = [
   ...FLAGS.keys(),
@@ -163,7 +164,23 @@ function validateFixOptions(options: ParsedArguments): void {
   }
 }
 
+function validateLabels(options: ParsedArguments): void {
+  if (options.labelNames.length === 0) {
+    return;
+  }
+  labelFilter(options.labelNames);
+  if (options.fix) {
+    throw new Error('--label cannot be combined with --fix: the fixers are chosen by --rule');
+  }
+  if (options.shardCount !== undefined) {
+    throw new Error(
+      '--label cannot be combined with --shard-count; shards always run every analyzer',
+    );
+  }
+}
+
 function validateModes(options: ParsedArguments): void {
+  validateLabels(options);
   if (options.paths.length > 0 && options.shardCount !== undefined) {
     throw new Error(
       'Paths cannot be combined with --shard-count; shards always cover the whole project',

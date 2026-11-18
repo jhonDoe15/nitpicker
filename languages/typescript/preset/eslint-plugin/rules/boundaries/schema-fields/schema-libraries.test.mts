@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import { VALIDATION_LIBRARIES } from '../../../../libraries/validation-libraries.mjs';
-import { rule } from '../no-unvalidated-schema-field.mjs';
-import { SCHEMA_FORMS } from './schema-forms.mjs';
+import { rule } from '../no-unvalidated-schema-field.mts';
+import { SCHEMA_FORMS } from './schema-forms.mts';
 
 const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const forms: Record<keyof typeof SCHEMA_FORMS, { allowed: string; example: string }> = SCHEMA_FORMS;
+const forms: Readonly<Record<keyof typeof SCHEMA_FORMS, { allowed?: string; example: string }>> =
+  SCHEMA_FORMS;
 
 const fieldError = (id: keyof typeof SCHEMA_FORMS, factory: string) => ({
   messageId: 'unvalidatedField',

@@ -19,8 +19,54 @@ type Model struct {
 	DeletedAt DeletedAt `gorm:"index"`
 }
 
-type DB struct{}
+type DB struct {
+	Error error
+}
 
 func (*DB) AutoMigrate(...any) error {
+	return nil
+}
+
+func (*DB) Create(any) *DB {
+	return nil
+}
+
+func (*DB) Save(any) *DB {
+	return nil
+}
+
+func (*DB) Delete(any, ...any) *DB {
+	return nil
+}
+
+func (*DB) Updates(any) *DB {
+	return nil
+}
+
+func (*DB) Exec(string, ...any) *DB {
+	return nil
+}
+
+func (*DB) Model(any) *DB {
+	return nil
+}
+
+func (*DB) Table(string) *DB {
+	return nil
+}
+
+func (*DB) Where(any, ...any) *DB {
+	return nil
+}
+
+func (*DB) Find(any, ...any) *DB {
+	return nil
+}
+
+func (*DB) Transaction(func(*DB) error) error {
+	return nil
+}
+
+func (*DB) Begin() *DB {
 	return nil
 }

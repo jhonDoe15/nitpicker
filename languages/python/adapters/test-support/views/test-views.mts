@@ -1,8 +1,8 @@
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
-import { collectFacts as untypedCollectFacts } from '../../facts/python-facts.mjs';
-import { parseIni as untypedIni } from '../../configuration/pytest/ini-file.mjs';
-import { readJunit as untypedJunit } from '../../test-runs/junit-results.mjs';
-import { readConsoleReport as untypedConsoleReport } from '../../test-results/console-output.mjs';
+import { collectFacts as untypedCollectFacts } from '../../facts/python-facts.mts';
+import { parseIni as untypedIni } from '../../configuration/pytest/ini-file.mts';
+import { readJunit as untypedJunit } from '../../test-runs/junit-results.mts';
+import { readConsoleReport as untypedConsoleReport } from '../../test-results/console-output.mts';
 
 export type ConsoleEntry = {
   readonly file: string;

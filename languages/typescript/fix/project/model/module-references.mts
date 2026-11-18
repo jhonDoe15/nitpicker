@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Project } from '../typed/project-types.mts';
 import type { ImporterReference, ModuleReference } from './reference-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -90,7 +91,10 @@ export function moduleReferences(sourceFile: TypeScript.SourceFile | undefined):
         : undefined;
     const call = ts.isCallExpression(node) ? callReference(node) : undefined;
     const type = ts.isImportTypeNode(node) ? importTypeReference(node) : undefined;
-    found.push(...[reference, call, type].filter((entry) => entry !== undefined));
+    appendAll(
+      found,
+      [reference, call, type].filter((entry) => entry !== undefined),
+    );
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);

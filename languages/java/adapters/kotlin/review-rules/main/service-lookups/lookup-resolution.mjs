@@ -1,4 +1,5 @@
 import { KOIN_COMPONENTS, producedType } from './lookup-apis.mjs';
+import { smallest } from '../../../../../../../shared/lists/items.mjs';
 
 const GENERIC_ARGUMENTS = /<.*$/u;
 const LAST_SEGMENT = /\.([^.]+)$/u;
@@ -63,7 +64,7 @@ function visibleTypes(file, name, lookup) {
     .filter((entry) => entry.name === name)
     .map((entry) => ({ entry, depth: scopeDepth(ids, entry) }))
     .filter(({ depth }) => depth !== undefined);
-  const nearest = Math.min(...visible.map(({ depth }) => depth));
+  const nearest = smallest(visible.map(({ depth }) => depth));
   return visible.filter(({ depth }) => depth === nearest).map(({ entry }) => entry.type);
 }
 

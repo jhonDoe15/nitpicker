@@ -5,7 +5,7 @@ const MAX_LISTED = 3;
 
 export function reuseFinding(
   analyzerName,
-  { key, path: findingPath, identity, symbol, line, values, planFacts },
+  { key, path: findingPath, identity, symbol, line, values },
 ) {
   const rule = RULE_IDS[key];
   return {
@@ -20,7 +20,6 @@ export function reuseFinding(
     classification: 'enforceable',
     ...(symbol === undefined ? {} : { symbol }),
     ...(line === undefined ? {} : { location: { line } }),
-    ...(planFacts === undefined ? {} : { planFacts }),
   };
 }
 
@@ -53,4 +52,17 @@ export function functionUnitRule(rule, findingsOf) {
     units
       .filter((unit) => unit.tree?.kind === 'function' && !isExcepted(rule, unit.file))
       .flatMap((unit) => findingsOf(unit, analyzerName));
+}
+
+/**
+ * A counter for finding identities within one unit: `numbered(base)` returns `base#1`, then
+ * `base#2` for the next finding with the same base.
+ */
+export function identityCounter() {
+  const seen = new Map();
+  return function numbered(base) {
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return `${base}#${String(count)}`;
+  };
 }

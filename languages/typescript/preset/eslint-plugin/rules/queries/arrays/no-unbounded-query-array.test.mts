@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-unbounded-query-array.mjs';
+import { rule } from './no-unbounded-query-array.mts';
 
 const tester = typescriptRuleTester();
 const inList = (name: string) => [{ messageId: 'inList', data: { name } }];

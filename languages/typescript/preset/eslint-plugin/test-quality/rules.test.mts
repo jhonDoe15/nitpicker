@@ -1,8 +1,8 @@
-import { rule as fakeTimersRequireRestore } from './fake-timers-require-restore.mjs';
-import { rule as noCopyPastedTests } from './no-copy-pasted-tests.mjs';
-import { rule as noSharedTestState } from './no-shared-test-state.mjs';
-import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
-import { typescriptRuleTester } from '../test-support/rule-tester.mts';
+import { rule as fakeTimersRequireRestore } from './fake-timers-require-restore.mts';
+import { rule as noCopyPastedTests } from './no-copy-pasted-tests.mts';
+import { rule as noSharedTestState } from './no-shared-test-state.mts';
+import { withoutFixes } from '../../eslint-config/rule-hints.mts';
+import { ruleModule, typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();
 const lines = (...parts: string[]) => parts.join('\n');
@@ -100,7 +100,7 @@ tester.run('no-copy-pasted-tests', noCopyPastedTests, {
   ],
 });
 
-tester.run('fake-timers-require-restore', withoutFixes(fakeTimersRequireRestore), {
+tester.run('fake-timers-require-restore', withoutFixes(ruleModule(fakeTimersRequireRestore)), {
   valid: [
     "it('real', () => { run(); });",
     "afterEach(() => { vi.useRealTimers(); }); it('fake', () => { vi.useFakeTimers(); });",

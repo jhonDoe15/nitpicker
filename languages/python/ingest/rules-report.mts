@@ -1,13 +1,12 @@
-import { describeRuleFinding as untypedDescribe, RULES_TOOL } from '../rules/rule-hints.mjs';
+import { describeRuleFinding as untypedDescribe, RULES_TOOL } from '../rules/rule-hints.mts';
 import { identitySubject } from '../rules/hints/effects/identity.mts';
 import { createIdentities } from './typed/type-check-views.mts';
-import { withRegexDefects as untypedWithRegexDefects } from '../rules/regexes/regex-defects.mjs';
-import { parseJson } from '../../../shared/values/readers.mts';
+import { withRegexDefects } from '../rules/regexes/regex-defects.mts';
 import type { IngestedFinding, RulesReportEntry } from './typed/ingest-types.mts';
 
 const describeRuleFinding: (rule: string, subject: string, context: object) => string =
   untypedDescribe;
-const withRegexDefects: (entries: unknown) => RulesReportEntry[] = untypedWithRegexDefects;
+const readReport: (text: string) => readonly RulesReportEntry[] = JSON.parse;
 
 type ToolErrorInput = {
   readonly rule: string;
@@ -20,6 +19,7 @@ const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
 export const MINIMUM_PYTHON = '3.10';
 const TOO_DEEP_RULE = 'rules-too-deep';
+const REPORT_ONLY_RULES: ReadonlySet<string> = new Set(['presence-truthiness']);
 const TOO_DEEP_CHECKS: Readonly<Record<string, string>> = {
   file: 'some of the per-file checks',
   all: 'every check',
@@ -54,28 +54,27 @@ function described(
   }
   return {
     message: describeRuleFinding(rule, subject, { libraries, data }),
-    classification: 'enforceable',
+    classification: REPORT_ONLY_RULES.has(rule) ? 'descriptive' : 'enforceable',
     ...(data === undefined ? {} : { hintData: data }),
   };
 }
 
 export function ingestRulesReport(text: string, libraries?: unknown): IngestedFinding[] {
   const identify = createIdentities();
-  return withRegexDefects(parseJson(text)).map(
-    ({ rule, path, subject, line, data, error, via }) => {
-      if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
-        return toolError({ rule, path, subject, error });
-      }
-      const shown = via ?? subject;
-      return {
-        tool: RULES_TOOL,
-        rule,
-        path,
-        identity: identify({ path, rule, subject: identitySubject(rule, subject) }),
-        subject: shown,
-        ...described({ rule, subject: shown, data }, libraries),
-        location: { line },
-      };
-    },
-  );
+  const entries: readonly RulesReportEntry[] = withRegexDefects(readReport(text));
+  return entries.map(({ rule, path, subject, line, data, error, via }) => {
+    if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
+      return toolError({ rule, path, subject, error });
+    }
+    const shown = via ?? subject;
+    return {
+      tool: RULES_TOOL,
+      rule,
+      path,
+      identity: identify({ path, rule, subject: identitySubject(rule, subject) }),
+      subject: shown,
+      ...described({ rule, subject: shown, data }, libraries),
+      location: { line },
+    };
+  });
 }

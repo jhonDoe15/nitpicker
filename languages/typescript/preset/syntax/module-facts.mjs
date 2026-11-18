@@ -1,5 +1,6 @@
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { fileNodes } from './references.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 function importedNames(clause) {
   const bindings = clause.namedBindings;
@@ -134,8 +135,9 @@ function bindingIdentifiers(name) {
   const pending = [name];
   for (const node of pending) {
     if (!ts.isIdentifier(node)) {
-      pending.push(
-        ...node.elements
+      appendAll(
+        pending,
+        node.elements
           .filter((element) => !ts.isOmittedExpression(element))
           .map(({ name: inner }) => inner),
       );

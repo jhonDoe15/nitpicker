@@ -6,7 +6,6 @@ import { reuseFinding } from '../reuse/reuse-finding.mjs';
 import { isPlatformVariant } from './platform-variants.mjs';
 import { isTypeSpecialized } from './type-families.mjs';
 import { shortText } from '../../near-duplicates/unit-parts.mjs';
-import { nearDuplicatePlanFacts } from './plan-facts/plan-facts.mjs';
 
 const CLONE_ANALYZER_MINIMUM = { lines: 5, tokens: 100, exactTokens: 50 };
 const SHOWN_TEXT = 40;
@@ -114,7 +113,7 @@ function isLeftToCloneAnalyzer(finding, pair) {
   );
 }
 
-function nearDuplicateFinding(finding, { pair, analyzerName, layout }) {
+function nearDuplicateFinding(finding, { pair, analyzerName }) {
   const [here, other] = pair;
   const run = finding.run === undefined ? undefined : lines(finding.run[here.side]);
   return reuseFinding(analyzerName, {
@@ -129,7 +128,6 @@ function nearDuplicateFinding(finding, { pair, analyzerName, layout }) {
       difference: differenceOf(finding, pair),
       fix: FIXES[finding.verdict].replace('{run}', run),
     },
-    planFacts: nearDuplicatePlanFacts(finding, pair, layout),
   });
 }
 
@@ -144,9 +142,8 @@ export function nearDuplicateMatches(units, { isExcepted }) {
     .filter(({ pair }) => !pair.some(({ file }) => isExcepted(rule, file)));
 }
 
-export function nearDuplicateFindings(units, { analyzerName, isExcepted, roleOf, files }) {
-  const layout = { roleOf, files: files ?? units.map((unit) => unit.file) };
+export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
   return nearDuplicateMatches(units, { isExcepted }).map(({ finding, pair }) =>
-    nearDuplicateFinding(finding, { pair, analyzerName, layout }),
+    nearDuplicateFinding(finding, { pair, analyzerName }),
   );
 }

@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from '../../rules/modules/no-comments.mjs';
+import { rule } from '../../rules/modules/no-comments.mts';
 
 const tester = typescriptRuleTester();
 const comment = [{ messageId: 'comment' }];

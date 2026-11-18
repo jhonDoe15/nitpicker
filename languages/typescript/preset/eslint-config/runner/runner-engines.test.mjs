@@ -8,7 +8,7 @@ import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 const RUNNERS = ['vitest', 'jest', 'node', 'mocha'];
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../eslint-plugin/index.mjs'))};
+import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../eslint-plugin/index.mts'))};
 import { testRunnerLintConfig } from ${JSON.stringify(import.meta.resolve('./runner-rules.mjs'))};
 
 function blockFor(runner) {

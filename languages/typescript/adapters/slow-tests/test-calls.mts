@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../typed/typescript-program.mts';
 import { escapeRegExp } from '../typed/tooling.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Node = TypeScript.Node;
 
@@ -75,7 +76,7 @@ function operands(node: Node): Node[] {
 function titleLeaves(node: Node): Node[] {
   const pending = [node];
   for (const current of pending) {
-    pending.push(...operands(current));
+    appendAll(pending, operands(current));
   }
   return pending.filter((leaf) => operands(leaf).length === 0).sort((a, b) => a.pos - b.pos);
 }

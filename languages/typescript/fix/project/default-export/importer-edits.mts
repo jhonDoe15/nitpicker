@@ -4,6 +4,7 @@ import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { moduleReferences } from '../model/module-references.mts';
 import { declined, replaceEdit } from '../edits/text-edits.mts';
 import type { Planned, Project, ProjectEdit } from '../typed/project-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Specifier = TypeScript.ImportSpecifier | TypeScript.ExportSpecifier;
 type Request = {
@@ -164,7 +165,7 @@ function fileEdits(
     if (planned.declined !== undefined) {
       return planned;
     }
-    edits.push(...planned.edits);
+    appendAll(edits, planned.edits);
   }
   return edits.length > 0 && !accepts(name)
     ? declined(`${name} is outside the files --fix covers`)
@@ -178,7 +179,7 @@ export function importerEdits(project: Project, { target, exportName, accepts }:
     if (planned.declined !== undefined) {
       return planned;
     }
-    edits.push(...planned.edits);
+    appendAll(edits, planned.edits);
   }
   return { edits };
 }

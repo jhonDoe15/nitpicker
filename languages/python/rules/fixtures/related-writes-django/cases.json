@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "related-writes-without-transaction",
+    "mention": "transaction.atomic",
+    "subject": "place|Order.objects.create()|Item.objects.create()"
+  }
+]

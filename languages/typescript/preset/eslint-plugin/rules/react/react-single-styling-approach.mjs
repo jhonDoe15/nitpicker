@@ -1,5 +1,6 @@
 import { cssInJsSource, stylesheetSpecifier } from '../../../layout.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const approaches = {
   'class-names': {
@@ -115,7 +116,7 @@ function objectLiteralsIn(sourceCode, start) {
     if (lookup.expression.type === 'ObjectExpression' && lookup.keys.length === 0) {
       objects.push(lookup.expression);
     } else {
-      pending.push(...nextLookups(sourceCode, lookup));
+      appendAll(pending, nextLookups(sourceCode, lookup));
     }
   }
   return objects;
@@ -152,7 +153,7 @@ function isStaticValue(root) {
     if (children === undefined) {
       return false;
     }
-    pending.push(...children);
+    appendAll(pending, children);
   }
   return true;
 }

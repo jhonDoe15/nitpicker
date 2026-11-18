@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { isCollectedByRunner, projectRelative } from './runner-option.mjs';
+import { isCollectedByRunner, projectRelative } from './runner-option.mts';
 
 const temporaryRoots = [];
 

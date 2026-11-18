@@ -14,3 +14,7 @@ export function exactText(parts: readonly string[], ...values: readonly unknown[
   }, new RegExp(''));
   return new RegExp(`^(?:${matcher.source})(?![^])`);
 }
+
+export function maskedDiagnostics(text: string): string {
+  return text.replace(/^Full diagnostics: .*$/mu, 'Full diagnostics: <path>');
+}

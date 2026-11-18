@@ -1,5 +1,28 @@
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
+import { appendAll } from '../lists/items.mjs';
+
+const MODULE_HEADER_LINE = new RegExp(
+  [
+    String.raw`^\s*(?:package\s+[\w.]+\s*;?`,
+    String.raw`import\s+(?:static\s+)?[\w.$*]+(?:\s+as\s+\w+)?\s*;?`,
+    String.raw`from\s+[\w.]+\s+import\b.*`,
+    String.raw`(?:import|export)\b[^\n]*[^\w\n]from\s*['"][^'"]*['"]\s*;?`,
+    String.raw`\}\s*from\s*['"][^'"]*['"]\s*;?`,
+    String.raw`import\s*['"][^'"]*['"]\s*;?`,
+    String.raw`import\s+[\w$]+\s*=\s*require\(\s*['"][^'"]*['"]\s*\)\s*;?`,
+    String.raw`(?:(?:const|let|var)\s[^=\n]+=\s*)?(?:await\s+)?(?:require|import)\(\s*['"][^'"]*['"]\s*\)\s*;?)$`,
+  ].join('|'),
+  'u',
+);
+
+function withoutModuleHeaders(fragment) {
+  const body = fragment
+    .split('\n')
+    .filter((line) => !MODULE_HEADER_LINE.test(line))
+    .join('\n');
+  return body.trim() === '' ? fragment : body;
+}
 
 function duplicateMessage(sides, lines) {
   const [first, other] = sides;
@@ -65,10 +88,10 @@ export function evaluateDuplicates(clones, analyzerName) {
     );
     const pair = sides.map((side) => side.file).join('|');
     const pairKey = sides.map((side) => side.file).join('\0');
-    const fragment = hash(clone.fragment ?? '');
+    const fragment = hash(withoutModuleHeaders(clone.fragment ?? ''));
     const occurrence = nextOccurrence(pairOccurrences, pairKey);
     const fragmentOccurrence = nextOccurrence(fragmentOccurrences, `${pairKey}\0${fragment}`);
-    findings.push(
+    appendAll(findings, [
       {
         tool: analyzerName,
         rule: RULE_IDS.duplicateClone,
@@ -82,7 +105,7 @@ export function evaluateDuplicates(clones, analyzerName) {
         ...sizeRatchet(pair, clone, sides),
       },
       ...cloneMetrics({ analyzerName, sides, clone, pair, occurrence }),
-    );
+    ]);
   }
   return findings;
 }

@@ -69,13 +69,28 @@ export function normalizedRun({
   };
 }
 
-function runNitpicker(runtime: string, root: string, args: readonly string[]): number | undefined {
+type NitpickerRun = {
+  readonly runtime: string;
+  readonly root: string;
+  readonly args: readonly string[];
+  readonly coverageEvidence: string;
+};
+
+function evidenceEnvironmentFile(coverageEvidence: string): string {
+  const file = `${coverageEvidence}.env`;
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `NITPICKER_KEEP_COVERAGE_REPORT=${coverageEvidence}\n`);
+  return file;
+}
+
+function runNitpicker({ runtime, root, args, coverageEvidence }: NitpickerRun): number | undefined {
   const launcher = RUNTIMES[runtime];
   if (launcher === undefined) {
     throw new Error(`Unknown runtime ${runtime}`);
   }
   const [command, ...prefix] = launcher();
-  const result = spawnSync(command, [...prefix, CLI, ...args], {
+  const envFile = `--env-file=${evidenceEnvironmentFile(coverageEvidence)}`;
+  const result = spawnSync(command, [...prefix, envFile, CLI, ...args], {
     cwd: root,
     stdio: 'inherit',
     timeout: RUN_TIMEOUT_MS,
@@ -93,23 +108,32 @@ function keepReports(repository: { readonly root: string }, directory: string): 
   }
 }
 
-export function runSample(
-  sample: string,
-  runtime: string,
-  reportsDirectory: string | undefined,
-): PlatformRun {
+export type SampleRun = {
+  readonly sample: string;
+  readonly runtime: string;
+  readonly reportsDirectory: string | undefined;
+};
+
+export function runSample({ sample, runtime, reportsDirectory }: SampleRun): PlatformRun {
   const repository = createSampleRepository(sample);
   try {
     const allReports = path.join(repository.root, 'reports/all');
-    const all = runNitpicker(runtime, repository.root, ['--all', '--output', allReports]);
+    const shared = { runtime, root: repository.root };
+    function evidence(part: string): string {
+      return containedPath(path.join(repository.root, 'reports/coverage-evidence'), part);
+    }
+    const all = runNitpicker({
+      ...shared,
+      args: ['--all', '--output', allReports],
+      coverageEvidence: evidence('all'),
+    });
     repository.change();
     const changeReports = path.join(repository.root, 'reports/change');
-    const change = runNitpicker(runtime, repository.root, [
-      '--base',
-      'main',
-      '--output',
-      changeReports,
-    ]);
+    const change = runNitpicker({
+      ...shared,
+      args: ['--base', 'main', '--output', changeReports],
+      coverageEvidence: evidence('change'),
+    });
     return {
       sample,
       runtime,
@@ -144,11 +168,11 @@ function main(): void {
   }
   mkdirSync(values.output, { recursive: true });
   for (const sample of positionals) {
-    const run = runSample(
+    const run = runSample({
       sample,
-      values.runtime,
-      containedPath(values.output, `${sample}-reports`),
-    );
+      runtime: values.runtime,
+      reportsDirectory: containedPath(values.output, `${sample}-reports`),
+    });
     writeFileSync(path.join(values.output, `${sample}.json`), `${JSON.stringify(run, null, 2)}\n`);
   }
 }

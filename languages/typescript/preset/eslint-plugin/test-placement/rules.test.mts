@@ -1,4 +1,4 @@
-import { rule as noTestHelpersInSource } from './no-test-helpers-in-source.mjs';
+import { rule as noTestHelpersInSource } from './no-test-helpers-in-source.mts';
 import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
 const tester = typescriptRuleTester();

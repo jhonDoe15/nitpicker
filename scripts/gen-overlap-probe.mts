@@ -6,11 +6,19 @@ import {
   printProbe,
   readProbe,
   runProbe,
-} from '../languages/java/adapters/overlaps/test-support/probe-run.mjs';
-import { fieldAt } from './json/fields.mts';
+} from '../languages/java/adapters/overlaps/test-support/probe-run.mts';
+import { fieldAt, fieldsOf } from './json/fields.mts';
 
 const OPTIONS = ['gradle', 'maven', 'build'];
 const STDERR = 2;
+
+function sourcesOf(value: unknown): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(value) ?? {}).flatMap(([file, text]) =>
+      typeof text === 'string' ? [[file, text]] : [],
+    ),
+  );
+}
 
 function runOptions(argv: readonly string[]): Record<string, string> {
   return Object.fromEntries(
@@ -46,6 +54,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     }
   } else {
     const probe: unknown = readProbe();
-    writeFileSync(PROBE_FILE, printProbe(runProbe(fieldAt(probe, 'sources'), options)));
+    writeFileSync(PROBE_FILE, printProbe(runProbe(sourcesOf(fieldAt(probe, 'sources')), options)));
   }
 }

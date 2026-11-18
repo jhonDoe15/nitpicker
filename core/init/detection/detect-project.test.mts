@@ -131,6 +131,44 @@ describe('TypeScript and JavaScript detection', () => {
     ]);
   });
 
+  it('sets the source roots to the folders that hold the code when there is no config yet', () => {
+    const root = project({
+      'package.json': '{}',
+      'index.tsx': TYPED_SOURCE,
+      'components/App.tsx': TYPED_SOURCE,
+      'test/app.test.ts': TYPED_SOURCE,
+      'scripts/build.mjs': SOURCE,
+    });
+
+    const { preset, notes, settings, emptySources } = detectProject(root);
+
+    expect({ preset, notes, settings, emptySources }).toEqual({
+      preset: 'typescript',
+      notes: [
+        'Its code is under components, not src, so init sets "layout.sourceRoots" to ["components"]. ' +
+          'The code at the folder top (1 file) stays out of the checks.',
+      ],
+      settings: { layout: { sourceRoots: ['components'] } },
+      emptySources: undefined,
+    });
+  });
+
+  it('says every run reports empty sources when the code sits only at the folder top', () => {
+    const root = project({ 'package.json': '{}', 'auth.mjs': SOURCE, 'body.mjs': SOURCE });
+
+    const { notes, settings, emptySources } = detectProject(root);
+
+    expect({ notes, settings, emptySources }).toEqual({
+      notes: [
+        'Its code sits at the folder top (2 files), and only code in a source root folder is checked: ' +
+          'every run reports "empty sources" for it until the code moves into a folder, such as src, ' +
+          'that "layout.sourceRoots" names.',
+      ],
+      settings: undefined,
+      emptySources: true,
+    });
+  });
+
   it('falls back to src when the existing config is not valid JSON', () => {
     const files = { 'package.json': '{}', 'nitpicker.config.json': '{', 'lib/index.js': SOURCE };
 

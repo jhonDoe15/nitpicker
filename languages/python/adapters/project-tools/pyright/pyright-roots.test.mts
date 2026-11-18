@@ -2,9 +2,9 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../../test-support/fake-project.mts';
-import { pythonConfigFiles } from '../config-files.mjs';
+import { pythonConfigFiles } from '../config-files.mts';
 import { fieldsOf } from '../../../../../shared/values/readers.mts';
-import { PYRIGHT_TOOL, pyrightConfig } from './pyright-config.mjs';
+import { PYRIGHT_TOOL, pyrightConfig } from './pyright-config.mts';
 
 const fakes = createFakeProjects();
 afterEach(fakes.cleanup);

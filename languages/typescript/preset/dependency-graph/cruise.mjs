@@ -168,18 +168,19 @@ export function internalEdges(graph, sourceRoot) {
   });
 }
 
+export function projectSources(graph, isSourceFile) {
+  return graph.modules.map((module) => normalizePath(module.source)).filter(isSourceFile);
+}
+
 export function projectImports(graph, isSourceFile) {
-  const modulePaths = new Set(graph.modules.map((module) => normalizePath(module.source)));
-  function isProjectSource(file) {
-    return modulePaths.has(file) && isSourceFile(file);
-  }
+  const sources = new Set(projectSources(graph, isSourceFile));
   return graph.modules.flatMap((module) => {
     const from = normalizePath(module.source);
-    return isProjectSource(from)
+    return sources.has(from)
       ? (module.dependencies ?? [])
           .filter((dependency) => typeof dependency.resolved === 'string')
           .map((dependency) => ({ from, to: normalizePath(dependency.resolved) }))
-          .filter(({ to }) => isProjectSource(to))
+          .filter(({ to }) => sources.has(to))
       : [];
   });
 }

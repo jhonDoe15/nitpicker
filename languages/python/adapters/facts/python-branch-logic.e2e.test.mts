@@ -49,6 +49,46 @@ describe.skipIf(!pythonE2eEnabled)('decided-condition over Python functions', ()
     ]);
   });
 
+  it('reports bool() of the value an if or a conditional already tested', () => {
+    const text = [
+      'def flag(x, fallback):',
+      '    if x:',
+      '        return bool(x)',
+      '    return bool(x) if fallback else False',
+      '',
+      '',
+      'def kept(x):',
+      '    if x is not None:',
+      '        return bool(x)',
+      '    return bool(x)',
+      '',
+    ].join('\n');
+
+    expect(decided(text)).toEqual([
+      '4: `bool(x)` is always false here: line 2 returns when `x` is true',
+      '3: `bool(x)` is always true here: it is inside the `if (x)` on line 2',
+    ]);
+  });
+
+  it('reports bool() of an attribute or after an and that the test decides', () => {
+    const text = [
+      'def attr(o):',
+      '    if o.x:',
+      '        return bool(o.x)',
+      '    return False',
+      '',
+      '',
+      'def chain(x):',
+      '    return x and bool(x)',
+      '',
+    ].join('\n');
+
+    expect(decided(text)).toEqual([
+      '3: `bool(o.x)` is always true here: it is inside the `if (o.x)` on line 2',
+      '8: `bool(x)` is always true here: it is only reached when `x` is true',
+    ]);
+  });
+
   it('forgets a guard after the name is assigned or a call may change a module name', () => {
     const text = [
       'LIMIT = 3',
@@ -158,5 +198,33 @@ describe.skipIf(!pythonE2eEnabled)('duplicate-branch over Python functions', () 
     ].join('\n');
 
     expect(branches(text)).toEqual([]);
+  });
+
+  it('reports, as report-only, adjacent guards with one body and an if whose inner else repeats the outer else', () => {
+    const text = [
+      'def find(order, flag, other, queue):',
+      '    if order is None:',
+      '        return 0',
+      '    if len(order.items) == 0 or other:',
+      '        return 0',
+      '    if flag:',
+      '        if not other:',
+      '            return 1',
+      '        else:',
+      '            return 2',
+      '    else:',
+      '        return 2',
+      '    if flag:',
+      '        return 3',
+      '    if queue.pop():',
+      '        return 3',
+      '    return 4',
+      '',
+    ].join('\n');
+
+    expect(branches(text)).toEqual([
+      '2 descriptive: The guards `order is None` (line 2) and `len(order.items) == 0 or other` (line 4) have the same body. Merge them into one guard: `if order is None or len(order.items) == 0 or other:`.',
+      '6 descriptive: The `else` on line 12 repeats the inner `else` of the `if` on line 7. Use one test, `if flag and not other:`, for the inner branch, and keep a single `else`.',
+    ]);
   });
 });

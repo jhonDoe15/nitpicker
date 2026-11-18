@@ -9,10 +9,12 @@ import {
   resolveLayoutFor,
 } from '../../../languages/typescript/preset/layout.mjs';
 import {
+  type CodeFolders,
+  codeFolders,
   emptySourcesMessage,
   sourcesElsewhere,
 } from '../../../languages/typescript/preset/notices/empty-sources.mts';
-import { existingConfig } from '../files/config-file.mts';
+import { type ExistingConfig, existingConfig } from '../files/config-file.mts';
 import { type Detected, describeJvmProject } from './jvm-project.mts';
 import { describeNodeProject } from './node-project.mts';
 import { describePythonProject } from './python-project.mts';
@@ -29,6 +31,7 @@ const presetMarker: (projectRoot: string) => Detected | undefined = detectedPres
 const scriptPresetOf: (config: DetectionConfig, projectRoot: string) => string | undefined =
   scriptProjectPreset;
 const shippedRoots: unknown = defaultSourceRoots;
+const DEFAULT_PRESET = 'typescript';
 
 function defaultRoots(): string[] {
   return stringList(shippedRoots) ?? [];
@@ -36,11 +39,16 @@ function defaultRoots(): string[] {
 
 const layoutOf: (policy: object) => Layout = resolveLayoutFor;
 const elsewhereOf: (projectRoot: string, layout: Layout) => string = sourcesElsewhere;
+const foldersOf: (projectRoot: string, layout: Layout) => CodeFolders = codeFolders;
 const emptyMessage: (config: object, projectRoot: string, policy: object) => string | undefined =
   emptySourcesMessage;
 
+function policyOf(config: DetectionConfig): object {
+  return { layout: config.layout, exclude: config.exclude };
+}
+
 function emptySourcesNote(projectRoot: string, config: DetectionConfig): string {
-  const policy = { layout: config.layout, exclude: config.exclude };
+  const policy = policyOf(config);
   const message = emptyMessage({}, projectRoot, policy);
   if (message !== undefined && elsewhereOf(projectRoot, layoutOf(policy)) !== '') {
     return message;
@@ -57,8 +65,7 @@ function stringList(value: unknown): string[] | undefined {
   return isStringList(value) ? value : undefined;
 }
 
-function detectionConfig(projectRoot: string): DetectionConfig {
-  const existing = existingConfig(projectRoot);
+function detectionConfig(existing: ExistingConfig): DetectionConfig {
   const config = existing.kind === 'parsed' ? existing.config : {};
   const testRoots = stringList(fieldOf(config['layout'], 'testRoots'));
   const exclude = stringList(config['exclude']);
@@ -71,8 +78,59 @@ function detectionConfig(projectRoot: string): DetectionConfig {
   };
 }
 
+function topCode(files: readonly string[]): string {
+  const count = String(files.length);
+  return `the folder top (${count} ${files.length === 1 ? 'file' : 'files'})`;
+}
+
+function rootsNote(folders: readonly string[], { topFiles }: CodeFolders, roots: string): string {
+  const setting = `"layout.sourceRoots" to ${JSON.stringify(folders)}`;
+  const top =
+    topFiles.length === 0 ? '' : ` The code at ${topCode(topFiles)} stays out of the checks.`;
+  return `Its code is under ${folders.join(', ')}, not ${roots}, so init sets ${setting}.${top}`;
+}
+
+function withFoundRoots(projectRoot: string, config: DetectionConfig): InitProject | undefined {
+  const found = foldersOf(projectRoot, layoutOf(policyOf(config)));
+  const { folders, topFiles } = found;
+  const roots = config.layout.sourceRoots.join(', ');
+  if (folders.length > 0) {
+    const preset = scriptPresetOf({ ...config, layout: { sourceRoots: folders } }, projectRoot);
+    const project = describeNodeProject(projectRoot, preset ?? DEFAULT_PRESET);
+    const notes = [...project.notes, rootsNote(folders, found, roots)];
+    return { ...project, notes, settings: { layout: { sourceRoots: folders } } };
+  }
+  if (topFiles.length === 0) {
+    return undefined;
+  }
+  const project = describeNodeProject(projectRoot, DEFAULT_PRESET);
+  const note =
+    `Its code sits at ${topCode(topFiles)}, and only code in a source root folder is checked: ` +
+    `every run reports "empty sources" for it until the code moves into a folder, such as ${roots}, ` +
+    'that "layout.sourceRoots" names.';
+  return { ...project, notes: [...project.notes, note], emptySources: true };
+}
+
+const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
+const JVM_PRESETS = new Set(['java', 'kotlin']);
+
+export function detectProjectAs(projectRoot: string, preset: string): InitProject {
+  const marker = presetMarker(projectRoot);
+  if (SCRIPT_PRESETS.has(preset)) {
+    return describeNodeProject(projectRoot, preset);
+  }
+  const bothJvm = JVM_PRESETS.has(preset) && JVM_PRESETS.has(marker?.preset ?? '');
+  if (marker === undefined || (marker.preset !== preset && !bothJvm)) {
+    return detectProject(projectRoot);
+  }
+  return preset === 'python'
+    ? describePythonProject(projectRoot)
+    : describeJvmProject(projectRoot, { ...marker, preset });
+}
+
 export function detectProject(projectRoot: string): InitProject {
-  const config = detectionConfig(projectRoot);
+  const existing = existingConfig(projectRoot);
+  const config = detectionConfig(existing);
   const scriptPreset = scriptPresetOf(config, projectRoot);
   if (scriptPreset !== undefined) {
     return describeNodeProject(projectRoot, scriptPreset);
@@ -84,11 +142,23 @@ export function detectProject(projectRoot: string): InitProject {
   if (marker !== undefined) {
     return describeJvmProject(projectRoot, marker);
   }
+  return packageWithoutSources(projectRoot, existing, config);
+}
+
+function packageWithoutSources(
+  projectRoot: string,
+  existing: ExistingConfig,
+  config: DetectionConfig,
+): InitProject {
   if (!existsSync(path.join(projectRoot, 'package.json'))) {
     throw new Error(
       `Nothing to detect in ${projectRoot}: no package.json, pom.xml, build.gradle, pyproject.toml or other project file. Run nitpicker init in the project's directory.`,
     );
   }
-  const project = describeNodeProject(projectRoot, 'typescript');
+  const found = existing.kind === 'missing' ? withFoundRoots(projectRoot, config) : undefined;
+  if (found !== undefined) {
+    return found;
+  }
+  const project = describeNodeProject(projectRoot, DEFAULT_PRESET);
   return { ...project, notes: [...project.notes, emptySourcesNote(projectRoot, config)] };
 }

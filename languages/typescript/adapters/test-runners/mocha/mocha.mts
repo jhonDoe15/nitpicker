@@ -1,4 +1,5 @@
 import { textOf } from '../../../../../shared/values/readers.mts';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { projectTestRetry, spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
 import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
@@ -24,7 +25,8 @@ import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 const REQUIRE_OPTION = '--require';
 
 export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
-const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
+const sourcePath: (file: string) => string = checkoutModulePath;
+const UNIQUE_FILES = sourcePath(path.join(import.meta.dirname, 'mocha-files.config.mjs'));
 
 function mochaReport({
   options,

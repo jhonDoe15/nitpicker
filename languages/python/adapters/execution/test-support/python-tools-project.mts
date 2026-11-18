@@ -6,8 +6,7 @@ import { fieldOf, parseJson, textOf, textsOf } from '../../../../../shared/value
 import { createRootTracker } from '../environments/base/test-support/temporary-projects.mts';
 import { installFakeToolchain } from '../../test-support/fake-toolchain.mts';
 import { createToolContext, type ToolContext } from '../../test-support/typed/tool-context.mts';
-import { createToolContext as createLooseContext } from '../../typed/runner/runner-views.mts';
-import { UNTESTABLE_LINES } from '../../configuration/coverage-config/python-coverage-config.mjs';
+import { UNTESTABLE_LINES } from '../../configuration/coverage-config/python-coverage-config.mts';
 
 const tracker = createRootTracker();
 
@@ -110,12 +109,12 @@ export function contextFor(
 
 export function contextWithConventions(
   root: string,
-  conventions: unknown,
-  toolPrecedence?: unknown,
-): { context: unknown; reportRoot: string } {
+  conventions: Readonly<Record<string, unknown>>,
+  toolPrecedence?: Record<string, string[]>,
+): { context: ToolContext; reportRoot: string } {
   const reportRoot = temporaryRoot();
   return {
-    context: createLooseContext({
+    context: createToolContext({
       projectRoot: root,
       liveRoot: root,
       reportRoot,

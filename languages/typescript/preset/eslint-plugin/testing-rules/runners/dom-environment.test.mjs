@@ -2,7 +2,7 @@ import path from 'node:path';
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule } from '../../rules/testing/environment/no-unused-dom-environment.mjs';
+import { rule } from '../../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { createProject, docblock, lines, logic } from '../test-support/environment-project.mts';
 
 RuleTester.afterAll = afterAll;

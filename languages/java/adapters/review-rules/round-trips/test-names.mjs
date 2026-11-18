@@ -6,6 +6,7 @@ import {
   testBodies,
 } from '../../kotlin/review-rules/tests/discovery/test-units.mjs';
 import { functionsOf } from '../../kotlin/review-rules/tests/discovery/functions.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const TEST_ANNOTATIONS = new Set([
   'Test',
@@ -76,8 +77,14 @@ function javaMethods(structure, range) {
     const entries = LANGUAGE_RULES.java
       .members(structure.tokens, structure.close, current)
       .map((member) => entryOf(structure, member));
-    ranges.push(...entries.flatMap((entry) => (entry.range === undefined ? [] : [entry.range])));
-    methods.push(...entries.flatMap((entry) => (entry.method === undefined ? [] : [entry.method])));
+    appendAll(
+      ranges,
+      entries.flatMap((entry) => (entry.range === undefined ? [] : [entry.range])),
+    );
+    appendAll(
+      methods,
+      entries.flatMap((entry) => (entry.method === undefined ? [] : [entry.method])),
+    );
   }
   return methods;
 }

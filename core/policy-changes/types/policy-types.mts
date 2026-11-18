@@ -30,6 +30,7 @@ export type Loosening = {
   readonly key?: string;
   readonly files?: readonly string[];
   readonly blobs?: Readonly<Record<string, string>>;
+  readonly evidence?: readonly (readonly string[])[];
 };
 
 export type ChangePart = {
@@ -141,10 +142,19 @@ export type PolicyScope = {
   readonly basePathOf: (file: string) => string;
   readonly existsInBase: (file: string) => boolean;
   readonly presetRequired: boolean;
+  readonly sharedConfigs: readonly (readonly string[])[];
+  readonly changedConfigLayers?: readonly string[];
+  readonly repositoryLoosenings?: readonly Loosening[];
   readonly tsconfigs?:
     | {
         readonly base: ReadonlyMap<string, boolean>;
         readonly head: ReadonlyMap<string, boolean>;
+      }
+    | undefined;
+  readonly checkedJavascript?:
+    | {
+        readonly base: ReadonlySet<string>;
+        readonly head: ReadonlySet<string>;
       }
     | undefined;
   readonly buildSources?:
@@ -209,7 +219,12 @@ export type ScopeInputs = {
       }
     | undefined;
   readonly presetRequired?: true | undefined;
+  readonly configLayers?: {
+    readonly shared: readonly (readonly string[])[];
+    readonly changed: readonly string[];
+  };
   readonly tsconfigs?: PolicyScope['tsconfigs'];
+  readonly checkedJavascript?: PolicyScope['checkedJavascript'];
   readonly buildSources?: PolicyScope['buildSources'];
   readonly toolConfigs?: readonly ToolConfigEntry[];
   readonly reach?: () => ReadonlyMap<string, string>;
@@ -225,6 +240,7 @@ export type PolicyRead = {
   readonly headProjectRoot: string;
   readonly liveProjectRoot?: string;
   readonly moves?: ScopeInputs['moves'];
+  readonly inherits?: string | undefined;
   readonly replacedOptions?: ((config: PolicyConfig, root: string) => ReplacedOptions) | undefined;
 };
 

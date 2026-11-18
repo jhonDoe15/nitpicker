@@ -3,6 +3,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import { type Fix, type Recipe, fixesOf, recipesOf } from './recipe-types.mts';
+import { smallest } from '../../../../shared/lists/lists.mts';
 
 const SINGLE_FILE_EDITS = new Set(['replace', 'write']);
 
@@ -108,7 +109,7 @@ function startOf(fix: Fix): number {
     .map((edit) => edit.start)
     .filter((start) => typeof start === 'number' && Number.isInteger(start))
     .map(Number);
-  return starts.length === 0 ? Infinity : Math.min(...starts);
+  return starts.length === 0 ? Infinity : smallest(starts);
 }
 
 function siteKey({ tool, rule, path: name, location }: Finding): string {

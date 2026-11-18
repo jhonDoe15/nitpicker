@@ -5,7 +5,7 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
-import { GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME } from './go-analyzer.mjs';
+import { GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME } from './go-analyzer.mts';
 import { goRouteRule, readGoFindings } from './go-findings.mts';
 import {
   applyFindingPolicy,
@@ -18,13 +18,19 @@ import {
 } from './typed/go-run-readers.mts';
 import { fieldOf, fieldsOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
-import type { FindingRow, GoContext, GoPolicy, ToolFailure } from './go-types.mts';
+import type { FindingRow, GoContext, GoPolicy, Spawn, ToolFailure } from './go-types.mts';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting as untypedWithTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type GoOptions = {
   projectRoot: string;
   settings?: object;
   policy?: GoPolicy;
   environment?: Environment | undefined;
+  spawn?: Spawn | undefined;
   part?: string;
 };
 
@@ -54,8 +60,29 @@ function withReportRoot<Result>(step: (reportRoot: string) => Result): Result {
   }
 }
 
+const withTroubleshooting: (message: string, anchor: string | undefined) => string =
+  untypedWithTroubleshooting;
+
+const FIX_ANCHORS: ReadonlyMap<string, string> = new Map([
+  ['go-missing', TROUBLESHOOTING_ANCHORS.goMissing],
+  ['go-mod-tidy-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-list-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-env-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-inspect-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-vet-failed', TROUBLESHOOTING_ANCHORS.goVetOrTestFails],
+  ['go-test-failed', TROUBLESHOOTING_ANCHORS.goVetOrTestFails],
+  ['go-tool-install-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+  ['go-lint-build-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+  ['go-inspect-build-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+]);
+
 function partToolError(failure: ToolFailure, part: string): FindingRow {
-  return { ...toolError(failure), tool: part };
+  const error = toolError(failure);
+  return {
+    ...error,
+    tool: part,
+    message: withTroubleshooting(error.message, FIX_ANCHORS.get(error.rule)),
+  };
 }
 
 function partFindings(context: GoContext, part: string, policy: GoPolicy) {
@@ -64,11 +91,12 @@ function partFindings(context: GoContext, part: string, policy: GoPolicy) {
     : readGoFindings(context, policy);
 }
 
-function analyzeGoSnapshot({
+export function analyzeGoSnapshot({
   projectRoot,
   settings = {},
   policy = {},
   environment,
+  spawn,
   part = GO_ANALYZER_NAME,
 }: GoOptions): { findings: FindingRow[] } {
   try {
@@ -79,7 +107,7 @@ function analyzeGoSnapshot({
           settings,
           policy,
           reportRoot,
-          spawn: undefined,
+          spawn,
           environment,
         });
         const failures = runGoSteps(context, part);
@@ -102,7 +130,10 @@ function analyzeGoSnapshot({
               typeof fieldOf(error, 'rule') === 'string'
                 ? textOf(fieldOf(error, 'rule'))
                 : 'go-failed',
-            message: error instanceof Error ? error.message : String(error),
+            message: withInternalFrames(
+              error instanceof Error ? error.message : String(error),
+              error,
+            ),
           },
           part,
         ),
@@ -170,7 +201,7 @@ export function runGoCli({
     stdout.write(`${JSON.stringify(runGo(commandArguments, { environment }))}\n`);
     return 0;
   } catch (error) {
-    stderr.write(`Go analyzer failed: ${describeError(error)}\n`);
+    stderr.write(`Go analyzer failed: ${withInternalFrames(describeError(error), error)}\n`);
     return 2;
   }
 }

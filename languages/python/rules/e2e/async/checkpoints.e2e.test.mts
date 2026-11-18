@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { RUFF_CONFIG } from '../../../adapters/configuration/python-ruff-config.mjs';
+import { RUFF_CONFIG } from '../../../adapters/configuration/python-ruff-config.mts';
 import { useScripts } from '../../test-support/python-rule-scripts.mts';
 
 const ruff = process.env['NITPICKER_RUFF'] ?? 'ruff';
