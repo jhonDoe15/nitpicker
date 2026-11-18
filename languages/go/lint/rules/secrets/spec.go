@@ -102,7 +102,7 @@ var (
 	}
 	embeddedSecretPatterns = []string{
 		`^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
-		`^(?:bearer|basic|token)\s+(\S+)$`,
+		`^(?:bearer|basic|token)\s+([^\s\x22]+)$`,
 		`[?&;]password=([^&;\s]+)`,
 	}
 )

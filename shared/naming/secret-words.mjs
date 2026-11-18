@@ -94,7 +94,7 @@ export const CREDENTIAL_SHAPES = [
 
 export const EMBEDDED_SECRET_PATTERNS = [
   String.raw`^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
-  String.raw`^(?:bearer|basic|token)\s+(\S+)$`,
+  String.raw`^(?:bearer|basic|token)\s+([^\s\x22]+)$`,
   String.raw`[?&;]password=([^&;\s]+)`,
 ];
 

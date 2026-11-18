@@ -50,6 +50,24 @@ public final class Logs {
     other.info(token);
   }
 
+  void parsed(String token) {
+    try {
+      Kind.valueOf(token);
+    } catch (IllegalArgumentException e) {
+      log.warn("unknown token " + token);
+    }
+  }
+
+  void notParsed(String token) {
+    Kind.valueOf("A");
+    log.warn("unknown token " + token); // violation: SecretInLog
+  }
+
+  enum Kind {
+    A,
+    B
+  }
+
   String mask(String value) {
     return value.substring(0, 2);
   }
