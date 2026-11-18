@@ -187,7 +187,9 @@ function readToken(state, { index, 0: text }) {
     return;
   }
   if (state.stack.at(-1).mode === 'code') {
-    CODE_TOKENS[text]?.(state, index);
+    if (Object.hasOwn(CODE_TOKENS, text)) {
+      CODE_TOKENS[text](state, index);
+    }
     return;
   }
   readLiteralToken(state, index, text);

@@ -139,7 +139,7 @@ export async function lintLayered({
   try {
     await writeFile(path.join(directory, 'policy.json'), JSON.stringify(policy));
     vi.stubEnv(HEAD_POLICY_ENV, path.join(directory, 'policy.json'));
-    const results = await runLintEngine({
+    const { results } = await runLintEngine({
       options: {
         projectRoot,
         liveProjectRoot,

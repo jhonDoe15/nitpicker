@@ -33,6 +33,8 @@ tester.run('no-orm-query-logging', rule, {
     `${MIKRO} export const argv = yargs({ debug: true });`,
     `${SEQUELIZE} export const db = new Sequelize(url, { benchmark: true, logging: (sql, ms) => ms > 500 && logger.warn({ ms }, "slow") });`,
     `${PRISMA} export const prisma = new PrismaClient({ log: [{ emit: "event", level: "query" }, "error"] });`,
+    'export function create(base) { return { __proto__: base, name: "x" }; }',
+    'export const names = { constructor: 1, toString: 2, hasOwnProperty: 3, valueOf: 4 };',
   ],
   invalid: [
     {
