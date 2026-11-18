@@ -85,13 +85,16 @@ export function beanMethodNames(view, option) {
   );
 }
 
-function callersOf(view, fn) {
-  return view.file.invocations.filter(
-    (invocation) =>
-      invocation.name === fn.name &&
-      isSelfCall(view, invocation) &&
-      ownerOf(view, invocation) === fn.owner,
-  );
+function selfCallsByName(view) {
+  const byName = new Map();
+  for (const invocation of view.file.invocations) {
+    if (isSelfCall(view, invocation)) {
+      const calls = byName.get(invocation.name) ?? [];
+      calls.push(invocation);
+      byName.set(invocation.name, calls);
+    }
+  }
+  return byName;
 }
 
 function inStartOf(view, startFunctions, scopeId) {
@@ -103,20 +106,27 @@ function inStartOf(view, startFunctions, scopeId) {
   return fn !== undefined && startFunctions.has(fn);
 }
 
-function helpersOf(view, startFunctions) {
+function helpersOf(view, startFunctions, selfCalls) {
+  if (startFunctions.size === 0) {
+    return [];
+  }
   return view.file.functions.filter((fn) => {
-    const callers = callersOf(view, fn);
+    if (fn.visibility !== 'private') {
+      return false;
+    }
+    const callers = (selfCalls.get(fn.name) ?? []).filter(
+      (invocation) => ownerOf(view, invocation) === fn.owner,
+    );
     return (
-      fn.visibility === 'private' &&
-      callers.length > 0 &&
-      callers.every((call) => inStartOf(view, startFunctions, call.scope))
+      callers.length > 0 && callers.every((call) => inStartOf(view, startFunctions, call.scope))
     );
   });
 }
 
 export function setupScopes(view, isStart) {
+  const selfCalls = selfCallsByName(view);
   const startFunctions = Array.from({ length: HELPER_LEVELS }).reduce(
-    (known) => new Set([...known, ...helpersOf(view, known)]),
+    (known) => new Set([...known, ...helpersOf(view, known, selfCalls)]),
     new Set(view.file.functions.filter((fn) => isStart(fn))),
   );
   return (scopeId) => inStartOf(view, startFunctions, scopeId);
