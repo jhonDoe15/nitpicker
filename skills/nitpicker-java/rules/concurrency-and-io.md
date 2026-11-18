@@ -87,6 +87,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
+- A singleton bean, servlet or filter does not store a value built from a call's argument in an instance field
+  (`this.currency = requestedCurrency` in a service method): keep it in a local, key it by caller in a concurrent
+  map, or use a prototype-scoped bean (`pmd/CallValueStoredInSharedField`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the

@@ -1,0 +1,45 @@
+  <rule name="CallValueStoredInSharedField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method of a shared component (a singleton Spring bean, a servlet or a filter) stores a value built from its own argument in an instance field. One instance serves every call, so the next call, possibly on another thread, reads the first caller's value: data from one request leaks into another. Keep the value in a local variable and pass it on, or key it by caller in a concurrent map, or make the bean prototype-scoped. Configuration set once belongs in the constructor, a @PostConstruct method or a setter used at start-up. An exception fits a one-time lazy initialisation that is meant to latch the first value; do it in an init method instead.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $handler := '^(do[A-Z]|service$|handle|process|on[A-Z]\w*Message$|execute$|apply$|call$)',
+    $servletTypes := ('jakarta.servlet.Servlet', 'jakarta.servlet.Filter', 'javax.servlet.Servlet', 'javax.servlet.Filter')
+return
+//ClassDeclaration
+  [(ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')]
+    and empty(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Scope')
+        or pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+        or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')]))
+   or (some $t in $servletTypes satisfies pmd-java:typeIs($t))]
+  /(let $class := . return
+    for $f in ClassBody/FieldDeclaration[@Static = false()][not(pmd-java:modifiers() = ('final', 'volatile'))]
+                [empty(ModifierList/Annotation)]
+                [empty(ClassType[starts-with(@SimpleName, 'Atomic')])]/VariableDeclarator/VariableId
+    return
+      let $name := $f/@Name,
+          $servlet := exists($class[some $t in $servletTypes satisfies pmd-java:typeIs($t)])
+      return $class/ClassBody/MethodDeclaration
+        [pmd-java:modifiers() = ('public', 'protected')][not(pmd-java:modifiers() = 'synchronized')]
+        [matches(@Name, $handler)]
+        [empty(ModifierList/Annotation[not(@SimpleName = 'Override')])]
+        [not($servlet) or matches(@Name, '^(do[A-Z]|service$)')]
+        [let $m := ., $params := FormalParameters/FormalParameter/VariableId/@Name
+         return exists($params)]
+        /Block//AssignmentExpression[@Operator = '=']
+        [*[1][(self::VariableAccess[@Name = $name]
+                 [empty(ancestor::MethodDeclaration[1]//VariableId[@Name = $name])])
+              or self::FieldAccess[@Name = $name][*[1][self::ThisExpression[not(*)]]]]]
+        [empty(ancestor::LambdaExpression | ancestor::SynchronizedStatement | ancestor::ConstructorCall)]
+        [let $params := ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter/VariableId/@Name
+         return exists(*[2]/descendant-or-self::VariableAccess[@Name = $params])]
+        [empty(ancestor::IfStatement[*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')]
+                [*[(self::VariableAccess or self::FieldAccess) and @Name = $name]][NullLiteral]])]
+   )
+]]></value>
+      </property>
+    </properties>
+  </rule>
