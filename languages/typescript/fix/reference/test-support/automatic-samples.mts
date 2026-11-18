@@ -5,6 +5,12 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'no-useless-catch': {
+    path: 'src/main/samples/s43.ts',
+    input:
+      'export function parsed(text: string): unknown {\n  try {\n    return JSON.parse(text);\n  } catch (error) {\n    throw error;\n  }\n}\n',
+    output: 'export function parsed(text: string): unknown {\n  return JSON.parse(text);\n}\n',
+  },
   'no-useless-concat': {
     path: 'src/main/samples/s42.ts',
     input: "export const greeting = 'hello ' + 'world';\n",
