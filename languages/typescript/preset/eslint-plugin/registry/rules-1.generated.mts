@@ -46,6 +46,7 @@ import { rule as ruleNoGenericName } from '../rules/naming/no-generic-name.mts';
 import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/processes/no-git-repository-per-test.mts';
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
+import { rule as ruleNoHostPortColonSplit } from '../rules/host-splits/no-host-port-colon-split.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoIndexBoundOffByOne } from '../rules/index-bounds/no-index-bound-off-by-one.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
-import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -148,6 +148,7 @@ export const partRules = {
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
+  'no-host-port-colon-split': ruleNoHostPortColonSplit,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-index-bound-off-by-one': ruleNoIndexBoundOffByOne,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
-  'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
 };

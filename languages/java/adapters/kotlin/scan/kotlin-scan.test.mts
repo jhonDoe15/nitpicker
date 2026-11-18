@@ -187,6 +187,7 @@ describe('readKotlinSourceFindings', () => {
         'GenericTypeName',
         'HandSplitHttpHeader',
         'HardcodedSecret',
+        'HostPortColonSplit',
         'HttpValueCase',
         'HttpWithoutTimeout',
         'JvmSyntheticOnHandWrittenCode',

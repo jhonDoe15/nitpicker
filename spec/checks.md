@@ -423,11 +423,12 @@ reports a `Map`, `Set` or record key joined from two runtime strings (or an obje
 `JSON.stringify([a, b])`, a nested `Map` and numeric parts are allowed. The same definition runs as
 `pmd/DelimitedLookupKey` (Java), `delimited-lookup-key` (Python script, `str`-annotated parts) and
 `go-rules/delimited-lookup-key` (Go).
+`pmd/DelimitedLookupKey` (Java).
 Host and port splits: `nitpicker/no-host-port-colon-split` (production source, in `eslint-lint`) reports
 `split(':')` and `slice(0, indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host`, or
 on a `Host`, `X-Forwarded-Host` or `:authority` header read, which breaks IPv6 literals. Parsing with `new URL` is
 allowed. The same definition runs as `pmd/HostPortColonSplit` (Java) and `kotlin-source/HostPortColonSplit`
-(Kotlin).
+(Kotlin), `host-port-colon-split` (Python script) and `go-rules/host-port-colon-split` (Go).
 Newline-only line splits: `nitpicker/no-newline-only-line-split` (production source, in `eslint-lint`) reports
 `split('\n')` and `indexOf('\n')` on text read from a file or on a comment's value. `split(/\r?\n/)` and
 normalised line endings are allowed. The same definition runs as `pmd/NewlineOnlyLineSplit` (Java) and

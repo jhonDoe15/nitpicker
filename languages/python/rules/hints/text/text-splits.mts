@@ -21,4 +21,14 @@ export const TEXT_SPLIT_HINTS: readonly RuleHint[] = [
     allowed:
       'Key by a tuple (`(tenant, name)`) or a frozen dataclass or `NamedTuple`, or escape the parts first.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['host-port-colon-split'],
+    describe: (subject) =>
+      `\`${subject}\` is split on \`:\` as a host, but an IPv6 literal (\`[::1]:3000\`) has colons of its ` +
+      `own, so the host becomes \`[\` and the port is lost or wrong`,
+    allowed:
+      'Parse it: `urllib.parse.urlsplit("//" + host)` and read `.hostname` and `.port`, or `ipaddress.ip_address` ' +
+      'for a bare address.',
+  },
 ];

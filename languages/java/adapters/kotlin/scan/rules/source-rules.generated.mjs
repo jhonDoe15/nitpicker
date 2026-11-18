@@ -37,6 +37,7 @@ import { kotlinSourceRules as rulesSql } from '../security/sql.mjs';
 import { kotlinSourceRules as rulesCompatibilityShims } from '../signatures/compatibility-shims.mjs';
 import { kotlinSourceRules as rulesParameterMutation } from '../signatures/parameter-mutation.mjs';
 import { kotlinSourceRules as rulesTriState } from '../signatures/tri-state.mjs';
+import { kotlinSourceRules as rulesHostSplits } from '../splits/host-splits.mjs';
 import { kotlinSourceRules as rulesPairSplits } from '../splits/pair-splits.mjs';
 import { kotlinSourceRules as rulesDefaultTimeZone } from '../time/default-time-zone.mjs';
 import { kotlinSourceRules as rulesTimeUnits } from '../time/units/time-units.mjs';
@@ -82,6 +83,7 @@ export const directoryRules = [
   rulesCompatibilityShims,
   rulesParameterMutation,
   rulesTriState,
+  rulesHostSplits,
   rulesPairSplits,
   rulesDefaultTimeZone,
   rulesTimeUnits,

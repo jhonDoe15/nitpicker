@@ -42,6 +42,7 @@
   "python-rules/handler-entity-type": ["maintainability"],
   "python-rules/handwritten-boundary-guard": ["maintainability"],
   "python-rules/hardcoded-secret": ["security"],
+  "python-rules/host-port-colon-split": ["bug"],
   "python-rules/http-value-case": ["bug"],
   "python-rules/http-without-timeout": ["reliability"],
   "python-rules/import-time-effect": ["maintainability"],

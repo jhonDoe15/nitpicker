@@ -47,6 +47,7 @@
   "eslint/nitpicker/no-git-repository-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-handwritten-boundary-guard": ["maintainability", "reliability"],
   "eslint/nitpicker/no-hardcoded-secret": ["security"],
+  "eslint/nitpicker/no-host-port-colon-split": ["bug"],
   "eslint/nitpicker/no-in-memory-query": ["performance", "persistence"],
   "eslint/nitpicker/no-index-bound-off-by-one": ["bug"],
   "eslint/nitpicker/no-internal-module-mocks": ["tests"],

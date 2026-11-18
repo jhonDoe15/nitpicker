@@ -59,6 +59,7 @@
   "pmd/ExpandingReplacement": ["bug"],
   "pmd/DelimitedLookupKey": ["bug"],
   "pmd/HandSplitHttpHeader": ["bug"],
+  "pmd/HostPortColonSplit": ["bug"],
   "pmd/HttpValueCase": ["bug"],
   "pmd/IndexBoundOffByOne": ["bug"],
   "pmd/InlineSuppression": ["maintainability"],

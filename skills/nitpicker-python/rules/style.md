@@ -78,3 +78,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   which drops what follows the second separator (`pair-split-drops-rest`).
 - Key a dict or set by a tuple (`(tenant, name)`) or a `NamedTuple`, not by `f"{tenant}:{name}"`, which collides when a
   part holds the delimiter (`delimited-lookup-key`).
+- Split a host and port with `urllib.parse.urlsplit("//" + host)` (`.hostname` and `.port`) or `ipaddress`, not with
+  `host.split(":")`, which breaks IPv6 literals such as `[::1]:3000` (`host-port-colon-split`).

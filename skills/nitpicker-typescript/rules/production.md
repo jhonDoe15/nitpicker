@@ -48,6 +48,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A `Map`, `Set` or record key made of several runtime strings is not joined with a delimiter
   (`` `${row}-${col}` ``): use `JSON.stringify([row, col])` or a nested `Map`, since `'a-b'` with `'c'` and `'a'`
   with `'b-c'` are the same key (`nitpicker/no-ambiguous-lookup-key`).
+- Read a host and port with ``new URL(`http://${host}`)`` (`hostname`, `port`), not `host.split(':')`: an IPv6
+  literal `[::1]:3000` has colons of its own (`nitpicker/no-host-port-colon-split`).
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
