@@ -53,7 +53,7 @@ ${DEPENDENCIES.map(mavenDependency).join('\n')}
   },
 };
 
-type OwnCheckCase = {
+export type OwnCheckCase = {
   readonly check: string;
   readonly file: string;
   readonly before: string;
@@ -67,24 +67,32 @@ const REVIEW_CASES: readonly OwnCheckCase[] = [...BASIC_REVIEW_CASES, ...PERFORM
 type Outcome = { files: Record<string, string | undefined>; findings: string[] };
 
 const ALL_CASES: readonly OwnCheckCase[] = [...SAFE_CASES, ...REVIEW_CASES];
+const SAFE_FILES = new Set(SAFE_CASES.map(({ file }) => file));
+
+export const PERFORMANCE_CASES: readonly OwnCheckCase[] = [
+  ...PERFORMANCE_SAFE_CASES,
+  ...PERFORMANCE_REVIEW_CASES,
+];
 
 export function ownCheckRepository({
   build,
   config,
+  cases = ALL_CASES,
 }: {
   build: Readonly<Record<string, string>>;
   config: object;
+  cases?: readonly OwnCheckCase[];
 }): { committed: Record<string, string>; changed: Record<string, string> } {
   return {
     committed: {
       ...build,
       ...SUPPORT_FILES,
       ...Object.fromEntries(
-        ALL_CASES.flatMap(({ file, base }) => (base === undefined ? [] : [[file, base]])),
+        cases.flatMap(({ file, base }) => (base === undefined ? [] : [[file, base]])),
       ),
       'nitpicker.config.json': `${JSON.stringify({ ...config, conventions: { 'java.formatter': 'none' } })}\n`,
     },
-    changed: Object.fromEntries(ALL_CASES.map(({ file, before }) => [file, before])),
+    changed: Object.fromEntries(cases.map(({ file, before }) => [file, before])),
   };
 }
 
@@ -93,9 +101,22 @@ function ruleName(check: string): string {
   return `${tool}/${rule}`;
 }
 
-export const ALL_RULES = [...new Set(ALL_CASES.map(({ check }) => ruleName(check)))].flatMap(
-  (rule) => ['--rule', rule],
-);
+export function rulesOf(cases: readonly OwnCheckCase[]): string[] {
+  return [...new Set(cases.map(({ check }) => ruleName(check)))].flatMap((rule) => [
+    '--rule',
+    rule,
+  ]);
+}
+
+export const ALL_RULES = rulesOf(ALL_CASES);
+
+export function fixedRuleFiles(cases: readonly OwnCheckCase[]): ReadonlySet<string> {
+  return new Set(
+    cases
+      .filter(({ lines }) => lines.length > 0)
+      .map(({ check, file }) => `${ruleName(check)} ${file}`),
+  );
+}
 
 function findingLines(cases: readonly OwnCheckCase[], recipe: string): string[] {
   return cases.flatMap(({ check, file, lines }) =>
@@ -107,15 +128,23 @@ function compareText(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
-export function expectedOutcome({ withReview }: { withReview: boolean }): Outcome {
-  const applied = new Set((withReview ? ALL_CASES : SAFE_CASES).map(({ file }) => file));
+export function expectedOutcome({
+  withReview,
+  cases = ALL_CASES,
+}: {
+  withReview: boolean;
+  cases?: readonly OwnCheckCase[];
+}): Outcome {
+  const safe = cases.filter(({ file }) => SAFE_FILES.has(file));
+  const review = cases.filter(({ file }) => !SAFE_FILES.has(file));
+  const applied = new Set((withReview ? cases : safe).map(({ file }) => file));
   return {
     files: Object.fromEntries(
-      ALL_CASES.map(({ file, before, after }) => [file, applied.has(file) ? after : before]),
+      cases.map(({ file, before, after }) => [file, applied.has(file) ? after : before]),
     ),
     findings: [
-      ...findingLines(SAFE_CASES, 'java-source-safe'),
-      ...(withReview ? findingLines(REVIEW_CASES, 'java-source-review') : []),
+      ...findingLines(safe, 'java-source-safe'),
+      ...(withReview ? findingLines(review, 'java-source-review') : []),
     ].toSorted(compareText),
   };
 }
@@ -136,12 +165,12 @@ function fixedFindings(stdout: string): string[] {
   return logFile === undefined ? shown : findingsIn(readFileSync(logFile, 'utf8'));
 }
 
-export function outcomeOf(result: {
-  stdout: string;
-  read(file: string): string | undefined;
-}): Outcome {
+export function outcomeOf(
+  result: { stdout: string; read(file: string): string | undefined },
+  cases: readonly OwnCheckCase[] = ALL_CASES,
+): Outcome {
   return {
-    files: Object.fromEntries(ALL_CASES.map(({ file }) => [file, result.read(file)])),
+    files: Object.fromEntries(cases.map(({ file }) => [file, result.read(file)])),
     findings: fixedFindings(result.stdout).toSorted(compareText),
   };
 }
