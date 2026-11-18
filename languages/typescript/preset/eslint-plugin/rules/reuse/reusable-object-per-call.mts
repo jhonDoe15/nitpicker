@@ -5,7 +5,7 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, chainOf } from '../typed/node-views.mts';
-import { constantArguments, usesDefaultLocale } from './constant-arguments.mts';
+import { constantArguments, constantList, usesDefaultLocale } from './constant-arguments.mts';
 import { sharedType, type Call } from './construction-kinds.mts';
 
 type FunctionNode =
@@ -17,6 +17,7 @@ const ONCE_PLACES = new Set<string>([
   AST_NODE_TYPES.PropertyDefinition,
   AST_NODE_TYPES.StaticBlock,
 ]);
+const SCHEMA_USES = new Set(['compile', 'validate', 'compileAsync', 'validateSchema']);
 
 function runsOnce(fn: FunctionNode): boolean {
   const { parent } = fn;
@@ -168,6 +169,18 @@ function onlyReadsOptions(context: SourceContext, node: Call): boolean {
   );
 }
 
+function varyingSchema(context: SourceContext, node: Call): boolean {
+  return usedThrough(context, node).some(({ parent, property }) => {
+    const [schema] = parent.type === AST_NODE_TYPES.CallExpression ? parent.arguments : [];
+    return (
+      property.type === AST_NODE_TYPES.Identifier &&
+      SCHEMA_USES.has(property.name) &&
+      schema !== undefined &&
+      !constantList(context, [schema])
+    );
+  });
+}
+
 function reportable(context: SourceContext, node: Call, type: string): boolean {
   const intl = type.startsWith('Intl.');
   return (
@@ -178,7 +191,7 @@ function reportable(context: SourceContext, node: Call, type: string): boolean {
 }
 
 export const rule: TSESLint.RuleModule<
-  'perCall',
+  'perCall' | 'cacheValidator',
   readonly [],
   { readonly requiresTypeChecking: boolean }
 > = {
@@ -193,6 +206,8 @@ export const rule: TSESLint.RuleModule<
     messages: {
       perCall:
         'Build `{{ type }}` once and reuse it: with fixed options it is safe to share, and building it loads locale data or compiles schemas on every call. Keep it in a module-level constant or a class field, or cache it by the value that varies.',
+      cacheValidator:
+        'Do not share one `{{ type }}` here: the schema changes per call, so a shared instance would keep every schema it compiles forever and reject a repeated `$id`. Cache the compiled validator by the schema or its key, and build `{{ type }}` once next to that cache.',
     },
   },
   create(context) {
@@ -201,7 +216,12 @@ export const rule: TSESLint.RuleModule<
       if (type === undefined || !reportable(context, node, type)) {
         return;
       }
-      context.report({ node, messageId: 'perCall', data: { type } });
+      context.report({
+        node,
+        messageId:
+          type.startsWith('Intl.') || !varyingSchema(context, node) ? 'perCall' : 'cacheValidator',
+        data: { type },
+      });
     }
     return { NewExpression: check, CallExpression: check };
   },

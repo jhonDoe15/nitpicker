@@ -12,7 +12,7 @@ function hoisted(code: string, type: string, ..._rest: string[]) {
 }
 
 function cached(code: string) {
-  return flagged(code, 'Ajv');
+  return { code, errors: [{ messageId: 'cacheValidator', data: { type: 'Ajv' } }] };
 }
 
 const AJV = 'import Ajv from "ajv";\n';
