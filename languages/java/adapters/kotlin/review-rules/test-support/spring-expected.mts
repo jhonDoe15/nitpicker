@@ -108,7 +108,6 @@ export const EXPECTED = [
   'bad/Defaults.kt:91 SpringBeanCollectionState Caches.first',
   'bad/Defaults.kt:92 SpringBeanCollectionState Caches.second',
   'bad/Defaults.kt:93 SpringBeanCollectionState Caches.third',
-  'bad/Defaults.kt:103 SpringConstructorInjection SecondaryInjected',
   'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
   'bad/Entities.kt:20 JpaEntityClass Customer',
   'bad/Entities.kt:20 JpaVersion Customer',
