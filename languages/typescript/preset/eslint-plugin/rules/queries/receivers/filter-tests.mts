@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { memberName, unwrapped } from '../../security/security-values.mts';
+import { findVariable } from '../../analysis/constant-resolution.mts';
+import { memberName, unwrapped, type Context } from '../../security/security-values.mts';
 import { chainOf, depthFirst, nodeChildren } from '../../typed/node-views.mts';
 
 const MEMBERSHIP_OWNED = 'has';
@@ -33,21 +34,55 @@ function rootName(node: TSESTree.Node): string | undefined {
   return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
 }
 
-function isClosureMembership(node: TSESTree.Node, rows: ReadonlySet<string>): boolean {
+function isDerivedFrom(
+  context: Context,
+  collection: TSESTree.Node,
+  source: string | undefined,
+): boolean {
+  const name = rootName(collection);
+  if (source === undefined || name === undefined) {
+    return false;
+  }
+  if (name === source) {
+    return true;
+  }
+  const definition = findVariable(context, collection, name)?.defs.at(0)?.node;
+  const init = definition?.type === AST_NODE_TYPES.VariableDeclarator ? definition.init : undefined;
+  return (
+    init !== null &&
+    init !== undefined &&
+    [...depthFirst<TSESTree.Node>(init, nodeChildren)].some(
+      (node) => node.type === AST_NODE_TYPES.Identifier && node.name === source,
+    )
+  );
+}
+
+function isClosureMembership(
+  context: Context,
+  node: TSESTree.Node,
+  scope: { readonly rows: ReadonlySet<string>; readonly source: string | undefined },
+): boolean {
   const callee = node.type === AST_NODE_TYPES.CallExpression ? unwrapped(node.callee) : undefined;
   if (callee?.type !== AST_NODE_TYPES.MemberExpression) {
     return false;
   }
   const method = memberName(callee);
   const root = rootName(callee.object);
-  return method === MEMBERSHIP_OWNED || (method === MEMBERSHIP_ANY && !rows.has(root ?? ''));
+  const membership = method === MEMBERSHIP_OWNED || method === MEMBERSHIP_ANY;
+  return (
+    membership && !scope.rows.has(root ?? '') && isDerivedFrom(context, callee.object, scope.source)
+  );
 }
 
 function isLengthRead(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.MemberExpression && memberName(node) === 'length';
 }
 
-export function isColumnComparison(callback: TSESTree.Node | undefined): boolean {
+export function isColumnComparison(
+  context: Context,
+  callback: TSESTree.Node | undefined,
+  receiver: TSESTree.Node,
+): boolean {
   const fn = unwrapped(callback);
   if (
     fn?.type !== AST_NODE_TYPES.ArrowFunctionExpression &&
@@ -58,8 +93,8 @@ export function isColumnComparison(callback: TSESTree.Node | undefined): boolean
   if (fn.returnType?.typeAnnotation.type === AST_NODE_TYPES.TSTypePredicate) {
     return false;
   }
-  const rows = boundNames(fn.params);
+  const scope = { rows: boundNames(fn.params), source: rootName(receiver) };
   return ![...depthFirst<TSESTree.Node>(fn.body, nodeChildren)].some(
-    (node) => isLengthRead(node) || isClosureMembership(node, rows),
+    (node) => isLengthRead(node) || isClosureMembership(context, node, scope),
   );
 }

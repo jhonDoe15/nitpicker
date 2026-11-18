@@ -1,5 +1,4 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import type TypeScript from 'typescript';
 import { calleeDeclaration, calleeFamily } from '../../../rules/queries/receivers/orm-callee.mts';
 import { TYPEORM } from '../../../rules/database/orm-modules.mts';
 import {
@@ -7,11 +6,12 @@ import {
   typeServices,
   type Context,
 } from '../../../rules/security/security-values.mts';
-import { ts } from '../../../rules/typed/typescript-views.mts';
+import { hasMember, ownerIndex } from '../typeorm-receivers.mts';
 import { allOf } from '../../edits/plans.mts';
 import { isPlainObject, keyName } from '../../support/objects.mts';
 import { hasCommentIn, replacing, type FixPlan } from '../../support/ranges.mts';
-import { countPolarity, negated, nullPolarity, placed, type Polarity } from './test-rewrite.mts';
+import { placed } from '../../edits/placement.mts';
+import { countPolarity, negated, nullPolarity, type Polarity } from './test-rewrite.mts';
 
 type Site = {
   readonly call: TSESTree.CallExpression;
@@ -30,28 +30,8 @@ const TARGETS = new Map<string, Target>([
   ['count', { renamed: 'exists', counts: true, byWhere: false }],
   ['countBy', { renamed: 'existsBy', counts: true, byWhere: true }],
 ]);
-const OWNERS = new Map([
-  ['Repository', 0],
-  ['EntityManager', 1],
-]);
 const OPTION_KEYS = new Set(['where', 'withDeleted']);
 const WHERE = 'where';
-
-function ownerIndex(declaration: TypeScript.Node | undefined): number | undefined {
-  const owner = declaration?.parent;
-  const name = owner !== undefined && ts.isClassDeclaration(owner) ? owner.name?.text : undefined;
-  return name === undefined ? undefined : OWNERS.get(name);
-}
-
-function hasMember(context: Context, receiver: TSESTree.Node, name: string): boolean {
-  const services = typeServices(context);
-  if (services === undefined) {
-    return false;
-  }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(receiver));
-  return checker.getPropertyOfType(type, name) !== undefined;
-}
 
 function optionsAllowed(
   options: TSESTree.CallExpressionArgument | undefined,
@@ -108,7 +88,7 @@ function rewrittenTest(
   positive: string,
 ): FixPlan {
   const text = polarity === 'present' ? positive : negated(positive);
-  return replacing(binary.range, placed(binary.parent, text));
+  return replacing(binary.range, placed(binary, text));
 }
 
 function boundPlan(

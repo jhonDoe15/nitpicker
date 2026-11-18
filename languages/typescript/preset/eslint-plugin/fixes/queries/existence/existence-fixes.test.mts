@@ -172,6 +172,14 @@ current.tester.run('no-whole-rows-for-one-value TypeORM exists suggestion', rule
       'return await orderRepo.existsBy(where);',
     ),
     exist(
+      'use({ exists: (await orderRepo.findOneBy(where)) !== null });',
+      'use({ exists: await orderRepo.existsBy(where) });',
+    ),
+    exist(
+      'use((await orderRepo.findOneBy(where)) === null);',
+      'use(!(await orderRepo.existsBy(where)));',
+    ),
+    exist(
       'return ready && (await orderRepo.findOneBy(where)) !== null;',
       'return ready && await orderRepo.existsBy(where);',
     ),
