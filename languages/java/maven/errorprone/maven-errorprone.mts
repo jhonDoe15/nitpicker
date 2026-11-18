@@ -6,12 +6,14 @@ import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
 import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
-import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
+import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
+import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 
 type Modular = boolean | 'all';
 type ErrorProneContext = {
@@ -53,6 +55,8 @@ const JVM_FLAGS = [
     (name) => `--add-opens=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
   ),
 ];
+const ERROR_PRONE_SHARES = 2;
+const DEADLINE_MARGIN_MS = 30_000;
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
 const MODULE_INFO = 'module-info.java';
 
@@ -178,6 +182,19 @@ function usesPreview(compiler: CompilerSettings): boolean {
   );
 }
 
+export function runnerFlags(
+  timeoutMs: number = numberOr(fieldOf(mavenBudget(), 'commandTimeoutMs'), 0),
+  { slots = toolSlots(), now = Date.now() } = {},
+): string[] {
+  const pool = [
+    `-Dnitpicker.errorprone.workers=${String(slots)}`,
+    ...toolHeapFlags(Math.max(1, slots / ERROR_PRONE_SHARES)),
+  ];
+  return Number.isFinite(timeoutMs) && timeoutMs > DEADLINE_MARGIN_MS
+    ? [...pool, `-Dnitpicker.errorprone.deadline=${String(now + timeoutMs - DEADLINE_MARGIN_MS)}`]
+    : pool;
+}
+
 function analyze(
   {
     module,
@@ -215,7 +232,7 @@ function analyze(
     spawn,
     timeoutMs,
     tool: 'Error Prone',
-    jvmArgs: JVM_FLAGS,
+    jvmArgs: [...JVM_FLAGS, ...runnerFlags(timeoutMs)],
     args: [
       path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java'),
       report,

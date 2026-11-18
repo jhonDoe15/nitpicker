@@ -30,9 +30,20 @@ function effectivePom(root) {
 `;
 }
 
-function projectWithFakeMaven({ timesOut = false } = {}) {
+function testSources(root, text) {
+  const directory = path.join(root, 'src/test/java/shop');
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path.join(directory, 'ShopTest.java'), text);
+  return path.join(root, 'src/test/java');
+}
+
+function projectWithFakeMaven({ timesOut = false, archunit = true } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-quick-')));
   roots.push(root);
+  testSources(
+    root,
+    archunit ? 'import com.tngtech.archunit.core.domain.JavaClasses;' : 'class ShopTest {}',
+  );
   writeFileSync(
     path.join(root, 'pom.xml'),
     '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
@@ -53,8 +64,8 @@ function projectWithFakeMaven({ timesOut = false } = {}) {
   return { root, spawn, buildCalls };
 }
 
-function buildArguments(quick) {
-  const { root, spawn, buildCalls } = projectWithFakeMaven();
+function buildArguments(quick, project = {}) {
+  const { root, spawn, buildCalls } = projectWithFakeMaven(project);
 
   expect(() => runMavenPreset(root, { maven: 'mvn', spawn, policy: { quick } })).toThrow(
     'stop after the build goals',
@@ -110,12 +121,24 @@ describe('the Maven build in a quick run', () => {
     expect(args.some((argument) => argument.includes('jacoco-maven-plugin'))).toBe(true);
   });
 
+  it('skips the tests when no test source uses ArchUnit, since a project may fail a run of no tests', () => {
+    const args = buildArguments(true, { archunit: false });
+
+    expect(
+      args.filter((argument) => argument === 'test' || /^-D(?:test|skipTests)\b/u.test(argument)),
+    ).toEqual(['test', '-DskipTests']);
+  });
+
   it('plans the goals from the run mode', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-goals-'));
+    roots.push(root);
+    const testSourceRoots = [testSources(root, 'import com.tngtech.archunit.junit.ArchTest;')];
+
     expect(
       buildGoals({
         quick: true,
         pinned,
-        modules: [{ archunitIncludes: '**/*Rules.class, **/*ArchTest.class' }, {}],
+        modules: [{ archunitIncludes: '**/*Rules.class, **/*ArchTest.class', testSourceRoots }, {}],
       }),
     ).toEqual([
       'test',

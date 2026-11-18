@@ -312,6 +312,29 @@ Part of the [Java preset guide](../java-preset.md).
   its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
   updated from a blocking call (`this.total += future.join()`) is reported by none of them.
 
+## Large projects
+
+- **Slices.** `ErrorProneReport.java` splits the sources of each compile into up to
+  `-Dnitpicker.errorprone.workers` slices of about equal size (at least 40 files each) and compiles
+  them on that many threads of its one JVM. A slice sees the other slices through the project's
+  own compiled classes on its class path, as the Lombok split already does, and keeps its own
+  patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
+  pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
+  the number of cores. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
+  with the same 8027 diagnostics.
+- **`Immutable` only when it can match.** The check walks every supertype of every class, which
+  takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
+  types annotated with `com.google.errorprone.annotations.Immutable` and their subtypes, so the
+  runner turns it off (`-Xep:Immutable:OFF`, before the project's own flags, which can turn it back
+  on) when that annotation class is on neither the class path nor the module path and no source
+  names it. A library that uses the annotation brings its jar (`error_prone_annotations`) along, as
+  Guava does.
+- **Time limit.** `-Dnitpicker.errorprone.deadline=<epoch ms>` (Maven: the command limit less half a
+  minute; Gradle: the run's deadline) stops the compile when it is not done in time. The runner
+  then writes an empty report and `errorprone-skipped.txt` with the reason, so only Error Prone's
+  findings are lost, as an `Error Prone did not run` tool error, and the other tools of the Java
+  analyzer still report.
+
 ## Checks that are off
 
 `Default` is Error Prone's own default for the check.

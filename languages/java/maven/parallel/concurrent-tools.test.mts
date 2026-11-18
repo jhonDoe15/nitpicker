@@ -6,7 +6,8 @@ import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs'
 import { runToolsConcurrently } from './concurrent-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { failWith, writeMarker } from './test-support/marker-tools.mts';
+import { failWith, writeJavaOptions, writeMarker } from './test-support/marker-tools.mts';
+import { toolHeapFlags } from './tool-slots.mts';
 
 const TOOLS_URL = checkoutModuleUrl(new URL('test-support/marker-tools.mjs', import.meta.url)).href;
 type Task = {
@@ -18,7 +19,10 @@ type Task = {
 
 const trees = temporaryTrees('nitpicker-concurrent-tools-');
 
-afterEach(trees.cleanup);
+afterEach(() => {
+  trees.cleanup();
+  vi.unstubAllEnvs();
+});
 
 function markerTasks(count: number): Task[] {
   const root = trees.tree();
@@ -54,6 +58,23 @@ describe('runToolsConcurrently', () => {
       callUntyped(runToolsConcurrently, tasks, {});
     }).toThrow(new Error('first failure'));
     expect(markers(tasks.slice(0, 1))).toEqual(['tool 0']);
+  });
+
+  it('sizes the heap of the JVMs a tool starts by the number of tools at once', () => {
+    const file = path.join(trees.tree(), 'java-options');
+    const task = {
+      run: writeJavaOptions,
+      url: TOOLS_URL,
+      name: 'writeJavaOptions',
+      options: { file },
+    };
+    vi.stubEnv('JDK_JAVA_OPTIONS', '-Dfile.encoding=UTF-8');
+
+    callUntyped(runToolsConcurrently, [task], {});
+
+    expect(readFileSync(file, 'utf8')).toBe(
+      [...toolHeapFlags(), '-Dfile.encoding=UTF-8'].join(' '),
+    );
   });
 
   it('runs the tools in order in this process with an injected spawn', () => {
