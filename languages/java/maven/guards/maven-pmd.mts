@@ -1,26 +1,48 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runJava } from '../maven-command.mjs';
+import { runJava } from '../programs/java-command.mts';
+import { compiledProgram } from '../programs/helper-programs.mts';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { handWrittenRoots } from '../generated/generated-roots.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
 
 type CpdOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
+const CPD_TOOL = 'PMD CPD';
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
 const CPD_SKIPPED = 'cpd-skipped.txt';
 
 export { runPmd } from '../maven-lint.mts';
 
+function cpdLauncher(options: CpdOptions, command: unknown): unknown {
+  const launcher = textOf(fieldOf(command, 'launcher'));
+  if (!launcher.endsWith('.java')) {
+    return { classpath: fieldOf(options['tools'], 'pmd'), mainClass: launcher };
+  }
+  const libraries = textsOf(fieldOf(options['tools'], 'pmd'));
+  const classes = callUntyped(compiledProgram, {
+    tool: CPD_TOOL,
+    name: 'cpd-report',
+    sources: [launcher],
+    version: textOf(fieldOf(options['pinned'], 'pmd')),
+    libraries,
+    cwd: fieldOf(options['module'], 'basedir'),
+    spawn: options['spawn'],
+  });
+  return {
+    classpath: [textOf(classes), ...libraries],
+    mainClass: path.basename(launcher, '.java'),
+  };
+}
+
 function launchCpd(options: CpdOptions, command: unknown): unknown {
   try {
     return callUntyped(runJava, {
-      tool: 'PMD CPD',
-      classpath: fieldOf(options['tools'], 'pmd'),
-      mainClass: fieldOf(command, 'launcher'),
+      tool: CPD_TOOL,
+      ...fieldsOf(cpdLauncher(options, command)),
       args: fieldOf(command, 'args'),
       cwd: fieldOf(options['module'], 'basedir'),
       spawn: options['spawn'],

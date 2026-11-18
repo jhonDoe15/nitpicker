@@ -5,7 +5,11 @@ import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repos
 import { parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { spawnResult } from '../../adapters/test-support/spawn-result.mts';
 import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
-import { handWrittenClasses } from './spotbugs-targets.mts';
+import { handWrittenClasses as listClasses } from './spotbugs-targets.mts';
+
+const compile = () => '/helper-classes';
+const handWrittenClasses = (options: Omit<Parameters<typeof listClasses>[0], 'compile'>) =>
+  listClasses({ ...options, compile });
 
 type Module = Parameters<typeof handWrittenClasses>[0]['module'];
 
@@ -34,11 +38,12 @@ describe('classes SpotBugs analyzes', () => {
       invocations,
       mkdirs,
       spawnWriting: (listed) => (_command, args) => {
-        const tokens = readFileSync((args[0] ?? '').slice(1), 'utf8')
+        const lines = readFileSync((args[0] ?? '').slice(1), 'utf8')
           .split('\n')
           .map((line) => textOf(parseJson(line)));
+        const tokens = lines.slice(lines.indexOf('GeneratedClasses') + 1);
         invocations.push(tokens);
-        writeFileSync(tokens[1] ?? '', listed);
+        writeFileSync(tokens[0] ?? '', listed);
         return spawnResult({ status: 0 });
       },
       moduleOf: (roots) => ({
@@ -69,7 +74,7 @@ describe('classes SpotBugs analyzes', () => {
       list: path.join(basedir, 'report/spotbugs-targets.txt'),
       empty: false,
     });
-    const tokens = invocations[0]?.slice(2);
+    const tokens = invocations[0]?.slice(1);
     expect(tokens?.filter((_, index) => index % 2 === 0)).toEqual([
       '--classes',
       '--generated',

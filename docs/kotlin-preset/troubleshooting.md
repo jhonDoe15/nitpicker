@@ -13,4 +13,5 @@ finding. The ones this preset meets:
   replaces that module's mutation findings, and the other findings are still reported.
 - [A project tool config is missing or broken](../troubleshooting.md#a-project-tool-config-is-missing-or-broken):
   a detekt config named by `kotlin.detektConfig` or `precedence`.
+- [Tool hosting misbehaves](../troubleshooting.md#tool-hosting-misbehaves): `NITPICKER_NO_TOOL_HOSTS=1` runs each tool in its own JVM per module again.
 - Every preset: [Exit code 2 and tool errors](../troubleshooting.md#exit-code-2-and-tool-errors), [no merge base](../troubleshooting.md#no-merge-base) (a shallow clone), [tests fail](../troubleshooting.md#tests-fail) and [on the base](../troubleshooting.md#tests-fail-on-the-base), [another run is in progress](../troubleshooting.md#another-run-is-in-progress) and [a policy-loosened finding](../troubleshooting.md#a-policy-loosened-finding).

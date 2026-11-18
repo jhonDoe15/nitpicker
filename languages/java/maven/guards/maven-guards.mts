@@ -1,7 +1,8 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { javaCommand, runJava } from '../maven-command.mjs';
+import { javaCommand } from '../maven-command.mjs';
+import { runJava } from '../programs/java-command.mts';
 import { javaFiles } from '../maven-lint.mts';
 import { classFiles } from '../../builds/classes/class-file.mjs';
 import { runPermits } from '../../builds/classes/class-permits.mts';

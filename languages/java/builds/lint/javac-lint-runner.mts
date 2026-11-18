@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { hostedToolSpawn } from '../host/client/host-tools.mts';
 import { argumentFileToken } from './javac-options.mjs';
 import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mjs';
 import {
@@ -61,7 +61,7 @@ function compileForLint({ plan, work, args, files }: Compile): Compiled {
     [...args, ...files].map((token) => textOf(argumentFileToken(token))).join('\n'),
   );
   const result = callUntyped(
-    plan['spawn'] ?? spawnSync,
+    plan['spawn'] ?? hostedToolSpawn,
     plan.javac,
     [...ENGLISH_OUTPUT, `@${argumentFile}`],
     { cwd: plan.basedir, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES, timeout: LINT_TIMEOUT_MS },

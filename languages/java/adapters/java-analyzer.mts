@@ -54,6 +54,7 @@ const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const DESIGN_DIRECTORY = 'languages/java/gradle/design';
 const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
+const HOST_DIRECTORY = 'languages/java/gradle/host';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -132,6 +133,10 @@ function configurationContents(): Map<string, string> {
     recursive: true,
     encoding: 'utf8',
   });
+  const host = readdirSync(path.join(packageRoot, HOST_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
   return closureOf(
     [
       ...ENTRY_FILES,
@@ -140,6 +145,7 @@ function configurationContents(): Map<string, string> {
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
       ...javaSources(DESIGN_DIRECTORY, design),
       ...javaSources(EFFECTS_DIRECTORY, effects),
+      ...javaSources(HOST_DIRECTORY, host),
     ],
     packageRoot,
   );

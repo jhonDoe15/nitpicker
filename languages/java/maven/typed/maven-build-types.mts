@@ -44,6 +44,7 @@ export type MavenPresetOptions = {
   readonly spawn?: unknown;
   readonly timeoutMs?: number | undefined;
   readonly pitDeadline?: number | undefined;
+  readonly warn?: { readonly write: (text: string) => unknown } | undefined;
   readonly onModules?: ModulesListener | undefined;
 };
 type ModulesListener = (modules: readonly MavenModule[]) => void;

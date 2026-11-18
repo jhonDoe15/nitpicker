@@ -1,5 +1,6 @@
 import type { SpawnSyncReturns } from 'node:child_process';
 import { type JavaSpawn, callUntyped } from '../../adapters/typed/java-values.mts';
+import { hostedSpawnFor } from '../../builds/host/client/host-client.mts';
 import { javaCommand as untypedJavaCommand, runJava as untypedRunJava } from '../maven-command.mjs';
 
 export type JavaRun = {
@@ -18,5 +19,6 @@ export type JavaRun = {
 export const javaCommand: (name: string) => string = untypedJavaCommand;
 
 export function runJava(options: JavaRun): unknown {
-  return callUntyped(untypedRunJava, options);
+  const spawn = options.spawn ?? hostedSpawnFor(options);
+  return callUntyped(untypedRunJava, spawn === undefined ? options : { ...options, spawn });
 }

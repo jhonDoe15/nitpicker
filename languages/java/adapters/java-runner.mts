@@ -44,6 +44,7 @@ type JavaSnapshotOptions = {
   readonly maven?: string | undefined;
   readonly policy?: JavaPolicy | undefined;
   readonly spawn?: JavaSpawn | undefined;
+  readonly warn?: { readonly write: (text: string) => unknown } | undefined;
 };
 type JavaSnapshot = {
   readonly findings: readonly JavaFinding[];
@@ -105,6 +106,7 @@ export function analyzeJavaSnapshot(
     maven = environment['NITPICKER_MAVEN'],
     policy,
     spawn,
+    warn,
   }: JavaSnapshotOptions = {},
 ): JavaSnapshot {
   try {
@@ -114,6 +116,7 @@ export function analyzeJavaSnapshot(
       environment,
       policy,
       spawn,
+      warn,
       budget: withPitDeadline(javaExecutionBudget(), environment),
     });
     return { findings, ...moduleImportsSection(imports, policy?.history) };
@@ -217,14 +220,14 @@ export function readRunnerPolicy(
 
 export function runJava(
   runnerArguments: readonly string[],
-  { spawn }: { readonly spawn?: JavaSpawn } = {},
+  { spawn, warn }: Pick<JavaSnapshotOptions, 'spawn' | 'warn'> = {},
 ): JavaSnapshot {
   const { projectRoot, policy } = readRunnerPolicy(runnerArguments);
-  return analyzeJavaSnapshot(realpathSync.native(projectRoot), { policy, spawn });
+  return analyzeJavaSnapshot(realpathSync.native(projectRoot), { policy, spawn, warn });
 }
 
 function main(runnerArguments: readonly string[]): void {
-  process.stdout.write(`${JSON.stringify(runJava(runnerArguments))}\n`);
+  process.stdout.write(`${JSON.stringify(runJava(runnerArguments, { warn: process.stderr }))}\n`);
 }
 
 const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };
