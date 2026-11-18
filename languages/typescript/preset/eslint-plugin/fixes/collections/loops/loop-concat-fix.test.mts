@@ -1,4 +1,7 @@
-import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
+import {
+  suggestionCases,
+  typedCaseProject,
+} from '../../../test-support/projects/typed-ts-project.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from '../../../rules/collections/no-accumulator-concat.mts';
 
@@ -40,23 +43,13 @@ function constLoopOf(statement: string, before = '', after = '  return out;') {
   return loopOf(statement, before, after).replace('let out', 'const out');
 }
 
-function pushes(body: string, output: string, parameters?: string) {
-  return {
-    ...typed(wrap(body, parameters)),
-    errors: [
-      {
-        messageId: 'loopConcat',
-        suggestions: [
-          { messageId: 'pushOntoArray', output: `${header}${wrap(output, parameters)}` },
-        ],
-      },
-    ],
-  };
-}
-
-function declines(body: string, parameters?: string) {
-  return { ...typed(wrap(body, parameters)), errors: [{ messageId: 'loopConcat' }] };
-}
+const { pushes, declines } = suggestionCases({
+  typed,
+  header,
+  wrap,
+  messageId: 'loopConcat',
+  suggestionId: 'pushOntoArray',
+});
 
 tester.run('no-accumulator-concat loop suggestion', rule, {
   valid: [],

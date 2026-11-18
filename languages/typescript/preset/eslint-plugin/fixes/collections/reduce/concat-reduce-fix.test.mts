@@ -1,4 +1,4 @@
-import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
+import { fixCases, typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from '../../../rules/collections/no-accumulator-concat.mts';
 
@@ -39,13 +39,7 @@ function fn(body: string, parameters = 'rows: Row[]') {
   return `export const a = (${parameters}) => ${body};`;
 }
 
-function fixes(code: string, output: string) {
-  return { ...typed(code), errors: ERR, output: `${header}${output}` };
-}
-
-function declines(code: string) {
-  return { ...typed(code), errors: ERR, output: null };
-}
+const { fixes, declines } = fixCases({ typed, header, errors: ERR });
 
 tester.run('no-accumulator-concat reduce fixes', rule, {
   valid: [],

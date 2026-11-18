@@ -12,16 +12,16 @@ export function fallbackSpreadFix(
   const { sourceCode } = context;
   const { left } = logical;
   const dots = sourceCode.getFirstToken(spread);
-  const first = dots === null ? null : sourceCode.getTokenAfter(dots);
-  const last = sourceCode.getLastToken(spread);
+  const first = (dots === null ? undefined : sourceCode.getTokenAfter(dots)) ?? undefined;
+  const last = sourceCode.getLastToken(spread) ?? undefined;
   const plain =
     spread.argument === logical &&
     left.type !== AST_NODE_TYPES.SequenceExpression &&
     !hasCommentIn(sourceCode, spread.range);
-  if (!plain || first === null || last === null) {
+  if (!plain || first === undefined || last === undefined) {
     return undefined;
   }
-  if (!isScriptFile(context.filename) && !canSpreadValue(context, left)) {
+  if (!(isScriptFile(context.filename) || canSpreadValue(context, left))) {
     return undefined;
   }
   return replacing([first.range[0], last.range[1]], sourceCode.getText(left));

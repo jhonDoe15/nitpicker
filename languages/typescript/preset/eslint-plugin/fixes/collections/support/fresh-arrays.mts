@@ -1,8 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices, unwrapped, type Context } from '../../../rules/security/security-values.mts';
-import { arrayItemTypes } from '../../../rules/support/array-items.mts';
+import { arrayItemTypes, unionMembers } from '../../../rules/support/array-items.mts';
 import { hasArrayType } from '../../../rules/support/checked-types.mts';
+import { chainOf } from '../../../rules/typed/node-views.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
 import { isGlobalName } from './globals.mts';
 
@@ -49,7 +50,7 @@ export function plainMethod(call: TSESTree.CallExpression): Plain | undefined {
 function mayBeHole(checker: TypeScript.TypeChecker, item: TypeScript.Type): boolean {
   const constraint = checker.getBaseConstraintOfType(item) ?? item;
   return [item, constraint].some((type) =>
-    (type.isUnion() ? type.types : [type]).some((member) => (member.flags & HOLE_FLAGS) !== 0),
+    unionMembers(type).some((member) => (member.flags & HOLE_FLAGS) !== 0),
   );
 }
 
@@ -89,7 +90,7 @@ export function isFreshCall(context: Context, call: TSESTree.CallExpression): bo
     return isGlobalName(context, call, plain.owner);
   }
   const dense = DENSE_METHODS.has(plain.name);
-  if (!dense && !COPYING_METHODS.has(plain.name)) {
+  if (!(dense || COPYING_METHODS.has(plain.name))) {
     return false;
   }
   return (
@@ -107,25 +108,24 @@ function isSizedArrayCall(node: TSESTree.CallExpression | TSESTree.NewExpression
   );
 }
 
-export function startsFromSizedArray(node: TSESTree.Node): boolean {
-  let current = unwrapped(node);
-  for (;;) {
-    if (current.type === AST_NODE_TYPES.NewExpression) {
-      return isSizedArrayCall(current);
-    }
-    if (current.type === AST_NODE_TYPES.CallExpression) {
-      if (isSizedArrayCall(current)) {
-        return true;
-      }
-      const callee = unwrapped(current.callee);
-      if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-        return false;
-      }
-      current = unwrapped(callee.object);
-    } else if (current.type === AST_NODE_TYPES.MemberExpression) {
-      current = unwrapped(current.object);
-    } else {
-      return false;
-    }
+function isSizedStart(node: TSESTree.Node): boolean {
+  return (
+    (node.type === AST_NODE_TYPES.NewExpression || node.type === AST_NODE_TYPES.CallExpression) &&
+    isSizedArrayCall(node)
+  );
+}
+
+function nextReceiver(current: TSESTree.Node): TSESTree.Node | undefined {
+  if (current.type === AST_NODE_TYPES.MemberExpression) {
+    return unwrapped(current.object);
   }
+  if (current.type !== AST_NODE_TYPES.CallExpression) {
+    return undefined;
+  }
+  const callee = unwrapped(current.callee);
+  return callee.type === AST_NODE_TYPES.MemberExpression ? unwrapped(callee.object) : undefined;
+}
+
+export function startsFromSizedArray(node: TSESTree.Node): boolean {
+  return chainOf<TSESTree.Node>(unwrapped(node), nextReceiver).some(isSizedStart);
 }

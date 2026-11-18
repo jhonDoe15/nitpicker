@@ -1,4 +1,4 @@
-import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
+import { fixCases, typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from '../../../rules/collections/no-accumulating-spread.mts';
 
@@ -20,13 +20,7 @@ const lowLib = typedCaseProject<Errors>({
 });
 const ERR = [{ messageId: 'reduceArray' }];
 
-function fixes(code: string, output: string) {
-  return { ...typed(code), errors: ERR, output: `${header}${output}` };
-}
-
-function declines(code: string) {
-  return { ...typed(code), errors: ERR, output: null };
-}
+const { fixes, declines } = fixCases({ typed, header, errors: ERR });
 
 function fn(body: string, parameters = 'rows: Row[]') {
   return `export const a = (${parameters}) => ${body};`;
@@ -109,40 +103,45 @@ tester.run('no-accumulating-spread array fixes', rule, {
       fn('rows\n  .filter((r) => r.n)\n  .reduce((acc, r) => [...acc, r.id], [])'),
       fn('rows\n  .filter((r) => r.n)\n  .map((r) => r.id)'),
     ),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...new Set(r.tags)], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...r.id], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...r.either], [])')),
-    declines(fn('new Array<Row>(3).reduce((acc, r) => [...acc, r.id], [])')),
-    declines(fn('Array<Row>(3).reduce((acc, r) => [...acc, ...r.tags], [])')),
-    declines(fn('new Array<Row>(rows.length).slice(1).reduce((acc, r) => [...acc, r.id], [])')),
+    ...[
+      'rows.reduce((acc, r) => [...acc, ...new Set(r.tags)], [])',
+      'rows.reduce((acc, r) => [...acc, ...r.id], [])',
+      'rows.reduce((acc, r) => [...acc, ...r.either], [])',
+      'new Array<Row>(3).reduce((acc, r) => [...acc, r.id], [])',
+      'Array<Row>(3).reduce((acc, r) => [...acc, ...r.tags], [])',
+      'new Array<Row>(rows.length).slice(1).reduce((acc, r) => [...acc, r.id], [])',
+    ].map((body) => declines(fn(body))),
     fixes(
       fn('Array.from({ length: 3 }, () => rows[0]!).reduce((acc, r) => [...acc, r.id], [])'),
       fn('Array.from({ length: 3 }, () => rows[0]!).map((r) => r.id)'),
     ),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...(r as any).items], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...new Map([[r.id, r.n]])], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, ...[r.maybe, r.id]], [])')),
-    declines(fn('rows.reduce((acc, r) => [...r.tags, ...acc], [])')),
-    declines(fn('rows.reduce((acc, r) => [r.id, ...acc], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, acc.length], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, , r.id], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, r.id], [first])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, r.id], [] as string[])')),
-    declines(fn('rows.reduce<string[]>((acc, r) => [...acc, r.id], [])')),
-    declines(fn('rows.reduce((acc: string[], r) => [...acc, r.id], [])')),
-    declines(fn('rows.reduceRight((acc, r) => [...acc, r.id], [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, r.id].slice(1), [])')),
-    declines(fn('rows.reduce((acc, r) => (r.n ? [...acc, r.id] : acc), [])')),
-    declines(fn('rows.reduce((acc, r) => { if (!r.n) return acc; return [...acc, r.id]; }, [])')),
-    declines(fn('rows.reduce((acc, r) => [...acc, r.id /* why */], [])')),
-    declines(fn('rows?.reduce((acc, r) => [...acc, r.id], [])')),
+    ...[
+      'rows.reduce((acc, r) => [...acc, ...(r as any).items], [])',
+      'rows.reduce((acc, r) => [...acc, ...new Map([[r.id, r.n]])], [])',
+      'rows.reduce((acc, r) => [...acc, ...[r.maybe, r.id]], [])',
+      'rows.reduce((acc, r) => [...r.tags, ...acc], [])',
+      'rows.reduce((acc, r) => [r.id, ...acc], [])',
+      'rows.reduce((acc, r) => [...acc, acc.length], [])',
+      'rows.reduce((acc, r) => [...acc], [])',
+      'rows.reduce((acc, r) => [...acc, , r.id], [])',
+      'rows.reduce((acc, r) => [...acc, r.id], [first])',
+      'rows.reduce((acc, r) => [...acc, r.id], [] as string[])',
+      'rows.reduce<string[]>((acc, r) => [...acc, r.id], [])',
+      'rows.reduce((acc: string[], r) => [...acc, r.id], [])',
+      'rows.reduceRight((acc, r) => [...acc, r.id], [])',
+      'rows.reduce((acc, r) => [...acc, r.id].slice(1), [])',
+      'rows.reduce((acc, r) => (r.n ? [...acc, r.id] : acc), [])',
+      'rows.reduce((acc, r) => { if (!r.n) return acc; return [...acc, r.id]; }, [])',
+      'rows.reduce((acc, r) => [...acc, r.id /* why */], [])',
+      'rows?.reduce((acc, r) => [...acc, r.id], [])',
+
+      'rows.reduce(function (acc, r) { return [...acc, arguments.length]; }, [])',
+      'rows.reduce(async (acc, r) => [...acc, await r.id], [])',
+    ].map((body) => declines(fn(body))),
     declines(fn('rows?.reduce((acc, r) => [...acc, r.id], []).length', 'rows?: Row[]')),
     declines(fn('rows.reduce((acc, r) => [...acc, r?.id], [])', 'rows: (Row | undefined)[]')),
     declines(fn('rows.reduce((acc, r) => [...acc, ...r.tags], [])', 'rows: any')),
     declines(fn('rows.reduce((acc, r) => [...acc, ...r.items], [])', 'rows: Set<Row>')),
-    declines(fn('rows.reduce(function (acc, r) { return [...acc, arguments.length]; }, [])')),
-    declines(fn('rows.reduce(async (acc, r) => [...acc, await r.id], [])')),
     declines(
       fn(
         'rows.reduce((acc, r) => [...acc, ...r.tags], [])',

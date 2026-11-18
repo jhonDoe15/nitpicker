@@ -20,6 +20,10 @@ export type Membership = {
 const ABSENT_COMPARISONS = new Set(['=== -1', '== -1', '< 0', '<= -1']);
 const PRESENT_COMPARISONS = new Set(['!== -1', '!= -1', '>= 0', '> -1']);
 
+function identifierName(node: TSESTree.Node | undefined): string | undefined {
+  return node?.type === AST_NODE_TYPES.Identifier ? node.name : undefined;
+}
+
 function identityElement(callback: TSESTree.Node | undefined): TSESTree.Node | undefined {
   const name = singleParameter(callback);
   const body = returnedExpression(callback);
@@ -33,27 +37,22 @@ function identityElement(callback: TSESTree.Node | undefined): TSESTree.Node | u
   }
   const sides = equalitySides(comparison);
   const [left, right] = (sides ?? []).map(unwrapped);
-  const isName = (node: TSESTree.Node | undefined): boolean =>
-    node?.type === AST_NODE_TYPES.Identifier && node.name === name;
   if (left === undefined || right === undefined) {
     return undefined;
   }
-  if (isName(left) && !referencesName(right, name)) {
+  if (identifierName(left) === name && !referencesName(right, name)) {
     return right;
   }
-  return isName(right) && !referencesName(left, name) ? left : undefined;
+  return identifierName(right) === name && !referencesName(left, name) ? left : undefined;
 }
 
-function comparisonPresence(call: TSESTree.CallExpression): boolean | undefined {
+function comparisonKey(call: TSESTree.CallExpression): string | undefined {
   const comparison = outerOf(call).parent;
   if (comparison?.type !== AST_NODE_TYPES.BinaryExpression || comparison.left !== call) {
     return undefined;
   }
   const key = `${comparison.operator} ${String(numberValue(comparison.right))}`;
-  if (ABSENT_COMPARISONS.has(key)) {
-    return false;
-  }
-  return PRESENT_COMPARISONS.has(key) ? true : undefined;
+  return ABSENT_COMPARISONS.has(key) || PRESENT_COMPARISONS.has(key) ? key : undefined;
 }
 
 function plainCall(call: TSESTree.CallExpression): boolean {
@@ -90,10 +89,16 @@ export function membershipOf(
       ? undefined
       : { call, replaced: call, element, present: true, strict: true };
   }
-  const present = method?.name === 'indexOf' ? comparisonPresence(call) : undefined;
+  const key = method?.name === 'indexOf' ? comparisonKey(call) : undefined;
   const comparison = outerOf(call).parent;
-  if (present === undefined || comparison === undefined || outerOf(call) !== call) {
+  if (key === undefined || comparison === undefined || outerOf(call) !== call) {
     return undefined;
   }
-  return { call, replaced: comparison, element: argument, present, strict: true };
+  return {
+    call,
+    replaced: comparison,
+    element: argument,
+    present: PRESENT_COMPARISONS.has(key),
+    strict: true,
+  };
 }

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import type { SourceCode } from '../../../../typed/node-views.mts';
+import { chainOf, type SourceCode } from '../../../../typed/node-views.mts';
 import { operandsOf } from '../../../../typed/syntax-views.mts';
 import { someNode, unwrapped } from '../../repeated-runs.mts';
 import { isSimpleValue } from '../simple-values.mts';
@@ -24,12 +24,13 @@ function receiverOf(node: TSESTree.Node): TSESTree.Identifier | undefined {
 
 function meaningOf(node: TSESTree.Node, references: References): Meaning | undefined {
   const inner = unwrapped(node);
-  let negations = 0;
-  let current = inner;
-  while (current.type === AST_NODE_TYPES.UnaryExpression && current.operator === '!') {
-    negations += 1;
-    current = unwrapped(current.argument);
-  }
+  const chain = chainOf<TSESTree.Node>(inner, (link) =>
+    link.type === AST_NODE_TYPES.UnaryExpression && link.operator === '!'
+      ? unwrapped(link.argument)
+      : undefined,
+  );
+  const negations = chain.length - 1;
+  const current = chain.at(-1) ?? inner;
   const receiver = receiverOf(current);
   const membership =
     receiver !== undefined && references.has(receiver) ? membershipOf(receiver) : undefined;
@@ -76,7 +77,9 @@ function changesValues(test: TSESTree.Node): boolean {
   );
 }
 
-function mentions(guard: Guard, test: TSESTree.Node, operator: string, present: boolean): boolean {
+type Mention = { readonly operator: string; readonly present: boolean };
+
+function mentions(guard: Guard, test: TSESTree.Node, { operator, present }: Mention): boolean {
   if (changesValues(test)) {
     return false;
   }
@@ -103,18 +106,18 @@ function guardingIf(statement: TSESTree.Node): TSESTree.IfStatement | undefined 
 function blockGuard(guard: Guard, statement: TSESTree.Node): boolean {
   const owner = guardingIf(statement);
   if (owner !== undefined) {
-    return mentions(guard, owner.test, '&&', false);
+    return mentions(guard, owner.test, { operator: '&&', present: false });
   }
   const holder = statement.parent;
   if (holder?.type !== AST_NODE_TYPES.BlockStatement && holder?.type !== AST_NODE_TYPES.Program) {
     return false;
   }
-  const before = holder.body[holder.body.indexOf(statement as TSESTree.ProgramStatement) - 1];
+  const before = holder.body[holder.body.findIndex((item) => item === statement) - 1];
   return (
     before?.type === AST_NODE_TYPES.IfStatement &&
     before.alternate === null &&
     isExit(before.consequent) &&
-    mentions(guard, before.test, '||', true)
+    mentions(guard, before.test, { operator: '||', present: true })
   );
 }
 
@@ -130,7 +133,7 @@ export function isGuardedPush(
   }
   const guard = { sourceCode, references, text: sourceCode.getText(element) };
   if (push.parent.type === AST_NODE_TYPES.LogicalExpression) {
-    return mentions(guard, push.parent.left, '&&', false);
+    return mentions(guard, push.parent.left, { operator: '&&', present: false });
   }
   return blockGuard(guard, statement);
 }

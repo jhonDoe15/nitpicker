@@ -1,15 +1,12 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
-import type { SourceCode } from '../../rules/typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { scopeChain, type SourceCode } from '../../rules/typed/node-views.mts';
 import { visibleVariable } from '../support/scope.mts';
 
 const MAX_SUFFIX = 50;
 
-export function globalScopeOf(scope: TSESLint.Scope.Scope): TSESLint.Scope.Scope {
-  let current = scope;
-  while (current.upper !== null) {
-    current = current.upper;
-  }
-  return current;
+function globalScopeOf(scope: TSESLint.Scope.Scope): TSESLint.Scope.Scope {
+  return scopeChain(scope).at(-1) ?? scope;
 }
 
 function isTaken(sourceCode: SourceCode, sites: readonly TSESTree.Node[], name: string): boolean {
@@ -22,16 +19,13 @@ function isTaken(sourceCode: SourceCode, sites: readonly TSESTree.Node[], name: 
   });
 }
 
-export function declaredBelow(scope: TSESLint.Scope.Scope, name: string): boolean {
+function declaredBelow(scope: TSESLint.Scope.Scope, name: string): boolean {
   const pending = [scope];
-  for (let index = 0; index < pending.length; index += 1) {
-    const current = pending[index];
-    if (current?.set.has(name) === true) {
+  for (const current of pending) {
+    if (current.set.has(name)) {
       return true;
     }
-    for (const child of current?.childScopes ?? []) {
-      pending.push(child);
-    }
+    appendAll(pending, current.childScopes);
   }
   return false;
 }
@@ -49,11 +43,7 @@ export function freeName(
   },
 ): string | undefined {
   const scope = sourceCode.getScope(within);
-  for (let suffix = 1; suffix <= MAX_SUFFIX; suffix += 1) {
-    const name = suffix === 1 ? base : `${base}${String(suffix)}`;
-    if (!isTaken(sourceCode, sites, name) && !declaredBelow(scope, name)) {
-      return name;
-    }
-  }
-  return undefined;
+  return Array.from({ length: MAX_SUFFIX }, (_, index) =>
+    index === 0 ? base : `${base}${String(index + 1)}`,
+  ).find((name) => !(isTaken(sourceCode, sites, name) || declaredBelow(scope, name)));
 }

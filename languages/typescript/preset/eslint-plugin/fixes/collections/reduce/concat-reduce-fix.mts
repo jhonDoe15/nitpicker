@@ -1,14 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import type { Callback } from '../../../rules/typed/syntax-views.mts';
 import { hasSingleType } from '../../../rules/support/array-items.mts';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { replacing, type FixPlan } from '../../support/ranges.mts';
-import {
-  asExpressionBody,
-  expressionText,
-  reduceSite,
-  rewrittenCall,
-  type Callback,
-} from './reduce-site.mts';
+import { asExpressionBody, expressionText, reduceSite, rewrittenCall } from './reduce-site.mts';
 import { hasMethod, isPlainConcatArgument } from './type-proofs.mts';
 
 function isOnlyConcat(

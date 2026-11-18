@@ -20,12 +20,14 @@ function isFalsyLiteral(type: TypeScript.Type): boolean {
   if (type.isNumberLiteral()) {
     return type.value === 0;
   }
-  if ((type.flags & ts.TypeFlags.BigIntLiteral) !== 0) {
-    return (type as TypeScript.BigIntLiteralType).value.base10Value === '0';
+  if (type.isLiteral() && (type.flags & ts.TypeFlags.BigIntLiteral) !== 0) {
+    const { value } = type;
+    return typeof value === 'object' && value.base10Value === '0';
   }
   return (
     (type.flags & ts.TypeFlags.BooleanLiteral) !== 0 &&
-    (type as TypeScript.Type & { intrinsicName?: string }).intrinsicName === 'false'
+    'intrinsicName' in type &&
+    type.intrinsicName === 'false'
   );
 }
 
@@ -54,7 +56,7 @@ function isSpreadableLeaf(type: TypeScript.Type): boolean {
   return true;
 }
 
-export function isSpreadableType(checker: TypeScript.TypeChecker, type: TypeScript.Type): boolean {
+function isSpreadableType(checker: TypeScript.TypeChecker, type: TypeScript.Type): boolean {
   const constrained = unionMembers(
     unionMembers([type]).map((member) => checker.getBaseConstraintOfType(member) ?? member),
   );

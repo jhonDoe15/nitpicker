@@ -1,13 +1,14 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../../rules/security/security-values.mts';
-import type { SourceCode } from '../../../rules/typed/node-views.mts';
+import { ancestorsOf, chainOf, type SourceCode } from '../../../rules/typed/node-views.mts';
+import { soleReturnedValue, type Callback } from '../../../rules/typed/syntax-views.mts';
 import { hasCommentIn } from '../../support/ranges.mts';
 import { applyEdits, type TextEdit } from './text-edits.mts';
 import { hasDenseArrayType } from './type-proofs.mts';
 
-export type Callback = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 export type ReduceSite = {
   readonly call: TSESTree.CallExpression;
+  readonly callee: TSESTree.MemberExpression;
   readonly callback: Callback;
   readonly accumulator: TSESLint.Scope.Variable;
   readonly result: TSESTree.Node;
@@ -28,20 +29,20 @@ function isSeed(node: TSESTree.Node | undefined, seed: Seed): boolean {
 
 function isInsideChain(call: TSESTree.CallExpression): boolean {
   let node: TSESTree.Node = call;
-  while (
-    node.parent.type === AST_NODE_TYPES.MemberExpression ||
-    node.parent.type === AST_NODE_TYPES.CallExpression ||
-    node.parent.type === AST_NODE_TYPES.TSNonNullExpression
-  ) {
-    if (node.parent.type === AST_NODE_TYPES.MemberExpression && node.parent.object !== node) {
+  for (const parent of ancestorsOf(call)) {
+    if (parent.type === AST_NODE_TYPES.ChainExpression) {
+      return true;
+    }
+    const continues =
+      (parent.type === AST_NODE_TYPES.MemberExpression && parent.object === node) ||
+      (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === node) ||
+      parent.type === AST_NODE_TYPES.TSNonNullExpression;
+    if (!continues) {
       return false;
     }
-    if (node.parent.type === AST_NODE_TYPES.CallExpression && node.parent.callee !== node) {
-      return false;
-    }
-    node = node.parent;
+    node = parent;
   }
-  return node.parent.type === AST_NODE_TYPES.ChainExpression;
+  return false;
 }
 
 function reduceCallOf(callback: Callback): TSESTree.CallExpression | undefined {
@@ -85,27 +86,24 @@ function isPlainCallback(sourceCode: SourceCode, callback: Callback): boolean {
   );
 }
 
-function returnedOf(callback: Callback): TSESTree.Node | undefined {
-  const { body } = callback;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
+type TokenPair = { readonly before: TSESTree.Token; readonly after: TSESTree.Token };
+
+function wrapping(
+  sourceCode: SourceCode,
+  first: TSESTree.Node | TSESTree.Token,
+  last: TSESTree.Node | TSESTree.Token,
+): TokenPair | undefined {
+  const before = sourceCode.getTokenBefore(first);
+  const after = sourceCode.getTokenAfter(last);
+  return before?.value === '(' && after?.value === ')' ? { before, after } : undefined;
 }
 
 function parenthesizedRange(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Range {
-  let range = node.range;
-  for (;;) {
-    const before = sourceCode.getTokenBefore({ range } as TSESTree.Node);
-    const after = sourceCode.getTokenAfter({ range } as TSESTree.Node);
-    if (before?.value !== '(' || after?.value !== ')') {
-      return range;
-    }
-    range = [before.range[0], after.range[1]];
-  }
+  const pairs = chainOf(wrapping(sourceCode, node, node), (pair) =>
+    wrapping(sourceCode, pair.before, pair.after),
+  );
+  const outer = pairs.at(-1);
+  return outer === undefined ? node.range : [outer.before.range[0], outer.after.range[1]];
 }
 
 function accumulatorOf(
@@ -126,7 +124,7 @@ export function reduceSite(
   const { sourceCode } = context;
   const call = reduceCallOf(callback);
   const accumulator = accumulatorOf(sourceCode, callback);
-  const result = returnedOf(callback);
+  const result = soleReturnedValue(callback);
   const callee = call?.callee;
   if (
     call === undefined ||
@@ -145,6 +143,7 @@ export function reduceSite(
   const inArrowBody = callback.body === result;
   return {
     call,
+    callee,
     callback,
     accumulator,
     result,
@@ -159,9 +158,8 @@ export function rewrittenCall(
   site: ReduceSite,
   rewrite: { readonly method: string; readonly result: string },
 ): string {
-  const { call, callback } = site;
+  const { call, callee, callback } = site;
   const [accumulator, next] = callback.params;
-  const callee = call.callee as TSESTree.MemberExpression;
   const edits: TextEdit[] = [
     { range: [accumulator?.range[0] ?? 0, next?.range[0] ?? 0], text: '' },
     { range: site.resultRange, text: rewrite.result },

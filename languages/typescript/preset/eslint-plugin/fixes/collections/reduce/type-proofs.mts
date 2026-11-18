@@ -1,6 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { arrayItemTypes, itemTypesOf } from '../../../rules/support/array-items.mts';
+import { arrayItemTypes, itemTypesOf, unionMembers } from '../../../rules/support/array-items.mts';
 import { hasArrayType } from '../../../rules/support/checked-types.mts';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
@@ -16,12 +16,8 @@ const NEVER_OBJECT_FLAGS =
   ts.TypeFlags.Void;
 const MAYBE_HOLE_FLAGS = ts.TypeFlags.Undefined | ts.TypeFlags.Void | ts.TypeFlags.Unknown;
 
-function membersOf(type: TypeScript.Type): readonly TypeScript.Type[] {
-  return type.isUnion() ? type.types : [type];
-}
-
 function mayBeHole(type: TypeScript.Type): boolean {
-  return membersOf(type).some((member) => (member.flags & MAYBE_HOLE_FLAGS) !== 0);
+  return unionMembers(type).some((member) => (member.flags & MAYBE_HOLE_FLAGS) !== 0);
 }
 
 export function hasDenseArrayType(context: Context, node: TSESTree.Node): boolean {
@@ -37,7 +33,7 @@ export function isPrimitiveKey(context: Context, node: TSESTree.Node): boolean {
   if (services === undefined) {
     return false;
   }
-  return membersOf(services.getTypeAtLocation(node)).every(
+  return unionMembers(services.getTypeAtLocation(node)).every(
     (member) => (member.flags & NEVER_OBJECT_FLAGS) !== 0,
   );
 }
@@ -48,7 +44,7 @@ export function hasDenseDefiniteArrayType(context: Context, node: TSESTree.Node)
   const services = typeServices(context);
   return (
     services !== undefined &&
-    !membersOf(services.getTypeAtLocation(node)).some(
+    !unionMembers(services.getTypeAtLocation(node)).some(
       (member) => (member.flags & NULLISH_FLAGS) !== 0,
     ) &&
     hasDenseArrayType(context, node)
@@ -79,7 +75,7 @@ function isPlainConcatValue(context: Context, node: TSESTree.Node, arrays: boole
     return false;
   }
   const checker = services.program.getTypeChecker();
-  return membersOf(services.getTypeAtLocation(node)).every((member) =>
+  return unionMembers(services.getTypeAtLocation(node)).every((member) =>
     isPlainConcatMember(checker, member, arrays),
   );
 }

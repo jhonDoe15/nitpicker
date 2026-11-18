@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { variableNamed, type SourceCode } from '../../../../typed/node-views.mts';
-import { operandsOf } from '../../../../typed/syntax-views.mts';
+import { chainOf, variableNamed, type SourceCode } from '../../../../typed/node-views.mts';
+import { operandsOf, soleReturnedValue } from '../../../../typed/syntax-views.mts';
 import { memberName, someNode, unwrapped } from '../../repeated-runs.mts';
 
 export type Comparator = {
@@ -35,17 +35,26 @@ function stepOf(current: TSESTree.Node, outermost: boolean): Step | undefined {
 }
 
 function pathKey(node: TSESTree.Node, parameter: string): string | undefined {
-  let current = unwrapped(node);
-  const steps: string[] = [];
-  while (current.type !== AST_NODE_TYPES.Identifier) {
+  const start = unwrapped(node);
+  const steps: Step[] = [];
+  const chain = chainOf<TSESTree.Node>(start, (current) => {
+    if (current.type === AST_NODE_TYPES.Identifier) {
+      return undefined;
+    }
     const step = stepOf(current, steps.length === 0);
     if (step === undefined) {
       return undefined;
     }
-    steps.unshift(step.text);
-    current = step.next;
-  }
-  return current.name === parameter ? steps.join('') : undefined;
+    steps.push(step);
+    return step.next;
+  });
+  const root = chain.at(-1);
+  return root?.type === AST_NODE_TYPES.Identifier && root.name === parameter
+    ? steps
+        .map(({ text }) => text)
+        .reverse()
+        .join('')
+    : undefined;
 }
 
 function mirrored(left: TSESTree.Node, right: TSESTree.Node, [first, second]: Parameters): boolean {
@@ -77,16 +86,6 @@ function isOrderTerm(term: TSESTree.Node, parameters: Parameters): boolean {
   );
 }
 
-function soleReturn(body: TSESTree.Node): TSESTree.Node | undefined {
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
-}
-
 function parametersOf(
   fn: TSESTree.ArrowFunctionExpression | TSESTree.FunctionDeclaration,
 ): Parameters | undefined {
@@ -109,7 +108,7 @@ function orderOf(
   fn: TSESTree.ArrowFunctionExpression | TSESTree.FunctionDeclaration,
 ): Comparator | undefined {
   const parameters = parametersOf(fn);
-  const body = soleReturn(fn.body);
+  const body = soleReturnedValue(fn);
   if (parameters === undefined || body === undefined || usesThis(fn)) {
     return undefined;
   }
@@ -133,7 +132,6 @@ function declaredFunction(
   }
   const init = node?.type === AST_NODE_TYPES.VariableDeclarator ? node.init : undefined;
   return definition?.type === TSESLint.Scope.DefinitionType.Variable &&
-    definition.parent?.type === AST_NODE_TYPES.VariableDeclaration &&
     definition.parent.kind === 'const' &&
     init?.type === AST_NODE_TYPES.ArrowFunctionExpression
     ? init

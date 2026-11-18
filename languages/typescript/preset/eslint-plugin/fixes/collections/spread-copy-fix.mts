@@ -1,10 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { unionMembers } from '../../rules/support/array-items.mts';
 import { typeServices, type Context } from '../../rules/security/security-values.mts';
 import { hasCommentIn, replacing, type FixPlan } from '../support/ranges.mts';
 import { isFreshCall, plainMethod, startsFromSizedArray } from './support/fresh-arrays.mts';
 import { isGlobalName } from './support/globals.mts';
 import { isPresentValue } from './support/present-values.mts';
 
+const PROMISE = 'Promise';
 const COLLECTIONS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet']);
 const PROMISE_ARRAYS = new Set(['all', 'allSettled']);
 const BARE_PARENTS = new Set<string>([
@@ -19,23 +21,20 @@ function isFreshAwait(context: Context, value: TSESTree.AwaitExpression): boolea
   const { argument } = value;
   const plain = argument.type === AST_NODE_TYPES.CallExpression ? plainMethod(argument) : undefined;
   return (
-    plain?.owner === 'Promise' &&
+    plain?.owner === PROMISE &&
     PROMISE_ARRAYS.has(plain.name) &&
-    isGlobalName(context, argument, 'Promise')
+    isGlobalName(context, argument, PROMISE)
   );
 }
 
 function isFreshValue(context: Context, value: TSESTree.Node): boolean {
-  switch (value.type) {
-    case AST_NODE_TYPES.ArrayExpression:
-      return value.elements.every((element) => element !== null);
-    case AST_NODE_TYPES.AwaitExpression:
-      return isFreshAwait(context, value);
-    case AST_NODE_TYPES.CallExpression:
-      return isFreshCall(context, value);
-    default:
-      return false;
+  if (value.type === AST_NODE_TYPES.ArrayExpression) {
+    return value.elements.every((element) => element !== null);
   }
+  if (value.type === AST_NODE_TYPES.AwaitExpression) {
+    return isFreshAwait(context, value);
+  }
+  return value.type === AST_NODE_TYPES.CallExpression && isFreshCall(context, value);
 }
 
 function takesIterable(context: Context, array: TSESTree.ArrayExpression): boolean {
@@ -55,7 +54,7 @@ function takesIterable(context: Context, array: TSESTree.ArrayExpression): boole
   }
   const owners = new Map([
     ['Array', new Set(['from'])],
-    ['Promise', new Set(['all', 'allSettled', 'any', 'race'])],
+    [PROMISE, new Set(['all', 'allSettled', 'any', 'race'])],
   ]);
   return (
     parent.arguments.length === 1 &&
@@ -81,26 +80,30 @@ function isTupleValue(context: Context, value: TSESTree.Node): boolean {
   }
   const checker = services.program.getTypeChecker();
   const type = services.getTypeAtLocation(value);
-  return (type.isUnion() ? type.types : [type]).some((member) => checker.isTupleType(member));
+  return unionMembers(type).some((member) => checker.isTupleType(member));
 }
 
 function isBareSlot(array: TSESTree.ArrayExpression): boolean {
   const { parent } = array;
-  switch (parent.type) {
-    case AST_NODE_TYPES.CallExpression:
-    case AST_NODE_TYPES.NewExpression:
-      return parent.arguments.includes(array);
-    case AST_NODE_TYPES.VariableDeclarator:
-      return parent.init === array;
-    case AST_NODE_TYPES.AssignmentExpression:
-      return parent.right === array;
-    case AST_NODE_TYPES.Property:
-      return parent.value === array;
-    case AST_NODE_TYPES.ArrowFunctionExpression:
-      return parent.body === array;
-    default:
-      return BARE_PARENTS.has(parent.type);
+  if (
+    parent.type === AST_NODE_TYPES.CallExpression ||
+    parent.type === AST_NODE_TYPES.NewExpression
+  ) {
+    return parent.arguments.includes(array);
   }
+  if (parent.type === AST_NODE_TYPES.VariableDeclarator) {
+    return parent.init === array;
+  }
+  if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
+    return parent.right === array;
+  }
+  if (parent.type === AST_NODE_TYPES.Property) {
+    return parent.value === array;
+  }
+  if (parent.type === AST_NODE_TYPES.ArrowFunctionExpression) {
+    return parent.body === array;
+  }
+  return BARE_PARENTS.has(parent.type);
 }
 
 function needsParentheses(array: TSESTree.ArrayExpression, value: TSESTree.Node): boolean {
@@ -126,7 +129,7 @@ export function spreadCopyFix(
     return undefined;
   }
   const fresh = isFreshValue(context, value);
-  if (!fresh && !(takesIterable(context, array) && isPresentValue(context, value))) {
+  if (!(fresh || (takesIterable(context, array) && isPresentValue(context, value)))) {
     return undefined;
   }
   const text = sourceCode.getText(value);

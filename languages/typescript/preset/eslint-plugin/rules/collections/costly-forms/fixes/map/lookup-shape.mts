@@ -9,7 +9,7 @@ import {
 } from '../../repeated-runs.mts';
 import { isSimpleValue } from '../simple-values.mts';
 
-export type LookupMethod = 'find' | 'findIndex' | 'findLast' | 'findLastIndex' | 'some';
+type LookupMethod = 'find' | 'findIndex' | 'findLast' | 'findLastIndex' | 'some';
 
 export type LookupShape = {
   readonly method: LookupMethod;

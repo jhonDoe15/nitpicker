@@ -3,7 +3,7 @@ import { typeServices, type Context } from '../../../../security/security-values
 import { hasArrayType } from '../../../../support/checked-types.mts';
 import { arrayItemTypes, isNeverFalsyObject } from '../../../../support/array-items.mts';
 import { ts } from '../../../../typed/typescript-views.mts';
-import { isStringLike } from '../element-types.mts';
+import { hasMemberWith, isStringLike } from '../element-types.mts';
 import type { LookupShape } from './lookup-shape.mts';
 
 type Services = NonNullable<ReturnType<typeof typeServices>>;
@@ -15,11 +15,6 @@ const PLAIN_PROPERTY = new Set<TypeScript.SyntaxKind>([
   ts.SyntaxKind.PropertyAssignment,
   ts.SyntaxKind.ShorthandPropertyAssignment,
 ]);
-
-function isNullable(type: TypeScript.Type): boolean {
-  const members = type.isUnion() ? type.types : [type];
-  return members.some((member) => (member.flags & NULLISH) !== 0);
-}
 
 function hasPlainStringKey(
   services: Services,
@@ -51,7 +46,7 @@ export function checkedItem(context: Context, shape: LookupShape): TypeScript.Ty
     item !== undefined &&
     others.length === 0 &&
     !item.isUnion() &&
-    !isNullable(services.getTypeAtLocation(receiver)) &&
+    !hasMemberWith(services.getTypeAtLocation(receiver), NULLISH) &&
     isNeverFalsyObject(checker, item) &&
     hasPlainStringKey(services, item, shape) &&
     isStringLike(services.getTypeAtLocation(value));

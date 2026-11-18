@@ -244,9 +244,9 @@ const REVIEW_RULES = [
 const NET_FILE = 'src/main/features/orders/adapters/net.ts';
 const TIMEOUT_FILE = 'tests/slow.test.ts';
 
-function typeErrorWhenFixed(root: string, name: string) {
+function typeErrorWhenFixed(root: string, name: keyof typeof REVIEW_INPUT) {
   const text = readFileSync(path.join(root, name), 'utf8');
-  return text === REVIEW_INPUT[name as keyof typeof REVIEW_INPUT]
+  return text === REVIEW_INPUT[name]
     ? []
     : [
         {
@@ -256,6 +256,10 @@ function typeErrorWhenFixed(root: string, name: string) {
           classification: 'enforceable',
         },
       ];
+}
+
+function rolledBackNote(rules: string, reason: string): string {
+  return `--fix rolled back eslint-suggestion ${rules} ${NET_FILE} (${NET_FILE}): ${reason}`;
 }
 
 function rollbackNotes(notes: readonly string[] | undefined) {
@@ -350,7 +354,11 @@ describe('the fixes of nitpicker own ESLint rules', () => {
         /^--fix rolled back eslint-suggestion .*require-test-process-timeout.* \(tests\/slow\.test\.ts\): .*TS2304/u,
       ),
     ]);
-    expect(requests[0]).toMatchObject({ tools: ['eslint-lint'] });
+    expect(requests[0]).toEqual({
+      files: [NET_FILE, TIMEOUT_FILE],
+      mode: 'narrow',
+      tools: ['eslint-lint'],
+    });
   });
   it('keeps the suggestions when the analysis finds nothing new', () => {
     const repository = topic(REVIEW_INPUT);
@@ -368,10 +376,17 @@ describe('the fixes of nitpicker own ESLint rules', () => {
 
     expect(read(NET_FILE)).toBe(REVIEW_INPUT[NET_FILE]);
     expect(read(TIMEOUT_FILE)).toBe(REVIEW_OUTPUT[TIMEOUT_FILE]);
-    expect(rollbackNotes(result.notes)).toHaveLength(1);
-    expect(rollbackNotes(result.notes)[0]).toMatch(
-      /no-disabled-tls-verification.*no-falsy-default.*no-shell-string-command.*require-http-timeout/u,
-    );
+    expect(rollbackNotes(result.notes)).toEqual([
+      rolledBackNote(
+        [
+          'nitpicker/no-disabled-tls-verification',
+          'nitpicker/no-falsy-default',
+          'nitpicker/no-shell-string-command',
+          'nitpicker/require-http-timeout',
+        ].join(','),
+        `breaks the compile or type check: new typescript-typecheck/TS2304 in ${NET_FILE}`,
+      ),
+    ]);
   });
   it('rolls a suggestion back when its finding is still reported', () => {
     const repository = topic(REVIEW_INPUT);
@@ -388,7 +403,10 @@ describe('the fixes of nitpicker own ESLint rules', () => {
 
     expect(read(NET_FILE)).toBe(REVIEW_INPUT[NET_FILE]);
     expect(rollbackNotes(result.notes)).toEqual([
-      expect.stringContaining('eslint-lint/nitpicker/no-falsy-default is still reported in'),
+      rolledBackNote(
+        'nitpicker/no-falsy-default',
+        `eslint-lint/nitpicker/no-falsy-default is still reported in ${NET_FILE}`,
+      ),
     ]);
   });
 });

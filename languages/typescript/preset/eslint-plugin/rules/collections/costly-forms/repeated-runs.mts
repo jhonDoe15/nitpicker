@@ -69,6 +69,12 @@ export function outerOf(node: TSESTree.Node): TSESTree.Node {
   );
 }
 
+export function memberChain(node: TSESTree.Node): TSESTree.Node[] {
+  return chainOf<TSESTree.Node>(unwrapped(node), (current) =>
+    current.type === AST_NODE_TYPES.MemberExpression ? unwrapped(current.object) : undefined,
+  );
+}
+
 export function calledMember(call: TSESTree.CallExpression): TSESTree.MemberExpression | undefined {
   const callee = unwrapped(call.callee);
   return callee.type === AST_NODE_TYPES.MemberExpression ? callee : undefined;
