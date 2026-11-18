@@ -84,7 +84,10 @@ function guardedPlugin(table: Guards, namespace: string, plugin: unknown): unkno
   return guarded;
 }
 
-export function guardedEntry(entry: Entry, table: Guards = FIX_GUARDS): Entry {
+export function guardedEntry<Config extends Entry>(
+  entry: Config,
+  table: Guards = FIX_GUARDS,
+): Config {
   const plugins = entry['plugins'];
   if (typeof plugins !== 'object' || plugins === null) {
     return entry;

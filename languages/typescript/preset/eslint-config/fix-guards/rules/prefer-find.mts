@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { toTerm } from '../../../eslint-plugin/rules/analysis/logic/estree-terms.mts';
 import { isSideEffectFree } from '../../../eslint-plugin/rules/analysis/logic/term-views.mts';
 import { outsideFunctions } from '../../../eslint-plugin/rules/decided/syntax.mts';
+import { isCallback, soleReturnedValue } from '../../../eslint-plugin/rules/typed/syntax-views.mts';
 import {
   keptFix,
   reportedNode,
@@ -11,7 +12,6 @@ import {
   type GuardContext,
 } from '../guard-types.mts';
 
-type Callback = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 type SourceText = GuardContext['sourceCode'];
 
 function isFilterCall(node: TSESTree.Node): node is TSESTree.CallExpression {
@@ -28,24 +28,6 @@ function isFilterCall(node: TSESTree.Node): node is TSESTree.CallExpression {
     : property.type === AST_NODE_TYPES.Identifier && property.name === 'filter';
 }
 
-function isCallback(node: TSESTree.Node): node is Callback {
-  return (
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    node.type === AST_NODE_TYPES.FunctionExpression
-  );
-}
-
-function returnedOf(callback: Callback): TSESTree.Expression | undefined {
-  const { body } = callback;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return body;
-  }
-  const [only] = body.body;
-  return body.body.length === 1 && only?.type === AST_NODE_TYPES.ReturnStatement
-    ? (only.argument ?? undefined)
-    : undefined;
-}
-
 function isPurePredicate(argument: TSESTree.Node | undefined, sourceCode: SourceText): boolean {
   if (argument?.type === AST_NODE_TYPES.Identifier) {
     return argument.name === 'Boolean';
@@ -53,7 +35,7 @@ function isPurePredicate(argument: TSESTree.Node | undefined, sourceCode: Source
   if (argument === undefined || !isCallback(argument) || argument.async || argument.generator) {
     return false;
   }
-  const returned = returnedOf(argument);
+  const returned = soleReturnedValue(argument);
   return (
     returned !== undefined &&
     argument.params.every((param) => param.type === AST_NODE_TYPES.Identifier) &&
