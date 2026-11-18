@@ -224,6 +224,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   connections (`nitpicker/no-listen-on-all-interfaces`).
 - A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
   passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
+  `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

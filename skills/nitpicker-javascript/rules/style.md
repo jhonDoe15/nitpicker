@@ -199,6 +199,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   connections (`nitpicker/no-listen-on-all-interfaces`).
 - A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
   passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
+  `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

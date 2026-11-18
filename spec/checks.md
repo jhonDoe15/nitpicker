@@ -487,7 +487,9 @@ Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, 
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
 stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a
 `TextDecoder.decode(chunk)` without `{ stream: true }`, and `includes`, `indexOf`, `startsWith` or a regex test on the
-chunk alone, which corrupt split multibyte characters or miss a split message.
+chunk alone, which corrupt split multibyte characters or miss a split message. Streams read with a string encoding
+(`createReadStream(path, 'utf8')`, `setEncoding`) and `Readable.from` (which yields strings) are not reported.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

@@ -361,7 +361,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `chunk.toString('utf8')`) into a variable declared outside the callback, `decoder.decode(chunk)` on a `TextDecoder`
   without `{ stream: true }`, and `includes`, `indexOf`, `startsWith`, `endsWith`, `match`, `search` or a regex `test` on
   the chunk or on a local variable holding its text. A stream with `setEncoding(...)` on the same receiver, string
-  chunks, `hex` or `base64` conversions and an accumulated buffer are not reported. Allowed form: keep the chunks
+  chunks (`Readable.from(...)`, `createReadStream(path, 'utf8')`), `hex` or `base64` conversions and an accumulated
+  buffer are not reported. Allowed form: keep the chunks
   (`parts.push(chunk)`) and decode once (`Buffer.concat(parts).toString('utf8')`), pass `{ stream: true }`, or search an
   accumulated string.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
