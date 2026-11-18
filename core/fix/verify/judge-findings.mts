@@ -66,12 +66,21 @@ function introduced({ tool, rule, path }: FindingKey) {
     : `adds ${tool}/${rule} in ${path}`;
 }
 
-export function judgeFindings({ runs, before, after, breaking }: Judgement): Map<string, string[]> {
+export function judgeFindings({
+  runs,
+  before,
+  after,
+  breaking,
+  surfaced = () => false,
+}: Judgement): Map<string, string[]> {
   const reasons = new Map<string, Set<string>>(
     runs.map((run) => [run.key, new Set(stillThere(run, { before, after }))]),
   );
   for (const [key, finding] of after) {
-    if (finding.count <= (before.get(key)?.count ?? 0)) {
+    if (
+      finding.count <= (before.get(key)?.count ?? 0) ||
+      (!breaking(finding.tool) && surfaced(finding))
+    ) {
       continue;
     }
     const owners = runs.filter((run) => run.files.has(finding.path));

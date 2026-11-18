@@ -65,6 +65,7 @@ export type Comparison = { readonly before: Counts; readonly after: Counts };
 export type Judgement = Comparison & {
   readonly runs: readonly RecipeRun[];
   readonly breaking: (tool: string) => boolean;
+  readonly surfaced?: (finding: FindingKey) => boolean;
 };
 
 export type Analyses =
