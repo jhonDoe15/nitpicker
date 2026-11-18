@@ -54,7 +54,8 @@ export const braceDepths: (code: string) => Int32Array = untypedBraceDepths;
 export const closingIndex: (code: string, open: number) => number = untypedClosingIndex;
 export const afterGroup: (code: string, at: number, opening: RegExp) => number = untypedAfterGroup;
 
-export const enclosingOpen: (code: string, offset: number) => number = untypedEnclosingOpen;
+export const enclosingOpen: (code: string, offset: number, opener?: string) => number =
+  untypedEnclosingOpen;
 
 export const literalAt: (scanned: ScannedKotlin, offset: number) => KotlinLiteral | undefined =
   untypedLiteralAt;

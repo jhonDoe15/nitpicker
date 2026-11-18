@@ -2,7 +2,7 @@ import { kindOfBody } from '../shared/body-kind.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { closingIndex, enclosingOpen, escapeRegExp } from '../shared/kotlin-scan.mts';
 
-const LOCAL_VAR = /(?<![\w.`])var([ \t]+)([A-Za-z_]\w*)[ \t]*(?::[^=\n(]+)?=(?!=)/gu;
+const LOCAL_VAR = /(?<![\w.`])var([ \t]+)([A-Za-z_]\w*)[ \t]*(?::[^=\n]+)?=(?!=)/gu;
 
 function isStatementStart(code: string, index: number): boolean {
   const before = code.slice(code.lastIndexOf('\n', index - 1) + 1, index).trim();
@@ -21,10 +21,14 @@ function enclosingBlock(
   return kindOfBody(code, open) !== 'other' || close >= code.length ? undefined : { open, close };
 }
 
+function insideParentheses(code: string, index: number): boolean {
+  return enclosingOpen(code, index, '(') > enclosingOpen(code, index);
+}
+
 function reassigned(rest: string, raw: string): boolean {
   const name = escapeRegExp(raw);
   const assignment = new RegExp(
-    String.raw`(?<![\w.])${name}\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${name}\b|::\s*${name}\b`,
+    String.raw`(?<![\w.])(?<![(,]\s*)${name}\s*(?:[-+*/%]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${name}\b|::\s*${name}\b`,
     'u',
   );
   return assignment.test(rest);
@@ -48,7 +52,11 @@ export const varCouldBeValRecipe = kotlinRecipe({
   find({ code }) {
     return [...code.matchAll(LOCAL_VAR)].flatMap((match) => {
       const block = enclosingBlock(code, match.index);
-      if (block === undefined || !isStatementStart(code, match.index)) {
+      if (
+        block === undefined ||
+        !isStatementStart(code, match.index) ||
+        insideParentheses(code, match.index)
+      ) {
         return [];
       }
       const name = match[2] ?? '';
