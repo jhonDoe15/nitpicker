@@ -5,7 +5,16 @@ import { cachedValue } from '../../../../../../../shared/values/caching/cached-v
 import { ts } from '../../typed/typescript-views.mts';
 import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
-export type Relation = { readonly entity: string; readonly relation: string };
+export type RelationShape = {
+  readonly many: boolean;
+  readonly eagerMany: boolean;
+  readonly siblings: ReadonlyMap<string, boolean>;
+};
+export type Relation = {
+  readonly entity: string;
+  readonly relation: string;
+  readonly shape?: RelationShape;
+};
 type SchemaRelation = {
   readonly entity: string | undefined;
   readonly typeName: string | undefined;
@@ -18,6 +27,7 @@ export type Access = {
 };
 
 const RELATIONS = new Set(['ManyToOne', 'OneToMany', 'OneToOne', 'ManyToMany']);
+const TO_MANY = new Set(['OneToMany', 'ManyToMany']);
 const TYPEORM = 'typeorm';
 const ENTITY_SCHEMA = 'EntitySchema';
 const OPEN_TYPES = new Set<string | undefined>([undefined, 'ObjectLiteral', '__type']);
@@ -37,16 +47,20 @@ function isFromTypeorm(checker: TypeScript.TypeChecker, node: TypeScript.Node): 
   return typeormDeclaration(checker, node) !== undefined;
 }
 
-function isLazyOption(argument: TypeScript.Node): boolean {
+function isTrueOption(argument: TypeScript.Node, option: string): boolean {
   return (
     ts.isObjectLiteralExpression(argument) &&
     argument.properties.some(
       (property) =>
         ts.isPropertyAssignment(property) &&
-        property.name.getText() === 'lazy' &&
+        property.name.getText() === option &&
         property.initializer.kind === ts.SyntaxKind.TrueKeyword,
     )
   );
+}
+
+function isLazyOption(argument: TypeScript.Node): boolean {
+  return isTrueOption(argument, 'lazy');
 }
 
 function relationDecorator(
@@ -153,6 +167,27 @@ function schemaRelation(program: TypeScript.Program, access: Access): Relation |
   return match === undefined ? undefined : { entity: match.entity ?? 'entity', relation };
 }
 
+function isToMany(decorator: TypeScript.CallExpression): boolean {
+  return ts.isIdentifier(decorator.expression) && TO_MANY.has(decorator.expression.text);
+}
+
+function relationShape(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.PropertyDeclaration,
+  decorator: TypeScript.CallExpression,
+): RelationShape {
+  const siblings = new Map<string, boolean>();
+  let eagerMany = false;
+  for (const member of declaration.parent.members.filter(ts.isPropertyDeclaration)) {
+    const found = relationDecorator(checker, member);
+    if (found !== undefined) {
+      siblings.set(member.name.getText(), isToMany(found));
+      eagerMany ||= isToMany(found) && found.arguments.some((each) => isTrueOption(each, 'eager'));
+    }
+  }
+  return { many: isToMany(decorator), eagerMany, siblings };
+}
+
 export function decoratedRelation(
   program: TypeScript.Program,
   access: Access,
@@ -165,7 +200,11 @@ export function decoratedRelation(
     decorator !== undefined &&
     (decorator.arguments.some(isLazyOption) || isPromiseTyped(declaration))
   ) {
-    return { entity: declaration.parent.name?.text ?? 'entity', relation: access.name.text };
+    return {
+      entity: declaration.parent.name?.text ?? 'entity',
+      relation: access.name.text,
+      shape: relationShape(checker, declaration, decorator),
+    };
   }
   return schemaRelation(program, access);
 }
