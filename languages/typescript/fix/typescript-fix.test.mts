@@ -355,8 +355,8 @@ describe('fixTypeScript', () => {
     );
 
     expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n ?? 10;\n');
-    expect(arguments_).toHaveLength(1);
-    expect(arguments_[0]).not.toContain('--fix-dry-run');
+    expect(arguments_).toHaveLength(2);
+    expect(arguments_.flat()).not.toContain('--fix-dry-run');
     expect(
       (result.notes ?? []).some((note) => note.includes('eslint --fix rewrote src/a.ts')),
     ).toBe(true);
