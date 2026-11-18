@@ -19,6 +19,7 @@ import {
 import { withoutUnconstrainedBodies } from '../../spring/web/request-body-constraints.mjs';
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
+import { withoutMysqlSequenceIds } from '../../jpa/sequence-ids.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
@@ -37,12 +38,15 @@ export function readSarifReport(file) {
   return text.trim() === '' ? EMPTY_SARIF : JSON.parse(text);
 }
 
-function withJpaFilters(findings, { projectRoot, sourceRoots, foreignKeys }) {
+function withJpaFilters(findings, { projectRoot, sourceRoots, foreignKeys, sequenceIds }) {
   const options = { projectRoot, sourceRoots };
-  return withUnindexedForeignKeys(withCrossedFetches(findings, options), {
-    ...options,
-    checks: foreignKeys,
-  });
+  return withoutMysqlSequenceIds(
+    withUnindexedForeignKeys(withCrossedFetches(findings, options), {
+      ...options,
+      checks: foreignKeys,
+    }),
+    { projectRoot, checks: sequenceIds },
+  );
 }
 
 function printedRule(result) {
@@ -113,7 +117,12 @@ function withProjectFilters(findings, context) {
             }),
             { projectRoot },
           ),
-          { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+          {
+            projectRoot,
+            sourceRoots: allSourceRoots,
+            foreignKeys: context.foreignKeys,
+            sequenceIds: context.sequenceIds,
+          },
         ),
         { projectRoot, sourceRoots: allSourceRoots },
       ),

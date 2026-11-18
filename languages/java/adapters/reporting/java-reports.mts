@@ -44,11 +44,16 @@ import {
   skippedToolFindings,
 } from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
+import { sequenceGate } from '../jpa/sequence-ids.mjs';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type Options = Readonly<Record<string, unknown>>;
-type ReportRun = { readonly kotlinBuild: unknown; readonly foreignKeys: unknown };
+type ReportRun = {
+  readonly kotlinBuild: unknown;
+  readonly foreignKeys: unknown;
+  readonly sequenceIds: unknown;
+};
 type ModuleRun = ReportRun & { manifest: unknown; modules: readonly unknown[]; options: Options };
 type JavaReadout = { readonly findings: unknown; readonly imports: unknown };
 
@@ -175,7 +180,11 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
 }
 
 function reportRun(projectRoot: string): ReportRun {
-  return { kotlinBuild: buildViews(), foreignKeys: foreignKeyGate(projectRoot) };
+  return {
+    kotlinBuild: buildViews(),
+    foreignKeys: foreignKeyGate(projectRoot),
+    sequenceIds: sequenceGate(projectRoot),
+  };
 }
 
 function wideReport(projectRoot: string, run: ModuleRun, reportBase: string): JavaReadout {

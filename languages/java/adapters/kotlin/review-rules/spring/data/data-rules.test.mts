@@ -183,6 +183,43 @@ describe('Spring Data rules on the forms the regression review found', () => {
 });
 
 describe('Spring Data rules on hand-built facts', () => {
+  it('reports IDENTITY ids unless the project database has no sequences', () => {
+    const facts = sourceFile({
+      classes: [
+        klass('Course', {
+          annotations: [{ name: 'Entity', arguments: [], type: 'jakarta.persistence.Entity' }],
+        }),
+      ],
+      properties: [
+        property('id', 'Course', {
+          type: 'Long',
+          line: 3,
+          annotationEntries: [
+            {
+              name: 'GeneratedValue',
+              type: 'jakarta.persistence.GeneratedValue',
+              arguments: [{ name: 'strategy', text: 'GenerationType.IDENTITY' }],
+            },
+          ],
+        }),
+      ],
+    });
+    const sequenceIds = (allowed: boolean) =>
+      springFindings([facts], {
+        finding: findingFactory(),
+        manifest: MANIFEST,
+        projectFiles: [facts],
+        projectRoot: PROJECT,
+        javaRoots: ['src/main/java'],
+        sequenceIds: () => allowed,
+      })
+        .map(({ rule }) => rule)
+        .filter((rule) => rule === 'JpaSequenceIds');
+
+    expect(sequenceIds(true)).toEqual(['JpaSequenceIds']);
+    expect(sequenceIds(false)).toEqual([]);
+  });
+
   it('skips enums converted by a Java or a positional auto-applied converter', () => {
     const facts = sourceFile({
       package: 'shop.good',
