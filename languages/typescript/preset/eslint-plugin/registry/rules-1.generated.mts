@@ -52,6 +52,7 @@ import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
 import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mts';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
+import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
-import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -154,6 +154,7 @@ export const partRules = {
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
   'no-local-time-zone': ruleNoLocalTimeZone,
+  'no-lookup-as-presence': ruleNoLookupAsPresence,
   'no-lookup-per-element': ruleNoLookupPerElement,
   'no-magic-numbers': ruleNoMagicNumbers,
   'no-managed-resource-construction-outside-composition-roots':
@@ -200,5 +201,4 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
-  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
 };

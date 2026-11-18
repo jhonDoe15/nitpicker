@@ -238,4 +238,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/presence/no-in-presence-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/presence/conditions.mjs',
   'languages/typescript/preset/eslint-plugin/rules/presence/value-facts.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/lookups/no-lookup-as-presence.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/lookups/map-lookups.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/lookups/index-lookups.mjs',
 ];

@@ -39,7 +39,7 @@ function readsIn(
     );
 }
 
-function isAbsent(node: TSESTree.Node): boolean {
+export function isAbsent(node: TSESTree.Node): boolean {
   return (
     (node.type === AST_NODE_TYPES.Identifier && node.name === 'undefined') ||
     (node.type === AST_NODE_TYPES.Literal && node.value === null)

@@ -53,6 +53,7 @@
   "eslint/nitpicker/no-lazy-relation-in-loop": ["performance", "persistence"],
   "eslint/nitpicker/no-loaded-rows-saved-back": ["performance", "persistence"],
   "eslint/nitpicker/no-local-time-zone": ["bug"],
+  "eslint/nitpicker/no-lookup-as-presence": ["bug", "performance"],
   "eslint/nitpicker/no-lookup-per-element": ["performance", "async"],
   "eslint/nitpicker/no-magic-numbers": ["maintainability"],
   "eslint/nitpicker/no-managed-resource-construction-outside-composition-roots": [

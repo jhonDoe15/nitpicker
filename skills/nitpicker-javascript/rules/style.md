@@ -195,6 +195,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- A cache or lookup decides presence from the key, not from the stored value: `if (!m.has(k)) { m.set(k, make()); }`
+  then `m.get(k)!`, and `key in record` or `Object.hasOwn(record, key)` for a record of `unknown` values, because a
+  cached `0`, `''`, `false` or `undefined` is a hit (`nitpicker/no-lookup-as-presence`).
 - A key that can hold `undefined` is tested by its value, not by `in`: `data.targetUID !== undefined`, never
   `'targetUID' in data` on an optional property, a `Partial<...>` or a `Record<string, T | undefined>`
   (`nitpicker/no-in-presence-check`; `in` stays right for a union discriminant).
