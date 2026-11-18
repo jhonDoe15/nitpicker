@@ -20,6 +20,7 @@ import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-br
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoChildExitEvent } from '../rules/processes/events/no-child-exit-event.mts';
+import { rule as ruleNoChunkwiseStreamText } from '../rules/chunks/no-chunkwise-stream-text.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
 import { rule as ruleNoComments } from '../rules/modules/no-comments.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
-import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -122,6 +122,7 @@ export const partRules = {
   'no-cached-rejection': ruleNoCachedRejection,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-child-exit-event': ruleNoChildExitEvent,
+  'no-chunkwise-stream-text': ruleNoChunkwiseStreamText,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-send-without-return': ruleNoSendWithoutReturn,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
-  'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
 };

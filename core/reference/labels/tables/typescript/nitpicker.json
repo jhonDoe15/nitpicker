@@ -21,6 +21,7 @@
   "eslint/nitpicker/no-cached-rejection": ["bug", "async"],
   "eslint/nitpicker/no-check-then-write": ["bug", "persistence"],
   "eslint/nitpicker/no-child-exit-event": ["bug", "reliability"],
+  "eslint/nitpicker/no-chunkwise-stream-text": ["bug", "reliability"],
   "eslint/nitpicker/no-cleanup-skipped-on-failure": ["reliability"],
   "eslint/nitpicker/no-collected-stream-rows": ["performance"],
   "eslint/nitpicker/no-comments": ["style"],

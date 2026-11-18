@@ -2,6 +2,7 @@ import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { productionGuardEntries } from '../production/production-rules.mts';
 import { regexpRules } from '../regexp/regexp-rules.mts';
 import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
@@ -158,44 +159,8 @@ function productionGuardRules({
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
-    'nitpicker/no-io-in-loop': 'error',
-    'nitpicker/no-accumulator-concat': 'error',
-    'nitpicker/no-array-spread-arguments': 'error',
-    'nitpicker/no-lazy-relation-in-loop': 'error',
-    'nitpicker/no-lookup-per-element': 'error',
-    'nitpicker/no-query-per-parent': 'error',
-    'nitpicker/no-remote-call-in-transaction': 'error',
-    'nitpicker/no-whole-rows-for-one-value': 'error',
-    'nitpicker/no-remote-call-under-lock': 'error',
-    'nitpicker/no-retry-without-idempotency': 'error',
-    'nitpicker/no-stale-retry-after-conflict': 'error',
-    'nitpicker/no-dual-write': 'error',
-    'nitpicker/no-unisolated-job-loop': 'error',
-    'nitpicker/no-unguarded-deleted-items': 'error',
-    'nitpicker/no-unscoped-record-access': 'error',
-    'nitpicker/no-unguarded-cyclic-recursion': 'error',
-    'nitpicker/no-in-memory-query': 'error',
-    'nitpicker/no-loaded-rows-saved-back': 'error',
-    'nitpicker/no-multiple-collection-joins': 'error',
-    'nitpicker/no-orm-query-logging': 'error',
-    'nitpicker/no-orm-schema-sync': 'error',
-    'nitpicker/no-unindexed-foreign-key': 'error',
-    'nitpicker/no-shell-string-command': 'error',
-    'nitpicker/require-abort-signal-forwarding': 'error',
-    'nitpicker/no-use-after-await-when-disposed': 'error',
-    'nitpicker/no-falsy-error-check': 'error',
-    'nitpicker/no-send-without-return': 'error',
-    'nitpicker/require-process-timeout': 'error',
-    'nitpicker/require-client-timeout': 'error',
-    'nitpicker/time-unit-mismatch': 'error',
-    'nitpicker/no-sync-node-api-in-async': 'error',
-    'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
-    'nitpicker/require-error-listener': 'error',
-    'nitpicker/require-promise-reject': 'error',
-    'nitpicker/promise-wait-deadline': 'error',
-    'nitpicker/unbounded-fan-out': 'error',
-    'nitpicker/unbounded-reactive-fan-out': 'error',
+    ...productionGuardEntries,
     ...learnedRules(learned),
     ...securityRules({ react, security }),
   };

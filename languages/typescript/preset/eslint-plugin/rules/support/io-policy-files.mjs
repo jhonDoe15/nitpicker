@@ -75,4 +75,7 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/record-scope/request-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/recursion/no-unguarded-cyclic-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/recursion/cyclic-steps.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/chunks/no-chunkwise-stream-text.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/chunks/chunk-sources.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/chunks/chunk-uses.mjs',
 ];
