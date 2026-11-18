@@ -1775,3 +1775,14 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   `Math.max`, and a right side computed with `Math.min`, `Math.round`, `Math.floor` or `Math.ceil`. Allowed forms: `Math.max(0, a - b)`, or compare
   first. The same form runs as `NegativeCountArgument` (Java and Kotlin) and `go-rules/negative-count` (Go); Python is not
   covered because `"x" * -1` returns an empty string.
+- `nitpicker/no-index-bound-off-by-one`: a bounds check that lets `index === list.length` through before a read of
+  `list[index]`. Rejecting form: `index > list.length` (also `list.size`, `list.count`, `list.size()`, or the reversed
+  `list.length < index`) as an `||` operand or the test of an `if` whose branch leaves (`return`, `throw`, `continue`,
+  `break`) and has no `else`, when `list[index]` is read in a later `||` operand or later in the same block. Accepting
+  form: `index <= list.length` in an `&&` chain, `if`, `while` or `for` test whose later operand or body reads
+  `list[index]`. `index` is a
+  plain identifier and `list` an identifier or member chain. Not reported: insertion positions (`splice(index, 0, x)`,
+  `slice(0, end)`, `list[index] = x`), reads of another array, a function that also checks `index >= list.length`,
+  `index < list.length` or `index === list.length`, a function that reassigns `index`, and a branch that does not leave. Allowed form: `>=` to reject
+  and `<` to accept. The same form runs as `IndexBoundOffByOne` (Java and Kotlin), `index-bound-off-by-one` (Python) and
+  `go-rules/index-bound-off-by-one` (Go).

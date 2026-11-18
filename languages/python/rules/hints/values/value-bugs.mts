@@ -18,4 +18,12 @@ export const VALUE_HINTS: readonly RuleHint[] = [
     allowed:
       'Check `math.isfinite(value)`, which rejects NaN and both infinities; or add a range check of the value. An exception fits only when infinity is a valid value here.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['index-bound-off-by-one'],
+    describe: (subject) =>
+      `\`${subject}\` lets an index equal to the length through before the read, so the read raises \`IndexError\``,
+    allowed:
+      'Reject with `index >= len(items)` (or accept with `index < len(items)`) before the read; `>` and `<=` are right only for an insertion position.',
+  },
 ];

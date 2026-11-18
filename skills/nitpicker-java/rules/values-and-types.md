@@ -116,3 +116,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   an infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
 - A count that is a subtraction is clamped before `repeat`, `Arrays.copyOf` or `new ArrayList<>(n)`:
   `" ".repeat(Math.max(0, width - text.length()))`; a negative count throws (`pmd/NegativeCountArgument`).
+- A bounds check before `get(index)`, `charAt(index)` or `array[index]` rejects with `index >= size()` (or `>= length`):
+  `index > size()` lets `index == size()` through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is
+  right only for an insertion position.

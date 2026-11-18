@@ -69,3 +69,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `try`: an error page from a proxy is HTML and the `ValueError` hides the status (`unchecked-response-json`).
 - A parsed float is checked with `math.isfinite(x)`, not only `math.isnan(x)`: `float("inf")` passes `isnan`
   (`nan-only-guard`).
+- A bounds check before a read rejects with `index >= len(items)` (or accepts with `index < len(items)`): `index > len(items)`
+  lets `index == len(items)` through to an `IndexError` (`index-bound-off-by-one`); `>` is right only for an insertion
+  position.

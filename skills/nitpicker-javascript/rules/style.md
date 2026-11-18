@@ -204,3 +204,6 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `isNaN` (`nitpicker/no-nan-only-check`).
 - A count computed by subtraction is clamped before `repeat` or `new Array`: `' '.repeat(Math.max(0, width - text.length))`
   (`nitpicker/no-negative-count`); a negative count throws a `RangeError`.
+- A bounds check before a read rejects with `index >= list.length` (or accepts with `index < list.length`); `>` and `<=`
+  let `index === length` through to an `undefined` read (`nitpicker/no-index-bound-off-by-one`). `>` is right only for
+  an insertion position.

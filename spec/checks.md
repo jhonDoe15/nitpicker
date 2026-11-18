@@ -299,6 +299,14 @@ in Java and Kotlin reports `repeat`, `copyOf`, `new ArrayList<>(n)` and Kotlin `
 `List(n)`; `go-rules/negative-count` reports `strings.Repeat`, `bytes.Repeat`, `slices.Grow` and `make` of a slice. Python
 is not covered.
 
+Index bounds off by one: `nitpicker/no-index-bound-off-by-one` (production source, in `eslint-lint`) in the TypeScript
+and JavaScript presets, `index-bound-off-by-one` (script) in Python, `pmd/IndexBoundOffByOne` in Java and Kotlin and
+`go-rules/index-bound-off-by-one` in Go report a check that lets `index == length` through before a read: `index >
+length` (or `length < index`) in an `||` chain or an `if` whose branch leaves, followed by `x[index]` (Java `x.get(index)`
+and `x.charAt(index)`) in a later operand or later in the block; and `index <= length` in an `&&` chain or `if` whose
+later operand or branch reads `x[index]`. Insertion positions, other receivers, a function that also checks `>=` or `<`,
+and a reassigned index are not reported.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
