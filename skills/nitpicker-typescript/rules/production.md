@@ -222,6 +222,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A local callback or companion server listens on the loopback host
   (`server.listen(port, '127.0.0.1', callback)`), and passes `'0.0.0.0'` only when it must accept remote
   connections (`nitpicker/no-listen-on-all-interfaces`).
+- A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
+  passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

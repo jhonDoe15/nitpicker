@@ -478,6 +478,11 @@ variable, function, file name, request handler or listen callback that mentions 
 login). A host, a socket path, a spread, a port probe or an ordinary server entry point is not reported.
 
 Cyclic recursion: `nitpicker/no-unguarded-cyclic-recursion` (production source, in `eslint-lint`, type-aware) reports a
+function that calls itself with a typed value reached through `cause`, `parents`, `references`, `deps`, `imports`,
+`edges` and similar collection properties of its own parameter (or, for the TypeScript API `Type`, `types`, `target`,
+`base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
+`next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
+
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
 stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a
