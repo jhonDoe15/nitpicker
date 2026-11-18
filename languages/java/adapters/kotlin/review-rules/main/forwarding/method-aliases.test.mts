@@ -3,14 +3,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../../../../core/diff/git/test-support/git-repository.mts';
 import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mjs';
-import { withoutGeneratedSources } from '../../../../generated/generated-sources.mjs';
+import { withoutGeneratedSources } from '../../../../generated/generated-sources.mts';
 import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
 import type { ClassFact, FunctionFact, RuleFinding } from '../../test-support/facts.mts';
 import { routed, routeOf, run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { argument, file, fn, klass, parameter } from '../../test-support/loose-facts.mts';
 import { forward, params } from './forwarding-support.mts';
-import { METHOD_ALIAS_RULE, methodAliasFindings } from './method-aliases.mjs';
+import { METHOD_ALIAS_RULE, methodAliasFindings } from './method-aliases.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

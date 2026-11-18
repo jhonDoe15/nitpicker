@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { type Located, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { unhandledRootCoroutines as untypedUnhandledRootCoroutines } from './root-scope-launches.mjs';
-
-const unhandledRootCoroutines: (scanned: unknown, context?: { runners: string[] }) => Located[] =
-  untypedUnhandledRootCoroutines;
+import { lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { unhandledRootCoroutines } from './root-scope-launches.mts';
 
 function lines(source: string, context?: { runners: string[] }) {
   const scanned = scanKotlinSource(source);

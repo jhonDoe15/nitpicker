@@ -2,17 +2,20 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { routed, type RuleFinding } from '../test-support/facts.mts';
-import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mts';
 import { findingFactory, fixtureFacts, springFindings, type Loose } from './spring-test-facts.mts';
 import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mts';
-import { SPRING_RULES, springMessage as untypedSpringMessage } from './spring-messages.mjs';
+import { SPRING_RULES, springMessage as untypedSpringMessage } from './spring-messages.mts';
 import { EXPECTED } from '../test-support/spring-expected.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../fixtures');
 const FIXTURE = path.join(FIXTURES, 'kotlin-spring-facts.json');
 const PROJECT = path.join(FIXTURES, 'kotlin-spring-project');
 const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/spring-ruleset.xml');
-const springMessage: (rule: string) => string = untypedSpringMessage;
+function springMessage(rule: string): string {
+  return untypedSpringMessage(rule) ?? '';
+}
+
 const files = fixtureFacts(FIXTURE);
 const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
   (name) => `jakarta.persistence.${name}`,

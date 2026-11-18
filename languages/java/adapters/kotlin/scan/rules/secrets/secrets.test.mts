@@ -4,7 +4,7 @@ import { foundRuleLines as found } from '../../typed/scan-found.mts';
 import {
   credentialLiterals as untypedCredentialLiterals,
   hardcodedSecrets as untypedHardcodedSecrets,
-} from './hardcoded-secrets.mjs';
+} from './hardcoded-secrets.mts';
 import { SECRET_VALUE_CASES } from '../../../../../../../shared/naming/test-support/secret-value-cases.mjs';
 
 const credentialLiterals: Check<Ruled> = untypedCredentialLiterals;

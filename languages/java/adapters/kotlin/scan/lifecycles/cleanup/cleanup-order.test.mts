@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { cleanupSkippedOnFailure as untypedCleanupSkippedOnFailure } from './cleanup-order.mjs';
+import { cleanupSkippedOnFailure as untypedCleanupSkippedOnFailure } from './cleanup-order.mts';
 
 const cleanupSkippedOnFailure: Check<Ruled> = untypedCleanupSkippedOnFailure;
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { SOURCE_TOOL } from '../review-finding.mjs';
+import { SOURCE_TOOL } from '../review-finding.mts';
 import type { FileFacts } from '../test-support/facts.mts';
 import { run, sourceRouted, summary } from '../test-support/facts.mts';
 import type { Loose } from '../test-support/loose-facts.mts';
 import { file, fn, klass } from '../test-support/loose-facts.mts';
-import { BLOCKING_RULE, blockingFindings, blockingMessage } from './blocking-findings.mjs';
-import { TIMEOUT_RULE, timeoutMessage } from './timeouts.mjs';
+import { BLOCKING_RULE, blockingFindings, blockingMessage } from './blocking-findings.mts';
+import { TIMEOUT_RULE, timeoutMessage } from './timeouts.mts';
 
 const IMPORTS = [
   { path: 'kotlinx.coroutines.', alias: undefined, all: true },

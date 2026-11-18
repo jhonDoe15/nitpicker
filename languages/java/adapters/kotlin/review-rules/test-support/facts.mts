@@ -1,4 +1,4 @@
-import { findingFactory } from '../review-finding.mjs';
+import { findingFactory } from '../review-finding.mts';
 import { listOf } from '../../../../../../shared/values/readers.mts';
 
 const MAIN_FILE = 'src/main/kotlin/demo/Sample.kt';
@@ -267,7 +267,8 @@ export function call(name: string, overrides: Partial<CallFact> = {}): CallFact 
   return { name, positional: 0, named: [], spread: false, lambda: false, ...overrides };
 }
 
-export function segment(name: string, call = false, args: Fact[] = []): SegmentFact {
+export function segment(name: string, options: { call?: true; args?: Fact[] } = {}): SegmentFact {
+  const { call = false, args = [] } = options;
   return call ? { name, call, arguments: args } : { name, call };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { parameterMutations as untypedParameterMutations } from './parameter-mutation.mjs';
+import { parameterMutations as untypedParameterMutations } from './parameter-mutation.mts';
 
 const parameterMutations: Check<Subjected> = untypedParameterMutations;
 

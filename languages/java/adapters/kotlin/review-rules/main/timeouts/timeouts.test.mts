@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { file, testFile } from '../../test-support/loose-facts.mts';
-import { TIMEOUT_RULE, timeoutFindings } from './timeouts.mjs';
+import { TIMEOUT_RULE, timeoutFindings } from './timeouts.mts';
 
 const COROUTINES_IMPORT = { path: 'kotlinx.coroutines.withTimeout', all: false };
 const STAR_IMPORT = { path: 'kotlinx.coroutines', all: true };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { compatibilityShims as untypedCompatibilityShims } from './compatibility-shims.mjs';
+import { compatibilityShims as untypedCompatibilityShims } from './compatibility-shims.mts';
 
 const compatibilityShims: Check<Subjected> = untypedCompatibilityShims;
 

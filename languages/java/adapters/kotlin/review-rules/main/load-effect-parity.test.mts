@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   kotlinCovers as untypedCovers,
   kotlinPairs as untypedPairs,
-} from './load-effect-types.mjs';
+} from './load-effect-types.mts';
 
 const kotlinPairs: () => string[] = untypedPairs;
 const kotlinCovers: (type: string, method: string) => boolean = untypedCovers;

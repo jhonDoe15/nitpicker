@@ -1,22 +1,22 @@
 import { configError, validateProjectRelativePath } from '../../../../shared/config.mjs';
 import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mjs';
-import { JAVA_TOOLS } from '../gradle-presets.mjs';
+import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mts';
+import { JAVA_TOOLS } from '../gradle-presets.mts';
 import {
   isJavaFindingRule,
   validateJavaFindingRule,
 } from '../exception-rules/java-finding-rules.mts';
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mjs';
-import { SOURCE_RULE_IDS } from './rules/kotlin-rules.mjs';
-import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mts';
+import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mts';
+import { SOURCE_RULE_IDS } from './rules/kotlin-rules.mts';
+import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only/test-only-classes.mts';
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mts';
-import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
-import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
-import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-trips.mjs';
-import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
-import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mjs';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mts';
+import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mts';
+import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-trips.mts';
+import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mts';
+import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mts';
 import {
   fieldOf,
   fieldsOf,

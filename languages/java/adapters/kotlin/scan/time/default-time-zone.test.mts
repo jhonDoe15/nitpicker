@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { defaultTimeZones as untypedDefaultTimeZones } from './default-time-zone.mjs';
+import { defaultTimeZones as untypedDefaultTimeZones } from './default-time-zone.mts';
 
 const defaultTimeZones: Check<Ruled> = untypedDefaultTimeZones;
 

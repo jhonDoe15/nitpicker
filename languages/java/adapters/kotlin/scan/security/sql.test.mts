@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { type Located, type Scanned, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { sqlStringBuilding as untypedSqlStringBuilding } from './sql.mjs';
-import { kotlinDeclarations as untypedKotlinDeclarations } from './sql-values.mjs';
-
-const sqlStringBuilding: (scanned: Scanned, context: { declarations: unknown }) => Located[] =
-  untypedSqlStringBuilding;
-const kotlinDeclarations: (scannedFiles: Scanned[]) => unknown = untypedKotlinDeclarations;
+import { lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { sqlStringBuilding } from './sql.mts';
+import { kotlinDeclarations } from './sql-values.mts';
 
 const MODEL = [
   'enum class SortColumn(val sql: String) { NAME("name"), CREATED("created_at") }',

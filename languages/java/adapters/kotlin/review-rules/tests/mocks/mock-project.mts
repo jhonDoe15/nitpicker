@@ -1,11 +1,13 @@
 import { temporaryRepositories } from '../../../../../../../scripts/test-support/temporary-repositories.mts';
-import { productionTypeResolver } from '../../production-types.mjs';
+import { productionTypeResolver } from '../../production-types.mts';
 import { run, testFile } from '../../test-support/facts.mts';
 import type { FileFacts, RuleFinding } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 
-const resolveProduction: (input: { files: FileFacts[]; projectRoot: string }) => unknown =
-  productionTypeResolver;
+function resolveProduction(input: { files: FileFacts[]; projectRoot: string }): unknown {
+  const resolver: unknown = Reflect.apply(productionTypeResolver, undefined, [input]);
+  return resolver;
+}
 
 type MockRule = (files: never, options: never) => unknown;
 

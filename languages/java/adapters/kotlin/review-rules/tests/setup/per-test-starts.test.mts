@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rulesOf } from '../../test-support/sources.mts';
-import { PER_TEST_START_RULE } from './per-test-starts.mjs';
+import { PER_TEST_START_RULE } from './per-test-starts.mts';
 
 function starts(text: string): string[] {
   return rulesOf(text, PER_TEST_START_RULE);

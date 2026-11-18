@@ -1,15 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { selectKotlinMethods as untypedSelectKotlinMethods } from '../kotlin-metrics.mjs';
+import type { CoverageUnit, FunctionUnit } from '../../../ingest/units/unit-types.mts';
+import { selectKotlinMethods } from '../kotlin-metrics.mts';
 
-type Unit = { name: string; start: number; end: number; lambda?: boolean };
-type Method = { name: string; line: number; className?: string };
+const COUNTS = { covered: 0, total: 0 };
 
-const selectKotlinMethods: (fn: Unit, candidates: Method[], siblings: Unit[]) => Method[] =
-  untypedSelectKotlinMethods;
+function unit(name: string, start: number, end: number, lambda = false): FunctionUnit {
+  const base = {
+    ccn: 1,
+    file: 'A.kt',
+    longName: name,
+    name,
+    start,
+    end,
+    lineScoped: false,
+    lineFallback: false,
+    numberedAmongSameSource: false,
+  };
+  return { ...base, lambda };
+}
+
+function methodOf(name: string, line: number, className = 'demo/Demo'): CoverageUnit {
+  return { name, line, className, lines: COUNTS, branches: COUNTS };
+}
 
 describe('selectKotlinMethods', () => {
-  const fn = { name: 'Demo.run', start: 10, end: 20 };
-  const method = (name: string, line: number) => ({ name, line });
+  const fn = unit('Demo.run', 10, 20);
+  const method = (name: string, line: number) => methodOf(name, line);
 
   it('takes the methods that start inside the function', () => {
     const selected = selectKotlinMethods(
@@ -22,7 +38,7 @@ describe('selectKotlinMethods', () => {
   });
 
   it('leaves the synthetic method of a lambda to the lambda unit', () => {
-    const lambda = { name: 'Demo.run.<lambda>', start: 14, end: 16, lambda: true };
+    const lambda = unit('Demo.run.<lambda>', 14, 16, true);
     const methods = [method('run', 10), method('run$lambda$0', 15)];
 
     expect(selectKotlinMethods(fn, methods, [fn, lambda]).map(({ name }) => name)).toEqual(['run']);
@@ -32,8 +48,8 @@ describe('selectKotlinMethods', () => {
   });
 
   it('keeps the method of a function whose first line is the line of a lambda inside it', () => {
-    const oneLine = { name: 'Demo.bump', start: 10, end: 12 };
-    const lambda = { name: 'Demo.bump.<lambda>', start: 11, end: 11, lambda: true };
+    const oneLine = unit('Demo.bump', 10, 12);
+    const lambda = unit('Demo.bump.<lambda>', 11, 11, true);
     const methods = [method('bump', 11), method('bump$lambda$0', 11)];
 
     expect(
@@ -51,8 +67,8 @@ describe('selectKotlinMethods', () => {
   });
 
   it('counts a static bridge of a companion function once, through the method that holds the code', () => {
-    const bridge = { name: 'make', line: 12, className: 'demo/Holder' };
-    const body = { name: 'make', line: 12, className: 'demo/Holder$Companion' };
+    const bridge = methodOf('make', 12, 'demo/Holder');
+    const body = methodOf('make', 12, 'demo/Holder$Companion');
 
     expect(selectKotlinMethods(fn, [bridge, body], [fn])).toEqual([body]);
     expect(
@@ -63,16 +79,13 @@ describe('selectKotlinMethods', () => {
   });
 
   it('keeps the overloads a function has in one class', () => {
-    const overloads = [
-      { name: 'over', line: 11, className: 'demo/EdgeKt' },
-      { name: 'over', line: 11, className: 'demo/EdgeKt' },
-    ];
+    const overloads = [methodOf('over', 11, 'demo/EdgeKt'), methodOf('over', 11, 'demo/EdgeKt')];
 
     expect(selectKotlinMethods(fn, overloads, [fn])).toEqual(overloads);
   });
 
   it('leaves the methods of a function nested inside to that function', () => {
-    const inner = { name: 'Demo.run.inner', start: 14, end: 16 };
+    const inner = unit('Demo.run.inner', 14, 16);
 
     expect(
       selectKotlinMethods(fn, [method('outer', 10), method('inner', 14)], [fn, inner]).map(
