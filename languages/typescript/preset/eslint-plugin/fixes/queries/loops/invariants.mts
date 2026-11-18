@@ -178,6 +178,7 @@ export function isInvariant(
   sourceCode: SourceCode,
   node: TSESTree.Node,
   repeated: Repeated,
+  except?: string,
 ): boolean {
   const nodes = descendants(node, sourceCode.visitorKeys, () => false);
   if (!nodes.every(isPlainNode)) {
@@ -188,7 +189,7 @@ export function isInvariant(
     if (each.type === AST_NODE_TYPES.ThisExpression) {
       return !mutated.has('this');
     }
-    if (each.type !== AST_NODE_TYPES.Identifier || !isReference(each)) {
+    if (each.type !== AST_NODE_TYPES.Identifier || !isReference(each) || each.name === except) {
       return true;
     }
     return isStable(sourceCode, each, repeated.range) && !mutated.has(each.name);

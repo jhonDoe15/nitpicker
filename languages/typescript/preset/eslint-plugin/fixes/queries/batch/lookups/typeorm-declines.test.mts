@@ -7,6 +7,47 @@ const { project, declines } = typeormCases(ormProject('typeorm-declines'));
 project.tester.run('typeorm lookups that stay as they are', ioInLoop, {
   valid: [],
   invalid: [
+    declines(`export async function run() {
+  for (const id of ids) {
+    const user = await repo.findOneBy({ id });
+    out.push(user);
+  }
+}
+`),
+    declines(`export async function run() {
+  const byId = new Map<number, unknown>();
+  for (const id of ids) {
+    const user = await repo.findOneBy({ id });
+    byId.set(id, user);
+  }
+}
+`),
+    declines(`export async function run() {
+  const found = new Set<unknown>();
+  for (const id of ids.filter((each) => each > 0)) {
+    const user = await repo.findOneBy({ id });
+    found.add(user);
+  }
+}
+`),
+    declines(`export async function run() {
+  let unique = [...new Set(ids)];
+  for (const id of unique) {
+    const user = await repo.findOneBy({ id });
+    out.push(user);
+  }
+}
+`),
+    declines(`export async function run() {
+  for (const id of ids) {
+    if (skip.has(id)) {
+      continue;
+    }
+    const user = await repo.findOne({ where: { id }, relations: ['team'], withDeleted: true });
+    out.push(user);
+  }
+}
+`),
     ...[
       'event.teamId += 1;',
       'event.teamId = Number(workspaceId);',
@@ -216,5 +257,27 @@ project.tester.run('typeorm lookups that stay as they are', ioInLoop, {
   }
 }
 `),
+    declines(`export async function run() {
+  for (const event of events) {
+    if (!event.owner) {
+      continue;
+    }
+    const user = await repo.findOneBy({ id: event.owner.id });
+    out.push(user);
+  }
+}
+`),
+    declines(`export async function run() {
+  await Promise.all(
+    events.map(async (event) => {
+      if (event.teamId < 0) {
+        return null;
+      }
+      const user = await repo.findOneBy({ id: event.teamId });
+      return user;
+    }),
+  );
+}
+`, ['foreignKeyQuery']),
   ],
 });

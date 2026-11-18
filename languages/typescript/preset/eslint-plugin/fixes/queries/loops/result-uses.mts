@@ -54,6 +54,7 @@ const ESCAPES = new Set([
   'values',
   'entries',
 ]);
+const STORING = new Set(['push', 'add', 'set']);
 const PRIMITIVE_FLAGS =
   ts.TypeFlags.StringLike |
   ts.TypeFlags.NumberLike |
@@ -260,5 +261,26 @@ export function isReadOnlyResult(
           !isInClosure(reference, variable) &&
           isAllowedUse(context, reference.identifier, kind),
       )
+  );
+}
+
+function isStored(context: Context, identifier: TSESTree.Identifier): boolean {
+  const chain = climb(identifier);
+  return (
+    chain !== undefined &&
+    chain.parent.type === AST_NODE_TYPES.CallExpression &&
+    chain.parent.callee !== chain.top &&
+    STORING.has(lastName(chain.parent.callee)) &&
+    !isPrimitive(context, chain.top)
+  );
+}
+
+export function isStoredResult(context: Context, declarator: TSESTree.VariableDeclarator): boolean {
+  const [variable] = context.sourceCode.getDeclaredVariables(declarator);
+  return (variable?.references ?? []).some(
+    (reference) =>
+      reference.identifier !== declarator.id &&
+      reference.identifier.type === AST_NODE_TYPES.Identifier &&
+      isStored(context, reference.identifier),
   );
 }

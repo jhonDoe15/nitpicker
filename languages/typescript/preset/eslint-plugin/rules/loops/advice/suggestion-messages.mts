@@ -12,4 +12,9 @@ export const IO_IN_LOOP_SUGGESTIONS = {
     'and read each group from it. Keys that repeat share one array: do not change it.',
     READ_BEFORE,
   ].join(' '),
+  batchMget: [
+    'Read the values with one `mget` per 500 keys before the loop, and look each one up in a `Map` in it.',
+    'The values are read before the loop starts, so a key that changes while the loop runs is no longer seen.',
+    'A key that holds a value of another type makes `get` throw, but `mget` returns `null` for it.',
+  ].join(' '),
 };
