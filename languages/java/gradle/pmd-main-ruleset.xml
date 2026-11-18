@@ -555,42 +555,46 @@ return
       <property name="xpath">
         <value><![CDATA[
 let $names := 'accept(?:-charset|-encoding|-language)?|content-(?:type|disposition|language)|cache-control|if-none-match|if-match|cookie|set-cookie|forwarded|vary|prefer|link',
-    $headerArg := function($arg) {
-      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $names, ')"$'), 'i')]
-             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $names, ')$'), 'i')])
+    $headerArg := function($arg, $pattern) {
+      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $pattern, ')"$'), 'i')]
+             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $pattern, ')$'), 'i')])
     },
-    $direct := function($e) {
+    $direct := function($e, $pattern) {
       exists($e[self::MethodCall][
-        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1])
+        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1], $pattern)
         or @MethodName = 'getContentType' and ArgumentList/@Size = 0 and pmd-java:typeIs('java.lang.String')
+           and matches('content-type', concat('^(?:', $pattern, ')$'))
         or @MethodName = ('orElse', 'orElseThrow', 'get')
-           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1])]]])
+           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1], $pattern)]]])
     },
-    $local := function($e) {
+    $local := function($e, $pattern) {
       exists($e[self::VariableAccess][let $name := @Name return
         ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
           //LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $name]]
             [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
-                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$direct(*[2])]])
+                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$direct(*[2], $pattern)]])
     },
-    $parameter := function($e) {
+    $parameter := function($e, $pattern) {
       exists($e[self::VariableAccess][let $name := @Name return
         ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter[VariableId/@Name = $name]
           [ClassType[@SimpleName = 'String']]
-          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1])]]])
+          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1], $pattern)]]])
     },
-    $base := function($e) { $direct($e) or $local($e) or $parameter($e) },
-    $source := function($e) {
-      $base($e) or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1])])
+    $base := function($e, $pattern) { $direct($e, $pattern) or $local($e, $pattern) or $parameter($e, $pattern) },
+    $source := function($e, $pattern) {
+      $base($e, $pattern)
+      or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1], $pattern)])
     },
     $separator := function($e) { exists($e[self::StringLiteral][matches(@Image, '^"[\s,;\\|\[\]*+s]*[,;][\s,;\\|\[\]*+s]*"$')]) }
 return (
-  //MethodCall[@MethodName = 'split'][$source(*[1]) and $separator(ArgumentList/*[1])]
-  | //ConstructorCall[ClassType/@SimpleName = 'StringTokenizer'][$source(ArgumentList/*[1]) and $separator(ArgumentList/*[2])]
+  //MethodCall[@MethodName = 'split'][$source(*[1], $names) and $separator(ArgumentList/*[1])]
+      [not(ArgumentList/*[1][@Image = '";"'] and parent::ArrayAccess[*[2][self::NumericLiteral][@Image = '0']]
+           and $source(*[1], 'content-type'))]
+  | //ConstructorCall[ClassType/@SimpleName = 'StringTokenizer'][$source(ArgumentList/*[1], $names) and $separator(ArgumentList/*[2])]
   | //MethodCall[@MethodName = ('tokenizeToStringArray', 'commaDelimitedListToStringArray', 'commaDelimitedListToSet',
                                 'delimitedListToStringArray')]
-      [$source(ArgumentList/*[1])]
-  | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1])]
+      [$source(ArgumentList/*[1], $names)]
+  | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1], $names)]
       [*[1][self::MethodCall[@MethodName = ('on', 'onPattern', 'compile')]]]
 )
 ]]></value>
