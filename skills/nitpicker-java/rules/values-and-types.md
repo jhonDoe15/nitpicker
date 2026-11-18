@@ -40,6 +40,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
   `Instant`, never `(int) (System.currentTimeMillis() / 1000)` (`pmd/EpochNarrowedToInt`).
+- Widen before you multiply: `System.currentTimeMillis() + ttlSeconds * 1000L`, `(long) hour * 60`,
+  `TimeUnit.SECONDS.toMillis(ttlSeconds)` or `Math.multiplyExact`; an `int` product added to a `long` has
+  already overflowed (`pmd/IntProductWidenedLate`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches

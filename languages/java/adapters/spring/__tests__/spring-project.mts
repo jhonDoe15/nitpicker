@@ -154,6 +154,7 @@ const REVIEW_RULES = new Set([
   'DefaultTimeZone',
   'MixedTimeUnits',
   'EpochNarrowedToInt',
+  'IntProductWidenedLate',
   'ClassLoadEffect',
   'LockOrderInversion',
   'InconsistentFieldLocking',

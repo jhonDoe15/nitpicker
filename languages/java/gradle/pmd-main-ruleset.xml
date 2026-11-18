@@ -797,6 +797,35 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="IntProductWidenedLate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This int multiplication is computed in 32 bits and only then added to or multiplied with a long, so it overflows silently before the widening (timeToLive * 1000 wraps once timeToLive passes about 2.1 million). Make a factor long first: System.currentTimeMillis() + timeToLive * 1000L, (long) hour * 60, or convert with TimeUnit.SECONDS.toMillis(timeToLive) or Math.multiplyExact. Constant products pass, and so do products with a byte, short or char factor, a small literal factor (16 or less) next to a plain variable, a loop variable factor, an array length factor and products that contain a method call. A shift by 16 or more is reported the same way: base + (steps &lt;&lt; 20).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//InfixExpression[@Operator = ('*', '<<')][pmd-java:typeIsExactly('int')]
+  [not(@CompileTimeConstant = true())]
+  [every $operand in * satisfies $operand[pmd-java:typeIsExactly('int') or pmd-java:typeIs('java.lang.Integer')]]
+  [not(@Operator = '<<' and *[2]/self::NumericLiteral[@ValueAsInt < 16])]
+  [empty(.//MethodCall) and empty(.//FieldAccess[@Name = 'length'])]
+  [not(@Operator = '*' and (some $i in (1, 2) satisfies
+         *[$i]/self::NumericLiteral[@ValueAsInt <= 16]
+         and *[3 - $i][self::VariableAccess or self::FieldAccess or self::ArrayAccess]))]
+  [empty(.//VariableAccess[@Name = (ancestor::ForStatement/ForInit//VariableId/@Name,
+                                    ancestor::ForeachStatement/LocalVariableDeclaration//VariableId/@Name)])]
+  [not(exists(.//VariableAccess) and empty(.//FieldAccess | .//ArrayAccess)
+       and (every $v in .//VariableAccess satisfies
+              $v/@CompileTimeConstant = true()
+              or exists($v/ancestor::Block//LocalVariableDeclaration[pmd-java:modifiers() = 'final']
+                          /VariableDeclarator[VariableId/@Name = $v/@Name][NumericLiteral])))]
+  [let $parent := ancestor::*[not(self::ParenthesizedExpression
+                                  or self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('int')])][1]
+   return exists($parent/self::InfixExpression[@Operator = ('+', '-', '*')][pmd-java:typeIsExactly('long')])
+          and empty(ancestor::InfixExpression[@Operator = '*'][pmd-java:typeIsExactly('int')][. >> $parent])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="IoCallInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Fetch or write all items at once (findAllById, saveAll, deleteAll, where id in (...), one batched request) instead of calling a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.">
     <priority>2</priority>
