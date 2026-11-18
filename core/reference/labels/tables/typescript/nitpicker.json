@@ -149,6 +149,7 @@
   "eslint/nitpicker/promise-wait-deadline": ["reliability", "async"],
   "eslint/nitpicker/react-controlled-input": ["bug", "react"],
   "eslint/nitpicker/react-field-has-label": ["bug", "react"],
+  "eslint/nitpicker/react-mutation-drops-failure": ["bug", "react"],
   "eslint/nitpicker/react-no-direct-dom": ["bug", "react"],
   "eslint/nitpicker/react-no-effect-data-fetching": ["bug", "react"],
   "eslint/nitpicker/react-no-effect-derived-state": ["simplification", "react"],

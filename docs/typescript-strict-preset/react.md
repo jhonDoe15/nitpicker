@@ -55,6 +55,17 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   rule needs no type information. The message names the form for each kind of work: data through
   `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
   causes it, a redirect by rendering `<Navigate />`.
+- **No mutation that drops failure** (`nitpicker/react-mutation-drops-failure`). A React Query
+  mutation (`useMutation`, `api.x.useMutation()`, or a hook imported from a project file that wraps
+  `useMutation` without handling failure itself) whose `onSuccess` is passed in the hook or the call
+  options while `onError` is passed nowhere and the component never reads `error`, `isError`,
+  `status` or `failureReason` from it: when the request fails nothing is shown. The call or the hook
+  options are reported; pass `onError: (error) => toast.error(error.message)` or show `error`. A
+  `mutateAsync` call inside a `try` with a `catch`, followed by `.catch(...)` or `.then(...)`, or whose
+  promise is returned is left alone, and so is a project whose source sets `MutationCache` `onError`
+  (or `defaultOptions.mutations.onError`). `throwOnError` and a `meta` option count as handling
+  failure. Hooks from packages and tuple results (RTK Query, Apollo)
+  are not read.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
   effect that calls a prop callback (`onSave(value)`, `notify(value)`, `props.onChange()`, one
   destructured with `const { onChange } = props`, also renamed as `{ onChange: report }`, or one
