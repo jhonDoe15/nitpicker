@@ -78,6 +78,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - `equals` and `hashCode` read the same fields: `hashCode` may use a subset of what `equals` compares, never a field
   `equals` ignores, and never `super.hashCode()` or `System.identityHashCode(this)` next to an `equals` that compares
   fields (`pmd/HashCodeDisagreesWithEquals`). Keep mutable state out of both.
+- A field the constructor sets and a getter exposes belongs in `equals` and `hashCode`: add the new field to both
+  methods (`Objects.equals(extension, that.extension)`, `Objects.hash(groupId, artifactId, extension)`), or mark it
+  `transient` or name it as a cache, lock or listener when it is not part of the value (`pmd/EqualsLeavesOutField`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it, with no `default` (`pmd/ExhaustiveSwitchHasDefault`, also for
   a pattern switch). A classic `switch` statement needs `default`.

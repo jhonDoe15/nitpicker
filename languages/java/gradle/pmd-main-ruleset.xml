@@ -394,6 +394,69 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="EqualsLeavesOutField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field is set by the constructor and returned by a getter, but neither equals nor hashCode reads it, while both compare the other fields of the class. Two objects that differ only in this field are equal, so a set or map keeps the wrong one. Add it to both methods: Objects.equals(extension, that.extension) and Objects.hash(groupId, artifactId, extension). An exception fits when the field is not part of the identity of the value: mark it transient or name it as a cache, lock or listener.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@RegularClass = true()]
+  [empty(ModifierList/Annotation[@SimpleName = ('EqualsAndHashCode', 'Data', 'Value')])]
+  /ClassBody/FieldDeclaration[not(@Static = true())][count(VariableDeclarator) = 1]
+  [not(pmd-java:modifiers() = ('transient', 'volatile'))]
+  [empty(ModifierList/Annotation[@SimpleName = ('Exclude', 'Transient', 'XmlTransient', 'JsonIgnore', 'Id', 'Version', 'GeneratedValue')])]
+  [empty(ArrayType)][not(PrimitiveType[matches(@Kind, 'boolean', 'i')])]
+  [empty(ClassType[matches(@SimpleName, '^(Optional.*|Instant|Duration|Date|LocalDate.*|ZonedDateTime|OffsetDateTime|Pattern|.*Matcher|.*Stats|.*Statistics|.*Metadata|.*Estimate|.*Origin|Class|Boolean)$')])]
+  [empty(ClassType[@SimpleName = ('Logger', 'Log', 'Lock', 'ReentrantLock', 'ReadWriteLock', 'Semaphore', 'Thread',
+                                  'AtomicInteger', 'AtomicLong', 'AtomicBoolean', 'AtomicReference', 'LongAdder')])]
+  [let $c := ancestor::ClassDeclaration[1],
+       $f := string(VariableDeclarator/VariableId/@Name),
+       $fields := $c/ClassBody/FieldDeclaration[not(@Static = true())]/VariableDeclarator/VariableId,
+       $eq := $c/ClassBody/MethodDeclaration[@Name = 'equals'][@Arity = 1][not(@Static = true())],
+       $hc := $c/ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0][not(@Static = true())],
+       $cap := function($n) { concat(upper-case(substring($n, 1, 1)), substring($n, 2)) },
+       $accessors := function($n) { ($n, concat('get', $cap($n)), concat('is', $cap($n))) },
+       $touches := function($m, $n) {
+         exists($m//(VariableAccess | FieldAccess)[@Name = $n])
+         or exists($m//MethodCall[@MethodName = $accessors($n)]) },
+       $declared := $c/ClassBody/MethodDeclaration[not(@Name = ('equals', 'hashCode'))]/@Name,
+       $known := for $n in $fields return $accessors($n/@Name),
+       $opaque := function($m) {
+         exists($m//MethodCall[@MethodName = $declared][not(@MethodName = $known)])
+         or exists($m//MethodCall[matches(@MethodName, '^(get|is)[A-Z]')][ArgumentList[@Size = 0]]
+                                 [not(@MethodName = ($known, 'getClass'))])
+         or exists($m//MethodCall[matches(@MethodName, 'reflection', 'i')]) },
+       $assignedFromParameter := every $a in $c/ClassBody/ConstructorDeclaration//AssignmentExpression
+           [@Operator = '='][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $f]]
+         satisfies (empty($a/*[2]/descendant-or-self::*[self::InfixExpression or self::ConditionalExpression])
+                    and count($a/*[2]/descendant-or-self::*[self::MethodCall or self::ConstructorCall]) le 1
+                    and (let $p := $a/ancestor::ConstructorDeclaration/FormalParameters/FormalParameter/VariableId/@Name
+                         return exists($a/*[2]/descendant-or-self::VariableAccess[@Name = $f][@Name = $p])
+                           or exists($a/*[2]/descendant-or-self::*[(self::FieldAccess and @Name = $f)
+                                                                  or (self::MethodCall and @MethodName = $accessors($f))]
+                                                                  [*[1][self::VariableAccess][@Name = $p]])))
+   return $f != 'id' and not(matches($f, '^(ttl|timeToLive|creat|source|origin|ephemeral|metadata|stats|estimate|warnings|address|host)', 'i'))
+     and not(matches($f, '(Time|Timestamp|Stats|Statistics|Metadata|Estimate|Ttl)$'))
+     and not(matches($f, '^(cache|lock|log|logger|listener|mutex|memo|lazy|derived|computed|counter|executor|semaphore|callback|hash)'))
+     and not(matches($f, '(Cache|Lock|Logger|Listener|Mutex|Memo|Lazy|Derived|Computed|Counter|Executor|Semaphore|Callback|Hash)'))
+     and count($eq) = 1 and count($hc) = 1 and not($opaque($eq)) and not($opaque($hc))
+     and count($fields[$touches($eq, @Name)]) ge 3 and exists($fields[$touches($hc, @Name)])
+     and not($touches($eq, $f)) and not($touches($hc, $f))
+     and count($fields[not($touches($eq, @Name)) and not($touches($hc, @Name))]) = 1
+     and exists($c/ClassBody/ConstructorDeclaration//AssignmentExpression
+                [@Operator = '='][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $f]])
+     and $assignedFromParameter
+     and empty($c/ClassBody/ConstructorDeclaration//AssignmentExpression
+               [*[1][(self::VariableAccess or self::FieldAccess) and not(@Name = $f)]]
+               [*[2]/descendant-or-self::*[(self::VariableAccess or self::FieldAccess) and @Name = $f]])
+     and exists($c/ClassBody/MethodDeclaration[@Arity = 0][@Visibility = 'public'][@Name = $accessors($f)]
+                [Block[count(*) = 1]/ReturnStatement[.//(VariableAccess | FieldAccess)[@Name = $f]]])
+     and empty($c/ClassBody/MethodDeclaration[@Name = (($accessors($f)), 'hashCode', 'equals', 'toString')]
+               //AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $f]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ExhaustiveEnumPredicate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)).">
     <priority>3</priority>

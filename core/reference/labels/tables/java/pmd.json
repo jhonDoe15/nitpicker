@@ -46,6 +46,7 @@
   "pmd/EmptyCatchBlock": ["reliability"],
   "pmd/EmptyFinalizer": ["simplification"],
   "pmd/EpochNarrowedToInt": ["bug"],
+  "pmd/EqualsLeavesOutField": ["bug"],
   "pmd/ExhaustiveEnumPredicate": ["maintainability"],
   "pmd/FinalizeOnlyCallsSuperFinalize": ["simplification"],
   "pmd/FixedSleepInTest": ["tests"],
