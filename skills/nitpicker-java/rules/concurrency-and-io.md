@@ -74,6 +74,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A constructor that creates a thread pool, `Timer` or opens a file or connection does it as its last step, or wraps the rest
   of the constructor in `try`/`catch (RuntimeException | Error e)` that shuts the resource down and rethrows
   (`pmd/ConstructorLeaksResourceOnFailure`).
+- A cleanup call in a `catch` that rethrows (`rollback()`) sits in its own `try`
+  that adds its failure to the original with `addSuppressed`, or logs it, so the real cause is the one that propagates
+  (`pmd/CleanupThrowReplacesFailure`).
 - A `close()` or `stop()` that calls a field only `open()` or `start()` assigns checks it for null first and resets it
   (`if (cursor != null) { cursor.close(); cursor = null; }`), or the class creates the resource in its constructor
   (`pmd/CloseDereferencesUnopenedField`).
