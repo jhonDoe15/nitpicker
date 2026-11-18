@@ -187,3 +187,7 @@ the allowed form and ends with its exception entry.
   (`go-rules/newline-only-line-split`).
 - Truncate text on runes (`string([]rune(text)[:max])`) or step back to `utf8.RuneStart`, not with `text[:max-3]` under
   `len(text) > max`, which can cut a multi-byte character in two (`go-rules/byte-cut-splits-rune`).
+- Paths and hosts are matched by whole segments (`go-rules/prefix-without-boundary`): write
+  `x == base || strings.HasPrefix(x, base+"/")` and `host == domain || strings.HasSuffix(host, "."+domain)`, not a bare
+  `strings.HasPrefix(x, base)`. Remove a suffix or prefix with `strings.TrimSuffix` and `TrimPrefix`, not
+  `strings.Replace(name, ".git", "", 1)` (`go-rules/unanchored-affix-replace`).

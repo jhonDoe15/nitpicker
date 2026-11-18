@@ -1019,6 +1019,22 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   (`readdirSync(dir).map((name) => path.join(dir, name))`, also `for (const name of
 await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or with another
   parameter after it, it is still reported.
+- `nitpicker/no-prefix-without-boundary` (production code): a text prefix, suffix or substring check on a
+  path, route, package or host, where a sibling that only shares the text passes. It reports
+  `a.startsWith(b)` when `b` is named like a path (`base`, `rootDir`, `basePath`, `packageName`, `route`,
+  `pathname`, `host`, `getBase()`) or is built from a path-shaped literal and a value
+  (`` `/repos/${owner}/${name}` ``, `'/repos/' + owner`) without a separator at the end, `startsWith` with a bare
+  origin (`'http://localhost'`, `'https://example.com'`: `http://localhost.attacker.example` passes), `a.endsWith(b)`
+  where either side is a host or domain without a leading `.` or `@` (`hostname.endsWith(domain)`), and
+  with a host or domain name. A name `prefix` counts when the receiver is a directory or path. Allowed forms: `a === b || a.startsWith(`${b}/`)` (an equality test of
+  the same two values in the same condition), `b + path.sep`, a value that ends in `/`, `\\`, `.`, `:` or `-`
+  (also through a `const`), `withTrailingSlash(b)`, `host === domain || host.endsWith(`.${domain}`)`,
+  `domain.startsWith('.') && host.endsWith(domain)`, a value normalised by a conditional or `+=` before the check, a check on
+  the character or length after the prefix (`a[base.length] === '/'`), a bracket test (`host.endsWith(']')`), `includes('node_modules')`, `new URL(x).hostname === 'localhost'`, a regular
+  expression anchored on separators, and `path.relative`. A plain string literal such as `'/api'` is left alone
+  (a deliberate text prefix), and so is a `startsWith` with a position. The guard of `nitpicker/no-unsafe-path-join`
+  covers only the check in front of an `fs` call; this rule covers URL paths, route matching, module ids,
+  package names and domains. The same form runs as `pmd/AffixWithoutBoundary` (Java and Kotlin).
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so
   every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and

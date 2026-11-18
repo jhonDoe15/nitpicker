@@ -28,6 +28,7 @@ import { copiedConstantMessage } from '../../../shared/rules/copied-constants/co
 import { maxValueEntry } from './review-entries/max-value.mjs';
 import { stringCallEntries } from './review-entries/string-calls.mjs';
 import { valueCheckEntries } from './review-entries/value-checks.mjs';
+import { minedEntries } from './review-entries/mined-rules.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -274,6 +275,7 @@ export function jvmNitpickerEntries() {
     maxValueEntry(),
     ...stringCallEntries(),
     ...valueCheckEntries(),
+    ...minedEntries(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

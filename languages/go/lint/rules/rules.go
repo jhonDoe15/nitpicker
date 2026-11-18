@@ -3,6 +3,7 @@ package rules
 import (
 	"slices"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/affixes"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/backoff"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/concurrency"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
@@ -49,6 +50,7 @@ func Analyzers() []*analysis.Analyzer {
 		lifecycles.Analyzers(),
 		httpvalues.Analyzers(),
 		textsplits.Analyzers(),
+		affixes.Analyzers(),
 		[]*analysis.Analyzer{
 			copies.Analyzer,
 			optional.Analyzer,

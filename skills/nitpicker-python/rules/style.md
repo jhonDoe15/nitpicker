@@ -80,3 +80,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   part holds the delimiter (`delimited-lookup-key`).
 - Split a host and port with `urllib.parse.urlsplit("//" + host)` (`.hostname` and `.port`) or `ipaddress`, not with
   `host.split(":")`, which breaks IPv6 literals such as `[::1]:3000` (`host-port-colon-split`).
+- Paths, routes and hosts are matched by whole segments (`prefix-without-boundary`): `x == base or
+x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`. Remove a suffix or prefix with
+  `removesuffix` and `removeprefix`, not `name.replace(".git", "")` (`unanchored-affix-replace`).
