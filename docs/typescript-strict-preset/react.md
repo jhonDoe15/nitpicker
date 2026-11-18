@@ -55,6 +55,14 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   rule needs no type information. The message names the form for each kind of work: data through
   `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
   causes it, a redirect by rendering `<Navigate />`.
+- **No effect without dependencies that sets state** (`nitpicker/react-effect-needs-dependencies`).
+  `useEffect`, `useLayoutEffect` or `useInsertionEffect` called with only a callback runs after
+  every render; when the callback calls a `useState` setter, a `useReducer` dispatch, a `set*`
+  function from a hook result or a `set*` prop, each run renders again (a filter reset on every
+  keystroke, a loop). List what the effect reads (`}, [filter]);`) or `[]` to run once. A setter
+  call under an `if`, ternary or `&&` (a guard that stops the loop), a `useLayoutEffect` that
+  measures a ref, an effect that only reads, or touches refs and the DOM, an async callback, and a setter inside a nested function (a timer, a listener, a cleanup)
+  are left alone; `on*` callbacks are reported by `nitpicker/react-no-effect-event-handling`.
 - **No initial value built on every render** (`nitpicker/react-no-eager-initial-value`).
   `useState(getTimes(range, now))` and `useRef(new Runner())` evaluate their argument on every
   render and keep only the first result; a runner, worker or subscription is created and thrown

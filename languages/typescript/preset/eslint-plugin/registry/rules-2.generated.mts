@@ -45,6 +45,7 @@ import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
+import { rule as ruleReactEffectNeedsDependencies } from '../rules/react/effects/react-effect-needs-dependencies.mts';
 import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field-has-label.mts';
 import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
 import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
@@ -130,6 +131,7 @@ export const partRules = {
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
+  'react-effect-needs-dependencies': ruleReactEffectNeedsDependencies,
   'react-field-has-label': ruleReactFieldHasLabel,
   'react-i18next-escape-value': ruleReactI18nextEscapeValue,
   'react-mutation-drops-failure': ruleReactMutationDropsFailure,

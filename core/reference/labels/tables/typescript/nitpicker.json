@@ -148,6 +148,7 @@
   "eslint/nitpicker/preserve-error-cause": ["reliability"],
   "eslint/nitpicker/promise-wait-deadline": ["reliability", "async"],
   "eslint/nitpicker/react-controlled-input": ["bug", "react"],
+  "eslint/nitpicker/react-effect-needs-dependencies": ["bug", "react"],
   "eslint/nitpicker/react-field-has-label": ["bug", "react"],
   "eslint/nitpicker/react-i18next-escape-value": ["bug", "react"],
   "eslint/nitpicker/react-mutation-drops-failure": ["bug", "react"],

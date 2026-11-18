@@ -1,5 +1,6 @@
 export const nitpickerReactRuleIds = [
   'nitpicker/react-controlled-input',
+  'nitpicker/react-effect-needs-dependencies',
   'nitpicker/react-field-has-label',
   'nitpicker/react-no-direct-dom',
   'nitpicker/react-no-literal-id-in-list-component',
