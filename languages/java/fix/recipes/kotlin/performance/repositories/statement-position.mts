@@ -1,26 +1,10 @@
-import { closingIndex, enclosingOpen } from '../../shared/kotlin-scan.mts';
+import { closingIndex, enclosingOpen, matchingOpenParen } from '../../shared/kotlin-scan.mts';
 
 const CONTINUING_END = /(?:[=+\-*/%&|<>!?:.,([]|->|\breturn|\belse|\bin|\bis|\bas|\bby)$/u;
 const CONTROL_HEADER = /\b(?:if|while|for|when|catch)\s*$/u;
 const BLOCK_HEADER = /^\s*(?:else\s+if|else|if|for|while|catch|when|try|finally|do|init)\b/u;
 const FUNCTION_HEADER = /\bfun\b/u;
-const PAREN_STEP: Readonly<Record<string, number>> = { ')': 1, '(': -1 };
 const NEXT_CONTINUES = /^(?:[.?:=!<>+\-*/%&|[]|as\b|in\b|is\b|else\b)/u;
-
-function openParenOf(code: string, close: number): number {
-  let depth = 0;
-  for (const [offset, character] of code
-    .slice(0, close + 1)
-    .split('')
-    .reverse()
-    .entries()) {
-    depth += PAREN_STEP[character] ?? 0;
-    if (depth === 0) {
-      return close - offset;
-    }
-  }
-  return -1;
-}
 
 function startsStatement(code: string, start: number): boolean {
   const before = code.slice(0, start).trimEnd();
@@ -31,7 +15,7 @@ function startsStatement(code: string, start: number): boolean {
     return false;
   }
   if (before.endsWith(')')) {
-    const open = openParenOf(before, before.length - 1);
+    const open = matchingOpenParen(before, before.length - 1);
     return open >= 0 && !CONTROL_HEADER.test(before.slice(0, open));
   }
   return !CONTINUING_END.test(before);
