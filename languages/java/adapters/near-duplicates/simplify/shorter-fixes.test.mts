@@ -1,22 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { Parser } from 'web-tree-sitter';
-import { loadGrammar } from '../grammar/load-grammar.mts';
-import { kotlinUnits } from '../kotlin/units.mts';
-import { javaUnits } from '../tree/units.mts';
-import { shorterFixes, type Grammar } from './shorter-fixes.mts';
+import { jvmGrammars, type JvmGrammar } from '../test-support/parse-jvm.mts';
+import { shorterFixes } from './shorter-fixes.mts';
 
-const grammars: { java?: Grammar; kotlin?: Grammar } = {};
-
-async function grammarOf(name: 'java' | 'kotlin'): Promise<Grammar> {
-  const parser = new Parser();
-  parser.setLanguage(await loadGrammar(name));
-  return { parser, unitsOf: name === 'java' ? javaUnits : kotlinUnits };
-}
+const grammars: { java?: JvmGrammar; kotlin?: JvmGrammar } = {};
 
 beforeAll(async () => {
-  await Parser.init();
-  grammars.java = await grammarOf('java');
-  grammars.kotlin = await grammarOf('kotlin');
+  Object.assign(grammars, await jvmGrammars());
 });
 
 function fixed(text: string, file = 'src/main/java/shop/Rules.java') {
