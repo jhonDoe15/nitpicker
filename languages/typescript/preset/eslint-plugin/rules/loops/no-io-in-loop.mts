@@ -1,4 +1,6 @@
-import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { batchSuggestion } from '../../fixes/queries/batch/suggestion.mts';
+import { suggestible } from '../../fixes/support/descriptors.mts';
 import type { Context } from '../security/security-values.mts';
 import { calleeOrigin, describePath, ioEffect, ioKind } from '../support/io-effects.mts';
 import { isRelayMark } from '../writes/relays.mts';
@@ -13,14 +15,16 @@ import { isDrainCall } from './repeats/drain-loops.mts';
 import { isPollingCall, isRereadInCatch } from './repeats/polling-loops.mts';
 import { batchForm } from './advice/batch-forms.mts';
 import { IO_IN_LOOP_MESSAGES } from './advice/messages.mts';
+import { IO_IN_LOOP_SUGGESTIONS } from './advice/suggestion-messages.mts';
 import { adviceOf, type Advice } from './advice/query-advice.mts';
 
-type MessageIds = keyof typeof IO_IN_LOOP_MESSAGES;
+type ReportIds = keyof typeof IO_IN_LOOP_MESSAGES;
+type MessageIds = ReportIds | keyof typeof IO_IN_LOOP_SUGGESTIONS;
 type Docs = { readonly requiresTypeChecking: boolean };
 type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 type Effect = NonNullable<ReturnType<typeof ioEffect>>;
 
-function messageIdOf(effect: Effect, concurrent: boolean, advice: Advice): MessageIds {
+function messageIdOf(effect: Effect, concurrent: boolean, advice: Advice): ReportIds {
   if (advice === 'dependentQuery') {
     return advice;
   }
@@ -54,8 +58,9 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       description: 'Do not run a database query or a remote request once per loop item',
       requiresTypeChecking: true,
     },
+    hasSuggestions: true,
     schema: [],
-    messages: IO_IN_LOOP_MESSAGES,
+    messages: { ...IO_IN_LOOP_MESSAGES, ...IO_IN_LOOP_SUGGESTIONS },
   },
   create(context) {
     function check(node: Call): void {
@@ -83,14 +88,20 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       if ((concurrent && effect.kind === 'remote') || reportedByOuter) {
         return;
       }
-      context.report({
+      const advice = adviceOf(node, found, context);
+      const descriptor = {
         node,
-        messageId: messageIdOf(effect, concurrent, adviceOf(node, found, context)),
+        messageId: messageIdOf(effect, concurrent, advice),
         data: {
           callee: describePath(effect.path),
           form: batchForm(effect.path[0] ?? '', calleeOrigin(node, context)?.pkg),
         },
-      });
+      };
+      const batchable =
+        node.type === AST_NODE_TYPES.CallExpression &&
+        (advice === 'query' || advice === 'foreignKeyQuery');
+      const suggestion = batchable ? batchSuggestion(context, node) : undefined;
+      context.report(suggestion === undefined ? descriptor : suggestible(descriptor, suggestion));
     }
     return { CallExpression: check, TaggedTemplateExpression: check };
   },

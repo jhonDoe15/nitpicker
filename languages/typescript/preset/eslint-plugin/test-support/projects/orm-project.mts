@@ -14,6 +14,7 @@ type OrmProjectOptions = {
 };
 
 type OrmProject = {
+  readonly root: string;
   readonly tester: TypedRuleTester;
   readonly typed: (code: string) => { filename: string; code: string };
   readonly untyped: (code: string) => { code: string };
@@ -92,6 +93,7 @@ export function ormProject(prefix: string, options: OrmProjectOptions = {}): Orm
     return { filename, code };
   }
   return {
+    root,
     tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
     typed,
     untyped: (code) => ({ code }),
