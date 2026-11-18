@@ -45,6 +45,7 @@ import {
 } from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { sequenceGate } from '../jpa/sequence-ids.mjs';
+import { withoutSourceBackedSpotbugs } from './null-findings/spotbugs-log.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -102,13 +103,17 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
   const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
   const skipped = skippedSet(reportRoot);
   const structureSkipped = skipped.has(STRUCTURE_SKIPPED);
+  const sources = { projectRoot, sourceRoots: listsOf(context[MANIFEST], SOURCE_ROOTS) };
+  function spotbugsFilter(log: unknown): unknown {
+    return withoutSourceBackedSpotbugs(log, sources);
+  }
   const findings = [
     ...findingsFrom(skippedToolFindings, {
       reportRoot,
       javaStyle: context['javaStyle'],
       moduleDir: fieldOf(context['module'], 'moduleDir'),
     }),
-    ...findingsFrom(sarifFindings, context),
+    ...findingsFrom(sarifFindings, { ...context, spotbugsFilter }),
     ...findingsFrom(readErrorProneFindings, context),
     ...findingsFrom(formatFindings, context),
     ...(skipped.has(CHECKSTYLE_SKIPPED) ? [] : findingsFrom(checkstyleFindings, context)),

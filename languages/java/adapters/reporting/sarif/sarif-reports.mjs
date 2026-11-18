@@ -151,7 +151,9 @@ export function sarifFindings(context) {
     ...withProjectFilters(pmdFindings(pmd, context), context),
     ...pmdProcessingErrors(pmd, context),
     ...ingestSarif(
-      withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+      (context.spotbugsFilter ?? ((log) => log))(
+        withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+      ),
       { tool: 'spotbugs' },
     ).findings,
   ];
