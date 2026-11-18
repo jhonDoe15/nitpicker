@@ -112,6 +112,7 @@
   "languages/python/rules/e2e/patterns/expanding-replacement.e2e.test.mts": 2,
   "languages/python/rules/e2e/patterns/pattern-translation.e2e.test.mts": 2,
   "languages/python/rules/e2e/patterns/unescaped-html-value.e2e.test.mts": 2,
+  "languages/python/rules/e2e/nan-only/nan-only-guard.e2e.test.mts": 2,
   "languages/python/rules/e2e/persistence/collection-joins.e2e.test.mts": 2,
   "languages/python/rules/e2e/persistence/foreign-key-index.e2e.test.mts": 2,
   "languages/python/rules/e2e/persistence/in-memory-query.e2e.test.mts": 2,

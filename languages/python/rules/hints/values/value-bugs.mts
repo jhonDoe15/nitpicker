@@ -10,4 +10,12 @@ export const VALUE_HINTS: readonly RuleHint[] = [
     allowed:
       'Call `raise_for_status()` (or test `status_code` or `ok`) before `.json()`, or read `.text` and parse it inside `try`.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['nan-only-guard'],
+    describe: (subject) =>
+      `\`math.isnan(${subject})\` is the only check on a parsed float, but \`inf\` and \`-inf\` pass it`,
+    allowed:
+      'Check `math.isfinite(value)`, which rejects NaN and both infinities; or add a range check of the value. An exception fits only when infinity is a valid value here.',
+  },
 ];

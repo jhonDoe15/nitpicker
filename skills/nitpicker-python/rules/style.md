@@ -67,3 +67,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   library that is itself the parser takes an exception.
 - Check a response (`raise_for_status()`, `status_code`, `ok`) before `.json()` reads it, or read `.text` and parse it in
   `try`: an error page from a proxy is HTML and the `ValueError` hides the status (`unchecked-response-json`).
+- A parsed float is checked with `math.isfinite(x)`, not only `math.isnan(x)`: `float("inf")` passes `isnan`
+  (`nan-only-guard`).

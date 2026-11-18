@@ -1982,3 +1982,8 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `status_code`, `ok`, `headers`, no function that is handed the response) and the read is not inside a `try` with an
   `except`. An error page from a proxy or gateway is HTML, so `.json()` raises an opaque `ValueError` and the status is lost.
   Call `raise_for_status()` first, or read `.text` and parse it in `try`. aiohttp is not covered. Test files are skipped.
+- `nan-only-guard` reports `math.isnan(x)` (also `numpy.isnan`) on a local with one assignment, `x = float(text)`, when the
+  function never calls `math.isfinite` or `math.isinf`, never mentions `math.inf` and never compares `x` with `<`, `>`,
+  `<=` or `>=` (an `if not isnan(x):` that only calls `add` or `append` on the value is a filter and is not reported): `float("inf")` and `float("1e999")` pass an `isnan` check, so the value goes on as a limit or an amount.
+  A float division is not reported, since Python raises `ZeroDivisionError` for it. Check `math.isfinite(x)`. Test files
+  are skipped.

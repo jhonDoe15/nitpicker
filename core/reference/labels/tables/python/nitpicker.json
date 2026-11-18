@@ -61,6 +61,7 @@
   "python-rules/module-level-mutable-state": ["maintainability"],
   "python-rules/module-state-in-domain": ["maintainability"],
   "python-rules/multiple-collection-joins": ["performance", "persistence"],
+  "python-rules/nan-only-guard": ["bug"],
   "python-rules/negative-wait-in-test": ["tests"],
   "python-rules/network-in-test": ["tests"],
   "python-rules/no-inline-suppression": ["maintainability"],

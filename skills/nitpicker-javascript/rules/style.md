@@ -200,3 +200,5 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `" Davis"` finds nothing (`nitpicker/no-untrimmed-request-text`).
 - A `fetch` response is checked (`res.ok` or `res.status`) before `res.json()` reads it, or read as text and parsed in
   `try`: a proxy or gateway error page is HTML, and the `SyntaxError` hides the status (`nitpicker/no-unchecked-response-json`).
+- A number that was parsed or computed is checked with `Number.isFinite(x)`, not only `isNaN(x)`: `Infinity` passes
+  `isNaN` (`nitpicker/no-nan-only-check`).

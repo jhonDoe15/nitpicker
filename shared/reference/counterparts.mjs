@@ -86,6 +86,12 @@ const GROUPS = [
     python: 'unchecked-response-json',
     go: 'go-rules/unchecked-response-json',
   },
+  {
+    jvm: 'NanOnlyGuard',
+    typescript: 'nitpicker/no-nan-only-check',
+    python: 'nan-only-guard',
+    go: 'go-rules/nan-only-guard',
+  },
 ];
 
 function spring(rule) {
