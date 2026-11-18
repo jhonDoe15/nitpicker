@@ -4,6 +4,7 @@ import { optionalReporter } from '../../support/optional-report.mts';
 import { arrayMembership } from './array-membership.mts';
 import { keyedLookup } from './keyed-lookup.mts';
 import { sortedExtreme } from './sorted-extreme.mts';
+import { mapFix } from './fixes/map/map-fix.mts';
 import { setFix } from './fixes/set/set-fix.mts';
 
 const EXCEPTION = 'An exception fits only for a list that always stays a handful of items.';
@@ -13,6 +14,8 @@ type MessageId = keyof typeof costlyCollectionMessages;
 const costlyCollectionMessages = {
   arrayAsSet: `\`{{name}}\` is appended to and searched with \`{{method}}\`, so every search scans the whole array. Keep it in a \`Set\`: \`add\` to append and \`has\` to test (\`[...set]\` gives the items back in insertion order). ${EXCEPTION}`,
   lookupInLoop: `\`{{name}}.{{method}}\` compares \`{{key}}\` against every item, once per iteration, item or event. Build a \`Map\` keyed by \`{{key}}\` once, outside the loop or handler, and use \`get\` (for \`some\`, a \`Set\` of keys and \`has\`). ${EXCEPTION}`,
+  useMap:
+    'Build the lookup once before the loop: a `Map` keyed by the property with `get` (a `Set` of keys with `has` for `some`).',
   useSet: 'Keep the items in a `Set`: `new Set<T>()`, `add`, `has` and `size`.',
   sortForExtreme: `\`{{method}}\` sorts the whole array only to take its first or last element. Take the smallest or largest in one pass: \`xs.reduce((best, x) => (compare(x, best) < 0 ? x : best))\`, or \`Math.min\`/\`Math.max\` for a few numbers. ${EXCEPTION}`,
 };
@@ -40,7 +43,13 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         }
       },
       CallExpression(call) {
-        report(keyedLookup(sourceCode, call) ?? sortedExtreme(sourceCode, call));
+        const lookup = keyedLookup(sourceCode, call);
+        if (lookup === undefined) {
+          report(sortedExtreme(sourceCode, call));
+          return;
+        }
+        const plan = mapFix(context, call);
+        report(suggestible<MessageId>(lookup, { messageId: 'useMap', plan }));
       },
     };
   },

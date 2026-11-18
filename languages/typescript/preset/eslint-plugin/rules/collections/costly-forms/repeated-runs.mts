@@ -85,7 +85,7 @@ export function methodCallOn(node: TSESTree.Node): MethodUse | undefined {
     : { name: memberName(member), member };
 }
 
-function callbackRole(fn: TSESTree.Node): Role | undefined {
+export function callbackRole(fn: TSESTree.Node): Role | undefined {
   const call = outerOf(fn).parent;
   const args: readonly TSESTree.Node[] =
     call?.type === AST_NODE_TYPES.CallExpression ? call.arguments : [];
