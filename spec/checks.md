@@ -473,6 +473,7 @@ already decoded. Raw text from `location.search`, `request.url`, headers and coo
 Directory-passing existence checks: `nitpicker/no-directory-passing-existence-check` (production source, in `eslint-lint`) reports a
 file read of a configured or caller-supplied path whose guard is `existsSync`, `access` or `pathExists` alone, which a directory passes. A
 `stat` with `isFile()`, a `try` around the read, and paths the program builds itself are allowed.
+
 Unresolved relative URLs: `nitpicker/no-unresolved-relative-url` (production source, in `eslint-lint`) reports a `Location` header used as a
 request target or in `new URL(location)` with no base, `Response.redirect(path)` with a path, and `new URL(path)` with a literal path and no base.
 `new URL(x, base)` and a check for an absolute URL are allowed.

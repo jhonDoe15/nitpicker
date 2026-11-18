@@ -162,6 +162,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/urls/construction/no-unresolved-relative-url.mjs',
   'languages/typescript/preset/eslint-plugin/rules/urls/requests/no-slash-only-redirect-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/urls/requests/no-case-mixed-header-merge.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/urls/following-statements.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/assertions/test-must-use-production-runtime.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/test-code-analysis.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/processes/no-git-repository-per-test.mjs',
