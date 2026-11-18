@@ -195,6 +195,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- A key that can hold `undefined` is tested by its value, not by `in`: `data.targetUID !== undefined`, never
+  `'targetUID' in data` on an optional property, a `Partial<...>` or a `Record<string, T | undefined>`
+  (`nitpicker/no-in-presence-check`; `in` stays right for a union discriminant).
 - In a server project, text from a search or filter field is trimmed once before it reaches a lookup:
   `req.query.q?.trim()`, a zod `.trim()` schema, or one global middleware that trims every string; a padded
   `" Davis"` finds nothing (`nitpicker/no-untrimmed-request-text`).

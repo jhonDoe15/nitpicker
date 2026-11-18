@@ -46,6 +46,7 @@
   "eslint/nitpicker/no-handwritten-boundary-guard": ["maintainability", "reliability"],
   "eslint/nitpicker/no-hardcoded-secret": ["security"],
   "eslint/nitpicker/no-in-memory-query": ["performance", "persistence"],
+  "eslint/nitpicker/no-in-presence-check": ["bug"],
   "eslint/nitpicker/no-internal-module-mocks": ["tests"],
   "eslint/nitpicker/no-interval-polling-in-tests": ["tests"],
   "eslint/nitpicker/no-io-in-loop": ["performance"],
