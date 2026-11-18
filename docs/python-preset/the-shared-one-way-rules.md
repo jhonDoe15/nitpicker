@@ -832,7 +832,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   (`requests`, `httpx`, `aiohttp`, `sqlite3`, `psycopg`, `asyncpg`, `pymongo`, `redis`, `boto3` clients by
   service, `Session` of SQLAlchemy), from the project's own functions (a function has the kinds of the
   calls in its body and of the project functions it calls, so the finding names the path: `fetch_order()`,
-  which calls `requests.get()`; a call is followed into a nested function, a method of `self`, of a local
+  which calls `requests.get()`; calls inside a module-level memo, the branch that tests a `global` name for
+  `None` or falsiness and assigns it (or the code after an early return of it), and in a `functools.cache`
+  function without parameters, run once per process and are not counted; a call is followed into a nested function, a method of `self`, of a local
   or annotated instance (`client = PriceClient()`, `PriceClient().price()`, `self.client: PriceClient`)
   and a static or class method called through the class), and, where no import tells, from the receiver
   name (`repo`, `db`, `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes
