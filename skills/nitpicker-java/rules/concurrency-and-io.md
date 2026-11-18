@@ -68,6 +68,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
 - A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
   `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
+- A `close()` or `stop()` that calls a field only `open()` or `start()` assigns checks it for null first and resets it
+  (`if (cursor != null) { cursor.close(); cursor = null; }`), or the class creates the resource in its constructor
+  (`pmd/CloseDereferencesUnopenedField`).
 - A `close()` that clears a map of pending futures completes every entry first
   (`pending.values().forEach(f -> f.completeExceptionally(...))`), so no caller waits forever
   (`pmd/PendingFuturesNotFailedOnClose`).

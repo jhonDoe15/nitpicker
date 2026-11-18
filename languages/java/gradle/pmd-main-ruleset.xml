@@ -355,6 +355,42 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="CloseDereferencesUnopenedField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This close method calls a field that only an open or start method assigns, so closing an object that was never opened throws a NullPointerException, and frameworks that close every registered stream after a failure see that exception instead of the original error. Check for null and reset the field (if (cursor != null) cursor.close(); then cursor = null), or create the resource in the constructor. A constructor, initializer or @PostConstruct method that calls the opener is not reported. An exception fits only when the class forbids closing before opening.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $openers := '^(?:open|doOpen|start|doStart|init|doInit|connect|doConnect)([A-Z_]\w*)?$',
+    $closers := '^(?:close|doClose|stop|doStop|destroy|doDestroy|dispose|doDispose)$',
+    $hooks := ('javax.annotation.PreDestroy', 'jakarta.annotation.PreDestroy'),
+    $named := function($n, $name) { ($n/self::VariableAccess or $n/self::FieldAccess) and $n/@Name = $name }
+return //ClassDeclaration/ClassBody/MethodDeclaration
+  [matches(@Name, $closers) or ModifierList/Annotation[some $hook in $hooks satisfies pmd-java:typeIs($hook)]]
+  [empty(.//*[self::IfStatement or self::ConditionalExpression or self::ReturnStatement
+              or self::TryStatement or self::SynchronizedStatement])]
+  [empty(.//MethodCall[@MethodName = ('nonNull', 'isNull', 'requireNonNull', 'ofNullable', 'isPresent')])]
+  [empty(.//InfixExpression[@Operator = ('&&', '||', '==', '!=')])]
+  /Block//MethodCall[*[1][self::VariableAccess or self::FieldAccess]]
+  [let $name := *[1]/@Name,
+       $body := ancestor::ClassBody[1],
+       $field := $body/FieldDeclaration[@Static = false()][not(pmd-java:modifiers() = 'final')][empty(ModifierList/Annotation)][ClassType]
+                   [VariableDeclarator[count(*) = 1][VariableId/@Name = $name]],
+       $writes := $body//AssignmentExpression[*[1][$named(., $name)]][not(*[2][self::NullLiteral])]
+   return exists($field)
+     and exists($writes)
+     and empty($body/Initializer)
+     and empty(($body/ConstructorDeclaration | $body/Initializer
+                | $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('javax.annotation.PostConstruct')
+                                                                   or pmd-java:typeIs('jakarta.annotation.PostConstruct')]])
+                 //MethodCall[*[1][self::ArgumentList or self::ThisExpression]]
+                 [@MethodName = $writes/ancestor::MethodDeclaration[1]/@Name])
+     and empty($body/ConstructorDeclaration//AssignmentExpression[*[1][$named(., $name)]])
+     and (every $w in $writes satisfies exists($w/ancestor::MethodDeclaration[matches(@Name, $openers)]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CompatibilityShim" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.">
     <priority>3</priority>
