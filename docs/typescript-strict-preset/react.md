@@ -80,6 +80,16 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   package sets `escapeValue: false`; `count`, `context` and other reserved options, literal values,
   numbers and values formatted as numbers or dates (`toLocaleString`, `Intl` formats, arithmetic),
   `dangerouslySetInnerHTML` and text that does not reach JSX are left alone.
+- **No literal DOM id in a list component** (`nitpicker/react-no-literal-id-in-list-component`).
+  A component rendered once per item (inside a `.map`, `.flatMap` or `Array.from` callback in the
+  same file, or in another file of the package that imports it by name or as the default export)
+  that gives an element a literal `id` which a `htmlFor`, `aria-labelledby`, `aria-describedby`,
+  `aria-controls`, `aria-owns`, `list` or `form` attribute, `getElementById` or `querySelector('#...')`
+  in the same component names: every copy repeats the id, so a label points at the first row's
+  control. Use `useId()`, an id built from the item (`${prefix}-${item.id}`) or one passed in by the
+  parent. A component that takes an index prop but is never found in a list is not reported, and neither
+  is one rendered under a `switch` case or an `===` branch inside the callback (a dispatch map
+  where each component renders once).
 - **No mutation that drops failure** (`nitpicker/react-mutation-drops-failure`). A React Query
   mutation (`useMutation`, `api.x.useMutation()`, or a hook imported from a project file that wraps
   `useMutation` without handling failure itself) whose `onSuccess` is passed in the hook or the call

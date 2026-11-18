@@ -135,6 +135,11 @@ React i18next: `nitpicker/react-i18next-escape-value` (production source in a Re
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
 call itself, literal values and values formatted as numbers or dates are not reported.
 
+React list ids: `nitpicker/react-no-literal-id-in-list-component` (production source in a React project, in
+`eslint-lint`) reports a literal `id` in a component rendered inside a `.map`, `.flatMap` or `Array.from` callback
+(same file, or another file of the package importing it) when the same component refers to that id through `htmlFor`,
+`aria-*`, `list`, `form`, `getElementById` or `querySelector`. `useId()` and ids built from the item are allowed, and so is a render under a `switch` case or an equality branch.
+
 React mutations: `nitpicker/react-mutation-drops-failure` (production source in a React project, in `eslint-lint`)
 reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutation` options object, that passes
 `onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from

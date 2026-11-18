@@ -158,11 +158,10 @@ function optionsOf(call: TSESTree.CallExpression): TSESTree.ObjectExpression | u
 }
 
 function renderedByJsx(node: TSESTree.Node): boolean {
-  let current: TSESTree.Node = node;
-  while (wrapperKinds.has(current.parent?.type ?? '')) {
-    current = current.parent as TSESTree.Node;
+  let container: TSESTree.Node | undefined = node.parent;
+  while (container !== undefined && wrapperKinds.has(container.type)) {
+    container = container.parent;
   }
-  const container = current.parent;
   if (container?.type !== AST_NODE_TYPES.JSXExpressionContainer) {
     return false;
   }

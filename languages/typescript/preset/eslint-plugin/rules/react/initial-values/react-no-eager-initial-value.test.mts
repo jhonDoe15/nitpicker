@@ -12,7 +12,11 @@ function valid(body: string) {
   return { filename, code: inPanel(body) };
 }
 
-function invalid(body: string, messageId: 'eagerInitial' | 'recreated', data: object) {
+function invalid(
+  body: string,
+  messageId: 'eagerInitial' | 'recreated',
+  data: Record<string, string>,
+) {
   return { filename, code: inPanel(body), errors: [{ messageId, data }] };
 }
 

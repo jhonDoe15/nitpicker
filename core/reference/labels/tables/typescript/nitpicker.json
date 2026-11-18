@@ -157,6 +157,7 @@
   "eslint/nitpicker/react-no-eager-initial-value": ["bug", "performance", "react"],
   "eslint/nitpicker/react-no-effect-event-handling": ["bug", "react"],
   "eslint/nitpicker/react-no-hardcoded-colors": ["maintainability", "react"],
+  "eslint/nitpicker/react-no-literal-id-in-list-component": ["bug", "react"],
   "eslint/nitpicker/react-no-random-key": ["bug", "react"],
   "eslint/nitpicker/react-single-styling-approach": ["maintainability", "react"],
   "eslint/nitpicker/react-test-no-implementation-details": ["tests", "react"],
