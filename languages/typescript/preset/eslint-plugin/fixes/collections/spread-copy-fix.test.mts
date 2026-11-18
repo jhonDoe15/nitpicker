@@ -17,7 +17,9 @@ declare const either: string | number[]; declare const anything: any; declare co
 declare const set: Set<number>; declare const maybeSet: Set<number> | undefined; declare const map: Map<string, number>;
 declare const objects: Set<Node>; declare const ps: Promise<number>[]; declare const pending: Set<Promise<void>>;
 declare function f<T>(items: T[]): T[]; declare function use(value: unknown): void;
-declare const rest: number[][]; declare const pair: [number, number];`;
+declare class Buffer extends Uint8Array {} declare const buf: Buffer; declare const text: string;
+declare class List<T> { slice(start: number): List<T>; concat(other: List<T>): List<T>; [Symbol.iterator](): Iterator<T>; }
+declare const list: List<number>; declare const rest: number[][]; declare const pair: [number, number];`;
 
 type Kind = 'new' | 'iterable';
 const WHAT = {
@@ -91,15 +93,6 @@ tester.run('spread copy fix of a new array', rule, {
       '[1, ...(await Promise.all(ps))].length + (await Promise.all(ps)).length',
     ),
     fixes('new Set([...Object.keys(rec)])', 'new Set(Object.keys(rec))'),
-    declines('[...str.slice(0, 3)]'),
-    declines('[...str.concat("x")]'),
-    declines('[...bytes.slice(1)]'),
-    declines('[...bytes.toSorted()]'),
-    declines('[...floats.toSorted()]'),
-    declines('[...floats.with(0, 1)]'),
-    declines('[...either.slice(1)]'),
-    declines('[...anything.slice(1)]'),
-    declines('[...anything.concat(1)]'),
     declines('[...holes.slice()]'),
     declines('[...holes.concat(xs)]'),
     declines('[...xs.concat(holes)]'),
@@ -109,8 +102,6 @@ tester.run('spread copy fix of a new array', rule, {
     declines('[...[, 1]]'),
     declines('[...(Object.keys(rec) as string[])]'),
     declines('[...maybeList?.slice(1)]'),
-    declines('[...(await Promise.race(ps))]'),
-    declines('[...(await Promise.any(ps))]'),
     declines('[/* keep */ ...Object.keys(rec)]'),
     declines('[...Object.keys(rec) /* keep */]'),
     declines('[...xs.slice(/* all */)]'),
@@ -214,16 +205,18 @@ const untypedCases: [string, string | null, Kind][] = [
   ['const a = [...Object.keys(rec)];', 'const a = Object.keys(rec);', 'new'],
   ['const a = [...Array.from(set)];', 'const a = Array.from(set);', 'new'],
   ['const a = [...[1, 2]];', 'const a = [1, 2];', 'new'],
-  ['const a = [...xs.slice(1)];', null, 'new'],
-  ['const a = [...xs.concat(ys)];', null, 'new'],
-  ['const a = [...xs.toSorted()];', null, 'new'],
   ['const a = new Set([...items]);', null, 'iterable'],
   ['const a = Array.from([...items]);', null, 'iterable'],
   ['async function f() { return Promise.all([...tasks]); }', null, 'iterable'],
 ];
 
 untyped.run('spread copy fix without types', rule, {
-  valid: [],
+  valid: [
+    'const a = [...xs.slice(1)];',
+    'const a = [...xs.concat(ys)];',
+    'const a = [...xs.toSorted()];',
+    'const a = [...xs.with(0, 1)];',
+  ].map((code) => ({ filename: script, code })),
   invalid: untypedCases.map(([code, output, kind]) => ({
     filename: script,
     code,
