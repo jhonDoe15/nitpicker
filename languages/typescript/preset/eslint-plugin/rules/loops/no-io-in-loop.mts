@@ -1,7 +1,9 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../security/security-values.mts';
-import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mts';
+import { describePath, ioEffect, ioKind } from '../support/io-effects.mts';
 import { isRelayMark } from '../writes/relays.mts';
+import { outerCalls } from './builders/chain-execution.mts';
+import { isUnexecutedBuilder } from './builders/unexecuted-calls.mts';
 import { passesChunk } from './chunked-loops.mts';
 import { isPushedForConcurrency } from './concurrent-batches.mts';
 import { enclosingLoop, isRetryAttempt, type EnclosingLoop } from './loop-shapes.mts';
@@ -88,13 +90,15 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
         effect === undefined ||
         effect.kind === 'message' ||
         passesChunk(node, found, context) ||
-        isRelayMark(node, context);
+        isRelayMark(node, context) ||
+        isUnexecutedBuilder(node, context);
       if (exempt) {
         return;
       }
       const concurrent = found.concurrent === true || isPushedForConcurrency(node, sourceCode);
-      const outer = chainOuterCall(node);
-      const reportedByOuter = outer !== undefined && ioKind(outer, context) === effect.kind;
+      const reportedByOuter = outerCalls(node).some(
+        (outer) => ioKind(outer, context) === effect.kind,
+      );
       if ((concurrent && effect.kind === 'remote') || reportedByOuter) {
         return;
       }

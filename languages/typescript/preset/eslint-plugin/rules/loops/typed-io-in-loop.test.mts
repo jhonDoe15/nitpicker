@@ -62,6 +62,8 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     loop('new UserRepository().findById(id);'),
     loop('viewer.update(id);', viewer),
     loop('repo.create({ id });', typeorm),
+    loop("const qb = repo.createQueryBuilder('a'); builders.push(qb);", typeorm),
+    loop("sub.push(repo.createQueryBuilder('a').where('a.id = :id', { id }));", typeorm),
     loop('await producer.send({ topic: "orders", messages: [id] });', kafka),
     loop('await new SQSClient().send(new SendMessageCommand({ QueueUrl: id }));', sqs),
     loop('new Customer().get(id);'),
@@ -91,6 +93,10 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     caseOf(loop('await new Customer().getAccount();'), 'query'),
     caseOf(loop('await new Customer().save();'), 'query'),
     caseOf(loop('await repo.findOneBy({ id });', typeorm), 'query'),
+    caseOf(
+      loop("await repo.createQueryBuilder('a').where('a.id = :id', { id }).getMany();", typeorm),
+      'query',
+    ),
     caseOf(loop('await prisma.user.findUnique({ where: { id } });', prisma), 'query'),
     caseOf(
       `${prisma}${declared}export async function run() { await Promise.all(ids.map((id) => prisma.user.findUnique({ where: { id } }))); }`,
