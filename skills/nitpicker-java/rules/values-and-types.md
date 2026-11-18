@@ -14,6 +14,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
   `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`
   (`out = null`); restructure instead.
+- Spring `Assert.notNull` checks for null, nothing else (`pmd/AssertNotNullWrongCheck`): test a condition with
+  `Assert.isTrue(count >= 0, "...")`, and check a `String`, collection or map that must not be empty with
+  `Assert.hasText`, `hasLength` or `notEmpty`. `Assert.notNull(count >= 0, ...)`, `Assert.notNull(longValue, ...)`
+  and `Assert.notNull(name, "name must not be empty")` always pass.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.

@@ -215,6 +215,7 @@ const REVIEW_RULES = new Set([
   'CopyMethodDropsField',
   'SecretDigestEquals',
   'AnnotationAttributeNotResolved',
+  'AssertNotNullWrongCheck',
 ]);
 const roots: string[] = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
