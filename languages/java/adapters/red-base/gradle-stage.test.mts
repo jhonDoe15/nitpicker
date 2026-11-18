@@ -128,6 +128,22 @@ describe('assertGradleSucceeded', () => {
     );
   });
 
+  it('says that a rate-limited package repository is not a problem in the project', () => {
+    const rateLimited = {
+      status: 1,
+      stdout: '',
+      stderr:
+        "FAILURE: Build failed with an exception.\n* What went wrong:\nCould not HEAD 'https://repo/a.pom'." +
+        '\n> Received status code 429 from server: Too Many Requests',
+    };
+
+    expect(messageOf(thrownBy(rateLimited, '/none')).split('\n')).toEqual([
+      "Java preset failed on your change: Could not HEAD 'https://repo/a.pom'.",
+      '> Received status code 429 from server: Too Many Requests',
+      'A package repository rate-limited the build (HTTP 429), so this is not a problem in the project: rerun later.',
+    ]);
+  });
+
   it('names the base and the Kotlin preset, and keeps the log after the message', () => {
     const logs = logRoot();
     const error = thrownBy(failed, '/none', {

@@ -884,6 +884,11 @@ the merge base, so check it out to reproduce. A runner without network access ne
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
 
+When a package repository answers `429 Too Many Requests`, the message ends with `A package
+repository rate-limited the build (HTTP 429)`: nothing is wrong with the project, so rerun later. The
+`Caused by:` lines in the message come from the failure itself; a stack trace that a tool logged as a
+warning and went past (PMD's "continuing with next rule", for example) is left out.
+
 A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
 output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
 give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
