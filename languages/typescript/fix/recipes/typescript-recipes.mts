@@ -1,8 +1,10 @@
 import { defineRecipes } from '../../../../core/fix/engine/recipes.mjs';
 import { PROJECT_RECIPES } from '../project/project-recipes.mts';
+import { emptyStaticBlockRecipe } from './core/statements/empty-static-block.mts';
 import { typescriptRestatingDocCommentRecipe } from './restating-doc-comment.mts';
 
 export const TYPESCRIPT_RECIPES = defineRecipes([
   typescriptRestatingDocCommentRecipe,
+  emptyStaticBlockRecipe,
   ...PROJECT_RECIPES,
 ]);
