@@ -49,7 +49,7 @@ const TABLE = { demo: { shout: { status: 'automatic' as const, guard: byName() }
 function lint(text: string, original = plugin()) {
   const entries = [
     { files: ['**/*.js'], plugins: { demo: original } },
-    { files: ['**/*.js'], plugins: { demo: original }, rules: { 'demo/shout': 'error' } },
+    { files: ['**/*.js'], plugins: { demo: original }, rules: { 'demo/shout': 'error' as const } },
   ].map((entry) => guardedEntry(entry, TABLE));
   const linter = new Linter({ configType: 'flat' });
   const fixed = linter.verifyAndFix(text, entries, { filename: 'a.js' });
