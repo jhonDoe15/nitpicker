@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
 
 const SEARCHED = [
   '*.java',
@@ -20,14 +21,16 @@ const OUTPUT_BYTES = 16 * 1024 * 1024;
 const WORD = '[A-Za-z0-9_]';
 
 type NameLookup = (name: string) => boolean;
-export type ProjectNames = { readonly quoted: NameLookup };
+export type ProjectNames = { readonly quoted: NameLookup; readonly extended: NameLookup };
 
-function escaped(name: string): string {
-  return name.replaceAll('$', '\\$');
-}
+const escapeRegExp: (text: string) => string = untypedEscapeRegExp;
 
 function quotedPattern(name: string): RegExp {
-  return new RegExp(`"[^"\\n]*(?<!${WORD})${escaped(name)}(?!${WORD})[^"\\n]*"`, 'u');
+  return new RegExp(`"[^"\\n]*(?<!${WORD})${escapeRegExp(name)}(?!${WORD})[^"\\n]*"`, 'u');
+}
+
+function extendedPattern(name: string): RegExp {
+  return new RegExp(`(?:\\bextends|:)\\s+(?:[\\w$]+\\.)*${escapeRegExp(name)}(?![\\w$])`, 'u');
 }
 
 function matchingLines(projectRoot: string, name: string): readonly string[] | undefined {
@@ -61,5 +64,5 @@ export function projectNames(projectRoot: string | undefined): ProjectNames {
     }
     return seen.get(name);
   }
-  return { quoted: lookup(lines, quotedPattern) };
+  return { quoted: lookup(lines, quotedPattern), extended: lookup(lines, extendedPattern) };
 }

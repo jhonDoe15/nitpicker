@@ -17,8 +17,11 @@ function entry(label: string, removed: readonly string[], added: readonly string
   };
 }
 
-function quotedNames(names: readonly string[]) {
-  return { quoted: (name: string) => names.includes(name) };
+function quotedNames(names: readonly string[], extended: readonly string[] = []) {
+  return {
+    quoted: (name: string) => names.includes(name),
+    extended: (name: string) => extended.includes(name),
+  };
 }
 
 describe('isDeclined', () => {
@@ -75,6 +78,24 @@ describe('isDeclined', () => {
     );
 
     expect(isDeclined(unpack, quotedNames([]))).toBe(false);
+  });
+
+  it('declines making a field final when a string names it, as reflective injection does', () => {
+    const field = entry(
+      'FieldCanBeFinal',
+      ['  private int injected = 1;'],
+      ['  private final int injected = 1;'],
+    );
+
+    expect(isDeclined(field, quotedNames(['injected']))).toBe(true);
+    expect(isDeclined(field, quotedNames([]))).toBe(false);
+  });
+
+  it('declines a private constructor for a class that another class extends', () => {
+    const constructor = entry('PrivateConstructorForUtilityClass', [], ['  private Helpers() {}']);
+
+    expect(isDeclined(constructor, quotedNames([], ['Helpers']))).toBe(true);
+    expect(isDeclined(constructor, quotedNames([]))).toBe(false);
   });
 
   it('keeps the removal when only a call inside the removed body is a quoted name', () => {
