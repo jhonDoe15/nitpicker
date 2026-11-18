@@ -214,4 +214,35 @@ public class Truth {
 `,
     lines: [5],
   },
+  {
+    check: 'CollapsibleIfStatements',
+    file: `${MAIN}/Nesting.java`,
+    before: `package demo;
+
+import java.util.List;
+
+public class Nesting {
+  void add(boolean first, boolean second, List<String> out) {
+    if (first) {
+      if (second) {
+        out.add("both");
+      }
+    }
+  }
+}
+`,
+    after: `package demo;
+
+import java.util.List;
+
+public class Nesting {
+  void add(boolean first, boolean second, List<String> out) {
+    if (first && second) {
+      out.add("both");
+    }
+  }
+}
+`,
+    lines: [7],
+  },
 ];

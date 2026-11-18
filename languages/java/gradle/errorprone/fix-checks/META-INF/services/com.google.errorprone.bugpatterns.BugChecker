@@ -1,3 +1,4 @@
+nitpicker.fix.CollapsibleIfStatements
 nitpicker.fix.DetachedTestCase
 nitpicker.fix.GeneratedOnHandWrittenCode
 nitpicker.fix.LiteralsFirstInComparisons
