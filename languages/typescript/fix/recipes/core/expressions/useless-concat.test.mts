@@ -39,6 +39,8 @@ describe('uselessConcatRecipe', () => {
       "export const value = 'a' + /* why */ 'b';\n",
       'joining would drop a comment or make a directive',
     ],
+    ["const x = 1;\nexport const value = (x + 'a') + 'b';\n", 'a parenthesis sits between'],
+    ["const x = 1;\nexport const value = 'a' + ('b' + x);\n", 'a parenthesis sits between'],
   ])('leaves %j with a note', (text, reason) => {
     const fixed = applied(uselessConcatRecipe, text);
 

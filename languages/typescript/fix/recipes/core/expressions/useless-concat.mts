@@ -64,6 +64,9 @@ function joined({ text, sourceCode, node }: CoreRequest): CorePlan {
   if (hasComment(sourceCode, range) || isDirectiveSpot(concat, left, right)) {
     return { declined: 'joining would drop a comment or make a directive' };
   }
+  if (text.slice(left.range[1], right.range[0]).replaceAll(/\s/gu, '') !== '+') {
+    return { declined: 'a parenthesis sits between the literals' };
+  }
   const literal = quoted(values.join(''), text.charAt(left.range[0]));
   const grown = lineLength(text, range.start) + literal.length - (range.end - range.start);
   return grown > MAX_LINE && grown > lineLength(text, range.start)

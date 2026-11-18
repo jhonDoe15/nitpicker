@@ -17,6 +17,8 @@ const LITERALS = [
   String.raw`/\:x/`,
 ];
 
+const QUANTIFIER_LIKE = [String.raw`/a{1\,2}/`, String.raw`/a{2\,}/`];
+
 const SAMPLES = ['a.b', 'a-b', '#tag', ':x', '$5', 'x'];
 
 let linted: Map<string, readonly LintMessage[]>;
@@ -40,7 +42,9 @@ function valueOf(source: string): unknown {
 
 beforeAll(async () => {
   linted = await lintCases(
-    Object.fromEntries(LITERALS.map((literal) => [literal, moduleOf(literal)])),
+    Object.fromEntries(
+      [...LITERALS, ...QUANTIFIER_LIKE].map((literal) => [literal, moduleOf(literal)]),
+    ),
   );
 });
 
@@ -56,4 +60,17 @@ describe('the no-useless-escape suggestion that removes the backslash', () => {
     expect(fixed.text).not.toBe(text);
     expect(valueOf(fixed.text)).toEqual(valueOf(text));
   });
+
+  it.each(QUANTIFIER_LIKE)(
+    'leaves %s, where the bare character would make a quantifier',
+    (literal) => {
+      const text = moduleOf(literal);
+      const messages = (linted.get(literal) ?? []).filter(
+        ({ ruleId }) => ruleId === 'no-useless-escape',
+      );
+
+      expect(messages.length).toBeGreaterThan(0);
+      expect(applySuggestions({ text, messages }).text).toBe(text);
+    },
+  );
 });

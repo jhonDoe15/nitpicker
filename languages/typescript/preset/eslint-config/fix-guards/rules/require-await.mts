@@ -23,7 +23,8 @@ function bindingOf(fn: TSESTree.Node): Binding | undefined {
   const { parent } = fn;
   return parent?.type === AST_NODE_TYPES.VariableDeclarator &&
     parent.init === fn &&
-    parent.id.type === AST_NODE_TYPES.Identifier
+    parent.id.type === AST_NODE_TYPES.Identifier &&
+    parent.id.typeAnnotation === undefined
     ? { owner: parent, name: parent.id.name, statement: parent.parent }
     : undefined;
 }

@@ -1,15 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
-import { hasComment, withOwnLines } from '../text-ranges.mts';
-
-const STATEMENT_LISTS = new Set<string>([
-  AST_NODE_TYPES.Program,
-  AST_NODE_TYPES.BlockStatement,
-  AST_NODE_TYPES.StaticBlock,
-  AST_NODE_TYPES.SwitchCase,
-]);
+import { hasComment, isInStatementList, withOwnLines } from '../text-ranges.mts';
 
 type Range = readonly [number, number];
+
+const CONTINUING = /^[([`+\-/]/u;
 
 type SourceCode = TSESLint.SourceCode;
 
@@ -39,15 +34,28 @@ function catchless(text: string, statement: TSESTree.TryStatement): CorePlan {
   return { edits: [{ start: statement.block.range[1], end, text: '' }] };
 }
 
+function joinsNeighbours(text: string, inner: string, [start, end]: Range): boolean {
+  const before = text.slice(0, start).trimEnd();
+  const after = text.slice(end).trimStart();
+  return (
+    (CONTINUING.test(inner) && before !== '' && !/[;{}:]$/u.test(before)) ||
+    (!inner.endsWith(';') && CONTINUING.test(after))
+  );
+}
+
 function unwrapped({ text, sourceCode }: CoreRequest, statement: TSESTree.TryStatement): CorePlan {
   const { block } = statement;
   const inner = text.slice(block.range[0] + 1, block.range[1] - 1).trim();
   const [start, end] = statement.range;
+  const inList = isInStatementList(statement);
   if (inner === '') {
-    return { edits: [{ ...withOwnLines(text, { start, end }), text: '' }] };
+    return inList
+      ? { edits: [{ ...withOwnLines(text, { start, end }), text: '' }] }
+      : { edits: [{ start, end, text: '{}' }] };
   }
   const flat =
-    STATEMENT_LISTS.has(statement.parent.type) &&
+    inList &&
+    !joinsNeighbours(text, inner, statement.range) &&
     !blockNames(sourceCode, block).some((name) => usedOutside(sourceCode, name, block.range));
   return { edits: [{ start, end, text: flat ? inner : `{\n${inner}\n}` }] };
 }
@@ -64,7 +72,10 @@ function withoutCatch(request: CoreRequest): CorePlan {
   if (statement === undefined || handler === null || handler === undefined) {
     return { declined: 'the reported code is not a try statement' };
   }
-  if (hasComment(sourceCode, { start: statement.block.range[1], end: handler.range[1] })) {
+  if (
+    hasComment(sourceCode, { start: statement.range[0], end: statement.block.range[0] }) ||
+    hasComment(sourceCode, { start: statement.block.range[1], end: handler.range[1] })
+  ) {
     return { declined: 'the catch clause holds a comment' };
   }
   return statement.finalizer === null

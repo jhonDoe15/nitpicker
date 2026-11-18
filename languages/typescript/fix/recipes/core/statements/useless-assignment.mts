@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import { REVIEW as untypedReview } from '../../../../../../core/fix/engine/safety.mjs';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
-import { hasComment, withOwnLines } from '../text-ranges.mts';
+import { hasComment, isInStatementList, withOwnLines } from '../text-ranges.mts';
 import { isInertValue } from './inert-values.mts';
 
 const REVIEW: string = untypedReview;
@@ -30,6 +30,9 @@ function droppedStore({ text, sourceCode, node }: CoreRequest): CorePlan {
     statement?.type !== AST_NODE_TYPES.ExpressionStatement
   ) {
     return { declined: 'the store is not a plain assignment statement or declaration' };
+  }
+  if (!isInStatementList(statement)) {
+    return { declined: 'the assignment is the only statement of a branch or loop' };
   }
   if (!isInertValue(parent.right)) {
     return { declined: EFFECTS };

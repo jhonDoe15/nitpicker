@@ -63,6 +63,40 @@ describe('uselessCatchRecipe', () => {
     expect(applied(uselessCatchRecipe, text).text).toBe('export function run(): void {\n}\n');
   });
 
+  it('keeps a block where flattening would join the next line to the last one', () => {
+    const text =
+      'let total = 0\ntry {\n  total = 1\n} catch (error) {\n  throw error\n}\n[1].forEach(log)\nfunction log() {}\n';
+
+    expect(applied(uselessCatchRecipe, text).text).toBe(
+      'let total = 0\n{\ntotal = 1\n}\n[1].forEach(log)\nfunction log() {}\n',
+    );
+  });
+
+  it('keeps a block where flattening would join the first line to the one before', () => {
+    const text =
+      'let total = 0\ntry {\n  [total].forEach(log);\n} catch (error) {\n  throw error\n}\nfunction log() {}\n';
+
+    expect(applied(uselessCatchRecipe, text).text).toBe(
+      'let total = 0\n{\n[total].forEach(log);\n}\nfunction log() {}\n',
+    );
+  });
+
+  it('writes an empty block for an empty try that is the body of an if', () => {
+    const text =
+      'export function run(ready: boolean): void {\n  if (ready) try {} catch (error) { throw error; }\n  go();\n}\n';
+
+    expect(applied(uselessCatchRecipe, text).text).toBe(
+      'export function run(ready: boolean): void {\n  if (ready) {}\n  go();\n}\n',
+    );
+  });
+
+  it('leaves a try with a comment before its block, with a note', () => {
+    const text =
+      'export function run(): void {\n  try /* guarded */ {\n    go();\n  } catch (error) {\n    throw error;\n  }\n}\n';
+
+    expect(applied(uselessCatchRecipe, text).text).toBe(text);
+  });
+
   it('leaves a catch with a comment, with a note', () => {
     const text =
       'export function run(): void {\n  try {\n    go();\n  } catch (error) {\n    // keep for now\n    throw error;\n  }\n}\n';
