@@ -7,8 +7,12 @@ const SAFETY_NET_MS = 120_000;
 const MAX_ANSWERS = 20_000;
 const WORKER = checkoutModuleUrl(new URL('decide-worker.mjs', import.meta.url));
 
-function startBridge() {
-  const signal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+/**
+ * A solver thread that answers the questions posted to it on `replies`, setting `signal` to 1
+ * after each answer. It does not keep the process alive; posting `{ stop: true }` ends it once it
+ * has answered what it was asked.
+ */
+export function solverThread(signal) {
   const { port1, port2 } = new MessageChannel();
   const worker = new Worker(WORKER, {
     workerData: { signal, replies: port2 },
@@ -16,7 +20,13 @@ function startBridge() {
   });
   worker.unref();
   port1.unref();
-  const bridge = { worker, signal, replies: port1, next: 0, waiting: undefined, isDead: false };
+  return { worker, replies: port1 };
+}
+
+function startBridge() {
+  const signal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+  const { worker, replies } = solverThread(signal);
+  const bridge = { worker, signal, replies, next: 0, waiting: undefined, isDead: false };
   function stop() {
     bridge.isDead = true;
   }
@@ -49,8 +59,39 @@ function answerCache() {
   };
 }
 
+function aheadAnswers() {
+  const known = new Map();
+  const asked = new Map();
+  const state = { noting: false };
+  return {
+    isNoting: () => state.noting,
+    find: (id) => known.get(id),
+    note(id, request) {
+      asked.set(id, request);
+    },
+    noted(run) {
+      state.noting = true;
+      try {
+        run();
+        return [...asked];
+      } finally {
+        state.noting = false;
+        asked.clear();
+      }
+    },
+    keep(found) {
+      for (const [id, result] of found) {
+        known.set(id, result);
+      }
+    },
+    forget() {
+      known.clear();
+    },
+  };
+}
+
 const answers = answerCache();
-const ahead = { known: new Map(), asked: undefined };
+const ahead = aheadAnswers();
 
 function pendingReplies(bridge) {
   return chainOf(receiveMessageOnPort(bridge.replies), () => receiveMessageOnPort(bridge.replies));
@@ -117,19 +158,18 @@ function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
   if (!spendRun(budget)) {
     return undefined;
   }
-  if (ahead.asked !== undefined) {
-    return ahead.known.get(id) ?? noted(ahead.asked, id, request);
+  if (ahead.isNoting()) {
+    const found = ahead.find(id);
+    if (found === undefined) {
+      ahead.note(id, request);
+    }
+    return found;
   }
-  const result = ahead.known.get(id) ?? ask(request, timeoutMs);
+  const result = ahead.find(id) ?? ask(request, timeoutMs);
   if (result !== undefined) {
     answers.keep(id, result);
   }
   return result;
-}
-
-function noted(asked, id, request) {
-  asked.set(id, request);
-  return undefined;
 }
 
 /**
@@ -138,32 +178,24 @@ function noted(asked, id, request) {
  * Returns the questions noted, by the terms asked.
  */
 export function noteQuestions(run) {
-  ahead.asked = new Map();
-  try {
-    run();
-    return [...ahead.asked];
-  } finally {
-    ahead.asked = undefined;
-  }
+  return ahead.noted(run);
 }
 
 /**
  * Answers found ahead, by the terms asked, for the next questions to take instead of asking the
- * solver; `undefined` drops them all. A question still counts against its budget and is kept as
- * if the solver had answered it, so the answers of a run do not change.
+ * solver. A question still counts against its budget and is kept as if the solver had answered
+ * it, so the answers of a run do not change.
  */
 export function answerAhead(found) {
-  if (found === undefined) {
-    ahead.known.clear();
-    return;
-  }
-  for (const [id, result] of found) {
-    ahead.known.set(id, result);
-  }
+  ahead.keep(found);
+}
+
+export function forgetAnswersAhead() {
+  ahead.forget();
 }
 
 export function isNoting() {
-  return ahead.asked !== undefined;
+  return ahead.isNoting();
 }
 
 function reply(asked, options) {

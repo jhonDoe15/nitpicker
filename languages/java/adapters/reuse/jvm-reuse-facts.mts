@@ -41,7 +41,6 @@ import {
 type Project = {
   readonly qualifier?: string | undefined;
   readonly reportRoot?: string | undefined;
-  readonly published?: boolean | undefined;
 };
 type ReuseOptions = {
   readonly projects: readonly Project[];
@@ -89,11 +88,9 @@ const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified nam
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
 function projectOf(value: unknown): Project {
-  const published = fieldOf(value, 'published');
   return {
     qualifier: optionalText(fieldOf(value, 'qualifier')),
     reportRoot: optionalText(fieldOf(value, 'reportRoot')),
-    published: typeof published === 'boolean' ? published : undefined,
   };
 }
 
@@ -131,7 +128,8 @@ export function publishedOf(reportRoot: string | undefined): boolean {
 }
 
 function isPublished(project: Project): boolean {
-  return project.published ?? publishedOf(project.reportRoot);
+  const published = fieldOf(project, 'published');
+  return typeof published === 'boolean' ? published : publishedOf(project.reportRoot);
 }
 
 function neutralDefinition(

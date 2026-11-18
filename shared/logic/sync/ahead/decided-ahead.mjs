@@ -1,4 +1,4 @@
-import { answerAhead, isNoting, noteQuestions } from '../decide-sync.mjs';
+import { answerAhead, forgetAnswersAhead, isNoting, noteQuestions } from '../decide-sync.mjs';
 import { decideAll } from './decide-pool.mjs';
 
 function answeredAhead(questions, workers) {
@@ -28,6 +28,6 @@ export function decidedAhead(run, { decisionWorkers = 1 } = {}) {
     }
     return run();
   } finally {
-    answerAhead(undefined);
+    forgetAnswersAhead();
   }
 }
