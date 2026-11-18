@@ -126,6 +126,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-unescaped-pattern-translation': 'error',
     'nitpicker/no-unescaped-filter-value': 'error',
     'nitpicker/no-unescaped-html-interpolation': 'error',
+    'nitpicker/no-surrogate-splitting-cut': 'error',
     'nitpicker/no-newline-only-line-split': 'error',
     'nitpicker/no-host-port-colon-split': 'error',
     'nitpicker/no-ambiguous-lookup-key': 'error',

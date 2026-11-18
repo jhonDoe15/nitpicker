@@ -2464,6 +2464,7 @@
                             "kotlin-source/DefaultTimeZone",
                             "kotlin-source/LegacyCalendarApi",
                             "kotlin-source/TimeUnitMismatch",
+                            "kotlin-source/SurrogateSplittingCut",
                             "kotlin-source/UriCreateDynamic",
                             "effects/IoCallInLoop",
                             "effects/AccumulatorCopyInLoop",

@@ -185,3 +185,5 @@ the allowed form and ends with its exception entry.
 - Read lines of a file with `bufio.Scanner` (it drops `\r\n`), or normalise `\r\n` first, instead of
   `strings.Split(string(data), "\n")`, which keeps a `\r` on every line of a CRLF file
   (`go-rules/newline-only-line-split`).
+- Truncate text on runes (`string([]rune(text)[:max])`) or step back to `utf8.RuneStart`, not with `text[:max-3]` under
+  `len(text) > max`, which can cut a multi-byte character in two (`go-rules/byte-cut-splits-rune`).

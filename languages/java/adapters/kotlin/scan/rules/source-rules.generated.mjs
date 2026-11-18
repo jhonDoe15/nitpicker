@@ -42,6 +42,7 @@ import { kotlinSourceRules as rulesLineSplits } from '../splits/line-splits.mjs'
 import { kotlinSourceRules as rulesPairSplits } from '../splits/pair-splits.mjs';
 import { kotlinSourceRules as rulesDefaultTimeZone } from '../time/default-time-zone.mjs';
 import { kotlinSourceRules as rulesTimeUnits } from '../time/units/time-units.mjs';
+import { kotlinSourceRules as rulesSurrogateCuts } from '../truncation/surrogate-cuts.mjs';
 import { kotlinSourceRules as rulesUriParsing } from '../uris/uri-parsing.mjs';
 
 export const directoryRules = [
@@ -89,5 +90,6 @@ export const directoryRules = [
   rulesPairSplits,
   rulesDefaultTimeZone,
   rulesTimeUnits,
+  rulesSurrogateCuts,
   rulesUriParsing,
 ];

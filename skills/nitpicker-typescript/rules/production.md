@@ -52,6 +52,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   literal `[::1]:3000` has colons of its own (`nitpicker/no-host-port-colon-split`).
 - Split text read from a file on every line terminator (`text.split(/\r?\n/)`), not `split('\n')`, which leaves
   a `\r` on each line of a CRLF file (`nitpicker/no-newline-only-line-split`).
+- Truncate display text on code points or graphemes (`Array.from(text).slice(0, max).join('')`,
+  `Intl.Segmenter`), not `text.slice(0, max)`, which can split an emoji (`nitpicker/no-surrogate-splitting-cut`).
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL, and `decodeURIComponent(text)` and `decodeURI(text)` throw on a stray `%`:
   wrap them in a `try` with a `catch` that keeps the raw text or answers 400 (`nitpicker/no-unhandled-url-parse`).

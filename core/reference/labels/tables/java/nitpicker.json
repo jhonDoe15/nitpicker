@@ -71,6 +71,7 @@
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/PairSplitDropsRest": ["bug"],
+  "pmd/SurrogateSplittingCut": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UnescapedHtmlValue": ["bug", "security"],
   "pmd/UncheckedResponseBody": ["bug"],

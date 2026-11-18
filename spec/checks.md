@@ -435,10 +435,13 @@ Newline-only line splits: `nitpicker/no-newline-only-line-split` (production sou
 normalised line endings are allowed. The same definition runs as `pmd/NewlineOnlyLineSplit` (Java) and
 `kotlin-source/NewlineOnlyLineSplit` (Kotlin) and `go-rules/newline-only-line-split` (Go, text from
 `os.ReadFile`). Python reads files with universal newlines, so it has no counterpart.
+`kotlin-source/NewlineOnlyLineSplit` (Kotlin).
 Surrogate-splitting cuts: `nitpicker/no-surrogate-splitting-cut` (production source, in `eslint-lint`) reports a
 string cut by `slice(0, n)`, `substring(0, n)` or `substr(0, n)` under a `text.length > n` guard, which can split a
 surrogate pair. Cutting on code points or graphemes is allowed. The same definition runs as
-`pmd/SurrogateSplittingCut` (Java) and `kotlin-source/SurrogateSplittingCut` (Kotlin).
+`pmd/SurrogateSplittingCut` (Java), `kotlin-source/SurrogateSplittingCut` (Kotlin) and
+`go-rules/byte-cut-splits-rune` (Go, a byte cut of a string inside a multi-byte character). Python strings are
+code points, so it has no counterpart.
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
