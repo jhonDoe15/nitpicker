@@ -200,6 +200,7 @@ const REVIEW_RULES = new Set([
   'CachedFutureKeepsFailure',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
+  'NullableLibraryResult',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);
