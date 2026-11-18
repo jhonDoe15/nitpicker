@@ -21,6 +21,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'SimplifiedTernary', tool: PMD, safety: SAFE },
   { check: 'SimplifyBooleanExpressions', tool: PMD, safety: SAFE },
   { check: 'CollapsibleIfStatements', tool: PMD, safety: SAFE },
+  { check: 'UselessStringValueOf', tool: PMD, safety: SAFE },
   { check: 'LiteralsFirstInComparisons', tool: PMD, safety: REVIEW },
   { check: 'PreserveStackTrace', tool: PMD, safety: REVIEW },
   { check: 'SpringConstructorInjection', tool: PMD, safety: REVIEW },

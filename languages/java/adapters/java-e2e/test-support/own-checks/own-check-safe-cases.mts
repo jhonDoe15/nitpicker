@@ -245,4 +245,25 @@ public class Nesting {
 `,
     lines: [7],
   },
+  {
+    check: 'UselessStringValueOf',
+    file: `${MAIN}/Texts.java`,
+    before: `package demo;
+
+public class Texts {
+  String label(int count) {
+    return "n=" + String.valueOf(count);
+  }
+}
+`,
+    after: `package demo;
+
+public class Texts {
+  String label(int count) {
+    return "n=" + count;
+  }
+}
+`,
+    lines: [5],
+  },
 ];
