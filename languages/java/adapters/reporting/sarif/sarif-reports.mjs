@@ -25,9 +25,9 @@ import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mjs';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
 import { pmdLogRuleCrashes, pmdLoggedCrashFiles } from './processing/pmd-rule-crashes.mjs';
+import { withoutLineReferences } from '../../../../../shared/ingest/line-references.mjs';
 import { withoutClassesWithoutSource } from './spotbugs-sources.mjs';
 
-const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
 const ALIAS_RULE = 'ForwardingMethodAlias';
 const RENAME_ALIAS_RULE = 'ForwardingMethodAliasRename';
@@ -78,7 +78,9 @@ function pmdFindings(raw, context) {
   const { projectRoot } = context;
   const sourceText = sourceTextReader(projectRoot);
   const prepared = preparedReport(raw, context, (result) =>
-    result.message?.text?.replace(LINE_NUMBER, 'line'),
+    typeof result.message?.text === 'string'
+      ? withoutLineReferences(result.message.text)
+      : undefined,
   );
   const pmd = withOneAliasRule(
     withLockEvidence(

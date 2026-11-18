@@ -128,7 +128,8 @@ Part of the [Java preset guide](../java-preset.md).
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
   message's first line, with
-  `line <n>` removed, and `#2`, `#3` for repeats in one file in source order; no line, no path and
+  every line reference (`line 18`, `line(s): 1193, 1211`, `lines 1052 and 1060`) reduced to `line`
+  (`withoutLineReferences`, which PMD's subjects use too), and `#2`, `#3` for repeats in one file in source order; no line, no path and
   no `Did you mean` text, so moved or reformatted code stays baselined and a renamed file follows
   the rename map.
 - **Policy: every check that catches a bug class or names one allowed form.** All 641 checks of

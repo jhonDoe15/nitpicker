@@ -2,13 +2,13 @@ import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/c
 import { withoutClassLiteralRepeats } from './class-literals.mts';
 import { diagnosticOf, type Diagnostic } from './diagnostic.mts';
 import { compareText } from '../../../../shared/paths/path-order.mjs';
+import { withoutLineReferences } from '../../../../shared/ingest/line-references.mjs';
 import { definedField } from '../../../../shared/messages/messages.mjs';
 import { errorProneAllowedForm, errorProneMessage } from './messages.mts';
 import { listOf, numberOr, parseJson } from '../../../../shared/values/readers.mts';
 
 const CHECK = /^\[([\w.-]+)\]\s*/;
 const SUGGESTION = /^\s*Did you mean\b/;
-const LINE_NUMBER = /\bline \d+\b/g;
 type IngestOptions = {
   readonly tool?: string;
   readonly resolvePath?: (file: string) => string | undefined;
@@ -82,7 +82,7 @@ function finding({ tool, filePath, parsed, diagnostic, unique }: FindingInput) {
     rule: parsed.check,
     path: filePath,
     identity: unique(
-      hashIdentity('errorprone', [parsed.check, parsed.summary.replace(LINE_NUMBER, 'line')]),
+      hashIdentity('errorprone', [parsed.check, withoutLineReferences(parsed.summary)]),
     ),
     message: parsed.message,
     ...definedField('allowedForm', errorProneAllowedForm(parsed.check)),

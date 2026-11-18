@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { hashIdentity } from '../../../../shared/ingest/common.mjs';
+import { withoutLineReferences } from '../../../../shared/ingest/line-references.mjs';
 import { ingestErrorProne } from './errorprone.mts';
 
 const REPORT = readFileSync(path.join(import.meta.dirname, '../fixtures/errorprone.json'), 'utf8');
@@ -27,10 +28,7 @@ const SUMMARIES = new Map([
 ]);
 
 const identity = (rule, message) =>
-  hashIdentity('errorprone', [
-    rule,
-    (SUMMARIES.get(message) ?? message).replace(/\bline \d+\b/g, 'line'),
-  ]);
+  hashIdentity('errorprone', [rule, withoutLineReferences(SUMMARIES.get(message) ?? message)]);
 
 describe('ingestErrorProne', () => {
   it('turns each Error Prone diagnostic under a source root into an enforceable finding', () => {
@@ -103,6 +101,26 @@ describe('ingestErrorProne', () => {
       ingestErrorProne(json, { resolvePath }).findings.map((finding) => finding.identity);
 
     expect(identities(JSON.stringify(moved))).toEqual(identities(REPORT));
+  });
+
+  it('keeps the identity of ungrouped overloads when the lines of the other overloads move', () => {
+    const ungrouped = (lines) =>
+      JSON.stringify([
+        {
+          file: '/project/src/main/java/org/example/Numbers.java',
+          line: 1193 - 9,
+          column: 3,
+          message:
+            "[UngroupedOverloads] Constructors and methods with the same name should appear sequentially with no other code in between. found ungrouped overloads of 'max' on line(s): " +
+            lines,
+        },
+      ]);
+    const identities = (json) =>
+      ingestErrorProne(json, { resolvePath }).findings.map((finding) => finding.identity);
+
+    expect(identities(ungrouped('1184, 1202, 1,223'))).toEqual(
+      identities(ungrouped('1193, 1211, 1,232')),
+    );
   });
 
   it('keeps identities when the suggested fix changes with the code', () => {
