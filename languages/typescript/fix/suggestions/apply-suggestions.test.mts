@@ -37,6 +37,7 @@ const expected: Readonly<Record<string, string>> = {
     'export function drop(items: number[]): void {\n  items.splice(0, 1);\n}\n',
   '@typescript-eslint/use-unknown-in-catch-callback-variable':
     'export function recover(p: Promise<number>): Promise<number> {\n  return p.catch((e: unknown) => 0);\n}\n',
+  'regexp/optimal-lookaround-quantifier': 'export const digits = /(?=\\w)x/;\n',
   '@typescript-eslint/switch-exhaustiveness-check':
     "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n    case \"b\": { throw new Error('Not implemented yet: \"b\" case') }\n  }\n  return 0;\n}\n",
 };
@@ -184,4 +185,40 @@ describe('isRuleSelected', () => {
     expect(isRuleSelected('use-isnan', [suggestionName('use-isnan')])).toBe(true);
     expect(isRuleSelected('no-empty', [suggestionName('no-empty')])).toBe(false);
   });
+});
+
+describe('applySuggestions with the regexp lookaround rule', () => {
+  const RULE = 'regexp/optimal-lookaround-quantifier';
+  const regexCases: Readonly<Record<string, readonly [string, string]>> = {
+    remove: ['export const a = /(?=a*)b/;\n', 'export const a = /(?=)b/;\n'],
+    replace: ['export const a = /(?=\\w+)x/;\n', 'export const a = /(?=\\w)x/;\n'],
+    behind: ['export const a = /(?<=\\d+)x/;\n', 'export const a = /(?<=\\d)x/;\n'],
+    negative: ['export const a = /(?!a?)b/;\n', 'export const a = /(?!)b/;\n'],
+    flags: ['export const a = /(?=a*)b/giu;\n', 'export const a = /(?=)b/giu;\n'],
+    clean: ['export const a = /(?=a)b/;\n', 'export const a = /(?=a)b/;\n'],
+    string: [
+      'export const a = new RegExp("(?=a*)b");\n',
+      'export const a = new RegExp("(?=)b");\n',
+    ],
+  };
+  let regexMessages: Map<string, readonly LintMessage[]>;
+
+  beforeAll(async () => {
+    regexMessages = await lintCases(
+      Object.fromEntries(Object.entries(regexCases).map(([name, [code]]) => [name, code])),
+    );
+  });
+
+  it.each(Object.keys(regexCases))(
+    'rewrites the %s case only when the rule is selected',
+    (name) => {
+      const [code, fixed] = regexCases[name] ?? ['', ''];
+      const messages = regexMessages.get(name) ?? [];
+
+      expect(applySuggestions({ text: code, messages, selectedRules: [] }).text).toBe(code);
+      expect(
+        applySuggestions({ text: code, messages, selectedRules: [suggestionName(RULE)] }).text,
+      ).toBe(fixed);
+    },
+  );
 });

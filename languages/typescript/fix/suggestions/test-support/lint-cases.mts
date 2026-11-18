@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
+import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { messageOf } from '../../typed/eslint-report.mts';
 import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
@@ -39,7 +40,7 @@ function eslintFor(root: string): ESLint {
           parser: tseslint.parser,
           parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
         },
-        plugins: { '@typescript-eslint': tseslint.plugin },
+        plugins: { '@typescript-eslint': tseslint.plugin, regexp },
         rules: Object.fromEntries(Object.keys(suggestionRules).map((rule) => [rule, 'error'])),
       },
     ],
