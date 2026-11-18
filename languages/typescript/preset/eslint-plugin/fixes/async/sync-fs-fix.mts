@@ -108,7 +108,7 @@ function namedRewrite(
 }
 
 function twinOf(callee: ModuleCallee): FsTwin | undefined {
-  if (callee.method === EXISTS || callee.module === 'fs-extra' || callee.kind === 'named') {
+  if (callee.module === 'fs-extra' || (callee.kind === 'named' && callee.method !== EXISTS)) {
     return undefined;
   }
   if (callee.method === EXISTS && NODE_FS.has(callee.module)) {

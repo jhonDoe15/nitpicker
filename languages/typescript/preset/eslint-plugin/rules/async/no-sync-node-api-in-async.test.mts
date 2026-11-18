@@ -18,8 +18,8 @@ const blocking = (api: string, module = 'fs', context = 'an async function', pre
     data: { api, context, alternative: `${prefix}${alternativeOf(module, api)}` },
   },
 ];
-const suggested = (api: string, output: string, module = 'fs') => [
-  { ...blocking(api, module)[0], suggestions: [{ messageId: 'awaitTwin', output }] },
+const suggested = (api: string, output: string, messageId = 'awaitTwin') => [
+  { ...blocking(api)[0], suggestions: [{ messageId, output }] },
 ];
 const inCallback = (api: string) => blocking(api, 'fs', 'an async function', CALLBACK_ADVICE);
 const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
@@ -166,7 +166,11 @@ const blockers: CaseRow[] = [
   ],
   [
     'import { existsSync } from "node:fs"; export async function has(p) { return existsSync(p); }',
-    blocking('existsSync'),
+    suggested(
+      'existsSync',
+      'import { existsSync } from "node:fs";\nimport { access } from "node:fs/promises"; export async function has(p) { return await access(p).then(() => true, () => false); }',
+      'awaitAccess',
+    ),
   ],
   [
     'import { closeSync } from "node:fs"; export async function close(fd) { closeSync(fd); }',
