@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { nearestManifest } from '../../../rules/dependencies/package-manifest.mts';
+import { parseJsonText, readFileText } from '../../support/project/read-file.mts';
 
 const NODE_MODULES = '/node_modules/';
 const VERSION = /^(\d+)\.(\d+)/u;
@@ -10,16 +10,17 @@ export function projectDependencies(filename: string): ReadonlySet<string> {
   const pending = [path.dirname(filename)];
   for (const directory of pending) {
     const manifest = nearestManifest(directory);
-    if (manifest?.kind === 'manifest') {
-      for (const name of [...manifest.runtime, ...manifest.development]) {
-        names.add(name);
-      }
-      const parent = path.dirname(path.dirname(manifest.file));
-      pending.push(parent);
-      if (parent === path.dirname(manifest.file)) {
-        break;
-      }
+    if (manifest?.kind !== 'manifest') {
+      continue;
     }
+    for (const name of [...manifest.runtime, ...manifest.development]) {
+      names.add(name);
+    }
+    const parent = path.dirname(path.dirname(manifest.file));
+    if (parent === path.dirname(manifest.file)) {
+      break;
+    }
+    pending.push(parent);
   }
   return names;
 }
@@ -30,19 +31,32 @@ export function packageVersion(declarationFile: string, name: string): string | 
   if (index === -1) {
     return undefined;
   }
-  const manifest = `${normalized.slice(0, index + NODE_MODULES.length)}${name}/package.json`;
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(manifest, 'utf8'));
-    const version =
-      typeof parsed === 'object' && parsed !== null ? Reflect.get(parsed, 'version') : undefined;
-    return typeof version === 'string' ? version : undefined;
-  } catch {
+  const base = path.resolve(normalized.slice(0, index + NODE_MODULES.length));
+  const folder = path.resolve(base, name);
+  if (!folder.startsWith(`${base}${path.sep}`)) {
     return undefined;
   }
+  const read = readFileText(path.resolve(folder, 'package.json'));
+  const parsed = read.kind === 'text' ? parseJsonText(read.text) : read;
+  return parsed.kind === 'json' ? versionOf(parsed.value) : undefined;
+}
+
+function versionOf(manifest: unknown): string | undefined {
+  const version: unknown =
+    typeof manifest === 'object' && manifest !== null
+      ? Reflect.get(manifest, 'version')
+      : undefined;
+  return typeof version === 'string' ? version : undefined;
+}
+
+const TYPEORM_MINOR = 3;
+
+export function isModernTypeorm(version: string | undefined): boolean {
+  return isAtLeast(version, 0, TYPEORM_MINOR);
 }
 
 export function isAtLeast(version: string | undefined, major: number, minor: number): boolean {
-  const match = version === undefined ? null : VERSION.exec(version);
+  const match = VERSION.exec(version ?? '');
   if (match === null) {
     return false;
   }

@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { typeServices } from '../../../../rules/security/security-values.mts';
 import { isInvariant } from '../../loops/invariants.mts';
 import { keyColumn } from '../../orm/key-column.mts';
-import { isAtLeast } from '../../orm/project-files.mts';
+import { isModernTypeorm } from '../../orm/project-files.mts';
 import { isSelfReferencing, primaryProperty } from '../../orm/typeorm-columns.mts';
 import { hasPerRowEffects } from '../../orm/typeorm-hooks.mts';
 import { hasUniqueKeys } from '../../loops/unique-keys.mts';
@@ -78,7 +78,7 @@ export function typeormWrite(site: WriteSite): TypeormWrite | undefined {
     services === undefined ||
     argument === undefined ||
     ARGUMENT_COUNTS.get(orm.method) !== call.arguments.length ||
-    !isAtLeast(orm.version, 0, 3) ||
+    !isModernTypeorm(orm.version) ||
     isSelfReferencing(services.program.getTypeChecker(), orm.entity) ||
     hasPerRowEffects(
       services.program.getTypeChecker(),

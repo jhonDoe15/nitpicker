@@ -9,7 +9,8 @@ type OrmProjectOptions = {
   readonly provider?: string;
   readonly dependencies?: readonly string[];
   readonly typeormVersion?: string;
-  readonly prismaVersion?: string | null;
+  readonly prismaVersion?: string;
+  readonly prismaManifest?: 'versioned' | 'unversioned';
   readonly files?: Readonly<Record<string, string>>;
 };
 
@@ -38,14 +39,17 @@ function write(file: string, content: string): void {
   writeFileSync(file, `${content}\n`);
 }
 
-function versionOf(name: string, options: OrmProjectOptions): string | null {
+function versionOf(name: string, options: OrmProjectOptions): string | undefined {
   if (name === 'typeorm') {
     return options.typeormVersion ?? '0.3.20';
   }
   if (name !== '@prisma/client') {
     return '4.6.0';
   }
-  return options.prismaVersion === undefined ? PRISMA_VERSION : options.prismaVersion;
+  if (options.prismaManifest === 'unversioned') {
+    return undefined;
+  }
+  return options.prismaVersion ?? PRISMA_VERSION;
 }
 
 function writePackages(root: string, options: OrmProjectOptions): void {
@@ -58,7 +62,7 @@ function writePackages(root: string, options: OrmProjectOptions): void {
     const version = versionOf(name, options);
     write(
       path.join(modules, name, 'package.json'),
-      JSON.stringify({ name, ...(version === null ? {} : { version }), types: 'index.d.ts' }),
+      JSON.stringify({ name, ...(version === undefined ? {} : { version }), types: 'index.d.ts' }),
     );
   }
   write(

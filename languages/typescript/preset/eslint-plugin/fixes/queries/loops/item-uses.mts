@@ -1,28 +1,14 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { descendants } from '../../../rules/loops/loop-shapes.mts';
-import { typeServices, type Context } from '../../../rules/security/security-values.mts';
+import type { Context } from '../../../rules/security/security-values.mts';
+import { hasOnlyTypeFlags } from '../../../rules/support/checked-types.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
-import { contains } from '../../../rules/typed/node-views.mts';
+import { ancestorsOf, contains } from '../../../rules/typed/node-views.mts';
+import { MUTATING_METHODS } from './invariants.mts';
+import { constDefinition } from '../../../rules/typed/syntax-views.mts';
 import { visibleVariable } from '../../support/scope.mts';
 
-const { DefinitionType } = TSESLint.Scope;
-
-const MUTATING_METHODS = new Set([
-  'push',
-  'pop',
-  'shift',
-  'unshift',
-  'splice',
-  'sort',
-  'reverse',
-  'fill',
-  'copyWithin',
-  'set',
-  'add',
-  'delete',
-  'clear',
-  'assign',
-]);
+const DELETE = 'delete';
 const READING_METHODS = new Set([
   'toString',
   'toLowerCase',
@@ -77,29 +63,30 @@ const PATTERNS = new Set<string>([
   AST_NODE_TYPES.AssignmentPattern,
 ]);
 
+export type LoopScope = { readonly body: TSESTree.Node; readonly target: TSESTree.Node };
 type Use = { readonly top: TSESTree.Node; readonly parent: TSESTree.Node };
 
-function useOf(identifier: TSESTree.Identifier): Use {
-  let top: TSESTree.Node = identifier;
-  let parent: TSESTree.Node = identifier.parent;
-  while (
+function isTransparent(parent: TSESTree.Node, top: TSESTree.Node): boolean {
+  return (
     (parent.type === AST_NODE_TYPES.MemberExpression && parent.object === top) ||
     parent.type === AST_NODE_TYPES.TSNonNullExpression ||
     parent.type === AST_NODE_TYPES.ChainExpression
-  ) {
+  );
+}
+
+function useOf(identifier: TSESTree.Identifier): Use {
+  let top: TSESTree.Node = identifier;
+  for (const parent of ancestorsOf(identifier)) {
+    if (!isTransparent(parent, top)) {
+      return { top, parent };
+    }
     top = parent;
-    parent = parent.parent ?? parent;
   }
-  return { top, parent };
+  return { top, parent: identifier.parent };
 }
 
 function isScalar(context: Context, node: TSESTree.Node): boolean {
-  const type = typeServices(context)?.getTypeAtLocation(node);
-  if (type === undefined) {
-    return false;
-  }
-  const members = type.isUnion() ? type.types : [type];
-  return members.every((member) => (member.flags & SCALAR_FLAGS) !== 0);
+  return hasOnlyTypeFlags(context, node, SCALAR_FLAGS);
 }
 
 function calleeText(context: Context, callee: TSESTree.Node): string {
@@ -144,33 +131,38 @@ function isUnsafeCallUse(context: Context, { top, parent }: Use): boolean {
   );
 }
 
+function isUnsafeOtherUse(context: Context, { top, parent }: Use): boolean {
+  if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
+    return parent.left === top || !isScalar(context, top);
+  }
+  if (parent.type === AST_NODE_TYPES.UpdateExpression) {
+    return true;
+  }
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === DELETE;
+  }
+  if (parent.type === AST_NODE_TYPES.VariableDeclarator) {
+    return parent.init === top && !isScalar(context, top);
+  }
+  if (parent.type === AST_NODE_TYPES.Property) {
+    return parent.parent.type === AST_NODE_TYPES.ObjectPattern;
+  }
+  return PATTERNS.has(parent.type) || parent.type === AST_NODE_TYPES.ForOfStatement;
+}
+
 function isUnsafeUse(context: Context, identifier: TSESTree.Identifier): boolean {
   const use = useOf(identifier);
-  const { top, parent } = use;
-  switch (parent.type) {
-    case AST_NODE_TYPES.AssignmentExpression:
-      return parent.left === top || !isScalar(context, top);
-    case AST_NODE_TYPES.UpdateExpression:
-      return true;
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === 'delete';
-    case AST_NODE_TYPES.VariableDeclarator:
-      return parent.init === top && !isScalar(context, top);
-    case AST_NODE_TYPES.CallExpression:
-    case AST_NODE_TYPES.NewExpression:
-      return isUnsafeCallUse(context, use);
-    case AST_NODE_TYPES.Property:
-      return parent.parent.type === AST_NODE_TYPES.ObjectPattern;
-    default:
-      return PATTERNS.has(parent.type) || parent.type === AST_NODE_TYPES.ForOfStatement;
-  }
+  const { parent } = use;
+  return parent.type === AST_NODE_TYPES.CallExpression ||
+    parent.type === AST_NODE_TYPES.NewExpression
+    ? isUnsafeCallUse(context, use)
+    : isUnsafeOtherUse(context, use);
 }
 
 export function isItemStable(
   context: Context,
   item: TSESTree.Identifier,
-  body: TSESTree.Node,
-  target: TSESTree.Node,
+  { body, target }: LoopScope,
 ): boolean {
   const variable = visibleVariable(context.sourceCode, item, item.name);
   return (variable?.references ?? [])
@@ -202,16 +194,13 @@ function isConstLocal(context: Context, iterable: TSESTree.Node): boolean {
   if (iterable.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  const variable = visibleVariable(context.sourceCode, iterable, iterable.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  return definition?.type === DefinitionType.Variable && definition.parent?.kind === 'const';
+  return constDefinition(context, iterable) !== undefined;
 }
 
 export function isIterableStable(
   context: Context,
   iterable: TSESTree.Node,
-  body: TSESTree.Node,
-  target: TSESTree.Node,
+  { body, target }: LoopScope,
 ): boolean {
   return (
     isConstLocal(context, iterable) ||

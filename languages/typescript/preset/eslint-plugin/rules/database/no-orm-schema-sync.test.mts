@@ -3,6 +3,9 @@ import { rule } from './no-orm-schema-sync.mts';
 
 const tester = typescriptRuleTester();
 const sync = (form: string) => [{ messageId: 'schemaSync', data: { form } }];
+function flagged(code: string, form: string) {
+  return { code, errors: sync(form) };
+}
 const TYPEORM = 'import { DataSource } from "typeorm";';
 const NEST_TYPEORM = 'import { TypeOrmModule } from "@nestjs/typeorm";';
 const SEQUELIZE = 'import { Sequelize } from "sequelize";';
@@ -35,105 +38,105 @@ tester.run('no-orm-schema-sync', rule, {
     `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: () => ({ type: "postgres", synchronize: false }) });`,
   ],
   invalid: [
-    {
-      code: `${TYPEORM} export const db = new DataSource({ type: "postgres", synchronize: true });`,
-      errors: sync('synchronize: true'),
-    },
-    {
-      code: 'export default { type: "mysql", host, entities: ["dist/**/*.entity.js"], synchronize: true };',
-      errors: sync('synchronize: true'),
-    },
-    {
-      code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRoot({ type: "postgres", autoLoadEntities: true, synchronize: process.env.NODE_ENV !== "production" });`,
-      errors: sync('synchronize: process.env.NODE_ENV !== "production"'),
-    },
+    flagged(
+      `${TYPEORM} export const db = new DataSource({ type: "postgres", synchronize: true });`,
+      'synchronize: true',
+    ),
+    flagged(
+      'export default { type: "mysql", host, entities: ["dist/**/*.entity.js"], synchronize: true };',
+      'synchronize: true',
+    ),
+    flagged(
+      `${NEST_TYPEORM} export const m = TypeOrmModule.forRoot({ type: "postgres", autoLoadEntities: true, synchronize: process.env.NODE_ENV !== "production" });`,
+      'synchronize: process.env.NODE_ENV !== "production"',
+    ),
     {
       code: `${TYPEORM} const SYNC = true; export const options = { type: "postgres", synchronize: SYNC, dropSchema: !isProduction };`,
       errors: [...sync('synchronize: SYNC'), ...sync('dropSchema: !isProduction')],
     },
-    {
-      code: `${TYPEORM} export const options = { type: "sqlite", synchronize: process.env.DB_SYNC };`,
-      errors: sync('synchronize: process.env.DB_SYNC'),
-    },
-    {
-      code: `${TYPEORM} export async function start(dataSource) { await dataSource.synchronize(); }`,
-      errors: sync('dataSource.synchronize()'),
-    },
-    {
-      code: `${TYPEORM} export async function reset(dataSource) { await dataSource.dropDatabase(); }`,
-      errors: sync('dataSource.dropDatabase()'),
-    },
-    {
-      code: `${SEQUELIZE} export async function start(sequelize) { await sequelize.sync({ alter: true }); }`,
-      errors: sync('sequelize.sync()'),
-    },
-    {
-      code: `${SEQUELIZE} export async function start(sequelize) { await sequelize.sync({ force: true }); }`,
-      errors: sync('sequelize.sync()'),
-    },
-    {
-      code: 'const { Sequelize } = require("sequelize"); const db = new Sequelize(url); module.exports = async () => { await db.sync(); };',
-      errors: sync('db.sync()'),
-    },
-    {
-      code: 'import { Sequelize as SQ } from "@sequelize/core"; const db = new SQ(url); export const start = () => db.sync({ alter: true });',
-      errors: sync('db.sync()'),
-    },
-    {
-      code: `${SEQUELIZE} class User extends Model {} export const start = () => User.sync();`,
-      errors: sync('User.sync()'),
-    },
-    {
-      code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => ({ autoLoadEntities: true, synchronize: Boolean(config.get("DB_SYNC")) }) });`,
-      errors: sync('synchronize: Boolean(config.get("DB_SYNC"))'),
-    },
-    {
-      code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => { return { url: config.get("URL"), synchronize: true }; } });`,
-      errors: sync('synchronize: true'),
-    },
-    {
-      code: `${TYPEORM} const dataSource = new DataSource(options); export const start = () => dataSource.synchronize();`,
-      errors: sync('dataSource.synchronize()'),
-    },
-    {
-      code: 'export async function start(app) { await app.sequelize.sync(); }',
-      errors: sync('app.sequelize.sync()'),
-    },
-    {
-      code: `import { User } from "./models/user.js"; ${SEQUELIZE} export async function start() { await User.sync(); }`,
-      errors: sync('User.sync()'),
-    },
-    {
-      code: `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", autoLoadModels: true });`,
-      errors: sync('autoLoadModels: true` without `synchronize: false'),
-    },
-    {
-      code: `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", autoLoadModels: true, synchronize: true });`,
-      errors: sync('synchronize: true'),
-    },
-    {
-      code: `${MIKRO} export async function start(orm) { await orm.schema.updateSchema(); }`,
-      errors: sync('orm.schema.updateSchema()'),
-    },
-    {
-      code: `${MIKRO} export async function start(orm) { await orm.getSchemaGenerator().createSchema(); }`,
-      errors: sync('orm.getSchemaGenerator().createSchema()'),
-    },
-    {
-      code: `${MIKRO} export async function start(orm) { await orm.schema.refreshDatabase(); }`,
-      errors: sync('orm.schema.refreshDatabase()'),
-    },
-    {
-      code: `${MIKRO} export async function start(orm) { await orm.schema.ensureDatabase({ create: true }); }`,
-      errors: sync('orm.schema.ensureDatabase()'),
-    },
-    {
-      code: `${TYPEORM} import { dataSource } from "typeorm"; export async function start() { await dataSource.synchronize(true); }`,
-      errors: sync('dataSource.synchronize()'),
-    },
-    {
-      code: `${SEQUELIZE} export async function start() { await Sequelize.sync({ alter: true }); }`,
-      errors: sync('Sequelize.sync()'),
-    },
+    flagged(
+      `${TYPEORM} export const options = { type: "sqlite", synchronize: process.env.DB_SYNC };`,
+      'synchronize: process.env.DB_SYNC',
+    ),
+    flagged(
+      `${TYPEORM} export async function start(dataSource) { await dataSource.synchronize(); }`,
+      'dataSource.synchronize()',
+    ),
+    flagged(
+      `${TYPEORM} export async function reset(dataSource) { await dataSource.dropDatabase(); }`,
+      'dataSource.dropDatabase()',
+    ),
+    flagged(
+      `${SEQUELIZE} export async function start(sequelize) { await sequelize.sync({ alter: true }); }`,
+      'sequelize.sync()',
+    ),
+    flagged(
+      `${SEQUELIZE} export async function start(sequelize) { await sequelize.sync({ force: true }); }`,
+      'sequelize.sync()',
+    ),
+    flagged(
+      'const { Sequelize } = require("sequelize"); const db = new Sequelize(url); module.exports = async () => { await db.sync(); };',
+      'db.sync()',
+    ),
+    flagged(
+      'import { Sequelize as SQ } from "@sequelize/core"; const db = new SQ(url); export const start = () => db.sync({ alter: true });',
+      'db.sync()',
+    ),
+    flagged(
+      `${SEQUELIZE} class User extends Model {} export const start = () => User.sync();`,
+      'User.sync()',
+    ),
+    flagged(
+      `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => ({ autoLoadEntities: true, synchronize: Boolean(config.get("DB_SYNC")) }) });`,
+      'synchronize: Boolean(config.get("DB_SYNC"))',
+    ),
+    flagged(
+      `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => { return { url: config.get("URL"), synchronize: true }; } });`,
+      'synchronize: true',
+    ),
+    flagged(
+      `${TYPEORM} const dataSource = new DataSource(options); export const start = () => dataSource.synchronize();`,
+      'dataSource.synchronize()',
+    ),
+    flagged(
+      'export async function start(app) { await app.sequelize.sync(); }',
+      'app.sequelize.sync()',
+    ),
+    flagged(
+      `import { User } from "./models/user.js"; ${SEQUELIZE} export async function start() { await User.sync(); }`,
+      'User.sync()',
+    ),
+    flagged(
+      `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", autoLoadModels: true });`,
+      'autoLoadModels: true` without `synchronize: false',
+    ),
+    flagged(
+      `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", autoLoadModels: true, synchronize: true });`,
+      'synchronize: true',
+    ),
+    flagged(
+      `${MIKRO} export async function start(orm) { await orm.schema.updateSchema(); }`,
+      'orm.schema.updateSchema()',
+    ),
+    flagged(
+      `${MIKRO} export async function start(orm) { await orm.getSchemaGenerator().createSchema(); }`,
+      'orm.getSchemaGenerator().createSchema()',
+    ),
+    flagged(
+      `${MIKRO} export async function start(orm) { await orm.schema.refreshDatabase(); }`,
+      'orm.schema.refreshDatabase()',
+    ),
+    flagged(
+      `${MIKRO} export async function start(orm) { await orm.schema.ensureDatabase({ create: true }); }`,
+      'orm.schema.ensureDatabase()',
+    ),
+    flagged(
+      `${TYPEORM} import { dataSource } from "typeorm"; export async function start() { await dataSource.synchronize(true); }`,
+      'dataSource.synchronize()',
+    ),
+    flagged(
+      `${SEQUELIZE} export async function start() { await Sequelize.sync({ alter: true }); }`,
+      'Sequelize.sync()',
+    ),
   ],
 });

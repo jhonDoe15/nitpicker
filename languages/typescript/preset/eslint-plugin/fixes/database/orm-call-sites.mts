@@ -8,10 +8,9 @@ import {
   TYPEORM,
   type ModuleScope,
 } from '../../rules/database/orm-modules.mts';
+import { PRISMA } from '../../rules/queries/receivers/orm-callee.mts';
 import { unwrapped } from '../../rules/security/security-values.mts';
 import { ancestorsOf } from '../../rules/typed/node-views.mts';
-
-export const PRISMA = 'prisma';
 
 type Family = typeof TYPEORM | typeof SEQUELIZE | typeof MIKRO_ORM | typeof DRIZZLE | typeof PRISMA;
 

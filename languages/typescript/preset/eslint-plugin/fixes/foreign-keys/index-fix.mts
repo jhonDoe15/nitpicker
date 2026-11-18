@@ -6,7 +6,7 @@ import { allOf, type FixPlans } from '../edits/plans.mts';
 import { appendingArgument } from '../support/calls.mts';
 import { addingProperty, isPlainObject, keyName } from '../support/objects.mts';
 import { inserting, type FixPlan } from '../support/ranges.mts';
-import { visibleVariable } from '../support/scope.mts';
+import { isImportedName } from '../support/scope.mts';
 import { hasMigrationSignal } from './migration-signals.mts';
 
 export type IndexTarget = {
@@ -31,15 +31,13 @@ function memberOf(call: TSESTree.CallExpression): Member | undefined {
 
 function isAbstractOwner(member: Member): boolean {
   const owner = member.parent.parent;
-  return owner?.type === AST_NODE_TYPES.ClassDeclaration && owner.abstract;
+  return owner.type === AST_NODE_TYPES.ClassDeclaration && owner.abstract;
 }
 
 function isImported(sourceCode: SourceCode, identifier: TSESTree.Node): boolean {
   return (
     identifier.type === AST_NODE_TYPES.Identifier &&
-    visibleVariable(sourceCode, identifier, identifier.name)?.defs.every(
-      ({ type }) => type === 'ImportBinding',
-    ) === true
+    isImportedName(sourceCode, identifier, identifier.name)
   );
 }
 

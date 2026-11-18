@@ -22,7 +22,7 @@ type Site = {
 function isBound(site: Site, member: TSESTree.MemberExpression): boolean {
   const declarator = site.awaited.parent;
   return (
-    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.type === AST_NODE_TYPES.VariableDeclarator &&
     declarator.id.type === AST_NODE_TYPES.Identifier &&
     declarator.id.typeAnnotation === undefined &&
     declarator.init === site.awaited &&
@@ -34,11 +34,15 @@ function editsFor(context: Context, call: TSESTree.CallExpression): TextEdit[] |
   return prismaCountEdits(context, call) ?? typeormCountEdits(context, call);
 }
 
+type CountEdits = {
+  readonly member: TSESTree.MemberExpression;
+  readonly edits: readonly TextEdit[];
+};
+
 function countPlans(
   context: Context,
   site: Site,
-  member: TSESTree.MemberExpression,
-  edits: readonly TextEdit[],
+  { member, edits }: CountEdits,
 ): FixPlan[] | undefined {
   if (isBound(site, member)) {
     const plans = edits.map(({ range, text }) => replacing(range, text));
@@ -65,7 +69,7 @@ export function countFix(context: Context, site: Site): CountSuggestion | undefi
     return undefined;
   }
   const edits = editsFor(context, call);
-  const plans = edits === undefined ? undefined : countPlans(context, site, member, edits);
+  const plans = edits === undefined ? undefined : countPlans(context, site, { member, edits });
   const plan = plans === undefined ? undefined : allOf(plans);
   const method = edits?.[0]?.text;
   return plan === undefined || method === undefined

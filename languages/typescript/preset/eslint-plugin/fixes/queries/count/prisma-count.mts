@@ -33,13 +33,10 @@ export function prismaCountEdits(
   call: TSESTree.CallExpression,
 ): TextEdit[] | undefined {
   const { callee } = call;
-  const named =
-    callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed
-      ? memberName(callee) === 'findMany'
-      : false;
   if (
-    !named ||
     callee.type !== AST_NODE_TYPES.MemberExpression ||
+    callee.computed ||
+    memberName(callee) !== 'findMany' ||
     call.arguments.length > 1 ||
     calleeFamily(context, call) !== PRISMA ||
     projectMentions(context, HOOKS)

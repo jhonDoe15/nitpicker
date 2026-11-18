@@ -77,8 +77,7 @@ function rowFieldOf(context: Context, awaited: TSESTree.AwaitExpression): string
 function selectPlan(
   context: Context,
   call: TSESTree.CallExpression,
-  text: string,
-  allowEmpty: boolean,
+  { text, allowEmpty }: { readonly text: string; readonly allowEmpty: boolean },
 ): FixPlan | undefined {
   const [options, ...rest] = call.arguments;
   if (rest.length > 0) {
@@ -112,6 +111,6 @@ export function prismaSelectFix(
   const plan =
     field === undefined
       ? undefined
-      : selectPlan(context, call, `select: { ${field}: true }`, allowEmpty);
+      : selectPlan(context, call, { text: `select: { ${field}: true }`, allowEmpty });
   return field === undefined || plan === undefined ? undefined : { field, plan };
 }

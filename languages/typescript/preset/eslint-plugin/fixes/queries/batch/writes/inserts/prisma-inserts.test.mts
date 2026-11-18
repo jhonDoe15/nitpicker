@@ -29,7 +29,7 @@ const prisma5 = insertCases(
   PRISMA_INSERT_HEAD,
 );
 const unversioned = insertCases(
-  ormProject('prisma-inserts-unversioned', { prismaVersion: null }),
+  ormProject('prisma-inserts-unversioned', { prismaManifest: 'unversioned' }),
   PRISMA_INSERT_HEAD,
 );
 const mongo = insertCases(

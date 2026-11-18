@@ -16,7 +16,7 @@ import { isPollingCall, isRereadInCatch } from './repeats/polling-loops.mts';
 import { batchForm } from './advice/batch-forms.mts';
 import { IO_IN_LOOP_MESSAGES } from './advice/messages.mts';
 import { IO_IN_LOOP_SUGGESTIONS } from './advice/suggestion-messages.mts';
-import { adviceOf, type Advice } from './advice/query-advice.mts';
+import { adviceOf, isBatchable, type Advice } from './advice/query-advice.mts';
 
 type ReportIds = keyof typeof IO_IN_LOOP_MESSAGES;
 type MessageIds = ReportIds | keyof typeof IO_IN_LOOP_SUGGESTIONS;
@@ -97,9 +97,7 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
           form: batchForm(effect.path[0] ?? '', calleeOrigin(node, context)?.pkg),
         },
       };
-      const batchable =
-        node.type === AST_NODE_TYPES.CallExpression &&
-        (advice === 'query' || advice === 'foreignKeyQuery');
+      const batchable = node.type === AST_NODE_TYPES.CallExpression && isBatchable(advice);
       const suggestion = batchable ? batchSuggestion(context, node) : undefined;
       context.report(suggestion === undefined ? descriptor : suggestible(descriptor, suggestion));
     }

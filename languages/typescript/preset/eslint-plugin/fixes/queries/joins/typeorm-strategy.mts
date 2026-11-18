@@ -11,7 +11,7 @@ import {
   propertyNamed,
   type Context,
 } from '../../../rules/security/security-values.mts';
-import { addingProperty, keyName } from '../../support/objects.mts';
+import { addingProperty, valueOf } from '../../support/objects.mts';
 import type { FixPlan } from '../../support/ranges.mts';
 import { avoidsRelations, hasOnlyKeys, isEagerType, optionAccepts } from './option-types.mts';
 
@@ -32,11 +32,6 @@ function joinedTypes(
     }, root);
   }
   return found;
-}
-
-function valueOf(options: TSESTree.ObjectExpression, key: string): TSESTree.Node | undefined {
-  const property = options.properties.find((each) => keyName(each) === key);
-  return property?.type === AST_NODE_TYPES.Property ? property.value : undefined;
 }
 
 function isBounded(name: string, options: TSESTree.ObjectExpression): boolean {

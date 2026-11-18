@@ -1,12 +1,9 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { calleeDeclaration, calleeFamily } from '../../../rules/queries/receivers/orm-callee.mts';
 import { TYPEORM } from '../../../rules/database/orm-modules.mts';
-import {
-  memberName,
-  typeServices,
-  type Context,
-} from '../../../rules/security/security-values.mts';
-import { hasMember, ownerIndex } from '../typeorm-receivers.mts';
+import { memberName, type Context } from '../../../rules/security/security-values.mts';
+import { hasProperty } from '../../../rules/support/checked-types.mts';
+import { ownerIndex } from '../typeorm-receivers.mts';
 import { allOf } from '../../edits/plans.mts';
 import { isPlainObject, keyName } from '../../support/objects.mts';
 import { hasCommentIn, replacing, type FixPlan } from '../../support/ranges.mts';
@@ -74,8 +71,7 @@ function renaming(
 function renamedText(
   context: Context,
   awaited: TSESTree.AwaitExpression,
-  callee: TSESTree.MemberExpression,
-  renamed: string,
+  { callee, renamed }: { callee: TSESTree.MemberExpression; renamed: string },
 ): string {
   const { text } = context.sourceCode;
   const [from, to] = callee.property.range;
@@ -83,7 +79,6 @@ function renamedText(
 }
 
 function rewrittenTest(
-  context: Context,
   { binary, polarity }: { binary: TSESTree.BinaryExpression; polarity: Polarity },
   positive: string,
 ): FixPlan {
@@ -98,7 +93,7 @@ function boundPlan(
 ): FixPlan[] | undefined {
   const declarator = site.awaited.parent;
   const bound =
-    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.type === AST_NODE_TYPES.VariableDeclarator &&
     declarator.id.type === AST_NODE_TYPES.Identifier &&
     declarator.id.typeAnnotation === undefined &&
     declarator.init === site.awaited &&
@@ -108,7 +103,7 @@ function boundPlan(
   }
   const rename = renaming(context, callee, target.renamed);
   const binary = site.site.parent;
-  if (binary?.type !== AST_NODE_TYPES.BinaryExpression) {
+  if (binary.type !== AST_NODE_TYPES.BinaryExpression) {
     return rename === undefined ? undefined : [rename];
   }
   const polarity = testPolarity(target, binary, site.site);
@@ -119,10 +114,7 @@ function boundPlan(
   ) {
     return undefined;
   }
-  return [
-    rename,
-    rewrittenTest(context, { binary, polarity }, context.sourceCode.getText(site.site)),
-  ];
+  return [rename, rewrittenTest({ binary, polarity }, context.sourceCode.getText(site.site))];
 }
 
 function inlinePlan(
@@ -131,7 +123,7 @@ function inlinePlan(
   { target, callee }: Applicable,
 ): FixPlan[] | undefined {
   const binary = site.awaited.parent;
-  if (binary?.type !== AST_NODE_TYPES.BinaryExpression) {
+  if (binary.type !== AST_NODE_TYPES.BinaryExpression) {
     const rename = renaming(context, callee, target.renamed);
     return rename === undefined ? undefined : [rename];
   }
@@ -139,10 +131,8 @@ function inlinePlan(
   if (polarity === undefined || hasCommentIn(context.sourceCode, binary.range)) {
     return undefined;
   }
-  const call = renamedText(context, site.awaited, callee, target.renamed);
-  return [
-    rewrittenTest(context, { binary, polarity }, polarity === 'present' ? call : `(${call})`),
-  ];
+  const call = renamedText(context, site.awaited, { callee, renamed: target.renamed });
+  return [rewrittenTest({ binary, polarity }, polarity === 'present' ? call : `(${call})`)];
 }
 
 type Applicable = { readonly target: Target; readonly callee: TSESTree.MemberExpression };
@@ -158,7 +148,7 @@ function applicable(context: Context, call: TSESTree.CallExpression): Applicable
     target !== undefined &&
     index !== undefined &&
     calleeFamily(context, call) === TYPEORM &&
-    hasMember(context, callee.object, target.renamed) &&
+    hasProperty(context, callee.object, target.renamed) &&
     call.arguments.length <= index + 1 &&
     call.arguments.every((argument) => argument.type !== AST_NODE_TYPES.SpreadElement) &&
     optionsAllowed(call.arguments[index], target);

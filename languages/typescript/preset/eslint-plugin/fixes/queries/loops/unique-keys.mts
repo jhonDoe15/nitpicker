@@ -1,8 +1,6 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
-import { visibleVariable } from '../../support/scope.mts';
-
-const { DefinitionType } = TSESLint.Scope;
+import { constDefinition } from '../../../rules/typed/syntax-views.mts';
 
 function isNamed(node: TSESTree.Node, owner: string, method: string): boolean {
   return (
@@ -37,7 +35,7 @@ function isUniqueKeys(context: Context, node: TSESTree.Node): boolean {
   );
 }
 
-function isUniqueList(context: Context, node: TSESTree.Node | null | undefined): boolean {
+function isUniqueList(context: Context, node: TSESTree.Node | undefined): boolean {
   if (node?.type === AST_NODE_TYPES.ArrayExpression) {
     const [only] = node.elements;
     return (
@@ -65,10 +63,6 @@ export function hasUniqueKeys(context: Context, iterable: TSESTree.Node): boolea
   if (iterable.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  const variable = visibleVariable(context.sourceCode, iterable, iterable.name);
-  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  if (definition?.type !== DefinitionType.Variable || definition.parent?.kind !== 'const') {
-    return false;
-  }
-  return isUniqueList(context, definition.node.init);
+  const definition = constDefinition(context, iterable);
+  return definition !== undefined && isUniqueList(context, definition.node.init ?? undefined);
 }

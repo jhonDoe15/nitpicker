@@ -8,6 +8,7 @@ const { DefinitionType } = TSESLint.Scope;
 
 type Flow = TSESTree.Node[] | undefined;
 type Variable = TSESLint.Scope.Variable;
+type Walk = { readonly context: Context; readonly seen: Set<Variable> };
 
 const SINKS = new Set([
   'save',
@@ -42,7 +43,7 @@ function isLocal(variable: Variable): boolean {
   const definition = variable.defs.length === 1 ? variable.defs[0] : undefined;
   return (
     definition?.type === DefinitionType.Variable &&
-    definition.parent?.parent.type !== AST_NODE_TYPES.ExportNamedDeclaration
+    definition.parent.parent.type !== AST_NODE_TYPES.ExportNamedDeclaration
   );
 }
 
@@ -55,7 +56,7 @@ function readsOf(variable: Variable | undefined, seen: Set<Variable>): Flow {
   }
   seen.add(variable);
   return variable.references
-    .filter((reference) => !reference.init && !reference.isWrite())
+    .filter((reference) => !(reference.init || reference.isWrite()))
     .map((reference) => reference.identifier);
 }
 
@@ -120,7 +121,20 @@ function declaredFlow(
     : undefined;
 }
 
-function stepOf(node: TSESTree.Node, first: boolean, context: Context, seen: Set<Variable>): Flow {
+function operandFlow(parent: TSESTree.Node, node: TSESTree.Node, walk: Walk): Flow {
+  if (parent.type === AST_NODE_TYPES.CallExpression) {
+    return parent.callee === node ? undefined : argumentFlow(parent, walk.context, walk.seen);
+  }
+  if (parent.type === AST_NODE_TYPES.VariableDeclarator) {
+    return parent.init === node ? declaredFlow(parent, walk.context, walk.seen) : undefined;
+  }
+  if (parent.type === AST_NODE_TYPES.AssignmentExpression) {
+    return parent.right === node ? assignedFlow(parent.left, walk.context, walk.seen) : undefined;
+  }
+  return undefined;
+}
+
+function stepOf(node: TSESTree.Node, first: boolean, walk: Walk): Flow {
   const { parent } = node;
   if (parent === undefined) {
     return undefined;
@@ -128,37 +142,31 @@ function stepOf(node: TSESTree.Node, first: boolean, context: Context, seen: Set
   if (WRAPPERS.has(parent.type)) {
     return [parent];
   }
-  switch (parent.type) {
-    case AST_NODE_TYPES.CallExpression:
-      return parent.callee === node ? undefined : argumentFlow(parent, context, seen);
-    case AST_NODE_TYPES.VariableDeclarator:
-      return parent.init === node ? declaredFlow(parent, context, seen) : undefined;
-    case AST_NODE_TYPES.AssignmentExpression:
-      return parent.right === node ? assignedFlow(parent.left, context, seen) : undefined;
-    case AST_NODE_TYPES.MemberExpression:
-      return memberFlow(parent, node);
-    case AST_NODE_TYPES.ReturnStatement:
-      return returnFlow(node, first);
-    case AST_NODE_TYPES.ArrowFunctionExpression:
-      return parent.body === node ? callbackFlow(parent) : undefined;
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === 'void' ? [] : undefined;
-    default:
-      return undefined;
+  if (parent.type === AST_NODE_TYPES.MemberExpression) {
+    return memberFlow(parent, node);
   }
+  if (parent.type === AST_NODE_TYPES.ReturnStatement) {
+    return returnFlow(node, first);
+  }
+  if (parent.type === AST_NODE_TYPES.ArrowFunctionExpression) {
+    return parent.body === node ? callbackFlow(parent) : undefined;
+  }
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === 'void' ? [] : undefined;
+  }
+  return operandFlow(parent, node, walk);
 }
 
 export function staysEntity(call: TSESTree.CallExpression, context: Context): boolean {
   const pending: TSESTree.Node[] = [call];
-  const seen = new Set<Variable>();
-  for (let index = 0; index < pending.length; index += 1) {
-    const next =
-      index < MAX_STEPS ? stepOf(pending[index] ?? call, index === 0, context, seen) : undefined;
+  const walk = { context, seen: new Set<Variable>() };
+  for (const [index, node] of pending.entries()) {
+    const next = index < MAX_STEPS ? stepOf(node, index === 0, walk) : undefined;
     if (next === undefined) {
       return false;
     }
-    for (const node of next) {
-      pending.push(node);
+    for (const following of next) {
+      pending.push(following);
     }
   }
   return true;

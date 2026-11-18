@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { decoratorsOf } from '../../../rules/request-inputs/bindings/ts-nodes.mts';
 import { packageFromPath } from '../../../rules/support/io/packages.mts';
 import { aliasedSymbolAt, isReference, ts } from '../../../rules/typed/typescript-views.mts';
 
@@ -20,7 +21,10 @@ type Draft = {
 
 export const TYPEORM_PACKAGES: ReadonlySet<string> = new Set(['typeorm', '@n8n/typeorm']);
 
-const COLUMNS = new Set(['Column', 'PrimaryColumn', 'PrimaryGeneratedColumn']);
+const GENERATED_COLUMN = 'PrimaryGeneratedColumn';
+const INCREMENT = 'increment';
+const STRING_TYPE = 'string';
+const COLUMNS = new Set(['Column', 'PrimaryColumn', GENERATED_COLUMN]);
 const RELATIONS = new Set([
   'ManyToOne',
   'OneToOne',
@@ -52,10 +56,6 @@ const NUMBER_TYPES = new Set([
 ]);
 const CASE_FOLDING_DRIVERS = ['mysql', 'mysql2', 'mariadb', 'mssql', 'tedious'];
 
-export function decoratorsOf(node: TypeScript.Node): readonly TypeScript.Decorator[] {
-  return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
-}
-
 export function typeormName(checker: Checker, decorator: TypeScript.Decorator): string | undefined {
   const call = decorator.expression;
   if (!ts.isCallExpression(call)) {
@@ -76,11 +76,11 @@ function textOf(node: TypeScript.Node): string | undefined {
     : undefined;
 }
 
-function flagOf(node: TypeScript.Node): boolean | undefined {
+function flagOf(node: TypeScript.Node): 'on' | 'off' | 'absent' {
   if (node.kind === ts.SyntaxKind.TrueKeyword) {
-    return true;
+    return 'on';
   }
-  return node.kind === ts.SyntaxKind.FalseKeyword ? false : undefined;
+  return node.kind === ts.SyntaxKind.FalseKeyword ? 'off' : 'absent';
 }
 
 function applyOption(draft: Draft, name: string, value: TypeScript.Expression): boolean {
@@ -94,11 +94,11 @@ function applyOption(draft: Draft, name: string, value: TypeScript.Expression): 
   }
   if (name === 'unique' || name === 'primary') {
     const flag = flagOf(value);
-    draft[name] = flag === true;
-    return flag !== undefined;
+    draft[name] = flag === 'on';
+    return flag !== 'absent';
   }
   if (name === 'generated') {
-    draft.strategy = flagOf(value) === true ? 'increment' : textOf(value);
+    draft.strategy = flagOf(value) === 'on' ? INCREMENT : textOf(value);
     return draft.strategy !== undefined;
   }
   return true;
@@ -121,7 +121,7 @@ function readArguments(
   return args.every((argument) => {
     const text = textOf(argument);
     if (text !== undefined) {
-      draft[name === 'PrimaryGeneratedColumn' ? 'strategy' : 'type'] = text.toLowerCase();
+      draft[name === GENERATED_COLUMN ? 'strategy' : 'type'] = text.toLowerCase();
       return true;
     }
     return ts.isObjectLiteralExpression(argument) && readObject(draft, argument);
@@ -145,12 +145,12 @@ function columnDraft(checker: Checker, declaration: TypeScript.Node): Draft | un
     exact: true,
   };
   const call = decorator.expression;
-  if (!ts.isCallExpression(call) || !readArguments(draft, name, call.arguments)) {
+  if (!(ts.isCallExpression(call) && readArguments(draft, name, call.arguments))) {
     return undefined;
   }
   draft.primary = draft.primary || name !== 'Column';
-  if (name === 'PrimaryGeneratedColumn') {
-    draft.exact = draft.exact && (draft.strategy ?? 'increment') === 'increment';
+  if (name === GENERATED_COLUMN) {
+    draft.exact = draft.exact && (draft.strategy ?? INCREMENT) === INCREMENT;
   } else if (draft.strategy !== undefined) {
     draft.exact = false;
   }
@@ -178,7 +178,7 @@ function uniqueByClass(
 
 function scalarOf(type: TypeScript.Type): 'string' | 'number' | undefined {
   if ((type.flags & ts.TypeFlags.String) !== 0) {
-    return 'string';
+    return STRING_TYPE;
   }
   return (type.flags & ts.TypeFlags.Number) !== 0 ? 'number' : undefined;
 }
@@ -206,7 +206,7 @@ export function primaryProperty(checker: Checker, entity: TypeScript.Type): stri
   return names.length === 1 ? names[0] : undefined;
 }
 
-export function foldsCase(dependencies: ReadonlySet<string>): boolean {
+function foldsCase(dependencies: ReadonlySet<string>): boolean {
   return CASE_FOLDING_DRIVERS.some((name) => dependencies.has(name));
 }
 
@@ -215,9 +215,9 @@ function isExactType(
   dbType: string | undefined,
   dependencies: ReadonlySet<string>,
 ): boolean {
-  const allowed = scalar === 'string' ? TEXT_TYPES : NUMBER_TYPES;
+  const allowed = scalar === STRING_TYPE ? TEXT_TYPES : NUMBER_TYPES;
   const typeFits = dbType === undefined || allowed.has(dbType);
-  return typeFits && !(scalar === 'string' && foldsCase(dependencies));
+  return typeFits && !(scalar === STRING_TYPE && foldsCase(dependencies));
 }
 
 export function typeormKeyColumn(

@@ -2,11 +2,14 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../security/security-values.mts';
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { isTerminalMethod } from '../../support/flow/consumed.mts';
-import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
-import { isFunction } from '../../typed/syntax-views.mts';
+import { chainOf, nameOf } from '../../typed/node-views.mts';
+import { enclosingFunction } from '../../typed/syntax-views.mts';
 
 export type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
-export type Execution = 'executed' | 'unexecuted' | 'unknown';
+const EXECUTED = 'executed';
+const UNKNOWN = 'unknown';
+
+export type Execution = typeof EXECUTED | 'unexecuted' | typeof UNKNOWN;
 type Direct = Execution | 'variable';
 
 const PROMISE_STEPS = new Set(['then', 'catch', 'finally', 'run', 'all', 'execute']);
@@ -28,33 +31,27 @@ function isChainStep(node: TSESTree.Node, parent: TSESTree.Node): boolean {
   );
 }
 
+function chainParent(link: TSESTree.Node): TSESTree.Node | undefined {
+  const { parent } = link;
+  return parent !== undefined && isChainStep(link, parent) ? parent : undefined;
+}
+
 export function chainFrom(node: TSESTree.Node): TSESTree.Node[] {
-  const links = [node];
-  for (const link of links) {
-    const { parent } = link;
-    if (parent !== undefined && isChainStep(link, parent)) {
-      links.push(parent);
-    }
+  return chainOf<TSESTree.Node>(node, chainParent);
+}
+
+function nextLink(node: TSESTree.Node): TSESTree.Node | undefined {
+  if (node.type === AST_NODE_TYPES.MemberExpression) {
+    return node.object;
   }
-  return links;
+  return node.type === AST_NODE_TYPES.CallExpression ? node.callee : undefined;
 }
 
 export function innerCalls(call: Call): Call[] {
-  const found: Call[] = [];
-  let current: TSESTree.Node | undefined =
-    call.type === AST_NODE_TYPES.CallExpression ? call.callee : undefined;
-  while (
-    current?.type === AST_NODE_TYPES.MemberExpression ||
-    current?.type === AST_NODE_TYPES.CallExpression
-  ) {
-    if (current.type === AST_NODE_TYPES.CallExpression) {
-      found.push(current);
-      current = current.callee;
-    } else {
-      current = current.object;
-    }
-  }
-  return found;
+  const start = call.type === AST_NODE_TYPES.CallExpression ? call.callee : undefined;
+  return chainOf<TSESTree.Node>(start, nextLink).filter(
+    (link) => link.type === AST_NODE_TYPES.CallExpression,
+  );
 }
 
 export function outerCalls(call: Call): Call[] {
@@ -112,32 +109,27 @@ function isCollected(top: TSESTree.Node): boolean {
   return method !== undefined && COLLECTORS.has(method);
 }
 
-function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
-  return ancestorsOf(node).find(isFunction);
-}
-
 function isIteration(call: TSESTree.Node | undefined): call is TSESTree.CallExpression {
   return call?.type === AST_NODE_TYPES.CallExpression && calleeMethod(call) !== undefined;
 }
 
 function callbackResult(fn: TSESTree.ArrowFunctionExpression): Direct {
   if (fn.async) {
-    return 'executed';
+    return EXECUTED;
   }
   const call = fn.parent;
   const links = isIteration(call) ? chainFrom(call) : [];
   const top = links.at(-1);
   if (top === undefined) {
-    return 'unknown';
+    return UNKNOWN;
   }
   return top.parent?.type === AST_NODE_TYPES.AwaitExpression || isCombinatorArgument(top)
-    ? 'executed'
-    : 'unknown';
+    ? EXECUTED
+    : UNKNOWN;
 }
 
 function returned(top: TSESTree.Node): Direct {
-  const fn = enclosingFunction(top);
-  return fn !== undefined && isFunction(fn) && fn.async ? 'executed' : 'unknown';
+  return enclosingFunction(top)?.async === true ? EXECUTED : UNKNOWN;
 }
 
 function isDiscardedArgument(top: TSESTree.Node): boolean {
@@ -164,7 +156,7 @@ function directExecution(node: TSESTree.Node): Direct {
   const top = links.at(-1) ?? node;
   const { parent } = top;
   if (links.some(isExecutingStep) || parent?.type === AST_NODE_TYPES.AwaitExpression) {
-    return 'executed';
+    return EXECUTED;
   }
   if (parent?.type === AST_NODE_TYPES.ReturnStatement) {
     return returned(top);
@@ -173,13 +165,13 @@ function directExecution(node: TSESTree.Node): Direct {
     return callbackResult(parent);
   }
   if (isCombinatorArgument(top)) {
-    return 'executed';
+    return EXECUTED;
   }
   const target = assignmentTarget(top);
   if (target !== undefined) {
-    return target.type === AST_NODE_TYPES.Identifier ? 'variable' : 'executed';
+    return target.type === AST_NODE_TYPES.Identifier ? 'variable' : EXECUTED;
   }
-  return !isCollected(top) && isDiscardedArgument(top) ? 'unexecuted' : 'unknown';
+  return !isCollected(top) && isDiscardedArgument(top) ? 'unexecuted' : UNKNOWN;
 }
 
 function assignedVariable(top: TSESTree.Node, context: Context) {
@@ -196,9 +188,7 @@ function assignedVariable(top: TSESTree.Node, context: Context) {
 function isRunLater(variable: ReturnType<typeof assignedVariable>): boolean {
   return (variable?.references ?? []).some(
     (reference) =>
-      !reference.init &&
-      !reference.isWrite() &&
-      directExecution(reference.identifier) === 'executed',
+      !reference.init && !reference.isWrite() && directExecution(reference.identifier) === EXECUTED,
   );
 }
 
@@ -208,5 +198,5 @@ export function executionOf(call: Call, context: Context): Execution {
     return direct;
   }
   const top = chainFrom(call).at(-1) ?? call;
-  return isRunLater(assignedVariable(top, context)) ? 'executed' : 'unexecuted';
+  return isRunLater(assignedVariable(top, context)) ? EXECUTED : 'unexecuted';
 }

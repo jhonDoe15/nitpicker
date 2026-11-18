@@ -1,9 +1,11 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { typeServices, type Context } from '../../../../rules/security/security-values.mts';
 import { ts } from '../../../../rules/typed/typescript-views.mts';
-import { isInvariant, mentions, type Repeated } from '../../loops/invariants.mts';
+import { isInvariant, mentions, plainChainRoot, type Repeated } from '../../loops/invariants.mts';
 import type { LoopCall } from '../../loops/loop-call.mts';
+import { keyColumn } from '../../orm/key-column.mts';
 import type { OrmCall } from '../../orm/orm-call.mts';
+import { spliced } from '../text.mts';
 
 export type Scalar = 'string' | 'number';
 
@@ -49,7 +51,7 @@ export function plainProperty(node: TSESTree.Node): node is PlainProperty {
   );
 }
 
-export function propertiesOf(object: TSESTree.ObjectExpression): PlainProperty[] | undefined {
+function propertiesOf(object: TSESTree.ObjectExpression): PlainProperty[] | undefined {
   const plain = object.properties.filter(plainProperty);
   return plain.length === object.properties.length ? plain : undefined;
 }
@@ -65,16 +67,8 @@ export function valueOf(
 }
 
 export function isItemChain(node: TSESTree.Node, item: string): node is TSESTree.Expression {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return node.name === item;
-  }
-  return (
-    node.type === AST_NODE_TYPES.MemberExpression &&
-    !node.computed &&
-    !node.optional &&
-    node.property.type === AST_NODE_TYPES.Identifier &&
-    isItemChain(node.object, item)
-  );
+  const root = plainChainRoot(node);
+  return root?.type === AST_NODE_TYPES.Identifier && root.name === item;
 }
 
 export function scalarOf(site: Pick<Site, 'context'>, node: TSESTree.Node): Scalar | undefined {
@@ -154,4 +148,45 @@ export function optionsAllowed(
         (property.key.name === 'where' || isInvariant(sourceCode, property.value, site.repeated)),
     )
   );
+}
+
+export type LookupPlan = {
+  readonly callee: TSESTree.MemberExpression;
+  readonly keyed: KeyedWhere | undefined;
+  readonly kind: Lookup['kind'];
+  readonly rename: string;
+  readonly optionsFit: boolean;
+  readonly keyText: (name: string, part: string) => string;
+  readonly valueTypeOf: (site: Site, kind: Lookup['kind']) => string | undefined;
+};
+
+export function resolvedLookup(site: Site, plan: LookupPlan): Lookup | undefined {
+  const { callee, keyed, kind, rename } = plan;
+  const { context, call, orm } = site;
+  const column = keyed === undefined ? undefined : keyColumn(context, orm, keyed.keyName);
+  const unique = column?.primary === true || column?.unique === true;
+  if (
+    keyed === undefined ||
+    column === undefined ||
+    !plan.optionsFit ||
+    !column.comparable ||
+    (kind === 'row' && !unique) ||
+    column.type !== scalarOf(site, keyed.keyExpression)
+  ) {
+    return undefined;
+  }
+  const { sourceCode } = context;
+  return {
+    orm,
+    kind,
+    keyName: keyed.keyName,
+    keyExpression: keyed.keyExpression,
+    keyType: column.type,
+    valueType: plan.valueTypeOf(site, kind),
+    callText: (part) =>
+      spliced(sourceCode, call.range, [
+        { range: callee.property.range, text: rename },
+        { range: keyed.keyProperty.range, text: plan.keyText(keyed.keyName, part) },
+      ]),
+  };
 }

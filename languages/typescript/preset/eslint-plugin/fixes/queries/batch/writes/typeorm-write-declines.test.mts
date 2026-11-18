@@ -5,16 +5,18 @@ import { WRITE_HEAD, writeCases } from '../../../../test-support/queries/write-c
 
 const { project, declines } = writeCases(ormProject('typeorm-write-declines'));
 
+const HOOKED_ENTITIES: readonly (readonly [string, string])[] = [
+  ['Versioned', 'versioned'],
+  ['Hooked', 'hooked'],
+  ['Cleaned', 'cleaned'],
+  ['Loaded', 'loaded'],
+  ['Stamped', 'stamped'],
+];
+
 project.tester.run('typeorm deletes and updates that stay as they are', ioInLoop, {
   valid: [],
   invalid: [
-    ...[
-      ['Versioned', 'versioned'],
-      ['Hooked', 'hooked'],
-      ['Cleaned', 'cleaned'],
-      ['Loaded', 'loaded'],
-      ['Stamped', 'stamped'],
-    ].flatMap(([entity, name]) =>
+    ...HOOKED_ENTITIES.flatMap(([entity, name]) =>
       ['delete(id)', 'update(id, { id: 1 })'].map((statement) =>
         declines(`import { ${entity} } from './entities';
 declare const ${name}: Repository<${entity}>;

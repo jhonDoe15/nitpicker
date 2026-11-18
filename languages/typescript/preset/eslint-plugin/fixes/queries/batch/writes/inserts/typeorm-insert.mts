@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { hasArrayType } from '../../../../../rules/support/checked-types.mts';
 import { spliced } from '../../text.mts';
-import { isAtLeast } from '../../../orm/project-files.mts';
+import { isModernTypeorm } from '../../../orm/project-files.mts';
 import { isRowData } from './insert-data.mts';
 import type { Insertion } from './insert-plan.mts';
 import { isSupportedDriver } from './typeorm-drivers.mts';
@@ -25,7 +25,7 @@ export function typeormInsert(site: WriteSite): Insertion | undefined {
     data === undefined ||
     data.type === AST_NODE_TYPES.SpreadElement ||
     data.type === AST_NODE_TYPES.ArrayExpression ||
-    !isAtLeast(orm.version, 0, 3) ||
+    !isModernTypeorm(orm.version) ||
     !isSupportedDriver(context.filename) ||
     hasArrayType(context, data) !== 'no' ||
     !isRowData(site, data)

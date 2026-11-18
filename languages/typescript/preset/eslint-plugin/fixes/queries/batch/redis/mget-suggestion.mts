@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { typeServices, type Context } from '../../../../rules/security/security-values.mts';
+import { hasOnlyTypeFlags } from '../../../../rules/support/checked-types.mts';
 import { ts } from '../../../../rules/typed/typescript-views.mts';
 import { allOf, type FixPlans } from '../../../edits/plans.mts';
 import { freeName } from '../../../edits/names.mts';
@@ -35,12 +36,7 @@ type Names = {
 };
 
 function isStringKey(context: Context, key: TSESTree.Node): boolean {
-  const type = typeServices(context)?.getTypeAtLocation(key);
-  if (type === undefined) {
-    return false;
-  }
-  const members = type.isUnion() ? type.types : [type];
-  return members.every((member) => (member.flags & ts.TypeFlags.StringLike) !== 0);
+  return hasOnlyTypeFlags(context, key, ts.TypeFlags.StringLike);
 }
 
 function keyOf(
@@ -57,7 +53,7 @@ function keyOf(
     return undefined;
   }
   const repeated = { range: loop.range, body: loop.body, target: call };
-  const stable = isInvariant(context.sourceCode, key, repeated, loop.item.name);
+  const stable = isInvariant(context.sourceCode, key, { ...repeated, except: loop.item.name });
   return stable && isAlwaysReached(context, loop) && isStringKey(context, key) ? key : undefined;
 }
 

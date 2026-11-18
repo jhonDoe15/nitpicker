@@ -1,7 +1,22 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../../../typed/node-views.mts';
 import { unwrapped } from '../../../typed/syntax-views.mts';
-import { REPLACERS, STRING_STEPS } from './plain-calls.mts';
+
+export const REPLACERS: ReadonlySet<string> = new Set(['replace', 'replaceAll']);
+export const STRING_STEPS: ReadonlySet<string> = new Set([
+  'trim',
+  'trimStart',
+  'trimEnd',
+  'toLowerCase',
+  'toUpperCase',
+  'slice',
+  'substring',
+  'split',
+  'concat',
+  'padStart',
+  'padEnd',
+  'normalize',
+]);
 
 type EstreeCall =
   TSESTree.CallExpression | TSESTree.NewExpression | TSESTree.TaggedTemplateExpression;

@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { readFileText, parseJsonText } from '../support/project/read-file.mts';
 import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mjs';
 
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
@@ -12,11 +12,8 @@ const CONFIG_EXTENSIONS = ['ts', 'mts', 'js', 'mjs', 'cjs', 'json'];
 const CONFIG_FOLDERS = ['', 'src'];
 
 function readText(file: string): string | undefined {
-  try {
-    return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
-  } catch {
-    return undefined;
-  }
+  const read = readFileText(file);
+  return read.kind === 'text' ? read.text : undefined;
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -24,15 +21,11 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
 }
 
 function manifestSignal(text: string): boolean {
-  let manifest: unknown;
-  try {
-    manifest = JSON.parse(text);
-  } catch {
+  const parsed = parseJsonText(text);
+  if (parsed.kind === 'unreadable' || !isRecord(parsed.value)) {
     return true;
   }
-  if (!isRecord(manifest)) {
-    return true;
-  }
+  const manifest = parsed.value;
   const scripts = isRecord(manifest['scripts']) ? Object.values(manifest['scripts']) : [];
   const dependencies = [manifest['dependencies'], manifest['devDependencies']].flatMap((section) =>
     isRecord(section) ? Object.keys(section) : [],

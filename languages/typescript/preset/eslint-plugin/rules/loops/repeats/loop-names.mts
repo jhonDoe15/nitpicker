@@ -5,35 +5,40 @@ import {
   type LoopNode,
   type VisitorKeys,
 } from '../loop-shapes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { nameOf } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
-type Declared = TSESTree.Node | null | undefined;
+type Declared = TSESTree.Node | undefined;
 
 const CONSUMING_METHODS = new Set(['shift', 'pop', 'next', 'dequeue']);
 
+function subpatterns(pattern: TSESTree.Node): TSESTree.Node[] {
+  if (pattern.type === AST_NODE_TYPES.ObjectPattern) {
+    return pattern.properties.map((property) =>
+      property.type === AST_NODE_TYPES.Property ? property.value : property.argument,
+    );
+  }
+  if (pattern.type === AST_NODE_TYPES.ArrayPattern) {
+    return pattern.elements.filter((element) => element !== null);
+  }
+  if (pattern.type === AST_NODE_TYPES.AssignmentPattern) {
+    return [pattern.left];
+  }
+  return pattern.type === AST_NODE_TYPES.RestElement ? [pattern.argument] : [];
+}
+
 function patternNames(pattern: Declared): string[] {
-  if (pattern === null || pattern === undefined) {
-    return [];
+  const names: string[] = [];
+  const pending: TSESTree.Node[] = pattern === undefined ? [] : [pattern];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.Identifier) {
+      names.push(current.name);
+      continue;
+    }
+    appendAll(pending, subpatterns(current));
   }
-  switch (pattern.type) {
-    case AST_NODE_TYPES.Identifier:
-      return [pattern.name];
-    case AST_NODE_TYPES.ObjectPattern:
-      return pattern.properties.flatMap((property) =>
-        patternNames(
-          property.type === AST_NODE_TYPES.Property ? property.value : property.argument,
-        ),
-      );
-    case AST_NODE_TYPES.ArrayPattern:
-      return pattern.elements.flatMap(patternNames);
-    case AST_NODE_TYPES.AssignmentPattern:
-      return patternNames(pattern.left);
-    case AST_NODE_TYPES.RestElement:
-      return patternNames(pattern.argument);
-    default:
-      return [];
-  }
+  return names;
 }
 
 function declarationNames(node: Declared): string[] {
@@ -110,7 +115,7 @@ export function itemNames(found: EnclosingLoop, visitorKeys: VisitorKeys): Set<s
   }
   const init = loop.type === AST_NODE_TYPES.ForStatement ? loop.init : undefined;
   return new Set([
-    ...declarationNames(init),
+    ...declarationNames(init ?? undefined),
     ...updatedNames(loop, visitorKeys),
     ...testAssignedNames(loop, visitorKeys),
   ]);

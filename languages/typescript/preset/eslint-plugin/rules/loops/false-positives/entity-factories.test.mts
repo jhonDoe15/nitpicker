@@ -1,15 +1,8 @@
 import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as ioInLoop } from '../no-io-in-loop.mts';
+import { inLoop, onceFor } from './loop-cases.mts';
 
 const ruleTester = typescriptRuleTester();
-
-function inLoop(statement: string) {
-  return `for (const id of ids) { ${statement} }`;
-}
-
-function onceFor(code: string, messageId = 'query') {
-  return { code, errors: [{ messageId }] };
-}
 
 ruleTester.run('no-io-in-loop repository create', ioInLoop, {
   valid: cases([

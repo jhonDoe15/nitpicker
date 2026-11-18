@@ -1,37 +1,28 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { memberName, unwrapped, type Context } from '../../security/security-values.mts';
-import { chainOf, depthFirst, nodeChildren } from '../../typed/node-views.mts';
+import { rootName } from '../../database/orm-modules.mts';
+import { depthFirst, nodeChildren } from '../../typed/node-views.mts';
 
 const MEMBERSHIP_OWNED = 'has';
 const MEMBERSHIP_ANY = 'includes';
 
-function boundNames(params: readonly TSESTree.Parameter[]): Set<string> {
-  const names = new Set<string>();
-  for (const param of params) {
-    if (param.type === AST_NODE_TYPES.Identifier) {
-      names.add(param.name);
-    } else if (param.type === AST_NODE_TYPES.ObjectPattern) {
-      for (const property of param.properties) {
-        const value = property.type === AST_NODE_TYPES.Property ? property.value : undefined;
-        if (value?.type === AST_NODE_TYPES.Identifier) {
-          names.add(value.name);
-        }
-      }
-    }
+function boundName(param: TSESTree.Parameter): string[] {
+  if (param.type === AST_NODE_TYPES.Identifier) {
+    return [param.name];
   }
-  return names;
+  if (param.type !== AST_NODE_TYPES.ObjectPattern) {
+    return [];
+  }
+  return param.properties.flatMap((property) =>
+    property.type === AST_NODE_TYPES.Property && property.value.type === AST_NODE_TYPES.Identifier
+      ? [property.value.name]
+      : [],
+  );
 }
 
-function rootName(node: TSESTree.Node): string | undefined {
-  const steps = chainOf<TSESTree.Node>(unwrapped(node), (current) => {
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      return unwrapped(current.object);
-    }
-    return current.type === AST_NODE_TYPES.CallExpression ? unwrapped(current.callee) : undefined;
-  });
-  const root = steps.at(-1);
-  return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
+function boundNames(params: readonly TSESTree.Parameter[]): Set<string> {
+  return new Set(params.flatMap(boundName));
 }
 
 function isDerivedFrom(

@@ -8,6 +8,8 @@ import { isRowData } from './insert-data.mts';
 import type { Insertion } from './insert-plan.mts';
 import type { WriteSite } from '../write-loop.mts';
 
+const CREATE_MANY_MAJOR = 4;
+
 const PROVIDERS = new Set(['postgresql', 'mysql']);
 
 function isScalarData(site: WriteSite, data: TSESTree.ObjectExpression): boolean {
@@ -44,7 +46,7 @@ export function prismaInsert(site: WriteSite): Insertion | undefined {
     callee.type !== AST_NODE_TYPES.MemberExpression ||
     schema?.provider === undefined ||
     !PROVIDERS.has(schema.provider) ||
-    !isAtLeast(orm.version, 4, 0) ||
+    !isAtLeast(orm.version, CREATE_MANY_MAJOR, 0) ||
     !hasNoMiddleware(orm) ||
     EXTENSIONS.test(context.sourceCode.text) ||
     !isScalarData(site, data) ||

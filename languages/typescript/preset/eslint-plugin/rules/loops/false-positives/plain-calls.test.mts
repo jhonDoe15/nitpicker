@@ -1,11 +1,8 @@
 import { cases, typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as ioInLoop } from '../no-io-in-loop.mts';
+import { inLoop } from './loop-cases.mts';
 
 const ruleTester = typescriptRuleTester();
-
-function inLoop(statement: string) {
-  return `for (const id of ids) { ${statement} }`;
-}
 
 ruleTester.run('no-io-in-loop plain calls', ioInLoop, {
   valid: cases([
@@ -16,7 +13,7 @@ ruleTester.run('no-io-in-loop plain calls', ioInLoop, {
     inLoop("baseSql = baseSql.trim().replaceAll(marker, '');"),
     inLoop('baseSql = baseSql.toString().replace(marker, (match) => match.toUpperCase());'),
     inLoop("const text = 'select ?'.replace(marker, 'x'); use(text);"),
-    inLoop("const text = `select ${table}`.replace(marker, 'x'); use(text);"),
+    inLoop(`const text = \`select \${table}\`.replace(marker, 'x'); use(text);`),
     inLoop("const text = String(value).replaceAll(marker, 'x'); use(text);"),
     inLoop("const text = JSON.stringify(value).replace(marker, 'x'); use(text);"),
     inLoop("const cleaned = query.sql.toLowerCase().split(';').join(' '); use(cleaned);"),

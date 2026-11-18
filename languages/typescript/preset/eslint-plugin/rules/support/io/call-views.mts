@@ -18,6 +18,12 @@ import {
 export type { CallArgument, CallView } from './views/call-shapes.mts';
 export { tsCallee, tsCallView, type TsCall } from './views/ts-call-views.mts';
 
+const OWNER_OFFSET = 2;
+
+export function ownerName(view: Pick<CallView, 'names'>): string | undefined {
+  return view.names.at(-OWNER_OFFSET);
+}
+
 export type EstreeCall =
   TSESTree.CallExpression | TSESTree.NewExpression | TSESTree.TaggedTemplateExpression;
 
@@ -129,9 +135,9 @@ export function estreeCallView(
   context: SourceContext | undefined,
 ): CallView<TSESTree.Identifier> {
   const tagged = call.type === AST_NODE_TYPES.TaggedTemplateExpression;
-  const { links, root } = chainLinks(tagged ? call.tag : call.callee, estreeStep);
+  const chain = chainLinks(tagged ? call.tag : call.callee, estreeStep);
   const args = tagged
     ? [estreeLiteral(call.quasi)]
     : call.arguments.map((argument) => estreeArgument(argument, context));
-  return viewOf(links, root, args, hasTextReceiver(call));
+  return viewOf(chain, args, hasTextReceiver(call));
 }
