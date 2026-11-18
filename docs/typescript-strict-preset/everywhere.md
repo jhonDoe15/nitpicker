@@ -99,6 +99,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   effects. Each call or render then gets a new timer, so nothing is debounced. A factory that returns the
   debounced function, a class field, a module-level constant, `this.f = debounce(...)` and the RxJS operators are left
   alone. Allowed: create it once (a field, module scope, `useMemo`, `useRef`) and call that function.
+- `nitpicker/no-unguarded-registry-delete`: a teardown that deletes a registry entry by key must check that the
+  entry is still its own. When a function does `map.set(key, value)` (the map is a field of `this` or a variable
+  declared outside the function, the key is a literal or taken from a parameter, the value is a variable) and a
+  nested function created after it (a `toDisposable` callback, `onDidClose`, `.finally`, a returned function or
+  `dispose`) calls `map.delete(key)` without comparing `map.get(key)` with `value`, it reports the delete: a newer
+  registration under the same key would be removed by the old teardown. Fresh keys (`generateUuid()`, a counter),
+  a function that rejects duplicates with `map.has(key)` or with a `map.get(key)` read before the `set` (`if (!map.get(key))`,
+  an in-flight lookup that returns the existing entry), a comparison through a local alias of the value, an inline `new`
+  value and deletes in the same call are left alone. Allowed: `if (map.get(key) === value) { map.delete(key); }`.
+- `nitpicker/no-dropped-subscription-handle` (needs type information): the handle returned by an event
+  subscription must not be dropped in a long-lived object. For an expression statement that is a call named
+  `on*`, `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun`, `addListener`, `addEventListener` or
+  `register*` (not a `this.register*` method) whose result type has a `dispose()` or `unsubscribe()` method (or is a
+  `() => void` function), in a class with a close, dispose, destroy or `ngOnDestroy` method or at module level, it
+  reports the dropped handle: the listener is never removed. `once*` calls, an emitter that is a field the class
+  creates itself, `void` calls, and an RxJS `subscribe` after `take`, `first`, `takeUntil`, `takeUntilDestroyed` or an
+  HTTP client call are left alone. Allowed: register the handle (`this._register(...)`, `store.add(...)`), keep it
+  in a field that dispose releases, or use `once`.
 - `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
   a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
   assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,

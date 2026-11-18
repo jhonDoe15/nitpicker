@@ -96,6 +96,7 @@ export const strictEslintRuleIds = [
   'nitpicker/settle-pending-on-close',
   'nitpicker/release-listeners-on-close',
   'nitpicker/no-add-only-collection',
+  'nitpicker/no-unguarded-registry-delete',
   'nitpicker/no-per-call-debounce',
   'nitpicker/no-uncleared-timeout',
   'nitpicker/no-per-call-registration',

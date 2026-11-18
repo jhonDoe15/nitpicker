@@ -116,6 +116,7 @@
   "eslint/nitpicker/no-undefined-only-env-check": ["bug"],
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],
+  "eslint/nitpicker/no-unguarded-registry-delete": ["bug", "reliability"],
   "eslint/nitpicker/no-unhandled-url-parse": ["reliability"],
   "eslint/nitpicker/no-unhandled-void-promise": ["reliability", "async"],
   "eslint/nitpicker/no-unindexed-foreign-key": ["performance", "persistence"],
