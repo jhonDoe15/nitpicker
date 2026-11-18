@@ -5,6 +5,7 @@ import { parseSource } from '../max-value-sums/source-file.mjs';
 import { NAN_GUARD_CHECK } from './nan-guard/nan-guard.mjs';
 import { NEGATIVE_COUNT_CHECK } from './negative-count/negative-count.mjs';
 import { INDEX_BOUND_CHECK } from './index-bound/index-bound.mjs';
+import { BACKOFF_CHECK } from './backoff/backoff.mjs';
 import { RESPONSE_BODY_CHECK } from './response-body/response-body.mjs';
 
 export const VALUE_CHECKS = [
@@ -12,6 +13,7 @@ export const VALUE_CHECKS = [
   NAN_GUARD_CHECK,
   NEGATIVE_COUNT_CHECK,
   INDEX_BOUND_CHECK,
+  BACKOFF_CHECK,
 ];
 
 export const VALUE_CHECK_EXCEPTION_RULES = VALUE_CHECKS.map(({ rule }) => `pmd/${rule}`);

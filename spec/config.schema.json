@@ -2394,6 +2394,7 @@
                             "pmd/NanOnlyGuard",
                             "pmd/NegativeCountArgument",
                             "pmd/IndexBoundOffByOne",
+                            "pmd/BackoffShiftOverflow",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

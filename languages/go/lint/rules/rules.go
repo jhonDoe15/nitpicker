@@ -3,6 +3,7 @@ package rules
 import (
 	"slices"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/backoff"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/concurrency"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
@@ -56,6 +57,7 @@ func Analyzers() []*analysis.Analyzer {
 			replacements.Analyzer,
 			markup.Analyzer,
 			responsejson.Analyzer,
+			backoff.Analyzer,
 			indexbound.Analyzer,
 			negativecount.Analyzer,
 			nanguard.Analyzer,

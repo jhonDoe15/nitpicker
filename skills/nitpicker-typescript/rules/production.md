@@ -204,3 +204,6 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A bounds check before a read rejects with `index >= list.length` (or accepts with `index < list.length`); `>` and `<=`
   let `index === length` through to an `undefined` read (`nitpicker/no-index-bound-off-by-one`). `>` is right only for
   an insertion position.
+- A backoff delay does not grow by `1 << attempt` or `2 ** attempt` without a bound: cap the exponent
+  (`Math.min(attempt, 10)`) and clamp the delay with `Math.min` (`nitpicker/no-overflowing-backoff`); the shift wraps
+  at 32 bits and the power reaches `Infinity`.

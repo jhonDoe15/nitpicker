@@ -69,6 +69,7 @@ import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
+import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-strin
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
-import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -172,6 +172,7 @@ export const partRules = {
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
+  'no-overflowing-backoff': ruleNoOverflowingBackoff,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
-  'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
 };
