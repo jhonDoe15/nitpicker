@@ -17,5 +17,6 @@
   "@typescript-eslint/switch-exhaustiveness-check": "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n  }\n  return 0;\n}\n",
   "two-suggestions": "export function same(x: number): boolean {\n  return x === -0;\n}\n",
   "@typescript-eslint/no-unnecessary-condition": "type Item = { readonly tags: readonly string[] };\n\nexport function count(item: Item): number {\n  return item?.tags.length;\n}\n",
-  "@typescript-eslint/prefer-find": "export function first(names: readonly string[]): string | undefined {\n  return names.filter((name) => name.length > 2)[0];\n}\n"
+  "@typescript-eslint/prefer-find": "export function first(names: readonly string[]): string | undefined {\n  return names.filter((name) => name.length > 2)[0];\n}\n",
+  "no-useless-escape": "export const dot = 'a\\.b';\n"
 }

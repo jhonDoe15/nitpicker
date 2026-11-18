@@ -5,6 +5,11 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'no-useless-escape': {
+    path: 'src/main/samples/s41.ts',
+    input: "export const label = 'a\\-b';\n",
+    output: "export const label = 'a-b';\n",
+  },
   'no-empty-static-block': {
     path: 'src/main/samples/s40.ts',
     input: 'export class Empty {\n  static {}\n\n  readonly size = 1;\n}\n',
