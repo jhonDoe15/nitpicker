@@ -3,6 +3,8 @@ import { findVariable } from '../analysis/constant-resolution.mts';
 import { enclosingLoop } from '../loops/loop-shapes.mts';
 import { hasArrayType } from '../support/checked-types.mts';
 import { contains, nameOf } from '../typed/node-views.mts';
+import { concatReduceFix } from '../../fixes/collections/reduce/concat-reduce-fix.mts';
+import { fixable } from '../../fixes/support/descriptors.mts';
 
 type FunctionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 type MessageId = 'concat' | 'loopConcat';
@@ -85,11 +87,11 @@ function reducerStart(reducer: FunctionNode): TSESTree.Node | undefined {
   return call.type === AST_NODE_TYPES.CallExpression ? call.arguments[1] : undefined;
 }
 
-function isReduceConcat(
+function reduceConcatReducer(
   context: Context,
   node: TSESTree.CallExpression,
   reducers: readonly FunctionNode[],
-): boolean {
+): FunctionNode | undefined {
   const object =
     node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.object : undefined;
   const reducer =
@@ -98,18 +100,18 @@ function isReduceConcat(
       : undefined;
   const first = reducer?.params[0];
   const accumulator = first?.type === AST_NODE_TYPES.Identifier ? first.name : undefined;
-  return (
+  const holds =
     accumulator !== undefined &&
     object !== undefined &&
-    reducer !== undefined &&
     isConcatOf(node, accumulator) &&
-    isArrayValue(context, object, reducerStart(reducer))
-  );
+    isArrayValue(context, object, reducer && reducerStart(reducer));
+  return holds ? reducer : undefined;
 }
 
 export const rule: TSESLint.RuleModule<MessageId, [], Docs> = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description: 'Do not concatenate onto an accumulator array on every step of reduce or a loop',
       requiresTypeChecking: true,
@@ -130,8 +132,9 @@ export const rule: TSESLint.RuleModule<MessageId, [], Docs> = {
         if (reducer !== undefined) {
           reducers.push(reducer);
         }
-        if (isReduceConcat(context, node, reducers)) {
-          context.report({ node, messageId: 'concat' });
+        const found = reduceConcatReducer(context, node, reducers);
+        if (found !== undefined) {
+          context.report(fixable({ node, messageId: 'concat' }, concatReduceFix(context, found)));
         }
       },
       AssignmentExpression(node) {
