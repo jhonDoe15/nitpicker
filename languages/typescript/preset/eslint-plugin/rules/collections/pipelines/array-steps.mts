@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { mapFlatFix } from '../../../fixes/collections/map-flat-fix.mts';
 import { lengthCheckFix } from '../../../fixes/collections/length-check-fix.mts';
 import { fixable } from '../../../fixes/support/descriptors.mts';
 import type { Context } from '../../security/security-values.mts';
@@ -131,13 +132,15 @@ export function findAsBoolean(
 }
 
 export function mapFlat(
+  context: Context,
   call: TSESTree.CallExpression,
 ): TSESLint.ReportDescriptor<'mapFlat'> | undefined {
   const flat = methodCall(call, 'flat');
   const depth = flat?.call.arguments ?? [];
   const once = depth.length === 0 || (depth.length === 1 && numberValue(depth[0]) === 1);
-  return flat !== undefined && once && methodCall(flat.receiver, 'map') !== undefined
-    ? { node: call, messageId: 'mapFlat' }
+  const map = flat === undefined ? undefined : methodCall(flat.receiver, 'map');
+  return flat !== undefined && once && map !== undefined
+    ? fixable({ node: call, messageId: 'mapFlat' }, mapFlatFix(context, call, map.call))
     : undefined;
 }
 
