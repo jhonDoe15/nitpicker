@@ -59,6 +59,11 @@ const viewer = "import type { Viewer } from './store';\ndeclare const viewer: Vi
 tester.run('no-io-in-loop with types', ioInLoop, {
   valid: [
     loop('format(id);'),
+    body('declare const sql: string; for (const id of ids) { use(sql.replace(/;$/, id)); }'),
+    body('declare const cache: Map<string, string>; for (const id of ids) { use(cache.get(id)); }'),
+    body(
+      'declare const connection: { send(data: string): void }; for (const id of ids) { connection.send(id); }',
+    ),
     loop('new UserRepository().findById(id);'),
     loop('viewer.update(id);', viewer),
     loop('repo.create({ id });', typeorm),

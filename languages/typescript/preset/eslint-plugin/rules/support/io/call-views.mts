@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant, type SourceContext } from '../../analysis/constant-resolution.mts';
 import { nameOf } from '../../typed/node-views.mts';
+import { hasTextReceiver } from './names/text-receivers.mts';
 import {
   chainLinks,
   deepKeys,
@@ -91,6 +92,9 @@ function estreeLiteral(node: TSESTree.Node): LiteralArgument {
   if (ESTREE_FUNCTIONS.has(node.type)) {
     return { type: 'function' };
   }
+  if (node.type === AST_NODE_TYPES.Literal && 'regex' in node) {
+    return { type: 'pattern' };
+  }
   if (node.type === AST_NODE_TYPES.ObjectExpression) {
     const statement = node.properties.find(isTextProperty);
     const statementText = statement === undefined ? undefined : estreeText(statement.value);
@@ -129,5 +133,5 @@ export function estreeCallView(
   const args = tagged
     ? [estreeLiteral(call.quasi)]
     : call.arguments.map((argument) => estreeArgument(argument, context));
-  return viewOf(links, root, args);
+  return viewOf(links, root, args, hasTextReceiver(call));
 }
