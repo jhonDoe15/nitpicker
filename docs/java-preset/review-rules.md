@@ -75,13 +75,18 @@ the loop go on), file system calls (one read or write per file has no batch form
 (`saveAll`, `deleteAll`, `deleteAllById`, `findAllById` and similar, called once per chunk), a call
 that passes the loop's own element when that element is a collection (also through a query chain
 such as `createQuery(...).setParameter("ids", chunk).getResultList()`), the `...Async` calls
-(`HttpClient.sendAsync`, which the fan-out rules own) and `Optional` callbacks are skipped. In a project with Spring on the compile classpath, the Spring Data rules report the writes
+(`HttpClient.sendAsync`, which the fan-out rules own), `Optional` and `Mono` callbacks (one value, no
+loop; `Flux` and stream callbacks still count), parameter binders (`set*` on a
+`PreparedStatement`, `setParameter` and the like on a JPA query), header calls (`header`,
+`addRequestProperty`), `contains` on an `EntityManager` or Hibernate `Session`, `get...Reference`
+lookups, and a query that takes a page window (`setFirstResult` from the `for` variable together with
+a `setMaxResults` other than 1) or a `subList` chunk of ids by that variable are skipped. In a project with Spring Data on the compile classpath, the Spring Data rules report the writes
 they own, so each call is reported once: `SpringDataNoSaveInLoop` the `save`, `delete`, `persist`
 and similar writes on a Spring Data repository or `EntityManager`, `SpringDataNoFlush` the flushes
-and `SpringDataRowWriteInLoop` the row writes. The Spring wrapper runs `IoCallInLoop` with its
-`springData` property set to `true`, and the rule holds a copy of their XPath, which
+and `SpringDataRowWriteInLoop` the row writes. The wrapper runs `IoCallInLoop` with its
+`springData` property set to `true` only then, and leaves the Spring Data rules out otherwise, and the rule holds a copy of their XPath, which
 `languages/java/adapters/spring/ruleset/spring-ruleset.test.mts` keeps identical. A write in any
-other callback (`filter`, `reduce`), on any other receiver or in a project without Spring is
+other callback (`filter`, `reduce`), on any other receiver or in a project without Spring Data is
 reported by `IoCallInLoop`, and a read in a loop (`findById`, a count query) always is. A loop that
 calls `EntityManager.clear()` is a JPA batch loop: its writes and flushes are reported by neither
 rule; `clear()` and `detach()` are never counted.
