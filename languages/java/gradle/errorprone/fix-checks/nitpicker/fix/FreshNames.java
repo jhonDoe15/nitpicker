@@ -20,11 +20,15 @@ final class FreshNames {
   private FreshNames() {}
 
   static String claim(String base, VisitorState state) {
+    return claim(base, "", state);
+  }
+
+  static String claim(String base, String separator, VisitorState state) {
     Set<String> taken = taken(state);
     synchronized (taken) {
       String name = base;
       for (int index = 2; taken.contains(name); index++) {
-        name = base + index;
+        name = base + separator + index;
       }
       taken.add(name);
       return name;

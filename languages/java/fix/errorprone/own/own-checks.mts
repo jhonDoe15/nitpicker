@@ -30,6 +30,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'EntityLoadedForExistence', tool: EFFECTS, safety: REVIEW },
   { check: 'ListUsedAsSet', tool: PMD, safety: REVIEW },
   { check: 'LinearLookupInLoop', tool: PMD, safety: REVIEW },
+  { check: 'ReusableObjectPerCall', tool: PMD, safety: REVIEW },
 ]);
 
 const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));
