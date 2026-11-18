@@ -2983,6 +2983,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/no-raised-test-timeout`                   | review | removes the raised timeout so the default applies                                                                        |
 | `nitpicker/no-disabled-tls-verification`             | review | removes the option or assignment that turns verification off                                                             |
 | `nitpicker/no-shell-string-command`                  | review | turns a plain command template into an `execFile` call with an argument array, or drops `shell: true`                    |
+| `nitpicker/no-io-in-loop`                            | review | batches a per-item TypeORM `findOneBy` or `findOne`: one `In` query per 500 keys before the loop, read back from a `Map` |
 
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
