@@ -9,7 +9,10 @@ describe('unnecessaryLetRecipe', () => {
     ['val a = x.let { it.size }', 'val a = x.size'],
     ['val a = x?.let { it.plus(1) }', 'val a = x?.plus(1)'],
     ['val a = x.let { it?.name }', 'val a = x?.name'],
-    ['val a = x?.let { it.name.length }', 'val a = x?.name.length'],
+    ['val a = x.let { it.name.length }', 'val a = x.name.length'],
+    ['val a = x.let { it.name!! }', 'val a = x.name!!'],
+    ['val a = x?.let { it.name }', 'val a = x?.name'],
+    ['val a = x?.let { it.item(1, 2) }', 'val a = x?.item(1, 2)'],
     ['val a = this.user.let { it.name() }', 'val a = this.user.name()'],
     ['x.let { print(it) }', 'print(x)'],
     ['x.let { log.print(it) }', 'log.print(x)'],
@@ -30,6 +33,15 @@ describe('unnecessaryLetRecipe', () => {
     'val a = x.let { val y = it.size; y }',
     'val a = f().let { it.size }',
     'val a = x.let { it.size > 1 }',
+    'val a = x?.let { it.name.length }',
+    'val a = x?.let { it.name.describe() }',
+    'val a = x?.let { it.name!! }',
+    'val a = x?.let { it.name.isNullOrBlank() }',
+    'val a = x?.let { it.name.orEmpty() }',
+    'val a = x?.let { it.items[0] }',
+    'val a = x?.let { it.make()() }',
+    'val a = h.items.let { sink.take(it) }',
+    'val a = h.a.let { holder.sink.take(it) }',
   ])('declines %s', (text) => {
     expect(fix(`${text}\n`)).toBe(`${text}\n`);
   });
