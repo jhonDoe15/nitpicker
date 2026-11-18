@@ -123,6 +123,12 @@ In the Python preset `io-in-loop` reports a database call per element also insid
 groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
+React mutations: `nitpicker/react-mutation-drops-failure` (production source in a React project, in `eslint-lint`)
+reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutation` options object, that passes
+`onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from
+the result. A `mutateAsync` call with `try`/`catch` or `.catch`, and a project whose source sets `MutationCache`
+`onError`, are left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
