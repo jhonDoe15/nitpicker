@@ -44,7 +44,11 @@ const DRIZZLE = [
   '',
 ].join('\n');
 
-type ExpectedError = { messageId: string; data: Record<string, string> };
+type ExpectedError = {
+  messageId: string;
+  data: Record<string, string>;
+  suggestions?: { messageId: string; output: string }[];
+};
 type Case = { code: string; filename: string };
 
 function at(root: string, code: string): Case;
@@ -67,6 +71,29 @@ function at(
 
 function flagged(messageId: string, property: string, code: string, root = postgres) {
   return at(root, code, [{ messageId, data: { property, columns: '' } }]);
+}
+
+function suggested(
+  messageId: string,
+  property: string,
+  { code, output }: { code: string; output: string },
+  root = postgres,
+) {
+  return at(root, code, [
+    {
+      messageId,
+      data: { property, columns: '' },
+      suggestions: [{ messageId: 'addIndex', output }],
+    },
+  ]);
+}
+
+function typeormSuggestion(code: string) {
+  return { code, output: code.replace('@ManyToOne(', '@Index() @ManyToOne(') };
+}
+
+function mikroSuggestion(code: string, target: string, replacement: string) {
+  return { code, output: code.replace(target, replacement) };
 }
 
 function drizzle(property: string, code: string) {
@@ -221,43 +248,78 @@ tester.run('no-unindexed-foreign-key', rule, {
     at(path.join(monorepo, 'packages/db'), ORDER),
   ],
   invalid: [
-    flagged('TypeORM', 'customer', ORDER),
-    flagged(
+    suggested('TypeORM', 'customer', typeormSuggestion(ORDER)),
+    suggested(
       'TypeORM',
       'customer',
-      `${TYPEORM}@Entity() @Index(['createdAt', 'customer']) class Order { @ManyToOne(() => Customer) customer: Customer; }`,
+      typeormSuggestion(
+        `${TYPEORM}@Entity() @Index(['createdAt', 'customer']) class Order { @ManyToOne(() => Customer) customer: Customer; }`,
+      ),
     ),
-    flagged(
+    suggested(
       'TypeORM',
       'customer',
-      `${TYPEORM}@Entity() class Order { @ManyToOne(() => Customer) @JoinColumn({ name: 'customer_id' }) customer: Customer; @Column() customerId: number; }`,
+      typeormSuggestion(
+        `${TYPEORM}@Entity() class Order { @ManyToOne(() => Customer) @JoinColumn({ name: 'customer_id' }) customer: Customer; @Column() customerId: number; }`,
+      ),
     ),
-    flagged(
+    suggested(
       'TypeORM',
       'customer',
-      `${TYPEORM}@Entity() class Order { @PrimaryColumn() number: number; @PrimaryColumn() customerId: number; @ManyToOne(() => Customer) customer: Customer; }`,
+      typeormSuggestion(
+        `${TYPEORM}@Entity() class Order { @PrimaryColumn() number: number; @PrimaryColumn() customerId: number; @ManyToOne(() => Customer) customer: Customer; }`,
+      ),
     ),
-    flagged(
+    suggested(
       'TypeORM',
       'customer',
-      `${TYPEORM}@Entity() @Index(['customer'], { where: '"archived" = false' }) class Order { @ManyToOne(() => Customer) customer: Customer; }`,
+      typeormSuggestion(
+        `${TYPEORM}@Entity() @Index(['customer'], { where: '"archived" = false' }) class Order { @ManyToOne(() => Customer) customer: Customer; }`,
+      ),
     ),
-    flagged(
+    suggested(
       'TypeORM',
       'customer',
-      `${TYPEORM}export const Order = @Entity() class { @ManyToOne(() => Customer) customer: Customer; };`,
+      typeormSuggestion(
+        `${TYPEORM}export const Order = @Entity() class { @ManyToOne(() => Customer) customer: Customer; };`,
+      ),
     ),
-    flagged('MikroORM', 'author', BOOK),
-    flagged('MikroORM', 'author', BOOK, mssql),
-    flagged(
-      'MikroORM',
-      'shelf',
-      `${MIKRO}@Entity() class Placement { @ManyToOne(() => Book, { primary: true }) book!: Book; @ManyToOne(() => Shelf, { primary: true }) shelf!: Shelf; }`,
-    ),
-    flagged(
+    suggested(
       'MikroORM',
       'author',
-      `${MIKRO}@Entity() @Index({ properties: ['title', 'author'] }) class Book { @ManyToOne(() => Author) author!: Author; }`,
+      mikroSuggestion(
+        BOOK,
+        '@ManyToOne(() => Author)',
+        '@ManyToOne(() => Author, { index: true })',
+      ),
+    ),
+    suggested(
+      'MikroORM',
+      'author',
+      mikroSuggestion(
+        BOOK,
+        '@ManyToOne(() => Author)',
+        '@ManyToOne(() => Author, { index: true })',
+      ),
+      mssql,
+    ),
+    suggested(
+      'MikroORM',
+      'shelf',
+      mikroSuggestion(
+        `${MIKRO}@Entity() class Placement { @ManyToOne(() => Book, { primary: true }) book!: Book; @ManyToOne(() => Shelf, { primary: true }) shelf!: Shelf; }`,
+        '@ManyToOne(() => Shelf, { primary: true })',
+        '@ManyToOne(() => Shelf, { primary: true, index: true })',
+      ),
+    ),
+    suggested(
+      'MikroORM',
+      'author',
+      mikroSuggestion(
+        `${MIKRO}@Entity() @Index({ properties: ['title', 'author'] }) class Book { @ManyToOne(() => Author) author!: Author; }`,
+        '@ManyToOne(() => Author)',
+        '@ManyToOne(() => Author, { index: true })',
+      ),
     ),
     drizzle('orderId', LINES),
     drizzle(
