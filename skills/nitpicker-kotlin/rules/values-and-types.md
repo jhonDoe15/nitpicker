@@ -33,6 +33,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/PairSplitDropsRest`).
 - Read a host and port with `URI("http://$host")` (`host`, `port`), not `host.split(":")` or
   `substringBefore(":")`: an IPv6 literal `[::1]:3000` has colons of its own (`kotlin-source/HostPortColonSplit`).
+- Split file text with `lines()` or `readLines()`, not `split("\n")`: a CRLF file keeps a `\r` on each line
+  (`kotlin-source/NewlineOnlyLineSplit`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
   milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never

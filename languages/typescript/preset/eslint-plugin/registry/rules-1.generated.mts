@@ -66,6 +66,7 @@ import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multipl
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
+import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-servic
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
-import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -169,6 +169,7 @@ export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
+  'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
   'no-operand-slip': ruleNoOperandSlip,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
-  'no-silent-catch': ruleNoSilentCatch,
 };

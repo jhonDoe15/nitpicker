@@ -182,3 +182,6 @@ the allowed form and ends with its exception entry.
   (`go-rules/delimited-lookup-key`): `"a-b"` with `"c"` and `"a"` with `"b-c"` give the same key.
 - Split a host and port with `net.SplitHostPort` (or `url.Hostname()` and `url.Port()`), not with
   `strings.Split(host, ":")`, which breaks IPv6 literals such as `[::1]:3000` (`go-rules/host-port-colon-split`).
+- Read lines of a file with `bufio.Scanner` (it drops `\r\n`), or normalise `\r\n` first, instead of
+  `strings.Split(string(data), "\n")`, which keeps a `\r` on every line of a CRLF file
+  (`go-rules/newline-only-line-split`).

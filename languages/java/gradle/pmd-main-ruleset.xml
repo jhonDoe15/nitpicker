@@ -1246,6 +1246,39 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="NewlineOnlyLineSplit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This splits text read from a file on &quot;\n&quot; only, so every line of a CRLF file keeps a trailing carriage return, comparisons and regular expressions are off, and text that uses a lone carriage return is not split at all. Split on every line terminator with split(&quot;\\R&quot;) or lines(), or read it line by line with a BufferedReader. Text the program generated itself is fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $read := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('readString', 'readFileToString', 'readAllBytes')]
+             | $e[self::ConstructorCall][ClassType/@SimpleName = 'String']
+                 [ArgumentList/*[1][self::MethodCall][@MethodName = ('readAllBytes', 'readFileToByteArray', 'readBytes')]]
+             | $e[self::MethodCall][@MethodName = 'toString'][ArgumentList/@Size = (1, 2)]
+                 [*[1][self::TypeExpression/ClassType[@SimpleName = 'IOUtils']]])
+    },
+    $steps := ('trim', 'strip', 'stripTrailing', 'stripLeading'),
+    $base := function($e) {
+      $read($e) or exists($e[self::MethodCall][@MethodName = $steps][ArgumentList/@Size = 0][$read(*[1])])
+    },
+    $newline := function($e) { exists($e[self::StringLiteral][@Image = '"\n"']) },
+    $text := function($e) {
+      $base($e) or exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$base(*[2])]
+          [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+               //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])]])
+    }
+return //MethodCall[@MethodName = ('split', 'indexOf', 'lastIndexOf')][$newline(ArgumentList/*[1])][ArgumentList/@Size = 1]
+  [$text(*[1])]
+  [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+        //StringLiteral[matches(@Image, '\\r|\\R|\\u2028')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="PairSplitDropsRest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This reads the second part of a String.split on &quot;:&quot; or &quot;=&quot;, so a value that contains the separator (a URL, a message, a base64 =) loses everything after it, and a text without the separator throws ArrayIndexOutOfBoundsException. Split once with a limit: text.split(&quot;:&quot;, 2) and check the length, or cut at text.indexOf(&quot;:&quot;). A format that cannot hold the separator twice takes an exceptions entry.">
     <priority>3</priority>

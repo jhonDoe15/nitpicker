@@ -199,6 +199,7 @@ describe('readKotlinSourceFindings', () => {
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
+        'NewlineOnlyLineSplit',
         'NullMapValue',
         'OperandSlip',
         'PairSplitDropsRest',

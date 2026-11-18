@@ -12,7 +12,7 @@ import (
 )
 
 func Analyzers() []*analysis.Analyzer {
-	return []*analysis.Analyzer{pairAnalyzer, keyAnalyzer, hostAnalyzer}
+	return []*analysis.Analyzer{pairAnalyzer, keyAnalyzer, hostAnalyzer, lineAnalyzer}
 }
 
 func constString(info *types.Info, expr ast.Expr) (string, bool) {

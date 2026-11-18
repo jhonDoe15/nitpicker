@@ -152,6 +152,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/counts/no-negative-count.mjs',
   'languages/typescript/preset/eslint-plugin/rules/support/flow/guard-forms.mjs',
   'languages/typescript/preset/eslint-plugin/rules/numbers/no-nan-only-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/line-splits/no-newline-only-line-split.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/line-splits/file-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/host-splits/no-host-port-colon-split.mjs',
   'languages/typescript/preset/eslint-plugin/rules/host-splits/host-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lookup-keys/no-ambiguous-lookup-key.mjs',
