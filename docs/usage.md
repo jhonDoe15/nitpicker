@@ -2984,7 +2984,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/no-disabled-tls-verification`             | review | removes the option or assignment that turns verification off                                                             |
 | `nitpicker/no-shell-string-command`                  | review | turns a plain command template into an `execFile` call with an argument array, or drops `shell: true`                    |
 | `nitpicker/reusable-object-per-call`                 | review | moves an `Intl` formatter with literal arguments to a module constant; `DateTimeFormat` only with a literal `timeZone`   |
-| `nitpicker/no-sync-node-api-in-async`                | review | awaits the promise twin of a sync `fs` call made directly in an async function (not in a callback)                       |
+| `nitpicker/no-sync-node-api-in-async`                | review | awaits the promise twin of a sync `fs` call, or an `access` check for `existsSync`, made directly in an async function   |
 
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
