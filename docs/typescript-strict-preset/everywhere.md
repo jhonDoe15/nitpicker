@@ -398,6 +398,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `Object.create(null)`. And `key in table` where `table` is a constant object literal (no `__proto__: null`, no
   spread) and `key` is a `string`, `any` or `unknown` parameter or a member such as `req.query.name`, which also
   matches inherited members such as `constructor` and `toString`. Allowed forms: `Object.hasOwn(table, key)`, a `Map`,
+  or an `Object.create(null)` table. A write back to a key of the same object the loop iterates
+  (`for (const key of Object.keys(config)) config[key] = ...`) and an `in` check whose key is the parameter of a
+  callback over a constant array are not reported. The rule reads no types.
 - `nitpicker/no-lossy-json-stringify` (type-aware): `JSON.stringify(value)` without a replacer (a second argument that
   is not `null` or `undefined`) where the type of `value` holds a `bigint` (it throws `TypeError: Do not know how to
   serialize a BigInt`) or a `Map`, `Set`, `WeakMap`, `WeakSet` or `RegExp` (each becomes `{}`, so different values
