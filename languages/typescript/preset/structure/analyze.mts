@@ -29,15 +29,17 @@ import type {
   ProductionAnalysis,
   Ranked,
   SourceAnalysis,
+  UnparsedSource,
   WalkStep,
 } from './typed/analysis-types.mts';
 import { appendAll, largest } from '../../../../shared/lists/lists.mts';
+import { blockingParseDiagnostics } from '../syntax/diagnostics/legacy-scripts.mts';
 
 const ts = typescriptApi();
 
 function parseSource(source: string, filename: string): TypeScript.SourceFile {
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
-  const parseDiagnostics = parseDiagnosticsOf(sourceFile);
+  const parseDiagnostics = blockingParseDiagnostics(filename, parseDiagnosticsOf(sourceFile));
   if (parseDiagnostics.length > 0) {
     const diagnostics = parseDiagnostics
       .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
@@ -187,6 +189,17 @@ function rank<Entry extends Ranked>(entries: readonly Entry[], property: Metric)
     .slice(0, 20);
 }
 
+function analyzeParsableSource(source: string, filename: string): SourceAnalysis | UnparsedSource {
+  try {
+    return analyzeSource(source, filename);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { file: filename, reason: error.message.replace(`Unable to parse ${filename}: `, '') };
+    }
+    throw error;
+  }
+}
+
 export function analyzeProductionFiles(
   root: string,
   displayRoot: string = root,
@@ -195,11 +208,16 @@ export function analyzeProductionFiles(
   const files = productionFiles(root, displayRoot, layout);
   const functions: AnalysisFunction[] = [];
   const classes: AnalysisClass[] = [];
+  const unparsed: UnparsedSource[] = [];
   let lines = 0;
 
   for (const file of files) {
     const displayPath = normalizePath(path.join(displayRoot, path.relative(root, file)));
-    const analysis = analyzeSource(readFileSync(file, 'utf8'), displayPath);
+    const analysis = analyzeParsableSource(readFileSync(file, 'utf8'), displayPath);
+    if ('reason' in analysis) {
+      unparsed.push(analysis);
+      continue;
+    }
     lines += analysis.lines;
     appendAll(functions, analysis.functions);
     appendAll(classes, analysis.classes);
@@ -225,5 +243,6 @@ export function analyzeProductionFiles(
     },
     functions,
     classes,
+    unparsed,
   };
 }

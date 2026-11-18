@@ -1,5 +1,6 @@
 import { linterConfigs } from '../typed/config-types.mts';
 import tseslint from 'typescript-eslint';
+import { scriptTolerantParser } from '../../syntax/diagnostics/script-parser.mts';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { errorWrappingPolicy } from './error-wrapping-policy.mts';
 import { applyMatchingRuleExceptions, readHeadPolicy, readLayout } from '../typed/policy-views.mts';
@@ -10,7 +11,7 @@ const config = linterConfigs([
   { ignores: excludedGlobs },
   {
     files: [...sourceGlobs, ...testGlobs],
-    languageOptions: { parser: tseslint.parser },
+    languageOptions: { parser: scriptTolerantParser },
     plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
     rules: {
       'nitpicker/no-wait-for-with-fake-timers': 'error',
