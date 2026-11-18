@@ -27,7 +27,7 @@ describe('keepsBehaviour', () => {
   it.each([
     '#id = register();',
     '#created = new Date();',
-    '#text = `${count}`;',
+    `#text = \`\${count}\`;`,
     '#names = [...others];',
     '#value = store.current;',
     '#value = undeclared;',

@@ -136,7 +136,7 @@ function sideTypes(
 export function holeParameterText(
   hole: NamedHole,
   checker: TypeScript.TypeChecker,
-  { typed, precise = false }: { readonly typed: boolean; readonly precise?: boolean },
+  { typed, precise }: { readonly typed: boolean; readonly precise: boolean },
 ): string {
   if (!typed) {
     return hole.name;

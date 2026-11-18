@@ -22,8 +22,8 @@ function fixed(code: string): string | undefined {
   return result.fixed ? result.output : undefined;
 }
 
-function results(code: string): unknown[] {
-  return runInNewContext(
+function results(code: string): unknown {
+  const seen: unknown = runInNewContext(
     `const calls = [];
      function f(value) { calls.push(value); return value; }
      ${code}
@@ -35,41 +35,50 @@ function results(code: string): unknown[] {
      seen`,
     { values: VALUES },
   );
+  return seen;
 }
 
 const PURE = [
-  'if (a < b) { return true; } return false;',
-  'return !a && !b;',
-  'return !a || !b || !c;',
-  'return a ? false : b < c;',
-  'return a ? b < c : true;',
-  'return !a ? b : c;',
-  'return !!a ? b : c;',
-  'return !!!a ? b : c;',
-  'return !(a === b) && c;',
-  "return !(a == 'x') || !c;",
+  ['if (a < b) { return true; } return false;', 'return a < b;'],
+  ['return !a && !b;', 'return !(a || b);'],
+  ['return !a || !b || !c;', 'return !(a && b && c);'],
+  ['return a ? false : b < c;', 'return !a && b < c;'],
+  ['return a ? b < c : true;', 'return !a || b < c;'],
+  ['return !a ? b : c;', 'return a ? c : b;'],
+  ['return !!a ? b : c;', 'return a ? b : c;'],
+  ['return !!!a ? b : c;', 'return a ? c : b;'],
+  ['return !(a === b) && c;', 'return a !== b && c;'],
+  ["return !(a == 'x') || !c;", "return a != 'x' || !c;"],
 ];
 
-const WITH_CALLS = ['return !f(a) && !f(b);', 'return !!f(a) ? b : c;', 'return !f(a) ? b : c;'];
+const WITH_CALLS = [
+  ['return !f(a) && !f(b);', 'return !(f(a) || f(b));'],
+  ['return !!f(a) ? b : c;', 'return f(a) ? b : c;'],
+  ['return !f(a) ? b : c;', 'return f(a) ? c : b;'],
+];
+
+function run(body: string): string {
+  return `function run(a, b, c) { ${body} }`;
+}
 
 describe('the simpler-boolean-logic fix', () => {
-  it.each([...PURE, ...WITH_CALLS])('keeps what %s returns and calls', (body) => {
-    const code = `function run(a, b, c) { ${body} }`;
-    const output = fixed(code);
-
-    expect(output).toBeDefined();
-    expect(results(output ?? '')).toEqual(results(code));
-  });
+  it.each([...PURE, ...WITH_CALLS])(
+    'writes %s as %s, which returns and calls the same',
+    (body, form) => {
+      expect(fixed(run(body))).toBe(run(form));
+      expect(results(run(form))).toEqual(results(run(body)));
+    },
+  );
 
   it.each(['return !true && f(a);', 'return !(/* why */ a) && !b;'])(
     'reports %s and leaves it without a fix',
     (body) => {
-      const code = `function run(a, b, c) { ${body} }`;
+      const code = run(body);
       const messages = new Linter({ configType: 'flat' }).verify(code, CONFIG, {
         filename: 'case.ts',
       });
 
-      expect(messages.map(({ ruleId }) => ruleId)).toContain('nitpicker/simpler-boolean-logic');
+      expect(messages.map(({ ruleId }) => ruleId)).toEqual(['nitpicker/simpler-boolean-logic']);
       expect(fixed(code)).toBeUndefined();
     },
   );

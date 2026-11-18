@@ -1,6 +1,6 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { applied } from '../test-support/apply-recipe.mts';
+import { applied, leftNote } from '../test-support/apply-recipe.mts';
 import { uselessConcatRecipe } from './useless-concat.mts';
 
 function moduleOf(expression: string): string {
@@ -10,6 +10,9 @@ function moduleOf(expression: string): string {
 function valueOf(source: string): unknown {
   return runInNewContext(source.replace('export const value = ', 'globalThis.value = '), {});
 }
+
+const DIRECTIVE = 'joining would drop a comment or make a directive';
+const PARENTHESIS = 'a parenthesis sits between the literals';
 
 describe('uselessConcatRecipe', () => {
   it.each([
@@ -21,7 +24,7 @@ describe('uselessConcatRecipe', () => {
     ["'caf\\u00e9' + ' ok'", "'café ok'"],
     ["'smile ' + '😀'", "'smile 😀'"],
     ['`tick ` + "`"', '`tick \\``'],
-    ['`cost ` + "${x}"', '`cost \\${x}`'],
+    [`\`cost \` + "\${x}"`, `\`cost \\\${x}\``],
     ["prefix + 'a' + 'b'", "prefix + 'ab'"],
   ])('joins %s into %s with the same value', (expression, expected) => {
     const text = `const prefix = 1;\n${moduleOf(expression)}`;
@@ -32,19 +35,20 @@ describe('uselessConcatRecipe', () => {
   });
 
   it.each([
-    ["const x = 1;\nexport const value = `a${x}` + 'b';\n", 'a side is not a plain string'],
-    ["export const value = 'a\\\n' + 'b';\n", 'a literal continues over a line break'],
-    ["'use ' + 'strict';\n", 'joining would drop a comment or make a directive'],
     [
-      "export const value = 'a' + /* why */ 'b';\n",
-      'joining would drop a comment or make a directive',
+      `const x = 1;\nexport const value = \`a\${x}\` + 'b';\n`,
+      2,
+      'a side is not a plain string or a template without expressions',
     ],
-    ["const x = 1;\nexport const value = (x + 'a') + 'b';\n", 'a parenthesis sits between'],
-    ["const x = 1;\nexport const value = 'a' + ('b' + x);\n", 'a parenthesis sits between'],
-  ])('leaves %j with a note', (text, reason) => {
+    ["export const value = 'a\\\n' + 'b';\n", 2, 'a literal continues over a line break'],
+    ["'use ' + 'strict';\n", 1, DIRECTIVE],
+    ["export const value = 'a' + /* why */ 'b';\n", 1, DIRECTIVE],
+    ["const x = 1;\nexport const value = (x + 'a') + 'b';\n", 2, PARENTHESIS],
+    ["const x = 1;\nexport const value = 'a' + ('b' + x);\n", 2, PARENTHESIS],
+  ])('leaves %j with a note', (text, line, reason) => {
     const fixed = applied(uselessConcatRecipe, text);
 
     expect(fixed.text).toBe(text);
-    expect(fixed.notes).toEqual([expect.stringContaining(`eslint/no-useless-concat: ${reason}`)]);
+    expect(fixed.notes).toEqual([leftNote(line, 'no-useless-concat', reason)]);
   });
 });

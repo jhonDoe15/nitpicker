@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
+import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
 import { fixWorkingTree, type FixOptions } from '../../../../../core/fix/run-fix.mts';
 import {
   fixOptions,
@@ -39,6 +39,8 @@ export function fixedSamples(
   const result = fixWorkingTree(fixOptions(repository.root, overrides));
   return {
     toolErrors: result.toolErrors,
-    texts: samples.map((sample) => readFileSync(path.join(repository.root, sample.path), 'utf8')),
+    texts: samples.map((sample) =>
+      readFileSync(containedPath(repository.root, sample.path), 'utf8'),
+    ),
   };
 }

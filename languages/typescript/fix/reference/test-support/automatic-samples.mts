@@ -72,7 +72,7 @@ export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
   },
   '@typescript-eslint/no-unnecessary-template-expression': {
     path: 'src/main/samples/s04.ts',
-    input: 'export function label(name: string): string {\n  return `${name}`;\n}\n',
+    input: `export function label(name: string): string {\n  return \`\${name}\`;\n}\n`,
     output: 'export function label(name: string): string {\n  return name;\n}\n',
   },
   '@typescript-eslint/no-unnecessary-type-arguments': {

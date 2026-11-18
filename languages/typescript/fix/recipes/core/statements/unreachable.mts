@@ -1,7 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { inside } from '../../../../preset/eslint-plugin/rules/decided/syntax.mts';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
-import { hasComment, withOwnLines, type Range } from '../text-ranges.mts';
+import { hasComment, withOwnLines, type TextSpan } from '../text-ranges.mts';
 
 const KEPT_OUT = new Set<string>([
   AST_NODE_TYPES.ImportDeclaration,
@@ -14,24 +15,19 @@ const KEPT_OUT = new Set<string>([
 type Declaring =
   TSESTree.VariableDeclarator | TSESTree.ClassDeclaration | TSESTree.FunctionDeclaration;
 
-function within(node: TSESTree.Node | undefined, { start, end }: Range): boolean {
+function within(node: TSESTree.Node | undefined, { start, end }: TextSpan): boolean {
   return node !== undefined && node.range[0] >= start && node.range[1] <= end;
 }
 
 function listOf(node: TSESTree.Node): readonly TSESTree.Node[] {
-  switch (node.type) {
-    case AST_NODE_TYPES.Program:
-    case AST_NODE_TYPES.BlockStatement:
-    case AST_NODE_TYPES.StaticBlock: {
-      return node.body;
-    }
-    case AST_NODE_TYPES.SwitchCase: {
-      return node.consequent;
-    }
-    default: {
-      return [node];
-    }
+  if (
+    node.type === AST_NODE_TYPES.Program ||
+    node.type === AST_NODE_TYPES.BlockStatement ||
+    node.type === AST_NODE_TYPES.StaticBlock
+  ) {
+    return node.body;
   }
+  return node.type === AST_NODE_TYPES.SwitchCase ? node.consequent : [node];
 }
 
 function isDeclaring(node: TSESTree.Node): node is Declaring {
@@ -62,7 +58,7 @@ function hoistedNames(declarations: readonly Declaring[]): string[] | undefined 
 function usedFromReachable(
   { sourceCode }: CoreRequest,
   declarations: readonly Declaring[],
-  range: Range,
+  range: TextSpan,
 ): boolean {
   return declarations
     .filter((declaration) => !isVar(declaration))
@@ -93,9 +89,4 @@ function deleted(request: CoreRequest): CorePlan {
   return { edits: [{ ...lines, text: whole && kept !== '' ? `${indent}${kept}\n` : kept }] };
 }
 
-export const unreachableRecipe = coreRuleRecipe({
-  id: 'typescript-no-unreachable',
-  rule: 'no-unreachable',
-  presets: ['javascript'],
-  plan: deleted,
-});
+export const unreachableRecipe = coreRuleRecipe(CORE_RECIPES.unreachable, deleted);

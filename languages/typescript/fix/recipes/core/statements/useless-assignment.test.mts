@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { applied } from '../test-support/apply-recipe.mts';
+import { applied, leftNote } from '../test-support/apply-recipe.mts';
 import { uselessAssignmentRecipe } from './useless-assignment.mts';
 
 function body(statements: string): string {
   return `declare function read(): number;\nexport function run(flag: boolean): number {\n${statements}\n}\n`;
 }
+
+const RULE = 'no-useless-assignment';
+const EFFECTS = 'the stored value may have effects, so removing it is for a person to decide';
 
 describe('uselessAssignmentRecipe', () => {
   it.each([
@@ -29,19 +32,22 @@ describe('uselessAssignmentRecipe', () => {
   });
 
   it.each([
-    ['  let value = read();\n  value = read();\n  return value;', 'may have effects'],
+    ['  let value = read();\n  value = read();\n  return value;', [leftNote(3, RULE, EFFECTS)]],
     [
       '  let value = read();\n  let other = (value = 2);\n  value = 3;\n  return value + other;',
-      'not a plain assignment',
+      [
+        leftNote(3, RULE, EFFECTS),
+        leftNote(4, RULE, 'the store is not a plain assignment statement or declaration'),
+      ],
     ],
     [
       '  let value = read();\n  if (value > 0) value = 1;\n  value = 2;\n  return value;',
-      'the only statement of a branch',
+      [leftNote(4, RULE, 'the assignment is the only statement of a branch or loop')],
     ],
-  ])('leaves %j with a note', (statements, reason) => {
+  ])('leaves %j with a note', (statements, notes) => {
     const fixed = applied(uselessAssignmentRecipe, body(statements));
 
     expect(fixed.text).toBe(body(statements));
-    expect(fixed.notes).toEqual(expect.arrayContaining([expect.stringContaining(reason)]));
+    expect(fixed.notes).toEqual(notes);
   });
 });

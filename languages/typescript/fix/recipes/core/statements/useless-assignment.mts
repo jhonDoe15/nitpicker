@@ -1,10 +1,9 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
-import { REVIEW as untypedReview } from '../../../../../../core/fix/engine/safety.mjs';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment, isInStatementList, withOwnLines } from '../text-ranges.mts';
 import { isInertValue } from './inert-values.mts';
 
-const REVIEW: string = untypedReview;
 const EFFECTS = 'the stored value may have effects, so removing it is for a person to decide';
 
 function droppedStore({ text, sourceCode, node }: CoreRequest): CorePlan {
@@ -43,9 +42,4 @@ function droppedStore({ text, sourceCode, node }: CoreRequest): CorePlan {
     : { edits: [{ ...withOwnLines(text, { start, end }), text: '' }] };
 }
 
-export const uselessAssignmentRecipe = coreRuleRecipe({
-  id: 'typescript-no-useless-assignment',
-  rule: 'no-useless-assignment',
-  safety: REVIEW,
-  plan: droppedStore,
-});
+export const uselessAssignmentRecipe = coreRuleRecipe(CORE_RECIPES.uselessAssignment, droppedStore);

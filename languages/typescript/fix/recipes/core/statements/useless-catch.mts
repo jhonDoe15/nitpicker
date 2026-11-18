@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment, isInStatementList, withOwnLines } from '../text-ranges.mts';
 
@@ -21,15 +22,15 @@ function usedOutside(sourceCode: SourceCode, name: string, block: Range): boolea
   const scopes: readonly TSESLint.Scope.Scope[] = sourceCode.scopeManager?.scopes ?? [];
   return scopes.some(
     (scope) =>
-      (!within(scope.block.range ?? [0, 0], block) &&
+      (!within(scope.block.range, block) &&
         scope.variables.some((variable) => variable.name === name)) ||
       scope.references.some(
-        ({ identifier }) => identifier.name === name && !within(identifier.range ?? [0, 0], block),
+        ({ identifier }) => identifier.name === name && !within(identifier.range, block),
       ),
   );
 }
 
-function catchless(text: string, statement: TSESTree.TryStatement): CorePlan {
+function catchless(statement: TSESTree.TryStatement): CorePlan {
   const end = statement.handler?.range[1] ?? statement.block.range[1];
   return { edits: [{ start: statement.block.range[1], end, text: '' }] };
 }
@@ -60,14 +61,16 @@ function unwrapped({ text, sourceCode }: CoreRequest, statement: TSESTree.TrySta
   return { edits: [{ start, end, text: flat ? inner : `{\n${inner}\n}` }] };
 }
 
+function tryStatementOf(node: TSESTree.Node): TSESTree.TryStatement | undefined {
+  if (node.type === AST_NODE_TYPES.CatchClause) {
+    return node.parent;
+  }
+  return node.type === AST_NODE_TYPES.TryStatement ? node : undefined;
+}
+
 function withoutCatch(request: CoreRequest): CorePlan {
   const { node, sourceCode } = request;
-  const statement =
-    node.type === AST_NODE_TYPES.CatchClause
-      ? node.parent
-      : node.type === AST_NODE_TYPES.TryStatement
-        ? node
-        : undefined;
+  const statement = tryStatementOf(node);
   const handler = statement?.handler;
   if (statement === undefined || handler === null || handler === undefined) {
     return { declined: 'the reported code is not a try statement' };
@@ -78,13 +81,7 @@ function withoutCatch(request: CoreRequest): CorePlan {
   ) {
     return { declined: 'the catch clause holds a comment' };
   }
-  return statement.finalizer === null
-    ? unwrapped(request, statement)
-    : catchless(request.text, statement);
+  return statement.finalizer === null ? unwrapped(request, statement) : catchless(statement);
 }
 
-export const uselessCatchRecipe = coreRuleRecipe({
-  id: 'typescript-no-useless-catch',
-  rule: 'no-useless-catch',
-  plan: withoutCatch,
-});
+export const uselessCatchRecipe = coreRuleRecipe(CORE_RECIPES.uselessCatch, withoutCatch);

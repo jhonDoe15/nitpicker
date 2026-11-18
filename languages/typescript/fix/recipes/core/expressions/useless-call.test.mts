@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applied } from '../test-support/apply-recipe.mts';
+import { applied, leftNote } from '../test-support/apply-recipe.mts';
 import { uselessCallRecipe } from './useless-call.mts';
 
 const PRELUDE =
   'declare function run(value: number, other?: number): number;\ndeclare const store: { add(value: number): number; inner: { add(value: number): number } };\ndeclare function make(): typeof store;\ndeclare const values: number[];\n';
+
+const TWICE =
+  'the receiver is read twice and a read may run a getter, or this would change from null';
 
 function fixedExpression(expression: string): {
   readonly text: string;
@@ -26,15 +29,18 @@ describe('uselessCallRecipe', () => {
   });
 
   it.each([
-    ['make().add.call(make(), 1)', 'the receiver is read twice'],
-    ['store.inner.add.apply(store.inner, [1])', 'a read may run a getter'],
-    ['run.call(null, 1)', 'this would change from null'],
-    ['store.add?.call(store, 1)', 'optional chain'],
-    ['run.call(undefined, /* first */ 1)', 'a comment sits in the call'],
+    ['make().add.call(make(), 1)', TWICE],
+    ['store.inner.add.apply(store.inner, [1])', TWICE],
+    ['run.call(null, 1)', TWICE],
+    ['store.add?.call(store, 1)', 'the call goes through an optional chain'],
+    [
+      'run.call(undefined, /* first */ 1)',
+      'the arguments are not an array literal, or a comment sits in the call',
+    ],
   ])('leaves %s with a note', (expression, reason) => {
     const fixed = fixedExpression(expression);
 
     expect(fixed.text).toBe(`export const value = ${expression};\n`);
-    expect(fixed.notes).toEqual([expect.stringContaining(reason)]);
+    expect(fixed.notes).toEqual([leftNote(5, 'no-useless-call', reason)]);
   });
 });

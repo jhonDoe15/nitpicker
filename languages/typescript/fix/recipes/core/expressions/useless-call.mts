@@ -1,9 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { REVIEW as untypedReview } from '../../../../../../core/fix/engine/safety.mjs';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment } from '../text-ranges.mts';
 
-const REVIEW: string = untypedReview;
 const PLAIN_RECEIVERS = new Set<string>([AST_NODE_TYPES.Identifier, AST_NODE_TYPES.ThisExpression]);
 const PLAIN_CALLEES = new Set<string>([
   AST_NODE_TYPES.Identifier,
@@ -74,9 +73,4 @@ function direct({ text, sourceCode, node }: CoreRequest): CorePlan {
   return { edits: [{ start: node.range[0], end: node.range[1], text: `${plain}(${args})` }] };
 }
 
-export const uselessCallRecipe = coreRuleRecipe({
-  id: 'typescript-no-useless-call',
-  rule: 'no-useless-call',
-  safety: REVIEW,
-  plan: direct,
-});
+export const uselessCallRecipe = coreRuleRecipe(CORE_RECIPES.uselessCall, direct);

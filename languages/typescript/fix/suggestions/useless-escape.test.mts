@@ -23,6 +23,10 @@ const SAMPLES = ['a.b', 'a-b', '#tag', ':x', '$5', 'x'];
 
 let linted: Map<string, readonly LintMessage[]>;
 
+function escapesIn(literal: string): number {
+  return literal.split('\\').length - 1;
+}
+
 function moduleOf(literal: string): string {
   return `export const value = ${literal};\n`;
 }
@@ -56,7 +60,7 @@ describe('the no-useless-escape suggestion that removes the backslash', () => {
     );
     const fixed = applySuggestions({ text, messages });
 
-    expect(messages.length).toBeGreaterThan(0);
+    expect(messages).toHaveLength(escapesIn(literal));
     expect(fixed.text).not.toBe(text);
     expect(valueOf(fixed.text)).toEqual(valueOf(text));
   });
@@ -69,7 +73,7 @@ describe('the no-useless-escape suggestion that removes the backslash', () => {
         ({ ruleId }) => ruleId === 'no-useless-escape',
       );
 
-      expect(messages.length).toBeGreaterThan(0);
+      expect(messages).toHaveLength(escapesIn(literal));
       expect(applySuggestions({ text, messages }).text).toBe(text);
     },
   );

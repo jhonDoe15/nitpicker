@@ -1,7 +1,7 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { ts } from '../../../../preset/eslint-plugin/rules/typed/typescript-views.mts';
-import { applied } from '../test-support/apply-recipe.mts';
+import { applied, leftNote } from '../test-support/apply-recipe.mts';
 import { uselessCatchRecipe } from './useless-catch.mts';
 
 function thrownBy(source: string): unknown {
@@ -38,73 +38,54 @@ describe('uselessCatchRecipe', () => {
     expect(thrownBy(text)).toBe('boom');
   });
 
-  it('keeps a block where a declared name is used outside the try', () => {
-    const text =
-      'const reason = 1;\nexport function run(): number {\n  try {\n    const reason = 2;\n    return reason;\n  } catch (error) {\n    throw error;\n  }\n}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(
+  it.each([
+    [
+      'keeps a block where a declared name is used outside the try',
+      'const reason = 1;\nexport function run(): number {\n  try {\n    const reason = 2;\n    return reason;\n  } catch (error) {\n    throw error;\n  }\n}\n',
       'const reason = 1;\nexport function run(): number {\n  {\nconst reason = 2;\n    return reason;\n}\n}\n',
-    );
-  });
-
-  it('keeps a block where the try is the body of an if', () => {
-    const text =
-      'export function run(ready: boolean): void {\n  if (ready) try { go(); stop(); } catch (error) { throw error; }\n}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(
+    ],
+    [
+      'keeps a block where the try is the body of an if',
+      'export function run(ready: boolean): void {\n  if (ready) try { go(); stop(); } catch (error) { throw error; }\n}\n',
       'export function run(ready: boolean): void {\n  if (ready) {\ngo(); stop();\n}\n}\n',
-    );
-  });
-
-  it('deletes a try statement with an empty block', () => {
-    const text =
-      'export function run(): void {\n  try {\n  } catch (error) {\n    throw error;\n  }\n}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe('export function run(): void {\n}\n');
-  });
-
-  it('keeps a block where flattening would join the next line to the last one', () => {
-    const text =
-      'let total = 0\ntry {\n  total = 1\n} catch (error) {\n  throw error\n}\n[1].forEach(log)\nfunction log() {}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(
+    ],
+    [
+      'deletes a try statement with an empty block',
+      'export function run(): void {\n  try {\n  } catch (error) {\n    throw error;\n  }\n}\n',
+      'export function run(): void {\n}\n',
+    ],
+    [
+      'keeps a block where flattening would join the next line to the last one',
+      'let total = 0\ntry {\n  total = 1\n} catch (error) {\n  throw error\n}\n[1].forEach(log)\nfunction log() {}\n',
       'let total = 0\n{\ntotal = 1\n}\n[1].forEach(log)\nfunction log() {}\n',
-    );
-  });
-
-  it('keeps a block where flattening would join the first line to the one before', () => {
-    const text =
-      'let total = 0\ntry {\n  [total].forEach(log);\n} catch (error) {\n  throw error\n}\nfunction log() {}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(
+    ],
+    [
+      'keeps a block where flattening would join the first line to the one before',
+      'let total = 0\ntry {\n  [total].forEach(log);\n} catch (error) {\n  throw error\n}\nfunction log() {}\n',
       'let total = 0\n{\n[total].forEach(log);\n}\nfunction log() {}\n',
-    );
-  });
-
-  it('writes an empty block for an empty try that is the body of an if', () => {
-    const text =
-      'export function run(ready: boolean): void {\n  if (ready) try {} catch (error) { throw error; }\n  go();\n}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(
+    ],
+    [
+      'writes an empty block for an empty try that is the body of an if',
+      'export function run(ready: boolean): void {\n  if (ready) try {} catch (error) { throw error; }\n  go();\n}\n',
       'export function run(ready: boolean): void {\n  if (ready) {}\n  go();\n}\n',
-    );
+    ],
+  ])('%s', (_name, text, output) => {
+    expect(applied(uselessCatchRecipe, text)).toEqual({ text: output, notes: [] });
   });
 
-  it('leaves a try with a comment before its block, with a note', () => {
-    const text =
-      'export function run(): void {\n  try /* guarded */ {\n    go();\n  } catch (error) {\n    throw error;\n  }\n}\n';
-
-    expect(applied(uselessCatchRecipe, text).text).toBe(text);
-  });
-
-  it('leaves a catch with a comment, with a note', () => {
-    const text =
-      'export function run(): void {\n  try {\n    go();\n  } catch (error) {\n    // keep for now\n    throw error;\n  }\n}\n';
-    const fixed = applied(uselessCatchRecipe, text);
-
-    expect(fixed.text).toBe(text);
-    expect(fixed.notes).toEqual([
-      expect.stringContaining('eslint/no-useless-catch: the catch clause holds a comment'),
-    ]);
+  it.each([
+    [
+      'a try with a comment before its block',
+      'export function run(): void {\n  try /* guarded */ {\n    go();\n  } catch (error) {\n    throw error;\n  }\n}\n',
+    ],
+    [
+      'a catch with a comment',
+      'export function run(): void {\n  try {\n    go();\n  } catch (error) {\n    // keep for now\n    throw error;\n  }\n}\n',
+    ],
+  ])('leaves %s, with a note', (_name, text) => {
+    expect(applied(uselessCatchRecipe, text)).toEqual({
+      text,
+      notes: [leftNote(2, 'no-useless-catch', 'the catch clause holds a comment')],
+    });
   });
 });

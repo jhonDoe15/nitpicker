@@ -76,7 +76,7 @@ function isPurePredicate(argument: TSESTree.Node | undefined, sourceCode: Source
   );
 }
 
-export function preferFindGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
+function preferFindGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
   const node = reportedNode(descriptor, 'preferFind');
   if (node === undefined) {
     return descriptor;

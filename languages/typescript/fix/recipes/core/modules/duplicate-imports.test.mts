@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { applied } from '../test-support/apply-recipe.mts';
+import { applied, leftNote } from '../test-support/apply-recipe.mts';
 import { duplicateImportsRecipe } from './duplicate-imports.mts';
+
+const DIFFERENT = 'the imports have two default names or different attributes';
+const COMMENT = 'a comment sits inside an import';
 
 describe('duplicateImportsRecipe', () => {
   it.each([
@@ -38,18 +41,23 @@ describe('duplicateImportsRecipe', () => {
   });
 
   it.each([
-    ["import main from './x';\nimport * as all from './x';\n", 'a namespace import'],
-    ["import one from './x';\nimport two from './x';\n", 'two default names'],
+    [
+      "import main from './x';\nimport * as all from './x';\n",
+      2,
+      'a namespace import cannot take other specifiers',
+    ],
+    ["import one from './x';\nimport two from './x';\n", 2, DIFFERENT],
     [
       "import { a } from './x.json' with { type: 'json' };\nimport { b } from './x.json';\n",
-      'different attributes',
+      2,
+      DIFFERENT,
     ],
-    ["import { a } from './x';\nimport { /* why */ b } from './x';\n", 'a comment'],
-    ["import { a } from './x';\n// @ts-expect-error\nimport { b } from './x';\n", 'a comment'],
-  ])('leaves %j with a note', (text, reason) => {
+    ["import { a } from './x';\nimport { /* why */ b } from './x';\n", 2, COMMENT],
+    ["import { a } from './x';\n// @ts-expect-error\nimport { b } from './x';\n", 3, COMMENT],
+  ])('leaves %j with a note', (text, line, reason) => {
     const fixed = applied(duplicateImportsRecipe, text);
 
     expect(fixed.text).toBe(text);
-    expect(fixed.notes).toEqual([expect.stringContaining(reason)]);
+    expect(fixed.notes).toEqual([leftNote(line, 'no-duplicate-imports', reason)]);
   });
 });

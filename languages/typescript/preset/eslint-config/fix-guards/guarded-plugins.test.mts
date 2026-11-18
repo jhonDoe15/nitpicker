@@ -1,7 +1,7 @@
 import { Linter } from 'eslint';
 import type { TSESLint } from '@typescript-eslint/utils';
 import { describe, expect, it } from 'vitest';
-import { guardedEntry } from './guarded-plugins.mts';
+import { guardedEntries } from './guarded-plugins.mts';
 import { demoted, keptFix, unfixed, type Guard } from './guard-types.mts';
 
 type Messages = 'shout';
@@ -13,7 +13,6 @@ const shout: TSESLint.RuleModule<Messages> = {
     schema: [],
     messages: { shout: 'Write {{ name }} in capitals.' },
   },
-  defaultOptions: [],
   create(context) {
     return {
       Identifier(node) {
@@ -47,10 +46,17 @@ function byName(): Guard {
 const TABLE = { demo: { shout: { status: 'automatic' as const, guard: byName() } } };
 
 function lint(text: string, original = plugin()) {
-  const entries = [
-    { files: ['**/*.js'], plugins: { demo: original } },
-    { files: ['**/*.js'], plugins: { demo: original }, rules: { 'demo/shout': 'error' as const } },
-  ].map((entry) => guardedEntry(entry, TABLE));
+  const entries = guardedEntries(
+    [
+      { files: ['**/*.js'], plugins: { demo: original } },
+      {
+        files: ['**/*.js'],
+        plugins: { demo: original },
+        rules: { 'demo/shout': 'error' as const },
+      },
+    ],
+    TABLE,
+  );
   const linter = new Linter({ configType: 'flat' });
   const fixed = linter.verifyAndFix(text, entries, { filename: 'a.js' });
   const messages = linter.verify(text, entries, { filename: 'a.js' });
@@ -60,38 +66,38 @@ function lint(text: string, original = plugin()) {
   };
 }
 
+function demoOf(entry: Readonly<Record<string, unknown>> | undefined): unknown {
+  const plugins: unknown = entry?.['plugins'];
+  const demo: unknown = Reflect.get(Object(plugins), 'demo');
+  return demo;
+}
+
 describe('guarded upstream fixes', () => {
-  it('keeps the fix the guard keeps', () => {
-    expect(lint('kept;\n')).toEqual({ output: 'KEPT;\n', suggestions: [0] });
-  });
-
-  it('moves the fix the guard demotes to a single suggestion', () => {
-    expect(lint('demoted;\n')).toEqual({ output: 'demoted;\n', suggestions: [1] });
-  });
-
-  it('drops the fix the guard drops and keeps the report', () => {
-    expect(lint('removed;\n')).toEqual({ output: 'removed;\n', suggestions: [0] });
+  it.each([
+    ['keeps the fix the guard keeps', 'kept;\n', 'KEPT;\n', 0],
+    ['moves the fix the guard demotes to a single suggestion', 'demoted;\n', 'demoted;\n', 1],
+    ['drops the fix the guard drops and keeps the report', 'removed;\n', 'removed;\n', 0],
+  ])('%s', (_name, text, output, suggestions) => {
+    expect(lint(text)).toEqual({ output, suggestions: [suggestions] });
   });
 
   it('gives every entry the same guarded copy of a plugin', () => {
     const original = plugin();
-    const [first, second] = [{ plugins: { demo: original } }, { plugins: { demo: original } }].map(
-      (entry) => guardedEntry(entry, TABLE),
+    const [first, second] = guardedEntries(
+      [{ plugins: { demo: original } }, { plugins: { demo: original } }],
+      TABLE,
     );
-    expect(
-      [first?.['plugins'], second?.['plugins']].map((plugins) =>
-        Reflect.get(Object(plugins), 'demo'),
-      ),
-    ).toEqual([
-      Reflect.get(Object(second?.['plugins']), 'demo'),
-      Reflect.get(Object(first?.['plugins']), 'demo'),
-    ]);
-    expect(Reflect.get(Object(first?.['plugins']), 'demo')).not.toBe(original);
+    const copy = demoOf(first);
+
+    expect(demoOf(second)).toBe(copy);
+    expect(copy).not.toBe(original);
   });
 
   it('leaves the plugins of other namespaces and entries without plugins alone', () => {
     const other = plugin();
-    expect(guardedEntry({ plugins: { other } }, TABLE)).toEqual({ plugins: { other } });
-    expect(guardedEntry({ rules: {} }, TABLE)).toEqual({ rules: {} });
+    expect(guardedEntries([{ plugins: { other } }, { rules: {} }], TABLE)).toEqual([
+      { plugins: { other } },
+      { rules: {} },
+    ]);
   });
 });

@@ -1,8 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { wholeLines } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
 
 type SourceCode = TSESLint.SourceCode;
 
-export type Range = { readonly start: number; readonly end: number };
+export type TextSpan = { readonly start: number; readonly end: number };
 
 const STATEMENT_LISTS = new Set<string>([
   AST_NODE_TYPES.Program,
@@ -15,24 +16,12 @@ export function isInStatementList(node: TSESTree.Node): boolean {
   return node.parent !== undefined && STATEMENT_LISTS.has(node.parent.type);
 }
 
-function lineStart(text: string, offset: number): number {
-  return text.lastIndexOf('\n', offset - 1) + 1;
+const ownLines: (text: string, span: TextSpan) => TextSpan | undefined = wholeLines;
+
+export function withOwnLines(text: string, span: TextSpan): TextSpan {
+  return ownLines(text, span) ?? span;
 }
 
-function lineEnd(text: string, offset: number): number {
-  const newline = text.indexOf('\n', offset);
-  return newline === -1 ? text.length : newline + 1;
-}
-
-export function withOwnLines(text: string, { start, end }: Range): Range {
-  const first = lineStart(text, start);
-  const last = lineEnd(text, end);
-  const alone = text.slice(first, start).trim() === '' && text.slice(end, last).trim() === '';
-  return alone ? { start: first, end: last } : { start, end };
-}
-
-export function hasComment(sourceCode: SourceCode, { start, end }: Range): boolean {
-  return sourceCode
-    .getAllComments()
-    .some(({ range }) => range !== undefined && range[0] < end && range[1] > start);
+export function hasComment(sourceCode: SourceCode, { start, end }: TextSpan): boolean {
+  return sourceCode.getAllComments().some(({ range }) => range[0] < end && range[1] > start);
 }

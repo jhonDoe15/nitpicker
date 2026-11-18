@@ -1,36 +1,44 @@
 import type TypeScript from 'typescript';
-import { ts } from '../../preset/eslint-plugin/rules/typed/typescript-views.mts';
+import { lazyTypeScriptApi } from '../typed/lazy-typescript-api.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Edit = { readonly start: number; readonly end: number };
 type Check = (source: string, edit: Edit) => boolean;
+type Api = typeof TypeScript;
 
 const PLAIN_NAMES = new Set(['undefined', 'NaN', 'Infinity']);
 const QUANTIFIER_PARTS = new Set(['{', '}', ',']);
 
-function isPureValue(node: TypeScript.Expression): boolean {
-  if (
+function isWrapper(
+  ts: Api,
+  node: TypeScript.Expression,
+): node is TypeScript.Expression & {
+  readonly expression: TypeScript.Expression;
+} {
+  return (
     ts.isParenthesizedExpression(node) ||
     ts.isAsExpression(node) ||
     ts.isSatisfiesExpression(node) ||
     ts.isTypeAssertionExpression(node) ||
     ts.isNonNullExpression(node)
-  ) {
-    return isPureValue(node.expression);
+  );
+}
+
+function propertyValues(
+  ts: Api,
+  node: TypeScript.ObjectLiteralExpression,
+): readonly TypeScript.Expression[] | undefined {
+  const values: TypeScript.Expression[] = [];
+  for (const property of node.properties) {
+    if (!ts.isPropertyAssignment(property) || ts.isComputedPropertyName(property.name)) {
+      return undefined;
+    }
+    values.push(property.initializer);
   }
-  if (ts.isPrefixUnaryExpression(node)) {
-    return ts.isNumericLiteral(node.operand) || ts.isBigIntLiteral(node.operand);
-  }
-  if (ts.isArrayLiteralExpression(node)) {
-    return node.elements.every((element) => !ts.isSpreadElement(element) && isPureValue(element));
-  }
-  if (ts.isObjectLiteralExpression(node)) {
-    return node.properties.every(
-      (property) =>
-        ts.isPropertyAssignment(property) &&
-        !ts.isComputedPropertyName(property.name) &&
-        isPureValue(property.initializer),
-    );
-  }
+  return values;
+}
+
+function isPlainLeaf(ts: Api, node: TypeScript.Expression): boolean {
   return (
     ts.isLiteralExpression(node) ||
     (ts.isIdentifier(node) && PLAIN_NAMES.has(node.text)) ||
@@ -38,21 +46,52 @@ function isPureValue(node: TypeScript.Expression): boolean {
     ts.isFunctionExpression(node) ||
     node.kind === ts.SyntaxKind.TrueKeyword ||
     node.kind === ts.SyntaxKind.FalseKeyword ||
-    node.kind === ts.SyntaxKind.NullKeyword
+    node.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isPrefixUnaryExpression(node) &&
+      (ts.isNumericLiteral(node.operand) || ts.isBigIntLiteral(node.operand)))
   );
 }
 
-function isPureMember(member: TypeScript.ClassElement): boolean {
+function pureParts(
+  ts: Api,
+  node: TypeScript.Expression,
+): readonly TypeScript.Expression[] | undefined {
+  if (isWrapper(ts, node)) {
+    return [node.expression];
+  }
+  if (ts.isArrayLiteralExpression(node)) {
+    return node.elements.some((element) => ts.isSpreadElement(element)) ? undefined : node.elements;
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    return propertyValues(ts, node);
+  }
+  return isPlainLeaf(ts, node) ? [] : undefined;
+}
+
+function isPureValue(ts: Api, node: TypeScript.Expression): boolean {
+  const pending = [node];
+  for (const current of pending) {
+    const parts = pureParts(ts, current);
+    if (parts === undefined) {
+      return false;
+    }
+    appendAll(pending, parts);
+  }
+  return true;
+}
+
+function isPureMember(ts: Api, member: TypeScript.ClassElement): boolean {
   const decorated = ts.canHaveDecorators(member) && (ts.getDecorators(member)?.length ?? 0) > 0;
   if (decorated) {
     return false;
   }
   return !ts.isPropertyDeclaration(member) || member.initializer === undefined
     ? true
-    : isPureValue(member.initializer);
+    : isPureValue(ts, member.initializer);
 }
 
 function removesPureMembers(source: string, edit: Edit): boolean {
+  const ts = lazyTypeScriptApi();
   const removed = source.slice(edit.start, edit.end);
   const file = ts.createSourceFile(
     'removed.ts',
@@ -67,26 +106,32 @@ function removesPureMembers(source: string, edit: Edit): boolean {
     statement !== undefined &&
     ts.isClassDeclaration(statement) &&
     statement.members.length > 0 &&
-    statement.members.every(isPureMember)
+    statement.members.every((member) => isPureMember(ts, member))
   );
 }
 
-function regexAt(file: TypeScript.Node, offset: number): TypeScript.Node | undefined {
-  const inside = file
-    .getChildren()
-    .find((child) => child.getStart() <= offset && offset < child.end);
-  if (inside === undefined || inside.kind === ts.SyntaxKind.RegularExpressionLiteral) {
-    return inside;
+function regexAt(ts: Api, file: TypeScript.Node, offset: number): TypeScript.Node | undefined {
+  const path = [file];
+  for (const node of path) {
+    const inside = node
+      .getChildren()
+      .find((child) => child.getStart() <= offset && offset < child.end);
+    if (inside === undefined || inside.kind === ts.SyntaxKind.RegularExpressionLiteral) {
+      return inside;
+    }
+    path.push(inside);
   }
-  return regexAt(inside, offset);
+  return undefined;
 }
 
 function isInClass(pattern: string, offset: number): boolean {
   let inClass = false;
-  for (let index = 1; index < offset; index += 1) {
-    const character = pattern.charAt(index);
-    if (character === '\\') {
-      index += 1;
+  let escaped = false;
+  for (const character of pattern.slice(1, offset).split('')) {
+    if (escaped) {
+      escaped = false;
+    } else if (character === '\\') {
+      escaped = true;
     } else if (character === '[') {
       inClass = true;
     } else if (character === ']') {
@@ -97,8 +142,9 @@ function isInClass(pattern: string, offset: number): boolean {
 }
 
 function keepsRegexSyntax(source: string, edit: Edit): boolean {
+  const ts = lazyTypeScriptApi();
   const file = ts.createSourceFile('escaped.ts', source, ts.ScriptTarget.Latest, true);
-  const regex = regexAt(file, edit.start);
+  const regex = regexAt(ts, file, edit.start);
   if (regex?.kind !== ts.SyntaxKind.RegularExpressionLiteral) {
     return true;
   }

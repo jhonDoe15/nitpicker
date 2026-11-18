@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { guardedEntry } from '../../../preset/eslint-config/fix-guards/guarded-plugins.mts';
+import { guardedEntries } from '../../../preset/eslint-config/fix-guards/guarded-plugins.mts';
 import { messageOf } from '../../typed/eslint-report.mts';
 import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
 import { suggestionRules, type LintMessage } from '../typed/suggestion-views.mts';
@@ -33,8 +33,8 @@ function eslintFor(root: string): ESLint {
   return new ESLint({
     cwd: root,
     overrideConfigFile: true,
-    overrideConfig: [
-      guardedEntry({
+    overrideConfig: guardedEntries([
+      {
         files: ['**/*.ts'],
         languageOptions: {
           parser: tseslint.parser,
@@ -44,8 +44,8 @@ function eslintFor(root: string): ESLint {
         rules: Object.fromEntries(
           Object.keys(suggestionRules).map((rule) => [rule, 'error' as const]),
         ),
-      }),
-    ],
+      },
+    ]),
   });
 }
 
