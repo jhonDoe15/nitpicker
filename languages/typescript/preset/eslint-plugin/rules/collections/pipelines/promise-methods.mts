@@ -1,4 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { dropAwaitFix, mayRunTogether } from '../../../fixes/collections/promise-fixes.mts';
+import { suggestible } from '../../../fixes/support/descriptors.mts';
+import type { Context } from '../../security/security-values.mts';
 import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mts';
 
 const PROMISE_METHODS = new Set(['all', 'allSettled', 'any', 'race']);
@@ -7,7 +10,7 @@ const SINGLE_FORMS = new Map([
   ['race', '`await promise`'],
 ]);
 
-type Step = TSESLint.ReportDescriptor<'awaitInPromiseMethod' | 'singlePromise'>;
+type Step = TSESLint.ReportDescriptor<'awaitInPromiseMethod' | 'singlePromise' | 'dropAwait'>;
 
 function promiseMethod(call: TSESTree.CallExpression): string | undefined {
   const member = calledMember(call);
@@ -21,7 +24,21 @@ function promiseMethod(call: TSESTree.CallExpression): string | undefined {
     : undefined;
 }
 
-export function promiseSteps(call: TSESTree.CallExpression): Step[] {
+function awaitedSteps(
+  context: Context,
+  call: TSESTree.CallExpression,
+  { method, awaited }: { method: string; awaited: TSESTree.AwaitExpression[] },
+): Step[] {
+  const together = method === 'all' && mayRunTogether(context, call);
+  return awaited.map((node) =>
+    suggestible(
+      { node, messageId: 'awaitInPromiseMethod', data: { method } },
+      { messageId: 'dropAwait', plan: together ? dropAwaitFix(context, node) : undefined },
+    ),
+  );
+}
+
+export function promiseSteps(context: Context, call: TSESTree.CallExpression): Step[] {
   const method = promiseMethod(call);
   const [list] = call.arguments;
   if (
@@ -36,7 +53,7 @@ export function promiseSteps(call: TSESTree.CallExpression): Step[] {
       element?.type === AST_NODE_TYPES.AwaitExpression,
   );
   if (awaited.length > 0) {
-    return awaited.map((node) => ({ node, messageId: 'awaitInPromiseMethod', data: { method } }));
+    return awaitedSteps(context, call, { method, awaited });
   }
   const [only] = list.elements;
   const form = SINGLE_FORMS.get(method);
