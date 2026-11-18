@@ -20,6 +20,7 @@ import {
   wrapperDeclaration,
 } from '../typed/wrapper-views.mts';
 import { keptImport } from '../imports/retarget.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -103,7 +104,7 @@ function callerEdits(
     if (planned.declined !== undefined) {
       return planned;
     }
-    edits.push(...planned.edits);
+    appendAll(edits, planned.edits);
   }
   return { edits };
 }

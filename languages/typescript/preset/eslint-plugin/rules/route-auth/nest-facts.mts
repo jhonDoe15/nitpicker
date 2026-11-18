@@ -5,6 +5,7 @@ import { importedBindings, type ImportedBinding } from '../security/imported-nam
 import { nameOf, type VisitorKeys } from '../typed/node-views.mts';
 import { middlewareName } from './middleware-names.mts';
 import { decoratorInfo, isAuthName } from './shapes.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type Bindings = Map<string, ImportedBinding>;
 export type MaybeNode = TSESTree.Node | undefined;
@@ -69,7 +70,7 @@ export function walk(
   const pending = [program];
   for (const node of pending) {
     visit(node);
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
 }
 
@@ -110,7 +111,7 @@ export function nestFacts(
       node.type === AST_NODE_TYPES.ClassDeclaration ||
       node.type === AST_NODE_TYPES.ClassExpression
     ) {
-      handlers.push(...controllerHandlers(node, bindings));
+      appendAll(handlers, controllerHandlers(node, bindings));
     }
     global ||= node.type === AST_NODE_TYPES.Identifier && node.name === 'APP_GUARD';
     global ||=

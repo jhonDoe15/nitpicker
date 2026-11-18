@@ -4,6 +4,7 @@ import { describePath } from '../support/io-effects.mts';
 import type { VisitorKeys } from '../typed/node-views.mts';
 import { isIsolated, itemWork, settlesAll } from './item-loops.mts';
 import { jobKind } from './job-handlers.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const FUNCTIONS = new Set<string>([
   AST_NODE_TYPES.FunctionExpression,
@@ -22,9 +23,12 @@ function loopsIn(body: TSESTree.Node, visitorKeys: VisitorKeys): TSESTree.ForOfS
   const pending = [body];
   for (const node of pending) {
     if (node.type === AST_NODE_TYPES.ForOfStatement) {
-      loops.push(...(isFixedList(node) ? [] : [node]));
+      appendAll(loops, isFixedList(node) ? [] : [node]);
     } else {
-      pending.push(...childrenOf(node, visitorKeys).filter((child) => !FUNCTIONS.has(child.type)));
+      appendAll(
+        pending,
+        childrenOf(node, visitorKeys).filter((child) => !FUNCTIONS.has(child.type)),
+      );
     }
   }
   return loops;

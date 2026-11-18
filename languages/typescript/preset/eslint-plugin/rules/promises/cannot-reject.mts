@@ -3,6 +3,7 @@ import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
 import type { SourceCode } from '../typed/node-views.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type SkipOuterExpressions = {
   readonly skipOuterExpressions: (node: TypeScript.Node) => TypeScript.Node;
@@ -143,7 +144,7 @@ function anyInside(
       return true;
     }
     if (guards && ts.isTryStatement(node) && node.catchClause !== undefined) {
-      pending.push(...guardedParts(node));
+      appendAll(pending, guardedParts(node));
     } else if (node === root || !isBoundary(node)) {
       ts.forEachChild(node, (child) => {
         pending.push(child);

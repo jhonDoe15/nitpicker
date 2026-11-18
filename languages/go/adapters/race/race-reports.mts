@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import type { FindingRow, RaceAccess, RaceReport } from '../go-types.mts';
+import { appendAll, smallest } from '../../../../shared/lists/lists.mts';
 
 type RaceModule = { root: string; path: string | undefined };
 type Position = { file: string; line: string };
@@ -52,7 +53,7 @@ function relativeFile(projectRoot: string, modulePath: string | undefined, file:
 
 function packageEnd(name: string) {
   const brackets = [name.indexOf('['), name.indexOf('(')].filter((index) => index !== -1);
-  const end = brackets.length === 0 ? name.length : Math.min(...brackets);
+  const end = brackets.length === 0 ? name.length : smallest(brackets);
   return name.lastIndexOf('/', end) + 1;
 }
 
@@ -119,7 +120,7 @@ export function withoutRaceReports(output: string): string {
       kept.pop();
       inside = true;
     }
-    kept.push(...(keep ? [line] : []));
+    appendAll(kept, keep ? [line] : []);
     opened = keep && SEPARATOR.test(text);
   }
   return kept.join('');

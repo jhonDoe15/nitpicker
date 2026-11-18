@@ -9,6 +9,7 @@ import { callsOf, workerOf, type Worker } from '../sites.mts';
 import { lazyScope, remoteIn, type FanOutScope } from '../unbounded-fan-out.mts';
 import { isUnlimited, pipeSource, rxjsName } from './rxjs-calls.mts';
 import { callEffects, describePath, ioEffect } from '../../support/io-effects.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Lookup = NonNullable<ReturnType<typeof ioEffect>>;
 type Frame = { readonly calls: readonly Invocation[]; readonly depth: number };
@@ -64,7 +65,7 @@ function lookupIn(context: Context, io: Io, body: readonly Invocation[]): Lookup
     const frames = helpers
       .filter((helper) => helper !== undefined)
       .map((helper) => ({ calls: callsOf({ fn: helper, root: helper }), depth: depth + 1 }));
-    pending.push(...frames);
+    appendAll(pending, frames);
   }
   return undefined;
 }

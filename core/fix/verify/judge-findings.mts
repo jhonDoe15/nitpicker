@@ -9,6 +9,7 @@ import type {
   RunEvent,
   RecipeRun,
 } from './verify-types.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 function keyOf({ tool, rule, path }: FindingKey) {
   return `${tool}\0${rule}\0${path}`;
@@ -37,7 +38,7 @@ export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
     if (finding !== undefined) {
       run.findings.push(finding);
     }
-    run.findings.push(...alsoFindings);
+    appendAll(run.findings, alsoFindings);
     runs.set(recipe, run);
   }
   return [...runs.values()];
@@ -92,7 +93,7 @@ export function withSharedFiles(
     for (const mate of mates) {
       rolled.set(mate.id, [`shares a file with ${source.id}, which was rolled back`]);
     }
-    queue.push(...mates);
+    appendAll(queue, mates);
   }
   return rolled;
 }

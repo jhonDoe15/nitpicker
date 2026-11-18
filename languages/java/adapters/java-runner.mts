@@ -34,6 +34,8 @@ import {
   javaPolicyOf,
 } from './typed/java-values.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
+import { largest } from '../../../shared/lists/lists.mts';
 
 type Budget = TimeBudget;
 type JavaSnapshotOptions = {
@@ -82,7 +84,7 @@ export function javaExecutionBudget(environment: JavaEnvironment = process.env):
   return {
     ...gradle,
     mavenCommandTimeoutMs: maven.commandTimeoutMs,
-    analyzerTimeoutMs: Math.max(...budgets.map((budget) => budget.analyzerTimeoutMs)),
+    analyzerTimeoutMs: largest(budgets.map((budget) => budget.analyzerTimeoutMs)),
   };
 }
 
@@ -184,11 +186,14 @@ function failureRule(error: unknown, projectRoot: string, buildTool: unknown): s
 function failureMessage(error: unknown, rule: string, preset: string): string {
   if (rule === INTERNAL_ERROR_RULE) {
     const reason = error instanceof Error ? error.message : textOf(error);
-    return textOf(
-      withTroubleshooting(
-        `Internal error in the ${preset} analyzer: ${reason}`,
-        TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    return withInternalFrames(
+      textOf(
+        withTroubleshooting(
+          `Internal error in the ${preset} analyzer: ${reason}`,
+          TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+        ),
       ),
+      error,
     );
   }
   const anchor =

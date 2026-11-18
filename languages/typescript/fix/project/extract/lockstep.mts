@@ -14,6 +14,7 @@ import { addHole } from './holes.mts';
 import { isInRegion, isLocalSymbol } from './scope.mts';
 import { roleOf, symbolAt } from './syntax.mts';
 import { NOT_A_TYPE, typePairStep } from './type-holes/types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -107,7 +108,7 @@ function step(env: AlignEnv, x: TypeScript.Node, y: TypeScript.Node): string | u
   if (left.length !== right.length) {
     return SHAPE;
   }
-  env.pending.push(...paired(left, right));
+  appendAll(env.pending, paired(left, right));
   return scalarProblem(x, y);
 }
 

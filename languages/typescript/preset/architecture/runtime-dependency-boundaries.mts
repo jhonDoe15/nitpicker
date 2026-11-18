@@ -21,6 +21,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mts';
 import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -267,7 +268,7 @@ export function analyzeRuntimeBoundaries(
     if (roles.length === 0) continue;
     modules.push({ source, roles: roles.map((role) => role.name) });
     const content = readFileSync(path.join(root, source), 'utf8');
-    for (const role of roles) findings.push(...inspectModuleBoundary(content, source, role));
+    for (const role of roles) appendAll(findings, inspectModuleBoundary(content, source, role));
   }
   return {
     summary: {

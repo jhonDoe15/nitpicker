@@ -39,6 +39,7 @@ import type {
   RunProject,
 } from '../project-types.mts';
 import type { Loosening } from '../policy/project-set.mts';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type Planned = { readonly plan: MonorepoPlan; readonly files: readonly string[] };
 type Entry = { readonly cli: MonorepoCli; readonly currentProjectRoot: string };
@@ -155,7 +156,7 @@ async function finishedLater(
     return finish(await results);
   } catch (error) {
     cli.stderr.write(
-      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      `nitpicker failed: ${withInternalFrames(error instanceof Error ? error.message : String(error), error)}\n`,
     );
     return 2;
   }

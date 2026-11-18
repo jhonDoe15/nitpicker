@@ -24,6 +24,7 @@ import { opaqueEffects, unknownCall } from './effects.mts';
 import { chain, evalExpr, testValue } from './evaluate.mts';
 import { UNDEFINED, addPartial, mutate, nextCall, stepOf } from './state.mts';
 import { getField, resolve } from './values.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 type SavedFrame = { readonly saved: Frame; readonly stack: string[] };
 
@@ -141,7 +142,10 @@ function execBlock(stmts: readonly Stmt[], state: State, ctx: RunContext): Compl
   const done: Completion[] = [];
   for (const stmt of stmts) {
     const next = open.flatMap((result) => execStmt(stmt, result.state, ctx));
-    done.push(...next.filter((result) => result.completion !== 'normal'));
+    appendAll(
+      done,
+      next.filter((result) => result.completion !== 'normal'),
+    );
     open = next.filter((result) => result.completion === 'normal');
   }
   return [...done, ...open];

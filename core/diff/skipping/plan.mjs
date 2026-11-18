@@ -1,6 +1,7 @@
 import { touchesInputs } from '../../../shared/input-sets/inputs.mjs';
 import { changedFiles } from './changed-files.mjs';
 import { hygieneReadsContent } from './hygiene-probe.mjs';
+import { appendAll } from '../../../shared/lists/items.mjs';
 
 function linked(analyzer) {
   return [...(analyzer.dependencies ?? []), ...(analyzer.colocatedWith ?? [])];
@@ -16,7 +17,7 @@ function keepRequirements(analyzers, affected) {
     for (const requiredName of required) {
       affected.add(requiredName);
     }
-    pending.push(...required);
+    appendAll(pending, required);
   }
   return affected;
 }

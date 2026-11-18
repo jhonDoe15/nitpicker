@@ -3,6 +3,7 @@ import { isFunctionNode, resolveConstant } from '../../analysis/constant-resolut
 import { memberName, unwrapped, type Context } from '../../security/security-values.mts';
 import { chainOf } from '../../typed/node-views.mts';
 import { globalMemberCall, isPromiseConstruction, ownNodesIn } from './syntax-nodes.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 const CHAIN_METHODS = new Set<string>(['then', 'catch', 'finally']);
 const COMBINATORS = ['all', 'allSettled', 'race', 'any'];
@@ -95,7 +96,10 @@ export function operationsIn(context: Context, entry: TSESTree.Node): TSESTree.C
     const target = unwrapped(resolveConstant(context, unwrapped(node)));
     const inner = target === undefined || depth > MAX_DEPTH ? [] : innerEntries(context, target);
     if (inner !== undefined) {
-      pending.push(...inner.map((child) => ({ node: child, depth: depth + 1 })));
+      appendAll(
+        pending,
+        inner.map((child) => ({ node: child, depth: depth + 1 })),
+      );
     } else if (target?.type === AST_NODE_TYPES.CallExpression) {
       found.push(linksOf(target).at(-1) ?? target);
     }

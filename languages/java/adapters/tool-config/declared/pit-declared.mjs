@@ -3,6 +3,7 @@ import { childAt } from '../../../../../shared/ingest/common.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { configurations, pluginsNamed, textsOf } from '../../../builds/narrowing/maven-sources.mjs';
 import { declarationText, gradleSettings, mavenText, quotedStrings } from './declared-build.mjs';
+import { largest } from '../../../../../shared/lists/items.mjs';
 
 const NITPICKER_PIT = { threads: 2, timeoutConst: 4000, timeoutFactor: 1.25 };
 const LOGGING_CLASSES = [
@@ -142,7 +143,7 @@ function valuesOf(declarations, setting) {
 
 function highest(declarations, setting) {
   const values = valuesOf(declarations, setting);
-  return values.length === 0 ? undefined : Math.max(...values);
+  return values.length === 0 ? undefined : largest(values);
 }
 
 function chosenNumbers(declarations, projectWins) {

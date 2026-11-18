@@ -27,6 +27,7 @@ import {
 import { fieldStep } from './cross/fields.mts';
 import { deferredValue } from './holes/deferred.mts';
 import { typeStep } from './holes/type-holes.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const NARROWING_PARENTS = new Set([
   'assignment_expression',
@@ -214,7 +215,10 @@ function childrenStep(pair: Pair, state: AlignState): string | undefined {
   if (left.length === 0 && x.text !== y.text) {
     return 'the copies differ in a token';
   }
-  state.pending.push(...left.map((child, index): Pair => [child, present(right[index])]));
+  appendAll(
+    state.pending,
+    left.map((child, index): Pair => [child, present(right[index])]),
+  );
   return undefined;
 }
 

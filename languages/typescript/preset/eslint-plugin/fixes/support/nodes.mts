@@ -1,5 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { isNode, type SourceCode } from '../../rules/typed/node-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Search = {
   readonly matches: (node: TSESTree.Node) => boolean;
@@ -21,7 +22,7 @@ export function containsNode(
       continue;
     }
     for (const key of sourceCode.visitorKeys[node.type] ?? []) {
-      pending.push(...[Reflect.get(node, key)].flat().filter(isNode));
+      appendAll(pending, [Reflect.get(node, key)].flat().filter(isNode));
     }
   }
   return false;

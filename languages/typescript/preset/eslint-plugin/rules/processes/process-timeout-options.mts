@@ -79,10 +79,16 @@ function optionReader(
       if (expanded.unknown) {
         value = UNKNOWN_VALUE;
       }
-      pending.splice(index + 1, 0, ...expanded.properties);
+      insertAfter(pending, index, expanded.properties);
     }
     return value;
   };
+}
+
+function insertAfter(pending: Entry[], index: number, entries: readonly Entry[]): void {
+  for (const [offset, entry] of entries.entries()) {
+    pending.splice(index + 1 + offset, 0, entry);
+  }
 }
 
 function isNothing(context: SourceContext, node: MaybeNode): boolean {

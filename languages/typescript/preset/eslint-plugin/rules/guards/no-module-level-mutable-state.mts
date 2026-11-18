@@ -7,6 +7,7 @@ import {
 } from '../boundaries/composition-root-files.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;
 type ConstantDeclarator = TSESTree.VariableDeclarator & {
@@ -201,9 +202,12 @@ function referencesWithAliases(context: SourceContext, declarator: Node): Node[]
   const identifiers: Node[] = [];
   for (const variable of variables) {
     const reads = variable.references.map(({ identifier }) => identifier);
-    identifiers.push(...reads);
+    appendAll(identifiers, reads);
     const aliases = reads.map(aliasDeclarator).filter((alias) => alias !== undefined);
-    variables.push(...aliases.flatMap((alias) => context.sourceCode.getDeclaredVariables(alias)));
+    appendAll(
+      variables,
+      aliases.flatMap((alias) => context.sourceCode.getDeclaredVariables(alias)),
+    );
   }
   return identifiers;
 }

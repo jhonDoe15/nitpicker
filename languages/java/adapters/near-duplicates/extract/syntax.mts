@@ -1,5 +1,6 @@
 import type { Node } from 'web-tree-sitter';
 import { field, parentOf, present, required } from '../tree/nodes.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export const METHOD = 'method_declaration';
 export const CLASS = 'class_declaration';
@@ -36,7 +37,7 @@ export function descendants(root: Node): Node[] {
   const pending = [root];
   for (const node of pending) {
     found.push(node);
-    pending.push(...node.children);
+    appendAll(pending, node.children);
   }
   return found;
 }

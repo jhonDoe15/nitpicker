@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { parentOf, ts } from '../typed/typescript-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 export type Flag = {
   readonly name: string;
@@ -122,7 +123,7 @@ function walkIdentifiers(
     if (ts.isIdentifier(node) && test(node)) {
       return true;
     }
-    pending.push(...node.getChildren());
+    appendAll(pending, node.getChildren());
   }
   return false;
 }

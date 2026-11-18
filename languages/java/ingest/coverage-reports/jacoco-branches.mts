@@ -11,6 +11,7 @@ import {
   libraryCalls,
   suspensionCall,
 } from './kotlin-branches.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type BranchOptions = {
   readonly tool?: string;
@@ -52,7 +53,7 @@ export function ingestJacocoBranches(
   const findings: unknown[] = [];
   for (const pkg of childrenNamed(report, 'package')) {
     for (const sourcefile of childrenNamed(pkg, 'sourcefile')) {
-      findings.push(...sourcefileFindings(sourcefile, pkg, { options, tool, minimum }));
+      appendAll(findings, sourcefileFindings(sourcefile, pkg, { options, tool, minimum }));
     }
   }
   return { findings };

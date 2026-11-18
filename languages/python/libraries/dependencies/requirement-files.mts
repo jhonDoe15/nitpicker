@@ -3,6 +3,7 @@ import path from 'node:path';
 import { readProjectText } from '../project-files.mts';
 import type { RequirementLines } from '../typed/dependency-types.mts';
 import { isDevelopmentGroup } from './requirement-names.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$|^.*-requirements\.(?:txt|in)$/u;
 const REQUIREMENT_DIRECTORY = 'requirements';
@@ -107,7 +108,7 @@ function readTree(root: string, start: string): RequirementLines[] {
       group: development ? 'dev' : 'production',
       lines: directLines(text),
     });
-    pending.push(...includedFiles(root, { source, text, development }));
+    appendAll(pending, includedFiles(root, { source, text, development }));
   }
   return found;
 }

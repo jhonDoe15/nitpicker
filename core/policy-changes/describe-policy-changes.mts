@@ -11,6 +11,7 @@ import { hiddenCodeChanges } from './paths/hidden-code.mts';
 import { tsconfigChanges } from './paths/tsconfig-changes.mts';
 import { listedChanges, looseningKindOfSetting } from './loosenings.mts';
 import { timeoutChanges } from './timeout-changes.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type SettingEntry = {
   readonly setting: string;
@@ -47,8 +48,9 @@ function leaves(value: unknown, prefix: string): (readonly [string, unknown])[] 
   const found: (readonly [string, unknown])[] = [];
   for (const [path, node] of pending) {
     if (isPlainObject(node)) {
-      pending.push(
-        ...Object.entries(node).map(([key, child]): readonly [string, unknown] => [
+      appendAll(
+        pending,
+        Object.entries(node).map(([key, child]): readonly [string, unknown] => [
           `${path}.${key}`,
           child,
         ]),

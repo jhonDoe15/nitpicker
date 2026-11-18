@@ -1,5 +1,6 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { untypedChildren } from './type-syntax.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const TEXT_KINDS = new Set([
   ts.SyntaxKind.StringLiteral,
@@ -24,7 +25,7 @@ export function leafTexts(nodes, sourceFile, { untyped = false } = {}) {
   for (const node of pending) {
     const all = node.getChildren(sourceFile).filter((child) => !ts.isJSDoc(child));
     if (all.length === 0) leaves.push(node);
-    pending.push(...(untyped ? untypedChildren(node, all) : all));
+    appendAll(pending, untyped ? untypedChildren(node, all) : all);
   }
   return leaves
     .toSorted((left, right) => left.pos - right.pos)

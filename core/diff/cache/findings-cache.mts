@@ -1,20 +1,13 @@
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import { type CacheStore, createDirectoryStore, resolveCacheDirectory } from './cache-stores.mts';
+import { cacheEntryText } from './entries/cache-entry.mts';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
-import {
-  type AnalyzerMetadata,
-  type MetadataContext,
-  type MetadataMap,
-  mergeMetadata,
-  partialMetadataOf,
-  metadataValue,
-  resolvedAnalyzerMetadata,
-} from '../execution/report/analyzer-metadata.mts';
+import { type AnalyzerMetadata, metadataValue } from '../execution/report/analyzer-metadata.mts';
+import type { TaskCheckpoint } from '../execution/tasks.mts';
 import { nitpickerCodeFingerprint } from './code-fingerprint.mts';
-import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
-import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
-import { analyzerNameOf as nameOf } from '../../../shared/values/analyzers.mts';
-import { compactMetricFindings as untypedCompactMetricFindings } from '../../../shared/report-output/metric-groups.mjs';
+import type { AnalyzerReport } from '../../../shared/values/findings.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 
 export type FindingsCache = {
   readonly read: (analyzer: unknown, resolved?: AnalyzerMetadata) => AnalyzerReport | undefined;
@@ -23,13 +16,11 @@ export type FindingsCache = {
     report: AnalyzerReport,
     resolved?: AnalyzerMetadata,
   ) => boolean;
-};
-
-export type CachedRun = {
-  readonly reports: Map<string, AnalyzerReport>;
-  readonly timings: ReadonlyMap<string, unknown>;
-  readonly toolErrors: readonly ReportEntry[];
-  readonly metadata?: MetadataMap;
+  readonly checkpointOf?: (
+    analyzer: unknown,
+    resolved?: AnalyzerMetadata,
+  ) => TaskCheckpoint | undefined;
+  readonly recover?: (analyzer: unknown, resolved?: AnalyzerMetadata) => AnalyzerReport | undefined;
 };
 
 type CacheKeyRequest = {
@@ -46,12 +37,6 @@ type CacheRequest = Omit<CacheKeyRequest, 'analyzer' | 'resolved'> & {
   readonly store: CacheStore | undefined;
   readonly directory: string | undefined;
 };
-
-type Lookup = { readonly metadata?: AnalyzerMetadata } & (
-  | { readonly kind: 'unresolved'; readonly error: unknown }
-  | { readonly kind: 'miss' }
-  | { readonly kind: 'hit'; readonly report: AnalyzerReport }
-);
 
 type Attempt<T> =
   | { readonly kind: 'done'; readonly value: T }
@@ -94,14 +79,6 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
-const compactMetricFindings: (findings: readonly unknown[]) => readonly unknown[] =
-  untypedCompactMetricFindings;
-
-function cacheEntry(key: string, { findings: parsed, moduleImports }: AnalyzerReport): object {
-  const findings = compactMetricFindings(parsed);
-  return moduleImports === undefined ? { key, findings } : { key, findings, moduleImports };
-}
-
 function readReport(store: CacheStore, key: string, analyzer: unknown): AnalyzerReport | undefined {
   const text = store.get(key);
   const entry = text === undefined ? undefined : parseJson(text);
@@ -139,9 +116,30 @@ export function createFindingsCache({
     write(analyzer: unknown, report: AnalyzerReport, resolved?: AnalyzerMetadata): boolean {
       const outcome = attempt(() => {
         const key = keyFor(analyzer, resolved);
-        return backend.put(key, `${JSON.stringify(cacheEntry(key, report))}\n`);
+        return backend.put(key, cacheEntryText(key, report));
       });
       return outcome.kind === 'done' ? outcome.value : false;
+    },
+    ...checkpointsIn(store?.directory ?? directory, keyFor),
+  };
+}
+
+function checkpointsIn(
+  directory: string | undefined,
+  keyFor: (analyzer: unknown, resolved: AnalyzerMetadata | undefined) => string,
+): Pick<FindingsCache, 'checkpointOf' | 'recover'> {
+  if (directory === undefined) {
+    return {};
+  }
+  const local = createDirectoryStore(directory);
+  return {
+    checkpointOf(analyzer: unknown, resolved?: AnalyzerMetadata): TaskCheckpoint {
+      const key = keyFor(analyzer, resolved);
+      return { key, file: path.join(directory, `${key}.json`) };
+    },
+    recover(analyzer: unknown, resolved?: AnalyzerMetadata): AnalyzerReport | undefined {
+      const outcome = attempt(() => readReport(local, keyFor(analyzer, resolved), analyzer));
+      return outcome.kind === 'done' ? outcome.value : undefined;
     },
   };
 }
@@ -151,141 +149,5 @@ function attempt<T>(action: () => T): Attempt<T> {
     return { kind: 'done', value: action() };
   } catch (error) {
     return { kind: 'failed', error };
-  }
-}
-
-export function runBaseWithCache<T extends CachedRun>({
-  cache,
-  analyzers,
-  run,
-  resolveContext,
-  onCached,
-}: {
-  readonly cache: FindingsCache;
-  readonly analyzers: readonly unknown[];
-  readonly run: (analyzers: readonly unknown[]) => T;
-  readonly resolveContext: MetadataContext;
-  readonly onCached?: (count: number) => unknown;
-}): (T | CachedRun) & { readonly metadata: MetadataMap } {
-  const { cached, metadata: lookedUp } = readCachedReports(cache, analyzers, resolveContext);
-  if (cached.size > 0) {
-    onCached?.(cached.size);
-  }
-
-  const toRun = uncachedDependencies(cached, analyzers);
-
-  const ran: CachedRun =
-    toRun.size === 0
-      ? { reports: new Map(), timings: new Map(), toolErrors: [] }
-      : run(analyzers.filter((analyzer) => toRun.has(nameOf(analyzer))));
-  const result = { ...ran, metadata: mergeMetadata(lookedUp, ran.metadata) };
-  for (const analyzer of analyzers) {
-    applyCachedReport(analyzer, { result, cached, cache });
-  }
-  return result;
-}
-
-function readCachedReports(
-  cache: FindingsCache,
-  analyzers: readonly unknown[],
-  resolveContext: MetadataContext,
-): { readonly cached: Map<string, AnalyzerReport>; readonly metadata: MetadataMap } {
-  const cached = new Map<string, AnalyzerReport>();
-  const metadata = new Map<unknown, AnalyzerMetadata>();
-  for (const analyzer of analyzers) {
-    const lookup = lookUpCachedReport(cache, analyzer, resolveContext);
-    const resolved =
-      lookup.metadata ??
-      (lookup.kind === 'unresolved' ? partialMetadataOf(lookup.error) : undefined);
-    metadata.set(analyzer, { ...metadata.get(analyzer), ...resolved });
-    if (lookup.kind === 'hit') {
-      cached.set(nameOf(analyzer), lookup.report);
-    }
-  }
-  return { cached, metadata };
-}
-
-function lookUpCachedReport(
-  cache: FindingsCache,
-  analyzer: unknown,
-  resolveContext: MetadataContext,
-): Lookup {
-  try {
-    const metadata = resolvedAnalyzerMetadata(analyzer, resolveContext);
-    const report = cache.read(analyzer, metadata);
-    return report === undefined ? { kind: 'miss', metadata } : { kind: 'hit', report, metadata };
-  } catch (error) {
-    return { kind: 'unresolved', error };
-  }
-}
-
-export function isCacheable(
-  analyzer: unknown,
-  report: AnalyzerReport | undefined,
-  {
-    toolErrors,
-    reports = new Map(),
-  }: {
-    readonly toolErrors: readonly ReportEntry[];
-    readonly reports?: ReadonlyMap<string, AnalyzerReport>;
-  },
-): boolean {
-  const failedTools = new Set(toolErrors.map((error) => error.tool));
-  return (
-    !(failedTools.has(nameOf(analyzer)) || hasToolErrorFinding(report)) &&
-    textsOf(fieldOf(analyzer, 'dependencies')).every(
-      (dependency) =>
-        !(failedTools.has(dependency) || hasToolErrorFinding(reports.get(dependency))),
-    )
-  );
-}
-
-function hasToolErrorFinding(report: AnalyzerReport | undefined): boolean {
-  return (report?.findings ?? []).some((finding) => finding.classification === 'tool-error');
-}
-
-function uncachedDependencies(
-  cached: ReadonlyMap<string, AnalyzerReport>,
-  analyzers: readonly unknown[],
-): Set<string> {
-  const byName = new Map(analyzers.map((analyzer) => [nameOf(analyzer), analyzer]));
-  const toRun = new Set(analyzers.map(nameOf).filter((name) => !cached.has(name)));
-  const pending = [...toRun];
-  for (const name of pending) {
-    const dependencies = textsOf(fieldOf(byName.get(name), 'dependencies')).filter(
-      (dependency) => !toRun.has(dependency) && byName.has(dependency),
-    );
-    for (const dependency of dependencies) {
-      toRun.add(dependency);
-      pending.push(dependency);
-    }
-  }
-
-  return toRun;
-}
-
-function applyCachedReport(
-  analyzer: unknown,
-  {
-    result,
-    cached,
-    cache,
-  }: {
-    readonly result: CachedRun;
-    readonly cached: ReadonlyMap<string, AnalyzerReport>;
-    readonly cache: FindingsCache;
-  },
-): void {
-  const name = nameOf(analyzer);
-  const report = result.reports.get(name);
-  if (report === undefined) {
-    const hit = cached.get(name);
-    if (hit !== undefined) {
-      result.reports.set(name, hit);
-    }
-    return;
-  }
-  if (isCacheable(analyzer, report, result)) {
-    cache.write(analyzer, report, result.metadata?.get(analyzer));
   }
 }

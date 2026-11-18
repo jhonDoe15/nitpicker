@@ -20,6 +20,7 @@ import {
   type ExecutorSource,
   type PromiseExecutor,
 } from './executor-sources.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Services = ParserServicesWithTypeInformation | undefined;
 type Context = { readonly sourceCode: SourceCode };
@@ -53,7 +54,7 @@ function typeNames(checker: TypeScript.TypeChecker, type: TypeScript.Type): (str
   for (const part of pending) {
     names.push(part.getSymbol()?.getName());
     if (part.isClassOrInterface()) {
-      pending.push(...checker.getBaseTypes(part));
+      appendAll(pending, checker.getBaseTypes(part));
     }
   }
   return names;

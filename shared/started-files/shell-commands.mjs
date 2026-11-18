@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { appendAll } from '../lists/items.mjs';
 
 const SKIPPED_COMMANDS = new Set(['echo', 'printf']);
 const UNRESOLVED = /[$`~*{}()<>]/u;
@@ -85,7 +86,7 @@ function commandLevel(command, baseDirectory = '') {
     if (words[0] === 'cd') {
       directory = changedDirectory(directory, words[1]);
     } else if (!SKIPPED_COMMANDS.has(words[0])) {
-      items.push({ tokens: words, directory }, ...nestedItems(words, directory));
+      appendAll(items, [{ tokens: words, directory }, ...nestedItems(words, directory)]);
     }
   }
   return items;

@@ -1,3 +1,4 @@
+import { appendAll } from './lists/items.mjs';
 function stackIterator(items) {
   return {
     [Symbol.iterator]() {
@@ -78,7 +79,7 @@ export function expandsFully(root, children) {
     if (next === undefined) {
       return false;
     }
-    pending.push(...next);
+    appendAll(pending, next);
   }
   return true;
 }

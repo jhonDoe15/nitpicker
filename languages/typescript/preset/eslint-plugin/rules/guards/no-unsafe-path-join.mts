@@ -10,6 +10,7 @@ import {
 import { depthFirst, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { CONTAINMENT_WRAPPERS, isContained } from './path-containment.mts';
 import { unwrapOf } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;
 type Scope = {
@@ -136,7 +137,7 @@ function isTainted(scope: Scope, expression: Node): boolean {
       return true;
     }
     if (pending.length < MAX_TAINT_STEPS) {
-      pending.push(...taintSources(scope, current));
+      appendAll(pending, taintSources(scope, current));
     }
   }
   return false;
@@ -220,7 +221,10 @@ function isUnsafeBuild(scope: Scope, expression: Node): boolean {
     if (pending.length < MAX_TAINT_STEPS) {
       const next =
         node.type === AST_NODE_TYPES.Identifier ? boundValues(scope.sourceCode, node) : parts;
-      pending.push(...(next ?? []).flatMap((item) => (item === undefined ? [] : [item])));
+      appendAll(
+        pending,
+        (next ?? []).flatMap((item) => (item === undefined ? [] : [item])),
+      );
     }
   }
   return false;

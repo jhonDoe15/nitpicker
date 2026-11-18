@@ -7,6 +7,7 @@ import { fieldOf } from '../../../../shared/values/readers.mts';
 import { isRealPathInside } from '../../../../shared/conventions/read-inside.mjs';
 import { withDependencyCruiserFiles as untypedWithDependencyCruiserFiles } from './config-values.mjs';
 import { importToolFile, toolFunction } from './typed/tool-modules.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const listOf: (value: unknown) => unknown[] = untypedListOf;
 const withDependencyCruiserFiles: (config: unknown, root: string) => unknown =
@@ -93,7 +94,7 @@ async function assertContainedExtends(
       continue;
     }
     seen.add(current);
-    pending.push(...containedExtends(root, current, await readConfig(current)));
+    appendAll(pending, containedExtends(root, current, await readConfig(current)));
   }
 }
 

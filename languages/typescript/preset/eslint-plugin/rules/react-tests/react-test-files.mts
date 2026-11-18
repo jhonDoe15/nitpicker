@@ -9,6 +9,7 @@ import { isBrowserEndToEndTest, mockedModuleSource } from '../analysis/test-code
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type ReachStep =
   | { readonly file: string; readonly truncated?: undefined }
@@ -242,7 +243,7 @@ export function descendants(
 ): TSESTree.Node[] {
   const found = [root];
   for (const node of found) {
-    found.push(...children(node, visitorKeys));
+    appendAll(found, children(node, visitorKeys));
   }
   return found;
 }

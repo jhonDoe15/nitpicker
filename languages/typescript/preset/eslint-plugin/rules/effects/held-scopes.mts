@@ -23,6 +23,7 @@ import type {
   ScopeKind,
   VisitorKeys,
 } from './scopes/scope-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const BEGINS = 'begins';
 const ENDS = 'ends';
@@ -57,7 +58,7 @@ export function callsWithin(root: TSESTree.Node, visitorKeys: VisitorKeys): Call
     ) {
       calls.push(node);
     }
-    pending.push(...childrenOf(node, visitorKeys).filter(runsWithCaller));
+    appendAll(pending, childrenOf(node, visitorKeys).filter(runsWithCaller));
   }
   return calls.toSorted((left, right) => left.range[0] - right.range[0]);
 }

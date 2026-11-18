@@ -18,6 +18,7 @@ import {
   textOf,
   type Obligation,
 } from './sql-arrays.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type Piece = {
   readonly text?: string | undefined;
@@ -257,7 +258,10 @@ function isInert(context: Context, root: Obligation): boolean {
       return false;
     }
     seen[kind].add(node);
-    pending.push(...next.filter((item) => !seen[item.kind].has(item.node)));
+    appendAll(
+      pending,
+      next.filter((item) => !seen[item.kind].has(item.node)),
+    );
   }
   return true;
 }

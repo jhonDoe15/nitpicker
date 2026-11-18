@@ -52,7 +52,7 @@ export function compareFindings({
   ];
   const explained = withUntouchedCause(advised, touchedCode);
   present.newFindings = againstMissingReports(explained, baseFindings, moves);
-  present.unchangedFindings.push(...ratcheted.heldFindings);
+  present.unchangedFindings = present.unchangedFindings.concat(ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
   return withoutCauses({
@@ -78,7 +78,7 @@ function moveSimilarFindings(present, baseFindings, { moves, touchedCode }) {
     renames: moves.files,
   });
   present.newFindings = similar.unmatched;
-  present.unchangedFindings.push(...similar.matched);
+  present.unchangedFindings = present.unchangedFindings.concat(similar.matched);
   const unmatched = baseFindings.filter((finding) => !similar.matchedBase.has(finding));
   return moveMessageFindings(present, unmatched, { moves, touchedCode });
 }

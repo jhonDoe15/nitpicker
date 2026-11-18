@@ -5,6 +5,7 @@ import { tagOf } from '../widths/typed-dispatch.mjs';
 import { conditionTerm } from '../facts.mjs';
 import { textOf } from '../flow/exits.mjs';
 import { slipCandidates } from './candidates.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const EXPRESSION = 'expression';
 
@@ -136,7 +137,7 @@ function readsLocal(root, parameters) {
       return true;
     }
     if (isArithmetic(node)) {
-      pending.push(...node.children);
+      appendAll(pending, node.children);
     }
   }
   return false;

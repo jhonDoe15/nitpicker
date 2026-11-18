@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
 const COMPOSITION_ROOT_NAMES = ['composition-root', 'main', 'server'];
@@ -80,7 +81,7 @@ function exportReachability(graph, sourceRoot) {
         continue;
       }
       visited.add(current);
-      pending.push(...(exportTargets.get(current) ?? []));
+      appendAll(pending, exportTargets.get(current) ?? []);
     }
     return false;
   };

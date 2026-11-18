@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { chainOf, childrenOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Role = 'other' | 'member' | 'shorthand' | 'declaration' | 'reference';
 
@@ -45,7 +46,7 @@ export function descendants(root: TypeScript.Node): TypeScript.Node[] {
   const pending = [root];
   for (const node of pending) {
     found.push(node);
-    pending.push(...childrenOf(node));
+    appendAll(pending, childrenOf(node));
   }
   return found;
 }

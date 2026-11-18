@@ -271,6 +271,13 @@ accumulator copied with `concat` on every step of `reduce` or of a loop (`all = 
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
 the accumulator's type when the type checker runs, so a string's `concat` is left alone.
 
+Spread arguments: `nitpicker/no-array-spread-arguments` (production source, in `eslint-lint`) reports an array
+spread into `push`, `unshift` or `splice` of an array, or into `Math.max`, `Math.min`, `String.fromCharCode` or
+`String.fromCodePoint` (`target.push(...items)`, `Math.max(...sizes)`), which throws `RangeError` once the array
+reaches about 125,000 items. With the type checker arrays, typed arrays, sets, maps and `any` values are reported
+(tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
+a function's own rest parameter passed on are allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

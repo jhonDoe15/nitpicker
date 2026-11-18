@@ -9,6 +9,7 @@ import { ormSite, type FoundSite } from '../support/orm/sites.mts';
 import { ancestorsOf, nameOf, type VisitorKeys } from '../typed/node-views.mts';
 import type { FunctionNode } from '../typed/syntax-views.mts';
 import { openerCallback } from './clients.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const { DefinitionType } = TSESLint.Scope;
 
@@ -45,7 +46,7 @@ function mentionsTransactionName(
     if (named || keyed) {
       return true;
     }
-    pending.push(...childrenOf(node, visitorKeys));
+    appendAll(pending, childrenOf(node, visitorKeys));
   }
   return false;
 }

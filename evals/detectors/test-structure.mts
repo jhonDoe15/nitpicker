@@ -16,6 +16,7 @@ import {
 } from './test-tables.mts';
 import { mocksOf, type ModuleMocks } from './modules/module-references.mts';
 import { lineOf, type Node, parseSource, type SourceFile, ts } from './typescript.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type Modifiers = { skipped?: boolean; only?: boolean };
 
@@ -249,7 +250,7 @@ export function parseTestFile(file: string, text: string): ParsedTestFile {
         return;
       }
       if (callee !== undefined && callee.kind === 'test') {
-        tests.push(...analyzeTest({ node, callee, suite, sourceFile, keyCounts }));
+        appendAll(tests, analyzeTest({ node, callee, suite, sourceFile, keyCounts }));
         return;
       }
     }

@@ -12,6 +12,7 @@ import {
 import { nameOf } from '../bindings/import-bindings.mts';
 import type { Checker, Finding, Kind, Problem } from '../problem-types.mts';
 import { schemaProblems } from './schema-fields.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Role = {
   readonly kind?: Kind | undefined;
@@ -257,11 +258,12 @@ export function classProblems(
     const declaration = classDeclaration(entry.identifier, checker);
     if (declaration !== undefined) {
       const inherited = inheritedEntries(declaration, entry, checker);
-      problems.push(...ownProblems(declaration, entry));
-      problems.push(
-        ...(inherited.schema === undefined ? [] : schemaEntryProblems(inherited.schema, checker)),
+      appendAll(problems, ownProblems(declaration, entry));
+      appendAll(
+        problems,
+        inherited.schema === undefined ? [] : schemaEntryProblems(inherited.schema, checker),
       );
-      pending.push(...inherited.entries.slice(0, Math.max(0, MAX_CLASSES - pending.length)));
+      appendAll(pending, inherited.entries.slice(0, Math.max(0, MAX_CLASSES - pending.length)));
     }
   }
   return problems;

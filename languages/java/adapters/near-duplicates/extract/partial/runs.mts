@@ -2,6 +2,7 @@ import type { Node } from 'web-tree-sitter';
 import type { Span } from '../../extract-types.mts';
 import { statementWindows } from '../../jvm-views.mts';
 import { field, namedChildren, present, required } from '../syntax.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const OWN_SCOPES = new Set([
   'lambda_expression',
@@ -19,7 +20,10 @@ function ownBlocks(method: Node): Node[] {
     if (node.type === 'block') {
       found.push(node);
     }
-    pending.push(...node.namedChildren.filter((child) => !OWN_SCOPES.has(child.type)));
+    appendAll(
+      pending,
+      node.namedChildren.filter((child) => !OWN_SCOPES.has(child.type)),
+    );
   }
   return found;
 }

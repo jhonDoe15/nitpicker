@@ -1,12 +1,13 @@
 import { changedLines } from '../patch/hunk-edits.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import type { Hunk } from '../patch/unified-diff.mts';
+import { smallest } from '../../../../../shared/lists/lists.mts';
 
 export type Diagnostic = { readonly check: string; readonly line: number };
 type Placed = Diagnostic & { readonly gap: number };
 
 function distance(hunk: Hunk, line: number): number {
-  return Math.min(...changedLines(hunk).map((changed) => Math.abs(changed - line)));
+  return smallest(changedLines(hunk).map((changed) => Math.abs(changed - line)));
 }
 
 function nearestDiagnostic(

@@ -4,6 +4,7 @@ import { importsOf, packageOf, typeAliasesOf } from './discovery/imports.mjs';
 import { escaped } from './discovery/text-scan.mjs';
 import { constantValues, DISABLING_BASE } from './honesty/skip-constants.mjs';
 import { projectIsolated } from './shared-state/shared-holders.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const MAIN_SET = /\bsetMain\s*\(/u;
 const MAIN_RULE_NAMES = [
@@ -146,7 +147,10 @@ function regionTexts(project, scanned, suite) {
     if (!supers.has(name) && supers.size < MAX_SUPER_CLASSES) {
       const entries = project.regions.get(name) ?? [];
       supers.set(name, entries);
-      queue.push(...entries.flatMap(({ supers: parents }) => parents));
+      appendAll(
+        queue,
+        entries.flatMap(({ supers: parents }) => parents),
+      );
     }
   }
   return [

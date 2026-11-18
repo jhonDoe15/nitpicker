@@ -7,6 +7,7 @@ import { syntaxChildren } from '../../../syntax/children.mjs';
 import { boundNames, importedNames, nameNode } from './names.mjs';
 import { STATEMENTS } from './statements.mjs';
 import { NONE, at, isStatementNode, opaque, textOf } from './tree-nodes.mjs';
+import { appendAll } from '../../../../../../shared/lists/items.mjs';
 
 const CONVERTERS = { ...STATEMENTS, ...EXPRESSIONS, ...MARKUP };
 
@@ -73,7 +74,10 @@ function unitRoots(sourceFile) {
     if (UNIT_KINDS.has(node.kind) && node.body !== undefined) {
       roots.push({ node, label: own === '' ? '<anonymous>' : own });
     } else {
-      pending.push(...syntaxChildren(node).map((child) => ({ node: child, label: own })));
+      appendAll(
+        pending,
+        syntaxChildren(node).map((child) => ({ node: child, label: own })),
+      );
     }
   }
   return roots.toSorted((left, right) => left.node.pos - right.node.pos);

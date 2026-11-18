@@ -11,6 +11,7 @@ import type {
 } from './typed/convention-types.mts';
 import { explainedError } from '../../shared/messages/troubleshooting.mjs';
 import { containedPath } from '../../shared/paths/contained-path.mjs';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 const MAX_STYLE_FILES = 1000;
 const MAX_NAME_BYTES = 255;
@@ -100,7 +101,7 @@ function withExtended(source: ConventionSource, files: readonly string[]): Map<s
   const read = source.readMany(files);
   const queue = [...read].flatMap(([file, text]) => extendedFiles(file, text));
   for (const file of queue) {
-    queue.push(...readExtension(source, read, file));
+    appendAll(queue, readExtension(source, read, file));
   }
   return read;
 }

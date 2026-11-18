@@ -4,6 +4,7 @@ import {
   stringLiterals,
   topLevelParts,
 } from './classes/source-structure.mjs';
+import { largest } from '../../../../../shared/lists/items.mjs';
 
 const TEST_ANNOTATION = /@(?:[\w.]*\.)?(\w*Test|TestPropertySource)\s*\(/gu;
 const CALL = /(?:\bTestPropertyValues\s*\.\s*of|\bwithPropertyValues|\.\s*and)\s*\(/gu;
@@ -71,7 +72,7 @@ function isPropertyCall(code, match) {
     return true;
   }
   const before = code.slice(0, match.index);
-  const start = Math.max(...[';', '{', '}'].map((end) => before.lastIndexOf(end)));
+  const start = largest([';', '{', '}'].map((end) => before.lastIndexOf(end)));
   const statement = before.slice(start + 1);
   return /\b(?:TestPropertyValues|withPropertyValues)\b/u.test(statement);
 }

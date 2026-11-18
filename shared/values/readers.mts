@@ -1,4 +1,5 @@
 import type { Rule } from 'eslint';
+import { appendAll } from '../lists/lists.mts';
 
 export type Fields = Readonly<Record<string, unknown>>;
 
@@ -68,7 +69,7 @@ export function stringsIn(value: unknown): string[] {
     if (typeof item === 'string') {
       found.push(item);
     } else if (typeof item === 'object' && item !== null) {
-      pending.push(...Object.values(fieldsOf(item)));
+      appendAll(pending, Object.values(fieldsOf(item)));
     }
   }
   return found;

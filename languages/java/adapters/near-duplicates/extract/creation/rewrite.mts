@@ -1,10 +1,11 @@
 import type { Node } from 'web-tree-sitter';
 import type { Renderer } from '../../extract-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 function postOrder(root: Node): Node[] {
   const order = [root];
   for (const node of order) {
-    order.push(...node.children);
+    appendAll(order, node.children);
   }
   return order.reverse();
 }

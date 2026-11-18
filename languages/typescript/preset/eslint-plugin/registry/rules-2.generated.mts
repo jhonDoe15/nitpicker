@@ -1,3 +1,4 @@
+import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mts';
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mts';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
@@ -65,6 +66,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-test-helpers-in-source': ruleNoTestHelpersInSource,
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,

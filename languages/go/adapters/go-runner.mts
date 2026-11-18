@@ -23,6 +23,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting as untypedWithTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type GoOptions = {
   projectRoot: string;
@@ -129,7 +130,10 @@ export function analyzeGoSnapshot({
               typeof fieldOf(error, 'rule') === 'string'
                 ? textOf(fieldOf(error, 'rule'))
                 : 'go-failed',
-            message: error instanceof Error ? error.message : String(error),
+            message: withInternalFrames(
+              error instanceof Error ? error.message : String(error),
+              error,
+            ),
           },
           part,
         ),
@@ -197,7 +201,7 @@ export function runGoCli({
     stdout.write(`${JSON.stringify(runGo(commandArguments, { environment }))}\n`);
     return 0;
   } catch (error) {
-    stderr.write(`Go analyzer failed: ${describeError(error)}\n`);
+    stderr.write(`Go analyzer failed: ${withInternalFrames(describeError(error), error)}\n`);
     return 2;
   }
 }

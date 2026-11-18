@@ -11,6 +11,7 @@ import {
 } from '../../../layout.mjs';
 import { walkedPaths as untypedWalkedPaths } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { reachableNames as untypedReachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Scan = {
   readonly tests: Set<string>[];
@@ -111,7 +112,7 @@ function scanned(file: string): Scan {
     if (isTestCall(node)) {
       tests.push(namesIn(node.arguments.slice(1)));
     }
-    helpers.push(...helperOf(node));
+    appendAll(helpers, helperOf(node));
     ts.forEachChild(node, visit);
   }
   visit(source);

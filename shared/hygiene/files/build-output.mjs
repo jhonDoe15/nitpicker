@@ -2,6 +2,7 @@ import path from 'node:path';
 import { escapeRegExp } from '../../paths/glob.mjs';
 import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const BUILD_MANIFESTS = new Set([
   'package.json',
@@ -121,7 +122,7 @@ function stringsIn(value) {
     if (typeof item === 'string') {
       strings.push(item);
     } else if (typeof item === 'object' && item !== null) {
-      pending.push(...Object.values(item));
+      appendAll(pending, Object.values(item));
     }
   }
   return strings;

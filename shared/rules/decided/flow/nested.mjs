@@ -1,6 +1,7 @@
 import { categoryOf } from '../../../near-duplicates/tree/nodes.mjs';
 import { armFlow, isSwitchLike } from './arms/arms.mjs';
 import { declaredNames } from './stability.mjs';
+import { appendAll } from '../../../lists/items.mjs';
 
 const OWN_NAMES = new Set(['it']);
 
@@ -51,7 +52,7 @@ export function nestedFlow(node, { before, after }, flow) {
     if (part.kind === 'block' && part !== node) {
       found.children.push({ statements: part.children, facts: after });
     } else {
-      pending.push(...visit(part, found, { before, after, flow }));
+      appendAll(pending, visit(part, found, { before, after, flow }));
     }
   }
   return found;

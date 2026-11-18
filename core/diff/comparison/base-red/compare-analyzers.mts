@@ -19,6 +19,7 @@ import {
 } from './unknown-findings.mts';
 import { type MetadataMap, mergeMetadata } from '../../execution/report/analyzer-metadata.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 export type AnalyzerRun = {
   readonly reports: ReadonlyMap<string, AnalyzerReport>;
@@ -144,7 +145,8 @@ function baseFindingsOf({ name, baseRun, toolErrors, notes, redBase }: NamedCont
   if (failures === undefined) {
     return withoutEmittedToolErrors(findings, 'base', toolErrors);
   }
-  notes.push(...failures.map((failure) => noteOf(name, failure)));
+  const failureNotes = failures.map((failure) => noteOf(name, failure));
+  appendAll(notes, failureNotes);
   return withoutEmittedToolErrors(
     findings.filter((finding) => !failures.includes(finding)),
     'base',

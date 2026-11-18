@@ -8,6 +8,7 @@ import {
 } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Candidate = { readonly node: TSESTree.NewExpression; readonly argument: TSESTree.Node };
 type Guard = { readonly text: string; readonly scope: TSESTree.Node | undefined };
@@ -82,7 +83,7 @@ function isConstantText(context: SourceContext, node: TSESTree.Node): boolean {
     if (parts === undefined || pending.length > MAX_PARTS) {
       return false;
     }
-    pending.push(...parts);
+    appendAll(pending, parts);
   }
   return true;
 }

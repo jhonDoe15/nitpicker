@@ -36,6 +36,7 @@ import {
   withTroubleshooting,
 } from './typed/runner/runner-views.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 const UNEXPECTED_FAILURE_RULES: Readonly<Record<string, string>> = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -188,7 +189,10 @@ export function analyzePythonSnapshot({
           toolError(
             {
               rule: textOf(fieldOf(error, 'rule') ?? UNEXPECTED_FAILURE_RULES[part]),
-              message: error instanceof Error ? error.message : String(error),
+              message: withInternalFrames(
+                error instanceof Error ? error.message : String(error),
+                error,
+              ),
             },
             part,
           ),

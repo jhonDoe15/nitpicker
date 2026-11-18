@@ -1,4 +1,5 @@
 import { braceDepths, matchesFrom } from './kotlin-brackets.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 export {
   braceDepths,
@@ -158,7 +159,7 @@ function quoteStep(state, from, end) {
 function readQuotes(state, start, end) {
   const pending = [start];
   for (const from of pending) {
-    pending.push(...quoteStep(state, from, end));
+    appendAll(pending, quoteStep(state, from, end));
   }
 }
 

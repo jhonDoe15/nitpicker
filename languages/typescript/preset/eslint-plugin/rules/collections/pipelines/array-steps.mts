@@ -7,6 +7,7 @@ import {
   outerOf,
   unwrapped,
 } from '../costly-forms/repeated-runs.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type MethodCall = { readonly call: TSESTree.CallExpression; readonly receiver: TSESTree.Node };
 type LengthTest = { readonly receiver: string; readonly test: string };
@@ -173,7 +174,7 @@ function hasCall(node: TSESTree.Node): boolean {
     const parts = ['object', 'property', 'expression'].map((key): unknown =>
       Reflect.get(current, key),
     );
-    pending.push(...parts.filter(isNode));
+    appendAll(pending, parts.filter(isNode));
   }
   return false;
 }

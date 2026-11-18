@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../../../../../shared/lists/lists.mts';
 export type LiteralArgument =
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'function' }
@@ -90,7 +91,10 @@ export function deepKeys<Node>(root: Node, children: (node: Node) => Child<Node>
   for (const node of pending) {
     const entries = children(node);
     addKeys(keys, entries);
-    pending.push(...entries.flatMap(({ value }) => (value === undefined ? [] : [value])));
+    appendAll(
+      pending,
+      entries.flatMap(({ value }) => (value === undefined ? [] : [value])),
+    );
   }
   return keys;
 }

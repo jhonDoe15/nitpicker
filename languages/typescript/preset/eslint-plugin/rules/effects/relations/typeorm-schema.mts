@@ -3,6 +3,7 @@ import { packageFromPath } from '../../support/io/packages.mts';
 import { resolvedSymbol } from '../../support/io/implementations.mts';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { ts } from '../../typed/typescript-views.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 export type Relation = { readonly entity: string; readonly relation: string };
 type SchemaRelation = {
@@ -127,7 +128,7 @@ function schemaIndex(program: TypeScript.Program): SchemaRelation[] {
       .filter((file) => !file.isDeclarationFile && file.text.includes(ENTITY_SCHEMA));
     for (const node of pending) {
       if (ts.isNewExpression(node)) {
-        found.push(...schemaRelations(checker, node));
+        appendAll(found, schemaRelations(checker, node));
       }
       ts.forEachChild(node, (child) => {
         pending.push(child);

@@ -23,6 +23,7 @@ import {
   testFileOptions,
 } from '../configuration/pytest/collection-options.mts';
 import type { OtherModule, PythonModule } from './typed/python-graph-types.mts';
+import { smallest } from '../../../../shared/lists/lists.mts';
 
 const skippedFolderGlobs: (folders: readonly string[]) => string[] = untypedSkippedFolderGlobs;
 export type SourceListing = {
@@ -92,8 +93,8 @@ export function functionText(
   const lines = sourceLines(sources, projectRoot, file)
     .slice(start - 1, end)
     .map((line) => line.trimEnd());
-  const indent = Math.min(
-    ...lines.filter((line) => line !== '').map((line) => (/^\s*/.exec(line)?.[0] ?? '').length),
+  const indent = smallest(
+    lines.filter((line) => line !== '').map((line) => (/^\s*/.exec(line)?.[0] ?? '').length),
   );
   return lines.map((line) => line.slice(indent)).join('\n');
 }

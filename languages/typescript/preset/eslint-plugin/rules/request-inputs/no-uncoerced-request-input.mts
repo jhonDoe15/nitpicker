@@ -5,6 +5,7 @@ import { handlerProblems } from './bindings/nest-handlers.mts';
 import { callProblems, routeSchemaProblems } from './bindings/request-calls.mts';
 import { sourceOf } from './bindings/ts-nodes.mts';
 import type { Checker, Kind, Library, Located, Problem } from './problem-types.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type MessageIds = 'rejected' | 'unconverted' | 'booleanCast';
 type Context = Readonly<TSESLint.RuleContext<MessageIds, readonly []>>;
@@ -66,7 +67,7 @@ function collect(file: TypeScript.SourceFile, checker: Checker): Located[] {
   const pending: TypeScript.Node[] = [file];
   const found: Located[] = [];
   for (const node of pending) {
-    found.push(...nodeProblems(node, checker));
+    appendAll(found, nodeProblems(node, checker));
     ts.forEachChild(node, (child) => {
       pending.push(child);
     });
