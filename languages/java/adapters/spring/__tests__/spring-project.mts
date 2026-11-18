@@ -201,6 +201,7 @@ const REVIEW_RULES = new Set([
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',
+  'UrlPathUsedAsFile',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

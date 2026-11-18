@@ -106,6 +106,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.
+- A `URL` becomes a file through `new File(url.toURI())` or `Path.of(url.toURI())`, never `new File(url.getFile())`
+  or `Paths.get(url.getPath())`: both getters keep the percent-encoding, so a directory with a space is not
+  found (`pmd/UrlPathUsedAsFile`).
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
   connection, request, file access, thread, pool, sleep or JVM-wide setting in a `static` field or
   block, an enum constant, or the constructor or initializer of a `static final INSTANCE = new X()`
