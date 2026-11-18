@@ -84,15 +84,27 @@ function runArchitecture(options: StaticCheckOptions): Finding[] {
   return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }
 
+function ownedBySnapshot(violation: CruiseViolation): boolean {
+  if (typeof violation.from !== 'string' || isInSnapshot(displayedPath(violation.from))) {
+    return true;
+  }
+  return (
+    violation.type === 'cycle' && (canonicalCycle(violation.cycle)?.some(isInSnapshot) ?? false)
+  );
+}
+
 function reportedViolations(violations: readonly unknown[], modules: unknown): CruiseViolation[] {
   const moduleList: unknown[] = Array.isArray(modules) ? modules : [];
-  return violations.map(violationOf).flatMap((violation): CruiseViolation[] => {
-    if (nameOf(violation.rule) !== REACH_THROUGH_SHARED_RULE) {
-      return [violation];
-    }
-    const via = sharedReachPath(violation, moduleList);
-    return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
-  });
+  return violations
+    .map(violationOf)
+    .filter(ownedBySnapshot)
+    .flatMap((violation): CruiseViolation[] => {
+      if (nameOf(violation.rule) !== REACH_THROUGH_SHARED_RULE) {
+        return [violation];
+      }
+      const via = sharedReachPath(violation, moduleList);
+      return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
+    });
 }
 
 export function normalizeArchitectureViolations(
@@ -109,9 +121,11 @@ export function normalizeArchitectureViolations(
     const context = `dependency-cruiser violation ${String(index)}`;
     const rule = requiredString(nameOf(violation.rule), `${context}.rule.name`);
     const severity = requiredString(severityOf(violation.rule), `${context}.rule.severity`);
-    const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
-    const to = displayedPath(requiredString(violation.to, `${context}.to`));
+    const fromText = requiredString(violation.from, `${context}.from`);
     const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle) : undefined;
+    const from =
+      cycle === undefined ? normalizedRelativePath(fromText, context) : displayedPath(fromText);
+    const to = displayedPath(requiredString(violation.to, `${context}.to`));
     const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
     const first = cycle?.[0];
     const canonicalPath = first !== undefined && isInSnapshot(first) ? first : from;

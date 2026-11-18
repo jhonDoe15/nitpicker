@@ -18,8 +18,11 @@ export const isIgnoredByLayers: (
 ) => Promise<boolean> = isIgnoredByUntypedLayers;
 
 export const layeredPrettierOptions: (
-  prettier: typeof Prettier,
-  layers: PrettierLayers & { readonly policyOptions: Prettier.Options },
+  prettier: Pick<typeof Prettier, 'resolveConfig'>,
+  layers: PrettierLayers & {
+    readonly policyOptions: Prettier.Options;
+    readonly onConfigError?: (error: unknown) => void;
+  },
 ) => Promise<Prettier.Options> = untypedLayeredPrettierOptions;
 
 export function prettierOptionsOf(value: unknown): Prettier.Options {
