@@ -171,6 +171,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
   a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
+- A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
+  to create or empty a file use `writeFileSync(path, '')`, and close a descriptor given to `spawn` as stdio in the parent
+  (`nitpicker/no-unclosed-file-descriptor`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

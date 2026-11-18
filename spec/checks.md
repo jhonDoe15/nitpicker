@@ -388,6 +388,12 @@ later statement of the same block while an `await`, `return`, `throw` or a call 
 in `finally` or `catch`, `await using`, a resource that is returned or stored, and an awaited call that ends in a
 `.catch(() => {})` that cannot throw are allowed.
 
+Unclosed file descriptors: `nitpicker/no-unclosed-file-descriptor` (production source, in `eslint-lint`) reports a call to
+`fs.openSync` or to `open` from `fs/promises` whose result is dropped, or kept in a local of a function that has no
+`closeSync`, `close` or `handle.close()` for it and does not return, store or hand it to another function. A descriptor
+given to `spawn` as stdio still has to be closed by the parent. `await using`, a descriptor that is returned or stored, a
+module-level descriptor and one used by a `process.stdout.write` or `process.stderr.write` override are allowed.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
