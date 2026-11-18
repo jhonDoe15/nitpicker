@@ -128,9 +128,7 @@ const STREAM = saveCase(
 `,
   `
   void named(List<Item> all) {
-    List<Item> toSave = new ArrayList<>();
-    all.stream().filter(item -> item.getName() != null).forEach(toSave::add);
-    items.saveAll(toSave);
+    items.saveAll(all.stream().filter(item -> item.getName() != null).toList());
   }
 `,
   [19],
