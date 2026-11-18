@@ -64,3 +64,29 @@ export function typeormCases(project: Project) {
     },
   };
 }
+
+export const PRISMA_HEAD = [
+  "import { PrismaClient } from '@prisma/client';",
+  'declare const prisma: PrismaClient;',
+  'declare const ids: number[];',
+  'declare const emails: string[];',
+  'declare const teamIds: string[];',
+  'declare const events: { ownerId: number; teamId: string }[];',
+  'declare const scope: number;',
+  'declare const out: unknown[];',
+  'declare function use(value: unknown): void;',
+  '',
+].join('\n');
+
+export function prismaCases(project: Project) {
+  const cases = batchCases(project, 'batchLookup');
+  return {
+    ...cases,
+    pair(body: string, expected: string, ids?: { readonly report?: string }) {
+      return cases.fixes(`${PRISMA_HEAD}${body}`, `${PRISMA_HEAD}${expected}`, ids);
+    },
+    declines(body: string, report?: readonly string[]) {
+      return cases.declines(`${PRISMA_HEAD}${body}`, report);
+    },
+  };
+}
