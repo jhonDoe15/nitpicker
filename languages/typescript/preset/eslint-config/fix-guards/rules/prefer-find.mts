@@ -1,8 +1,14 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import {
+  AST_NODE_TYPES,
+  type ParserServicesWithTypeInformation,
+  type TSESTree,
+} from '@typescript-eslint/utils';
 import { toTerm } from '../../../eslint-plugin/rules/analysis/logic/estree-terms.mts';
 import { isSideEffectFree } from '../../../eslint-plugin/rules/analysis/logic/term-views.mts';
 import { outsideFunctions } from '../../../eslint-plugin/rules/decided/syntax.mts';
+import { depthFirst, nodeChildren } from '../../../eslint-plugin/rules/typed/node-views.mts';
 import { isCallback, soleReturnedValue } from '../../../eslint-plugin/rules/typed/syntax-views.mts';
+import { ts } from '../../../eslint-plugin/rules/typed/typescript-views.mts';
 import {
   keptFix,
   reportedNode,
@@ -13,6 +19,32 @@ import {
 } from '../guard-types.mts';
 
 type SourceText = GuardContext['sourceCode'];
+type Services = ParserServicesWithTypeInformation;
+
+const OPEN_TYPES = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
+
+function isTyped(services: SourceText['parserServices']): services is Services {
+  return services?.program !== null && services?.program !== undefined;
+}
+
+function isPlainRead(member: TSESTree.MemberExpression, services: Services): boolean {
+  const symbol = services.getSymbolAtLocation(member.property);
+  if (symbol === undefined) {
+    return (services.getTypeAtLocation(member.object).flags & OPEN_TYPES) === 0;
+  }
+  return (symbol.flags & ts.SymbolFlags.Accessor) === 0;
+}
+
+function readsNoAccessor(node: TSESTree.Node, sourceCode: SourceText): boolean {
+  const services = sourceCode.parserServices;
+  const members = [...depthFirst<TSESTree.Node>(node, nodeChildren)].filter(
+    (part): part is TSESTree.MemberExpression => part.type === AST_NODE_TYPES.MemberExpression,
+  );
+  return (
+    members.length === 0 ||
+    (isTyped(services) && members.every((member) => isPlainRead(member, services)))
+  );
+}
 
 function isFilterCall(node: TSESTree.Node): node is TSESTree.CallExpression {
   if (node.type !== AST_NODE_TYPES.CallExpression) {
@@ -39,7 +71,8 @@ function isPurePredicate(argument: TSESTree.Node | undefined, sourceCode: Source
   return (
     returned !== undefined &&
     argument.params.every((param) => param.type === AST_NODE_TYPES.Identifier) &&
-    isSideEffectFree(toTerm(returned, sourceCode))
+    isSideEffectFree(toTerm(returned, sourceCode)) &&
+    readsNoAccessor(returned, sourceCode)
   );
 }
 

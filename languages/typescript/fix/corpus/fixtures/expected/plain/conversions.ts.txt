@@ -1,0 +1,19 @@
+export function asText(value: string): string {
+  return String(value);
+}
+
+export function asNumber(value: number): number {
+  return +value;
+}
+
+export function asFlag(value: boolean): boolean {
+  return value;
+}
+
+export function concatenated(value: string): string {
+  return value + '';
+}
+
+export function probe(): unknown {
+  return [asText('a'), asNumber(2), asFlag(true), concatenated('c')];
+}

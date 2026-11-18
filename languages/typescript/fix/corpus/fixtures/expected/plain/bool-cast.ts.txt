@@ -1,0 +1,36 @@
+export function castInIf(value: string | undefined): string {
+  if (value) {
+    return 'set';
+  }
+  return 'unset';
+}
+
+export function castInTernary(count: number): string {
+  return count ? 'some' : 'none';
+}
+
+export function castOfCall(read: () => number | undefined): boolean {
+  const log: string[] = [];
+  if (read()) {
+    log.push('read');
+  }
+  return log.length === 1;
+}
+
+export function castInLogical(left: number, right: string): boolean | string {
+  if (!!left && right) {
+    return right;
+  }
+  return false;
+}
+
+export function probe(): unknown {
+  return [
+    castInIf(''),
+    castInIf('x'),
+    castInTernary(0),
+    castInTernary(2),
+    castOfCall(() => 0),
+    castInLogical(1, 'r'),
+  ];
+}

@@ -20,7 +20,6 @@ describe('uselessCallRecipe', () => {
     ['run.apply(undefined, [1, 2])', 'run(1, 2)'],
     ['run.apply(undefined, [...values])', 'run(...values)'],
     ['store.add.call(store, 1)', 'store.add(1)'],
-    ['store.inner.add.apply(store.inner, [1])', 'store.inner.add(1)'],
     ['((value: number) => value).call(undefined, 1)', '((value: number) => value)(1)'],
   ])('writes %s as %s', (from, to) => {
     expect(fixedExpression(from)).toEqual({ text: `export const value = ${to};\n`, notes: [] });
@@ -28,6 +27,7 @@ describe('uselessCallRecipe', () => {
 
   it.each([
     ['make().add.call(make(), 1)', 'the receiver is read twice'],
+    ['store.inner.add.apply(store.inner, [1])', 'a read may run a getter'],
     ['run.call(null, 1)', 'this would change from null'],
     ['store.add?.call(store, 1)', 'optional chain'],
     ['run.call(undefined, /* first */ 1)', 'a comment sits in the call'],

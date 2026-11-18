@@ -1,0 +1,6 @@
+export const pattern = /[.-]/u;
+export const text = 'a-b';
+export const template = `x$y`;
+export function probe(): unknown {
+  return [pattern.test('-'), text, template];
+}
