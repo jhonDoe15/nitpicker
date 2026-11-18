@@ -386,6 +386,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   value that does not depend on `a` or `b` (`direction`, `-1`), which treats a missing `a` and a missing `b` the same.
   Allowed forms: `a - b`, `a.localeCompare(b)`, a comparator with a `return 0` or a result of another comparison, and
   null handling that checks `a` and `b` separately (`a.v == null ? 1 : b.v == null ? -1 : a.v - b.v`). The rule reads
+  no types. A sort over items that are unique by construction (`[...new Set(ids)]`, `Object.keys(table)`, `Map.keys()`,
+  `Array.from` of those, or `Object.entries` compared on `[0]` only) is not reported.
 - `nitpicker/no-prototype-key-access`: two ways a plain object treats `__proto__`, `constructor` and `prototype` as
   ordinary keys. A merge loop (`for...in`, or `Object.keys` or `Object.entries` with `for...of` or `forEach`) that
   assigns `target[key] = ...` and also hands `target[key]` to a merge-named function (`merge`, `extend`, `assign`,

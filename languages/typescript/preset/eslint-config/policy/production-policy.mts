@@ -145,6 +145,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-unresolved-relative-url': 'error',
     'nitpicker/no-slash-only-redirect-guard': 'error',
     'nitpicker/no-case-mixed-header-merge': 'error',
+    'nitpicker/no-inconsistent-comparator': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

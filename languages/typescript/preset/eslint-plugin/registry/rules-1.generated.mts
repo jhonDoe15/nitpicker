@@ -56,6 +56,7 @@ import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-sec
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
 import { rule as ruleNoIncompleteEscaping } from '../rules/escaping/no-incomplete-escaping.mts';
+import { rule as ruleNoInconsistentComparator } from '../rules/comparisons/no-inconsistent-comparator.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeat
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
-import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -158,6 +158,7 @@ export const partRules = {
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-in-presence-check': ruleNoInPresenceCheck,
   'no-incomplete-escaping': ruleNoIncompleteEscaping,
+  'no-inconsistent-comparator': ruleNoInconsistentComparator,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
-  'no-secret-in-log': ruleNoSecretInLog,
 };
