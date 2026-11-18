@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { withToolHeap } from './tool-slots.mts';
 
 const TOOL_SOURCE = [
   'const chunks = [];',
@@ -34,11 +35,17 @@ function failureOf(code: ExitStatus, output: ToolOutput): ToolOutcome {
   };
 }
 
-function runTool(task: ToolTask): Promise<ToolOutcome> {
+function javaOptions(slots: number): string {
+  const own = (process.env['JDK_JAVA_OPTIONS'] ?? '').split(/\s+/u).filter((flag) => flag !== '');
+  return withToolHeap(own, slots).join(' ');
+}
+
+function runTool(task: ToolTask, slots: number): Promise<ToolOutcome> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['--input-type=module', '--eval', TOOL_SOURCE], {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: TOOL_RUN_CEILING_MS,
+      env: { ...process.env, JDK_JAVA_OPTIONS: javaOptions(slots) },
     });
     const output: ToolOutput = { stdout: [], stderr: [] };
     child.stdout.on('data', (chunk: Buffer) => output.stdout.push(chunk));
@@ -55,10 +62,10 @@ function runTool(task: ToolTask): Promise<ToolOutcome> {
 
 async function lane(
   entries: IterableIterator<[number, ToolTask]>,
-  outcomes: ToolOutcome[],
+  { outcomes, slots }: { readonly outcomes: ToolOutcome[]; readonly slots: number },
 ): Promise<void> {
   for (const [index, task] of entries) {
-    outcomes[index] = await runTool(task);
+    outcomes[index] = await runTool(task, slots);
   }
 }
 
@@ -72,7 +79,9 @@ export async function superviseTools({
   const entries = tasks.entries();
   const outcomes: ToolOutcome[] = tasks.map(() => ({}));
   await Promise.all(
-    Array.from({ length: Math.min(limit, tasks.length) }, () => lane(entries, outcomes)),
+    Array.from({ length: Math.min(limit, tasks.length) }, () =>
+      lane(entries, { outcomes, slots: limit }),
+    ),
   );
   return outcomes;
 }
