@@ -16,6 +16,7 @@
   "eslint/nitpicker/no-add-only-collection": ["bug", "reliability"],
   "eslint/nitpicker/no-array-spread-arguments": ["bug", "reliability"],
   "eslint/nitpicker/no-assertion-in-loop": ["tests"],
+  "eslint/nitpicker/no-blank-number-coercion": ["bug"],
   "eslint/nitpicker/no-boolean-flag-parameter": ["maintainability"],
   "eslint/nitpicker/no-branch-in-composition-root": ["maintainability"],
   "eslint/nitpicker/no-cached-rejection": ["bug", "async"],

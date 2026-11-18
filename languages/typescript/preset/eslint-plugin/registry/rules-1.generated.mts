@@ -15,6 +15,7 @@ import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumul
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
 import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
+import { rule as ruleNoBlankNumberCoercion } from '../rules/number-input/no-blank-number-coercion.mts';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-strin
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
-import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -117,6 +117,7 @@ export const partRules = {
   'no-add-only-collection': ruleNoAddOnlyCollection,
   'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
+  'no-blank-number-coercion': ruleNoBlankNumberCoercion,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-cached-rejection': ruleNoCachedRejection,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
-  'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
 };

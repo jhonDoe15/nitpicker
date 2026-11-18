@@ -195,6 +195,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- Text from an env var, a query parameter or a form field is checked for blankness before `Number(text)`:
+  `Number("")` is 0, so `isNaN` alone accepts a blank value; use `if (!text?.trim())`, `Number.parseInt(text, 10)`,
+  or a check that rejects 0 (`nitpicker/no-blank-number-coercion`).
 - An "all done" or "all cancelled" signal over a list that can be empty checks the list first:
   `tools.length > 0 && tools.every(...)`, because `every` is true for no items
   (`nitpicker/no-empty-every-signal`, report-only).

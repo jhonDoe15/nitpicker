@@ -245,4 +245,6 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/spreads/spread-facts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/empty-lists/no-empty-every-signal.mjs',
   'languages/typescript/preset/eslint-plugin/rules/empty-lists/every-receivers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/number-input/no-blank-number-coercion.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/number-input/blank-guards.mjs',
 ];
