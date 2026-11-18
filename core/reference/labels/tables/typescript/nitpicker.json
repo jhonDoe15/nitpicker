@@ -81,6 +81,7 @@
   "eslint/nitpicker/no-unanchored-affix-replace": ["bug"],
   "eslint/nitpicker/no-case-mismatched-lookup": ["bug"],
   "eslint/nitpicker/no-mismatched-precondition-message": ["bug"],
+  "eslint/nitpicker/no-malformed-query-text": ["bug", "persistence"],
   "eslint/nitpicker/no-prefix-without-boundary": ["bug", "security"],
   "eslint/nitpicker/no-presence-truthiness": ["bug"],
   "eslint/nitpicker/no-process-access-outside-composition-root": ["maintainability"],

@@ -59,6 +59,7 @@
   "python-rules/list-used-as-set": ["performance"],
   "python-rules/lock-order-inversion": ["bug"],
   "python-rules/logger-in-domain": ["maintainability"],
+  "python-rules/malformed-query-text": ["bug", "persistence"],
   "python-rules/many-to-many-cascade-delete": ["bug", "persistence"],
   "python-rules/mock-without-spec": ["tests"],
   "python-rules/mocked-subject-in-test": ["tests"],

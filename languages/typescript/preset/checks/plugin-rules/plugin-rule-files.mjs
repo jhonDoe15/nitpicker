@@ -197,6 +197,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lookups/no-case-mismatched-lookup.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lookups/case-keys.mjs',
   'languages/typescript/preset/eslint-plugin/rules/preconditions/no-mismatched-precondition-message.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/query-text/no-malformed-query-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/async-contexts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/no-sync-node-api-in-async.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/sync-node-apis.mjs',

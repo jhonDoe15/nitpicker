@@ -334,6 +334,10 @@ throws, `Assert.notNull`, `Objects.requireNonNull`, `checkState`, `require`) who
 another parameter or local in scope instead of the checked value. A message naming the checked value or its type is
 allowed.
 
+Malformed query text: `nitpicker/no-malformed-query-text` (production source, in `eslint-lint`) and `pmd/MalformedQueryText`
+(Java and Kotlin), `malformed-query-text` (Python) and `go-rules/malformed-query-text` (Go) join the literal parts of SQL text (`+`, `+=`, templates) and report an operator with no operand, an
+`INSERT` whose literal column and value lists differ in length, and parts joined into a run-together word.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

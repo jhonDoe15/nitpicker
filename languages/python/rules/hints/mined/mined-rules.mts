@@ -62,6 +62,20 @@ function preconditionDescription(subject?: string): string {
 }
 
 
+function queryDescription(subject?: string): string {
+  const [kind = '', detail = ''] = parts(subject);
+  if (kind === 'count') {
+    const [columns = '', values = ''] = detail.split(' ');
+    return `The INSERT lists ${columns} columns but ${values} values, so the statement fails`;
+  }
+  return kind === 'operand'
+    ? `The query text \`...${detail}...\` has a comparison operator ` +
+        `with no operand after it, so the statement fails on the path ` +
+        `that uses this fragment`
+    : `The query parts join into \`...${detail}...\`, which runs two words together`;
+}
+
+
 export const MINED_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -98,5 +112,14 @@ export const MINED_HINTS: readonly RuleHint[] = [
     describe: preconditionDescription,
     allowed:
       'Check the value the message names, or change the message to name the value that is checked.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['malformed-query-text'],
+    describe: queryDescription,
+    allowed:
+      'Give each comparison an operand or bind placeholder (`LIKE ' +
+      '%s`), give each INSERT column one value, and start each ' +
+      'appended fragment with a space.',
   },
 ];

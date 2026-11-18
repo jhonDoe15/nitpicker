@@ -143,7 +143,7 @@ function isTainted(scope: Scope, expression: Node): boolean {
   return false;
 }
 
-function isConcatenation(node: Node): node is TSESTree.BinaryExpression {
+export function isConcatenation(node: Node): node is TSESTree.BinaryExpression {
   return node.type === AST_NODE_TYPES.BinaryExpression && node.operator === '+';
 }
 

@@ -146,3 +146,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   a map filled with `name.toLowerCase()` is read with it too.
 - A precondition message names the value it checks (`pmd/PreconditionMessageNamesOtherValue`): the check on `timeToLive`
   says so, and the unit gets its own check and message.
+- SQL built from parts reads as one valid statement once joined (`pmd/MalformedQueryText`): a `?` after every `LIKE` and
+  `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.

@@ -21,6 +21,11 @@ import {
   PRECONDITION_MESSAGE_EXCEPTION_RULE,
   PRECONDITION_MESSAGE_RULE,
 } from '../../adapters/review-rules/precondition-messages/precondition-messages.mjs';
+import {
+  QUERY_TEXT_ALLOWED,
+  QUERY_TEXT_EXCEPTION_RULE,
+  QUERY_TEXT_RULE,
+} from '../../adapters/review-rules/query-text/query-text.mjs';
 
 const READ_FOR_IT = 'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
 
@@ -86,6 +91,19 @@ const ENTRIES = [
     why:
       `The failure points at the wrong argument, or the value the ` +
       `message names goes through unchecked. ${READ_FOR_IT}`,
+  },
+  {
+    rule: QUERY_TEXT_RULE,
+    exception: QUERY_TEXT_EXCEPTION_RULE,
+    anchor: 'query-text-that-is-malformed-once-joined',
+    allowed: QUERY_TEXT_ALLOWED,
+    summary:
+      'SQL text built by `+` or `+=` from literal parts that is ' +
+      'malformed once the parts are joined: a comparison operator, ' +
+      '`LIKE` or `IN` with no operand, an `INSERT` with different ' +
+      'numbers of columns and values, or two parts joined with no ' +
+      'space (`"... FROM t" + "WHERE ..."`).',
+    why: `The statement fails on the path that uses the fragment, often an optional filter. ${READ_FOR_IT}`,
   },
 ];
 

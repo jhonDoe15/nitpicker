@@ -2400,6 +2400,7 @@
                             "pmd/AffixRemovedByReplace",
                             "pmd/CaseMismatchedLookup",
                             "pmd/PreconditionMessageNamesOtherValue",
+                            "pmd/MalformedQueryText",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

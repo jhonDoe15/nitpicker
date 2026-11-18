@@ -58,6 +58,7 @@ import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-load
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
+import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/n
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
-import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -160,6 +160,7 @@ export const partRules = {
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-per-element': ruleNoLookupPerElement,
   'no-magic-numbers': ruleNoMagicNumbers,
+  'no-malformed-query-text': ruleNoMalformedQueryText,
   'no-managed-resource-construction-outside-composition-roots':
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
-  'no-service-locator': ruleNoServiceLocator,
 };

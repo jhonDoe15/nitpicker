@@ -166,6 +166,12 @@ const GROUPS = [
     python: 'precondition-message-names-other-value',
     go: 'go-rules/precondition-message-names-other-value',
   },
+  {
+    jvm: 'MalformedQueryText',
+    typescript: 'nitpicker/no-malformed-query-text',
+    python: 'malformed-query-text',
+    go: 'go-rules/malformed-query-text',
+  },
 ];
 
 function spring(rule) {
