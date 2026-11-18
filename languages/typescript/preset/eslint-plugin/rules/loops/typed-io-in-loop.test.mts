@@ -62,6 +62,8 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     loop('new UserRepository().findById(id);'),
     loop('viewer.update(id);', viewer),
     loop('repo.create({ id });', typeorm),
+    loop('entities.push(repo.create({ id }));', typeorm),
+    `${typeorm}${body('const entities = ids.map((id) => repo.create({ id })); void entities;')}`,
     loop("const qb = repo.createQueryBuilder('a'); builders.push(qb);", typeorm),
     loop("sub.push(repo.createQueryBuilder('a').where('a.id = :id', { id }));", typeorm),
     loop('await producer.send({ topic: "orders", messages: [id] });', kafka),
@@ -93,6 +95,7 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     caseOf(loop('await new Customer().getAccount();'), 'query'),
     caseOf(loop('await new Customer().save();'), 'query'),
     caseOf(loop('await repo.findOneBy({ id });', typeorm), 'query'),
+    caseOf(loop('await repo.save(repo.create({ id }));', typeorm), 'query', '`repo.save()`'),
     caseOf(
       loop("await repo.createQueryBuilder('a').where('a.id = :id', { id }).getMany();", typeorm),
       'query',
@@ -112,6 +115,13 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     ),
     caseOf(loop('await db("users").where({ id });', knex), 'query', '`db().where()`'),
     caseOf(loop('await fetch(id);'), 'request', '`fetch()`'),
+    caseOf(
+      loop(
+        'entities.push(repo.create({ id }));',
+        'declare const repo: { create(row: unknown): Promise<unknown> };\ndeclare const entities: unknown[];\n',
+      ),
+      'query',
+    ),
     ...[
       'Array.from(ids, (id) => loadOrder(id));',
       'ids.sort((a, b) => { void loadOrder(a); return a.localeCompare(b); });',

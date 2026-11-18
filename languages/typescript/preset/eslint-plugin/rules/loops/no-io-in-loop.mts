@@ -3,6 +3,7 @@ import type { Context } from '../security/security-values.mts';
 import { describePath, ioEffect, ioKind } from '../support/io-effects.mts';
 import { isRelayMark } from '../writes/relays.mts';
 import { outerCalls } from './builders/chain-execution.mts';
+import { isEntityFactory } from './builders/entity-factories.mts';
 import { isUnexecutedBuilder } from './builders/unexecuted-calls.mts';
 import { passesChunk } from './chunked-loops.mts';
 import { isPushedForConcurrency } from './concurrent-batches.mts';
@@ -91,6 +92,7 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
         effect.kind === 'message' ||
         passesChunk(node, found, context) ||
         isRelayMark(node, context) ||
+        isEntityFactory(node, context) ||
         isUnexecutedBuilder(node, context);
       if (exempt) {
         return;
