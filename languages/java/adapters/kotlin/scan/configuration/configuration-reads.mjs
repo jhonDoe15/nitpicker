@@ -13,6 +13,18 @@ const READ = new RegExp(
   'gu',
 );
 const REFERENCE = /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?System\s*::\s*getProperty\b/gu;
+const READERS = {
+  System: 'getProperty',
+  Integer: 'getInteger',
+  Long: 'getLong',
+  Boolean: 'getBoolean',
+};
+const READER_TYPES = '(System|Integer|Long|Boolean)';
+const READER_MEMBERS = '(?:\\s*\\.\\s*(getProperty|getInteger|getLong|getBoolean))?';
+const READER_IMPORT = new RegExp(
+  `^[ \\t]*import\\s+java\\s*\\.\\s*lang\\s*\\.\\s*${READER_TYPES}${READER_MEMBERS}(?:\\s+as\\s+(\\w+))?[ \\t]*$`,
+  'gmu',
+);
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const CONFIGURATION_MESSAGES = {
   [CONFIGURATION_READ_RULE]:
@@ -36,16 +48,34 @@ function readsJvmKey(scanned, match) {
   );
 }
 
+function importedReaders(code) {
+  const calls = [];
+  const references = [];
+  for (const [, type, member, alias] of code.matchAll(READER_IMPORT)) {
+    const owner = member === undefined ? alias : undefined;
+    if (member !== undefined && member === READERS[type]) {
+      const name = alias ?? member;
+      calls.push(new RegExp(`(?<![\\w.])${name}\\s*\\(`, 'gu'));
+      references.push(new RegExp(`(?<![\\w.])::\\s*${name}\\b`, 'gu'));
+    } else if (owner !== undefined) {
+      calls.push(new RegExp(`(?<![\\w.])${owner}\\s*\\.\\s*${READERS[type]}\\s*\\(`, 'gu'));
+      references.push(new RegExp(`(?<![\\w.])${owner}\\s*::\\s*${READERS[type]}\\b`, 'gu'));
+    }
+  }
+  return { calls, references };
+}
+
 export function configurationReads(scanned) {
   if (isConfigurationRoot(scanned)) {
     return [];
   }
-  const calls = [...scanned.code.matchAll(READ)].filter(
-    (match) => !(inImport(scanned.code, match.index) || readsJvmKey(scanned, match)),
-  );
-  const references = [...scanned.code.matchAll(REFERENCE)].filter(
-    (match) => !inImport(scanned.code, match.index),
-  );
+  const imported = importedReaders(scanned.code);
+  const calls = [READ, ...imported.calls]
+    .flatMap((pattern) => [...scanned.code.matchAll(pattern)])
+    .filter((match) => !(inImport(scanned.code, match.index) || readsJvmKey(scanned, match)));
+  const references = [REFERENCE, ...imported.references]
+    .flatMap((pattern) => [...scanned.code.matchAll(pattern)])
+    .filter((match) => !inImport(scanned.code, match.index));
   return [...calls, ...references].map(({ index }) => ({
     rule: CONFIGURATION_READ_RULE,
     offset: index,
