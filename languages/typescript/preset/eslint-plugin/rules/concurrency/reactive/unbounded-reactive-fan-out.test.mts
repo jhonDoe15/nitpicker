@@ -55,6 +55,10 @@ tester.run('unbounded-reactive-fan-out', rule, {
     `${RX}forkJoin(["a", "b"].map((id) => from(fetch(id))));`,
     `${RX}forkJoin({ first: from(fetch(a)), second: from(fetch(b)) });`,
     `${RX}merge(...ids.map((id) => from(fetch(id))), 4);`,
+    `${RX}from(ids).pipe(mergeMap((id) => from(fetch(id)), (id, response) => [id, response], 4));`,
+    `${RX}const selector = (id, response) => [id, response]; from(ids).pipe(mergeMap((id) => from(fetch(id)), selector, 4));`,
+    `${RX}export function load(ids, limit?: number) { return from(ids).pipe(mergeMap((id) => from(fetch(id)), limit)); }`,
+    `${RX}from(ids).pipe(mergeMap((id) => from(fetch(id)), 0));`,
     `${RX}forkJoin(ids.map((id) => of(id)));`,
     `${RX}from(ids.map((id) => from(fetch(id)))).pipe(mergeAll(4));`,
     'from(ids).pipe(mergeMap((id) => from(fetch(id))));',
@@ -111,6 +115,26 @@ tester.run('unbounded-reactive-fan-out', rule, {
     {
       code: `${RX}${HTTP}import { inject } from "@angular/core"; class Feeds { private readonly http = inject(HttpClient); all(ids: string[]) { return from(ids).pipe(mergeMap((id) => this.http.get(id))); } }`,
       errors: operator({ operation: 'this.http.get()' }),
+    },
+    {
+      code: `${RX}from(ids).pipe(mergeMap((id) => from(fetch(id)), (id, response) => [id, response]));`,
+      errors: operator(),
+    },
+    {
+      code: `${RX}const pair = (id, response) => [id, response]; from(ids).pipe(mergeMap((id) => from(fetch(id)), pair));`,
+      errors: operator(),
+    },
+    {
+      code: `${RX}function pair(id, response) { return [id, response]; } from(ids).pipe(flatMap((id) => from(fetch(id)), pair));`,
+      errors: operator({ operator: 'flatMap' }),
+    },
+    {
+      code: `${RX}from(ids).pipe(mergeMap((id) => from(fetch(id)), undefined));`,
+      errors: operator(),
+    },
+    {
+      code: `${RX}const NONE = Number.POSITIVE_INFINITY; from(ids).pipe(mergeMap((id) => from(fetch(id)), NONE));`,
+      errors: operator(),
     },
     { code: `${RX}forkJoin(ids.map((id) => from(fetch(id))));`, errors: combinator() },
     {
