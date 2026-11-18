@@ -54,7 +54,12 @@ tester.run('no-wasted-collection-step', rule, {
   invalid: [
     {
       code: 'async function f() { return Promise.race([load(a)]); }',
-      errors: [error('singlePromise', { method: 'race', form: '`await promise`' })],
+      errors: [
+        error('singlePromise', {
+          method: 'race',
+          advice: 'Use the promise itself: `await promise`.',
+        }),
+      ],
     },
     {
       code: 'const first = items.filter((item) => item.paid)[0];',
@@ -139,7 +144,12 @@ tester.run('no-wasted-collection-step', rule, {
     },
     {
       code: 'async function f() { return Promise.all([load(a)]); }',
-      errors: [error('singlePromise', { method: 'all', form: '`[await promise]`' })],
+      errors: [
+        error('singlePromise', {
+          method: 'all',
+          advice: 'Await the promise itself where the array result is not used.',
+        }),
+      ],
     },
     {
       code: 'async function f() { return Promise.allSettled([await load(a), load(b)]); }',

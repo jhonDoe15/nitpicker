@@ -18,7 +18,10 @@ declare const set: Set<number>; declare const maybeSet: Set<number> | undefined;
 declare const objects: Set<Node>; declare const ps: Promise<number>[]; declare const pending: Set<Promise<void>>;
 declare function f<T>(items: T[]): T[]; declare function use(value: unknown): void;
 declare class Buffer extends Uint8Array {} declare const buf: Buffer; declare const text: string;
-declare class List<T> { slice(start: number): List<T>; concat(other: List<T>): List<T>; [Symbol.iterator](): Iterator<T>; }
+declare class List<T> {
+  slice(start: number): List<T>; concat(other: List<T>): List<T>;
+  [Symbol.iterator](): Iterator<T>;
+}
 declare const list: List<number>; declare const rest: number[][]; declare const pair: [number, number];`;
 
 type Kind = 'new' | 'iterable';

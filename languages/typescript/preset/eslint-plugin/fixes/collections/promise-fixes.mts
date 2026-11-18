@@ -5,6 +5,14 @@ import { hasCommentIn, replacing, type FixPlan } from '../support/ranges.mts';
 import { isGlobalName } from './support/globals.mts';
 
 const TRANSACTION = /transaction/iu;
+const UNARY_LEVEL = new Set<string>([
+  AST_NODE_TYPES.Identifier,
+  AST_NODE_TYPES.CallExpression,
+  AST_NODE_TYPES.MemberExpression,
+  AST_NODE_TYPES.ChainExpression,
+  AST_NODE_TYPES.NewExpression,
+  AST_NODE_TYPES.ThisExpression,
+]);
 const WRITES = new Set<string>([
   AST_NODE_TYPES.AssignmentExpression,
   AST_NODE_TYPES.UpdateExpression,
@@ -64,4 +72,32 @@ export function dropAwaitFix(
   }
   const range: TSESTree.Range = [element.range[0], next.range[0]];
   return hasCommentIn(sourceCode, range) ? undefined : replacing(range, '');
+}
+
+function isStatementAwait(call: TSESTree.CallExpression): boolean {
+  const awaited = call.parent;
+  return (
+    awaited.type === AST_NODE_TYPES.AwaitExpression &&
+    awaited.argument === call &&
+    awaited.parent.type === AST_NODE_TYPES.ExpressionStatement
+  );
+}
+
+export function awaitPromiseFix(
+  context: Context,
+  call: TSESTree.CallExpression,
+  only: TSESTree.Expression,
+): FixPlan | undefined {
+  const { sourceCode } = context;
+  const awaited = call.parent;
+  if (
+    !isStatementAwait(call) ||
+    awaited.type !== AST_NODE_TYPES.AwaitExpression ||
+    !isGlobalName(context, call, 'Promise') ||
+    hasCommentIn(sourceCode, call.range)
+  ) {
+    return undefined;
+  }
+  const text = sourceCode.getText(only);
+  return replacing(call.range, UNARY_LEVEL.has(only.type) ? text : `(${text})`);
 }
