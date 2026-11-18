@@ -1344,6 +1344,19 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="OptionalOrElseGetNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="orElseGet(null) passes a null Supplier: it compiles, but throws a NullPointerException as soon as the Optional is empty. Use orElse(null) when a null result is meant (and check it where it is used), orElseGet(() -&gt; fallback()) for a computed default, or orElseThrow(() -&gt; new NotFoundException(id)) when absence is an error.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'orElseGet'][ArgumentList[@Size = 1]/NullLiteral]
+  [*[1][some $t in ('java.util.Optional', 'java.util.OptionalInt', 'java.util.OptionalLong',
+                    'java.util.OptionalDouble') satisfies pmd-java:typeIsExactly($t)]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ParameterMutation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList&lt;&gt;(items) filled and returned), or copy the parameter first and change the copy.">
     <priority>3</priority>

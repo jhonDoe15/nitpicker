@@ -104,6 +104,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
   (`pmd/NullMapValue`).
+- An absent `Optional` is turned into a value with `orElse(default)`, `orElseThrow(() -> new NotFoundException(id))`
+  or `orElse(null)` plus a null check where it is used; `orElseGet(null)` passes a null `Supplier` and throws
+  when the value is absent (`pmd/OptionalOrElseGetNull`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).

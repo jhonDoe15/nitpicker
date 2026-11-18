@@ -110,6 +110,7 @@
   "pmd/NonStaticInitializer": ["maintainability"],
   "pmd/NullAssignment": ["maintainability"],
   "pmd/OneDeclarationPerLine": ["style"],
+  "pmd/OptionalOrElseGetNull": ["bug"],
   "pmd/ParameterMutation": ["maintainability"],
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
   "pmd/PlainTextRegex": ["simplification", "performance"],
