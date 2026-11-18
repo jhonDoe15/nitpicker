@@ -50,7 +50,7 @@ public final class ErrorProneReport {
 
   private ErrorProneReport() {}
 
-  private record ClassSpan(long start, long end, List<String> annotations) {}
+  record ClassSpan(long start, long end, List<String> annotations) {}
 
   private record Job(Path argumentsFile, List<String> options, List<String> sources, long size) {}
 
@@ -195,6 +195,14 @@ public final class ErrorProneReport {
   }
 
   static List<String> javacOptions(List<String> lines) {
+    return javacOptions(lines, List.of());
+  }
+
+  static boolean isModuleDescriptor(String source) {
+    return Path.of(source).endsWith("module-info.java");
+  }
+
+  static List<String> javacOptions(List<String> lines, List<String> sources) {
     List<String> options = new ArrayList<>();
     List<String> projectArgs = new ArrayList<>();
     Map<String, String> level = new HashMap<>();
@@ -221,7 +229,19 @@ public final class ErrorProneReport {
         }
       }
     }
+    if (options.stream().noneMatch(option -> option.startsWith("--module-source-path"))
+        && sources.stream().noneMatch(ErrorProneReport::isModuleDescriptor)) {
+      options.addAll(List.of("-sourcepath", ""));
+    }
     return options;
+  }
+
+  static boolean isFile(JavaFileObject source) {
+    return "file".equals(source.toUri().getScheme());
+  }
+
+  static String sourcePath(JavaFileObject source) {
+    return isFile(source) ? Path.of(source.toUri()).toString() : source.toUri().toString();
   }
 
   private static List<String> normalized(List<String> args) {
@@ -271,13 +291,13 @@ public final class ErrorProneReport {
     Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
-    boolean immutable = immutableInReach(javacOptions(head), sources);
+    boolean immutable = immutableInReach(javacOptions(head, sources), sources);
     List<Job> jobs = new ArrayList<>();
     for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
       List<List<String>> slices = slices(group);
       for (int slice = 0; slice < slices.size(); slice++) {
         List<String> files = slices.get(slice);
-        List<String> options = javacOptions(head);
+        List<String> options = javacOptions(head, sources);
         if (fixChecks != null) {
           int processors = options.indexOf(PROCESSOR_PATH) + 1;
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
@@ -304,7 +324,7 @@ public final class ErrorProneReport {
    */
   static List<List<String>> slices(List<String> sources) throws IOException {
     int count = Math.min(WORKERS, sources.size() / SLICE_FILES);
-    if (count <= 1 || sources.stream().anyMatch(source -> Path.of(source).endsWith("module-info.java"))) {
+    if (count <= 1 || sources.stream().anyMatch(ErrorProneReport::isModuleDescriptor)) {
       return List.of(sources);
     }
     double share = (double) bytes(sources) / count;
@@ -442,7 +462,7 @@ public final class ErrorProneReport {
     for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
       String code = diagnostic.getCode() == null ? "" : diagnostic.getCode();
       Matcher crash = CRASH.matcher(diagnostic.getMessage(Locale.ROOT));
-      if (code.endsWith(".error.prone") && diagnostic.getSource() != null) {
+      if (code.endsWith(".error.prone") && diagnostic.getSource() != null && isFile(diagnostic.getSource())) {
         entries.add(entry(diagnostic, classes));
       } else if (code.endsWith(".error.prone.crash") && diagnostic.getSource() != null && crash.find()) {
         crashes.putIfAbsent(crash.group(1), "{\"crash\":" + json(crash.group(1)) + ",\"cause\":"
@@ -459,19 +479,20 @@ public final class ErrorProneReport {
     return !compiled && errors.size() == errorsBefore;
   }
 
-  private static void recordClasses(JavacTask task, Map<String, List<ClassSpan>> classes) {
+  static void recordClasses(JavacTask task, Map<String, List<ClassSpan>> classes) {
     Trees trees = Trees.instance(task);
     task.addTaskListener(
         new TaskListener() {
           @Override
           public void finished(TaskEvent event) {
             TreePath top = event.getTypeElement() == null ? null : trees.getPath(event.getTypeElement());
-            if (event.getKind() != TaskEvent.Kind.ANALYZE || top == null) {
+            if (event.getKind() != TaskEvent.Kind.ANALYZE || top == null
+                || !isFile(top.getCompilationUnit().getSourceFile())) {
               return;
             }
             CompilationUnitTree unit = top.getCompilationUnit();
             List<ClassSpan> spans =
-                classes.computeIfAbsent(Path.of(unit.getSourceFile().toUri()).toString(), file -> new ArrayList<>());
+                classes.computeIfAbsent(sourcePath(unit.getSourceFile()), file -> new ArrayList<>());
             new TreePathScanner<Void, Void>() {
               @Override
               public Void visitClass(ClassTree tree, Void unused) {
@@ -499,12 +520,12 @@ public final class ErrorProneReport {
 
   private static String location(Diagnostic<? extends JavaFileObject> diagnostic) {
     return diagnostic.getSource() == null ? ""
-        : Path.of(diagnostic.getSource().toUri()) + ":" + diagnostic.getLineNumber() + ": ";
+        : sourcePath(diagnostic.getSource()) + ":" + diagnostic.getLineNumber() + ": ";
   }
 
   private static String entry(
       Diagnostic<? extends JavaFileObject> diagnostic, Map<String, List<ClassSpan>> classes) {
-    String file = Path.of(diagnostic.getSource().toUri()).toString();
+    String file = sourcePath(diagnostic.getSource());
     long position = diagnostic.getPosition();
     List<String> annotations = classes.getOrDefault(file, List.of()).stream()
             .filter(span -> span.start() <= position && position < span.end())
