@@ -459,6 +459,12 @@ source) reports `map.delete(key)` in a function nested after `map.set(key, value
 under the same key is removed. Fresh keys, functions that reject duplicate keys with `has` or an earlier `get`, comparisons
 through an alias of the value and deletes in the same call are left alone.
 
+Dropped subscription handles: `nitpicker/no-dropped-subscription-handle` (strict preset, typed production source)
+reports an expression statement that calls an event subscription (`on*`, `subscribe`, `listen*`, `watch*`,
+`addListener` and similar, also as an optional call) whose result has a `dispose()` or `unsubscribe()` method or is a `() => void` function, in a
+class with a close or dispose method or at module level. `once` calls, emitters the class creates itself and bounded
+RxJS subscriptions are left alone. The listener is otherwise never removed and keeps the object alive.
+
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
 guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a
