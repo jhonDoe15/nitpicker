@@ -51,6 +51,11 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
   names the member, as `getDeclaredMethod("name")`, `Class.forName("a.Outer$Inner")` and
   `@MethodSource("name")` do.
 
+`ExplicitArrayForVarargs` unpacks an array of one element only when it does not change the call:
+`count(new Object[] {x})` passes one argument, but `count(x)` passes the elements of `x` when `x` is
+an array and a null array when `x` is `null`. `--fix` skips the one-element arrays and keeps the
+others.
+
 PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat them:
 `UnusedPrivateMethod` (with `UnusedMethod`), `MissingOverride`, `UselessParentheses`,
 `UnnecessaryFullyQualifiedName`, `UnnecessaryBoxing`, `UnnecessaryReturn`,

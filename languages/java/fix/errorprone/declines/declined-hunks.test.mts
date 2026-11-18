@@ -48,6 +48,35 @@ describe('isDeclined', () => {
     expect(isDeclined(removal, quotedNames(['Plugin']))).toBe(true);
   });
 
+  it('declines unpacking an array of one element, which may be null or an array itself', () => {
+    const unpack = entry(
+      'ExplicitArrayForVarargs',
+      ['    return count(new Object[] {inner});'],
+      ['    return count(inner);'],
+    );
+
+    expect(isDeclined(unpack, quotedNames([]))).toBe(true);
+  });
+
+  it.each([
+    [['    return count(new Object[] {', '        inner', '    });']],
+    [['    return count(new Object[] {new Object[] {a, b}});']],
+    [['    return count(new Object[] {inner,});']],
+    [['    return count(new String[] {"a,b"});']],
+  ])('declines an array of one element written as %j', (removed) => {
+    expect(isDeclined(entry('ExplicitArrayForVarargs', removed), quotedNames([]))).toBe(true);
+  });
+
+  it('keeps unpacking an array of several elements', () => {
+    const unpack = entry(
+      'ExplicitArrayForVarargs',
+      ['    return String.format("%s-%s", new Object[] {"p", f(a, b)});'],
+      ['    return String.format("%s-%s", "p", f(a, b));'],
+    );
+
+    expect(isDeclined(unpack, quotedNames([]))).toBe(false);
+  });
+
   it('keeps the removal when only a call inside the removed body is a quoted name', () => {
     const removal = entry('UnusedMethod', [
       '  @SuppressWarnings("x") private static <T> List<T> hidden(T value) {',
