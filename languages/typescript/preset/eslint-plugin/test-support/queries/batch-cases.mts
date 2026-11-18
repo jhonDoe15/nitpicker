@@ -1,7 +1,7 @@
 import { ormProject } from '../projects/orm-project.mts';
 
 type Project = ReturnType<typeof ormProject>;
-type SuggestionId = 'batchLookup' | 'batchGroups';
+export type SuggestionId = 'batchLookup' | 'batchGroups' | 'batchMget';
 
 export type BatchCases = {
   readonly project: Project;

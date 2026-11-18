@@ -2,8 +2,10 @@ import type { TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../../../../rules/security/security-values.mts';
 import type { FixPlans } from '../../../edits/plans.mts';
 import { isInvariant } from '../../loops/invariants.mts';
+import { isAlwaysReached } from '../../loops/loop-effects.mts';
 import { resultDeclarator, type LoopCall } from '../../loops/loop-call.mts';
-import { isReadOnlyResult } from '../../loops/result-uses.mts';
+import { isReadOnlyResult, isStoredResult } from '../../loops/result-uses.mts';
+import { hasUniqueKeys } from '../../loops/unique-keys.mts';
 import type { OrmCall } from '../../orm/orm-call.mts';
 import { lookupFix } from './lookup-fix.mts';
 import type { Site } from './lookup-plan.mts';
@@ -31,6 +33,10 @@ export function lookupSuggestion(
   }
   const lookup = orm.orm === 'typeorm' ? typeormLookup(site) : prismaLookup(site);
   if (lookup === undefined || !isReadOnlyResult(context, declarator, lookup.kind)) {
+    return undefined;
+  }
+  const shared = isStoredResult(context, declarator) && !hasUniqueKeys(context, loop.iterable);
+  if (shared || !isAlwaysReached(context, loop)) {
     return undefined;
   }
   const plan = lookupFix(site, lookup);
