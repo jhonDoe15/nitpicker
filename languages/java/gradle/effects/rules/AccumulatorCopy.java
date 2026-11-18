@@ -62,7 +62,7 @@ public final class AccumulatorCopy {
           if (flow.insns[index].getOpcode() == Opcodes.ASTORE && !guarded(flow, loop, index)) {
             int slot = ((VarInsnNode) flow.insns[index]).var;
             Copy copy = copied(flow, top(flow, index), identity -> identity.slots().contains(slot));
-            if (copy.slots().stream().noneMatch(reported::contains)) {
+            if (carried(flow, loop, index, slot) && copy.slots().stream().noneMatch(reported::contains)) {
               reported.addAll(copy.slots());
               report(flow, index, copy.slots(), "loop");
             }
@@ -73,6 +73,18 @@ public final class AccumulatorCopy {
         reduceLambda(flow, use);
       }
     }
+  }
+
+  private static boolean carried(MethodFlow flow, Loop loop, int store, int slot) {
+    for (int index = loop.start(); index < store; index++) {
+      if (flow.insns[index] instanceof VarInsnNode load && load.getOpcode() == Opcodes.ALOAD && load.var == slot) {
+        Frame<SourceValue> frame = flow.frame(index);
+        if (frame != null && frame.getLocal(slot).insns.contains(flow.insns[store])) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private static boolean guarded(MethodFlow flow, Loop loop, int store) {
