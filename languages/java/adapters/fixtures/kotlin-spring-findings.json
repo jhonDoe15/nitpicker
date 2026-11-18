@@ -91,7 +91,6 @@
   "src/main/kotlin/shop/bad/Data.kt:68 SpringDataFilterInQuery InvoiceService.total.findAll",
   "src/main/kotlin/shop/bad/Data.kt:76 SpringDataQueryTextBlock ArchiveRepository.openOnes",
   "src/main/kotlin/shop/bad/Data.kt:94 SpringDataNamedParameters ArchiveRepository.longPositional",
-  "src/main/kotlin/shop/bad/Defaults.kt:103 SpringConstructorInjection SecondaryInjected",
   "src/main/kotlin/shop/bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge",
   "src/main/kotlin/shop/bad/Defaults.kt:17 SpringValueSecretDefault JwtProps.secret",
   "src/main/kotlin/shop/bad/Defaults.kt:23 SpringNoServiceLocator Receipts.context",

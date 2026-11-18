@@ -69,6 +69,41 @@ describe('shorter-condition on Java', () => {
   });
 });
 
+describe('shorter-condition on a null check before an unboxing comparison', () => {
+  it('keeps the null check of a boxed value that the next comparison unboxes', () => {
+    const text = inClass(
+      '  Integer maxItems;',
+      '  Double ratio;',
+      '  boolean zero() { return maxItems != null && maxItems == 0; }',
+      '  boolean flipped(Long id) { return id != null && 0L == id; }',
+      '  boolean ratioHalf() { return ratio != null && ratio == 0.5; }',
+      '  boolean flag(Boolean on) { return on != null && on == true; }',
+      '  boolean either(Integer n) { return n == null || n == 0; }',
+      '  boolean many(Integer n) { return n != null && n == 0 && n != 5; }',
+    );
+
+    expect(shorter(text)).toEqual([]);
+  });
+
+  it('still shortens the other operands around the kept null check', () => {
+    const text = inClass('  boolean range(Integer n) { return n != null && n > 1 && n > 2; }');
+
+    expect(shorter(text)).toEqual([
+      '2: `n != null && n > 1 && n > 2` can be written as `n != null && n > 2`: `n > 2` later in the same `&&` implies it',
+    ]);
+  });
+
+  it('leaves the Kotlin comparison with a nullable alone, since equality there is null safe', () => {
+    const text = ['class Rules {', '  fun zero(n: Int?): Boolean = n != null && n == 0', '}'].join(
+      '\n',
+    );
+
+    expect(shorter(text, 'src/main/kotlin/shop/Rules.kt')).toEqual([
+      '2: `n != null && n == 0` can be written as `n == 0`: `n == 0` later in the same `&&` implies it',
+    ]);
+  });
+});
+
 describe('shorter-condition on chained comparisons', () => {
   it('names the operand each reason drops when there is more than one', () => {
     const text = inClass(

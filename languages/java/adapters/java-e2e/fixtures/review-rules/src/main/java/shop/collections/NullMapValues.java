@@ -14,6 +14,10 @@ import org.springframework.lang.Nullable;
 public final class NullMapValues {
   public record Item(String id, @Nullable String note, String group) {}
 
+  public record Profile(@Nullable String name) {}
+
+  public record User(String id, Profile profile, Profile account) {}
+
   public static final class Row {
     private final String owner;
 
@@ -103,6 +107,44 @@ public final class NullMapValues {
     return items.stream().collect(Collectors.toMap(Item::id, Item::note)); // violation: NullMapValue
   }
 
+  public Map<String, String> notesFiltered(List<Item> items) {
+    return items.stream()
+        .filter(item -> item.note() != null && !item.id().isEmpty())
+        .sorted()
+        .collect(Collectors.toMap(Item::id, Item::note));
+  }
+
+  public Map<String, String> notesChecked(List<Item> items) {
+    return items.stream()
+        .filter(item -> Objects.nonNull(item.note()))
+        .collect(Collectors.toUnmodifiableMap(Item::id, item -> item.note()));
+  }
+
+  public Map<String, String> notesEitherFiltered(List<Item> items) {
+    return items.stream()
+        .filter(item -> item.note() != null || item.id().isEmpty())
+        .collect(Collectors.toMap(Item::id, Item::note)); // violation: NullMapValue
+  }
+
+  public Map<String, String> notesOtherFiltered(List<Item> items) {
+    return items.stream()
+        .filter(item -> item.group() != null)
+        .collect(Collectors.toMap(Item::id, Item::note)); // violation: NullMapValue
+  }
+
+  public Map<String, String> notesMapped(List<Item> items) {
+    return items.stream()
+        .filter(item -> item.note() != null)
+        .map(item -> item)
+        .collect(Collectors.toMap(Item::id, Item::note)); // violation: NullMapValue
+  }
+
+  public Map<String, List<Row>> ownersFiltered(List<Row> rows) {
+    return rows.stream()
+        .filter(row -> row.getOwner() != null)
+        .collect(Collectors.groupingBy(Row::getOwner));
+  }
+
   public Map<String, String> looked(List<Item> items) {
     return items.stream().collect(Collectors.toMap(Item::id, item -> labels.get(item.group()))); // violation: NullMapValue
   }
@@ -128,5 +170,17 @@ public final class NullMapValues {
 
   public Map<String, List<Row>> byId(List<Row> rows) {
     return rows.stream().collect(Collectors.groupingBy(Row::getId));
+  }
+
+  public Map<String, String> sameChainFiltered(List<User> users) {
+    return users.stream()
+        .filter(user -> user.profile().name() != null)
+        .collect(Collectors.toMap(User::id, user -> user.profile().name()));
+  }
+
+  public Map<String, String> otherChainFiltered(List<User> users) {
+    return users.stream()
+        .filter(user -> user.profile().name() != null)
+        .collect(Collectors.toMap(user -> user.id(), user -> user.account().name())); // violation: NullMapValue
   }
 }
