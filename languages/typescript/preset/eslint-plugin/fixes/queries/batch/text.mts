@@ -82,6 +82,9 @@ export function pickNames(
 }
 
 export function pluralOf(name: string): string {
+  if (/[^s]s$/u.test(name)) {
+    return name;
+  }
   if (/[^aeiou]y$/u.test(name)) {
     return `${name.slice(0, -1)}ies`;
   }

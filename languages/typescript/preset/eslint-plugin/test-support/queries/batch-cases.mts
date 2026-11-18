@@ -52,8 +52,8 @@ export const TYPEORM_HEAD = [
 
 export const TYPEORM_HEAD_WITH_IN = TYPEORM_HEAD.replace('{ Repository }', '{ Repository, In }');
 
-export function typeormCases(project: Project) {
-  const cases = batchCases(project, 'batchLookup');
+export function typeormCases(project: Project, suggestion: SuggestionId = 'batchLookup') {
+  const cases = batchCases(project, suggestion);
   return {
     ...cases,
     pair(body: string, expected: string, ids?: { readonly report?: string }) {
@@ -78,8 +78,8 @@ export const PRISMA_HEAD = [
   '',
 ].join('\n');
 
-export function prismaCases(project: Project) {
-  const cases = batchCases(project, 'batchLookup');
+export function prismaCases(project: Project, suggestion: SuggestionId = 'batchLookup') {
+  const cases = batchCases(project, suggestion);
   return {
     ...cases,
     pair(body: string, expected: string, ids?: { readonly report?: string }) {
