@@ -148,4 +148,28 @@ public class Emptiness {
 `,
     lines: [7],
   },
+  {
+    check: 'SimplifyBooleanReturns',
+    file: `${MAIN}/Flags.java`,
+    before: `package demo;
+
+public class Flags {
+  boolean positive(int count) {
+    if (count > 0) {
+      return true;
+    }
+    return false;
+  }
+}
+`,
+    after: `package demo;
+
+public class Flags {
+  boolean positive(int count) {
+    return count > 0;
+  }
+}
+`,
+    lines: [5],
+  },
 ];

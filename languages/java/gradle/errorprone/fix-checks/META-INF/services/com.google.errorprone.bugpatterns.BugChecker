@@ -5,6 +5,7 @@ nitpicker.fix.LogStringConcatenation
 nitpicker.fix.MutationIgnoreMarker
 nitpicker.fix.PreserveStackTrace
 nitpicker.fix.RetryInTest
+nitpicker.fix.SimplifyBooleanReturns
 nitpicker.fix.SpringComposedMapping
 nitpicker.fix.SpringConstructorInjection
 nitpicker.fix.SpringRestController
