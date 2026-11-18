@@ -1,5 +1,6 @@
 import { namesOf as untypedNamesOf } from './source/jvm-tokens.mjs';
 import { readJvmDefinitions as untypedReadJvmDefinitions } from './source/jvm-definitions.mjs';
+import type { JavaFinding } from '../typed/java-values.mts';
 
 export type Token = {
   readonly text: string;
@@ -92,6 +93,16 @@ export type ReuseFacts = {
   }[];
   readonly imports: readonly unknown[];
   readonly nearDuplicateUnits: readonly unknown[];
+};
+
+export type ReusePart = {
+  readonly findings: readonly JavaFinding[];
+  readonly entryFindings: readonly JavaFinding[];
+  readonly usage: {
+    readonly modules: readonly unknown[];
+    readonly packages: readonly unknown[];
+    readonly imports: readonly unknown[];
+  };
 };
 
 export const namesOf: (token: Token) => string[] = untypedNamesOf;

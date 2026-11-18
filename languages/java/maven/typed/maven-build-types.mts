@@ -44,7 +44,9 @@ export type MavenPresetOptions = {
   readonly spawn?: unknown;
   readonly timeoutMs?: number | undefined;
   readonly pitDeadline?: number | undefined;
+  readonly onModules?: ModulesListener | undefined;
 };
+type ModulesListener = (modules: readonly MavenModule[]) => void;
 export type MavenPresetRun = {
   readonly moduleDirs: string[];
   readonly testsFailures: unknown[];
@@ -73,4 +75,5 @@ export type PrepareRequest = {
   readonly environment: JavaEnvironment;
   readonly configs: unknown;
   readonly work: string;
+  readonly onModules: ModulesListener | undefined;
 };

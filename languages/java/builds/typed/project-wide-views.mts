@@ -7,7 +7,6 @@ import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-c
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
-import { readJvmReuse } from '../../adapters/reuse/jvm-reuse-facts.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
 import { outerClass } from '../../ingest/class-names.mjs';
 import { inModule } from '../module-path.mjs';
@@ -49,7 +48,6 @@ type WideOptions = {
   readonly kotlin: boolean;
   readonly policy: JavaPolicy;
 };
-type Reuse = { readonly findings: JavaFinding[]; readonly imports: unknown };
 type FeatureGraph = {
   readonly layout: unknown;
   readonly findings: JavaFinding[];
@@ -101,7 +99,6 @@ export const featureGraphOf: (
   projectRoot: string,
   options: Omit<WideOptions, 'policy'> & { readonly policy: Readonly<Record<string, unknown>> },
 ) => FeatureGraph = readFeatureGraph;
-export const jvmReuseOf: (projectRoot: string, options: WideOptions) => Reuse = readJvmReuse;
 export const testOnlyFindings: (
   projectRoot: string,
   options: { readonly projects: readonly ReportProject[] },
