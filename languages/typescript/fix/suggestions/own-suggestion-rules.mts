@@ -12,4 +12,5 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'require-test-process-timeout',
   'reusable-object-per-call',
   'strict-boolean-expressions',
+  'unbounded-fan-out',
 ]);

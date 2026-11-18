@@ -83,6 +83,31 @@ typescriptRuleTester().run('fix edit helpers', rule, {
       'export function f() { const byId2 = 2; return () => { const byId = 1; return [byId, byId2, use()]; }; }',
       "import { In } from 'typeorm';\nexport function f() { const byId2 = 2; return () => { const byId = 1; return [byId, byId2, In(byId3)]; }; }",
     ),
+    fixes('export const a = use()', "import { In } from 'typeorm'\nexport const a = In(byId)"),
+    fixes(
+      'import { x } from "y"\nexport const a = use()',
+      'import { x } from "y"\nimport { In } from "typeorm"\nexport const a = In(byId)',
+    ),
+    fixes(
+      "import { x } from 'y';\nimport z from 'z'\nexport const a = use()",
+      "import { x } from 'y';\nimport z from 'z'\nimport { In } from 'typeorm'\nexport const a = In(byId)",
+    ),
+    fixes(
+      "'use client'\nexport const a = use()",
+      "'use client'\nimport { In } from 'typeorm'\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export class A {}\nexport const a = use()',
+      "import { In } from 'typeorm'\nexport class A {}\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export function f() {}\nexport const a = use()',
+      "import { In } from 'typeorm'\nexport function f() {}\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export function f() {}\nexport const a = use();',
+      "import { In } from 'typeorm';\nexport function f() {}\nexport const a = In(byId);",
+    ),
     declines('export function f() { const In = 1; return In; }\nexport const a = use();'),
     declines('export const a = use(In);'),
     declines(

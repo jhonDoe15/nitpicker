@@ -1,4 +1,7 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
+import { pMapFix } from '../../fixes/concurrency/p-map-fix.mts';
+import { suggestible } from '../../fixes/support/descriptors.mts';
+import type { ReportFix } from '../../fixes/support/ranges.mts';
 import type { Context } from '../security/security-values.mts';
 import { createBounds, type Bounds } from './bounds.mts';
 import { isFixedCollection } from './collections/fixed-collections.mts';
@@ -25,10 +28,12 @@ type Entry = {
   readonly origin: Invocation | undefined;
 };
 type HelperCall = { readonly call: Invocation; readonly helper: FunctionNode };
+export type SuggestedFix = { readonly messageId: string; readonly plan: ReportFix | undefined };
 type Group = {
   readonly node: TSESTree.CallExpression;
   readonly combinator: string;
   readonly sites: readonly Site[];
+  readonly fix?: SuggestedFix;
 };
 
 const MAX_HELPER_DEPTH = 3;
@@ -115,6 +120,7 @@ export function reportSites(
     readonly messageId: string;
     readonly data: Readonly<Record<string, string>>;
     readonly sites: readonly Site[];
+    readonly fix?: SuggestedFix;
   },
   textOf: (collection: TSESTree.Node) => string,
 ): void {
@@ -128,7 +134,7 @@ export function reportSites(
       continue;
     }
     reported.add(key);
-    context.report({
+    const descriptor: TSESLint.ReportDescriptor<string> = {
       node: at.node,
       messageId: at.messageId,
       data: {
@@ -138,14 +144,21 @@ export function reportSites(
         collection: text.length <= MAX_TEXT ? text : 'the collection',
         target: TARGETS[found.kind],
       },
-    });
+    };
+    context.report(at.fix === undefined ? descriptor : suggestible(descriptor, at.fix));
   }
 }
 
 function reportGroup(scope: FanOutScope, group: Group): void {
   const { context } = scope;
-  const { node, combinator, sites } = group;
-  const at = { node, messageId: 'unbounded', data: { combinator }, sites };
+  const { node, combinator, sites, fix } = group;
+  const at = {
+    node,
+    messageId: 'unbounded',
+    data: { combinator },
+    sites,
+    ...(fix === undefined ? {} : { fix }),
+  };
   reportSites(scope, at, (collection) => context.sourceCode.getText(collection));
 }
 
@@ -169,14 +182,17 @@ export function lazyScope(context: Context): FanOutScope {
   };
 }
 
-export const rule: TSESLint.RuleModule<'unbounded'> = {
+export const rule: TSESLint.RuleModule<'unbounded' | 'addConcurrency'> = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: { description: 'Bound the concurrency of remote calls started per element' },
     schema: [],
     messages: {
       unbounded:
         "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.",
+      addConcurrency:
+        'Add `{ concurrency: 8 }` so that at most 8 calls run at once. The results keep their order.',
     },
   },
   create(context) {
@@ -195,7 +211,13 @@ export const rule: TSESLint.RuleModule<'unbounded'> = {
           const [collection] = node.arguments;
           const sites =
             worker === undefined || collection === undefined ? [] : [{ collection, worker }];
-          reportGroup(scope, { node, combinator: 'pMap', sites });
+          const plan = pMapFix(context.sourceCode, node);
+          reportGroup(scope, {
+            node,
+            combinator: 'pMap',
+            sites,
+            fix: { messageId: 'addConcurrency', plan },
+          });
         }
       },
     };
