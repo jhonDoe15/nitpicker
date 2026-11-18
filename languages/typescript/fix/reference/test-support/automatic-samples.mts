@@ -78,13 +78,6 @@ export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
     input: "export const mode = 'fast' as 'fast';\n",
     output: "export const mode = 'fast';\n",
   },
-  '@typescript-eslint/prefer-includes': {
-    path: 'src/main/samples/s11.ts',
-    input:
-      'export function has(names: readonly string[], name: string): boolean {\n  return names.indexOf(name) !== -1;\n}\n',
-    output:
-      'export function has(names: readonly string[], name: string): boolean {\n  return names.includes(name);\n}\n',
-  },
   '@typescript-eslint/prefer-reduce-type-parameter': {
     path: 'src/main/samples/s12.ts',
     input:
