@@ -30,11 +30,7 @@ export function lookupSuggestion(
     return undefined;
   }
   const lookup = orm.orm === 'typeorm' ? typeormLookup(site) : prismaLookup(site);
-  if (
-    lookup === undefined ||
-    lookup.kind === 'list' ||
-    !isReadOnlyResult(context, declarator, lookup.kind)
-  ) {
+  if (lookup === undefined || !isReadOnlyResult(context, declarator, lookup.kind)) {
     return undefined;
   }
   const plan = lookupFix(site, lookup);

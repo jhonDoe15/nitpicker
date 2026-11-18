@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { descendants } from '../../../rules/loops/loop-shapes.mts';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
 
@@ -147,7 +148,7 @@ function isSafeFlow(start: Chain, kind: ResultKind): boolean {
     case AST_NODE_TYPES.UnaryExpression:
       return READ_OPERATORS.has(parent.operator);
     case AST_NODE_TYPES.ForOfStatement:
-      return kind === 'list' && parent.right === top;
+      return false;
     case AST_NODE_TYPES.CallExpression:
       return parent.callee !== top && ESCAPES.has(lastName(parent.callee));
     default:
@@ -163,6 +164,30 @@ function isPrimitive(context: Context, node: TSESTree.Node): boolean {
   const type = services.getTypeAtLocation(node);
   const members = type.isUnion() ? type.types : [type];
   return members.every((member) => (member.flags & PRIMITIVE_FLAGS) !== 0);
+}
+
+function isWritingNode(node: TSESTree.Node): boolean {
+  return (
+    node.type === AST_NODE_TYPES.AssignmentExpression ||
+    node.type === AST_NODE_TYPES.UpdateExpression ||
+    (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete') ||
+    (node.type === AST_NODE_TYPES.CallExpression &&
+      node.callee.type === AST_NODE_TYPES.MemberExpression &&
+      MUTATORS.has(propertyName(node.callee)))
+  );
+}
+
+function isPlainArgument(context: Context, argument: TSESTree.CallExpressionArgument): boolean {
+  if (argument.type === AST_NODE_TYPES.Literal) {
+    return true;
+  }
+  if (
+    argument.type !== AST_NODE_TYPES.ArrowFunctionExpression &&
+    argument.type !== AST_NODE_TYPES.FunctionExpression
+  ) {
+    return false;
+  }
+  return !descendants(argument, context.sourceCode.visitorKeys, () => false).some(isWritingNode);
 }
 
 function isCallRead(names: readonly string[], kind: ResultKind): boolean {
@@ -187,7 +212,10 @@ function isAllowedUse(
   }
   const { top, parent, names } = chain;
   if (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === top) {
-    return isCallRead(names, kind);
+    return (
+      isCallRead(names, kind) &&
+      parent.arguments.every((argument) => isPlainArgument(context, argument))
+    );
   }
   return (
     (names.length > 0 && isPrimitive(context, top)) ||
