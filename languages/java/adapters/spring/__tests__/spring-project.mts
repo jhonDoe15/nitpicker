@@ -162,6 +162,8 @@ const REVIEW_RULES = new Set([
   'ReactorBlockingInOperator',
   'ReactorBlockInReactiveMethod',
   'ReactorBlockWithoutTimeout',
+  'ReactorCleanupSkippedOnCancel',
+  'ReactorResourceNotReleasedOnCancel',
   'UnboundedWait',
   'SpringProxySelfCall',
   'SpringProxyMethodVisibility',

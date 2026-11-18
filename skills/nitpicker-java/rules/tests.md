@@ -16,6 +16,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic())` or put
   `publishOn(Schedulers.boundedElastic())` before the operator (a `publishOn` after it does not move it); a method returning a `Mono` or `Flux` never calls `block()`
   (`ReactorBlockingInOperator`, `ReactorBlockInReactiveMethod`).
+- In a Reactor chain, release a buffer, decoder or stream with `doFinally(signal -> decoder.discard())` or
+  `Mono.using`, never in `doOnTerminate`, `doAfterTerminate` or `doOnComplete` plus `doOnError`, which do not run on
+  cancel (`ReactorCleanupSkippedOnCancel`); inside `Flux.create`, `Flux.push` or `Mono.create`, register the release
+  of a stream you open with `sink.onDispose(stream::close)` (`ReactorResourceNotReleasedOnCancel`).
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
   deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and
