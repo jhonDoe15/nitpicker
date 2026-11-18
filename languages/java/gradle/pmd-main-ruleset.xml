@@ -842,6 +842,82 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="ImmutableCollectionChanged" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This collection comes from a fixed-size or immutable factory (Arrays.asList, List.of, Set.of, Map.of, Collections.empty*, singleton*, unmodifiable*, Stream.toList(), ImmutableList and the like) and is never replaced by a mutable one, so changing it throws UnsupportedOperationException, often only on the path that starts from the default value. Build a mutable copy where the code changes it (`private final List&lt;String&gt; comments = new ArrayList&lt;&gt;(List.of(&quot;#&quot;));`), or keep the factory and stop changing it. An exception fits only for a call that is meant to fail.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $emptyFactories := ('emptyList', 'emptySet', 'emptyMap', 'emptySortedSet', 'emptySortedMap',
+                        'emptyNavigableSet', 'emptyNavigableMap'),
+    $kind := function($e) {
+      if (not($e/self::MethodCall)) then ()
+      else if (some $m in $emptyFactories satisfies $e[pmd-java:matchesSig(concat('java.util.Collections#', $m, '()'))])
+        then 'empty'
+      else if ($e[pmd-java:matchesSig('java.util.Arrays#asList(_*)')]) then 'asList'
+      else if ($e[pmd-java:matchesSig('java.util.List#of(_*)') or pmd-java:matchesSig('java.util.Set#of(_*)')
+                  or pmd-java:matchesSig('java.util.Map#of(_*)') or pmd-java:matchesSig('java.util.Map#ofEntries(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#singleton(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#singletonList(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#singletonMap(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#unmodifiableList(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#unmodifiableSet(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#unmodifiableMap(_*)')
+                  or pmd-java:matchesSig('java.util.Collections#unmodifiableCollection(_*)')
+                  or pmd-java:matchesSig('java.util.stream.Stream#toList()')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableList#of(_*)')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableList#copyOf(_*)')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableSet#of(_*)')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableSet#copyOf(_*)')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableMap#of(_*)')
+                  or pmd-java:matchesSig('com.google.common.collect.ImmutableMap#copyOf(_*)')]) then 'fixed'
+      else ()
+    },
+    $adding := ('add', 'addAll', 'addFirst', 'addLast', 'put', 'putAll', 'putIfAbsent', 'computeIfAbsent', 'compute',
+                'merge', 'set', 'offer', 'push'),
+    $removing := ('remove', 'removeAll', 'retainAll', 'clear', 'removeFirst', 'removeLast', 'pop', 'poll'),
+    $asListChanging := ('add', 'addAll', 'addFirst', 'addLast', 'remove', 'clear', 'removeFirst', 'removeLast'),
+    $changing := function($k, $name) {
+      if ($k = 'empty') then $name = $adding[. != 'set']
+      else if ($k = 'asList') then $name = $asListChanging
+      else $name = ($adding, $removing, 'removeIf', 'replaceAll', 'sort', 'replace')
+    }
+return //MethodCall[ArgumentList]
+  [empty(ancestor::ClassDeclaration/ModifierList/Annotation[@SimpleName = ('Setter', 'Data', 'Builder')])]
+  [*[1][self::VariableAccess or (self::FieldAccess and *[1][self::ThisExpression])]]
+  [let $n := *[1]/@Name,
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $scope := if (exists($method)) then $method else ancestor::ClassBody[1],
+       $local := $scope//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $n],
+       $class := ancestor::ClassBody[FieldDeclaration/VariableDeclarator/VariableId/@Name = $n][1],
+       $field := $class/FieldDeclaration[@Visibility = 'private'][not(ModifierList/Annotation)]/VariableDeclarator[VariableId/@Name = $n],
+       $isThis := exists(*[1][self::FieldAccess])
+   return
+     if ($isThis or empty($local))
+     then (
+       exists($field) and empty($method[.//VariableId[@Name = $n][not(parent::VariableDeclarator[parent::FieldDeclaration])]])
+       and (let $src := ($field/*[last()][not(self::VariableId)],
+                         $class//AssignmentExpression[@Operator = '='][*[1][(self::VariableAccess or self::FieldAccess)
+                                                                           and @Name = $n]]/*[2]),
+                $kinds := for $s in $src return $kind($s)
+            return exists($src) and count($kinds) = count($src) and count(distinct-values($kinds)) = 1
+                   and $changing($kinds[1], string(@MethodName)))
+       and empty($class//AssignmentExpression[@Operator != '='][*[1][(self::VariableAccess or self::FieldAccess)
+                                                                      and @Name = $n]])
+     )
+     else (
+       count($local) = 1
+       and (let $src := ($local/*[last()][not(self::VariableId)],
+                         $scope//AssignmentExpression[*[1][self::VariableAccess and @Name = $n]]/*[2]),
+                $kinds := for $s in $src return $kind($s)
+            return exists($local/*[last()][not(self::VariableId)])
+                   and empty($scope//AssignmentExpression[*[1][self::VariableAccess and @Name = $n]])
+                   and count($kinds) = 1 and $changing($kinds[1], string(@MethodName)))
+     )]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="IntProductWidenedLate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This int multiplication is computed in 32 bits and only then added to or multiplied with a long, so it overflows silently before the widening (timeToLive * 1000 wraps once timeToLive passes about 2.1 million). Make a factor long first: System.currentTimeMillis() + timeToLive * 1000L, (long) hour * 60, or convert with TimeUnit.SECONDS.toMillis(timeToLive) or Math.multiplyExact. Constant products pass, and so do products with a byte, short or char factor, a small literal factor (16 or less) next to a plain variable, a loop variable factor, an array length factor and products that contain a method call. A shift by 16 or more is reported the same way: base + (steps &lt;&lt; 20).">
     <priority>3</priority>
