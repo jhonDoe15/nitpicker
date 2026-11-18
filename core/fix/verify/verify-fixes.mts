@@ -82,17 +82,17 @@ export function verifyFixes({ journal, analyze, mode = 'narrow' }: VerifyRequest
   );
   const { rolled, kept } = rollBack(
     journal,
-    runs.filter(({ id }) => reasons.has(id)),
+    runs.filter(({ key }) => reasons.has(key)),
   );
   return {
     rolledBack: rolled.map((run) => ({
       recipe: run.id,
       files: [...run.files],
-      reasons: reasons.get(run.id) ?? [],
+      reasons: reasons.get(run.key) ?? [],
     })),
     notes: [
       ...after.unmatched.map((tool) => `--fix could not verify ${tool}: no analyzer reports it`),
-      ...rolled.map((run) => rollbackNote(run, reasons.get(run.id) ?? [])),
+      ...rolled.map((run) => rollbackNote(run, reasons.get(run.key) ?? [])),
       ...kept.map(keptNote),
     ],
   };

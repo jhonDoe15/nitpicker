@@ -2866,8 +2866,10 @@ checks every recipe that applied a fix:
    recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
 3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
    names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
-   Two recipes that touched the same file are rolled back together. The other recipes stay applied,
-   and the comparison runs on the tree that is left. The files of a rolled back recipe are not
+   Two recipes that touched the same file are rolled back together. A recipe that edits one file at
+   a time (every Error Prone and Kotlin source recipe) is judged per file, so only the files it
+   broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
+   is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the

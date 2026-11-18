@@ -25,13 +25,18 @@ export function countFindings(findings: readonly AnalyzedFinding[]): Counts {
   return counts;
 }
 
+function runKey(recipe: string, scope: string | undefined, files: readonly string[]) {
+  return scope === 'file' ? [recipe, ...files.toSorted()].join('\0') : recipe;
+}
+
 export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
   const runs = new Map<string, RecipeRun>();
-  for (const { recipe, files, finding, alsoFindings = [] } of events) {
+  for (const { recipe, scope, files, finding, alsoFindings = [] } of events) {
     if (recipe === undefined) {
       continue;
     }
-    const run = runs.get(recipe) ?? { id: recipe, files: new Set<string>(), findings: [] };
+    const key = runKey(recipe, scope, files);
+    const run = runs.get(key) ?? { key, id: recipe, files: new Set<string>(), findings: [] };
     for (const name of files) {
       run.files.add(name);
     }
@@ -39,7 +44,7 @@ export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
       run.findings.push(finding);
     }
     appendAll(run.findings, alsoFindings);
-    runs.set(recipe, run);
+    runs.set(key, run);
   }
   return [...runs.values()];
 }
@@ -63,7 +68,7 @@ function introduced({ tool, rule, path }: FindingKey) {
 
 export function judgeFindings({ runs, before, after, breaking }: Judgement): Map<string, string[]> {
   const reasons = new Map<string, Set<string>>(
-    runs.map((run) => [run.id, new Set(stillThere(run, { before, after }))]),
+    runs.map((run) => [run.key, new Set(stillThere(run, { before, after }))]),
   );
   for (const [key, finding] of after) {
     if (finding.count <= (before.get(key)?.count ?? 0)) {
@@ -71,8 +76,8 @@ export function judgeFindings({ runs, before, after, breaking }: Judgement): Map
     }
     const owners = runs.filter((run) => run.files.has(finding.path));
     const blamed = owners.length > 0 || !breaking(finding.tool) ? owners : runs;
-    for (const { id } of blamed) {
-      reasons.get(id)?.add(introduced(finding));
+    for (const { key: owner } of blamed) {
+      reasons.get(owner)?.add(introduced(finding));
     }
   }
   return new Map(
@@ -85,13 +90,13 @@ export function withSharedFiles(
   reasons: ReadonlyMap<string, readonly string[]>,
 ): Map<string, readonly string[]> {
   const rolled = new Map(reasons);
-  const queue = runs.filter(({ id }) => rolled.has(id));
+  const queue = runs.filter(({ key }) => rolled.has(key));
   for (const source of queue) {
     const mates = runs.filter(
-      (run) => !rolled.has(run.id) && [...run.files].some((name) => source.files.has(name)),
+      (run) => !rolled.has(run.key) && [...run.files].some((name) => source.files.has(name)),
     );
     for (const mate of mates) {
-      rolled.set(mate.id, [`shares a file with ${source.id}, which was rolled back`]);
+      rolled.set(mate.key, [`shares a file with ${source.id}, which was rolled back`]);
     }
     appendAll(queue, mates);
   }
