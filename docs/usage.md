@@ -2950,6 +2950,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
 | `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
 | `nitpicker/no-wasted-collection-step`                | safe   | safe: spread fallbacks and copies, length tests, `flatMap`, `some`; review: `await` in `Promise.all`, `Promise.all([p])` |
+| `nitpicker/no-accumulating-spread`                   | safe   | writes `Object.fromEntries(xs.map(...))` for a `reduce` that spreads an object accumulator (typed code)                 |
 | `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
 | `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
 | `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |

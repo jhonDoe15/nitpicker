@@ -28,7 +28,7 @@ function unionMembers(type: TypeScript.Type): readonly TypeScript.Type[] {
   return type.isUnion() ? type.types : [type];
 }
 
-function itemTypesOf(
+export function itemTypesOf(
   checker: TypeScript.TypeChecker,
   member: TypeScript.Type,
 ): readonly TypeScript.Type[] | undefined {
