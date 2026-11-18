@@ -125,6 +125,7 @@
   "eslint/nitpicker/no-test-retry": ["tests"],
   "eslint/nitpicker/no-throw": ["style"],
   "eslint/nitpicker/no-tri-state-boolean": ["maintainability"],
+  "eslint/nitpicker/no-truncating-split-limit": ["bug"],
   "eslint/nitpicker/no-ui-framework-in-domain": ["maintainability"],
   "eslint/nitpicker/no-unatomic-writes": ["reliability", "persistence"],
   "eslint/nitpicker/no-unbounded-query-array": ["bug", "persistence"],
