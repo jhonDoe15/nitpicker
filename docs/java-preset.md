@@ -98,6 +98,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Backoff delays that overflow](java-preset/backoff-delays-that-overflow.md)
 - [Elapsed time measured with the wall clock](java-preset/elapsed-time-measured-with-the-wall-clock.md)
 - [Paths and hosts matched by text](java-preset/paths-and-hosts-matched-by-text.md)
+- [Suffixes and prefixes removed by replace](java-preset/suffixes-and-prefixes-removed-by-replace.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

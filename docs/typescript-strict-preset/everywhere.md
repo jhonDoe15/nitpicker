@@ -1035,6 +1035,56 @@ await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or
   (a deliberate text prefix), and so is a `startsWith` with a position. The guard of `nitpicker/no-unsafe-path-join`
   covers only the check in front of an `fs` call; this rule covers URL paths, route matching, module ids,
   package names and domains. The same form runs as `pmd/AffixWithoutBoundary` (Java and Kotlin).
+- `nitpicker/no-unanchored-affix-replace` (production code): `x.replace(pattern, replacement)` with a string
+  pattern (not `replaceAll`, not a regular expression) that removes a suffix or prefix, where the first occurrence
+  anywhere is replaced: a constant that looks like a file or URL suffix with an empty replacement
+  (`name.replace('.git', '')` turns `blog.github.io` into `bloghub.io`), a value read from a parsed URL
+  (`url.replace(parsed.port, next)`, `url.replace(base.pathname, '')`), `os.homedir()` or `process.cwd()`, or a
+  name ending in `Dir`, `Root`, `Base`, `Path` or `Prefix` (`file.replace(workspaceRoot, '')`). Allowed forms: an
+  anchored pattern (`/\.git$/`), `endsWith` or `startsWith` with `slice`, setting the field on the parsed URL
+  (`url.port = next`), and a replace in the passing branch of a `startsWith` or `endsWith` check of the same
+  value, including the body of an `if` on that check, a `.map` after a `.filter` with the check, and a receiver that was
+  built with that suffix (`` `${id}.json` ``). The same form
+  runs as `pmd/AffixRemovedByReplace` (Java and Kotlin).
+- `nitpicker/no-case-mismatched-lookup` (production code): a lookup (`includes`, `has`, `get`, `indexOf`,
+  `delete`) with a key from `toLowerCase()` or `toUpperCase()` (also the locale forms) in a collection that is not
+  normalized the same way: an array, `new Set([...])` or `new Map([[...]])` of string literals of which one is not
+  already in that case (`['GET', 'POST'].includes(method.toLowerCase())` never matches), a `const set = new Set(names)`
+  copied from a parameter of the same function, and the reverse: a collection filled with `key.toLowerCase()`
+  (`add`, `set`, `push`) in the same function (or class, for `this.field`) and looked up with `key` as written.
+  Allowed forms: normalize both sides where the collection is built
+  (`new Set(names.map((name) => name.toLowerCase()))`), a key normalized into a local before both the fill and
+  the lookup, a collection of literals already in the key's case, and `localeCompare` or a case-insensitive
+  comparison. A collection that arrives as a parameter or from a call is not reported (the caller owns its case).
+  The same form runs as `pmd/CaseMismatchedLookup` (Java and Kotlin).
+- `nitpicker/no-mismatched-precondition-message` (production code): `assert(x, 'msg')`, `assert.ok`,
+  `invariant(x, 'msg')`, and `if (!x) throw new Error('msg')` or `if (x == null) throw ...` (also `=== undefined`,
+  `=== null`) whose message starts with `<word> must`, `<word> is`, `<word> cannot` and the like, where
+  `<word>` (also with a lower-case first letter) is a parameter, local or class member in scope that is not the
+  checked expression. The checked names are the identifiers of `x` (`user.id` gives `user` and `id`). Allowed forms:
+  a message that names the checked value, a message about its type or concept (the last word matches:
+  `TimeUnit` for `targetTimeUnit`), a function name at the start of the message
+- `nitpicker/no-malformed-query-text` (production code): query text that is malformed once its literal parts are
+  joined. The text is a string, a template (interpolations are opaque) or a `+` chain that starts with a query keyword
+  (`SELECT`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM`, `MERGE INTO`, `WITH`) or a fragment (`AND`, `OR`,
+  `WHERE`, `ORDER BY`, `JOIN`...). Reported: a comparison operator, `LIKE`, `IN` or `BETWEEN` that ends the text
+  with no operand (the text is returned as a query, passed to `query`, `execute`, `run`, `prepare`, `raw` and the
+  like, or assigned with `=` or `+=` and the next statement does not use the variable: `where += ' AND g LIKE ';`),
+  an operator followed by `AND`, `OR`, `ORDER`, `GROUP`, `LIMIT`, `HAVING` or `UNION`, an `INSERT` whose literal
+  column list and `VALUES` list differ in length, and two literal parts joined into a run-together word next to a
+  query or Lua keyword (`'FROM t' + 'WHERE a = ?'`, `'... then' + 'redis.call(...)'`). Allowed forms: a bind
+  placeholder or value after the operator, a space at the start of every appended fragment, and a fragment that
+  the next statement continues. Builder chains (`qb.append(...)`), loops and dialect syntax are not checked. The
+  same form runs as `pmd/MalformedQueryText` (Java and Kotlin).
+- `nitpicker/no-unpaged-listing` (production code): an object-store or search listing read once. `new
+  ListObjectsV2Command(input)`, `ListObjectsCommand` and `ListObjectVersionsCommand` (AWS SDK v3), and an
+  `s3.listObjectsV2({ ... })` call (AWS SDK v2) whose function never mentions a page marker
+  (`NextContinuationToken`, `ContinuationToken`, `IsTruncated`, `NextMarker`, `Marker`, `StartAfter`,
+  `paginateListObjectsV2`) and whose input has no `MaxKeys`; and a node-redis `client.ft.search(index, query)` with no
+  options or options without `LIMIT`. The API returns one page (1000 keys, or 10 search documents) and the rest is
+  silently ignored. Allowed forms: `paginateListObjectsV2(config, input)`, a loop on `NextContinuationToken` and
+  `IsTruncated`, `MaxKeys: 1` for an existence check, a `LIMIT` option in a loop, and options passed as a variable.
+  The same form runs as `pmd/UnpagedListing` (Java and Kotlin).
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so
   every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and

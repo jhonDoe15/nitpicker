@@ -218,6 +218,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-malformed-query-text`).
 - An object-store listing follows its pages: `paginateListObjectsV2`, or a loop on `NextContinuationToken`; a search
   call sets its `LIMIT` and loops (`nitpicker/no-unpaged-listing`).
+- A suffix or prefix is removed with an anchored check, never a string `replace` (`name.replace('.git', '')`
+  also hits `blog.git.io`): `name.replace(/\.git$/, '')`, `endsWith` with `slice`, or `url.port = next` on a parsed
+  URL (`nitpicker/no-unanchored-affix-replace`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

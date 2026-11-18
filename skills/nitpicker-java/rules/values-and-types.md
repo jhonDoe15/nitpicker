@@ -140,3 +140,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A path, route, package or host is matched on whole segments, never by `String` prefix
   (`pmd/AffixWithoutBoundary`): `path.equals(base) || path.startsWith(base + "/")`, `Path.startsWith`,
   `host.equals(domain) || host.endsWith("." + domain)`, and `URI.getHost()` for a URL.
+- A suffix or prefix is removed with an anchored check, never `replace` (`pmd/AffixRemovedByReplace`):
+  `name.endsWith(".git") ? name.substring(0, name.length() - 4) : name`, because `replace` also hits `blog.git.io`.

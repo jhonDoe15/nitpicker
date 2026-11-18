@@ -6,6 +6,11 @@ import {
   AFFIX_BOUNDARY_EXCEPTION_RULE,
   AFFIX_BOUNDARY_RULE,
 } from '../../adapters/review-rules/affix-boundaries/affix-boundaries.mjs';
+import {
+  AFFIX_REPLACE_ALLOWED,
+  AFFIX_REPLACE_EXCEPTION_RULE,
+  AFFIX_REPLACE_RULE,
+} from '../../adapters/review-rules/affix-replace/affix-replace.mjs';
 
 const READ_FOR_IT = 'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
 
@@ -25,6 +30,21 @@ const ENTRIES = [
       `text (\`/foo\` matches \`/foobar\`, \`example.com\` matches ` +
       `\`evilexample.com\`), which leaks files, routes and cookies, ` +
       `or lets a redirect through. ${READ_FOR_IT}`,
+  },
+  {
+    rule: AFFIX_REPLACE_RULE,
+    exception: AFFIX_REPLACE_EXCEPTION_RULE,
+    anchor: 'suffixes-and-prefixes-removed-by-replace',
+    allowed: AFFIX_REPLACE_ALLOWED,
+    summary:
+      'A `String` `replace(".git", "")`, or `replace(suffix, "")`, ' +
+      '`replace(root, "")` with a suffix, prefix or directory name, ' +
+      'used to remove a suffix or prefix.',
+    why:
+      `\`replace\` removes every occurrence anywhere in the text, so ` +
+      `\`blog.git.io\` loses its \`.git\` and a path that contains ` +
+      `the directory twice is rewritten in the wrong place. ` +
+      `${READ_FOR_IT}`,
   },
 ];
 

@@ -193,6 +193,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/affixes/no-prefix-without-boundary.mjs',
   'languages/typescript/preset/eslint-plugin/rules/affixes/boundaries.mjs',
   'languages/typescript/preset/eslint-plugin/rules/affixes/names.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/affixes/no-unanchored-affix-replace.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/async-contexts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/no-sync-node-api-in-async.mjs',
   'languages/typescript/preset/eslint-plugin/rules/async/sync-node-apis.mjs',

@@ -130,6 +130,7 @@
   "python-rules/todo-without-issue": ["style"],
   "python-rules/tri-state-boolean": ["maintainability"],
   "python-rules/type-cast": ["maintainability"],
+  "python-rules/unanchored-affix-replace": ["bug"],
   "python-rules/unbounded-collection": ["performance", "reliability"],
   "python-rules/unbounded-fan-out": ["performance", "async"],
   "python-rules/unbounded-query-array": ["performance", "persistence"],

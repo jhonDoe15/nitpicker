@@ -78,6 +78,7 @@
   "eslint/nitpicker/no-overflowing-backoff": ["bug", "reliability"],
   "eslint/nitpicker/no-parameter-mutation": ["maintainability"],
   "eslint/nitpicker/no-partial-output-assertion": ["tests"],
+  "eslint/nitpicker/no-unanchored-affix-replace": ["bug"],
   "eslint/nitpicker/no-prefix-without-boundary": ["bug", "security"],
   "eslint/nitpicker/no-presence-truthiness": ["bug"],
   "eslint/nitpicker/no-process-access-outside-composition-root": ["maintainability"],

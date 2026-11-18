@@ -41,6 +41,7 @@
   "languages/python/ruff/ruff-rules.e2e.test.mts": 1,
   "languages/python/ruff/ruff-snapshot.e2e.test.mts": 1,
   "languages/python/rules/e2e/affixes/prefix-without-boundary.e2e.test.mts": 2,
+  "languages/python/rules/e2e/affixes/unanchored-affix-replace.e2e.test.mts": 2,
   "languages/python/rules/e2e/aliases/method-alias.e2e.test.mts": 12,
   "languages/python/rules/e2e/async/checkpoints.e2e.test.mts": 3,
   "languages/python/rules/e2e/auth/route-without-auth.e2e.test.mjs": 5,

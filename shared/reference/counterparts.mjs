@@ -148,6 +148,12 @@ const GROUPS = [
     python: 'prefix-without-boundary',
     go: 'go-rules/prefix-without-boundary',
   },
+  {
+    jvm: 'AffixRemovedByReplace',
+    typescript: 'nitpicker/no-unanchored-affix-replace',
+    python: 'unanchored-affix-replace',
+    go: 'go-rules/unanchored-affix-replace',
+  },
 ];
 
 function spring(rule) {

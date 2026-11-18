@@ -3,8 +3,9 @@ import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { pathInside, projectSourceFiles } from '../java-sources.mjs';
 import { parseSource } from '../max-value-sums/source-file.mjs';
 import { affixBoundaryRule } from '../affix-boundaries/affix-boundaries.mjs';
+import { affixReplaceRule } from '../affix-replace/affix-replace.mjs';
 
-export const MINED_RULES = [affixBoundaryRule];
+export const MINED_RULES = [affixBoundaryRule, affixReplaceRule];
 export const MINED_EXCEPTION_RULES = MINED_RULES.map(({ id }) => `pmd/${id}`);
 
 export function readMinedFindings(projectRoot, { projects, kotlin = false, policy = {} }) {

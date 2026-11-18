@@ -27,6 +27,18 @@ function affixDescription(subject?: string): string {
 }
 
 
+function replaceDescription(subject?: string): string {
+  const [kind = '', call = ''] = parts(subject);
+  return kind === 'suffix'
+    ? `\`${call}\` removes a suffix with a plain replace, which ` +
+        `rewrites the first occurrence anywhere (\`blog.github.io\` ` +
+        `loses its \`.git\`)`
+    : `\`${call}\` removes a prefix or URL part with a plain ` +
+        `replace, which rewrites the first occurrence anywhere, not ` +
+        `the leading part`;
+}
+
+
 export const MINED_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -38,5 +50,14 @@ export const MINED_HINTS: readonly RuleHint[] = [
       '`Path.is_relative_to`, or parse the URL and compare ' +
       '`urlsplit(x).hostname`. An exception fits when the prefix is ' +
       'meant as plain text.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unanchored-affix-replace'],
+    describe: replaceDescription,
+    allowed:
+      'Use `name.removesuffix(".git")` or `path.removeprefix(root)`, ' +
+      'or set the field on the parsed URL ' +
+      '(`parsed._replace(netloc=...)`).',
   },
 ];
