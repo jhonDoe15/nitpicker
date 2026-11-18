@@ -183,6 +183,37 @@ describe('Spring Data rules on the forms the regression review found', () => {
 });
 
 describe('Spring Data rules on hand-built facts', () => {
+  it('reports a many-to-many list on the owning side only, not on the mappedBy side', () => {
+    const manyToMany = (args: Loose[]) => ({
+      name: 'ManyToMany',
+      type: 'jakarta.persistence.ManyToMany',
+      arguments: args,
+    });
+    const facts = sourceFile({
+      classes: [
+        klass('Course', {
+          annotations: [{ name: 'Entity', arguments: [], type: 'jakarta.persistence.Entity' }],
+        }),
+      ],
+      properties: [
+        property('students', 'Course', {
+          type: 'MutableList<Student>',
+          line: 3,
+          annotationEntries: [manyToMany([])],
+        }),
+        property('courses', 'Course', {
+          type: 'MutableList<Student>',
+          line: 5,
+          annotationEntries: [manyToMany([{ name: 'mappedBy', text: '"students"' }])],
+        }),
+      ],
+    });
+
+    expect(lines([facts]).filter((line) => line.endsWith(' JpaManyToManySet'))).toEqual([
+      'Sample.kt:3 JpaManyToManySet',
+    ]);
+  });
+
   it('reports IDENTITY ids unless the project database has no sequences', () => {
     const facts = sourceFile({
       classes: [

@@ -76,7 +76,11 @@ function mappings(view, options) {
 
 function manyToManyLists(view) {
   return annotatedMembers(view)
-    .filter(({ member }) => annotatedWith(view, member, MANY_TO_MANY) !== undefined)
+    .filter(
+      ({ member }) =>
+        annotatedWith(view, member, MANY_TO_MANY) !== undefined &&
+        argumentOf(annotatedWith(view, member, MANY_TO_MANY), 'mappedBy') === undefined,
+    )
     .filter(({ member }) => annotatedWith(view, member, ORDER_COLUMN) === undefined)
     .filter(({ member }) =>
       LIST_TYPES.has(
