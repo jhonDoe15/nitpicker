@@ -225,6 +225,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-btoa-on-runtime-text`: `btoa(x)` (also `window.btoa`, `globalThis.btoa`, `self.btoa`) where `x` is not a constant,
+  not built from `String.fromCharCode`/`String.fromCodePoint`, `encodeURIComponent` or `escape`, not a binary-named or
+  byte-built value, and not inside a `try` with a `catch`. `btoa` accepts only Latin-1 and throws `InvalidCharacterError`
+  for any character above U+00FF, so a password, name or JSON with non-ASCII text fails, often in a login path. Allowed
+  forms: `new TextEncoder().encode(text)` with a bytes-to-base64 step, `Uint8Array.prototype.toBase64()`, or
+  `Buffer.from(text, 'utf8').toString('base64')` in Node. Python, Java, Kotlin and Go take bytes in their base64 APIs, so
+  the charset is explicit there and they need no counterpart.
+- `nitpicker/no-non-latin1-header-value`: an HTTP header value set from a file path (`file.relative`, `filename`, `path.relative(...)`),
+  a route, a user name, request `params`/`query`/`body` data or `JSON.stringify(...)` without encoding, through
+  `res.setHeader`, `res.header`, `reply.header`, `headers.set`/`append`, `res.writeHead`, `new Headers({...})` or a `headers`
+  object given to `fetch`, `Request`, `Response` or an HTTP client. Header values are byte strings, so `fetch`, `Headers` and
+  Node's `setHeader` throw for a character above U+00FF and non-English text fails where ASCII test data passes. Allowed forms:
+  `encodeURIComponent`, `encodeURI` or base64, decoded on the other side. Literals, numbers and values the type checker shows
+  as numbers or string literal unions are skipped.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

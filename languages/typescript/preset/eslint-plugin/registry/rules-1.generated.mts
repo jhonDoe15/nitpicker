@@ -18,6 +18,7 @@ import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertion
 import { rule as ruleNoBlankNumberCoercion } from '../rules/number-input/no-blank-number-coercion.mts';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
+import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
@@ -48,6 +49,7 @@ import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-h
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
+import { rule as ruleNoIncompleteEscaping } from '../rules/escaping/no-incomplete-escaping.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
@@ -65,6 +67,7 @@ import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
+import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-sp
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
-import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
-import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
-import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -120,6 +120,7 @@ export const partRules = {
   'no-blank-number-coercion': ruleNoBlankNumberCoercion,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
@@ -150,6 +151,7 @@ export const partRules = {
   'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-in-presence-check': ruleNoInPresenceCheck,
+  'no-incomplete-escaping': ruleNoIncompleteEscaping,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
@@ -168,6 +170,7 @@ export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
+  'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
-  'no-silent-catch': ruleNoSilentCatch,
-  'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
-  'no-sql-string-building': ruleNoSqlStringBuilding,
 };
