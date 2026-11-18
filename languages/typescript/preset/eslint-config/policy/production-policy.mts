@@ -140,6 +140,18 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
   };
 }
 
+function transactionGuardRules(): RuleEntries {
+  return {
+    'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-cache-write-in-transaction': 'error',
+    'nitpicker/no-whole-rows-for-one-value': 'error',
+    'nitpicker/no-remote-call-under-lock': 'error',
+    'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-stale-retry-after-conflict': 'error',
+    'nitpicker/no-dual-write': 'error',
+  };
+}
+
 function productionGuardRules({
   react,
   security,
@@ -160,12 +172,7 @@ function productionGuardRules({
     'nitpicker/no-lazy-relation-in-loop': 'error',
     'nitpicker/no-lookup-per-element': 'error',
     'nitpicker/no-query-per-parent': 'error',
-    'nitpicker/no-remote-call-in-transaction': 'error',
-    'nitpicker/no-whole-rows-for-one-value': 'error',
-    'nitpicker/no-remote-call-under-lock': 'error',
-    'nitpicker/no-retry-without-idempotency': 'error',
-    'nitpicker/no-stale-retry-after-conflict': 'error',
-    'nitpicker/no-dual-write': 'error',
+    ...transactionGuardRules(),
     'nitpicker/no-unisolated-job-loop': 'error',
     'nitpicker/no-unguarded-deleted-items': 'error',
     'nitpicker/no-in-memory-query': 'error',

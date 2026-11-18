@@ -558,6 +558,22 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   and awaits the lazy relation of that parameter in its body is reported at the call, with the
   message naming the helper and the access it awaits. Prisma has no lazy loading, and Sequelize
   association getters are explicit calls that `nitpicker/no-io-in-loop` reports.
+- Cache writes inside a transaction (`nitpicker/no-cache-write-in-transaction`): a rollback undoes the
+  database change but not a cache write made inside the transaction, so other requests and nodes
+  keep reading a value or an eviction that never happened until it expires. Transactions are the
+  callback (with a parameter) of Prisma's `$transaction`, TypeORM `dataSource.transaction(...)` and
+  `manager.transaction(...)`, Kysely `db.transaction().execute(...)`, `transactional(...)` and
+  similar openers, and the calls between `startTransaction()`/`beginTransaction()` and the next
+  commit or rollback. Cache clients are `redis`/`ioredis`/`@redis/client`, `cache-manager`, `keyv`
+  and `node-cache` values (imported, built with `new`, or held in a field named after redis, keyv or
+  a cache) calling `set`, `setex`, `del`, `hset`, `expire`, `incr`, `reset`, `clear` and the other
+  Redis write commands, and `delete` on a cache-named client. A `Map`, `WeakMap` or `Set` field or
+  variable counts only for `map.set(...)` of a value that comes from an ORM write in the same
+  callback (`const user = await tx.user.create(...); this.cache.set(user.id, user)`); a map filled
+  from a read, or a `Set`/`Map` `delete`, is not reported. The allowed form is to write the cache
+  after the transaction call returns (`await prisma.$transaction(...)`, then `redis.set(...)`) or
+  from a TypeORM `afterTransactionCommit` subscriber; callbacks that do not run during the call
+  (`setTimeout`, event handlers) are not inside the transaction. The message names that form.
 - Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
   `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
   call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project

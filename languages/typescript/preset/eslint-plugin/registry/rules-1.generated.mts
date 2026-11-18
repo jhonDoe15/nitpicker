@@ -17,6 +17,7 @@ import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-sp
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
+import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
@@ -97,8 +98,6 @@ import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singu
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
-import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
-import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -120,6 +119,7 @@ export const partRules = {
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
@@ -201,6 +201,4 @@ export const partRules = {
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
-  'no-switched-off-tests': ruleNoSwitchedOffTests,
-  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
 };

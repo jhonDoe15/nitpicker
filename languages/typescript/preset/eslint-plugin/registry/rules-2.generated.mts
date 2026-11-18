@@ -1,3 +1,5 @@
+import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
+import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
 import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mts';
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
@@ -67,6 +69,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-switched-off-tests': ruleNoSwitchedOffTests,
+  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
   'no-test-helpers-in-source': ruleNoTestHelpersInSource,
   'no-test-retry': ruleNoTestRetry,

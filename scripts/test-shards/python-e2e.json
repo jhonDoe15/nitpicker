@@ -50,6 +50,7 @@
   "languages/python/rules/e2e/boundary/typing/contracts.e2e.test.mts": 3,
   "languages/python/rules/e2e/boundary/typing/type-laundering.e2e.test.mts": 4,
   "languages/python/rules/e2e/boundary/typing/types.e2e.test.mts": 2,
+  "languages/python/rules/e2e/cache-writes/cache-write-in-transaction.e2e.test.mts": 3,
   "languages/python/rules/e2e/concurrency/atomic-update-proofs.e2e.test.mts": 3,
   "languages/python/rules/e2e/concurrency/atomic-updates.e2e.test.mts": 3,
   "languages/python/rules/e2e/concurrency/fan-out.e2e.test.mts": 3,
