@@ -1,4 +1,5 @@
 const MAIN = 'src/main/java/demo';
+const EXISTS_BY_ID = 'if (repo.existsById(id)) {}';
 const CHECK = 'EntityLoadedForExistence';
 
 const IMPORTS = `import jakarta.persistence.Entity;
@@ -67,10 +68,11 @@ function head(name: string): string {
   return `package demo;\n\n${IMPORTS}\npublic class ${name} {\n${REPOSITORY}\n  void shapes(Long id, String login) {\n`;
 }
 
-const TAIL = '  }\n}\n';
+const TAIL = '  }\n\n  void consume(boolean value) {\n    System.out.println(value);\n  }\n}\n';
+const STORED = /^boolean \w+ = (.*);$/u;
 
 function statements(lines: readonly string[]): string {
-  return `${lines.map((line) => `    ${line}`).join('\n')}\n`;
+  return `${lines.map((line) => `    ${line.replace(STORED, 'consume($1);')}`).join('\n')}\n`;
 }
 
 function build({ name, before, after }: Shape) {
@@ -96,11 +98,11 @@ const LOADED: Shape = {
     'boolean a = repo.findById(id).isPresent() && repo.findOneByLogin(login.toLowerCase()).isPresent();',
   ],
   after: [
-    'if (repo.existsById(id)) {}',
+    EXISTS_BY_ID,
     'if (!repo.existsById(id)) {}',
-    'if (repo.existsById(id)) {}',
+    EXISTS_BY_ID,
     'if (!repo.existsById(id)) {}',
-    'if (repo.existsById(id)) {}',
+    EXISTS_BY_ID,
     'boolean a = repo.existsById(id) && repo.existsByLogin(login.toLowerCase());',
   ],
 };
@@ -143,6 +145,12 @@ const COUNTED: Shape = {
     'boolean f = repo.existsByLoginStartingWith(login);',
     'boolean g = !repo.existsByLogin(login);',
   ],
+};
+
+const MERGED: Shape = {
+  name: 'ExistenceForms',
+  before: [LOADED, DERIVED, COUNTED].flatMap(({ before }) => ['{', ...before, '}']),
+  after: [LOADED, DERIVED, COUNTED].flatMap(({ after }) => ['{', ...after, '}']),
 };
 
 const DECLINED_FINDERS: Shape = {
@@ -203,6 +211,4 @@ const DECLINED_USES: Shape = {
   ],
 };
 
-export const EXISTENCE_CASES = [LOADED, DERIVED, COUNTED, DECLINED_FINDERS, DECLINED_USES].map(
-  build,
-);
+export const EXISTENCE_CASES = [MERGED, DECLINED_FINDERS, DECLINED_USES].map(build);

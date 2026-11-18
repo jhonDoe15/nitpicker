@@ -1,6 +1,7 @@
 nitpicker.fix.DetachedTestCase
 nitpicker.fix.EntityLoadedForExistence
 nitpicker.fix.GeneratedOnHandWrittenCode
+nitpicker.fix.ListUsedAsSet
 nitpicker.fix.LiteralsFirstInComparisons
 nitpicker.fix.LogStringConcatenation
 nitpicker.fix.MutationIgnoreMarker
