@@ -1,4 +1,5 @@
 import type { ESLint, Linter } from 'eslint';
+import { builtinRules } from 'eslint/use-at-your-own-risk';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { RuleFacts, RuleForm } from './inventory-types.mts';
 
@@ -50,7 +51,8 @@ export function ruleOf(plugins: ReadonlyMap<string, unknown>, id: string): unkno
   const slash = id.lastIndexOf('/');
   const [plugin, name] =
     slash === -1 ? [CORE_PLUGIN, id] : [id.slice(0, slash), id.slice(slash + 1)];
-  return fieldsOf(fieldOf(plugins.get(plugin), 'rules'))[name];
+  const found = fieldsOf(fieldOf(plugins.get(plugin), 'rules'))[name];
+  return found === undefined && plugin === CORE_PLUGIN ? builtinRules.get(name) : found;
 }
 
 export function metaOf(rule: unknown): Omit<RuleFacts, 'tools' | 'forms'> {

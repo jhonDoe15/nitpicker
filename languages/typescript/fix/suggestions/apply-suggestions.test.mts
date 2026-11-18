@@ -39,6 +39,8 @@ const expected: Readonly<Record<string, string>> = {
     'export function recover(p: Promise<number>): Promise<number> {\n  return p.catch((e: unknown) => 0);\n}\n',
   '@typescript-eslint/switch-exhaustiveness-check':
     "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n    case \"b\": { throw new Error('Not implemented yet: \"b\" case') }\n  }\n  return 0;\n}\n",
+  '@typescript-eslint/no-unnecessary-condition':
+    'type Item = { readonly tags: readonly string[] };\n\nexport function count(item: Item): number {\n  return item.tags.length;\n}\n',
 };
 
 const everything = Object.keys(suggestionRules).map(suggestionName);

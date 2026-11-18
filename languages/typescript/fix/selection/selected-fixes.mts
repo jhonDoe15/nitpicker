@@ -1,5 +1,9 @@
 import { singleSuggestionEdit, type SuggestionEdit } from '../suggestions/apply-suggestions.mts';
-import { suggestionName, type LintMessage } from '../suggestions/typed/suggestion-views.mts';
+import {
+  isListedSuggestion,
+  suggestionName,
+  type LintMessage,
+} from '../suggestions/typed/suggestion-views.mts';
 
 type Edit = {
   readonly start: number;
@@ -36,7 +40,10 @@ function editsOf(messages: readonly LintMessage[], ruleIds: readonly string[]): 
     .filter(({ ruleId }) => ruleId !== undefined && ruleIds.includes(ruleId))
     .flatMap((message): Edit[] => {
       const fix = fixEdit(message);
-      const suggestion = fix === undefined ? singleSuggestionEdit(message) : undefined;
+      const suggestion =
+        fix === undefined && isListedSuggestion(message.ruleId, message.suggestions?.[0]?.messageId)
+          ? singleSuggestionEdit(message)
+          : undefined;
       const edit = fix ?? suggestion;
       return edit === undefined ? [] : [{ ...edit, suggested: fix === undefined, message }];
     })

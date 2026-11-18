@@ -28,7 +28,7 @@ const anchorsOf: (text: string) => readonly unknown[] = headingAnchors;
 const linkToGuide: (guide: string, anchor: unknown) => object = guideLink;
 
 function withStatus(entry: ReferenceEntry, sources: FixSources): ReferenceEntry {
-  return withFixStatus({ fixableIn: undefined, ...entry }, sources);
+  return withFixStatus({ fixableIn: undefined, suggestedIn: undefined, ...entry }, sources);
 }
 
 function duplicates(values: readonly unknown[]): unknown[] {
