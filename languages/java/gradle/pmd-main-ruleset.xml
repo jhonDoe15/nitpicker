@@ -757,6 +757,40 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="HandleReleasedOnlyOnSuccess" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The value this stage receives is closed or released only inside a later success stage (thenApply, thenCompose, thenAccept). When a later stage fails, the future completes exceptionally and the release never runs, so the handle leaks with its buffers and timers. Release it where every outcome passes: read(handle).whenComplete((result, error) -&gt; close(handle)), or handle(...) with the release first. An exception fits a handle that a later stage stores or returns, so the owner releases it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $success := ('thenCompose', 'thenApply', 'thenAccept', 'thenRun', 'thenComposeAsync', 'thenApplyAsync',
+                 'thenAcceptAsync', 'thenRunAsync', 'thenCombine', 'thenAcceptBoth'),
+    $always := ('whenComplete', 'whenCompleteAsync', 'handle', 'handleAsync', 'exceptionally', 'exceptionallyCompose',
+                'exceptionallyAsync'),
+    $release := '^(close|asyncClose|closeAsync|release|dispose|returnConnection|releaseConnection)',
+    $stage := function($lambda, $names) {
+      exists($lambda[parent::ArgumentList/parent::MethodCall[@MethodName = $names]])
+    }
+return
+  //LambdaExpression[$stage(., $success)][LambdaParameterList[@Size = 1]/LambdaParameter/VariableId]
+    [let $outer := .,
+         $p := LambdaParameterList/LambdaParameter/VariableId/@Name,
+         $releases := .//MethodCall[matches(@MethodName, $release)]
+                        [*[1][self::VariableAccess][@Name = $p] or ArgumentList/VariableAccess[@Name = $p]]
+     return exists($releases)
+       and empty(.//MethodCall[@MethodName = ('complete', 'put', 'putIfAbsent', 'set', 'add', 'offer')]
+                   [ArgumentList/VariableAccess[@Name = $p]])
+       and empty(.//AssignmentExpression[*[2][self::VariableAccess][@Name = $p]])
+       and empty(.//ReturnStatement/VariableAccess[@Name = $p])
+       and (every $r in $releases satisfies
+              (let $lambdas := $r/ancestor::LambdaExpression[$outer intersect ancestor::*]
+               return exists($lambdas) and $stage($lambdas[1], $success)
+                 and (every $l in $lambdas satisfies not($stage($l, $always)))
+                 and empty($r/ancestor::FinallyClause | $r/ancestor::CatchClause)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HttpValueCase" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This compares exact text, but media types, charsets, encodings, URI schemes and hosts, cookie name prefixes and file extensions are case-insensitive, so Application/JSON, HTTPS or photo.PNG is missed. Lowercase the value first (value.toLowerCase(Locale.ROOT)) or use equalsIgnoreCase, or parse it: MediaType.parseMediaType(value) and MimeTypeUtils for media types, URI.getScheme() compared with equalsIgnoreCase. Header names read with getHeader or HttpHeaders ignore case already.">
     <priority>3</priority>
