@@ -111,6 +111,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - An absent `Optional` is turned into a value with `orElse(default)`, `orElseThrow(() -> new NotFoundException(id))`
   or `orElse(null)` plus a null check where it is used; `orElseGet(null)` passes a null `Supplier` and throws
   when the value is absent (`pmd/OptionalOrElseGetNull`).
+- A collection that the code changes later is built mutable: `new ArrayList<>(List.of("#"))`, not `Arrays.asList`, `List.of`, `Map.of`, `Collections.emptyList()` or `Stream.toList()`, whose `add`, `put` and `remove` throw
+  `UnsupportedOperationException` (`pmd/ImmutableCollectionChanged`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
