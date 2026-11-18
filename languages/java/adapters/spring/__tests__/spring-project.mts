@@ -189,6 +189,7 @@ const REVIEW_RULES = new Set([
   'DelimitedLookupKey',
   'HostPortColonSplit',
   'NewlineOnlyLineSplit',
+  'SurrogateSplittingCut',
   'StreamedRowsCollected',
   'SpringDataFilterInQuery',
   'HardcodedSecret',

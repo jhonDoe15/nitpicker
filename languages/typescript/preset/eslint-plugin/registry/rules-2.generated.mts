@@ -3,6 +3,7 @@ import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singu
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
+import { rule as ruleNoSurrogateSplittingCut } from '../rules/text-truncation/no-surrogate-splitting-cut.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
@@ -85,6 +86,7 @@ export const partRules = {
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
+  'no-surrogate-splitting-cut': ruleNoSurrogateSplittingCut,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,

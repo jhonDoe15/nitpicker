@@ -1516,7 +1516,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   back over a high surrogate; arrays, a cut of 0 or 1 characters, names like `hash`, `hex`, `uuid`, `token`, `id`,
   and functions that use `charCodeAt`, `codePointAt`, `Segmenter` or `Array.from` are not reported. The same form
   runs as `pmd/SurrogateSplittingCut` (Java) and `kotlin-source/SurrogateSplittingCut` (Kotlin). Python strings are
-  code points and the Go form (`s[:n]`) is not covered.
+  code points, so Python has no rule. Go reports the byte form as `go-rules/byte-cut-splits-rune`: `s[:n]` of a
+  string under the same length guard, only when the cut is joined to a `...` or `…` literal or the text is named
+  like prose (`title`, `description`, `message`, `text`, `summary`, `label`, `body`, `content`), and not when the
+  cut is compared to a literal or placed in an error text.
 - `nitpicker/no-unhandled-url-parse`: `decodeURIComponent(text)` and `decodeURI(text)` (also through `globalThis`) on
   text that is not constant or built by `encodeURIComponent` throw `URIError: URI malformed` on a stray `%`, so a
   `try` with a `catch` around the call in the same function is required (a decode inside a `.then(...)` callback

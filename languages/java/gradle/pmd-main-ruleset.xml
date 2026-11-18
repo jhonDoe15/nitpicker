@@ -1861,6 +1861,38 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SurrogateSplittingCut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cuts text at a length counted in UTF-16 chars after a check of the same length, so a cut between the two halves of a surrogate pair (an emoji, many CJK characters) leaves a lone surrogate that renders as a replacement character and fails strict UTF-8 encoding. Step back over a high surrogate before cutting (Character.isHighSurrogate(text.charAt(end - 1)) then end--), cut by code point with text.offsetByCodePoints(0, count), or use a BreakIterator for grapheme clusters. Text that is ASCII by construction (ids, hashes, base64) is fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $over := function($test) {
+      $test[self::InfixExpression][@Operator = ('>', '>=')]
+        [*[1][self::MethodCall][@MethodName = 'length'][ArgumentList/@Size = 0][*[1][self::VariableAccess][pmd-java:typeIs('java.lang.CharSequence')]]]
+        [*[2][self::VariableAccess or self::NumericLiteral or self::FieldAccess]]
+    },
+    $boundMatches := function($bound, $end) {
+      exists($end/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $bound/@Name][$bound[self::VariableAccess or self::FieldAccess]]
+             | $end/descendant-or-self::NumericLiteral[@Image = $bound/@Image][$bound[self::NumericLiteral]])
+    },
+    $unit := function($m) { $m/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1] }
+return //MethodCall[@MethodName = ('substring', 'subSequence')][ArgumentList/@Size = 2]
+  [ArgumentList/*[1][self::NumericLiteral][@Image = '0']]
+  [not(ArgumentList/*[2][self::NumericLiteral][@Image = ('0', '1')])]
+  [*[1][self::VariableAccess][not(matches(@Name, 'hash|hex|base64|uuid|sha[0-9]*|digest|slug|token|^id$|Id$|normali[sz]ed|sanitized|identifier', 'i'))]]
+  [let $name := *[1]/@Name, $end := ArgumentList/*[2], $self := .
+   return exists(ancestor::*[self::IfStatement or self::ConditionalExpression][*[2]/descendant-or-self::*[. is $self]]
+                   [$over(*[1])][*[1]/*[1]/*[1]/@Name = $name][$boundMatches(*[1]/*[2], $end)])]
+  [not(matches(string-join(ArgumentList/*[2]/descendant-or-self::*/@Name, ' '), '(?:^| )(?:name|identifier|id|key)(?:Limit|Length|Max)', 'i'))]
+  [not(matches($unit(.)/self::MethodDeclaration/@Name, 'normali[sz]e|sanitiz|slug', 'i'))]
+  [not($unit(.)//MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/*[1][self::StringLiteral][matches(@Image, '^"\[\^')]])]
+  [not($unit(.)//MethodCall[@MethodName = ('isHighSurrogate', 'isLowSurrogate', 'isSurrogate', 'isSurrogatePair', 'codePointCount', 'offsetByCodePoints', 'codePoints', 'codePointAt')]
+       | $unit(.)//ConstructorCall[ClassType/@SimpleName = 'BreakIterator'] | $unit(.)//MethodCall[@MethodName = 'getCharacterInstance'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="TimerNotStoppedOnClose" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This scheduler or timer is created by a class that has a close method, but close never shuts it down, so its scheduled tasks keep running and its thread keeps the JVM alive after close. Call shutdown() (then awaitTermination) on the executor, or cancel() on the Timer, in close (Spring beans are covered by SpringUnreleasedResource). An exception fits only when the scheduler is shared and owned elsewhere.">
     <priority>3</priority>

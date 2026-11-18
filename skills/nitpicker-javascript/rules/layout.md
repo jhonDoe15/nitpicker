@@ -27,6 +27,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   literal `[::1]:3000` has colons of its own (`nitpicker/no-host-port-colon-split`).
 - Split text read from a file on every line terminator (`text.split(/\r?\n/)`), not `split('\n')`, which leaves
   a `\r` on each line of a CRLF file (`nitpicker/no-newline-only-line-split`).
+- Truncate display text on code points or graphemes (`Array.from(text).slice(0, max).join('')`,
+  `Intl.Segmenter`), not `text.slice(0, max)`, which can split an emoji (`nitpicker/no-surrogate-splitting-cut`,
+  TypeScript projects).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,

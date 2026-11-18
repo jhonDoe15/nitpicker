@@ -217,6 +217,7 @@ describe('readKotlinSourceFindings', () => {
         'SortForExtreme',
         'SqlStringBuilding',
         'StandardStreamOutsideEntryPoint',
+        'SurrogateSplittingCut',
         'SuspendFunInFinallySection',
         'TestClassWithoutTestCases',
         'TestHelperInSource',

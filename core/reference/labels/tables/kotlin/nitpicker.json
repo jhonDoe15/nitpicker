@@ -52,6 +52,7 @@
   "kotlin-source/SortForExtreme": ["performance"],
   "kotlin-source/SqlStringBuilding": ["security", "persistence"],
   "kotlin-source/StandardStreamOutsideEntryPoint": ["maintainability"],
+  "kotlin-source/SurrogateSplittingCut": ["bug"],
   "kotlin-source/SuspendFunInFinallySection": ["bug", "async"],
   "kotlin-source/TestClassWithoutTestCases": ["tests"],
   "kotlin-source/TestHelperInSource": ["tests", "maintainability"],

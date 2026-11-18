@@ -45,6 +45,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   not `host.split(":")`: an IPv6 literal `[::1]:3000` has colons of its own (`pmd/HostPortColonSplit`).
 - Split file text with `lines()`, `split("\\R")` or a `BufferedReader`, not `split("\n")`: a CRLF file keeps a
   `\r` on each line (`pmd/NewlineOnlyLineSplit`).
+- Truncate text after `Character.isHighSurrogate(text.charAt(end - 1))` (then `end--`), or by code point, not
+  `text.substring(0, max)`, which can split an emoji (`pmd/SurrogateSplittingCut`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
