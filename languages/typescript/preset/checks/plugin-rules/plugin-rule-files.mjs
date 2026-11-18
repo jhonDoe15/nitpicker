@@ -241,4 +241,6 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/presence/lookups/no-lookup-as-presence.mjs',
   'languages/typescript/preset/eslint-plugin/rules/presence/lookups/map-lookups.mjs',
   'languages/typescript/preset/eslint-plugin/rules/presence/lookups/index-lookups.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/spreads/no-shadowed-spread-key.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/spreads/spread-facts.mjs',
 ];

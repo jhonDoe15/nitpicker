@@ -123,6 +123,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
+    'nitpicker/no-shadowed-spread-key': 'error',
     'nitpicker/no-lookup-as-presence': 'error',
     'nitpicker/no-in-presence-check': 'error',
     'nitpicker/no-magic-numbers': [
