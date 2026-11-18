@@ -73,6 +73,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/PendingFuturesNotFailedOnClose`).
 - A class that creates a `ScheduledExecutorService` or `Timer` shuts it down in `close()` (`shutdown()` then
   `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
+- A concurrent map whose values are collections stores concurrent values
+  (`map.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet()).add(item)`) or changes them inside `compute`
+  or `merge`, never a plain `HashSet` or `ArrayList` changed after `computeIfAbsent` returns it
+  (`pmd/PlainCollectionInConcurrentMap`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the

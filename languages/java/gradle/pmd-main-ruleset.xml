@@ -1260,6 +1260,54 @@ return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
       </property>
     </properties>
   </rule>
+  <rule name="PlainCollectionInConcurrentMap" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A value of this concurrent map is a plain collection (ArrayList, HashSet, HashMap and the like) that is changed after computeIfAbsent returns it, so two threads that add under the same key change it at once: elements are lost, a reader throws ConcurrentModificationException and a HashMap can corrupt. Store a concurrent value (ConcurrentHashMap.newKeySet(), CopyOnWriteArrayList, new ConcurrentHashMap&lt;&gt;()), change it inside compute or merge, or lock around every read and write of the value. An exception fits a map that only one thread uses.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $plain := ('java.util.ArrayList', 'java.util.LinkedList', 'java.util.HashSet', 'java.util.LinkedHashSet',
+               'java.util.TreeSet', 'java.util.HashMap', 'java.util.LinkedHashMap', 'java.util.TreeMap',
+               'java.util.ArrayDeque', 'java.util.EnumMap', 'java.util.EnumSet', 'java.util.PriorityQueue'),
+    $writes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+                'merge', 'compute', 'computeIfAbsent', 'computeIfPresent', 'putIfAbsent', 'replace', 'replaceAll',
+                'offer', 'push', 'pop', 'poll', 'addFirst', 'addLast', 'set', 'sort'),
+    $concurrentField := function($ref, $body) {
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)] or self::TypeExpression]]]
+        [pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+         or (some $d in $body/FieldDeclaration/VariableDeclarator[VariableId/@Name = $ref/@Name]
+             satisfies $d/*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')])]
+        [some $d in $body/FieldDeclaration/VariableDeclarator satisfies $d/VariableId/@Name = $ref/@Name]
+        [not(self::VariableAccess) or empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]//VariableId[@Name = $ref/@Name])]
+    },
+    $creates := function($call) {
+      let $factory := $call/ArgumentList/*[2]
+      return exists($factory[self::LambdaExpression]/*[last()][self::ConstructorCall][some $t in $plain satisfies pmd-java:typeIsExactly($t)])
+          or exists($factory[self::MethodReference[@MethodName = 'new']][some $t in $plain satisfies TypeExpression[pmd-java:typeIsExactly($t)]])
+    },
+    $sources := function($body) {
+      $body//MethodCall[@MethodName = 'computeIfAbsent'][ArgumentList/@Size = 2][$creates(.)][exists($concurrentField(*[1], $body))]
+        [empty(ArgumentList/*[1]/descendant-or-self::MethodCall[@MethodName = ('currentThread', 'getId', 'threadId')])]
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    }
+return
+  //ClassBody/(let $body := . return $sources($body)[ancestor::ClassBody[1] is $body])
+    /(if (parent::MethodCall[@MethodName = $writes] and . is ../*[1]) then ..
+      else if (parent::VariableDeclarator)
+      then (let $name := ../VariableId/@Name
+            return if (exists(ancestor::Block[1]//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]]))
+                   then ()
+                   else ancestor::Block[1]//MethodCall[@MethodName = $writes][*[1][self::VariableAccess][@Name = $name]])
+      else ())
+    [not($guarded(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.">
     <priority>3</priority>
