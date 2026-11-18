@@ -46,6 +46,7 @@ import {
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { sequenceGate } from '../jpa/sequence-ids.mjs';
 import { withoutSourceBackedSpotbugs } from './null-findings/spotbugs-log.mts';
+import { withoutBoundFields } from './null-findings/unwritten-fields.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -133,7 +134,7 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
     }),
     ...findingsFrom(testRunFindings, context, { reportRoot, projectRoot, testRoots }),
   ];
-  return listOf(callUntyped(withEffectsFindings, context, findings));
+  return withoutBoundFields(listOf(callUntyped(withEffectsFindings, context, findings)), sources);
 }
 
 function reportingOf(options: Options, module: unknown, preset: string): Options {
