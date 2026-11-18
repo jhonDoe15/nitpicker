@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import { isDeclined } from './declined-hunks.mts';
+
+function entry(label: string, removed: readonly string[], added: readonly string[] = []) {
+  return {
+    label,
+    hunk: {
+      oldStart: 1,
+      oldCount: removed.length,
+      newStart: 1,
+      newCount: added.length,
+      lines: [
+        ...removed.map((text) => ({ kind: '-', text })),
+        ...added.map((text) => ({ kind: '+', text })),
+      ],
+    },
+  };
+}
+
+function quotedNames(names: readonly string[]) {
+  return { quoted: (name: string) => names.includes(name) };
+}
+
+describe('isDeclined', () => {
+  it('keeps the removal of a private method that no string names', () => {
+    const removal = entry('UnusedMethod', [
+      '  private static String hidden() {',
+      '    return "x";',
+      '  }',
+    ]);
+
+    expect(isDeclined(removal, quotedNames([]))).toBe(false);
+  });
+
+  it('declines the removal of a private method that a string names, as reflection does', () => {
+    const removal = entry('UnusedMethod', [
+      '  private static String hidden() {',
+      '    return "x";',
+      '  }',
+    ]);
+
+    expect(isDeclined(removal, quotedNames(['hidden']))).toBe(true);
+  });
+
+  it('declines the removal of a nested class that a string names', () => {
+    const removal = entry('UnusedNestedClass', ['  private static final class Plugin {', '  }']);
+
+    expect(isDeclined(removal, quotedNames(['Plugin']))).toBe(true);
+  });
+
+  it('keeps the removal when only a call inside the removed body is a quoted name', () => {
+    const removal = entry('UnusedMethod', [
+      '  @SuppressWarnings("x") private static <T> List<T> hidden(T value) {',
+      '    return format(value);',
+      '  }',
+    ]);
+
+    expect(isDeclined(removal, quotedNames(['format']))).toBe(false);
+    expect(isDeclined(removal, quotedNames(['hidden']))).toBe(true);
+  });
+
+  it('keeps the hunks of other checks', () => {
+    expect(isDeclined(entry('UnusedLabel', ['    outer:']), quotedNames(['outer']))).toBe(false);
+  });
+});

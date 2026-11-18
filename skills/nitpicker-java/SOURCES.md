@@ -47,7 +47,9 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
   `PreferThrowsTag`, `ReturnFromVoid`, `UnescapedEntity`, `UrlInSee`.
 - Dead private code: `UnusedMethod`, `UnusedNestedClass`. Removing what nothing calls keeps behaviour
   unless something reaches it by reflection, which Error Prone already exempts for the usual
-  annotations.
+  annotations. `--fix` also skips the removal when a string in a project source or config file
+  names the member, as `getDeclaredMethod("name")`, `Class.forName("a.Outer$Inner")` and
+  `@MethodSource("name")` do.
 
 PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat them:
 `UnusedPrivateMethod` (with `UnusedMethod`), `MissingOverride`, `UselessParentheses`,
