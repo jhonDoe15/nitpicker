@@ -195,6 +195,7 @@ const REVIEW_RULES = new Set([
   'TimerNotStoppedOnClose',
   'CachedFutureKeepsFailure',
   'PlainCollectionInConcurrentMap',
+  'UnsynchronizedSharedCollection',
   'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
