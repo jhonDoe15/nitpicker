@@ -123,6 +123,13 @@ In the Python preset `io-in-loop` reports a database call per element also insid
 groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
+React initial values: `nitpicker/react-no-eager-initial-value` (production source in a React project, in
+`eslint-lint`) reports `useState(call())`, `useState(new X())` and `useRef(call())` or `useRef(new X())`, whose argument
+is built on every render (a `new` of a non-built-in class, or a call named like parse, compute, build, create,
+generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `createBrowserRouter`, `createMemoryRouter`, `createHashRouter`, `createStore`,
+`configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
+type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
+
 React mutations: `nitpicker/react-mutation-drops-failure` (production source in a React project, in `eslint-lint`)
 reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutation` options object, that passes
 `onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from
