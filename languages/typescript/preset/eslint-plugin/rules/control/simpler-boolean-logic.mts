@@ -82,6 +82,18 @@ function holdsAny(range: Range, inner: readonly Range[]): boolean {
   return inner.some(([start, end]) => start >= range[0] && end <= range[1]);
 }
 
+type FixInputs = {
+  readonly root: Term;
+  readonly comments: readonly Range[];
+  readonly source: string;
+};
+
+function fixText(found: Found, { root, comments, source }: FixInputs): string | undefined {
+  return holdsAny(found.range, comments)
+    ? undefined
+    : exactFixText({ root, form: found.term, source });
+}
+
 function booleanTypes(context: Context): (node: TSESTree.Node) => boolean {
   const services = typeServices(context);
   if (services === undefined) {
@@ -162,9 +174,7 @@ export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
       const forms = simplerForms(root, { booleanContext });
       for (const found of forms.filter(({ range }) => !holdsAny(range, typeSyntax))) {
         const { range, form, swapped } = found;
-        const text = holdsAny(range, comments)
-          ? undefined
-          : exactFixText({ root, form: found.term, source: sourceCode.text });
+        const text = fixText(found, { root, comments, source: sourceCode.text });
         context.report({
           loc: {
             start: sourceCode.getLocFromIndex(range[0]),

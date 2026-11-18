@@ -1,10 +1,16 @@
 import { createRequire } from 'node:module';
 import { TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { SAFE as untypedSafe } from '../../../../../core/fix/engine/safety.mjs';
 import { isNode } from '../../../preset/eslint-plugin/rules/typed/node-views.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import {
+  recipeFields,
+  type CoreFacts,
+  type FileRecipe,
+  type Fix,
+  type Planned,
+} from './core-recipe-facts.mts';
 
-export type CoreEdit = { readonly start: number; readonly end: number; readonly text: string };
+type CoreEdit = { readonly start: number; readonly end: number; readonly text: string };
 export type CorePlan = { readonly edits: readonly CoreEdit[] } | { readonly declined: string };
 type SourceCode = TSESLint.SourceCode;
 
@@ -16,29 +22,9 @@ export type CoreRequest = {
   readonly range: { readonly start: number; readonly end: number };
 };
 
-type File = { readonly path: string; readonly text: string };
-type Inputs = { readonly isExcepted?: (ruleId: string, name: string) => boolean };
-type Finding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly line: number;
-};
-type Fix = {
-  readonly finding: Finding;
-  readonly edits: readonly (CoreEdit & { readonly type: string; readonly path: string })[];
-};
+type CodeFile = { readonly path: string; readonly text: string };
+type CoreRecipe = CoreFacts & { readonly plan: (request: CoreRequest) => CorePlan };
 
-type CoreRecipe = {
-  readonly id: string;
-  readonly rule: string;
-  readonly safety?: string;
-  readonly options?: readonly unknown[];
-  readonly presets?: readonly string[];
-  readonly plan: (request: CoreRequest) => CorePlan;
-};
-
-const SAFE: string = untypedSafe;
 const require = createRequire(import.meta.url);
 
 type Parser = TSESLint.Parser.LooseParserModule;
@@ -56,7 +42,7 @@ function typescriptParser(): Parser {
 }
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 
-function lint(name: string, text: string, { rule, options = [] }: CoreRecipe) {
+function lint(name: string, text: string, { rule, options }: CoreRecipe) {
   const linter = new TSESLint.Linter({ configType: 'flat' });
   const messages = linter.verify(
     text,
@@ -86,12 +72,15 @@ function coveringNode(
   start: number,
   end: number,
 ): TSESTree.Node | undefined {
-  let node: unknown = sourceCode.getNodeByRangeIndex(start);
-  while (isNode(node)) {
+  const first: unknown = sourceCode.getNodeByRangeIndex(start);
+  const chain = isNode(first) ? [first] : [];
+  for (const node of chain) {
     if (node.range[0] <= start && node.range[1] >= end) {
       return node;
     }
-    node = node.parent;
+    if (node.parent !== undefined) {
+      chain.push(node.parent);
+    }
   }
   return undefined;
 }
@@ -100,7 +89,7 @@ function offset(sourceCode: SourceCode, line: number, column: number): number {
   return sourceCode.getIndexFromLoc({ line, column: column - 1 });
 }
 
-function fileFixes(recipe: CoreRecipe, { path: name, text }: File) {
+function fileFixes(recipe: CoreRecipe, { path: name, text }: CodeFile): Planned {
   const { messages, sourceCode } = lint(name, text, recipe);
   const fixes: Fix[] = [];
   const notes: string[] = [];
@@ -131,14 +120,14 @@ function fileFixes(recipe: CoreRecipe, { path: name, text }: File) {
   return { fixes, notes };
 }
 
-export function coreRuleRecipe(recipe: CoreRecipe) {
+export function coreRuleRecipe(
+  facts: CoreFacts,
+  planned: (request: CoreRequest) => CorePlan,
+): FileRecipe {
+  const recipe = { ...facts, plan: planned };
   return {
-    id: recipe.id,
-    rules: [{ tool: 'eslint', rule: recipe.rule }],
-    presets: recipe.presets ?? ['typescript', 'javascript'],
-    scope: 'file',
-    safety: recipe.safety ?? SAFE,
-    plan({ files, inputs }: { readonly files: readonly File[]; readonly inputs: Inputs }) {
+    ...recipeFields(facts),
+    plan({ files, inputs }) {
       const planned = files
         .filter(
           ({ path: name }) =>

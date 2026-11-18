@@ -1,15 +1,14 @@
 import type { TSESLint } from '@typescript-eslint/utils';
 import { FIX_GUARDS } from './fix-guards.mts';
-import { GUARDED_FIX_MESSAGE, type FixGuard } from './guard-types.mts';
+import { GUARDED_FIX_MESSAGE } from './guard-message.mts';
+import type { FixGuard } from './guard-types.mts';
 
-type Rule = TSESLint.RuleModule<string, readonly unknown[], unknown>;
+type Rule = TSESLint.RuleModule<string, readonly unknown[]>;
 type Entry = Readonly<Record<string, unknown>>;
 
 const GUARDED_FIX_TEXT = 'Apply the fix';
 
 type Guards = Readonly<Record<string, Readonly<Record<string, FixGuard>>>>;
-
-const guardedPlugins = new WeakMap<Guards, WeakMap<object, object>>();
 
 function isRule(value: unknown): value is Rule {
   return (
@@ -26,7 +25,7 @@ const createContext: <Context extends object>(
   properties: PropertyDescriptorMap,
 ) => Context = Object.create;
 
-export function guardedRule(rule: Rule, { guard }: FixGuard): Rule {
+function guardedRule(rule: Rule, { guard }: FixGuard): Rule {
   return {
     ...rule,
     meta: {
@@ -59,35 +58,26 @@ function guardedRules(rules: unknown, guards: Readonly<Record<string, FixGuard>>
   return { ...rules, ...Object.fromEntries(replaced) };
 }
 
-function cacheOf(table: Guards): WeakMap<object, object> {
-  const known = guardedPlugins.get(table);
-  if (known !== undefined) {
-    return known;
-  }
-  const created = new WeakMap<object, object>();
-  guardedPlugins.set(table, created);
-  return created;
-}
+type Guarding = {
+  readonly table: Guards;
+  readonly copies: WeakMap<object, object>;
+};
 
-function guardedPlugin(table: Guards, namespace: string, plugin: unknown): unknown {
+function guardedPlugin({ table, copies }: Guarding, namespace: string, plugin: unknown): unknown {
   const guards = table[namespace];
   if (guards === undefined || typeof plugin !== 'object' || plugin === null) {
     return plugin;
   }
-  const cache = cacheOf(table);
-  const known = cache.get(plugin);
+  const known = copies.get(plugin);
   if (known !== undefined) {
     return known;
   }
   const guarded = { ...plugin, rules: guardedRules(Reflect.get(plugin, 'rules'), guards) };
-  cache.set(plugin, guarded);
+  copies.set(plugin, guarded);
   return guarded;
 }
 
-export function guardedEntry<Config extends Entry>(
-  entry: Config,
-  table: Guards = FIX_GUARDS,
-): Config {
+function guardedEntry<Config extends Entry>(entry: Config, guarding: Guarding): Config {
   const plugins = entry['plugins'];
   if (typeof plugins !== 'object' || plugins === null) {
     return entry;
@@ -97,8 +87,16 @@ export function guardedEntry<Config extends Entry>(
     plugins: Object.fromEntries(
       Object.entries(plugins).map(([namespace, plugin]) => [
         namespace,
-        guardedPlugin(table, namespace, plugin),
+        guardedPlugin(guarding, namespace, plugin),
       ]),
     ),
   };
+}
+
+export function guardedEntries<Config extends Entry>(
+  entries: readonly Config[],
+  table: Guards = FIX_GUARDS,
+): Config[] {
+  const guarding = { table, copies: new WeakMap<object, object>() };
+  return entries.map((entry) => guardedEntry(entry, guarding));
 }

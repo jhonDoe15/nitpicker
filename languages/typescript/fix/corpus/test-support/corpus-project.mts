@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
+import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
 import {
   fixOptions,
   topicRepository,
@@ -40,7 +41,7 @@ const COMMITTED = {
   }),
 };
 
-export function corpusModules(): Texts {
+function corpusModules(): Texts {
   return Object.fromEntries(
     readdirSync(MODULES)
       .filter((name) => name.endsWith(SUFFIX))
@@ -53,7 +54,7 @@ export function corpusModules(): Texts {
 }
 
 export function expectedText(run: string, name: string): string | undefined {
-  const file = path.join(FIXTURES, 'expected', run, `${path.basename(name)}.txt`);
+  const file = containedPath(path.join(FIXTURES, 'expected'), `${run}/${path.basename(name)}.txt`);
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
 }
 
@@ -69,7 +70,7 @@ export function fixedCorpus(
   const after = Object.fromEntries(
     Object.keys(before).map((name) => [
       name,
-      readFileSync(path.join(repository.root, name), 'utf8'),
+      readFileSync(containedPath(repository.root, name), 'utf8'),
     ]),
   );
   return {

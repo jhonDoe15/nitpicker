@@ -47,6 +47,13 @@ function signatureOf(source: string): string | undefined {
   return /^function shared\w*\(.*$/mu.exec(source)?.[0];
 }
 
+function callsOf(source: string): string[] {
+  return source
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('return shared'));
+}
+
 describe('nearDuplicateExtractRecipe literal parameter types', () => {
   it('types a compared literal with the union of the literals the copies pass', () => {
     const { source, notes } = fix(
@@ -56,7 +63,10 @@ describe('nearDuplicateExtractRecipe literal parameter types', () => {
     expect(signatureOf(source)).toBe(
       "function sharedCountCircles(shapes: Shape[], limit: number, value: 'circle' | 'square'): number {",
     );
-    expect(source).toContain("return sharedCountCircles(shapes, limit, 'square');");
+    expect(callsOf(source)).toEqual([
+      "return sharedCountCircles(shapes, limit, 'circle');",
+      "return sharedCountCircles(shapes, limit, 'square');",
+    ]);
     expect(notes).toEqual([]);
   });
 

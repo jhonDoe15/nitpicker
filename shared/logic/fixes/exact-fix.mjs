@@ -1,5 +1,5 @@
 import { depthFirst } from '../../traversal.mjs';
-import { print } from '../print.mjs';
+import { printWith } from '../print.mjs';
 import { isSideEffectFree } from '../purity.mjs';
 import { isStatement, key, rangeKey } from '../terms.mjs';
 
@@ -62,7 +62,7 @@ export function exactFixText({ root, form, source }) {
   ) {
     return undefined;
   }
-  return print(form, (node) => {
+  return printWith(form, (node) => {
     const range = sources.get(node)?.range;
     return range === undefined ? undefined : source.slice(range[0], range[1]);
   });

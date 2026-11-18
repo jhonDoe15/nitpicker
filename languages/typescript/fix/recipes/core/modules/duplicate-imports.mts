@@ -1,8 +1,10 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment, withOwnLines } from '../text-ranges.mts';
 
 type Import = TSESTree.ImportDeclaration;
+type SourceCode = TSESLint.SourceCode;
 type Parts = { readonly defaults: readonly string[]; readonly named: readonly string[] };
 
 function sliceOf(text: string, node: TSESTree.Node): string {
@@ -53,6 +55,13 @@ function mergedText(text: string, first: Import, parts: Parts): string {
   return `${kind}${from}${sliceOf(text, first.source)}${attributes}${semicolon}`;
 }
 
+function hasImportComment(sourceCode: SourceCode, first: Import, later: Import): boolean {
+  return (
+    [first, later].some(({ range: [start, end] }) => hasComment(sourceCode, { start, end })) ||
+    sourceCode.getCommentsBefore(later).length > 0
+  );
+}
+
 function merged({ text, sourceCode, node }: CoreRequest): CorePlan {
   const later = node.type === AST_NODE_TYPES.ImportDeclaration ? node : undefined;
   const first = later === undefined ? undefined : firstImport(later);
@@ -68,27 +77,16 @@ function merged({ text, sourceCode, node }: CoreRequest): CorePlan {
   if (defaults.length > 1 || attributesOf(text, first) !== attributesOf(text, later)) {
     return { declined: 'the imports have two default names or different attributes' };
   }
-  const [firstStart, firstEnd] = first.range;
-  const [laterStart, laterEnd] = later.range;
-  if (
-    hasComment(sourceCode, { start: firstStart, end: firstEnd }) ||
-    hasComment(sourceCode, { start: laterStart, end: laterEnd }) ||
-    sourceCode.getCommentsBefore(later).length > 0
-  ) {
+  if (hasImportComment(sourceCode, first, later)) {
     return { declined: 'a comment sits inside an import' };
   }
   const parts = { defaults, named: [...new Set([...firstParts.named, ...laterParts.named])] };
   return {
     edits: [
-      { start: firstStart, end: firstEnd, text: mergedText(text, first, parts) },
-      { ...withOwnLines(text, { start: laterStart, end: laterEnd }), text: '' },
+      { start: first.range[0], end: first.range[1], text: mergedText(text, first, parts) },
+      { ...withOwnLines(text, { start: later.range[0], end: later.range[1] }), text: '' },
     ],
   };
 }
 
-export const duplicateImportsRecipe = coreRuleRecipe({
-  id: 'typescript-no-duplicate-imports',
-  rule: 'no-duplicate-imports',
-  options: [{ allowSeparateTypeImports: true }],
-  plan: merged,
-});
+export const duplicateImportsRecipe = coreRuleRecipe(CORE_RECIPES.duplicateImports, merged);

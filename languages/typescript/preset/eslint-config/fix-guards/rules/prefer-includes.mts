@@ -4,6 +4,7 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { ts } from '../../../eslint-plugin/rules/typed/typescript-views.mts';
 import {
   demoted,
@@ -37,14 +38,19 @@ function isTypeParameter(type: TypeScript.Type): boolean {
 }
 
 function everyPart(checker: TypeScript.TypeChecker, type: TypeScript.Type, flags: number): boolean {
-  const resolved = isTypeParameter(type) ? checker.getBaseConstraintOfType(type) : type;
-  if (resolved === undefined || isTypeParameter(resolved)) {
-    return false;
+  const pending = [type];
+  for (const part of pending) {
+    const resolved = isTypeParameter(part) ? checker.getBaseConstraintOfType(part) : part;
+    if (resolved === undefined || isTypeParameter(resolved)) {
+      return false;
+    }
+    if (resolved.isUnionOrIntersection()) {
+      appendAll(pending, resolved.types);
+    } else if ((resolved.flags & flags) === 0) {
+      return false;
+    }
   }
-  if (resolved.isUnionOrIntersection()) {
-    return resolved.types.every((part) => everyPart(checker, part, flags));
-  }
-  return (resolved.flags & flags) !== 0;
+  return true;
 }
 
 function searchedCall(node: TSESTree.Node): TSESTree.CallExpression | undefined {
@@ -73,7 +79,7 @@ function keepsResult(services: Services, call: TSESTree.CallExpression): boolean
   return everyPart(checker, searched, onString ? STRING_LIKE : SAME_UNDER_BOTH);
 }
 
-export function preferIncludesGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
+function preferIncludesGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
   const node = reportedNode(descriptor, 'preferIncludes');
   if (node === undefined) {
     return descriptor;

@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { CORE_RECIPES } from '../core-recipe-facts.mts';
 import { coreRuleRecipe, type CorePlan, type CoreRequest } from '../core-rule-recipe.mts';
 import { hasComment } from '../text-ranges.mts';
 import { hasLineContinuation, quoted } from './string-literals.mts';
@@ -12,11 +13,13 @@ function isConcat(node: TSESTree.Node): node is TSESTree.BinaryExpression {
 }
 
 function innermost(node: TSESTree.Node, side: 'left' | 'right'): TSESTree.Node {
-  let current = node;
-  while (isConcat(current)) {
-    current = side === 'left' ? current.right : current.left;
+  const chain = [node];
+  for (const current of chain) {
+    if (isConcat(current)) {
+      chain.push(side === 'left' ? current.right : current.left);
+    }
   }
-  return current;
+  return chain.at(-1) ?? node;
 }
 
 function pieceOf(node: TSESTree.Node): Piece | undefined {
@@ -48,34 +51,56 @@ function isDirectiveSpot(concat: TSESTree.BinaryExpression, left: Piece, right: 
   );
 }
 
-function joined({ text, sourceCode, node }: CoreRequest): CorePlan {
-  const concat = isConcat(node) ? node : undefined;
-  const left = concat === undefined ? undefined : pieceOf(innermost(concat.left, 'left'));
-  const right = concat === undefined ? undefined : pieceOf(innermost(concat.right, 'right'));
-  if (concat === undefined || left === undefined || right === undefined) {
-    return { declined: 'a side is not a plain string or a template without expressions' };
+type Sides = {
+  readonly concat: TSESTree.BinaryExpression;
+  readonly left: Piece;
+  readonly right: Piece;
+};
+
+function sidesOf(node: TSESTree.Node): Sides | undefined {
+  if (!isConcat(node)) {
+    return undefined;
   }
-  const values = [valueOf(left), valueOf(right)];
+  const left = pieceOf(innermost(node.left, 'left'));
+  const right = pieceOf(innermost(node.right, 'right'));
+  return left === undefined || right === undefined ? undefined : { concat: node, left, right };
+}
+
+function declinedJoin({ text, sourceCode }: CoreRequest, sides: Sides): string | undefined {
+  const { concat, left, right } = sides;
   const raws = [left, right].map(({ range }) => text.slice(...range));
-  if (values.some((value) => value === undefined) || raws.some(hasLineContinuation)) {
-    return { declined: 'a literal continues over a line break' };
+  if (
+    [left, right].some((piece) => valueOf(piece) === undefined) ||
+    raws.some(hasLineContinuation)
+  ) {
+    return 'a literal continues over a line break';
   }
   const range = { start: left.range[0], end: right.range[1] };
   if (hasComment(sourceCode, range) || isDirectiveSpot(concat, left, right)) {
-    return { declined: 'joining would drop a comment or make a directive' };
+    return 'joining would drop a comment or make a directive';
   }
-  if (text.slice(left.range[1], right.range[0]).replaceAll(/\s/gu, '') !== '+') {
-    return { declined: 'a parenthesis sits between the literals' };
+  return text.slice(left.range[1], right.range[0]).replaceAll(/\s/gu, '') === '+'
+    ? undefined
+    : 'a parenthesis sits between the literals';
+}
+
+function joined(request: CoreRequest): CorePlan {
+  const sides = sidesOf(request.node);
+  if (sides === undefined) {
+    return { declined: 'a side is not a plain string or a template without expressions' };
   }
-  const literal = quoted(values.join(''), text.charAt(left.range[0]));
+  const declined = declinedJoin(request, sides);
+  if (declined !== undefined) {
+    return { declined };
+  }
+  const { text } = request;
+  const { left, right } = sides;
+  const range = { start: left.range[0], end: right.range[1] };
+  const literal = quoted([left, right].map(valueOf).join(''), text.charAt(left.range[0]));
   const grown = lineLength(text, range.start) + literal.length - (range.end - range.start);
   return grown > MAX_LINE && grown > lineLength(text, range.start)
     ? { declined: `the joined literal makes the line longer than ${String(MAX_LINE)} characters` }
     : { edits: [{ ...range, text: literal }] };
 }
 
-export const uselessConcatRecipe = coreRuleRecipe({
-  id: 'typescript-no-useless-concat',
-  rule: 'no-useless-concat',
-  plan: joined,
-});
+export const uselessConcatRecipe = coreRuleRecipe(CORE_RECIPES.uselessConcat, joined);

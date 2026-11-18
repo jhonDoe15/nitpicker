@@ -30,14 +30,19 @@ function bindingOf(fn: TSESTree.Node): Binding | undefined {
 }
 
 function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
-  let current = node.parent;
-  while (current !== undefined && !isFunction(current)) {
+  const chain = node.parent === undefined ? [] : [node.parent];
+  for (const current of chain) {
+    if (isFunction(current)) {
+      return current;
+    }
     if (current.type === AST_NODE_TYPES.TryStatement) {
       return undefined;
     }
-    current = current.parent;
+    if (current.parent !== undefined) {
+      chain.push(current.parent);
+    }
   }
-  return current;
+  return undefined;
 }
 
 function returnedFromAsync(call: TSESTree.CallExpression): boolean {
@@ -52,7 +57,7 @@ function returnedFromAsync(call: TSESTree.CallExpression): boolean {
 function isAwaitedCall(reference: TSESLint.Scope.Reference): boolean {
   const { identifier } = reference;
   const call = identifier.parent;
-  if (call?.type !== AST_NODE_TYPES.CallExpression || call.callee !== identifier) {
+  if (call.type !== AST_NODE_TYPES.CallExpression || call.callee !== identifier) {
     return false;
   }
   return call.parent.type === AST_NODE_TYPES.AwaitExpression || returnedFromAsync(call);
@@ -72,7 +77,7 @@ function throwsInside(fn: TSESTree.Node): boolean {
   return [...inside(fn)].some((node) => node.type === AST_NODE_TYPES.ThrowStatement);
 }
 
-export function requireAwaitGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
+function requireAwaitGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
   const fn = reportedNode(descriptor, 'missingAwait');
   if (fn === undefined) {
     return descriptor;

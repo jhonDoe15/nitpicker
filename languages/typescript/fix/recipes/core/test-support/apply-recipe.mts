@@ -17,3 +17,7 @@ export function applied(
   }
   return { text: result, notes };
 }
+
+export function leftNote(line: number, rule: string, reason: string): string {
+  return `--fix left src/main/sample.ts:${String(line)} eslint/${rule}: ${reason}`;
+}

@@ -66,7 +66,8 @@ export async function probeOf(sources: Sources, name: string): Promise<string> {
 
 export function typeErrors(projectRoot: string): string[] {
   const configPath = path.join(projectRoot, 'tsconfig.json');
-  const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+  const read = ts.readConfigFile(configPath, (file) => ts.sys.readFile(file));
+  const config: unknown = read.config;
   const parsed = ts.parseJsonConfigFileContent(config, ts.sys, projectRoot);
   const program = ts.createProgram(parsed.fileNames, parsed.options);
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {

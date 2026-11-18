@@ -99,7 +99,9 @@ describe.each(['plain', 'selected'])('the %s --fix run over the hard-shape corpu
     );
 
     expect(pairs.filter(([, before, after]) => before !== after)).toEqual([]);
-    expect(pairs.length).toBeGreaterThan(0);
+    expect(pairs.map(([module]) => module)).toEqual(
+      Object.keys(run.before).filter((module) => expectedText(name, module) !== undefined),
+    );
   });
 
   it('notes each shape a recipe declined', () => {

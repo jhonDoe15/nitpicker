@@ -23,8 +23,8 @@ function lint(code: string) {
   return { reported: messages.length > 0, output: result.fixed ? result.output : undefined };
 }
 
-function results(code: string, values: readonly unknown[]): unknown[] {
-  return runInNewContext(
+function results(code: string, values: readonly unknown[]): unknown {
+  const seen: unknown = runInNewContext(
     `${code}
      const seen = [];
      for (const n of values) for (const x of values) for (const a of [true, false]) for (const b of [true, false])
@@ -32,6 +32,7 @@ function results(code: string, values: readonly unknown[]): unknown[] {
      seen`,
     { values },
   );
+  return seen;
 }
 
 function run(body: string): string {
@@ -40,14 +41,15 @@ function run(body: string): string {
 
 describe('the shorter-boolean-logic fix', () => {
   it.each([
-    'if ((a && b) || (a && !b)) { return 1; } return 0;',
-    'if ((b && a) || (n > 3 && b) || (!(n > 3) && a)) { return 1; } return 0;',
-    'if (!((a && b) || (a && !b))) { return 1; } return 0;',
-  ])('keeps what %s returns', (body) => {
-    const { output } = lint(run(body));
-
-    expect(output).toBeDefined();
-    expect(results(output ?? '', VALUES)).toEqual(results(run(body), VALUES));
+    ['if ((a && b) || (a && !b)) { return 1; } return 0;', 'if (a) { return 1; } return 0;'],
+    [
+      'if ((b && a) || (n > 3 && b) || (!(n > 3) && a)) { return 1; } return 0;',
+      'if (n > 3 && b || !(n > 3) && a) { return 1; } return 0;',
+    ],
+    ['if (!((a && b) || (a && !b))) { return 1; } return 0;', 'if (!a) { return 1; } return 0;'],
+  ])('writes %s as %s, which returns the same', (body, form) => {
+    expect(lint(run(body))).toEqual({ reported: true, output: run(form) });
+    expect(results(run(form), VALUES)).toEqual(results(run(body), VALUES));
   });
 
   it.each([
