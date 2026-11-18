@@ -29,7 +29,14 @@ function placedFiles(placed: MonorepoPlaced): readonly (object | undefined)[] {
 export function runMonorepoInit(layout: MonorepoLayout, request: Request): MonorepoInit {
   const { root, repository, nodeVersion, options } = request;
   const version = packageVersion();
-  const setups = layout.members.map((member) => setUpMember(member, nodeVersion));
+  const folders = layout.members.map(({ folder }) => folder);
+  const setups = layout.members.map((member) =>
+    setUpMember(
+      member,
+      nodeVersion,
+      folders.indexOf(member.folder) !== folders.lastIndexOf(member.folder),
+    ),
+  );
   const ci = options.ci.length > 0;
   const workflowFile = workflowPath(root, repository);
   const placed: MonorepoPlaced = {

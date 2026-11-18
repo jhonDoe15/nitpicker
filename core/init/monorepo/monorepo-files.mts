@@ -1,5 +1,5 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { detectProject } from '../detection/detect-project.mts';
+import { detectProject, detectProjectAs } from '../detection/detect-project.mts';
 import { type ExistingConfig, existingConfig, placeConfig } from '../files/config-file.mts';
 import { type Revision, placeFile } from '../files/place-file.mts';
 import { planPeers } from '../peers/peer-plan.mts';
@@ -63,14 +63,16 @@ function memberConfig(member: Member, project: InitProject): PlacedFile | undefi
   return { ...placed, relative: `${member.folder}/${placed.relative}` };
 }
 
-export function setUpMember(member: Member, nodeVersion: string): MemberSetup {
+export function setUpMember(member: Member, nodeVersion: string, shared = false): MemberSetup {
   let project: InitProject;
   try {
-    project = detectProject(member.absolute);
+    project = shared
+      ? detectProjectAs(member.absolute, member.preset)
+      : detectProject(member.absolute);
   } catch (error) {
     return { member, error: error instanceof Error ? error.message : String(error) };
   }
   const peers = planPeers(member.absolute, project, nodeVersion);
-  const config = memberConfig(member, project);
+  const config = shared ? undefined : memberConfig(member, project);
   return { member, project, peers, ...(config === undefined ? {} : { config }) };
 }

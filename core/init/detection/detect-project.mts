@@ -111,6 +111,23 @@ function withFoundRoots(projectRoot: string, config: DetectionConfig): InitProje
   return { ...project, notes: [...project.notes, note], emptySources: true };
 }
 
+const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
+const JVM_PRESETS = new Set(['java', 'kotlin']);
+
+export function detectProjectAs(projectRoot: string, preset: string): InitProject {
+  const marker = presetMarker(projectRoot);
+  if (SCRIPT_PRESETS.has(preset)) {
+    return describeNodeProject(projectRoot, preset);
+  }
+  const bothJvm = JVM_PRESETS.has(preset) && JVM_PRESETS.has(marker?.preset ?? '');
+  if (marker === undefined || (marker.preset !== preset && !bothJvm)) {
+    return detectProject(projectRoot);
+  }
+  return preset === 'python'
+    ? describePythonProject(projectRoot)
+    : describeJvmProject(projectRoot, { ...marker, preset });
+}
+
 export function detectProject(projectRoot: string): InitProject {
   const existing = existingConfig(projectRoot);
   const config = detectionConfig(existing);
