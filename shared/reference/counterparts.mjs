@@ -92,6 +92,11 @@ const GROUPS = [
     python: 'nan-only-guard',
     go: 'go-rules/nan-only-guard',
   },
+  {
+    jvm: 'NegativeCountArgument',
+    typescript: 'nitpicker/no-negative-count',
+    go: 'go-rules/negative-count',
+  },
 ];
 
 function spring(rule) {

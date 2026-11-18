@@ -202,3 +202,5 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `try`: a proxy or gateway error page is HTML, and the `SyntaxError` hides the status (`nitpicker/no-unchecked-response-json`).
 - A number that was parsed or computed is checked with `Number.isFinite(x)`, not only `isNaN(x)`: `Infinity` passes
   `isNaN` (`nitpicker/no-nan-only-check`).
+- A count computed by subtraction is clamped before `repeat` or `new Array`: `' '.repeat(Math.max(0, width - text.length))`
+  (`nitpicker/no-negative-count`); a negative count throws a `RangeError`.
