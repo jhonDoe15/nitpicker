@@ -82,6 +82,7 @@ type InlineProject = Exclude<
 >;
 
 const PROJECT_CONFIG_FILE = /^vite(?:st)?(?:\.[\w-]+)?\.config\./u;
+const WORKSPACES = /"workspaces"\s*:\s*[[{]/u;
 const GLOB_CHARACTERS = /[*?[\]{}]/u;
 
 function pinnedInline(entry: InlineProject, extended: Timeouts = {}): InlineProject {
@@ -96,6 +97,30 @@ function configIn(directory: string) {
   return PROJECT_CONFIG_NAMES.map((name) => path.join(directory, name)).find((file) =>
     existsSync(file),
   );
+}
+
+function workspaceConfig(root: string): string | undefined {
+  const folders = [root];
+  for (const folder of folders) {
+    const parent = path.dirname(folder);
+    if (parent === folder || existsSync(path.join(folder, '.git'))) {
+      return undefined;
+    }
+    const manifest = path.join(parent, 'package.json');
+    const listed = existsSync(manifest) && WORKSPACES.test(readFileSync(manifest, 'utf8'));
+    if (listed || existsSync(path.join(parent, 'pnpm-workspace.yaml'))) {
+      return configIn(parent);
+    }
+    folders.push(parent);
+  }
+  return undefined;
+}
+
+function fromWorkspace<T extends { setupFiles?: unknown }>(test: T, directory: string) {
+  const setupFiles = setupFilesOf(test.setupFiles).map((file) =>
+    file.startsWith('.') ? path.resolve(directory, file) : file,
+  );
+  return { ...test, include: undefined, projects: undefined, workspace: undefined, setupFiles };
 }
 
 async function projectAt(projectPath: string): Promise<InlineProject> {
@@ -161,10 +186,7 @@ const coverage = {
       ...testSupportDirectories.map((directory) => `${root}/**/${directory}/**`),
       `${root}/**/*.{test,spec}.${codeExtensions}`,
     ]),
-    'dist/**',
-    'build/**',
-    'generated/**',
-    '**/*.d.ts',
+    ...['dist/**', 'build/**', 'generated/**', '**/*.d.ts'],
     ...sourceRoots.flatMap((root) => [`${root}/vitest.config.ts`, `${root}/main/vitest.config.ts`]),
     ...exclude,
   ],
@@ -177,22 +199,12 @@ const configWithoutProjectConfig = {
   test: {
     ...globalPins,
     maxWorkers: 4,
-    projects: [
-      pinnedInline({
-        test: {
-          name: 'quality-unit',
-          include: sourceRoots.flatMap(testFiles),
-          exclude: nitpickerExclude,
-        },
-      }),
-      pinnedInline({
-        test: {
-          name: 'quality-integration',
-          include: testRoots.flatMap(testFiles),
-          exclude: nitpickerExclude,
-        },
-      }),
-    ],
+    projects: Object.entries({ 'quality-unit': sourceRoots, 'quality-integration': testRoots }).map(
+      ([name, roots]) =>
+        pinnedInline({
+          test: { name, include: roots.flatMap(testFiles), exclude: nitpickerExclude },
+        }),
+    ),
     coverage,
   },
 };
@@ -202,13 +214,11 @@ function definesOwnTests(test: object = {}) {
 
 async function layeredOnProjectConfig(projectConfigFile: string, root: string) {
   const loaded = await loadConfigFromFile(projectConfigFile);
-  const project = loaded?.config ?? {};
-  const {
-    testNamePattern: _pattern,
-    dir: _dir,
-    outputFile: _output,
-    ...ownTest
-  } = project.test ?? {};
+  const directory = path.dirname(projectConfigFile);
+  const found = loaded?.config ?? {};
+  const workspace = { ...found, test: fromWorkspace(found.test ?? {}, directory) };
+  const project = directory === root ? found : workspace;
+  const { testNamePattern: _name, dir: _dir, outputFile: _out, ...ownTest } = project.test ?? {};
   return {
     ...project,
     plugins: [...(project.plugins ?? []), stripCoverageIgnoreHints],
@@ -231,19 +241,13 @@ async function layeredOnProjectConfig(projectConfigFile: string, root: string) {
 
 function timeoutLimits() {
   const parsed: unknown = JSON.parse(process.env.NITPICKER_TEST_TIMEOUT_LIMITS ?? '{}');
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('testTimeoutMs' in parsed) ||
-    typeof parsed.testTimeoutMs !== 'number'
-  ) {
+  const limits = new Map<string, unknown>(Object.entries(isPolicy(parsed) ? parsed : {}));
+  const testTimeout = limits.get('testTimeoutMs');
+  const hookTimeout = limits.get('hookTimeoutMs');
+  if (typeof testTimeout !== 'number') {
     throw new Error('Nitpicker test timeout settings are missing.');
   }
-  const hookTimeoutMs = 'hookTimeoutMs' in parsed ? parsed.hookTimeoutMs : undefined;
-  return {
-    testTimeoutMs: parsed.testTimeoutMs,
-    ...(typeof hookTimeoutMs === 'number' ? { hookTimeout: hookTimeoutMs } : {}),
-  };
+  return { testTimeout, ...(typeof hookTimeout === 'number' && { hookTimeout }) };
 }
 
 function setupFilesOf(value: unknown): string[] {
@@ -255,19 +259,13 @@ function timeoutSettings<T extends object>(test: T) {
   if (setup === undefined) {
     return test;
   }
-  const limits = timeoutLimits();
   const existing = 'setupFiles' in test ? test.setupFiles : [];
-  return {
-    ...test,
-    testTimeout: limits.testTimeoutMs,
-    ...('hookTimeout' in limits ? { hookTimeout: limits.hookTimeout } : {}),
-    setupFiles: [setup, ...setupFilesOf(existing)],
-  };
+  return { ...test, ...timeoutLimits(), setupFiles: [setup, ...setupFilesOf(existing)] };
 }
 
 export async function layeredConfig(root = process.cwd()): Promise<ViteUserConfig> {
   const projectRoot = path.resolve(root);
-  const projectConfigFile = configIn(projectRoot);
+  const projectConfigFile = configIn(projectRoot) ?? workspaceConfig(projectRoot);
   const config =
     projectConfigFile === undefined
       ? configWithoutProjectConfig

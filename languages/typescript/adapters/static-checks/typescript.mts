@@ -7,7 +7,7 @@ import {
 } from '../typed/static-checks.mts';
 import { layoutTransformFor, readLayout, typecheckEngine } from '../typed/head-policy.mts';
 import type { StaticCheckOptions } from './arguments.mts';
-import { type Finding, projectFile, hash, policyFile } from './shared.mts';
+import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
@@ -29,17 +29,20 @@ type TypeScriptDiagnostics = {
 };
 
 type DiagnosticFilter = {
-  readonly layout: ReturnType<typeof readLayout>;
+  readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded'>;
   readonly contextOnly: ReadonlySet<string>;
   readonly projectRoot: string;
 };
 
-function isReportedDiagnostic(
+export function isReportedDiagnostic(
   diagnostic: TypeScript.Diagnostic,
   filter: DiagnosticFilter,
 ): boolean {
   if (diagnostic.file === undefined) {
     return true;
+  }
+  if (!isProjectFile(filter.projectRoot, diagnostic.file.fileName)) {
+    return false;
   }
   const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
   return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file));
