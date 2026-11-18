@@ -189,6 +189,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `''`: keep a presence flag, or compare with `!== undefined` or `'cause' in error` (`nitpicker/no-falsy-error-check`).
 - A guard that sends a response or calls `next`/`callback` returns right after it (`return res.status(400).json(...)`,
   `return next()`), so the code below does not run too (`nitpicker/no-send-without-return`).
+- A cache or query key names every input of the value stored under it: the environment, registry settings or table
+  variant a computation reads belong in the `queryKey` array or the key string (`nitpicker/no-incomplete-cache-key`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

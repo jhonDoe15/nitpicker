@@ -318,12 +318,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   calls that differ in it share one entry. Two forms. A TanStack Query call (`useQuery`, `useInfiniteQuery`,
   `queryOptions` and the like, in a file that imports `@tanstack/*-query` or `react-query`) whose inline `queryFn`
   reads a variable of the enclosing function (a prop, parameter or hook result) that the `queryKey` array does not
-  mention; functions, `queryClient`, module-level values, imports, literals and services that are only called
+  mention, directly or through a variable the key reads; functions, `queryClient`, module-level values, imports,
+  literals, tokens and credentials, callbacks only passed to `.then`, type names and services that are only called
   (`api.get(id)` on a `useApi()` result) are not inputs. A memo cache in one function: a `const` key built by a
   template with expressions, `+`, `[...].join()` or `JSON.stringify`, read with `cache.get(key)` or `cache.has(key)`
   and stored with `cache.set(key, value)` on the same receiver, where the value is computed from a parameter that
   the key never references (directly or through a local variable). Parameters named or typed as a logger, abort
-  signal or context, parameters that are only called, and parameters only passed to logging are left out.
+  signal or context, tokens and credentials, parameters that are only called, and parameters only passed to
+  logging are left out, and so is a module-level cache that the same file clears with `.clear()`.
   Allowed form: every input of the computation is part of the key
   (`` `${base}:${variant}:${table ?? ''}` ``, `['preview', environmentId, slug]`).
 - `nitpicker/no-listen-on-all-interfaces`: a local callback or companion server that calls `listen` without a host, which

@@ -48,6 +48,7 @@ import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/proces
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
+import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-cache-key.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/proce
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
-import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -150,6 +150,7 @@ export const partRules = {
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
+  'no-incomplete-cache-key': ruleNoIncompleteCacheKey,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
-  'no-shell-string-command': ruleNoShellStringCommand,
 };

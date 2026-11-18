@@ -53,6 +53,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-pipe-dropping-errors',
   'nitpicker/no-unclosed-file-descriptor',
   'nitpicker/no-release-outside-finally',
+  'nitpicker/no-incomplete-cache-key',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',

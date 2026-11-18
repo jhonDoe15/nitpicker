@@ -214,6 +214,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   forwards no errors (`nitpicker/no-pipe-dropping-errors`).
 - A child process whose output or exit code you use is waited on with `'close'` (handler `(code, signal)`, a signal or
   missing code is a failure), not `'exit'`, which can fire before the output is drained (`nitpicker/no-child-exit-event`).
+- A cache or query key names every input of the value stored under it: the environment, registry settings or table
+  variant a computation reads belong in the `queryKey` array or the key string (`nitpicker/no-incomplete-cache-key`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
