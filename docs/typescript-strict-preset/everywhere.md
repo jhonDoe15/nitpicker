@@ -302,7 +302,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   must be recognizable as a Node stream without types: `createReadStream`, `createWriteStream`, zlib and crypto `create*`
   streams from `fs`, `zlib` or `crypto`, `new Transform()`, `new PassThrough()` and the other `stream` classes,
   `Readable.from` and `Readable.fromWeb`, a `.createReadStream()`, `.createWriteStream()` or `.stream()` call, or a local const
-  initialized from one. RxJS and Effect `pipe` calls, `process.stdin`, and a lone `a.pipe(b);` statement are not reported.
+  initialized from one; a stream created in the middle of the chain (`input.pipe(createGzip()).pipe(res)`) counts as well.
+  A lone `a.pipe(b);` statement is reported only when the file waits for `b` with a `'finish'`, `'end'` or `'close'` listener.
+  RxJS and Effect `pipe` calls and `process.stdin` are not reported.
   Allowed forms: `pipeline(a, b, c)` from `node:stream/promises`, or `node:stream` with a callback, or an `'error'` listener on every
   stream before the last.
 - `nitpicker/no-child-exit-event`: an `'exit'` listener (`on`, `once`, `addListener`) on a child process from `spawn`, `exec`,

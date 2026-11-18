@@ -199,6 +199,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
   to create or empty a file use `writeFileSync(path, '')`, and close a descriptor given to `spawn` as stdio in the parent
   (`nitpicker/no-unclosed-file-descriptor`).
+- Node streams are chained with `pipeline(a, b, c)` from `node:stream/promises`, not `a.pipe(b).pipe(c)`, because `pipe`
+  forwards no errors (`nitpicker/no-pipe-dropping-errors`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
