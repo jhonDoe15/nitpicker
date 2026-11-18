@@ -137,3 +137,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
   `System.nanoTime()` or use a `Stopwatch` or Micrometer `Timer.Sample` instead of subtracting two `Instant.now()` or
   `System.currentTimeMillis()` readings (`pmd/WallClockElapsed`).
+- A path, route, package or host is matched on whole segments, never by `String` prefix
+  (`pmd/AffixWithoutBoundary`): `path.equals(base) || path.startsWith(base + "/")`, `Path.startsWith`,
+  `host.equals(domain) || host.endsWith("." + domain)`, and `URI.getHost()` for a URL.

@@ -16,6 +16,7 @@ import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
 import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
 import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-trips.mjs';
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
+import { MINED_EXCEPTION_RULES } from '../review-rules/mined/mined-rules.mjs';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mjs';
 import { STRING_CALL_EXCEPTION_RULES } from '../review-rules/string-calls/string-calls.mjs';
 import { VALUE_CHECK_EXCEPTION_RULES } from '../review-rules/value-checks/value-checks.mjs';
@@ -55,6 +56,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     MAX_VALUE_EXCEPTION_RULE,
     ...STRING_CALL_EXCEPTION_RULES,
     ...VALUE_CHECK_EXCEPTION_RULES,
+    ...MINED_EXCEPTION_RULES,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

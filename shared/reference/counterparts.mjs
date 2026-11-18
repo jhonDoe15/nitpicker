@@ -142,6 +142,12 @@ const GROUPS = [
     python: 'wall-clock-elapsed',
     go: 'go-rules/wall-clock-elapsed',
   },
+  {
+    jvm: 'AffixWithoutBoundary',
+    typescript: 'nitpicker/no-prefix-without-boundary',
+    python: 'prefix-without-boundary',
+    go: 'go-rules/prefix-without-boundary',
+  },
 ];
 
 function spring(rule) {

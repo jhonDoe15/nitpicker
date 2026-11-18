@@ -306,6 +306,13 @@ length` (or `length < index`) in an `||` chain or an `if` whose branch leaves, f
 and `x.charAt(index)`) in a later operand or later in the block; and `index <= length` in an `&&` chain or `if` whose
 later operand or branch reads `x[index]`. Insertion positions, other receivers, a function that also checks `>=` or `<`,
 and a reassigned index are not reported.
+Paths and hosts matched by text: `nitpicker/no-prefix-without-boundary` (production source, in `eslint-lint`) in the
+TypeScript and JavaScript presets and `pmd/AffixWithoutBoundary` in the Java and Kotlin presets, `prefix-without-boundary` in the Python preset and
+`go-rules/prefix-without-boundary` in the Go preset report a text prefix,
+suffix or substring check on a path, route, package or host whose argument has no separator boundary (`a.startsWith(base)`,
+`host.endsWith(domain)`, a bare origin such as `'http://localhost'`). An equality test of the
+same two values in the condition, a value that ends in a separator or is normalised earlier, a check on the character or
+length after the prefix, a dotted domain suffix and `Path.startsWith` are allowed. The substring check `includes('node_modules')` is not reported.
 
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function

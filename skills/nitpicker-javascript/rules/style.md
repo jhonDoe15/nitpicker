@@ -157,6 +157,22 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A path, route, package or host is matched on whole segments, never by text prefix: `a === base ||
+  a.startsWith(`${base}/`)`, `host === domain || host.endsWith(`.${domain}`)`, `new URL(x).hostname` for a URL
+  (`nitpicker/no-prefix-without-boundary`).
+- A suffix or prefix is removed with an anchored check, never a string `replace` (`name.replace('.git', '')`
+  also hits `blog.git.io`): `name.replace(/\.git$/, '')`, `endsWith` with `slice`, or `url.port = next` on a parsed
+  URL (`nitpicker/no-unanchored-affix-replace`).
+- A key normalized with `toLowerCase()` or `toUpperCase()` is looked up in a collection normalized the same way: build
+  the set with `names.map((name) => name.toLowerCase())`, and fill and read a map with the same normalized key
+  (`nitpicker/no-case-mismatched-lookup`).
+- A precondition message names the value it checks: `if (!timeUnit) throw new Error('timeUnit must be set')`, not
+  another parameter (`nitpicker/no-mismatched-precondition-message`).
+- Query text built from parts reads as one valid statement once joined: a bind placeholder after every `LIKE` and `=`,
+  as many values as columns in an `INSERT`, and a space at the start of every appended fragment
+  (`nitpicker/no-malformed-query-text`).
+- An object-store listing follows its pages: `paginateListObjectsV2`, or a loop on `NextContinuationToken`; a search
+  call sets its `LIMIT` and loops (`nitpicker/no-unpaged-listing`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

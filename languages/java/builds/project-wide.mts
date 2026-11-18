@@ -11,6 +11,7 @@ import {
   maxValueFindings,
   stringCallFindings,
   valueCheckFindings,
+  minedFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
   outerClassOf,
@@ -267,6 +268,7 @@ export function projectWideReport(
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...stringCallFindings(projectRoot, { projects, kotlin, policy }),
     ...valueCheckFindings(projectRoot, { projects, kotlin, policy }),
+    ...minedFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };
