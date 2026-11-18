@@ -127,5 +127,13 @@ tester.run('no-orm-schema-sync', rule, {
       code: `${MIKRO} export async function start(orm) { await orm.schema.ensureDatabase({ create: true }); }`,
       errors: sync('orm.schema.ensureDatabase()'),
     },
+    {
+      code: `${TYPEORM} import { dataSource } from "typeorm"; export async function start() { await dataSource.synchronize(true); }`,
+      errors: sync('dataSource.synchronize()'),
+    },
+    {
+      code: `${SEQUELIZE} export async function start() { await Sequelize.sync({ alter: true }); }`,
+      errors: sync('Sequelize.sync()'),
+    },
   ],
 });
