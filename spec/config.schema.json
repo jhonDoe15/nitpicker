@@ -2459,6 +2459,7 @@
                             "kotlin-source/ParameterMutation",
                             "kotlin-source/TriStateBoolean",
                             "kotlin-source/HostPortColonSplit",
+                            "kotlin-source/NewlineOnlyLineSplit",
                             "kotlin-source/PairSplitDropsRest",
                             "kotlin-source/DefaultTimeZone",
                             "kotlin-source/LegacyCalendarApi",

@@ -34,6 +34,7 @@
   "kotlin-source/LogStringConcatenation": ["performance"],
   "kotlin-source/MutableModuleState": ["bug"],
   "kotlin-source/MutationIgnoreMarker": ["tests"],
+  "kotlin-source/NewlineOnlyLineSplit": ["bug"],
   "kotlin-source/NullMapValue": ["bug"],
   "kotlin-source/OperandSlip": ["bug"],
   "kotlin-source/PairSplitDropsRest": ["bug"],

@@ -67,6 +67,7 @@
   "pmd/MaxValueOverflow": ["bug"],
   "pmd/NanOnlyGuard": ["bug"],
   "pmd/NegativeCountArgument": ["bug"],
+  "pmd/NewlineOnlyLineSplit": ["bug"],
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/PairSplitDropsRest": ["bug"],

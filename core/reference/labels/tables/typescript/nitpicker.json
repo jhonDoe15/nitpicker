@@ -69,6 +69,7 @@
   "eslint/nitpicker/no-mutating-method-in-domain": ["maintainability"],
   "eslint/nitpicker/no-nan-only-check": ["bug"],
   "eslint/nitpicker/no-negative-count": ["bug"],
+  "eslint/nitpicker/no-newline-only-line-split": ["bug"],
   "eslint/nitpicker/no-node-process-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-null": ["style"],
   "eslint/nitpicker/no-operand-slip": ["bug"],

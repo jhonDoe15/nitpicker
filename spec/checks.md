@@ -429,10 +429,12 @@ Host and port splits: `nitpicker/no-host-port-colon-split` (production source, i
 on a `Host`, `X-Forwarded-Host` or `:authority` header read, which breaks IPv6 literals. Parsing with `new URL` is
 allowed. The same definition runs as `pmd/HostPortColonSplit` (Java) and `kotlin-source/HostPortColonSplit`
 (Kotlin), `host-port-colon-split` (Python script) and `go-rules/host-port-colon-split` (Go).
+(Kotlin).
 Newline-only line splits: `nitpicker/no-newline-only-line-split` (production source, in `eslint-lint`) reports
 `split('\n')` and `indexOf('\n')` on text read from a file or on a comment's value. `split(/\r?\n/)` and
 normalised line endings are allowed. The same definition runs as `pmd/NewlineOnlyLineSplit` (Java) and
-`kotlin-source/NewlineOnlyLineSplit` (Kotlin).
+`kotlin-source/NewlineOnlyLineSplit` (Kotlin) and `go-rules/newline-only-line-split` (Go, text from
+`os.ReadFile`). Python reads files with universal newlines, so it has no counterpart.
 Surrogate-splitting cuts: `nitpicker/no-surrogate-splitting-cut` (production source, in `eslint-lint`) reports a
 string cut by `slice(0, n)`, `substring(0, n)` or `substr(0, n)` under a `text.length > n` guard, which can split a
 surrogate pair. Cutting on code points or graphemes is allowed. The same definition runs as
