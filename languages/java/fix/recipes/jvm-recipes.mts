@@ -27,6 +27,7 @@ import { sortForExtremeRecipe } from './kotlin/performance/collections/sort-for-
 import { plainTextRegexRecipe } from './kotlin/performance/regexes/plain-text-regex.mts';
 import { saveInLoopRecipe } from './kotlin/performance/repositories/loops/save-in-loop.mts';
 import { sleepInsteadOfDelayRecipe } from './kotlin/performance/coroutines/sleep-instead-of-delay.mts';
+import { entityExistsRecipe } from './kotlin/performance/repositories/existence/entity-exists.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
 import {
@@ -70,6 +71,7 @@ export const JVM_RECIPES = defineRecipes([
   plainTextRegexRecipe,
   saveInLoopRecipe,
   sleepInsteadOfDelayRecipe,
+  entityExistsRecipe,
   focusedTestRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,

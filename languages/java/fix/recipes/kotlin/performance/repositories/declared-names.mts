@@ -11,8 +11,15 @@ const ITERABLE_TYPES = new Set([
   ...['Iterable', 'Collection', 'List', 'Set', 'MutableIterable', 'MutableCollection'],
   ...['MutableList', 'MutableSet', 'ArrayList', 'HashSet', 'LinkedHashSet', 'LinkedList'],
 ]);
-const ITERABLE_INITIALIZER =
-  /^(?:(?:listOf|setOf|mutableListOf|mutableSetOf|arrayListOf|hashSetOf|linkedSetOf|emptyList|emptySet)\b|.*\.(?:toList|toSet|toMutableList|toMutableSet)\s*\(\s*\)$)/u;
+const ITERABLE_FACTORIES = [
+  ...['listOf', 'setOf', 'mutableListOf', 'mutableSetOf', 'arrayListOf'],
+  ...['hashSetOf', 'linkedSetOf', 'emptyList', 'emptySet'],
+].join('|');
+const ITERABLE_CONVERSIONS = ['toList', 'toSet', 'toMutableList', 'toMutableSet'].join('|');
+const ITERABLE_INITIALIZER = new RegExp(
+  String.raw`^(?:(?:${ITERABLE_FACTORIES})\b|.*\.(?:${ITERABLE_CONVERSIONS})\s*\(\s*\)$)`,
+  'u',
+);
 
 function bindingPatterns(name: string): readonly { kind: Binding['kind']; pattern: RegExp }[] {
   const escaped = escapeRegExp(name);
@@ -33,9 +40,13 @@ function bindingPatterns(name: string): readonly { kind: Binding['kind']; patter
     {
       kind: 'other',
       pattern: new RegExp(
-        String.raw`\([^()\n]*(?<![\w.])${escaped}(?![\w])[^()\n]*\)\s*(?:=(?!=)|in\b)`,
+        String.raw`(?:\b(?:val|var)\s*|\bfor\s*\(\s*)\([^()\n]*(?<![\w.])${escaped}(?![\w])[^()\n]*\)`,
         'gu',
       ),
+    },
+    {
+      kind: 'other',
+      pattern: new RegExp(String.raw`\([^()\n]*(?<![\w.])${escaped}(?![\w])[^()\n]*\)\s*->`, 'gu'),
     },
   ];
 }
@@ -58,7 +69,7 @@ function baseName(type: string): string {
   return bare.slice(bare.lastIndexOf('.') + 1);
 }
 
-export function reactiveFile(code: string): boolean {
+function reactiveFile(code: string): boolean {
   return REACTIVE.test(code);
 }
 
