@@ -213,6 +213,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A path that comes from configuration or the caller is checked with `stat(p)` and `isFile()` (or read in a `try` that handles
   `ENOENT` and `EISDIR`) before it is read, not with `existsSync`, `access` or `pathExists`, which a directory passes
   (`nitpicker/no-directory-passing-existence-check`).
+- A `Location` header or a configured path is resolved against the request URL before it is followed or redirected to:
+  `new URL(location, requestUrl)`, `Response.redirect(new URL(path, request.url))` (`nitpicker/no-unresolved-relative-url`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

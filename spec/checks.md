@@ -477,6 +477,7 @@ file read of a configured or caller-supplied path whose guard is `existsSync`, `
 Unresolved relative URLs: `nitpicker/no-unresolved-relative-url` (production source, in `eslint-lint`) reports a `Location` header used as a
 request target or in `new URL(location)` with no base, `Response.redirect(path)` with a path, and `new URL(path)` with a literal path and no base.
 `new URL(x, base)` and a check for an absolute URL are allowed.
+
 Slash-only redirect guards: `nitpicker/no-slash-only-redirect-guard` (production source, in `eslint-lint`) reports a redirect target
 (`callbackUrl`, `redirectTo`, `returnTo`, `next`) accepted by `startsWith('/')`, `v[0] === '/'` or a bare `^/` regex and then returned or redirected
 to in a function with no `//`, backslash or origin check, and `router.push(url.pathname + ...)` after an origin check that does not reject a `//` pathname.
