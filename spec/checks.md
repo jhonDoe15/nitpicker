@@ -278,6 +278,12 @@ reaches about 125,000 items. With the type checker arrays, typed arrays, sets, m
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
 
+Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
+source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
+an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,
+continue, exit or assignment to `x`) when the same block then reads `x` as present (member access, indexing, destructuring,
+spread, iteration, or an argument of a call the branch also made). A later guard of `x` ends the search.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

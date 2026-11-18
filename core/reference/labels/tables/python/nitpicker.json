@@ -65,6 +65,7 @@
   "python-rules/no-inline-suppression": ["maintainability"],
   "python-rules/no-type-check": ["maintainability"],
   "python-rules/not-type-checking": ["maintainability"],
+  "python-rules/null-branch-fall-through": ["bug"],
   "python-rules/number-truthiness": ["bug"],
   "python-rules/orm-query-logging": ["security", "persistence"],
   "python-rules/orm-schema-sync": ["reliability", "persistence"],

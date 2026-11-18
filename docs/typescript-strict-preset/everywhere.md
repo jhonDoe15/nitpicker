@@ -1558,6 +1558,28 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
   parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
   nothing.
+- `nitpicker/no-null-branch-fall-through`: `if (x === null)`, `x == null`, `x === undefined` or
+  `x == undefined` (also `x === null || x === undefined`, and `this.field`) with no `else` whose
+  body does something (a call, a write, a log, an assignment of a placeholder to another variable)
+  and does not leave, followed in the same block by `x.foo`, `x.foo()`, `x[i]`, a destructuring or
+  spread of `x`, `for (... of x)`, or `x` passed to a call the branch also made with a placeholder
+  (`out.append('null')` then `out.append(String(x))`), in all production code. On the null path the
+  later use throws a `TypeError` or handles the value twice; add `return` (or an `else`). It is
+  reported on the `if` test, and the message names the first later use (`x.foo()`, shortened to 40 characters), not its line. Not reported: a branch that returns, throws, breaks, continues, calls
+  `process.exit` or assigns `x` (`x = ...`, `x ??= ...`), an empty branch, `if (!x)`, a later use
+  that is guarded (`x?.foo`, `x && x.foo`, `x ? ... : ...`, `if (x != null)`) or that follows another
+  null check of `x`, and a function that only mentions `x` unless it is called on the spot. The rule
+  stays quiet when x is a field (`this.x`) or a module-level variable and the branch calls a
+  function or method other than a logger or a writer given literals (`this.connect()`, `init()`),
+  since that call may set it. It also stays quiet when the branch leaves through `process.abort()`,
+  `fail`, `abort`, `die`, `panic`, `unreachable`, `assertNever` or a same-file function that only
+  throws, or assigns x by destructuring (`({ x } = load())`), and when `assert(x)`,
+  `assert.ok(x)`, `invariant(x)`, `expect(x)`, a `switch (x)` or a one-argument guard call
+  (`if (isNil(x))`) comes before the use. A use inside `try` is still reported. The rule
+  reads syntax only, so it does not overlap with `no-unnecessary-condition` (which needs types and
+  never looks at the branch); with `strictNullChecks` TypeScript reports the use as an error too,
+  but only on a typed value, so the rule matters most in JavaScript and in `any` or non-strict
+  code, and its message names the missing `return`.
 - `nitpicker/strict-boolean-expressions` (type-aware, wraps typescript-eslint's
   `strict-boolean-expressions`; production and test files): a number tested for truthiness
   (`if (count)`, `retry ? a : b`, `!id`, `index && ...`, `cells[0] || ''`, `end - start ? a : b`, a

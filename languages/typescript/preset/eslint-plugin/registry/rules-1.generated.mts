@@ -62,6 +62,7 @@ import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multipl
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
+import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-ret
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
-import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -165,6 +165,7 @@ export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
+  'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
-  'no-task-outliving-resource': ruleNoTaskOutlivingResource,
 };

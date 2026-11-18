@@ -4,6 +4,13 @@ import type { RuleHint } from '../hint-types.mts';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;
+const USE_TEXT = /^([^|]+)\|(.*)$/u;
+
+function fallThroughDescription(subject = ''): string {
+  const [, name = subject, use] = USE_TEXT.exec(subject) ?? [];
+  const target = use === undefined ? 'code' : `\`${use}\``;
+  return `The null branch handles \`${name}\` and then falls through to ${target}, which uses \`${name}\``;
+}
 
 function mutationDescription(subject = ''): string {
   const [, mutation = '', owner] = OWNED_MUTATION.exec(subject) ?? [];
@@ -43,6 +50,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
       `\`${subject}\` replaces a falsy argument with a default, so \`0\`, \`""\`, \`[]\` and \`False\` count as not given`,
     allowed:
       'Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['null-branch-fall-through'],
+    describe: fallThroughDescription,
+    allowed:
+      'Add `return` (or an `else`) so the null case is handled once; a branch that only logs and then continues still fails at the later use.',
   },
   {
     tool: RULES_TOOL,

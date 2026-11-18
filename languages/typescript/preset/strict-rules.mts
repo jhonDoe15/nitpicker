@@ -42,6 +42,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-lazy-relation-in-loop',
   'nitpicker/no-accumulator-concat',
   'nitpicker/no-array-spread-arguments',
+  'nitpicker/no-null-branch-fall-through',
   'nitpicker/no-io-in-loop',
   'nitpicker/no-costly-collection-form',
   'nitpicker/no-collected-stream-rows',

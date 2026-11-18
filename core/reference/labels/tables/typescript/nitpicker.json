@@ -65,6 +65,7 @@
   "eslint/nitpicker/no-mutating-method-in-domain": ["maintainability"],
   "eslint/nitpicker/no-node-process-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-null": ["style"],
+  "eslint/nitpicker/no-null-branch-fall-through": ["bug"],
   "eslint/nitpicker/no-operand-slip": ["bug"],
   "eslint/nitpicker/no-orm-query-logging": ["performance", "persistence"],
   "eslint/nitpicker/no-orm-schema-sync": ["reliability", "persistence"],
