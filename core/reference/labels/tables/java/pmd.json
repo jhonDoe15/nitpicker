@@ -34,6 +34,7 @@
   "pmd/CloseResource": ["reliability"],
   "pmd/CollapsibleIfStatements": ["simplification"],
   "pmd/CompatibilityShim": ["maintainability"],
+  "pmd/CompletionWithoutFailurePath": ["bug", "async"],
   "pmd/ConcurrentMapCheckThenAct": ["bug", "async"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
   "pmd/ConstructorLeaksResourceOnFailure": ["bug", "reliability"],
