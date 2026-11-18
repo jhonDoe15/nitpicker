@@ -421,7 +421,8 @@ Ambiguous lookup keys: `nitpicker/no-ambiguous-lookup-key` (production source, i
 reports a `Map`, `Set` or record key joined from two runtime strings (or an object) with a delimiter, such as
 `` `${row}-${col}` ``, `[a, b].join('-')` or `a + ':' + b`, where different tuples give the same key.
 `JSON.stringify([a, b])`, a nested `Map` and numeric parts are allowed. The same definition runs as
-`pmd/DelimitedLookupKey` (Java).
+`pmd/DelimitedLookupKey` (Java), `delimited-lookup-key` (Python script, `str`-annotated parts) and
+`go-rules/delimited-lookup-key` (Go).
 Host and port splits: `nitpicker/no-host-port-colon-split` (production source, in `eslint-lint`) reports
 `split(':')` and `slice(0, indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host`, or
 on a `Host`, `X-Forwarded-Host` or `:authority` header read, which breaks IPv6 literals. Parsing with `new URL` is

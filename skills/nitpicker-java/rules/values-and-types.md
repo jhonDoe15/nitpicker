@@ -39,6 +39,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Split `key:value` text once: `text.split(":", 2)` with a length check, or `indexOf(':')` with `substring`, not
   `text.split(":")[1]`, which drops what follows the second separator and throws when there is none
   (`pmd/PairSplitDropsRest`).
+- A `Map` or `Set` key made of several strings is a record or `List.of(a, b)`, not `a + "-" + b`: different
+  pairs (`"a-b"` with `"c"`, `"a"` with `"b-c"`) give the same key (`pmd/DelimitedLookupKey`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an

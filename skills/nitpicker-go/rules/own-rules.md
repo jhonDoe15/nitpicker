@@ -178,3 +178,5 @@ the allowed form and ends with its exception entry.
 - Split `key:value` text once (`strings.Cut(text, ":")` or `strings.SplitN(text, ":", 2)`), not with
   `strings.Split(text, ":")[1]`, which drops what follows the second separator
   (`go-rules/pair-split-drops-rest`). Check `len(parts) != 2` when the shape is exact.
+- Key a map by a struct or an array (`map[[2]string]T`, `map[key]T`), not by two strings joined with `:` or `-`
+  (`go-rules/delimited-lookup-key`): `"a-b"` with `"c"` and `"a"` with `"b-c"` give the same key.

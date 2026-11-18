@@ -273,6 +273,44 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="DelimitedLookupKey" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map or set key joins two runtime strings with a delimiter, so the pairs &quot;a-b&quot; and &quot;c&quot;, and &quot;a&quot; and &quot;b-c&quot;, produce the same key: one entry overwrites or answers for another. Key it with a record, List.of(a, b) or a nested map, or encode the parts so the delimiter cannot appear in them. A number, an enum, an id that cannot hold the delimiter and a literal are fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $keyCalls := ('get', 'put', 'containsKey', 'remove', 'getOrDefault', 'putIfAbsent', 'computeIfAbsent',
+                  'computeIfPresent', 'compute', 'merge', 'add', 'contains'),
+    $plain := function($e) {
+      exists($e[pmd-java:typeIsExactly('java.lang.String')][not(@CompileTimeConstant = true())]
+        [not(self::MethodCall[@MethodName = ('toString', 'valueOf', 'name', 'toHexString', 'toBinaryString', 'toOctalString')])]
+        [not(matches(string-join(descendant-or-self::*/(@Name, @MethodName), ' '), '(?:^|[a-z0-9])(?:id|Id|ID|uuid|Uuid|hash|Hash|index|Index|idx)( |$)', ''))]
+        [not(matches(string-join(descendant-or-self::*/(@Name, @MethodName), ' '), '(?:^|[a-z0-9])(?:owner|Owner|class|Class|method|Method|bean|Bean)( |$)', ''))])
+    },
+    $generated := function($e) {
+      exists($e/descendant-or-self::MethodCall[@MethodName = ('getAndIncrement', 'incrementAndGet', 'nanoTime', 'currentTimeMillis', 'randomUUID', 'nextLong', 'nextInt')])
+    },
+    $dynamic := function($e) { exists($e[not(@CompileTimeConstant = true())][not(self::StringLiteral)]) },
+    $delimiter := function($e) { exists($e[self::StringLiteral][matches(@Image, '^"[-_:;,.|/#@~=*&%+]{1,2}"$')]) },
+    $joinedExpr := function($e) {
+      not($generated($e)) and
+      exists($e/descendant-or-self::InfixExpression[@Operator = '+'][not(ancestor::ArgumentList[(.. is $e) or ancestor::*[. is $e]])]
+               [*[1][self::InfixExpression[@Operator = '+'][$delimiter(*[2])][$dynamic(*[1])]]][$plain(*[2])][$plain(*[1]/*[1])]
+             | $e[self::MethodCall][@MethodName = 'join'][pmd-java:matchesSig('java.lang.String#join(_*)')]
+                 [$delimiter(ArgumentList/*[1])][count(ArgumentList/*[position() > 1][$plain(.)]) >= 2])
+    },
+    $joined := function($key) {
+      $joinedExpr($key)
+      or exists($key[self::VariableAccess][let $name := @Name return
+           ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+             //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$joinedExpr(*[2])]])
+    }
+return //MethodCall[@MethodName = $keyCalls][*[1][pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Set')]]
+  [let $key := ArgumentList/*[1] return $joined($key)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="EpochNarrowedToInt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="An epoch time is cut to a 32-bit int here: epoch milliseconds overflow at once, and epoch seconds overflow in 2038 and turn a long lifetime into a date in the past. Keep epoch times in a long or an Instant (long expiresAt = Instant.now().getEpochSecond() + lifetimeSeconds), and compare them as long values.">
     <priority>3</priority>
