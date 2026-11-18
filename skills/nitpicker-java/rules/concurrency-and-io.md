@@ -121,6 +121,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A value held in a field of a second-level cached entity that is mapped with `@Type`, `@JdbcTypeCode` or
   `@Convert` is of a type that implements `Serializable` (the abstract base class or interface included), or the field is
   `transient` (`pmd/CachedEntityFieldNotSerializable`).
+- A callback that removes its own entry from a shared `ConcurrentMap` removes only that value
+  (`requests.remove(unit, future)`, `peersByAddress.remove(address, this)`), never `remove(key)`, which deletes a newer
+  value stored under the same key (`pmd/RemoveByKeyDropsNewerValue`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the

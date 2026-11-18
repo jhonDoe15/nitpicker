@@ -133,6 +133,7 @@
   "pmd/RedundantFieldInitializer": ["simplification"],
   "pmd/RedundantStreamStep": ["simplification"],
   "pmd/RegexPartDefect": ["bug"],
+  "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
   "pmd/RetryInTest": ["tests"],
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],
