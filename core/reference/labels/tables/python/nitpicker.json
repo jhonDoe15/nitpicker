@@ -25,6 +25,7 @@
   "python-rules/enum-string-constants": ["maintainability"],
   "python-rules/env-none-only-check": ["bug"],
   "python-rules/exhaustive-enum-predicate": ["bug"],
+  "python-rules/expanding-replacement": ["bug"],
   "python-rules/explicit-any": ["maintainability"],
   "python-rules/falsy-default": ["bug"],
   "python-rules/float-equality-in-test": ["tests"],

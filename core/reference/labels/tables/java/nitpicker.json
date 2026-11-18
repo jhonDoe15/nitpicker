@@ -55,6 +55,7 @@
   "palantir-java-format/format": ["style"],
   "pmd/CommentedOutCode": ["simplification"],
   "pmd/CopiedConstantInTest": ["tests", "maintainability"],
+  "pmd/ExpandingReplacement": ["bug"],
   "pmd/HandSplitHttpHeader": ["bug"],
   "pmd/HttpValueCase": ["bug"],
   "pmd/InlineSuppression": ["maintainability"],

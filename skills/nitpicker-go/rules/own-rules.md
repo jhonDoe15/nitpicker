@@ -75,6 +75,8 @@ the allowed form and ends with its exception entry.
   managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
+- A replacement from data goes to `ReplaceAllLiteralString` (`go-rules/expanding-replacement`):
+  `ReplaceAllString` reads `$1` and `${name}` in it, so a `$` in the value is lost.
 - A glob or pattern turned into a regexp or a `LIKE` pattern with `strings.ReplaceAll` steps is quoted for the
   target first (`go-rules/pattern-translation`): `strings.ReplaceAll(regexp.QuoteMeta(glob), `\*`, ".*")`,
   never the raw value.

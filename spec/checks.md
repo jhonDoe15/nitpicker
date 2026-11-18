@@ -492,6 +492,12 @@ constant and not escaped when it is the pattern of a Prisma `contains`, `startsW
 `$regex`. Escaping the value first (`escapeSqlLikePattern`, `escapeRegExp`) is allowed. There is no counterpart in the
 other presets yet.
 
+Replacement strings: `nitpicker/no-expanding-replacement-string` (production source, type-aware, in `eslint-lint`) reports
+`replace` or `replaceAll` on a string whose replacement is neither a function nor constant: `$&`, `$1` and `$$` in the
+replacement are expanded, so a value with a `$` is not inserted as written. A function replacement and escaping the
+dollars are allowed. The same rule runs as `expanding-replacement` in the Python and Go presets and as
+`pmd/ExpandingReplacement` in the Java and Kotlin presets.
+
 Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
 multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL
 takes at most 65,535 bound parameters. One array parameter (`= any($1::uuid[])`) passes. The same rule runs as

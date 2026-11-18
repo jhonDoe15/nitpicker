@@ -57,7 +57,7 @@ describeRules('pattern-translation', () => {
     ],
     [
       'a value built into a larger pattern, which regex-unescaped-value owns',
-      'import re\n\n\ndef allowed(glob):\n    return re.compile(f"^{glob.replace(\'*\', \'.*\').replace(\'?\', \'.\')}$")\n',
+      "import re\n\n\ndef allowed(glob):\n    return re.compile(f\"^{glob.replace('*', '.*').replace('?', '.')}$\")\n",
       [],
     ],
     [

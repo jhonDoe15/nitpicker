@@ -33,6 +33,7 @@ import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
+import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/replacements/no-expanding-replacement-string.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-ret
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
-import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -135,6 +135,7 @@ export const partRules = {
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
   'no-eager-relation': ruleNoEagerRelation,
+  'no-expanding-replacement-string': ruleNoExpandingReplacementString,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
-  'no-task-outliving-resource': ruleNoTaskOutlivingResource,
 };

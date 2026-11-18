@@ -55,7 +55,11 @@ function reachesRegex(source, link) {
   const { tokens, opener, partner } = source;
   const first = link.start;
   const enclosing = opener[first];
-  if (enclosing >= 0 && tokens[enclosing].text === '(' && REGEX_ENTRIES.has(tokens[enclosing - 1]?.text)) {
+  if (
+    enclosing >= 0 &&
+    tokens[enclosing].text === '(' &&
+    REGEX_ENTRIES.has(tokens[enclosing - 1]?.text)
+  ) {
     return true;
   }
   const after = partner[link.call.open] + 1;
@@ -110,7 +114,14 @@ export function findTranslations(source) {
       !isConstantRoot(source, root) &&
       (kind === 'like' || reachesRegex(source, top));
     return reported
-      ? [{ kind, line: top.call.line, root: text.join('').slice(0, 40), method: frameAt(source, top.call.open)?.name }]
+      ? [
+          {
+            kind,
+            line: top.call.line,
+            root: text.join('').slice(0, 40),
+            method: frameAt(source, top.call.open)?.name,
+          },
+        ]
       : [];
   });
 }

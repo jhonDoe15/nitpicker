@@ -87,6 +87,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/patterns/no-unescaped-pattern-translation.mjs',
   'languages/typescript/preset/eslint-plugin/rules/patterns/replace-chains.mjs',
   'languages/typescript/preset/eslint-plugin/rules/patterns/regex-sinks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/patterns/replacements/no-expanding-replacement-string.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/patterns/replacements/replacement-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/patterns/filters/no-unescaped-filter-value.mjs',
   'languages/typescript/preset/eslint-plugin/rules/patterns/filters/filter-sites.mjs',
   'languages/typescript/preset/eslint-plugin/rules/patterns/filters/filter-values.mjs',

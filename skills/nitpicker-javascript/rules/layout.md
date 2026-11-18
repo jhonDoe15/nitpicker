@@ -38,6 +38,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
   or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
   shorter one.
+- A replacement that comes from data is passed as a function, `text.replace(pattern, () => value)`: a string
+  replacement reads `$&`, `$1` and `$$` (`nitpicker/no-expanding-replacement-string`).
 - `src/main/composition-root.mjs` (or `main`/`server`) only passes things in, through named
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.

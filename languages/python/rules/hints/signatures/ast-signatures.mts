@@ -95,4 +95,12 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Escape the value for the target language first (`re.escape(value)`, or `%`, `_` and the escape character for `LIKE`) and restore the wildcards from their escaped form (`\\*` to `.*`), tokenise the pattern and map each token, or use `fnmatch.translate`. A `.` in a configured glob then matches only a dot.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['expanding-replacement'],
+    describe: (subject) =>
+      `The replacement \`${subject}\` is built at run time, and \`re.sub\` reads \`\\1\`, \`\\g<name>\` and backslash escapes in it`,
+    allowed:
+      'Pass a function: `re.sub(pattern, lambda _: value, text)` inserts the value as it is. A constant template such as `r"\\1b"` is fine.',
+  },
 ];

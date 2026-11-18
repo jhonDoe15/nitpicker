@@ -98,6 +98,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A replacement that comes from data goes through `Matcher.quoteReplacement(value)` in `replaceAll`,
+  `replaceFirst` and `Matcher.replaceAll`, or use `String.replace(CharSequence, CharSequence)`
+  (`pmd/ExpandingReplacement`): the replacement reads `$1` and `\\`.
 - A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target
   first (`pmd/PatternTranslation`): `Pattern.quote(glob).replace("*", ".*")`, never the raw value; for `LIKE`
   escape `%`, `_` and the escape character, then map the wildcards.

@@ -68,6 +68,12 @@ const GROUPS = [
     python: 'pattern-translation',
     go: 'go-rules/pattern-translation',
   },
+  {
+    jvm: 'ExpandingReplacement',
+    typescript: 'nitpicker/no-expanding-replacement-string',
+    python: 'expanding-replacement',
+    go: 'go-rules/expanding-replacement',
+  },
 ];
 
 function spring(rule) {
