@@ -22,4 +22,6 @@ export const LIFECYCLE_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/shared/per-item.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/registrations/registration-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/registrations/no-per-call-registration.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/timers/timeout-contexts.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/timers/no-uncleared-timeout.mjs',
 ];
