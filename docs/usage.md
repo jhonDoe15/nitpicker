@@ -2986,6 +2986,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/reusable-object-per-call`                 | review | moves an `Intl` formatter with literal arguments to a module constant; `DateTimeFormat` only with a literal `timeZone`   |
 | `nitpicker/no-sync-node-api-in-async`                | review | awaits the promise twin of a sync `fs` or `fs-extra` call (`access` for `existsSync`) made directly in an async function |
 | `nitpicker/unbounded-fan-out`                        | review | adds `{ concurrency: 8 }` to `pMap`; bounds `Promise.all` or `allSettled` over `map` with p-map or p-limit               |
+| `nitpicker/unbounded-reactive-fan-out`               | review | adds a concurrency limit of 8 to `mergeMap`, `flatMap`, `mergeAll` and `merge` with trailing spread; replaces `Infinity` |
 
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule

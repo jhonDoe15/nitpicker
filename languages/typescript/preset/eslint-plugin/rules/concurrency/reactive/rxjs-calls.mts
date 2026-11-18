@@ -102,7 +102,7 @@ export function rxjsName(context: Context, callee: TSESTree.Node): string | unde
     : undefined;
 }
 
-function isSelector(context: Context, node: TSESTree.Node): boolean {
+export function isSelector(context: Context, node: TSESTree.Node): boolean {
   const target = skipped(node);
   return isFunctionNode(target) || resolveFunction(context, target) !== undefined;
 }
