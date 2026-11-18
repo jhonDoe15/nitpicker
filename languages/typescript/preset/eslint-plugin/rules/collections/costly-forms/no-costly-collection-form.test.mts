@@ -51,6 +51,16 @@ tester.run('no-costly-collection-form', rule, {
     'const rows = load(); const unique = rows.filter((row, index) => rows.findIndex((other) => other.id === row.id) === index);',
     'const rows = load(); const firsts = rows.filter((row, i) => rows.findIndex((other) => row.id === other.id) !== i);',
     'const rows = load(); const firsts = rows.filter((row, i) => rows.findLastIndex((other) => other.id === row.id) === i);',
+    'const rows = load(); for (const e of events) { use(rows); const first = rows.sort(byDate)[0]; }',
+    'const rows = load(); while (go()) { if (seen) use(rows[0]); const first = rows.sort(byDate)[0]; seen = true; }',
+    'const rows = load(); const read = () => rows[1]; const first = rows.sort(byDate)[0];',
+    'const rows = load(); const first = rows.sort(byDate)[0]; const read = () => rows[1];',
+    'function f() { const rows = load(); return () => rows.sort(byDate)[0] ?? read(rows); }',
+    'const rows = load(); const first = rows.sort(byDate)[0]; rows.length; rows = [];',
+    'let rows = load(); const first = rows.sort(byDate)[0]; rows = rows.concat(more); use(rows);',
+    'let rows = load(); const first = rows.sort(byDate)[0]; if (go()) { rows = fresh(); } use(rows);',
+    'let rows = load(); for (const x of xs) { use(rows); const first = rows.sort(byDate)[0]; rows = fresh(); }',
+    'let rows = load(); const first = rows.sort(byDate)[0]; rows = fresh(); const again = () => rows;',
     'const best = scores.reduce((top, x) => (x > top ? x : top));',
     'const sorted = rows.toSorted(byDate); return [sorted[0], sorted.at(-1)];',
     'rows.sort(byDate); const first = rows[0];',
@@ -113,6 +123,22 @@ tester.run('no-costly-collection-form', rule, {
     {
       code: 'const rows = load(); const labels = events.map((e) => rows.findIndex((r) => r.id === e.id) === 0);',
       errors: [MAP('rows', 'findIndex', 'id')],
+    },
+    {
+      code: 'let rows = load(); const first = rows.sort(byDate)[0]; rows = fresh(); use(rows);',
+      errors: [SORT('sort')],
+    },
+    {
+      code: 'let rows = load(); const first = rows.sort(byDate)[0]; rows = []; use(rows, first);',
+      errors: [SORT('sort')],
+    },
+    {
+      code: 'for (const e of events) { const rows = load(e); use(rows.length); const first = rows.sort(byDate)[0]; }',
+      errors: [SORT('sort')],
+    },
+    {
+      code: 'function oldest(rows: Row[]) { const first = rows.sort(byDate)[0]; return first; }',
+      errors: [SORT('sort')],
     },
     {
       code: 'const first = rows.toSorted(byDate).at(0);',
