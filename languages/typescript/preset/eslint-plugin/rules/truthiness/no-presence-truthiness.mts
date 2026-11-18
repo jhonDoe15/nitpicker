@@ -14,14 +14,14 @@ export const rule: TSESLint.RuleModule<
     type: 'suggestion',
     docs: {
       description:
-        'Report testing an optional string, boolean or unconstrained value for truthiness as a presence check',
+        'Report testing an optional string, boolean or type-parameter value for truthiness as a presence check, when the project shows an empty string, 0 or false is valid there',
       requiresTypeChecking: true,
     },
     schema: [],
     messages: {
-      presence: `\`{{value}}\` may be an empty string or \`false\`, which this test treats as missing. ${FORMS}`,
+      presence: `\`{{value}}\` may be an empty string or \`false\`, which this test treats as missing ({{evidence}}). ${FORMS}`,
       fallback: `\`{{value}} || {{fallback}}\` replaces an empty string or \`false\` too. ${FORMS}`,
-      filter: `\`.filter({{predicate}})\` drops empty strings and \`false\` along with missing values. Filter with \`value !== undefined\` or \`value != null\`; an exception fits only when they must be dropped too.`,
+      filter: `\`.filter({{predicate}})\` drops empty strings and \`false\` along with missing values ({{evidence}}). Filter with \`value !== undefined\` or \`value != null\`; an exception fits only when they must be dropped too.`,
     },
   },
   create(context) {

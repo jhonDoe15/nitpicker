@@ -1,3 +1,4 @@
+import { hintText } from '../typed/message-views.mts';
 import { RULES_TOOL } from '../tool.mts';
 import type { RuleHint } from '../hint-types.mts';
 
@@ -54,8 +55,9 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
     rules: ['presence-truthiness'],
-    describe: (subject) =>
-      `\`${subject}\` is an optional string or boolean tested for truth, so \`''\` or \`False\` reads as missing`,
+    describe: (subject, _libraries, data) =>
+      `\`${subject}\` is an optional string, boolean or generic value tested for truth, so \`''\` or \`False\` reads as missing, and ${hintText(data, 'evidence')}`,
+    referenceData: { evidence: '<why the falsy value is valid here>' },
     allowed:
       'Test for `None` only: `name is not None`, `name if name is not None else DEFAULT`. An exception fits only when an empty string or `False` must take the same path as a missing value.',
   },

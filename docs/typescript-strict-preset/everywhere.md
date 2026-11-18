@@ -1580,7 +1580,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
 - `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
   findings print as design notes and never fail the change): an optional string
   (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
-  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  truthiness as a presence check, where `''` or `false` reads as missing. It reports only when the
+  project shows that falsy value is valid there, and the message names the evidence: the value's
+  type is a type parameter (`items.filter((item) => item)` in a generic helper) or a literal union
+  that contains `''` or `false` (`'' | 'auto'`), or the same variable, property or parameter
+  receives a literal `''`, `0` or `false` elsewhere in the project (a call argument, an object
+  property, an assignment to a property of another object), tests included. A declaration
+  initialised to `''`, `0` or `false`, a parameter default and a reassigned local are the "not set
+  yet" value and are not evidence. An optional `string` read from a
+  request, with no such evidence, is not reported. Reported: a conditional
   or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
   `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
   `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
@@ -1589,7 +1597,8 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
   which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
   path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
-  from JSDoc and inference (`checkJs`).
+  from JSDoc and inference (`checkJs`); a type parameter needs `@template`, and the literal
+  evidence works the same without types.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
