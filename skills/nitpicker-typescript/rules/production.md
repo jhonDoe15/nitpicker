@@ -195,6 +195,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-hand-quoted-generated-code`).
 - Text received from a socket or an HTTP response is passed through `util.stripVTControlCharacters` (or `strip-ansi`) before it is
   printed to the terminal (`nitpicker/no-unstripped-remote-text`).
+- A value in a CSS selector goes through `CSS.escape` (`#${CSS.escape(id)}`, `[data-name="${CSS.escape(name)}"]`), not through
+  hand-written quote escaping (`nitpicker/no-unescaped-css-selector`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

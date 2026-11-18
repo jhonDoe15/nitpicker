@@ -173,6 +173,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-hand-quoted-generated-code`).
 - Text received from a socket or an HTTP response is passed through `util.stripVTControlCharacters` (or `strip-ansi`) before it is
   printed to the terminal (`nitpicker/no-unstripped-remote-text`).
+- A value in a CSS selector goes through `CSS.escape` (`#${CSS.escape(id)}`, `[data-name="${CSS.escape(name)}"]`), not through
+  hand-written quote escaping (`nitpicker/no-unescaped-css-selector`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
