@@ -235,4 +235,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/require-atomic-updates.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/no-in-presence-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/conditions.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/presence/value-facts.mjs',
 ];

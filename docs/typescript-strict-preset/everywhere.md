@@ -1584,6 +1584,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
   path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
   from JSDoc and inference (`checkJs`).
+- `nitpicker/no-in-presence-check` (type-aware, production source): `'key' in obj` used as a presence check
+  (an `if`, `while` or `?:` test, a `&&`/`||`/`!` operand of one, `Boolean(...)`, or a `filter` callback body) where
+  the type of `obj` declares the key as optional or `| undefined`, or is a `Record` or index signature whose
+  values include `undefined`. `in` is true for a key that exists with the value `undefined`, so a form that
+  cleared a field, a `{ _id: undefined }` user or a URL-state snapshot takes the "present" branch and
+  forwards `undefined`. Write `obj.key !== undefined` (or `!= null`), or `Object.hasOwn(obj, 'key') && obj.key !== undefined`
+  when an own key and a defined value are both meant. Not reported: `in` as a union discriminant (a member
+  without the key, or a member that declares the key only as `undefined`), a condition that also reads
+  `obj.key` (`'k' in o && o.k !== undefined`), a ternary that passes the value on or gives `undefined`
+  (`'k' in o ? o.k : undefined`), a branch that throws or type-checks the value, a type without the key,
+  `unknown` and `any`. When an explicit
+  `undefined` must count as present (a patch that clears a field), add an exception for the rule. In the
+  JavaScript preset the type comes from JSDoc and inference (`checkJs`).
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,

@@ -39,7 +39,7 @@ function isReference(node: TSESTree.Node): boolean {
   return REFERENCES.has(node.type);
 }
 
-function plainText(node: TSESTree.Node, sourceCode: SourceCode): string {
+export function plainText(node: TSESTree.Node, sourceCode: SourceCode): string {
   return sourceCode.getText(node).replaceAll('?.', '.').replaceAll('!', '');
 }
 

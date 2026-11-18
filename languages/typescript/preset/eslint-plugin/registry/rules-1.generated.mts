@@ -45,6 +45,7 @@ import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/proces
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
+import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-ret
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
-import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -147,6 +147,7 @@ export const partRules = {
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
+  'no-in-presence-check': ruleNoInPresenceCheck,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
-  'no-task-outliving-resource': ruleNoTaskOutlivingResource,
 };

@@ -66,6 +66,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-presence-truthiness',
+  'nitpicker/no-in-presence-check',
   'nitpicker/no-many-to-many-cascade-remove',
   'nitpicker/no-module-level-let',
   'nitpicker/no-module-level-mutable-state',

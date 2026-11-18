@@ -38,6 +38,8 @@ export type TypedScope<MessageIds extends string> = {
   readonly services: ParserServicesWithTypeInformation;
 };
 
+export type TypedFacts = Pick<TypedScope<string>, 'services' | 'sourceCode'>;
+
 export function typedScopeOf<MessageIds extends string>(
   context: Readonly<TSESLint.RuleContext<MessageIds, []>>,
 ): TypedScope<MessageIds> | undefined {
