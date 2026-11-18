@@ -459,6 +459,20 @@ same function, or defaults the exit code to zero with `??` or `||`. `'close'`, `
 awaits or tests its `signal` argument, a child spawned with `stdio` `'inherit'` or `'ignore'`, and a listener that only logs
 or cleans up are allowed.
 
+Incomplete cache keys: `nitpicker/no-incomplete-cache-key` (production source, in `eslint-lint`) reports a TanStack
+Query `queryKey` array that omits a variable the inline `queryFn` reads from the enclosing function, and a memo cache
+whose key (template, `+`, `join` or `JSON.stringify`) omits a parameter that the stored value is computed from.
+Loggers, abort signals, context objects, tokens and credentials, called functions and module-level values are not
+inputs, and a memo cache that the same file clears is not reported.
+
+Local servers on every interface: `nitpicker/no-listen-on-all-interfaces` (production source, in `eslint-lint`) reports
+`listen(port)`, `listen(port, callback)` and `listen({ port })` without a host on an `http`, `https`, `net`, `http2`,
+Cyclic recursion: `nitpicker/no-unguarded-cyclic-recursion` (production source, in `eslint-lint`, type-aware) reports a
+Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
+inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
+stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a
+`TextDecoder.decode(chunk)` without `{ stream: true }`, and `includes`, `indexOf`, `startsWith` or a regex test on the
+chunk alone, which corrupt split multibyte characters or miss a split message.
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
