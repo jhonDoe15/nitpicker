@@ -1,5 +1,6 @@
 import { defineRecipes } from '../../../../core/fix/engine/recipes.mjs';
 import { PROJECT_RECIPES } from '../project/project-recipes.mts';
+import { uselessCallRecipe } from './core/expressions/useless-call.mts';
 import { uselessConcatRecipe } from './core/expressions/useless-concat.mts';
 import { uselessCatchRecipe } from './core/statements/useless-catch.mts';
 import { emptyStaticBlockRecipe } from './core/statements/empty-static-block.mts';
@@ -10,5 +11,6 @@ export const TYPESCRIPT_RECIPES = defineRecipes([
   emptyStaticBlockRecipe,
   uselessConcatRecipe,
   uselessCatchRecipe,
+  uselessCallRecipe,
   ...PROJECT_RECIPES,
 ]);
