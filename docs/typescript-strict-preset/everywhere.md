@@ -309,10 +309,10 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   stream before the last.
 - `nitpicker/no-child-exit-event`: an `'exit'` listener (`on`, `once`, `addListener`) on a child process from `spawn`, `exec`,
   `execFile` or `fork` whose handler uses output the same function collects from `stdout` or `stderr` (a `'data'` listener or a
-  `for await` loop that appends to a variable the handler reads), or defaults the exit code (`code ?? 0`, `code || 0`).
+  `for await` loop that appends to a variable the handler reads), or defaults the exit code to zero (`code ?? 0`, `code || 0`).
   `'exit'` can fire before the streams are drained, so the last chunk is lost, and a child killed by a signal passes `null`, which
-  the default turns into success. A handler that awaits, a function that also listens for `'close'`, and a listener that only
-  logs or cleans up are not reported. Allowed forms: `'close'` with `(code, signal)` treating a signal or missing code as failure,
+  the default turns into success. A handler that awaits or tests its `signal` argument, a child spawned with `stdio` set to
+  `'inherit'` or `'ignore'`, a function that also listens for `'close'`, and a listener that only logs or cleans up are not reported. Allowed forms: `'close'` with `(code, signal)` treating a signal or missing code as failure,
   `events.once(child, 'close')`, or `promisify(execFile)`.
 - `nitpicker/no-incomplete-cache-key`: a cache key that leaves out an input the cached value depends on, so
   calls that differ in it share one entry. Two forms. A TanStack Query call (`useQuery`, `useInfiniteQuery`,

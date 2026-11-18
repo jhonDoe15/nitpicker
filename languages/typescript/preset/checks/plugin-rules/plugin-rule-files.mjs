@@ -134,6 +134,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/entry/main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/events/no-child-exit-event.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/events/child-events.mjs',
   'languages/typescript/preset/eslint-plugin/rules/streams/no-pipe-dropping-errors.mjs',
   'languages/typescript/preset/eslint-plugin/rules/streams/pipe-origins.mjs',
   'languages/typescript/preset/eslint-plugin/rules/resources/descriptors/no-unclosed-file-descriptor.mjs',
