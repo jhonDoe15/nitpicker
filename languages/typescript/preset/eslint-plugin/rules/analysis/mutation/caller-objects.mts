@@ -6,6 +6,7 @@ import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 type Scope = { readonly program: TypeScript.Program; readonly checker: TypeScript.TypeChecker };
 
 const ANONYMOUS = new Set(['__type', '__object']);
+const LIBRARY_INIT = /^[A-Z]\w*Init$/;
 const NOT_DATA = ts.SymbolFlags.Class | ts.SymbolFlags.Enum | ts.SymbolFlags.Function;
 
 export function isProjectFile(
@@ -53,8 +54,25 @@ function hasOnlyProjectBases(scope: Scope, type: TypeScript.Type): boolean {
     .every((base) => !isInstance(base) && declaredInProject(scope.program, base.getSymbol()));
 }
 
+function isLibraryInit(scope: Scope, type: TypeScript.Type): boolean {
+  const symbol = type.getSymbol();
+  const declarations = symbol?.declarations ?? [];
+  return (
+    symbol !== undefined &&
+    LIBRARY_INIT.test(symbol.getName()) &&
+    (symbol.flags & ts.SymbolFlags.Interface) !== 0 &&
+    declarations.length > 0 &&
+    declarations.every((declaration) =>
+      scope.program.isSourceFileDefaultLibrary(declaration.getSourceFile()),
+    )
+  );
+}
+
 function isNamedProjectShape(scope: Scope, type: TypeScript.Type): boolean {
-  return declaredInProject(scope.program, type.getSymbol()) && hasOnlyProjectBases(scope, type);
+  return (
+    isLibraryInit(scope, type) ||
+    (declaredInProject(scope.program, type.getSymbol()) && hasOnlyProjectBases(scope, type))
+  );
 }
 
 function isAnonymousProjectShape(

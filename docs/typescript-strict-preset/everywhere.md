@@ -1760,10 +1760,26 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   the parameter (`(options as Options).size = 1`). The allowed form is a new object
   (`{ ...options, retries: 3 }`) or a copy first
   (`const next = { ...options }`, `options = { ...options }` or `Object.assign({}, options)`).
-  A function that fills an object its caller hands it to be filled takes a config exception.
+  A parameter is reported once per function, at its first change. A parameter named `out`, `acc`, `state`, `ctx`,
+  `context`, `cache`, `builder`, `draft`, `result`, `errors` or `diagnostics`, or ending in `State`, `Context`,
+  `Cache` or `Builder` (by name or by type name), is a context the function is meant to change and is not
+  reported. A call whose result is assigned back to the argument (`opts = normalize(opts)`) and `config ??= ...`
+  in a function named `resolve...`, `normalize...`, `sanitize...`, `apply...` or `fill...` are not reported.
+  A function that fills another object its caller hands it takes a config exception.
   The same aliases and nested named properties apply to the indexed and mutating-method forms
   (`const list = items; list.push(x)`, `input.items.push(x)`, `input.items[0] = x`), with the
   same project or anonymous type check on each named step.
+  Four more shapes are followed. `Object.defineProperty` and `Object.defineProperties` on a parameter
+  or alias count like `Object.assign`. A `let` alias (`let init = options`) stays an alias on the paths
+  where it was not reassigned: a write in the other arm of an `if`/`else`, or after the mutation outside
+  a loop, does not clear it. A parameter, or a property of one (`options.args`), passed to a function of
+  the same file that is declared at the top level, is not exported and changes that argument in place
+  (`removeFlags(options.args)` with a helper that splices it) is reported at the call. A shallow copy
+  (`const merged = { ...defaults, ...options }`, `Object.assign({}, options)`, or a same-file helper
+  that only returns such a spread) protects only its top level: `merged.lib.entry = x` or
+  `merged.args.push(x)` writes to the parameter's own `lib` or `args`, unless the copy sets that property
+  itself or the function reassigns `merged.lib` first. The lib.dom init dictionaries (`ResponseInit`,
+  `RequestInit`, `EventInit` and the other `*Init` interfaces) count as project object types.
   `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
   `eslint-plugin/rules/analysis/mutation/mutating-methods.mts`.

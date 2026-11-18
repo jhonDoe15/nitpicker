@@ -8,11 +8,21 @@ import {
   wrappedExpression,
   type FunctionNode,
 } from '../typed/syntax-views.mts';
-import { calleeName, isFreshContainer, isReassignedToCopy } from './parameter-copies.mts';
+import {
+  calleeName,
+  isContextParameter,
+  isFreshContainer,
+  isReassignedToCopy,
+} from './parameter-copies.mts';
+import { isOffPath } from './aliases/off-path.mts';
 
 type Variable = TSESLint.Scope.Variable;
 type CrossesProperty = (member: TSESTree.MemberExpression) => boolean;
-type Walk = { readonly sourceCode: SourceCode; readonly crossesProperty: CrossesProperty };
+type Walk = {
+  readonly sourceCode: SourceCode;
+  readonly crossesProperty: CrossesProperty;
+  readonly includeInternal?: boolean;
+};
 
 const { DefinitionType } = TSESLint.Scope;
 
@@ -72,10 +82,17 @@ function aliasSource(node: TSESTree.Node): TSESTree.Identifier | undefined {
   return source.type === AST_NODE_TYPES.Identifier ? source : undefined;
 }
 
-function aliasedVariable(sourceCode: SourceCode, variable: Variable): Variable | undefined {
+function aliasedVariable(
+  sourceCode: SourceCode,
+  variable: Variable,
+  mutation: Ranged,
+): Variable | undefined {
   const definition = variable.defs.at(0);
   const declarator = definition?.type === DefinitionType.Variable ? definition.node : undefined;
-  const fixed = variable.references.every((reference) => !reference.isWrite() || reference.init);
+  const fixed = variable.references.every(
+    (reference) =>
+      !reference.isWrite() || reference.init || isOffPath(reference.identifier, mutation),
+  );
   const source =
     declarator?.id.type === AST_NODE_TYPES.Identifier && declarator.init !== null && fixed
       ? aliasSource(declarator.init)
@@ -83,10 +100,14 @@ function aliasedVariable(sourceCode: SourceCode, variable: Variable): Variable |
   return source === undefined ? undefined : variableNamed(sourceCode, source);
 }
 
-function aliasedParameter(sourceCode: SourceCode, variable: Variable): Variable | undefined {
+function aliasedParameter(
+  sourceCode: SourceCode,
+  variable: Variable,
+  mutation: Ranged,
+): Variable | undefined {
   const seen = [variable];
   for (const current of seen) {
-    const next = aliasedVariable(sourceCode, current);
+    const next = aliasedVariable(sourceCode, current, mutation);
     if (next !== undefined && !seen.includes(next)) {
       seen.push(next);
     }
@@ -147,7 +168,7 @@ function isPrivateMember(owner: FunctionNode): boolean {
   );
 }
 
-function isInternalFunction(owner: FunctionNode): boolean {
+export function isInternalFunction(owner: FunctionNode): boolean {
   const ancestors = ancestorsOf(owner);
   const nested = ancestors.some(isFunction);
   const statement = ancestors.find((ancestor) => ancestor.parent?.type === AST_NODE_TYPES.Program);
@@ -165,10 +186,10 @@ export function changedParameter(
   target: TSESTree.Node,
   mutation: Ranged,
 ): TSESLint.Scope.Definitions.ParameterDefinition | undefined {
-  const { sourceCode, crossesProperty } = walk;
+  const { sourceCode, crossesProperty, includeInternal = false } = walk;
   const root = chainRoot(target, crossesProperty);
   const named = root === undefined ? undefined : variableNamed(sourceCode, root);
-  const variable = named === undefined ? undefined : aliasedParameter(sourceCode, named);
+  const variable = named === undefined ? undefined : aliasedParameter(sourceCode, named, mutation);
   const definition = variable?.defs.at(0);
   if (
     variable === undefined ||
@@ -180,9 +201,10 @@ export function changedParameter(
   }
   const owner = definition.node;
   const exempt =
-    isInternalFunction(owner) ||
+    (!includeInternal && isInternalFunction(owner)) ||
     isAccumulator(sourceCode, owner, definition.name) ||
     isDraft(owner) ||
+    isContextParameter(definition.name) ||
     isReassignedToCopy(variable, mutation);
   return exempt ? undefined : definition;
 }

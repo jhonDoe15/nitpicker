@@ -1,104 +1,51 @@
-import {
-  AST_NODE_TYPES,
-  type ParserServicesWithTypeInformation,
-  type TSESLint,
-  type TSESTree,
-} from '@typescript-eslint/utils';
-import { nameOf, type Ranged, type SourceCode } from '../typed/node-views.mts';
-import { isCallerObject } from '../analysis/mutation/caller-objects.mts';
-import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mts';
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
-import { isObjectAssign } from './parameter-copies.mts';
-import { changedParameter, withoutAssertion } from './parameter-owners.mts';
+import { type FunctionNode } from '../typed/syntax-views.mts';
+import { helperMutation } from './aliases/helper-mutations.mts';
+import { mutationAt, parameterWalk } from './aliases/mutations.mts';
+import { nestedCopyWrite } from './aliases/shallow-copies.mts';
+import { isDefaultFill } from './parameter-copies.mts';
+import { changedParameter } from './parameter-owners.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
-type MessageIds = 'parameterMutation' | 'propertyWrite';
-type Services = ParserServicesWithTypeInformation;
+type MessageIds = 'parameterMutation' | 'propertyWrite' | 'helperMutation';
 type Scope = TypedScope<MessageIds>;
 
-function isMutableIndexed(services: Services, node: TSESTree.Node): boolean {
-  const checker = services.program.getTypeChecker();
-  const type = services.getTypeAtLocation(node);
-  const parts = type.isUnion() ? type.types : [type];
-  return parts.some((part) =>
-    checker.getIndexInfosOfType(checker.getApparentType(part)).some((info) => !info.isReadonly),
-  );
+type Hit = {
+  readonly parameter: TSESTree.Node;
+  readonly messageId: MessageIds;
+  readonly data: Readonly<Record<string, string>>;
+};
+
+function mutationHit(scope: Scope, node: TSESTree.Node): Hit | undefined {
+  const mutation = mutationAt(scope, node);
+  if (mutation === undefined) {
+    return undefined;
+  }
+  const direct = changedParameter(parameterWalk(scope), mutation.object, node);
+  const definition = direct ?? nestedCopyWrite(scope, mutation, node);
+  const fills = definition !== undefined && isDefaultFill(node, definition.name, definition.node);
+  return definition === undefined || fills
+    ? undefined
+    : { parameter: definition.name, messageId: mutation.messageId, data: { name: mutation.name } };
 }
 
-function textOf(sourceCode: SourceCode, node: TSESTree.Node): string {
-  return sourceCode.getText(node).replaceAll(/\s+/g, ' ');
-}
-
-function isElementWrite(services: Services, target: TSESTree.MemberExpression): boolean {
-  return (
-    isMutableIndexed(services, target.object) &&
-    (target.computed || nameOf(target.property) === 'length')
-  );
-}
-
-function callerParameter(scope: Scope, object: TSESTree.Node, mutation: Ranged): unknown {
-  const { services, sourceCode } = scope;
-  function crossesProperty(member: TSESTree.MemberExpression): boolean {
-    return isCallerObject(services, member.object, nameOf(member.property));
+function findHit(
+  scope: Scope,
+  node: TSESTree.Node,
+  helpers: Map<FunctionNode, Set<number>>,
+): Hit | undefined {
+  if (mutationAt(scope, node) !== undefined) {
+    return mutationHit(scope, node);
   }
-  return changedParameter({ sourceCode, crossesProperty }, object, mutation);
-}
-
-function checkWrite(scope: Scope, node: TSESTree.Node, written: TSESTree.Node): void {
-  const { context, services, sourceCode } = scope;
-  const target = withoutAssertion(written);
-  if (
-    target.type !== AST_NODE_TYPES.MemberExpression ||
-    callerParameter(scope, target.object, node) === undefined
-  ) {
-    return;
-  }
-  if (isElementWrite(services, target)) {
-    const name = `${textOf(sourceCode, target.object)}[…]`;
-    context.report({ node, messageId: 'parameterMutation', data: { name } });
-    return;
-  }
-  const property = staticName(target, services);
-  if (property !== undefined && isCallerObject(services, target.object, property)) {
-    const name = textOf(sourceCode, target);
-    context.report({ node, messageId: 'propertyWrite', data: { name } });
-  }
-}
-
-function checkAssign(scope: Scope, node: TSESTree.CallExpression): void {
-  const { context, services, sourceCode } = scope;
-  const [written, ...sources] = node.arguments;
-  const first = written === undefined ? undefined : withoutAssertion(written);
-  if (
-    first !== undefined &&
-    sources.length > 0 &&
-    first.type !== AST_NODE_TYPES.SpreadElement &&
-    callerParameter(scope, first, node) !== undefined &&
-    isCallerObject(services, first, undefined)
-  ) {
-    const name = `Object.assign(${textOf(sourceCode, first)}, …)`;
-    context.report({ node, messageId: 'propertyWrite', data: { name } });
-  }
-}
-
-function checkCall(scope: Scope, node: TSESTree.CallExpression): void {
-  const { callee } = node;
-  const { context, services, sourceCode } = scope;
-  if (isObjectAssign(node)) {
-    checkAssign(scope, node);
-    return;
-  }
-  if (
-    callee.type !== AST_NODE_TYPES.MemberExpression ||
-    callerParameter(scope, callee.object, node) === undefined
-  ) {
-    return;
-  }
-  const method = staticName(callee, services);
-  if (method !== undefined && mutatedOwner(callee, method, services) !== undefined) {
-    const name = `${textOf(sourceCode, callee.object)}.${method}`;
-    context.report({ node, messageId: 'parameterMutation', data: { name } });
-  }
+  const helper = node.type === 'CallExpression' ? helperMutation(scope, node, helpers) : undefined;
+  return helper === undefined
+    ? undefined
+    : {
+        parameter: helper.parameter.name,
+        messageId: 'helperMutation',
+        data: { name: scope.sourceCode.getText(helper.argument), callee: helper.callee },
+      };
 }
 
 export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
@@ -106,15 +53,24 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     type: 'problem',
     docs: {
       description:
-        'Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place',
+        'Disallow changing an array, Set, Map, indexed object or project object ' +
+        'that a parameter holds in place',
       requiresTypeChecking: true,
     },
     schema: [],
     messages: {
       parameterMutation:
-        '`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).',
+        '`{{ name }}` changes the value the caller passed in. Build and return a new value ' +
+        '(`[...items, item]`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the ' +
+        'parameter first (`const copy = [...items]`).',
+      helperMutation:
+        "`{{ name }}` is passed to `{{ callee }}`, which changes it in place, so the caller's " +
+        'value changes. Pass a copy (`[...{{ name }}]` or `{ ...{{ name }} }`), or make ' +
+        '`{{ callee }}` return a new value.',
       propertyWrite:
-        '`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled.',
+        '`{{ name }}` writes to the object the caller passed in, so a frozen or shared object ' +
+        'breaks. Build a new object (`{ ...options, timeout: 5000 }`), or copy the parameter ' +
+        'first (`const next = { ...options }`).',
     },
   },
   create(context) {
@@ -122,19 +78,22 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     if (scope === undefined) {
       return {};
     }
+    const helpers = new Map<FunctionNode, Set<number>>();
+    const reported = new Set<TSESTree.Node>();
+    const visit = (node: TSESTree.Node): void => {
+      const hit = findHit(scope, node, helpers);
+      if (hit !== undefined && !reported.has(hit.parameter)) {
+        reported.add(hit.parameter);
+        context.report({ node, messageId: hit.messageId, data: hit.data });
+      }
+    };
     return {
-      CallExpression(node: TSESTree.CallExpression) {
-        checkCall(scope, node);
-      },
-      AssignmentExpression(node: TSESTree.AssignmentExpression) {
-        checkWrite(scope, node, node.left);
-      },
-      UpdateExpression(node: TSESTree.UpdateExpression) {
-        checkWrite(scope, node, node.argument);
-      },
+      CallExpression: visit,
+      AssignmentExpression: visit,
+      UpdateExpression: visit,
       UnaryExpression(node: TSESTree.UnaryExpression) {
         if (node.operator === 'delete') {
-          checkWrite(scope, node, node.argument);
+          visit(node);
         }
       },
     };
