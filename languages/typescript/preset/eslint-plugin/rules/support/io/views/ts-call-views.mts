@@ -98,6 +98,9 @@ function tsLiteral(node: TypeScript.Node): LiteralArgument {
   if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
     return { type: 'function' };
   }
+  if (ts.isRegularExpressionLiteral(node)) {
+    return { type: 'pattern' };
+  }
   if (ts.isObjectLiteralExpression(node)) {
     const statement = node.properties.find(isTsTextProperty);
     const statementText = statement === undefined ? undefined : tsText(statement.initializer);

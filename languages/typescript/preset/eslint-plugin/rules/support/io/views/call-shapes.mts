@@ -2,6 +2,7 @@ import { appendAll } from '../../../../../../../../shared/lists/lists.mts';
 export type LiteralArgument =
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'function' }
+  | { readonly type: 'pattern' }
   | { readonly type: 'object'; readonly keys: Set<string>; readonly text?: string | undefined }
   | { readonly type: 'other' };
 
@@ -15,6 +16,7 @@ export type CallView<Root = unknown> = {
   readonly method: string | undefined;
   readonly root: Root | undefined;
   readonly args: CallArgument[];
+  readonly textual: boolean;
 };
 
 export type Link = { readonly name: string; readonly called: boolean };
@@ -40,6 +42,7 @@ export function viewOf<Root>(
   links: readonly Link[],
   root: Root | undefined,
   args: CallArgument[],
+  textual = false,
 ): CallView<Root> {
   return {
     names: links.map(({ name }) => name).filter((name) => name !== 'this'),
@@ -47,6 +50,7 @@ export function viewOf<Root>(
     method: links.at(-1)?.name,
     root,
     args,
+    textual,
   };
 }
 
