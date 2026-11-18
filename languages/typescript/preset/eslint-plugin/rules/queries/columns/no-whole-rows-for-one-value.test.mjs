@@ -74,6 +74,18 @@ const column = (body, field) => ({
   errors: [{ messageId: 'column', data: { field } }],
 });
 const exists = (body) => ({ ...inRun(body), errors: [{ messageId: 'existence' }] });
+const fixed = (body, output, suggestion = { messageId: 'useExists' }) => ({
+  ...inRun(body),
+  errors: [
+    {
+      messageId: 'existence',
+      suggestions: [
+        { ...suggestion, output: `${HEADER}export async function run() { ${output} }` },
+      ],
+    },
+  ],
+});
+const selecting = { messageId: 'selectOneField', data: { field: 'id' } };
 
 tester.run('no-whole-rows-for-one-value', rule, {
   valid: [
@@ -147,35 +159,73 @@ tester.run('no-whole-rows-for-one-value', rule, {
       'return (await orderRepo.createQueryBuilder("o").getMany()).map((order) => order.status);',
       'status',
     ),
-    exists('return (await orderRepo.count({ where: { status: "a" } })) > 0;'),
-    exists('return (await orderRepo.countBy({ status: "a" })) >= 1;'),
-    exists('return (await orderRepo.count()) !== 0;'),
-    exists('return (await orderRepo.count()) === 0;'),
-    exists('return 0 < (await orderRepo.count());'),
-    exists('return (await orderRepo.count()) < 1;'),
-    exists('const total = await orderRepo.count({ where: { status: "a" } }); return total > 0;'),
-    exists('if (await orderRepo.count({ where: { status: "a" } })) { use(1); }'),
+    fixed(
+      'return (await orderRepo.count({ where: { status: "a" } })) > 0;',
+      'return await orderRepo.exists({ where: { status: "a" } });',
+    ),
+    fixed(
+      'return (await orderRepo.countBy({ status: "a" })) >= 1;',
+      'return await orderRepo.existsBy({ status: "a" });',
+    ),
+    fixed('return (await orderRepo.count()) !== 0;', 'return await orderRepo.exists();'),
+    fixed('return (await orderRepo.count()) === 0;', 'return !(await orderRepo.exists());'),
+    fixed('return 0 < (await orderRepo.count());', 'return await orderRepo.exists();'),
+    fixed('return (await orderRepo.count()) < 1;', 'return !(await orderRepo.exists());'),
+    fixed(
+      'const total = await orderRepo.count({ where: { status: "a" } }); return total > 0;',
+      'const total = await orderRepo.exists({ where: { status: "a" } }); return total;',
+    ),
+    fixed(
+      'if (await orderRepo.count({ where: { status: "a" } })) { use(1); }',
+      'if (await orderRepo.exists({ where: { status: "a" } })) { use(1); }',
+    ),
     exists('return (await prisma.order.count({ where: { id: "a" } })) > 0;'),
     exists('return (await Account.count({ where: { status: "a" } })) > 0;'),
     exists('return (await em.count(Order, { status: "a" })) > 0;'),
-    exists('return !!(await orderRepo.findOneBy({ status: "a" }));'),
-    exists('return !!(await inheritingRepo.findOneBy({ status: "a" }));'),
-    exists('return !!(await prismaGenerated.order.findFirst({ where: { id: "a" } }));'),
-    exists('return (await orderRepo.findOneBy({ status: "a" })) !== null;'),
-    exists('return (await orderRepo.findOne({ where: { status: "a" } })) != undefined;'),
-    exists('if (await orderRepo.findOneBy({ status: "a" })) { use(1); }'),
-    exists(
+    fixed(
+      'return !!(await orderRepo.findOneBy({ status: "a" }));',
+      'return !!(await orderRepo.existsBy({ status: "a" }));',
+    ),
+    fixed(
+      'return !!(await inheritingRepo.findOneBy({ status: "a" }));',
+      'return !!(await inheritingRepo.existsBy({ status: "a" }));',
+    ),
+    fixed(
+      'return !!(await prismaGenerated.order.findFirst({ where: { id: "a" } }));',
+      'return !!(await prismaGenerated.order.findFirst({ where: { id: "a" }, select: { id: true } }));',
+      selecting,
+    ),
+    fixed(
+      'return (await orderRepo.findOneBy({ status: "a" })) !== null;',
+      'return await orderRepo.existsBy({ status: "a" });',
+    ),
+    fixed(
+      'return (await orderRepo.findOne({ where: { status: "a" } })) != undefined;',
+      'return await orderRepo.exists({ where: { status: "a" } });',
+    ),
+    fixed(
+      'if (await orderRepo.findOneBy({ status: "a" })) { use(1); }',
+      'if (await orderRepo.existsBy({ status: "a" })) { use(1); }',
+    ),
+    fixed(
       'const existing = await orderRepo.findOneBy({ status: "a" }); if (existing) { throw new Error("taken"); }',
+      'const existing = await orderRepo.existsBy({ status: "a" }); if (existing) { throw new Error("taken"); }',
     ),
-    exists(
+    fixed(
       'const existing = await orderRepo.findOneBy({ status: "a" }); if (!existing) { use(1); }',
+      'const existing = await orderRepo.existsBy({ status: "a" }); if (!existing) { use(1); }',
     ),
-    exists(
+    fixed(
       'const existing = await prisma.order.findFirst({ where: { id: "a" } }); return Boolean(existing);',
+      'const existing = await prisma.order.findFirst({ where: { id: "a" }, select: { id: true } }); return Boolean(existing);',
+      selecting,
     ),
     exists(
       'const existing = await Account.findOne({ where: { status: "a" } }); return existing === null;',
     ),
-    exists('const existing = await orderRepo.findOneBy({ status: "a" }); return existing ? 1 : 2;'),
+    fixed(
+      'const existing = await orderRepo.findOneBy({ status: "a" }); return existing ? 1 : 2;',
+      'const existing = await orderRepo.existsBy({ status: "a" }); return existing ? 1 : 2;',
+    ),
   ],
 });

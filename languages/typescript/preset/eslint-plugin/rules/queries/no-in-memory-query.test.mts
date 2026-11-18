@@ -108,26 +108,14 @@ tester.run('no-in-memory-query', rule, {
       PRISMA,
       'return (await prisma.order.findMany({ where: { id } })).filter((row) => row.items.length === 1);',
     ),
-    inService(
-      TYPEORM,
-      'return (await repo.find()).filter((row) => row.items.length === 1);',
-    ),
-    inService(
-      TYPEORM,
-      'return (await repo.find()).filter(({ items }) => items.length > 0);',
-    ),
+    inService(TYPEORM, 'return (await repo.find()).filter((row) => row.items.length === 1);'),
+    inService(TYPEORM, 'return (await repo.find()).filter(({ items }) => items.length > 0);'),
     inService(
       TYPEORM,
       'const known = new Set(ids); return (await repo.find()).filter((row) => !known.has(row.id));',
     ),
-    inService(
-      TYPEORM,
-      'return (await repo.find()).filter((row) => ids.includes(row.customerId));',
-    ),
-    inService(
-      TYPEORM,
-      'return (await repo.find()).find((row) => lookup.has(row.customerId));',
-    ),
+    inService(TYPEORM, 'return (await repo.find()).filter((row) => ids.includes(row.customerId));'),
+    inService(TYPEORM, 'return (await repo.find()).find((row) => lookup.has(row.customerId));'),
     inService(
       TYPEORM,
       'return (await repo.find()).filter((row): row is Order => row.status !== null);',
@@ -210,10 +198,7 @@ tester.run('no-in-memory-query', rule, {
       errors: errors('filter'),
     },
     {
-      code: inService(
-        TYPEORM,
-        'return (await repo.find())?.find((row) => row.tags.includes(id));',
-      ),
+      code: inService(TYPEORM, 'return (await repo.find())?.find((row) => row.tags.includes(id));'),
       errors: errors('filter'),
     },
     {

@@ -20,6 +20,7 @@ export type ColumnUse = {
   readonly node: TSESTree.Node;
   readonly shape: typeof COLUMN | typeof EXISTENCE;
   readonly field?: string;
+  readonly existence?: { readonly awaited: TSESTree.AwaitExpression; readonly site: TSESTree.Node };
 };
 
 function isMemberCall(node: TSESTree.Node): node is MemberCall {
@@ -90,5 +91,7 @@ export function existenceUse(
   }
   const counted = isOrmCall(scope, call, COUNTS) && isCountTest(site);
   const found = isOrmCall(scope, call, SINGLES) && isBooleanUse(site);
-  return counted || found ? { node: call, shape: EXISTENCE } : undefined;
+  return counted || found
+    ? { node: call, shape: EXISTENCE, existence: { awaited, site } }
+    : undefined;
 }

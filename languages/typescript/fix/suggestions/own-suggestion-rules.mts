@@ -8,6 +8,7 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'no-raised-test-timeout',
   'no-shell-string-command',
   'no-wasted-collection-step',
+  'no-whole-rows-for-one-value',
   'require-http-timeout',
   'require-test-process-timeout',
   'strict-boolean-expressions',
