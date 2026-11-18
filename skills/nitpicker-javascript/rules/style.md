@@ -175,6 +175,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   printed to the terminal (`nitpicker/no-unstripped-remote-text`).
 - A value in a CSS selector goes through `CSS.escape` (`#${CSS.escape(id)}`, `[data-name="${CSS.escape(name)}"]`), not through
   hand-written quote escaping (`nitpicker/no-unescaped-css-selector`).
+- A value put into a URL is encoded or set through `URL`: `encodeURIComponent(value)` in a query value or a path segment,
+  `url.searchParams.set(name, value)` on `new URL(base)` instead of appending `?name=value` to a base that may carry a query,
+  and an encoded user name and password in a connection URL (`nitpicker/no-unencoded-url-part`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

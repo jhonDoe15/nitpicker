@@ -197,6 +197,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   printed to the terminal (`nitpicker/no-unstripped-remote-text`).
 - A value in a CSS selector goes through `CSS.escape` (`#${CSS.escape(id)}`, `[data-name="${CSS.escape(name)}"]`), not through
   hand-written quote escaping (`nitpicker/no-unescaped-css-selector`).
+- A value put into a URL is encoded or set through `URL`: `encodeURIComponent(value)` in a query value or a path segment,
+  `url.searchParams.set(name, value)` on `new URL(base)` instead of appending `?name=value` to a base that may carry a query,
+  and an encoded user name and password in a connection URL (`nitpicker/no-unencoded-url-part`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -148,6 +148,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/decoding/decoded-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/encoding/no-non-latin1-header-value.mjs',
   'languages/typescript/preset/eslint-plugin/rules/encoding/no-btoa-on-runtime-text.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/urls/construction/no-unencoded-url-part.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/urls/construction/url-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/assertions/test-must-use-production-runtime.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/test-code-analysis.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-runtime/processes/no-git-repository-per-test.mjs',

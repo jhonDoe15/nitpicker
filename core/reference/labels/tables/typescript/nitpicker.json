@@ -123,6 +123,7 @@
   "eslint/nitpicker/no-uncollected-tests": ["tests"],
   "eslint/nitpicker/no-undefined-only-env-check": ["bug"],
   "eslint/nitpicker/no-unescaped-css-selector": ["bug", "reliability"],
+  "eslint/nitpicker/no-unencoded-url-part": ["bug"],
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],
   "eslint/nitpicker/no-unhandled-url-parse": ["reliability"],
