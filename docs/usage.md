@@ -2949,7 +2949,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/test-tsconfig-pins-lib-and-types`         | safe   | adds `types: []` and `lib: ['ES2022']` to a literal `compilerOptions`                                                    |
 | `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
 | `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
-| `nitpicker/no-wasted-collection-step`                | safe   | drops a `?? {}` spread fallback and a length test before `some` or `every`, and writes `flatMap` for `map` then `flat`   |
+| `nitpicker/no-wasted-collection-step`                | safe   | drops `?? {}` fallbacks, `[...x]` copies and length tests before `some`; writes `flatMap` for `map().flat()`             |
 | `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
 | `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
 | `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
@@ -2962,7 +2962,7 @@ offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. W
 (`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
 files, and the other ESLint rules are not fixed in that run. ESLint reruns on the files it changed until no
 selected fix applies, at most 10 passes, so fixes whose ranges overlap are all applied; a "Fix notes:" line says when
-the cap was hit. Prettier runs after ESLint as usual.
+the cap was hit. Prettier runs after ESLint as usual. Safe fixes assume arrays have no holes, as TypeScript's types do.
 A suggestion applied this way is verified like a recipe: for each file the run reports the rules it applied
 as `eslint-lint` findings, and [Verify the fixes](#verify-the-fixes) reruns `eslint-lint` and the type check
 on the file and rolls it back when a rule's finding is still there or a compile error is new.
