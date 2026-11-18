@@ -80,6 +80,12 @@ const GROUPS = [
     python: 'unescaped-html-value',
     go: 'go-rules/unescaped-html-value',
   },
+  {
+    jvm: 'UncheckedResponseBody',
+    typescript: 'nitpicker/no-unchecked-response-json',
+    python: 'unchecked-response-json',
+    go: 'go-rules/unchecked-response-json',
+  },
 ];
 
 function spring(rule) {

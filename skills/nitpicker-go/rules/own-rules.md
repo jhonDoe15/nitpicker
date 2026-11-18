@@ -82,6 +82,8 @@ the allowed form and ends with its exception entry.
 - A glob or pattern turned into a regexp or a `LIKE` pattern with `strings.ReplaceAll` steps is quoted for the
   target first (`go-rules/pattern-translation`): `strings.ReplaceAll(regexp.QuoteMeta(glob), `\*`, ".*")`,
   never the raw value.
+- A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
+  `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
   constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
   product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison

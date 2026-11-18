@@ -91,6 +91,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Patterns translated without escaping](java-preset/patterns-translated-without-escaping.md)
 - [Replacement strings that expand](java-preset/replacement-strings-that-expand.md)
 - [HTML built from unescaped values](java-preset/html-built-from-unescaped-values.md)
+- [Response bodies parsed before the status is checked](java-preset/response-bodies-parsed-before-the-status-is-checked.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

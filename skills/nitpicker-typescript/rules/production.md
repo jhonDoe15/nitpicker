@@ -195,3 +195,5 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`"$schema": "./node_modules/nitpicker/spec/config.schema.json"`)
   lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
   when you edit the file.
+- A `fetch` response is checked (`res.ok` or `res.status`) before `res.json()` reads it, or read as text and parsed in
+  `try`: a proxy or gateway error page is HTML, and the `SyntaxError` hides the status (`nitpicker/no-unchecked-response-json`).

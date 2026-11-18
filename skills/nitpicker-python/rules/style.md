@@ -65,3 +65,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `email.message`, `werkzeug.http` or `http.cookies.SimpleCookie` instead of `split(",")` or `split(";")`
   (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
   library that is itself the parser takes an exception.
+- Check a response (`raise_for_status()`, `status_code`, `ok`) before `.json()` reads it, or read `.text` and parse it in
+  `try`: an error page from a proxy is HTML and the `ValueError` hides the status (`unchecked-response-json`).

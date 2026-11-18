@@ -32,6 +32,7 @@ import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
+import { VALUE_HINTS } from './hints/values/value-bugs.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];
@@ -106,6 +107,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
   ...HTTP_VALUE_HINTS,
+  ...VALUE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

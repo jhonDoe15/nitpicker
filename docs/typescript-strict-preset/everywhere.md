@@ -1747,3 +1747,11 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
   sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
   reported.
+- `nitpicker/no-unchecked-response-json`: `await res.json()` (also `res.json()` returned, `(await fetch(url)).json()`
+  and `.then((res) => res.json())`) on a response that comes from `fetch` (also `globalThis.fetch`), when nothing reads `res` before it: no `res.ok`, `res.status`, `res.headers`, no helper that is handed `res`.
+  An error status from a proxy, a CDN or a gateway usually carries an HTML or empty body, so the call throws an opaque
+  `SyntaxError: Unexpected token <` and the real status is lost. Not reported: a response received as a parameter (the caller owns the check), a read after any use of `res`, a read inside
+  `try` with a `catch` or followed by `.catch(...)`, `res.text()` then a guarded `JSON.parse`, and clients that throw on a
+  non-2xx status themselves (axios, ky, got). Allowed forms: `if (!res.ok) throw new Error(...)` first, or read `res.text()`
+  and parse it in `try`. The same form runs as `UncheckedResponseBody` (Java and Kotlin), `unchecked-response-json`
+  (Python) and `go-rules/unchecked-response-json` (Go).

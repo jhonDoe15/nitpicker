@@ -10,6 +10,7 @@ import {
   jdepsEdges,
   maxValueFindings,
   stringCallFindings,
+  valueCheckFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
   outerClassOf,
@@ -265,6 +266,7 @@ export function projectWideReport(
     ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...stringCallFindings(projectRoot, { projects, kotlin, policy }),
+    ...valueCheckFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

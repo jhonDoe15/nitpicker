@@ -18,6 +18,7 @@ import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-tri
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mjs';
 import { STRING_CALL_EXCEPTION_RULES } from '../review-rules/string-calls/string-calls.mjs';
+import { VALUE_CHECK_EXCEPTION_RULES } from '../review-rules/value-checks/value-checks.mjs';
 import {
   fieldOf,
   fieldsOf,
@@ -53,6 +54,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     COPIED_CONSTANT_EXCEPTION_RULE,
     MAX_VALUE_EXCEPTION_RULE,
     ...STRING_CALL_EXCEPTION_RULES,
+    ...VALUE_CHECK_EXCEPTION_RULES,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

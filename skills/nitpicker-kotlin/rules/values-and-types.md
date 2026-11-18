@@ -126,3 +126,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `width` that is `Int.MAX_VALUE`, a constant of it, a parameter that defaults to it or a caller passes it,
   overflows to a negative index or bound. Compare without adding (`width >= length - start`), widen first
   (`start.toLong() + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
+- A JDK `HttpClient` or OkHttp response is checked (`statusCode()`, `isSuccessful`) before its body is decoded as JSON
+  (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.

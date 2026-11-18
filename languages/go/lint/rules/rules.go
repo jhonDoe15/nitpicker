@@ -20,6 +20,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/replacements"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/requests"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/resolvers"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/responsejson"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/schema"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/secrets"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/translation"
@@ -51,6 +52,7 @@ func Analyzers() []*analysis.Analyzer {
 			translation.Analyzer,
 			replacements.Analyzer,
 			markup.Analyzer,
+			responsejson.Analyzer,
 		},
 	)
 }
