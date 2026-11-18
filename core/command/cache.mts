@@ -2,7 +2,11 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { publishHeadPolicy } from '../conventions/resolve.mts';
-import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
+import {
+  configureAll,
+  presetAnalyzers,
+  withRepositoryChecks,
+} from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mts';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
@@ -165,7 +169,10 @@ export function runCacheCommand(cli: CacheCli): number {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const selected = selectedAnalyzers(
-    configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+    withRepositoryChecks(
+      configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+      cli.configOverlay,
+    ),
     options,
   );
   const store = writableStore(projectRoot, cli);

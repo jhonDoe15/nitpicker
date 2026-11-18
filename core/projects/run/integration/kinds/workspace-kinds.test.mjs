@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer } from '../../../../command/test-support/cli-harness.mts';
 import { projectFiles, useMonorepoFixtures } from '../../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();
@@ -222,6 +223,22 @@ describe('one folder gated by two presets', () => {
     writeFiles(root, { 'src/main/webapp/app/main.ts': 'export const changed = 1;\n' });
 
     expect(statuses(run(root))).toEqual({ '.@java': 'skipped', '.@typescript': 'passed' });
+  });
+
+  it('runs the repository-wide checks once, in the first entry of the folder', () => {
+    const root = jhipster();
+    writeFiles(root, {
+      'src/main/java/Shop.java': 'class Shop { }\n',
+      'src/main/webapp/app/main.ts': 'export const changed = 1;\n',
+    });
+
+    const result = run(root, [], {
+      analyzers: [fakeAnalyzer(), fakeAnalyzer('repository-hygiene')],
+    });
+    const tools = (report) => result.json(`${report}/summary.json`).tools.map(({ name }) => name);
+
+    expect(tools('_root@java')).toEqual(['fake-quality-analyzer', 'repository-hygiene']);
+    expect(tools('_root@typescript')).toEqual(['fake-quality-analyzer']);
   });
 
   it('refuses one folder twice without two presets', () => {

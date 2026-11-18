@@ -104,11 +104,14 @@ function isRepeat(entry, kept) {
 }
 
 function withIdentities(entries) {
-  return entries.map((entry) =>
-    entries.filter((other) => other.path === entry.path).length > 1
-      ? { ...entry, path: `${entry.path}@${entry.preset}`, folder: entry.path }
-      : entry,
-  );
+  return entries.map((entry) => {
+    const sharers = entries.filter((other) => other.path === entry.path);
+    if (sharers.length === 1) {
+      return entry;
+    }
+    const later = sharers[0] === entry ? {} : { later: true };
+    return { ...entry, path: `${entry.path}@${entry.preset}`, folder: entry.path, ...later };
+  });
 }
 
 export function resolveDeclaredProjects({ root, entries, files, submodules }) {
