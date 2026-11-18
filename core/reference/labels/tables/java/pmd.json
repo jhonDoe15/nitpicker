@@ -28,6 +28,7 @@
   "pmd/CloseResource": ["reliability"],
   "pmd/CollapsibleIfStatements": ["simplification"],
   "pmd/CompatibilityShim": ["maintainability"],
+  "pmd/ConcurrentMapCheckThenAct": ["bug", "async"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
   "pmd/CredentialLiteral": ["security"],
   "pmd/DefaultLabelNotLastInSwitch": ["style"],
