@@ -26,6 +26,7 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   '@typescript-eslint/use-unknown-in-catch-callback-variable': REVIEW,
   '@typescript-eslint/switch-exhaustiveness-check': REVIEW,
   '@typescript-eslint/no-unnecessary-condition': REVIEW,
+  '@typescript-eslint/prefer-find': REVIEW,
 });
 
 const OWN_RULE_PREFIX = 'nitpicker/';

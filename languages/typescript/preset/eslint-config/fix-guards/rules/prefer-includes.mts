@@ -5,7 +5,13 @@ import {
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { ts } from '../../../eslint-plugin/rules/typed/typescript-views.mts';
-import { demoted, type Descriptor, type FixGuard, type GuardContext } from '../guard-types.mts';
+import {
+  demoted,
+  reportedNode,
+  type Descriptor,
+  type FixGuard,
+  type GuardContext,
+} from '../guard-types.mts';
 
 const SAME_UNDER_BOTH =
   ts.TypeFlags.StringLike |
@@ -41,7 +47,7 @@ function everyPart(checker: TypeScript.TypeChecker, type: TypeScript.Type, flags
   return (resolved.flags & flags) !== 0;
 }
 
-function searchedCall(node: TSESTree.Node | TSESTree.Token): TSESTree.CallExpression | undefined {
+function searchedCall(node: TSESTree.Node): TSESTree.CallExpression | undefined {
   if (node.type !== AST_NODE_TYPES.BinaryExpression) {
     return undefined;
   }
@@ -68,11 +74,12 @@ function keepsResult(services: Services, call: TSESTree.CallExpression): boolean
 }
 
 export function preferIncludesGuard(descriptor: Descriptor, context: GuardContext): Descriptor {
-  if (!('node' in descriptor) || descriptor.messageId !== 'preferIncludes') {
+  const node = reportedNode(descriptor, 'preferIncludes');
+  if (node === undefined) {
     return descriptor;
   }
   const services = context.sourceCode.parserServices;
-  const call = searchedCall(descriptor.node);
+  const call = searchedCall(node);
   return isTyped(services) && call !== undefined && keepsResult(services, call)
     ? descriptor
     : demoted(descriptor);

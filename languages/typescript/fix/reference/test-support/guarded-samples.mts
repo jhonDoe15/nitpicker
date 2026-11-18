@@ -24,6 +24,15 @@ const KEYED_HAS = GENERIC_HAS.replace('has<T>', 'has<T extends string>');
 const CAST_DEFAULT =
   'type Settings = { readonly retries: number };\n\nexport function retries({ retries = 3 }: Settings): number {\n  return retries;\n}\n\nexport function fromJson(text: string): number {\n  return retries(JSON.parse(text) as Settings);\n}\n';
 
+const LOGGED_FIND =
+  'export function firstEven(values: readonly number[], log: number[]): number | undefined {\n  return values.filter((value) => {\n    log.push(value);\n    return value % 2 === 0;\n  })[0];\n}\n';
+const OUTER_FIND =
+  'function isWanted(name: string): boolean {\n  return name.length > 2;\n}\n\nexport function firstWanted(names: readonly string[]): string | undefined {\n  return names.filter((name) => isWanted(name))[0];\n}\n';
+const PREDICATE_FIND =
+  "export function firstLong(names: readonly string[]): string | undefined {\n  return names.filter((name) => name.startsWith('a') && name.length > 2).at(0);\n}\n";
+const BOOLEAN_FIND =
+  'export function firstSet(names: readonly (string | undefined)[]): string | undefined {\n  return names.filter(Boolean)[0];\n}\n';
+
 export const GUARDED_SAMPLES: readonly GuardedSample[] = [
   {
     rule: '@typescript-eslint/prefer-includes',
@@ -80,5 +89,33 @@ export const GUARDED_SAMPLES: readonly GuardedSample[] = [
     input: CAST_DEFAULT,
     plain: CAST_DEFAULT,
     selected: CAST_DEFAULT.replace('{ retries = 3 }', '{ retries }'),
+  },
+  {
+    rule: '@typescript-eslint/prefer-find',
+    path: 'src/main/samples/g08.ts',
+    input: LOGGED_FIND,
+    plain: LOGGED_FIND,
+    selected: LOGGED_FIND,
+  },
+  {
+    rule: '@typescript-eslint/prefer-find',
+    path: 'src/main/samples/g09.ts',
+    input: OUTER_FIND,
+    plain: OUTER_FIND,
+    selected: OUTER_FIND,
+  },
+  {
+    rule: '@typescript-eslint/prefer-find',
+    path: 'src/main/samples/g10.ts',
+    input: PREDICATE_FIND,
+    plain: PREDICATE_FIND,
+    selected: PREDICATE_FIND.replace('.filter(', '.find(').replace(').at(0);', ');'),
+  },
+  {
+    rule: '@typescript-eslint/prefer-find',
+    path: 'src/main/samples/g11.ts',
+    input: BOOLEAN_FIND,
+    plain: BOOLEAN_FIND,
+    selected: BOOLEAN_FIND.replace('names.filter(Boolean)[0]', 'names.find(Boolean)'),
   },
 ];
