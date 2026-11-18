@@ -2,7 +2,7 @@ import path from 'node:path';
 import { applyDisable } from '../../configuration/config.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { presetAnalyzers, withRepositoryChecks } from '../../configuration/preset-analyzers.mts';
 import { resolveBase } from '../../diff/git/repository/base-ref.mts';
 import { resolveComparison } from '../../diff/git/repository/git.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
@@ -46,7 +46,10 @@ function analyzerNamesOf(
     overlay: project.overlay,
   });
   return [
-    ...enabled(presetAnalyzers(config, injected), config).map(({ name }) => name),
+    ...withRepositoryChecks(
+      enabled(presetAnalyzers(config, injected), config),
+      project.overlay,
+    ).map(({ name }) => name),
     ...(config.analyzers ?? []).map(({ name }) => name),
   ];
 }

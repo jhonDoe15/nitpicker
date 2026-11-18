@@ -11,6 +11,7 @@ export type ProjectEntry = {
   readonly settings?: object;
   readonly origin?: unknown;
   readonly workspace?: string;
+  readonly later?: true;
 };
 
 export type PlanContext = {

@@ -4,7 +4,7 @@ import {
   type ProfiledAnalyzer,
   analyzersOf,
 } from '../../shared/values/analyzers.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 import { configureAnalyzers } from './configure-analyzers.mts';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
@@ -35,6 +35,17 @@ export function presetAnalyzers(
   }
   const language = languageAnalyzers(config);
   return [...language, ...hygieneAnalyzers, ...optInAnalyzers(config, language)];
+}
+
+const repositoryCheckNames = new Set(hygieneAnalyzers.map(({ name }) => name));
+
+export function withRepositoryChecks<T extends { readonly name: string }>(
+  analyzers: readonly T[],
+  overlay: ProjectOverlay | undefined,
+): readonly T[] {
+  return overlay?.repositoryChecks === false
+    ? analyzers.filter(({ name }) => !repositoryCheckNames.has(name))
+    : analyzers;
 }
 
 function languageAnalyzers(config: NitpickerConfig): Analyzer[] {

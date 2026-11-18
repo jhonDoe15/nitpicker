@@ -96,4 +96,5 @@ export type ProjectOverlay = {
   readonly declared?: true;
   readonly exclude?: readonly string[];
   readonly inherits?: string;
+  readonly repositoryChecks?: false;
 };

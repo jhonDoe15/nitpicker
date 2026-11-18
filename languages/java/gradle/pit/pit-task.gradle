@@ -176,15 +176,20 @@ project.ext.nitpickerRegisterPit = { Map spec ->
             }
             if (context.deadline != null) {
                 def first = project.ext.nitpickerRunPit(pitTask, pitDir.asFile, context.deadline)
+                def basePitDir = baseRoot == null || !sameDrive ? null
+                    : new File(baseRoot, context.relativeToRoot(pitDir.asFile))
                 def retry = first.exitValue == 0 || first.timedOut ? null
                     : project.ext.nitpickerPitRetry(pitDir.asFile, first.output, { ->
                         pitTask.args '--skipFailingTests'
                         project.ext.nitpickerRunPit(pitTask, pitDir.asFile, context.deadline)
-                    })
+                    }, basePitDir)
                 def result = retry ?: first
                 def where = "${project.projectDir}${spec.failureSuffix()}"
                 def moreTime = 'Set NITPICKER_GRADLE_TIMEOUT_MINUTES'
-                if (result.notStarted) {
+                if (result.baseRetryStopped) {
+                    writePitFailure('PIT did not run again without them: the same test classes failed on the base, ' +
+                        "where PIT without them did not finish in time. ${moreTime} to give PIT more time")
+                } else if (result.notStarted) {
                     writePitFailure("PIT was not started in ${where}: less than a minute of the Gradle command's " +
                         "time limit was left. ${moreTime}, or analyzerTimeoutMinutes when the config sets it, " +
                         "to give the Java analyzer more time")

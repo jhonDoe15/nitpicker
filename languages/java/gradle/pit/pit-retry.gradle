@@ -18,13 +18,25 @@ project.ext.nitpickerPitExecRerun = { JavaExec pitTask, execOperations ->
     }
 }
 
-project.ext.nitpickerPitRetry = { File pitDir, String firstOutput, Closure rerun ->
+def failingClasses = { List<String> lines ->
+    lines.collect { line -> def matcher = notPassing.matcher(line); matcher.find() ? matcher.group(1) : null }
+        .findAll { it != null }.toSet()
+}
+
+project.ext.nitpickerPitRetry = { File pitDir, String firstOutput, Closure rerun, File baseDir = null ->
     def lines = firstOutput.readLines().findAll { notPassing.matcher(it).find() }
     if (lines.isEmpty()) {
         return null
     }
     new File(pitDir, 'unmutated-failures.txt').text = lines.join('\n') + '\n'
+    def baseStopped = baseDir == null ? null : new File(baseDir, 'retry-stopped.txt')
+    if (baseStopped?.isFile() && failingClasses(baseStopped.readLines()) == failingClasses(lines)) {
+        return [baseRetryStopped: true, exitValue: 1, output: firstOutput]
+    }
     def result = rerun()
+    if (result.timedOut) {
+        new File(pitDir, 'retry-stopped.txt').text = lines.join('\n') + '\n'
+    }
     if (result.exitValue == 0 && !result.timedOut && !result.notStarted) {
         new File(pitDir, 'skipped-tests.txt').text = lines.join('\n') + '\n'
     }

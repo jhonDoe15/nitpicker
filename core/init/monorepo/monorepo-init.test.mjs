@@ -129,4 +129,66 @@ describe('init at the top of a repository with several projects', () => {
     expect(readText(root, 'packages/b/nitpicker.config.json')).toBe('{ "exclude": [] }\n');
     expect(normalized(result.stdoutText)).toBe(lines(expected.KEPT_MEMBER_CONFIG_OUTPUT));
   });
+  it('writes the source roots of a member whose code is not under src', () => {
+    const root = createProject(
+      {
+        'package.json': '{"name":"root","private":true,"workspaces":["examples/*"]}\n',
+        'examples/app/package.json': '{"name":"app"}\n',
+        'examples/app/components/App.tsx': 'export const app = 1;\n',
+        'examples/top/package.json': '{"name":"top"}\n',
+        'examples/top/server.mjs': 'export const top = 1;\n',
+      },
+      { repository: true },
+    );
+
+    const result = init(root);
+
+    expect(JSON.parse(readText(root, 'examples/app/nitpicker.config.json'))).toEqual({
+      preset: 'typescript',
+      layout: { sourceRoots: ['components'] },
+    });
+    expect(existsSync(path.join(root, 'examples/top/nitpicker.config.json'))).toBe(false);
+    expect(result.stdoutText).not.toContain('No config of its own needed');
+  });
+  it('gives the frontend of a Java application its own entry beside the java preset', () => {
+    const root = createProject(
+      {
+        'pom.xml': '<project><artifactId>shop</artifactId></project>\n',
+        'src/main/java/shop/App.java': 'package shop;\nclass App {}\n',
+        'package.json': '{"name":"shop"}\n',
+        'src/main/webapp/app/index.tsx': 'export const app = 1;\n',
+      },
+      { repository: true },
+    );
+
+    const result = init(root);
+    const again = init(root);
+
+    expect(JSON.parse(readText(root, 'nitpicker.config.json'))).toEqual({
+      projects: [
+        { path: '.', preset: 'java' },
+        { path: '.', preset: 'typescript' },
+      ],
+    });
+    expect(presetsOf(root).map(({ preset }) => preset)).toEqual(['java', 'typescript']);
+    expect([result.exitCode, again.exitCode]).toEqual([0, 0]);
+    expect(result.stdoutText.split('\n').filter((line) => line.startsWith('.@'))).toEqual([
+      '.@java: Java, Maven (preset "java")',
+      '.@typescript: TypeScript, npm, Vitest (preset "typescript")',
+    ]);
+  });
+  it('lists the folder once when the Maven build holds no Java code', () => {
+    const root = createProject(
+      {
+        'pom.xml': '<project><artifactId>web</artifactId></project>\n',
+        'package.json': '{"name":"web"}\n',
+        'src/main/webapp/app/index.tsx': 'export const app = 1;\n',
+      },
+      { repository: true },
+    );
+
+    init(root);
+
+    expect(JSON.parse(readText(root, 'nitpicker.config.json')).projects).toBeUndefined();
+  });
 });

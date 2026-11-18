@@ -69,7 +69,7 @@ function nestedExcludes(entry: ProjectEntry, allPaths: readonly string[]): strin
 }
 
 const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
-const WEB_SOURCE_FOLDERS = ['src/main/webapp', 'src/main/frontend', 'frontend'];
+export const WEB_SOURCE_FOLDERS = ['src/main/webapp', 'src/main/frontend', 'frontend'];
 
 function companionSettings(
   entry: ProjectEntry,
@@ -108,6 +108,7 @@ function overlayOf(
   const settings = companionSettings(entry, { absolute, companion });
   const extra = {
     ...(companion ? { companion } : {}),
+    ...(entry.later === true ? { repositoryChecks: false as const } : {}),
     ...(settings === undefined ? {} : { settings }),
   };
   if (
