@@ -8,6 +8,6 @@ public final class Limits {
   }
 
   public static String region() {
-    return System.getenv("SHOP_REGION");
+    return System.getenv("SHOP_REGION"); // violation: ConfigurationReadOutsideCompositionRoot
   }
 }

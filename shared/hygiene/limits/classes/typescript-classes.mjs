@@ -1,4 +1,5 @@
 import { closingIndex, lineAt, topLevelText } from '../scanning/scan.mjs';
+import { isEnumField } from '../scanning/enum-names.mjs';
 import { fieldFacts } from './field-facts.mjs';
 import {
   classesIn,
@@ -52,7 +53,7 @@ function tableOf(entity) {
   return typeof first === 'string' ? first : TABLE_OPTION.exec(decorator?.raw ?? '')?.[1];
 }
 
-function fieldFactsOf(entity, field) {
+function fieldFactsOf(entity, field, enums) {
   const column = field.annotations.find(({ name }) => COLUMN_DECORATORS.has(name));
   const length = column === undefined ? undefined : lengthOf(column);
   return fieldFacts({
@@ -60,14 +61,15 @@ function fieldFactsOf(entity, field) {
     field,
     table: tableOf(entity),
     style: 'typescript',
+    enumerated: isEnumField(field, enums),
     stored: entity.annotations.some(({ name }) => name === 'Entity' || name === 'Table'),
     width: TEXT_TYPE.test(field.type) ? length : undefined,
   });
 }
 
-export function typescriptFacts(classes) {
+export function typescriptFacts(classes, enums = new Set()) {
   const byName = new Map(classes.map((entity) => [entity.name, entity]));
   return classes.flatMap((entity) =>
-    fieldsWithAncestors(entity, byName).flatMap((field) => fieldFactsOf(entity, field)),
+    fieldsWithAncestors(entity, byName).flatMap((field) => fieldFactsOf(entity, field, enums)),
   );
 }
