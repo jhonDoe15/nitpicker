@@ -17,6 +17,7 @@ import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
+import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
@@ -100,6 +101,7 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
+  'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
