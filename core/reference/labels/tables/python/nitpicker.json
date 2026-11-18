@@ -79,6 +79,7 @@
   "python-rules/patch-misses-lookup": ["tests"],
   "python-rules/pattern-translation": ["bug", "security"],
   "python-rules/pending-unsettled-on-close": ["bug", "async"],
+  "python-rules/precondition-message-names-other-value": ["bug"],
   "python-rules/prefix-without-boundary": ["bug", "security"],
   "python-rules/presence-truthiness": ["bug"],
   "python-rules/process-env-access": ["maintainability"],

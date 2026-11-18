@@ -160,6 +160,12 @@ const GROUPS = [
     python: 'case-mismatched-lookup',
     go: 'go-rules/case-mismatched-lookup',
   },
+  {
+    jvm: 'PreconditionMessageNamesOtherValue',
+    typescript: 'nitpicker/no-mismatched-precondition-message',
+    python: 'precondition-message-names-other-value',
+    go: 'go-rules/precondition-message-names-other-value',
+  },
 ];
 
 function spring(rule) {

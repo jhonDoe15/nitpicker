@@ -52,6 +52,16 @@ function lookupDescription(subject?: string): string {
 }
 
 
+function preconditionDescription(subject?: string): string {
+  const [checked = '', named = ''] = parts(subject);
+  return (
+    `The check is on \`${checked}\` but its message names ` +
+    `\`${named}\`, so a failure points at the wrong value, or the ` +
+    `value the message names goes through unchecked`
+  );
+}
+
+
 export const MINED_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -81,5 +91,12 @@ export const MINED_HINTS: readonly RuleHint[] = [
       'Normalize both sides where the collection is built ' +
       '(`{v.lower() for v in values}`), or compare with `casefold()` ' +
       'on each side.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['precondition-message-names-other-value'],
+    describe: preconditionDescription,
+    allowed:
+      'Check the value the message names, or change the message to name the value that is checked.',
   },
 ];

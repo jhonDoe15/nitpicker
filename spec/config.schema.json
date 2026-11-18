@@ -2399,6 +2399,7 @@
                             "pmd/AffixWithoutBoundary",
                             "pmd/AffixRemovedByReplace",
                             "pmd/CaseMismatchedLookup",
+                            "pmd/PreconditionMessageNamesOtherValue",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

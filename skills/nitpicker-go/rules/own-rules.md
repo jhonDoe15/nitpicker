@@ -193,3 +193,5 @@ the allowed form and ends with its exception entry.
   `strings.Replace(name, ".git", "", 1)` (`go-rules/unanchored-affix-replace`).
 - A lookup key and its collection are normalized the same way (`go-rules/case-mismatched-lookup`): lower-case
   the keys where the map is filled when the lookup uses `strings.ToLower`.
+- A precondition message names the checked value (`go-rules/precondition-message-names-other-value`):
+  `if name == "" { return errors.New("name must not be empty") }`.

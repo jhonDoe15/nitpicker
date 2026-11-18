@@ -85,3 +85,4 @@ x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`. Remo
   `removesuffix` and `removeprefix`, not `name.replace(".git", "")` (`unanchored-affix-replace`).
 - A lookup key and its collection are normalized the same way (`case-mismatched-lookup`): build the set with
   `{v.lower() for v in values}` when the key is `x.lower()`.
+- A precondition message names the checked value (`precondition-message-names-other-value`).

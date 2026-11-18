@@ -75,6 +75,7 @@
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/PairSplitDropsRest": ["bug"],
   "pmd/SurrogateSplittingCut": ["bug"],
+  "pmd/PreconditionMessageNamesOtherValue": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UnescapedHtmlValue": ["bug", "security"],
   "pmd/UncheckedResponseBody": ["bug"],

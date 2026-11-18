@@ -122,6 +122,7 @@
   "languages/python/rules/e2e/persistence/in-memory-query.e2e.test.mts": 2,
   "languages/python/rules/e2e/persistence/orm-config.e2e.test.mts": 2,
   "languages/python/rules/e2e/persistence/orm-relations.e2e.test.mts": 1,
+  "languages/python/rules/e2e/preconditions/precondition-message-names-other-value.e2e.test.mts": 2,
   "languages/python/rules/e2e/processes/subprocess-timeouts.e2e.test.mts": 2,
   "languages/python/rules/e2e/queries/query-arrays.e2e.test.mts": 1,
   "languages/python/rules/e2e/queries/query-order.e2e.test.mts": 2,

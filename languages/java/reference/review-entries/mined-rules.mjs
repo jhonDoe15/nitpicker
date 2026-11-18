@@ -16,6 +16,11 @@ import {
   CASE_LOOKUP_EXCEPTION_RULE,
   CASE_LOOKUP_RULE,
 } from '../../adapters/review-rules/case-lookups/case-lookups.mjs';
+import {
+  PRECONDITION_MESSAGE_ALLOWED,
+  PRECONDITION_MESSAGE_EXCEPTION_RULE,
+  PRECONDITION_MESSAGE_RULE,
+} from '../../adapters/review-rules/precondition-messages/precondition-messages.mjs';
 
 const READ_FOR_IT = 'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
 
@@ -66,6 +71,21 @@ const ENTRIES = [
       `The lookup misses every value that is not already in the ` +
       `key's case (a hint such as \`DISABLE_AUDIT_NAMES\` ignoring ` +
       `names with capitals). ${READ_FOR_IT}`,
+  },
+  {
+    rule: PRECONDITION_MESSAGE_RULE,
+    exception: PRECONDITION_MESSAGE_EXCEPTION_RULE,
+    anchor: 'preconditions-whose-message-names-another-value',
+    allowed: PRECONDITION_MESSAGE_ALLOWED,
+    summary:
+      'A precondition (`Assert.notNull`, `Objects.requireNonNull`, ' +
+      '`Preconditions.checkState`, Kotlin `requireNotNull` and ' +
+      '`require`) whose message starts with the name of another ' +
+      'parameter or local, such as `Assert.notNull(timeToLive, ' +
+      '"timeUnit must not be null")`.',
+    why:
+      `The failure points at the wrong argument, or the value the ` +
+      `message names goes through unchecked. ${READ_FOR_IT}`,
   },
 ];
 
