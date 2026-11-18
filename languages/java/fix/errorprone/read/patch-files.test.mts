@@ -90,4 +90,30 @@ describe('readDiagnostics', () => {
       readDiagnostics({ reportRoot: path.join(work, 'reports'), projectRoot: project }),
     ).toEqual(new Map([['src/A.java', [{ check: 'MissingOverride', line: 4 }]]]));
   });
+
+  it('keeps the end line of a diagnostic that spans several lines', () => {
+    const { project, work } = workspace();
+    const file = path.join(project, 'src/A.java');
+    writeFileSync(
+      path.join(work, 'reports/m/errorprone.json'),
+      JSON.stringify([
+        { file, line: 4, endLine: 9, message: '[SaveInLoop] collect' },
+        { file, line: 12, endLine: 12, message: '[MissingOverride] run overrides' },
+      ]),
+    );
+
+    expect(
+      readDiagnostics({ reportRoot: path.join(work, 'reports'), projectRoot: project }),
+    ).toEqual(
+      new Map([
+        [
+          'src/A.java',
+          [
+            { check: 'SaveInLoop', line: 4, endLine: 9 },
+            { check: 'MissingOverride', line: 12 },
+          ],
+        ],
+      ]),
+    );
+  });
 });

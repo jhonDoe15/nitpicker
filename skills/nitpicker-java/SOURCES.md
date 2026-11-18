@@ -266,6 +266,10 @@ Prone `BugChecker` that suggests it. The sources are in `languages/java/gradle/e
 | the rest of the roughly 68 rules with one rewrite                                                                                                    | not built yet: only the rules above have a check. Each further rule is one class in the fix-checks folder, one entry in `languages/java/fix/errorprone/own/own-checks.mts` and one fixture                                                                                                                                                                                                                                                                                                |
 
 A hunk that merges the fixes of two checks (Error Prone writes one hunk for changes a few lines
-apart) is reported under the nearest rule. A fix that spans several places, such as the import a
-check removes, can be kept in part when only some of the lines were changed: select these rules on a
-file you reviewed.
+apart) is reported under the nearest rule. In the patch compile the Error Prone report gives each
+diagnostic the end line of the statement it starts, and every hunk inside that span (or adding lines
+right before or after it) of a fix-only check's diagnostic is kept or dropped as one, so a
+rewrite that declares something before a loop, edits it and finishes after it is never half applied
+when the change touched only one of those lines. A fix of an upstream Error Prone check that spans
+several places, such as the import a check removes, can still be kept in part when only some of the
+lines were changed: select these rules on a file you reviewed.

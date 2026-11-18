@@ -72,9 +72,20 @@ function reportEntries(reportFile: string, projectRoot: string): Entry<Diagnosti
     );
     const check = CHECK.exec(textOf(fieldOf(entry, 'message') ?? ''))?.[1];
     const line = fieldOf(entry, 'line');
-    return name === undefined || check === undefined || typeof line !== 'number'
-      ? []
-      : [[name, [{ check, line }]]];
+    const endLine = fieldOf(entry, 'endLine');
+    if (name === undefined || check === undefined || typeof line !== 'number') {
+      return [];
+    }
+    return [
+      [
+        name,
+        [
+          typeof endLine === 'number' && endLine > line
+            ? { check, line, endLine }
+            : { check, line },
+        ],
+      ],
+    ];
   });
 }
 

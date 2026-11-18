@@ -47,6 +47,7 @@ public final class ErrorProneReport {
   private static final String SKIPPED = "errorprone-skipped.txt";
 
   private static final Map<String, Path> FIX_CHECK_CLASSES = new HashMap<>();
+  private static final Map<String, int[]> LINE_STARTS = new ConcurrentHashMap<>();
 
   private ErrorProneReport() {}
 
@@ -429,11 +430,12 @@ public final class ErrorProneReport {
     DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
+    Map<String, Map<Long, Long>> ends = run.getLast().contains("-XepPatchChecks:") ? new HashMap<>() : null;
     try (StandardJavaFileManager files =
         compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
       JavacTask task = (JavacTask) compiler.getTask(
           null, files, diagnostics, run, null, files.getJavaFileObjectsFromStrings(sources));
-      recordClasses(task, classes);
+      recordClasses(task, classes, ends);
       compiled = task.call();
     }
     int foundBefore = entries.size();
@@ -443,10 +445,10 @@ public final class ErrorProneReport {
       String code = diagnostic.getCode() == null ? "" : diagnostic.getCode();
       Matcher crash = CRASH.matcher(diagnostic.getMessage(Locale.ROOT));
       if (code.endsWith(".error.prone") && diagnostic.getSource() != null) {
-        entries.add(entry(diagnostic, classes));
+        entries.add(entry(diagnostic, classes, ends));
       } else if (code.endsWith(".error.prone.crash") && diagnostic.getSource() != null && crash.find()) {
         crashes.putIfAbsent(crash.group(1), "{\"crash\":" + json(crash.group(1)) + ",\"cause\":"
-            + json(Objects.toString(crash.group(2), "").strip()) + "," + entry(diagnostic, Map.of()).substring(1));
+            + json(Objects.toString(crash.group(2), "").strip()) + "," + entry(diagnostic, Map.of(), null).substring(1));
       } else if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
         errors.add(location(diagnostic) + diagnostic.getMessage(Locale.ROOT));
       }
@@ -459,7 +461,8 @@ public final class ErrorProneReport {
     return !compiled && errors.size() == errorsBefore;
   }
 
-  private static void recordClasses(JavacTask task, Map<String, List<ClassSpan>> classes) {
+  private static void recordClasses(
+      JavacTask task, Map<String, List<ClassSpan>> classes, Map<String, Map<Long, Long>> ends) {
     Trees trees = Trees.instance(task);
     task.addTaskListener(
         new TaskListener() {
@@ -470,12 +473,21 @@ public final class ErrorProneReport {
               return;
             }
             CompilationUnitTree unit = top.getCompilationUnit();
-            List<ClassSpan> spans =
-                classes.computeIfAbsent(Path.of(unit.getSourceFile().toUri()).toString(), file -> new ArrayList<>());
+            String path = Path.of(unit.getSourceFile().toUri()).toString();
+            List<ClassSpan> spans = classes.computeIfAbsent(path, file -> new ArrayList<>());
+            Map<Long, Long> statements = ends == null ? null : ends.computeIfAbsent(path, file -> new HashMap<>());
+            SourcePositions at = trees.getSourcePositions();
             new TreePathScanner<Void, Void>() {
               @Override
+              public Void scan(Tree tree, Void unused) {
+                if (statements != null && tree instanceof StatementTree) {
+                  statements.merge(at.getStartPosition(unit, tree), at.getEndPosition(unit, tree), Math::max);
+                }
+                return super.scan(tree, unused);
+              }
+
+              @Override
               public Void visitClass(ClassTree tree, Void unused) {
-                SourcePositions at = trees.getSourcePositions();
                 spans.add(new ClassSpan(at.getStartPosition(unit, tree), at.getEndPosition(unit, tree),
                     annotationNames(trees.getElement(getCurrentPath()), new ArrayList<>())));
                 return super.visitClass(tree, unused);
@@ -502,8 +514,36 @@ public final class ErrorProneReport {
         : Path.of(diagnostic.getSource().toUri()) + ":" + diagnostic.getLineNumber() + ": ";
   }
 
+  private static long endLine(
+      Diagnostic<? extends JavaFileObject> diagnostic, String file, Map<String, Map<Long, Long>> ends) {
+    long end = ends == null ? diagnostic.getEndPosition()
+        : ends.getOrDefault(file, Map.of()).getOrDefault(diagnostic.getStartPosition(), diagnostic.getEndPosition());
+    if (end == Diagnostic.NOPOS || end <= diagnostic.getStartPosition()) {
+      return diagnostic.getLineNumber();
+    }
+    int[] starts = LINE_STARTS.computeIfAbsent(file, name -> lineStarts(diagnostic.getSource()));
+    int index = Arrays.binarySearch(starts, (int) Math.min(Integer.MAX_VALUE, end - 1));
+    return Math.max(diagnostic.getLineNumber(), index >= 0 ? index + 1 : -index - 1);
+  }
+
+  private static int[] lineStarts(JavaFileObject source) {
+    try {
+      CharSequence text = source.getCharContent(true);
+      List<Integer> starts = new ArrayList<>(List.of(0));
+      for (int index = 0; index < text.length(); index++) {
+        if (text.charAt(index) == '\n') {
+          starts.add(index + 1);
+        }
+      }
+      return starts.stream().mapToInt(Integer::intValue).toArray();
+    } catch (IOException failure) {
+      return new int[] {0};
+    }
+  }
+
   private static String entry(
-      Diagnostic<? extends JavaFileObject> diagnostic, Map<String, List<ClassSpan>> classes) {
+      Diagnostic<? extends JavaFileObject> diagnostic, Map<String, List<ClassSpan>> classes,
+      Map<String, Map<Long, Long>> ends) {
     String file = Path.of(diagnostic.getSource().toUri()).toString();
     long position = diagnostic.getPosition();
     List<String> annotations = classes.getOrDefault(file, List.of()).stream()
@@ -512,9 +552,9 @@ public final class ErrorProneReport {
             .flatMap(span -> span.annotations().stream())
             .distinct().toList();
     return String.format(
-        "{\"file\":%s,\"line\":%d,\"column\":%d,\"position\":%d,\"kind\":%s,\"message\":%s,"
+        "{\"file\":%s,\"line\":%d,\"endLine\":%d,\"column\":%d,\"position\":%d,\"kind\":%s,\"message\":%s,"
             + "\"classAnnotations\":[%s]}",
-        json(file), diagnostic.getLineNumber(), diagnostic.getColumnNumber(), position,
+        json(file), diagnostic.getLineNumber(), endLine(diagnostic, file, ends), diagnostic.getColumnNumber(), position,
         json(diagnostic.getKind().name()), json(diagnostic.getMessage(Locale.ROOT)),
         annotations.stream().map(ErrorProneReport::json).collect(Collectors.joining(",")));
   }

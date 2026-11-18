@@ -12,6 +12,7 @@ import { patchChecks } from '../checks/error-prone-checks.mts';
 import { type LabeledHunk, selectHunks } from '../patch/select-hunks.mts';
 import { type PatchRun, runGradlePatch } from './gradle-patch.mts';
 import { labelHunks } from '../read/label-hunks.mts';
+import { OWN_CHECKS } from '../own/own-checks.mts';
 import { runMavenPatch } from './maven-patch.mts';
 import { readDiagnostics, readPatches } from '../read/patch-files.mts';
 import { touchedByFile } from '../read/touched-lines.mts';
@@ -24,6 +25,7 @@ export type PatchSettings = Pick<PatchRun, 'projectRoot' | 'environment' | 'exec
 };
 
 const JAVA_FILE = /\.java$/u;
+const OWN_CHECK_NAMES: ReadonlySet<string> = new Set(OWN_CHECKS.map(({ check }) => check));
 const readBaseFiles: (options: {
   readonly repositoryRoot: string;
   readonly mergeBaseSha: string | undefined;
@@ -70,10 +72,11 @@ export function errorPronePatch(
     const { patchRoot, reportRoot } = compileForPatch(settings, checks, work);
     const patches = readPatches({ patchRoot, projectRoot });
     const diagnostics = readDiagnostics({ reportRoot, projectRoot });
+    const live = liveTexts(projectRoot, javaFiles);
     const touched = touchedByFile({
       files: javaFiles,
       baseSources: readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles }),
-      live: liveTexts(projectRoot, javaFiles),
+      live,
       allFiles: settings.allFiles,
     });
     return new Map(
@@ -85,8 +88,12 @@ export function errorPronePatch(
               [
                 name,
                 selectHunks(
-                  labelHunks(hunks, diagnostics.get(name) ?? [], checks),
+                  labelHunks(hunks, diagnostics.get(name) ?? [], {
+                    checks,
+                    spanChecks: OWN_CHECK_NAMES,
+                  }),
                   touched.get(name) ?? 'all',
+                  live.get(name),
                 ),
               ],
             ];
