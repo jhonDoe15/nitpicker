@@ -113,6 +113,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   when the value is absent (`pmd/OptionalOrElseGetNull`).
 - A collection that the code changes later is built mutable: `new ArrayList<>(List.of("#"))`, not `Arrays.asList`, `List.of`, `Map.of`, `Collections.emptyList()` or `Stream.toList()`, whose `add`, `put` and `remove` throw
   `UnsupportedOperationException` (`pmd/ImmutableCollectionChanged`).
+- A copy constructor copies the collections it takes from the other object (`new ArrayList<>(other.items)`,
+  `List.copyOf`) when either object changes them later (`pmd/CopyConstructorSharesCollection`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
