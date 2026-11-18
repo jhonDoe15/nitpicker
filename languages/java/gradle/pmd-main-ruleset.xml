@@ -518,6 +518,52 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ConstructorLeaksResourceOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This constructor stores a new thread pool, timer or open file or connection in a field and then runs code that can throw. When that code throws, the caller never receives the object and cannot close it, so the threads or the handle leak (a non-daemon pool also keeps the JVM alive). Create the resource last, or put the rest of the constructor in try/catch that releases it and rethrows (catch (RuntimeException | Error e) then pool.shutdownNow() and throw e), or build the object in a factory method that owns the cleanup. An exception fits only when the resource is released by a caller that is guaranteed to run.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $pools := ('java.util.concurrent.ExecutorService', 'java.util.Timer'),
+    $files := ('java.io.FileInputStream', 'java.io.FileOutputStream', 'java.io.FileReader', 'java.io.FileWriter',
+               'java.io.RandomAccessFile', 'java.util.zip.ZipFile', 'java.net.Socket', 'java.net.ServerSocket'),
+    $safe := ('requireNonNull', 'checkNotNull', 'checkArgument', 'checkState', 'notNull', 'isTrue', 'hasText'),
+    $risky := function($c) {
+      exists($c[self::MethodCall]
+              [*[1][self::ArgumentList or self::ThisExpression]
+               or matches(@MethodName, '^(?:connect|open|start|init\w*|load\w*|read\w*|parse\w*|register\w*|subscribe|validate\w*)$')])
+    },
+    $pool := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('newFixedThreadPool', 'newCachedThreadPool', 'newSingleThreadExecutor',
+                                                 'newScheduledThreadPool', 'newSingleThreadScheduledExecutor',
+                                                 'newWorkStealingPool', 'newVirtualThreadPerTaskExecutor')])
+      or exists($e[self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ExecutorService')
+                                          or pmd-java:typeIs('java.util.concurrent.ForkJoinPool')])
+    },
+    $fresh := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('newFixedThreadPool', 'newCachedThreadPool', 'newSingleThreadExecutor',
+                                                 'newScheduledThreadPool', 'newSingleThreadScheduledExecutor',
+                                                 'newWorkStealingPool', 'newVirtualThreadPerTaskExecutor',
+                                                 'getConnection', 'newInputStream', 'newOutputStream',
+                                                 'newBufferedReader', 'newBufferedWriter')]
+                    [*[1][self::TypeExpression]/ClassType[@SimpleName = ('Executors', 'DriverManager', 'Files')]])
+      or exists($e[self::ConstructorCall][some $t in ($pools, $files, 'java.util.concurrent.ForkJoinPool')
+                                          satisfies pmd-java:typeIs($t)])
+    }
+return //ConstructorDeclaration/Block/ExpressionStatement[AssignmentExpression[@Operator = '=']
+    [*[1][self::FieldAccess or self::VariableAccess]][$fresh(*[2])]]
+  [let $opening := .
+   return empty(ancestor::ConstructorDeclaration[1]//TryStatement)
+     and exists(following-sibling::*[
+       (self::ThrowStatement
+        or self::IfStatement[.//ThrowStatement]
+        or self::ExpressionStatement[MethodCall[@MethodName = $safe]])[not($pool($opening/AssignmentExpression/*[2]))]
+       or self::ExpressionStatement[$risky(MethodCall)]
+       or self::ExpressionStatement[AssignmentExpression[$risky(*[2][self::MethodCall])]]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="DefaultTimeZone" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="ZoneId.systemDefault() and TimeZone.getDefault() read the default time zone of the JVM, so the result changes with the TZ or -Duser.timezone of the server. Pass a zone: ZoneId.of(&quot;UTC&quot;), a configured zone, or the zone of an injected Clock (clock.getZone()).">
     <priority>3</priority>
