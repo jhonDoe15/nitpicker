@@ -194,6 +194,7 @@ function productionGuardRules({
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/no-prefix-without-boundary': 'error',
+    'nitpicker/no-unanchored-affix-replace': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
     'nitpicker/require-promise-reject': 'error',

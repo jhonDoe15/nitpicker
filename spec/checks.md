@@ -314,6 +314,12 @@ suffix or substring check on a path, route, package or host whose argument has n
 same two values in the condition, a value that ends in a separator or is normalised earlier, a check on the character or
 length after the prefix, a dotted domain suffix and `Path.startsWith` are allowed. The substring check `includes('node_modules')` is not reported.
 
+Affixes removed by replace: `nitpicker/no-unanchored-affix-replace` (production source, in `eslint-lint`) and
+`pmd/AffixRemovedByReplace` (Java and Kotlin), `unanchored-affix-replace` (Python) and
+`go-rules/unanchored-affix-replace` (Go) report a string `replace` that removes a suffix or prefix (`name.replace('.git', '')`,
+`path.replace(root, '')`, `url.replace(parsed.port, next)`), because it rewrites the first occurrence anywhere. An anchored
+pattern, `endsWith` or `startsWith` with `slice`, `removeSuffix` and a replace guarded by the same check are allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

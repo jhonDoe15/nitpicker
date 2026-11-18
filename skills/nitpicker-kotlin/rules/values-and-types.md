@@ -152,3 +152,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A path, route, package or host is matched on whole segments, never by `String` prefix
   (`pmd/AffixWithoutBoundary`): `path == base || path.startsWith("$base/")`, `Path.startsWith`,
   `host == domain || host.endsWith(".$domain")`, and `URI.getHost()` for a URL.
+- A suffix or prefix is removed with `removeSuffix` or `removePrefix`, never `replace` (`pmd/AffixRemovedByReplace`),
+  because `replace` also hits `blog.git.io`.

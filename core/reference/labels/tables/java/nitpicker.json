@@ -54,6 +54,7 @@
   "javac/unchecked": ["maintainability"],
   "palantir-java-format/format": ["style"],
   "pmd/BackoffShiftOverflow": ["bug", "reliability"],
+  "pmd/AffixRemovedByReplace": ["bug"],
   "pmd/AffixWithoutBoundary": ["bug", "security"],
   "pmd/CommentedOutCode": ["simplification"],
   "pmd/CopiedConstantInTest": ["tests", "maintainability"],
