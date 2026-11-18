@@ -66,6 +66,27 @@ describe('recipeRuns', () => {
   });
 });
 
+describe('judgeFindings and findings a fix surfaces', () => {
+  it('keeps a fix whose new finding only names a further simplification', () => {
+    const runs = recipeRuns([{ recipe: 'one', files: ['a'], finding: finding('t', 'r', 'a') }]);
+    const before = countFindings([finding('t', 'r', 'a')]);
+    const after = countFindings([finding('t', 'next', 'a')]);
+    const surfaced = ({ rule }: { readonly rule: string }) => rule === 'next';
+
+    expect([...judgeFindings({ runs, before, after, breaking: never, surfaced })]).toEqual([]);
+  });
+
+  it('still rolls back a fix that breaks the compile, whatever the finding is labelled', () => {
+    const runs = recipeRuns([{ recipe: 'one', files: ['a'], finding: finding('t', 'r', 'a') }]);
+    const before = countFindings([finding('t', 'r', 'a')]);
+    const after = countFindings([finding('build', 'compile-error', 'a')]);
+
+    expect([
+      ...judgeFindings({ runs, before, after, breaking: () => true, surfaced: () => true }).keys(),
+    ]).toEqual(['one']);
+  });
+});
+
 describe('recipeRuns and the findings of one fix', () => {
   it('counts the other findings of a fix as findings of the run', () => {
     const runs = recipeRuns([

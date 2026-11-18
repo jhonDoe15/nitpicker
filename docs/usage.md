@@ -2862,8 +2862,11 @@ checks every recipe that applied a fix:
    compared by tool, rule and file with the ones the same analyzers give for the files before the
    fix.
 2. A recipe is rolled back when its finding is still there, when it adds a finding in a file it
-   touched, or when it adds a compile or type error. A new compile or type error in a file that no
-   recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
+   touched, or when it adds a compile or type error. A new finding that is only a simplification
+   (labelled `simplification` and nothing else, such as `errorprone/UnnecessaryParentheses` after
+   a pattern match) does not roll the recipe back: the fix surfaced it, and it is reported as usual.
+   A new compile or type error in a file that no recipe touched rolls back every recipe, as
+   nitpicker cannot tell which one caused it.
 3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
    names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
    Two recipes that touched the same file are rolled back together. A recipe that edits one file at
