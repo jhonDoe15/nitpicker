@@ -267,7 +267,8 @@ project.tester.run('typeorm lookups that stay as they are', ioInLoop, {
   }
 }
 `),
-    declines(`export async function run() {
+    declines(
+      `export async function run() {
   await Promise.all(
     events.map(async (event) => {
       if (event.teamId < 0) {
@@ -278,6 +279,8 @@ project.tester.run('typeorm lookups that stay as they are', ioInLoop, {
     }),
   );
 }
-`, ['foreignKeyQuery']),
+`,
+      ['foreignKeyQuery'],
+    ),
   ],
 });

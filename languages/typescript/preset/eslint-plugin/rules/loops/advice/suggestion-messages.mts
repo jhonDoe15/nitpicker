@@ -22,4 +22,8 @@ export const IO_IN_LOOP_SUGGESTIONS = {
     'and a column that the database sets on write (such as an update date) gets one value for the chunk.',
     'Entity listeners and subscribers run once per statement instead of once per item.',
   ].join(' '),
+  batchInsert: [
+    'Insert the rows 100 at a time with one statement instead of one statement per item.',
+    'A row that fails now fails its whole chunk, and the result of each insert is no longer available.',
+  ].join(' '),
 };

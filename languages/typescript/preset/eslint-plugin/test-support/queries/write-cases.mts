@@ -38,3 +38,46 @@ export function writeCases(project: Project) {
     },
   };
 }
+
+export const INSERT_HEAD = [
+  "import { Repository } from 'typeorm';",
+  "import { User, Code, Note } from './entities';",
+  'declare const repo: Repository<User>;',
+  'declare const codes: Repository<Code>;',
+  'declare const notes: Repository<Note>;',
+  'declare const ids: number[];',
+  'declare const rows: { name: string; slug: string; teamId: number; owner: { id: number } }[];',
+  'declare const noteRows: { email: string; ownerId: number }[];',
+  'declare const entities: { name: string }[];',
+  'declare const workspaceId: string;',
+  'declare const out: unknown[];',
+  'declare function toEntity(row: { name: string }): User;',
+  'declare function stamp(): string;',
+  'declare function use(value: unknown): void;',
+  '',
+].join('\n');
+
+export const PRISMA_INSERT_HEAD = [
+  "import { PrismaClient } from '@prisma/client';",
+  'declare const prisma: PrismaClient;',
+  'declare const ids: number[];',
+  'declare const rows: { name: string; ownerId: number; team: string }[];',
+  'declare const scope: number;',
+  'declare const clock: { now(): number };',
+  'declare const out: unknown[];',
+  'declare function toData(row: { name: string }): { name: string; userId: number };',
+  '',
+].join('\n');
+
+export function insertCases(project: Project, head: string) {
+  const cases = batchCases(project, 'batchInsert');
+  return {
+    ...cases,
+    pair(body: string, expected: string) {
+      return cases.fixes(`${head}${body}`, `${head}${expected}`);
+    },
+    declines(body: string, report: readonly string[] = ['query']) {
+      return cases.declines(`${head}${body}`, report);
+    },
+  };
+}
