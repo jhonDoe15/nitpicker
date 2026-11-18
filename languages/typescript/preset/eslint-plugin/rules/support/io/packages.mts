@@ -1,4 +1,5 @@
 import type { CallView } from './call-views.mts';
+import { isExpressionHelper } from './names/expression-helpers.mts';
 
 export type IoKind = 'database' | 'remote' | 'message';
 export type AsyncCheck = (builder: boolean) => boolean;
@@ -180,6 +181,9 @@ export function libraryKind(
   isAsync: AsyncCheck,
 ): IoKind | undefined {
   const name = moduleName(specifier);
+  if (isExpressionHelper(name, view)) {
+    return undefined;
+  }
   const builtIn = BUILT_IN_CALLS.get(name);
   if (builtIn !== undefined) {
     const resolves = name.startsWith('dns') && view.method?.startsWith('resolve') === true;
