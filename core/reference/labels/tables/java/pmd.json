@@ -19,6 +19,7 @@
   "pmd/AvoidThreadGroup": ["bug", "async"],
   "pmd/BacktrackingRegex": ["performance", "security"],
   "pmd/BigIntegerInstantiation": ["simplification"],
+  "pmd/BlockingInCompletionStage": ["performance", "async"],
   "pmd/BooleanFlagParameter": ["maintainability"],
   "pmd/BufferNeverReleased": ["bug", "reliability"],
   "pmd/CachedEntityFieldNotSerializable": ["bug", "persistence"],
