@@ -12,6 +12,7 @@ export type CoreRequest = {
   readonly text: string;
   readonly sourceCode: SourceCode;
   readonly node: TSESTree.Node;
+  readonly range: { readonly start: number; readonly end: number };
 };
 
 type File = { readonly path: string; readonly text: string };
@@ -32,6 +33,7 @@ type CoreRecipe = {
   readonly rule: string;
   readonly safety?: string;
   readonly options?: readonly unknown[];
+  readonly presets?: readonly string[];
   readonly plan: (request: CoreRequest) => CorePlan;
 };
 
@@ -87,18 +89,18 @@ function fileFixes(recipe: CoreRecipe, { path: name, text }: File) {
   const fixes: Fix[] = [];
   const notes: string[] = [];
   for (const message of messages) {
-    const node =
+    const range =
       message.endLine === undefined || message.endColumn === undefined
         ? undefined
-        : coveringNode(
-            sourceCode,
-            offset(sourceCode, message.line, message.column),
-            offset(sourceCode, message.endLine, message.endColumn),
-          );
+        : {
+            start: offset(sourceCode, message.line, message.column),
+            end: offset(sourceCode, message.endLine, message.endColumn),
+          };
+    const node = range === undefined ? undefined : coveringNode(sourceCode, range.start, range.end);
     const planned: CorePlan =
-      node === undefined
+      node === undefined || range === undefined
         ? { declined: 'the reported code could not be parsed' }
-        : recipe.plan({ name, text, sourceCode, node });
+        : recipe.plan({ name, text, sourceCode, node, range });
     if ('declined' in planned) {
       notes.push(
         `--fix left ${name}:${String(message.line)} eslint/${recipe.rule}: ${planned.declined}`,
@@ -117,7 +119,7 @@ export function coreRuleRecipe(recipe: CoreRecipe) {
   return {
     id: recipe.id,
     rules: [{ tool: 'eslint', rule: recipe.rule }],
-    presets: ['typescript', 'javascript'],
+    presets: recipe.presets ?? ['typescript', 'javascript'],
     scope: 'file',
     safety: recipe.safety ?? SAFE,
     plan({ files, inputs }: { readonly files: readonly File[]; readonly inputs: Inputs }) {
