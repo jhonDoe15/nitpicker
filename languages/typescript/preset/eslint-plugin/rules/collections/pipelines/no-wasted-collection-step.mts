@@ -23,12 +23,14 @@ const wastedStepMessages = {
     '`Promise.{{method}}` over one promise only waits for that promise. Write {{form}} instead.',
   awaitInPromiseMethod:
     'This `await` waits for its promise before `Promise.{{method}}` sees it, so the promises no longer run together. Pass the promise without `await`.',
+  dropAwait: 'Remove the `await` so this promise starts together with the others.',
 };
 
 export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'suggestion',
     fixable: 'code',
+    hasSuggestions: true,
     docs: {
       description:
         'Disallow collection and promise steps that copy for nothing or walk the data twice, where a single step says the same',
@@ -44,7 +46,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
       },
       CallExpression(call) {
         report(findAsBoolean(context, call) ?? mapFlat(context, call));
-        for (const step of promiseSteps(call)) {
+        for (const step of promiseSteps(context, call)) {
           report(step);
         }
       },
