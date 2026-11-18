@@ -66,13 +66,27 @@ function withHelpers(body: string) {
   return typed(`${HEADER}${HELPERS}export async function run() { ${body} }`);
 }
 
-function helperError(helper: string) {
-  const data = { access: 'order.customer', entity: 'Order', relation: 'customer' };
-  return { messageId: 'lazyHelper', data: { helper, origin: 'orders.find()', ...data } };
+function suggestion(output: string | undefined, helpers = false) {
+  const code = helpers
+    ? `${HEADER}${HELPERS}export async function run() { ${output} }`
+    : inRun(output ?? '');
+  return output === undefined ? {} : { suggestions: [{ messageId: 'addRelation', output: code }] };
 }
 
-function invalid(body: string, data?: Record<string, string>) {
-  return { ...typed(inRun(body)), errors: [{ messageId: 'lazy', ...(data ? { data } : {}) }] };
+function helperError(helper: string, output?: string) {
+  const data = { access: 'order.customer', entity: 'Order', relation: 'customer' };
+  return {
+    messageId: 'lazyHelper',
+    data: { helper, origin: 'orders.find()', ...data },
+    ...suggestion(output, true),
+  };
+}
+
+function invalid(body: string, output?: string, data?: Record<string, string>) {
+  return {
+    ...typed(inRun(body)),
+    errors: [{ messageId: 'lazy', ...(data ? { data } : {}), ...suggestion(output) }],
+  };
 }
 
 const loop = 'for (const order of found) { use(await order.customer); }';
@@ -114,58 +128,91 @@ tester.run('no-lazy-relation-in-loop', rule, {
       ...withHelpers(
         'const found = await orders.find(); for (const order of found) { use(await toDto(order)); }',
       ),
-      errors: [helperError('toDto')],
+      errors: [
+        helperError(
+          'toDto',
+          "const found = await orders.find({ relations: ['customer'] }); for (const order of found) { use(await toDto(order)); }",
+        ),
+      ],
     },
     {
       ...withHelpers(
         'const found = await orders.find(); use(await Promise.all(found.map(toDto)));',
       ),
-      errors: [helperError('toDto')],
+      errors: [
+        helperError(
+          'toDto',
+          "const found = await orders.find({ relations: ['customer'] }); use(await Promise.all(found.map(toDto)));",
+        ),
+      ],
     },
     {
       ...withHelpers('const found = await orders.find(); use(found.map(mapper.toDto));'),
-      errors: [helperError('mapper.toDto')],
+      errors: [
+        helperError(
+          'mapper.toDto',
+          "const found = await orders.find({ relations: ['customer'] }); use(found.map(mapper.toDto));",
+        ),
+      ],
     },
     {
       ...withHelpers(
         'for (const order of await orders.find()) { use(await mapper.toDto(order)); }',
       ),
-      errors: [helperError('mapper.toDto')],
+      errors: [
+        helperError(
+          'mapper.toDto',
+          "for (const order of await orders.find({ relations: ['customer'] })) { use(await mapper.toDto(order)); }",
+        ),
+      ],
     },
-    invalid(`const found = await orders.find(); ${loop}`, {
-      entity: 'Order',
-      relation: 'customer',
-      origin: 'orders.find()',
-    }),
-    invalid(`const found = await orders.find({ where: { total: 1 } }); ${loop}`),
+    invalid(
+      `const found = await orders.find(); ${loop}`,
+      `const found = await orders.find({ relations: ['customer'] }); ${loop}`,
+      { entity: 'Order', relation: 'customer', origin: 'orders.find()' },
+    ),
+    invalid(
+      `const found = await orders.find({ where: { total: 1 } }); ${loop}`,
+      `const found = await orders.find({ where: { total: 1 }, relations: ['customer'] }); ${loop}`,
+    ),
     invalid(
       'const found = await orders.find(); for (const order of found) { use(order.customer.then((c) => c.name)); }',
+      "const found = await orders.find({ relations: ['customer'] }); for (const order of found) { use(order.customer.then((c) => c.name)); }",
     ),
     invalid(
       'const found = await orders.find(); for (const order of found) { const { customer } = order; use(await customer); }',
+      "const found = await orders.find({ relations: ['customer'] }); for (const order of found) { const { customer } = order; use(await customer); }",
+    ),
+    invalid(
+      `const found = await orders.find({ relations: ['lines'] }); ${loop}`,
+      `const found = await orders.find({ relations: ['lines', 'customer'] }); ${loop}`,
     ),
     invalid(
       'const found = await orders.find(); for (const order of found) { const { customer: owner } = order; use(await owner); }',
+      "const found = await orders.find({ relations: ['customer'] }); for (const order of found) { const { customer: owner } = order; use(await owner); }",
     ),
-    invalid(`const found = await orders.find({ relations: ['lines'] }); ${loop}`),
     invalid(`const found = await orders.findBy({ total: 1 }); ${loop}`),
     invalid(
       `const found = await orders.createQueryBuilder('o').where('o.total > 0').getMany(); ${loop}`,
     ),
-    invalid('for (const order of await orders.find()) { use(await order.customer); }'),
+    invalid(
+      'for (const order of await orders.find()) { use(await order.customer); }',
+      "for (const order of await orders.find({ relations: ['customer'] })) { use(await order.customer); }",
+    ),
     invalid(
       'const found = await orders.find(); await Promise.all(found.map(async (order) => use(await order.lines)));',
+      "const found = await orders.find({ relations: ['lines'] }); await Promise.all(found.map(async (order) => use(await order.lines)));",
     ),
-    invalid(`const found = await manager.find(Order); ${loop}`, {
-      entity: 'Order',
-      relation: 'customer',
-      origin: 'manager.find()',
-    }),
-    invalid('for (const invoice of await invoices.find()) { use(await invoice.payer); }', {
-      entity: 'Invoice',
-      relation: 'payer',
-      origin: 'invoices.find()',
-    }),
+    invalid(
+      `const found = await manager.find(Order); ${loop}`,
+      `const found = await manager.find(Order, { relations: ['customer'] }); ${loop}`,
+      { entity: 'Order', relation: 'customer', origin: 'manager.find()' },
+    ),
+    invalid(
+      'for (const invoice of await invoices.find()) { use(await invoice.payer); }',
+      undefined,
+      { entity: 'Invoice', relation: 'payer', origin: 'invoices.find()' },
+    ),
     {
       ...typedScript(
         "import { shipments } from './schemas';\nexport async function run() { for (const shipment of await shipments.find()) { await shipment.carrier; } }",

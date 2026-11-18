@@ -14,8 +14,11 @@ import {
   lazyBinding,
   lazyRelation,
   originQuery,
+  type QueryOrigin,
 } from './lazy-relations.mts';
 import type { Relation } from './relations/typeorm-schema.mts';
+import { suggestible } from '../../fixes/support/descriptors.mts';
+import { lazyRelationFix } from '../../fixes/queries/relations/lazy-relation-fix.mts';
 
 type Services = ParserServicesWithTypeInformation;
 type LoopItem = {
@@ -24,7 +27,7 @@ type LoopItem = {
   readonly loop: TSESTree.Node;
 };
 type Found = { readonly item: LoopItem; readonly relation: Relation };
-type Finding = Relation & { readonly origin: string };
+type Finding = Relation & { readonly origin: string; readonly query: QueryOrigin };
 
 const THEN_STEPS = new Set(['then', 'catch', 'finally']);
 
@@ -137,7 +140,7 @@ function relationFinding(
   }
   const origin = originQuery(context, services, found.item);
   return origin !== undefined && !isFetched(origin, found.relation.relation)
-    ? { ...found.relation, origin: origin.label }
+    ? { ...found.relation, origin: origin.label, query: origin }
     : undefined;
 }
 
@@ -165,17 +168,47 @@ function helperFinding(
     origin !== undefined &&
     relation !== undefined &&
     !isFetched(origin, relation.relation)
-    ? { ...relation, origin: origin.label, helper: context.sourceCode.getText(passed.reference) }
+    ? {
+        ...relation,
+        origin: origin.label,
+        query: origin,
+        helper: context.sourceCode.getText(passed.reference),
+      }
     : undefined;
 }
 
+function reportLazy(
+  context: Context,
+  {
+    node,
+    messageId,
+    finding,
+  }: {
+    readonly node: TSESTree.Node;
+    readonly messageId: 'lazy' | 'lazyHelper';
+    readonly finding: Finding;
+  },
+): void {
+  context.report(
+    suggestible(
+      { node, messageId, data: finding },
+      {
+        messageId: 'addRelation',
+        plan: lazyRelationFix(context, finding.query, finding),
+        data: finding,
+      },
+    ),
+  );
+}
+
 export const rule: TSESLint.RuleModule<
-  'lazy' | 'lazyHelper',
+  'lazy' | 'lazyHelper' | 'addRelation',
   [],
   { readonly requiresTypeChecking: boolean }
 > = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: {
       description: 'Do not load a lazy relation once per item of a query result',
       requiresTypeChecking: true,
@@ -194,6 +227,7 @@ export const rule: TSESLint.RuleModule<
         'name it in `relations` (`relations: { {{relation}}: true }`) or join it with `leftJoinAndSelect`.',
         'An exception fits only when the loop passes a few items at most.',
       ].join(' '),
+      addRelation: 'Load `{{relation}}` in the query that loads the items, with `relations`.',
     },
   },
   create(context) {
@@ -205,19 +239,19 @@ export const rule: TSESLint.RuleModule<
       CallExpression(node) {
         const finding = helperFinding(context, services, node);
         if (finding !== undefined) {
-          context.report({ node, messageId: 'lazyHelper', data: finding });
+          reportLazy(context, { node, messageId: 'lazyHelper', finding });
         }
         const access = thenedAccess(node);
         const thened =
           access === undefined ? undefined : relationFinding(context, services, access);
         if (thened !== undefined && access?.type === AST_NODE_TYPES.MemberExpression) {
-          context.report({ node, messageId: 'lazy', data: thened });
+          reportLazy(context, { node, messageId: 'lazy', finding: thened });
         }
       },
       AwaitExpression(node) {
         const finding = relationFinding(context, services, node.argument);
         if (finding !== undefined) {
-          context.report({ node, messageId: 'lazy', data: finding });
+          reportLazy(context, { node, messageId: 'lazy', finding });
         }
       },
     };
