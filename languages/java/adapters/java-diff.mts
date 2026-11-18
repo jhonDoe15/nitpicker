@@ -27,6 +27,7 @@ import {
   withChangedFiles,
 } from '../builds/change-scope/affected/changed-files.mts';
 import { buildFindings } from './collect/build-findings.mts';
+import { withoutDuplicateIdentities } from './collect/duplicate-identities.mts';
 import {
   type JavaFinding,
   type JavaPolicy,
@@ -187,6 +188,7 @@ function withEnforceable(outcome: Outcome): EnforcedOutcome {
 function compareSnapshots(
   range: DiffRange,
   { notes, baseFindings, headFindings }: ComparedSnapshots,
+  warn: (message: string) => void,
 ): Readonly<Record<string, unknown>> {
   const testsRemoved: unknown = readRemovesTests(range);
   const touchedCode = {
@@ -196,8 +198,8 @@ function compareSnapshots(
   };
   return fieldsOf(
     compareFindings({
-      baseFindings,
-      headFindings,
+      baseFindings: withoutDuplicateIdentities(baseFindings, 'base', warn),
+      headFindings: withoutDuplicateIdentities(headFindings, 'head', warn),
       baseToHeadRenames: readRenameMap(range),
       touchedCode,
       unknownOnBase: unknownOnBaseFor(notes, touchedCode),
@@ -236,7 +238,7 @@ export function runJavaDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   };
-  const result = compareSnapshots(range, snapshots);
+  const result = compareSnapshots(range, snapshots, (message) => warnings.push(message));
   return withEnforceable({
     comparison,
     ...result,

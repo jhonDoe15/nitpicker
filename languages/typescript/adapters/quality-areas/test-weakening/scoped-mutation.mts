@@ -12,9 +12,12 @@ import {
   baseMutationTargets,
   changedCodeMutants,
   hasWeakeningCandidates,
+  headRecheckTargets,
   mutationTargetsWithTestedModules,
   type MutationScope,
-  weakenedTestFindings,
+  stillEscapedOnHead,
+  weakenedMutants,
+  weakenedFindings,
 } from './weakened-mutants.mts';
 
 const NAMED_SKIPS = 5;
@@ -56,12 +59,15 @@ async function weakenedTestsFindings(
   if (base.skipped !== undefined) {
     return base.skipped.filter(({ rule }) => rule !== TESTS_FAILED_SKIPPED_RULE);
   }
-  return weakenedTestFindings({
-    headReport,
-    baseReport: base.report,
-    mutationScope: scope,
-    analyzerName: options.analyzerName,
-  });
+  const weakened = weakenedMutants({ headReport, baseReport: base.report, mutationScope: scope });
+  if (weakened.length === 0) {
+    return [];
+  }
+  const recheck = await mutationReport(options, headRecheckTargets(weakened));
+  if (recheck.skipped !== undefined) {
+    return recheck.skipped;
+  }
+  return weakenedFindings(stillEscapedOnHead(weakened, recheck.report), options.analyzerName);
 }
 
 function skippedModulesNotice(analyzerName: string, skipped: readonly string[]): Finding[] {

@@ -13,7 +13,11 @@ import {
   loadConfig,
 } from './configuration/config.mts';
 import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
-import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
+import {
+  configureAll,
+  presetAnalyzers,
+  withRepositoryChecks,
+} from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
@@ -167,7 +171,8 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const profile = applyRunProfile(configureAll(presetSet, config, headPolicy), options);
+  const configured = configureAll(presetSet, config, headPolicy);
+  const profile = applyRunProfile(withRepositoryChecks(configured, cli.configOverlay), options);
   const setup: RunSetup = {
     ...labeledRun(profile, { ...options, preset: config.preset, stderr: cli.stderr }),
     captureHead: stagedCapture(cli, currentProjectRoot),

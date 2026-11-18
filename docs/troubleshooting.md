@@ -884,6 +884,11 @@ the merge base, so check it out to reproduce. A runner without network access ne
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
 
+When a package repository answers `429 Too Many Requests`, the message ends with `A package
+repository rate-limited the build (HTTP 429)`: nothing is wrong with the project, so rerun later. The
+`Caused by:` lines in the message come from the failure itself; a stack trace that a tool logged as a
+warning and went past (PMD's "continuing with next rule", for example) is left out.
+
 A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
 output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
 give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
@@ -976,8 +981,12 @@ its config) and keeps the mutation findings of the remaining tests. A `pit-skipp
 an error, says `15 tests in ExampleTest did not pass without mutation under PIT; they pass under the
 build's test task`, names the first five skipped tests and the count of the rest, and warns that
 mutants only the skipped tests would kill may count as surviving. When the second run fails too, the
-`pit-failure` tool error leads with that same summary line. On Maven the retry uses only the analyzer
-time that is left and is not started with less than a minute left.
+`pit-failure` tool error leads with that same summary line. When the tests are in more than one test
+class, the summary names the first five classes. The retry shares the time limit of the first run, as
+on Gradle: on Maven it gets what is left of that limit (and of the analyzer's time) and is not started
+with less than a minute left. In a comparison, when the retry on the base ran out of time and the same
+test classes fail on the head, the head does not run it again and says so in its `pit-failure` error,
+so the run pays for the retry once.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which

@@ -7,6 +7,7 @@ import {
   peerLines,
   skillsOf,
 } from '../init-report.mts';
+import type { InitProject } from '../init-types.mts';
 import type { MonorepoLayout } from './monorepo-types.mts';
 import type { MemberSetup } from './monorepo-files.mts';
 
@@ -26,20 +27,24 @@ const SOURCES: Readonly<Record<string, string>> = {
   declared: 'listed in "projects" of nitpicker.config.json',
   detected: 'found from the workspace or build declaration',
   suggested: 'found from their project files',
+  paired: 'the build and the frontend sources of one folder, each with its own preset',
 };
 
 function indented(lines: readonly string[]): string[] {
   return lines.map((line) => (line === '' ? line : `  ${line}`));
 }
 
+function noConfigLines(member: MemberSetup['member'], project: InitProject): string[] {
+  return project.emptySources === true
+    ? []
+    : [`No config of its own needed: the monorepo run gives it the "${member.preset}" preset.`];
+}
+
 function memberLines({ member, project, peers, config, error }: MemberSetup): string[] {
   if (project === undefined) {
     return [`${member.path}: not set up. ${String(error)}`];
   }
-  const configLines =
-    config === undefined
-      ? [`No config of its own needed: the monorepo run gives it the "${member.preset}" preset.`]
-      : fileLines(config);
+  const configLines = config === undefined ? noConfigLines(member, project) : fileLines(config);
   return [
     `${member.path}: ${project.summary} (preset "${project.preset}")`,
     ...indented([

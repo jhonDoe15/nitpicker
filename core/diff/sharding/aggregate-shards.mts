@@ -40,7 +40,7 @@ import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mts';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mts';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { presetAnalyzers, withRepositoryChecks } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
@@ -251,16 +251,12 @@ function configuredReport(
   { currentProjectRoot, configOverlay, outputRoot, analyzers, warn }: ConfiguredTarget,
 ): AggregateReport {
   const config: NitpickerConfig = loadConfig(currentProjectRoot, { overlay: configOverlay });
+  const headPolicy: unknown = resolveHeadPolicy(config, currentProjectRoot);
+  const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
     outputRoot,
-    analyzers: analyzersOf(
-      configureAnalyzers(
-        presetAnalyzers(config, analyzers),
-        config,
-        resolveHeadPolicy(config, currentProjectRoot),
-      ),
-    ),
+    analyzers: analyzersOf(withRepositoryChecks(configured, configOverlay)),
     configOverrides: describeConfigOverrides(config),
     shardCount: options.shardCount,
     liveProjectRoot: currentProjectRoot,

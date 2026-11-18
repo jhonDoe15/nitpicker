@@ -208,11 +208,20 @@ line under its folder:
   build, init takes the projects from there and writes no top config. A project gets its own
   `nitpicker.config.json` only where the run would give it the wrong preset (a JavaScript package
   in an npm workspace would otherwise get the TypeScript preset) or where it needs a setting (the
-  Java build tool when it has both builds).
+  Java build tool when it has both builds, or `layout.sourceRoots` for a package without a config
+  whose code is in folders other than `src`, such as `components`). A package whose code sits only
+  at its folder top gets a note instead: every run reports `source-roots/empty-sources` for it
+  until the code moves into a folder that `layout.sourceRoots` names.
 - When the top holds no project file but folders below it do (a `web/package.json`, an
   `api/pyproject.toml` and a `service/build.gradle`), init writes the top `nitpicker.config.json`
   with a `projects` list of `{ "path", "preset" }` entries. A top config that lists no projects
   is left as it is; init prints the diff that adds the list and exits 1.
+- When the top holds a Maven or Gradle build of Java or Kotlin code and a `package.json` whose
+  TypeScript or JavaScript sources are under `src/main/webapp`, `src/main/frontend` or `frontend`
+  (as in JHipster, Vaadin and Hilla applications), and no config there sets a preset, init writes
+  the top `nitpicker.config.json` with the folder listed twice: once with the `java` or `kotlin`
+  preset, and once with the `typescript` or `javascript` preset, which checks the frontend folders
+  (see [Listing the projects](#listing-the-projects)).
 - `--ci github` writes one workflow for the whole repository: the setup step of every toolchain
   the projects need (Node.js, Java, Python) once, the install steps of each project with its
   `working-directory` (a workspace installs once, at its root), and one nitpicker step at the top
@@ -2339,7 +2348,9 @@ Where you start the run matters:
   entry. The folder's own `nitpicker.config.json` applies to the entry of the preset it declares
   (or to both when it declares none); the other entry takes its settings from `settings`. A
   TypeScript or JavaScript entry without `layout` in its `settings` checks `src/main/webapp`,
-  `src/main/frontend` and `frontend`, whichever exist.
+  `src/main/frontend` and `frontend`, whichever exist. The repository-wide checks
+  (`repository-hygiene`) run in the first entry only, so a committed key or a field limit mismatch
+  is reported once.
 
 - A Git submodule is never a project of the repository around it: a `projects` entry or glob that
   names one, or a workspace glob that covers one, is an error, and a changed submodule gets a

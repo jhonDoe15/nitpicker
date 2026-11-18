@@ -129,9 +129,13 @@ export function readCouplingFindings(
       relative
     );
   }
+  const fileModules = fileRepresentatives(
+    classes.map(outerClass).filter((outer) => kotlin?.moduleOf.get(outer) === undefined),
+    fileOf,
+  );
   function moduleOf(className: string): string {
     const outer = outerClass(className);
-    return kotlin?.moduleOf.get(outer) ?? outer;
+    return kotlin?.moduleOf.get(outer) ?? fileModules.get(outer) ?? outer;
   }
   const edges = parseJdeps(readFileSync(jdeps, 'utf8'));
   const report = analyzeJavaCoupling({ classes, edges, fileOf, moduleOf, layout });
@@ -139,6 +143,33 @@ export function readCouplingFindings(
     ...evaluateCoupling(report, COUPLING_TOOL),
     ...packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }, features),
   ];
+}
+
+function fileRepresentatives(
+  outers: readonly string[],
+  fileOf: (className: string) => string,
+): Map<string, string> {
+  const byFile = new Map<string, string[]>();
+  for (const outer of new Set(outers)) {
+    const file = fileOf(outer);
+    const names = byFile.get(file);
+    if (names === undefined) {
+      byFile.set(file, [outer]);
+    } else {
+      names.push(outer);
+    }
+  }
+  const representatives = new Map<string, string>();
+  for (const [file, names] of byFile) {
+    const stem = path.basename(file, path.extname(file));
+    const sorted = names.toSorted();
+    const representative =
+      sorted.find((name) => name.slice(name.lastIndexOf('.') + 1) === stem) ?? sorted[0] ?? '';
+    for (const name of names) {
+      representatives.set(name, representative);
+    }
+  }
+  return representatives;
 }
 
 function permittedEdges(reportRoot: string): Set<string> {

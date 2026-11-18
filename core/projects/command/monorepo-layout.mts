@@ -4,6 +4,7 @@ import { detectedPreset } from '../../configuration/project-checks/preset-detect
 import { inspectRepository } from '../plan/inspect.mts';
 import { suggestedProjects } from '../plan/suggested-projects.mjs';
 import { existingConfig } from '../../init/files/config-file.mts';
+import { frontendPairLayout } from './frontend-pair.mts';
 import type { Member, MonorepoLayout, ProjectEntry } from '../../init/monorepo/monorepo-types.mts';
 
 type PlanMember = {
@@ -47,6 +48,10 @@ export function monorepoLayout(root: string, repository: string): MonorepoLayout
   const { plan } = inspect({ root, repositoryRoot: repository });
   if (plan !== undefined) {
     return { source: plan.source, members: plan.projects.map(planMember), entries: [] };
+  }
+  const paired = frontendPairLayout(root);
+  if (paired !== undefined) {
+    return paired;
   }
   const entries = holdsNoProject(root) ? suggested(root) : [];
   if (entries.length === 0) {
