@@ -13,6 +13,10 @@ function error(data: Record<string, string> = {}) {
   ];
 }
 
+function suggesting(data: Record<string, string>, messageId: string, output: string) {
+  return [{ ...error(data)[0], suggestions: [{ messageId, output }] }];
+}
+
 tester.run('unbounded-fan-out', rule, {
   valid: [
     'await Promise.race(urls.map((url) => globalThis.fetch(url)));',
@@ -270,11 +274,19 @@ tester.run('unbounded-fan-out', rule, {
     },
     {
       code: 'import pMap from "p-map"; await pMap(urls, (url) => fetch(url));',
-      errors: error({ combinator: 'pMap', operation: 'fetch()', collection: 'urls' }),
+      errors: suggesting(
+        { combinator: 'pMap', operation: 'fetch()', collection: 'urls' },
+        'addConcurrency',
+        'import pMap from "p-map"; await pMap(urls, (url) => fetch(url), { concurrency: 8 });',
+      ),
     },
     {
       code: 'import pMap from "p-map"; await pMap(urls, async (url) => fetch(url), { concurrency: Infinity });',
-      errors: error({ combinator: 'pMap', operation: 'fetch()', collection: 'urls' }),
+      errors: suggesting(
+        { combinator: 'pMap', operation: 'fetch()', collection: 'urls' },
+        'addConcurrency',
+        'import pMap from "p-map"; await pMap(urls, async (url) => fetch(url), { concurrency: 8 });',
+      ),
     },
     {
       code: 'const CONCURRENCY = 8; await Promise.all(urls.map((url) => fetch(url)));',
