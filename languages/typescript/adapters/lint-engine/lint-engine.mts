@@ -19,6 +19,7 @@ import {
   failureDetail,
 } from '../../../../shared/processes/process-failure.mjs';
 import { nativeConfigFlags } from './compatibility/native-config.mts';
+import { isOutOfMemory, outOfMemoryMessage, withEslintHeap } from './memory/eslint-heap.mts';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;
@@ -101,6 +102,7 @@ async function runEslintCli(
   extraEnvironment: Readonly<Record<string, string>> = {},
 ): Promise<unknown> {
   const { options } = invocation;
+  const environment = withEslintHeap({ ...invocation.environment, ...extraEnvironment });
   const config = fileURLToPath(
     checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url)),
   );
@@ -119,12 +121,12 @@ async function runEslintCli(
     ],
     {
       cwd: options.projectRoot,
-      env: { ...invocation.environment, ...extraEnvironment },
+      env: environment,
       maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
       timeoutMs: options.timeoutMs,
     },
   );
-  assertEslintCompleted(result, options);
+  assertEslintCompleted(result, options, environment['NODE_OPTIONS']);
   try {
     return parseJson(result.stdout);
   } catch (error) {
@@ -139,6 +141,7 @@ async function runEslintCli(
 function assertEslintCompleted(
   result: CollectedRun,
   { timeoutMs, projectRoot }: Pick<LintEngineOptions, 'timeoutMs' | 'projectRoot'>,
+  nodeOptions: string | undefined,
 ): void {
   if (result.error !== undefined) {
     if (result.error.code === 'ETIMEDOUT') {
@@ -149,6 +152,9 @@ function assertEslintCompleted(
       );
     }
     throw result.error;
+  }
+  if (result.status !== 0 && result.status !== 1 && isOutOfMemory(result.stderr)) {
+    throw new Error(outOfMemoryMessage(nodeOptions));
   }
   if (result.status !== 0 && result.status !== 1) {
     const detail = failureDetail(result) || 'no diagnostic output';
