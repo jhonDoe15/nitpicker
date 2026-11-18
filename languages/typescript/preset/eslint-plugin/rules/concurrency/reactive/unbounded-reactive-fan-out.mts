@@ -6,13 +6,12 @@ import { lazyScope, reportSites, type FanOutScope } from '../unbounded-fan-out.m
 import { isUnlimited, pipeSource, rxjsName } from './rxjs-calls.mts';
 
 type Group = {
-  readonly form: 'operator' | 'combinator';
+  readonly form: 'operator' | 'merge' | 'forkJoin';
   readonly operator: string;
   readonly sites: readonly Site[];
 };
 
 const OPERATORS = new Set(['mergeMap', 'flatMap']);
-const COMBINATORS = new Set(['forkJoin', 'combineLatest', 'zip', 'merge']);
 const EXCEPTION = 'An exception fits only when the collection is always small.';
 const CONSEQUENCE =
   "at once, so a large collection exhausts the {{target}}'s connections or rate limit.";
@@ -81,8 +80,8 @@ function sitesOf(context: Context, call: TSESTree.CallExpression): Group | undef
   if (OPERATORS.has(name) || name === 'mergeAll') {
     return { form: 'operator', operator: name, sites: operatorSites(context, call, name) };
   }
-  return COMBINATORS.has(name)
-    ? { form: 'combinator', operator: name, sites: combinatorSites(context, call, name) }
+  return name === 'forkJoin' || name === 'merge'
+    ? { form: name, operator: name, sites: combinatorSites(context, call, name) }
     : undefined;
 }
 
@@ -100,7 +99,7 @@ function report(
   reportSites(scope, at, (collection) => context.sourceCode.getText(skipped(collection)));
 }
 
-export const rule: TSESLint.RuleModule<'operator' | 'combinator'> = {
+export const rule: TSESLint.RuleModule<'operator' | 'merge' | 'forkJoin'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Bound the concurrency of remote calls that RxJS subscribes per element' },
@@ -111,11 +110,18 @@ export const rule: TSESLint.RuleModule<'operator' | 'combinator'> = {
         `\`{{collection}}\` ${CONSEQUENCE} Pass a concurrency limit (\`mergeMap((item) => load(item), 8)\`),`,
         `use \`concatMap\` for one call at a time, or \`bufferCount(20)\` and make one batch call per chunk. ${EXCEPTION}`,
       ].join(' '),
-      combinator: [
-        '`{{operator}}` subscribes to {{operation}}{{via}} for every element of',
-        `\`{{collection}}\` ${CONSEQUENCE} Build the result with`,
-        '`from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when',
-        `the API has one. ${EXCEPTION}`,
+      merge: [
+        '`merge` subscribes to {{operation}}{{via}} for every element of',
+        `\`{{collection}}\` ${CONSEQUENCE} Pass a concurrency limit as the last argument`,
+        `(\`merge(...items.map((item) => load(item)), 8)\`), or make one batch call when the API has one. ${EXCEPTION}`,
+      ].join(' '),
+      forkJoin: [
+        '`forkJoin` subscribes to {{operation}}{{via}} for every element of',
+        `\`{{collection}}\` ${CONSEQUENCE} Bound it with`,
+        '`from(items).pipe(mergeMap((item, index) => load(item).pipe(last(), map((value) => [index, value])), 8), toArray())`',
+        'and sort the pairs by index to keep the input order. That form differs from `forkJoin`: an empty collection emits',
+        '`[]` where `forkJoin([])` completes without a value, and a source that emits nothing errors in `last()` where',
+        `\`forkJoin\` completes without a value. Or make one batch call when the API has one. ${EXCEPTION}`,
       ].join(' '),
     },
   },

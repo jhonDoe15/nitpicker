@@ -24,13 +24,12 @@ function operator(data: Record<string, string> = {}) {
   });
 }
 
-function combinator(data: Record<string, string> = {}) {
-  return error('combinator', {
-    operator: 'forkJoin',
-    operation: 'fetch()',
-    collection: 'ids',
-    ...data,
-  });
+function forkJoin(data: Record<string, string> = {}) {
+  return error('forkJoin', { operation: 'fetch()', collection: 'ids', ...data });
+}
+
+function merged(data: Record<string, string> = {}) {
+  return error('merge', { operation: 'fetch()', collection: 'ids', ...data });
 }
 
 tester.run('unbounded-reactive-fan-out', rule, {
@@ -51,6 +50,9 @@ tester.run('unbounded-reactive-fan-out', rule, {
     `${RX}const HOSTS = ["a", "b"]; from(HOSTS).pipe(mergeMap((id) => from(fetch(id))));`,
     `${RX}from(fetch(url)).pipe(mergeMap((response) => from(fetch(response.url))));`,
     `${RX}clicks$.pipe(mergeMap(() => from(fetch(url))));`,
+    `${RX}combineLatest(ids.map((id) => from(fetch(id))));`,
+    `${RX}zip(ids.map((id) => from(fetch(id))));`,
+    `${RX}zip(...ids.map((id) => from(fetch(id))));`,
     `${RX}forkJoin([from(fetch(a)), from(fetch(b))]);`,
     `${RX}forkJoin(["a", "b"].map((id) => from(fetch(id))));`,
     `${RX}forkJoin({ first: from(fetch(a)), second: from(fetch(b)) });`,
@@ -136,22 +138,11 @@ tester.run('unbounded-reactive-fan-out', rule, {
       code: `${RX}const NONE = Number.POSITIVE_INFINITY; from(ids).pipe(mergeMap((id) => from(fetch(id)), NONE));`,
       errors: operator(),
     },
-    { code: `${RX}forkJoin(ids.map((id) => from(fetch(id))));`, errors: combinator() },
-    {
-      code: `${RX}combineLatest(ids.map((id) => from(fetch(id))));`,
-      errors: combinator({ operator: 'combineLatest' }),
-    },
-    {
-      code: `${RX}zip(ids.map((id) => from(fetch(id))));`,
-      errors: combinator({ operator: 'zip' }),
-    },
-    {
-      code: `${RX}merge(...ids.map((id) => from(fetch(id))));`,
-      errors: combinator({ operator: 'merge' }),
-    },
+    { code: `${RX}forkJoin(ids.map((id) => from(fetch(id))));`, errors: forkJoin() },
+    { code: `${RX}merge(...ids.map((id) => from(fetch(id))));`, errors: merged() },
     {
       code: `${RX}const calls = ids.map((id) => from(fetch(id))); forkJoin(calls);`,
-      errors: combinator(),
+      errors: forkJoin(),
     },
   ],
 });

@@ -444,9 +444,9 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `map(...)` there counts as a `mergeMap`. With type information,
   `from(x)` counts only when `x` is an array, a tuple, a `Set`, a `Map` or another iterable, so
   `from(promise)` passes; without it, `x` must be an array literal, an array method call or a name.
-  It also reports `forkJoin`, `combineLatest`, `zip` and `merge` over `xs.map(...)` (also spread, a
-  `const` holding one or an array filled by `push` in a loop), which subscribe to every element at
-  once. The projected work must make a remote or message call, recognized as in
+  It also reports `forkJoin` and `merge` over `xs.map(...)` (also spread, a `const` holding one or
+  an array filled by `push` in a loop), which subscribe to every element at once; `combineLatest`
+  and `zip` need every source subscribed, so they are not reported. The projected work must make a remote or message call, recognized as in
   `unbounded-fan-out`, plus Angular's `HttpClient` (`@angular/common/http`, a parameter property, a
   field typed with it or set with `inject(HttpClient)`, which also counts for `unbounded-fan-out`)
   and `ajax` from `rxjs/ajax`; `from(fetch(...))` and `defer(() => fetch(...))`
