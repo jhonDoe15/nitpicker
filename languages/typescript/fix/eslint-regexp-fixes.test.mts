@@ -50,10 +50,11 @@ const ALPHABET = ['a', 'b', 'x', '1', '_', ' ', 'c', '\n'];
 const MAX_LENGTH = 5;
 
 function* inputs(): Generator<string> {
-  let layer = [''];
-  yield '';
-  for (let length = 1; length <= MAX_LENGTH; length += 1) {
-    layer = layer.flatMap((prefix) => ALPHABET.map((letter) => prefix + letter));
+  const layers = [['']];
+  for (const layer of layers) {
+    if (layers.length <= MAX_LENGTH) {
+      layers.push(layer.flatMap((prefix) => ALPHABET.map((letter) => prefix + letter)));
+    }
     yield* layer;
   }
 }

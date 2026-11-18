@@ -20,11 +20,11 @@ function rewritten(code: string, output: string) {
       messageId: 'unbounded',
       suggestions: [{ messageId: 'usePMap', output: `${IMPORT}${output}` }],
     },
-  ] as never);
+  ]);
 }
 
 function kept(code: string) {
-  return typed(code, [{ messageId: 'unbounded' }] as never);
+  return typed(code, [{ messageId: 'unbounded' }]);
 }
 
 function stable(body: string, output: string) {

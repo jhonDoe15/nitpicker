@@ -24,7 +24,7 @@ tester.run('unbounded-fan-out', rule, {
     'export const first = (mirrors: string[]) => Promise.race(mirrors.map((mirror) => fetch(mirror)));',
     'export const first = async (mirrors: string[]) => await Promise.any(mirrors.map((mirror) => fetch(mirror)));',
     'import axios from "axios"; export const first = (ids: string[]) => Promise.race(ids.map(async (id) => { const response = await axios.get(id); return response.data; }));',
-    'const winner = await Promise.any(hosts.map((host) => fetch(`https://${host}/health`)));',
+    `const winner = await Promise.any(hosts.map((host) => fetch(\`https://\${host}/health\`)));`,
     'const results = []; for (const url of urls) { results.push(fetch(url)); } await Promise.race(results);',
     'await Promise.all([fetch(a), fetch(b)]);',
     'await Promise.all(["a", "b"].map((url) => fetch(url)));',

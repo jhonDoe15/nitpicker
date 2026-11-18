@@ -27,15 +27,25 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isLocale(value: unknown): boolean {
-  const text = (item: unknown) => typeof item === 'string' && item !== '';
-  return text(value) || (Array.isArray(value) && value.length > 0 && value.every(text));
+function isFilledString(item: unknown): boolean {
+  return typeof item === 'string' && item !== '';
 }
 
-function constructs(type: string, call: Call, values: readonly unknown[]): boolean {
+function isLocale(value: unknown): boolean {
+  return (
+    isFilledString(value) ||
+    (Array.isArray(value) && value.length > 0 && value.every(isFilledString))
+  );
+}
+
+function constructs(
+  type: string,
+  call: Call,
+  values: readonly unknown[],
+): { readonly valid: boolean } {
   const target: unknown = Reflect.get(Intl, type);
   if (typeof target !== 'function') {
-    return false;
+    return { valid: false };
   }
   try {
     if (call.type === AST_NODE_TYPES.NewExpression) {
@@ -43,9 +53,9 @@ function constructs(type: string, call: Call, values: readonly unknown[]): boole
     } else {
       Reflect.apply(target, undefined, values);
     }
-    return true;
+    return { valid: true };
   } catch {
-    return false;
+    return { valid: false };
   }
 }
 
@@ -70,7 +80,7 @@ function validArguments(type: string, call: Call): boolean {
     isLocale(locale) &&
     (options === undefined || isObject(options)) &&
     namesTimeZone(type, options) &&
-    constructs(type, call, values)
+    constructs(type, call, values).valid
   );
 }
 

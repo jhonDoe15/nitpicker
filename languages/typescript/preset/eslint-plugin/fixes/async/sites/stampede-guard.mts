@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../../rules/analysis/constant-resolution.mts';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { ancestorsOf, contains } from '../../../rules/typed/node-views.mts';
@@ -6,6 +6,8 @@ import { containsNode } from '../../support/nodes.mts';
 
 type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+
+const { DefinitionType } = TSESLint.Scope;
 
 const SHARED_INITIALIZERS = new Set<string>([
   AST_NODE_TYPES.NewExpression,
@@ -17,16 +19,18 @@ const STATE_READERS = new Set(['has', 'get', 'set', 'add', 'delete']);
 const STATE_WRITERS = new Set(['set', 'add']);
 
 function rootOf(node: TSESTree.Node): TSESTree.Node {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
+  const chain = [node];
+  for (const current of chain) {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
+      chain.push(current.object);
+    }
   }
-  return current;
+  return chain.at(-1) ?? node;
 }
 
 function isSharedState(variable: TSESLint.Scope.Variable): boolean {
   const definition = variable.defs[0];
-  if (definition?.type !== 'Variable') {
+  if (definition?.type !== DefinitionType.Variable) {
     return false;
   }
   const { init } = definition.node;

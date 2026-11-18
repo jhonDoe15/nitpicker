@@ -45,26 +45,32 @@ function isArrayConstruction(node: TSESTree.Node): boolean {
   );
 }
 
+function receiverOfChain(node: TSESTree.Node): TSESTree.Node | undefined {
+  if (node.type === AST_NODE_TYPES.MemberExpression) {
+    return node.object;
+  }
+  return node.type === AST_NODE_TYPES.CallExpression &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression
+    ? node.callee.object
+    : undefined;
+}
+
 export function mayBeSparse(receiver: TSESTree.Node): boolean {
-  let current: TSESTree.Node = receiver;
-  for (;;) {
+  const chain = [receiver];
+  for (const current of chain) {
     if (isArrayConstruction(current)) {
       return true;
     }
     if (current.type === AST_NODE_TYPES.ArrayExpression) {
       return current.elements.some((element) => element === null);
     }
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      current = current.object;
-    } else if (
-      current.type === AST_NODE_TYPES.CallExpression &&
-      current.callee.type === AST_NODE_TYPES.MemberExpression
-    ) {
-      current = current.callee.object;
-    } else {
+    const next = receiverOfChain(current);
+    if (next === undefined) {
       return false;
     }
+    chain.push(next);
   }
+  return false;
 }
 
 function usesCallerState(context: Context, fn: FunctionNode): boolean {

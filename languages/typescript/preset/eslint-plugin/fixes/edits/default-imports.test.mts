@@ -1,45 +1,17 @@
-import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { importingDefault } from './imports.mts';
-import { replacing } from '../support/ranges.mts';
-import { allOf } from './plans.mts';
+import { declines, fixes, useRule } from './test-support/use-rule.mts';
 
-const rule: TSESLint.RuleModule<'use'> = {
-  meta: { type: 'problem', fixable: 'code', schema: [], messages: { use: 'use' } },
-  defaultOptions: [],
-  create(context) {
-    const { sourceCode } = context;
-    return {
-      'CallExpression[callee.name="use"]'(call: TSESTree.CallExpression) {
-        const edit = importingDefault(sourceCode, sourceCode.ast, {
-          sources: ['p-map'],
-          name: 'pMap',
-          sites: [call],
-        });
-        const fix =
-          edit === undefined
-            ? undefined
-            : allOf(
-                [
-                  edit.present ? undefined : edit.plan,
-                  replacing(call.range, `${edit.local}()`),
-                ].filter((plan) => plan !== undefined),
-              );
-        context.report({ node: call, messageId: 'use', ...(fix === undefined ? {} : { fix }) });
-      },
-    };
-  },
-};
-
-const ERR = [{ messageId: 'use' as const }];
-
-function fixes(code: string, output: string) {
-  return { code, output, errors: ERR };
-}
-
-function declines(code: string) {
-  return { code, output: null, errors: ERR };
-}
+const rule = useRule(({ sourceCode, call }) => {
+  const edit = importingDefault(sourceCode, sourceCode.ast, {
+    sources: ['p-map'],
+    name: 'pMap',
+    sites: [call],
+  });
+  return edit === undefined
+    ? undefined
+    : { imports: edit.present ? undefined : edit.plan, text: `${edit.local}()` };
+});
 
 typescriptRuleTester().run('default import helper', rule, {
   valid: [],

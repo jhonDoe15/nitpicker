@@ -8,7 +8,7 @@ import {
 } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, chainOf } from '../typed/node-views.mts';
 import { constantArguments, constantList, usesDefaultLocale } from './constant-arguments.mts';
-import { sharedType, type Call } from './construction-kinds.mts';
+import { INTL_PREFIX, sharedType, type Call } from './construction-kinds.mts';
 
 type FunctionNode =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
@@ -184,7 +184,7 @@ function varyingSchema(context: SourceContext, node: Call): boolean {
 }
 
 function reportable(context: SourceContext, node: Call, type: string): boolean {
-  const intl = type.startsWith('Intl.');
+  const intl = type.startsWith(INTL_PREFIX);
   return (
     constantArguments(context, node) &&
     !(intl && (usesDefaultLocale(context, node) || onlyReadsOptions(context, node))) &&
@@ -223,10 +223,12 @@ export const rule: TSESLint.RuleModule<
       const descriptor = {
         node,
         messageId:
-          type.startsWith('Intl.') || !varyingSchema(context, node) ? 'perCall' : 'cacheValidator',
+          type.startsWith(INTL_PREFIX) || !varyingSchema(context, node)
+            ? 'perCall'
+            : 'cacheValidator',
         data: { type },
       } as const;
-      const hoist = type.startsWith('Intl.')
+      const hoist = type.startsWith(INTL_PREFIX)
         ? hoistFormatterFix(context.sourceCode, node)
         : undefined;
       context.report(

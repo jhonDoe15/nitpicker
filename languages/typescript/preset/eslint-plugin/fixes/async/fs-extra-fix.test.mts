@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from '../../rules/async/no-sync-node-api-in-async.mts';
-import { declines, fixes } from './sync-fs-test-support.mts';
+import { declines, fixes } from './test-support/sync-fs-cases.mts';
 
 const FSE = "import fse from 'fs-extra';\n";
 
@@ -16,7 +16,7 @@ typescriptRuleTester().run('fs-extra fixes', rule, {
   invalid: [
     twin('ensureDir', 'p', 'ensureDir'),
     twin('ensureFile', 'p', 'ensureFile'),
-    twin('copy', 'p, `${p}.bak`', 'copy'),
+    twin('copy', `p, \`\${p}.bak\``, 'copy'),
     twin('copy', 'p, p + "2", { overwrite: false }', 'copy'),
     twin('move', 'p, p + "2", { overwrite: true }', 'move'),
     twin('remove', 'p', 'remove'),

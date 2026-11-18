@@ -8,8 +8,18 @@ type CaseRow = [string, Exclude<RuleTester.InvalidTestCase['errors'], number>];
 
 const tester = typescriptRuleTester();
 const families: readonly SyncFamily[] = SYNC_FAMILIES;
-const alternativeOf = (module: string, api: string) =>
-  families.find((family) => family.modules.has(module))?.alternative(api);
+const SHELL_ALTERNATIVE =
+  '`await promisify(exec)(command)` with `exec` from "node:child_process" and `promisify` from "node:util", which keeps the shell that `execSync` runs the command in (`execFile` runs none, so `&&`, pipes and globs would fail). The result becomes `{ stdout, stderr }` strings instead of a Buffer and a failure rejects with a different error shape, so check what the code does with both';
+const FILE_ALTERNATIVE =
+  '`await promisify(execFile)(file, args)` with `execFile` from "node:child_process" and `promisify` from "node:util", which runs the file without a shell. The result becomes `{ stdout, stderr }` strings instead of a Buffer and a failure rejects with a different error shape, so check what the code does with both';
+
+function alternativeOf(module: string, api: string): string {
+  const alternative = families.find((family) => family.modules.has(module))?.alternative(api);
+  if (alternative === undefined) {
+    throw new TypeError(`No alternative for ${api} from ${module}.`);
+  }
+  return alternative;
+}
 const CALLBACK_ADVICE =
   'a loop in place of the synchronous callback (or `Promise.all` over `map` with an async callback), because `await` cannot go inside it, and then ';
 const blocking = (api: string, module = 'fs', context = 'an async function', prefix = '') => [
@@ -292,22 +302,11 @@ describe('the allowed form of each call', () => {
       '`await pathExists()` from "fs-extra"',
     );
     expect(alternativeOf('fs-extra', 'existsSync')).toBe('`await pathExists()` from "fs-extra"');
-    const shell = alternativeOf('child_process', 'execSync');
-    expect(shell).toContain(
-      '`await promisify(exec)(command)` with `exec` from "node:child_process"',
-    );
-    expect(shell).toContain('keeps the shell');
-    expect(shell).toContain('`&&`, pipes and globs would fail');
-    expect(shell).toContain('`{ stdout, stderr }` strings instead of a Buffer');
-    expect(shell).toContain('rejects with a different error shape');
-    expect(shell).not.toContain('promisify(execFile)');
-    for (const name of ['execFileSync', 'spawnSync']) {
-      const file = alternativeOf('child_process', name);
-      expect(file).toContain('`await promisify(execFile)(file, args)` with `execFile`');
-      expect(file).toContain('without a shell');
-      expect(file).toContain('`{ stdout, stderr }` strings instead of a Buffer');
-      expect(file).not.toContain('promisify(exec)(command)');
-    }
+    expect(alternativeOf('child_process', 'execSync')).toBe(SHELL_ALTERNATIVE);
+    expect([
+      alternativeOf('child_process', 'execFileSync'),
+      alternativeOf('child_process', 'spawnSync'),
+    ]).toEqual([FILE_ALTERNATIVE, FILE_ALTERNATIVE]);
     expect(alternativeOf('crypto', 'scryptSync')).toBe(
       '`await promisify(scrypt)(...)` with `promisify` from "node:util"',
     );

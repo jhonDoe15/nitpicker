@@ -1,6 +1,6 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from '../../../rules/async/no-sync-node-api-in-async.mts';
-import { declines, fixes, FS } from '../sync-fs-test-support.mts';
+import { declines, fixes, FS } from '../test-support/sync-fs-cases.mts';
 
 typescriptRuleTester().run('shared state around a sync call', rule, {
   valid: [],

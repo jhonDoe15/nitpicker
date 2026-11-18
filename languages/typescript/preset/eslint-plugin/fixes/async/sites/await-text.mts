@@ -50,12 +50,19 @@ function isBare(call: TSESTree.CallExpression): boolean {
 }
 
 function statementStartingWith(call: TSESTree.Node): TSESTree.Node | undefined {
-  let node: TSESTree.Node | undefined = call;
-  while (node !== undefined && node.type !== AST_NODE_TYPES.ExpressionStatement) {
+  const chain = [call];
+  for (const node of chain) {
     const parent: TSESTree.Node | undefined = node.parent;
-    node = parent?.range[0] === node.range[0] ? parent : undefined;
+    if (
+      node.type !== AST_NODE_TYPES.ExpressionStatement &&
+      parent !== undefined &&
+      parent.range[0] === node.range[0]
+    ) {
+      chain.push(parent);
+    }
   }
-  return node;
+  const last = chain.at(-1);
+  return last?.type === AST_NODE_TYPES.ExpressionStatement ? last : undefined;
 }
 
 function closesStatementBlock(sourceCode: SourceCode, index: number): boolean {

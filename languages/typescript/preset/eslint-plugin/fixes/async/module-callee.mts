@@ -13,7 +13,7 @@ export type ModuleCallee =
 
 const { DefinitionType } = TSESLint.Scope;
 
-function isRequire(node: TSESTree.Node | null): node is TSESTree.CallExpression {
+function isRequire(node: TSESTree.Node | undefined): node is TSESTree.CallExpression {
   return (
     node?.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.Identifier &&
@@ -49,8 +49,9 @@ function valueImport(declaration: TSESTree.Node): string | undefined {
 function namespaceModule(definition: TSESLint.Scope.Definition): string | undefined {
   if (definition.type === DefinitionType.Variable) {
     const { init, id } = definition.node;
-    return id.type === AST_NODE_TYPES.Identifier && isRequire(init)
-      ? stringValue(init.arguments[0])
+    const call = init ?? undefined;
+    return id.type === AST_NODE_TYPES.Identifier && isRequire(call)
+      ? stringValue(call.arguments[0])
       : undefined;
   }
   const { node } = definition;

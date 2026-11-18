@@ -13,8 +13,7 @@ function isImport(statement: TSESTree.Node): boolean {
 function afterStatement(
   sourceCode: SourceCode,
   program: TSESTree.Program,
-  index: number,
-  text: string,
+  { index, text }: { readonly index: number; readonly text: string },
 ): FixPlan | undefined {
   const last = program.body[index];
   if (last === undefined) {
@@ -51,7 +50,7 @@ export function insertingAtModuleTop(
     program.body.findLastIndex((statement) => isDirective(statement)),
   );
   if (anchor >= 0) {
-    return afterStatement(sourceCode, program, anchor, text);
+    return afterStatement(sourceCode, program, { index: anchor, text });
   }
   const [first] = program.body;
   return first === undefined ? undefined : beforeFirst(sourceCode, first, text);

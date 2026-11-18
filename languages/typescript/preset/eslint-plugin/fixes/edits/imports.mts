@@ -1,8 +1,11 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../../rules/typed/node-views.mts';
 import { visibleVariable } from '../support/scope.mts';
 import { declaredBelow, globalScopeOf } from './names.mts';
+import { importedName } from '../support/nodes.mts';
 import { inserting, type FixPlan } from '../support/ranges.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 export type ImportRequest = {
   readonly sources: readonly string[];
@@ -18,14 +21,6 @@ function importsOf(program: TSESTree.Program): TSESTree.ImportDeclaration[] {
     (statement): statement is TSESTree.ImportDeclaration =>
       statement.type === AST_NODE_TYPES.ImportDeclaration,
   );
-}
-
-function importedName(specifier: TSESTree.ImportClause): string | undefined {
-  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
-    return undefined;
-  }
-  const { imported } = specifier;
-  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
 }
 
 function bindsName(declaration: TSESTree.ImportDeclaration, name: string): boolean {
@@ -84,7 +79,8 @@ function terminatorOf(
 
 function statementStart(sourceCode: SourceCode, program: TSESTree.Program): number | undefined {
   const directives = program.body.filter(
-    (statement) => statement.type === AST_NODE_TYPES.ExpressionStatement && statement.directive,
+    (statement) =>
+      statement.type === AST_NODE_TYPES.ExpressionStatement && statement.directive !== undefined,
   );
   const last = directives.at(-1);
   if (last !== undefined) {
@@ -124,16 +120,19 @@ function newDeclaration(
 }
 
 function reachesAll(sourceCode: SourceCode, { name, sites }: ImportRequest): boolean {
-  return sites.every((site) =>
-    visibleVariable(sourceCode, site, name)?.defs.every(({ type }) => type === 'ImportBinding'),
+  return sites.every(
+    (site) =>
+      visibleVariable(sourceCode, site, name)?.defs.every(
+        ({ type }) => type === DefinitionType.ImportBinding,
+      ) === true,
   );
 }
 
 function isFreeName(program: TSESTree.Program, sourceCode: SourceCode, name: string): boolean {
   const global = globalScopeOf(sourceCode.getScope(program));
-  return (
-    !declaredBelow(global, name) &&
-    !global.through.some((reference) => reference.identifier.name === name)
+  return !(
+    declaredBelow(global, name) ||
+    global.through.some((reference) => reference.identifier.name === name)
   );
 }
 

@@ -1,7 +1,6 @@
-import { typescriptRuleTester, configuredRuleTester } from '../../test-support/rule-tester.mts';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from '../../rules/async/no-sync-node-api-in-async.mts';
-import tseslint from 'typescript-eslint';
-import { declines, fixes, FS } from './sync-fs-test-support.mts';
+import { fixes, FS } from './test-support/sync-fs-cases.mts';
 
 typescriptRuleTester().run('namespace fs fixes', rule, {
   valid: [],

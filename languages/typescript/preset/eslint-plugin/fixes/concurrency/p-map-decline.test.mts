@@ -1,33 +1,17 @@
-import { afterAll } from 'vitest';
 import { rule } from '../../rules/concurrency/unbounded-fan-out.mts';
-import { typedProject } from './typed-project.mts';
+import { cleanupAfterAll, dependencyProjects, kept, typedProject } from './typed-project.mts';
 
 const IMPORT = "import pMap from 'p-map';\n";
-const esm = typedProject('p-map-keep-', { type: 'module', dependencies: { 'p-map': '^7.0.0' } });
-const noDependency = typedProject('p-map-none-', {
-  type: 'module',
-  dependencies: { got: '^1.0.0' },
+const { esm, missing, devOnly, commonjs, oldCommonjs } = dependencyProjects('p-map', {
+  esm: '^7.0.0',
+  commonjs: '^5.0.0',
+  oldCommonjs: '^4.0.0',
 });
-const devOnly = typedProject('p-map-dev-', {
-  type: 'module',
-  devDependencies: { 'p-map': '^7.0.0' },
-});
-const commonjs = typedProject('p-map-cjs-', { dependencies: { 'p-map': '^5.0.0' } });
-const oldCommonjs = typedProject('p-map-old-', { dependencies: { 'p-map': '^4.0.0' } });
 const unknownVersion = typedProject('p-map-latest-', { dependencies: { 'p-map': 'latest' } });
-afterAll(() => {
-  for (const project of [esm, noDependency, devOnly, commonjs, oldCommonjs, unknownVersion]) {
-    project.cleanup();
-  }
-});
+cleanupAfterAll([unknownVersion]);
 
-const KEPT = [{ messageId: 'unbounded' }] as never;
 const CALL =
   'declare const ids: string[];\nexport async function f() { return Promise.all(ids.map((id) => fetch(id))); }';
-
-function kept(project: typeof esm, code: string) {
-  return project.typed(code, KEPT);
-}
 
 esm.tester.run('pMap suggestion declines on the call shape', rule, {
   valid: [],
@@ -132,9 +116,9 @@ esm.tester.run('pMap suggestion declines under a deadline', rule, {
   ],
 });
 
-noDependency.tester.run('pMap suggestion needs the dependency', rule, {
+missing.tester.run('pMap suggestion needs the dependency', rule, {
   valid: [],
-  invalid: [kept(noDependency, CALL)],
+  invalid: [kept(missing, CALL)],
 });
 devOnly.tester.run('pMap suggestion needs a runtime dependency', rule, {
   valid: [],
@@ -165,6 +149,6 @@ oldCommonjs.tester.run('pMap suggestion keeps p-map 4 in a CommonJS project', ru
           },
         ],
       },
-    ] as never),
+    ]),
   ],
 });

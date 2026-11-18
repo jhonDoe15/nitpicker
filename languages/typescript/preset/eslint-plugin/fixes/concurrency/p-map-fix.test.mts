@@ -27,8 +27,8 @@ typescriptRuleTester().run('pMap concurrency suggestion', rule, {
   ],
   invalid: [
     limited(
-      'export const load = (ids: string[]) => pMap(ids, (id) => fetch(`/x/${id}`));',
-      'export const load = (ids: string[]) => pMap(ids, (id) => fetch(`/x/${id}`), { concurrency: 8 });',
+      `export const load = (ids: string[]) => pMap(ids, (id) => fetch(\`/x/\${id}\`));`,
+      `export const load = (ids: string[]) => pMap(ids, (id) => fetch(\`/x/\${id}\`), { concurrency: 8 });`,
     ),
     limited(
       'export const load = (ids: string[]) => pMap(ids, (id) => fetch(id), {});',
