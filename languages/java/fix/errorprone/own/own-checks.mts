@@ -22,6 +22,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'DMI_RANDOM_USED_ONLY_ONCE', tool: SPOTBUGS, safety: SAFE },
   { check: 'UseEnumCollections', tool: PMD, safety: REVIEW },
   { check: 'SortForExtreme', tool: PMD, safety: REVIEW },
+  { check: 'PlainTextRegex', tool: PMD, safety: REVIEW },
   { check: 'LiteralsFirstInComparisons', tool: PMD, safety: REVIEW },
   { check: 'PreserveStackTrace', tool: PMD, safety: REVIEW },
   { check: 'SpringConstructorInjection', tool: PMD, safety: REVIEW },
