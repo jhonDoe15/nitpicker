@@ -49,6 +49,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Do not cast a value from a `Map<String, Object>` or `Properties` read from JDBC, YAML or JSON straight to a number
   or date: use `((Number) row.get("count")).intValue()`, `Integer.parseInt(String.valueOf(value))`,
   `rs.getObject(column, LocalDate.class)` or a typed binding (`pmd/MapValueCastToNumber`).
+- Use `getName()` (or `getTypeName()`) for keys, builders and messages: `getCanonicalName()` is `null` for anonymous and
+  local classes and lambdas; when the dotted source name is needed, fall back with
+  `name != null ? name : type.getName()` (`pmd/CanonicalNameMayBeNull`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches

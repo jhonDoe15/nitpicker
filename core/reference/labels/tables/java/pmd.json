@@ -21,6 +21,7 @@
   "pmd/BigIntegerInstantiation": ["simplification"],
   "pmd/BooleanFlagParameter": ["maintainability"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
+  "pmd/CanonicalNameMayBeNull": ["bug"],
   "pmd/CheckResultSet": ["bug"],
   "pmd/CheckSkipResult": ["reliability"],
   "pmd/ClassLoadEffect": ["reliability"],
