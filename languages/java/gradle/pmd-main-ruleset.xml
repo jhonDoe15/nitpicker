@@ -1965,6 +1965,52 @@ return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size =
       </property>
     </properties>
   </rule>
+  <rule name="RemoveByKeyDropsNewerValue" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove only the entry this callback owns: map.remove(key, value) (or map.remove(key, this) inside the value class), or computeIfPresent(key, (k, current) -&gt; current == value ? null : current). By the time this callback runs, another caller may have stored a newer value under the same key, and remove(key) deletes that one: an active request or a valid connection disappears. An exception fits when the key can never be stored again while this callback is pending.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'remove'][ArgumentList[@Size = 1]]
+  [*[1][self::VariableAccess or self::FieldAccess]
+        [let $n := @Name
+         return pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+           or exists(ancestor::ClassBody/FieldDeclaration/VariableDeclarator[VariableId/@Name = $n]
+                       [*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')]])]]
+  [let $map := string(*[1]/@Name),
+       $key := ArgumentList/*[1][self::VariableAccess]/@Name,
+       $method := ancestor::MethodDeclaration[1],
+       $lambda := ancestor::LambdaExpression[1],
+       $class := ancestor::ClassDeclaration[1]
+   return exists($method) and exists($key)
+     and (
+       (exists($lambda)
+         and (some $put in $method//MethodCall[@MethodName = ('put', 'putIfAbsent')][ArgumentList[@Size = 2]]
+                [*[1][self::VariableAccess or self::FieldAccess][@Name = $map]]
+                [ArgumentList/*[1][self::VariableAccess][@Name = $key]]
+                [ArgumentList/*[2][self::VariableAccess]]
+              satisfies (let $value := string($put/ArgumentList/*[2]/@Name)
+                         return empty($put/ancestor::LambdaExpression[. is $lambda])
+                           and not($lambda/LambdaParameterList//VariableId/@Name = ($key, $value))
+                           and $lambda/parent::ArgumentList/parent::MethodCall/*[1]/descendant-or-self::VariableAccess[1]/@Name = $value
+                           and empty($lambda//InfixExpression[@Operator = ('==', '!=')][.//VariableAccess[@Name = $value]])
+                           and empty($lambda//MethodCall[@MethodName = ('equals', 'computeIfPresent', 'compute')]))))
+       or
+       (empty($lambda) and $method/@Static = false()
+         and matches($method/@Name,
+               'close|unregister|deregister|release|evict|dispose|cancel|complete|expire|timeout|fail|disconnect|destroy|^on[A-Z]',
+               'i')
+         and (some $field in $class/ancestor-or-self::ClassDeclaration/ClassBody/FieldDeclaration
+                [VariableDeclarator/VariableId/@Name = $map]
+              satisfies $field/ClassType[1]/TypeArguments/*[last()]/@SimpleName = $class/@SimpleName)
+         and empty($method//InfixExpression[@Operator = ('==', '!=')][ThisExpression])
+         and empty($method//MethodCall[@MethodName = ('equals', 'computeIfPresent', 'compute')])
+         and empty($method//MethodCall[@MethodName = 'remove'][ArgumentList[@Size = 2]]))
+     )]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
     <priority>2</priority>

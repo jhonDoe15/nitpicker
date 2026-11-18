@@ -213,6 +213,7 @@ const REVIEW_RULES = new Set([
   'CachedEntityFieldNotSerializable',
   'CompletionWithoutFailurePath',
   'BlockingInCompletionStage',
+  'RemoveByKeyDropsNewerValue',
   'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
