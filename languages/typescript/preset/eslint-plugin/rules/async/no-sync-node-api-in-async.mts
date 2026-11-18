@@ -10,6 +10,7 @@ import { memberName, unwrapped, type Context } from '../security/security-values
 import {
   enclosingContext,
   frameworkNames,
+  isDirectlyIn,
   isStartupFunction,
   isWorkerBranch,
   routeHandlers,
@@ -45,6 +46,9 @@ const CONTEXT_NAMES: Readonly<Record<'async' | 'handler', string>> = {
   async: 'an async function',
   handler: 'a request handler',
 };
+
+const CALLBACK_ADVICE =
+  'a loop in place of the synchronous callback (or `Promise.all` over `map` with an async callback), because `await` cannot go inside it, and then ';
 
 function isWorkerScript(bindings: ModuleBindings, text: string): boolean {
   const named = [...bindings.named.values()].some((name) => WORKER_SCRIPT_BINDINGS.has(name));
@@ -155,13 +159,16 @@ function reportCandidates(
     ) {
       continue;
     }
+    const alternative = family.alternative(name);
     context.report({
       node,
       messageId: 'blocking',
       data: {
         api: name,
         context: CONTEXT_NAMES[found.kind],
-        alternative: family.alternative(name),
+        alternative: isDirectlyIn(node, found.fn)
+          ? alternative
+          : `${CALLBACK_ADVICE}${alternative}`,
       },
     });
   }

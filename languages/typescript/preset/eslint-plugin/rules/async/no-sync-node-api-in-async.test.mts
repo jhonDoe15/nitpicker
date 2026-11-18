@@ -10,9 +10,15 @@ const tester = typescriptRuleTester();
 const families: readonly SyncFamily[] = SYNC_FAMILIES;
 const alternativeOf = (module: string, api: string) =>
   families.find((family) => family.modules.has(module))?.alternative(api);
-const blocking = (api: string, module = 'fs', context = 'an async function') => [
-  { messageId: 'blocking', data: { api, context, alternative: alternativeOf(module, api) } },
+const CALLBACK_ADVICE =
+  'a loop in place of the synchronous callback (or `Promise.all` over `map` with an async callback), because `await` cannot go inside it, and then ';
+const blocking = (api: string, module = 'fs', context = 'an async function', prefix = '') => [
+  {
+    messageId: 'blocking',
+    data: { api, context, alternative: `${prefix}${alternativeOf(module, api)}` },
+  },
 ];
+const inCallback = (api: string) => blocking(api, 'fs', 'an async function', CALLBACK_ADVICE);
 const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
 const WORKER = 'import { isMainThread } from "node:worker_threads";';
 const FS = 'import { readFileSync, writeFileSync } from "node:fs";';
@@ -76,7 +82,27 @@ const blockers: CaseRow[] = [
   ],
   [
     `${FS} export async function load(files) { return files.map((file) => readFileSync(file, "utf8")); }`,
+    inCallback('readFileSync'),
+  ],
+  [
+    'import { existsSync } from "node:fs"; export async function pick(files) { return files.filter((file) => existsSync(file)); }',
+    inCallback('existsSync'),
+  ],
+  [
+    'import fs from "node:fs"; export async function pick(root, names) { return names.find((name) => fs.existsSync(root + name)); }',
+    inCallback('existsSync'),
+  ],
+  [
+    'import { readdirSync, statSync } from "node:fs"; export async function dirs(root) { return readdirSync(root).filter((name) => statSync(root + name).isDirectory()); }',
+    [...blocking('readdirSync'), ...inCallback('statSync')],
+  ],
+  [
+    'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => fs.readFileSync(file))); }',
     blocking('readFileSync'),
+  ],
+  [
+    'import fs from "node:fs"; export async function all(files) { return files.map((file) => { return fs.readFileSync(file); }); }',
+    inCallback('readFileSync'),
   ],
   [
     `${FS} export class Store { async load(path) { return readFileSync(path); } }`,
