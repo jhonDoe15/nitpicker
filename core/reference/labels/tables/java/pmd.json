@@ -29,6 +29,7 @@
   "pmd/ClassLoadEffect": ["reliability"],
   "pmd/CleanupLoopStopsOnFailure": ["bug", "reliability"],
   "pmd/CleanupSkippedOnFailure": ["reliability"],
+  "pmd/CleanupThrowReplacesFailure": ["bug", "reliability"],
   "pmd/CloseDereferencesUnopenedField": ["bug", "reliability"],
   "pmd/CloseResource": ["reliability"],
   "pmd/CollapsibleIfStatements": ["simplification"],
