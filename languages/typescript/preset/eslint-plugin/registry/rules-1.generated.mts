@@ -19,6 +19,7 @@ import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertion
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
+import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
-import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -121,6 +121,7 @@ export const partRules = {
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-cached-rejection': ruleNoCachedRejection,
+  'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
-  'no-shared-test-state': ruleNoSharedTestState,
 };

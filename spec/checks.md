@@ -320,6 +320,13 @@ Affixes removed by replace: `nitpicker/no-unanchored-affix-replace` (production 
 `path.replace(root, '')`, `url.replace(parsed.port, next)`), because it rewrites the first occurrence anywhere. An anchored
 pattern, `endsWith` or `startsWith` with `slice`, `removeSuffix` and a replace guarded by the same check are allowed.
 
+Case-normalized lookups: `nitpicker/no-case-mismatched-lookup` (production source, in `eslint-lint`) and
+`pmd/CaseMismatchedLookup` (Java and Kotlin), `case-mismatched-lookup` (Python) and
+`go-rules/case-mismatched-lookup` (Go) report a lookup whose key is lower-cased or upper-cased in a collection built
+from literals of another case or from a parameter, and a collection filled with the normalized key but read with the
+key as written. Normalizing both sides, a collection of literals already in the key's case and a case-insensitive
+collection are allowed.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

@@ -129,6 +129,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-prefix-without-boundary',
   'nitpicker/no-unanchored-affix-replace',
+  'nitpicker/no-case-mismatched-lookup',
   'nitpicker/no-unmapped-exception',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',

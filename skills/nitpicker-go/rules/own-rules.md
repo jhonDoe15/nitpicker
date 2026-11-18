@@ -191,3 +191,5 @@ the allowed form and ends with its exception entry.
   `x == base || strings.HasPrefix(x, base+"/")` and `host == domain || strings.HasSuffix(host, "."+domain)`, not a bare
   `strings.HasPrefix(x, base)`. Remove a suffix or prefix with `strings.TrimSuffix` and `TrimPrefix`, not
   `strings.Replace(name, ".git", "", 1)` (`go-rules/unanchored-affix-replace`).
+- A lookup key and its collection are normalized the same way (`go-rules/case-mismatched-lookup`): lower-case
+  the keys where the map is filled when the lookup uses `strings.ToLower`.
