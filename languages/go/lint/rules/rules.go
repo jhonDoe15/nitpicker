@@ -16,6 +16,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/indexbound"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/jobs"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lifecycles"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lookups"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/markup"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/nanguard"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/negativecount"
@@ -67,6 +68,7 @@ func Analyzers() []*analysis.Analyzer {
 			indexbound.Analyzer,
 			negativecount.Analyzer,
 			nanguard.Analyzer,
+			lookups.Analyzer,
 		},
 	)
 }

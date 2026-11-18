@@ -154,3 +154,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `host == domain || host.endsWith(".$domain")`, and `URI.getHost()` for a URL.
 - A suffix or prefix is removed with `removeSuffix` or `removePrefix`, never `replace` (`pmd/AffixRemovedByReplace`),
   because `replace` also hits `blog.git.io`.
+- A key lower-cased or upper-cased for a lookup is looked up in a collection normalized the same way (`pmd/CaseMismatchedLookup`): build the set from `values.map { it.lowercase() }`, or use a case-insensitive collection;
+  a map filled with `name.lowercase()` is read with it too.

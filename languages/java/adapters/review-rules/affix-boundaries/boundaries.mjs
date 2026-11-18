@@ -13,7 +13,7 @@ export function literalText(token) {
     : undefined;
 }
 
-function initializerOf(source, name) {
+export function initializerOf(source, name) {
   const { tokens, kotlin } = source;
   const at = tokens.findIndex(
     (token, index) =>

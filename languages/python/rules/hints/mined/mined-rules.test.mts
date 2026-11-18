@@ -15,6 +15,12 @@ describe('mined rule messages', () => {
         'replace, which rewrites the first occurrence anywhere ' +
         '(`blog.github.io` loses its `.git`)',
     ],
+    [
+      'case-mismatched-lookup',
+      'raw|lower|found|item',
+      '`found` is filled with the lower-cased `item` but looked up ' +
+        'with `item` as written, so a value with other capitals misses',
+    ],
   ])('%s describes %s', (rule, subject, expected) => {
     expect(describeRuleFinding(rule, subject)).toBe(expected);
   });

@@ -11,6 +11,11 @@ import {
   AFFIX_REPLACE_EXCEPTION_RULE,
   AFFIX_REPLACE_RULE,
 } from '../../adapters/review-rules/affix-replace/affix-replace.mjs';
+import {
+  CASE_LOOKUP_ALLOWED,
+  CASE_LOOKUP_EXCEPTION_RULE,
+  CASE_LOOKUP_RULE,
+} from '../../adapters/review-rules/case-lookups/case-lookups.mjs';
 
 const READ_FOR_IT = 'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
 
@@ -45,6 +50,22 @@ const ENTRIES = [
       `\`blog.git.io\` loses its \`.git\` and a path that contains ` +
       `the directory twice is rewritten in the wrong place. ` +
       `${READ_FOR_IT}`,
+  },
+  {
+    rule: CASE_LOOKUP_RULE,
+    exception: CASE_LOOKUP_EXCEPTION_RULE,
+    anchor: 'case-normalized-keys-in-collections-that-are-not',
+    allowed: CASE_LOOKUP_ALLOWED,
+    summary:
+      'A `contains`, `get`, `containsKey`, `indexOf` or `remove` ' +
+      'whose key is lower-cased or upper-cased, on a collection ' +
+      'built from literals that are not in that case or from a ' +
+      'parameter, or a key that is normalized where the collection ' +
+      'is filled but passed as written to the lookup.',
+    why:
+      `The lookup misses every value that is not already in the ` +
+      `key's case (a hint such as \`DISABLE_AUDIT_NAMES\` ignoring ` +
+      `names with capitals). ${READ_FOR_IT}`,
   },
 ];
 

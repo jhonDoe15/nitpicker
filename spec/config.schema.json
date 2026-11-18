@@ -2398,6 +2398,7 @@
                             "pmd/WallClockElapsed",
                             "pmd/AffixWithoutBoundary",
                             "pmd/AffixRemovedByReplace",
+                            "pmd/CaseMismatchedLookup",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

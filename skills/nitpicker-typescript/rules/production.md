@@ -221,6 +221,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A suffix or prefix is removed with an anchored check, never a string `replace` (`name.replace('.git', '')`
   also hits `blog.git.io`): `name.replace(/\.git$/, '')`, `endsWith` with `slice`, or `url.port = next` on a parsed
   URL (`nitpicker/no-unanchored-affix-replace`).
+- A key normalized with `toLowerCase()` or `toUpperCase()` is looked up in a collection normalized the same way: build
+  the set with `names.map((name) => name.toLowerCase())`, and fill and read a map with the same normalized key
+  (`nitpicker/no-case-mismatched-lookup`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

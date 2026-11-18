@@ -9,6 +9,7 @@
   "python-rules/boolean-flag-parameter": ["maintainability"],
   "python-rules/cached-rejection": ["bug", "async"],
   "python-rules/cancellation-not-propagated": ["reliability", "async"],
+  "python-rules/case-mismatched-lookup": ["bug"],
   "python-rules/catch-log-without-exception": ["reliability"],
   "python-rules/check-then-write-race": ["bug", "persistence"],
   "python-rules/cleanup-skipped-on-failure": ["reliability"],

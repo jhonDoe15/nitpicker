@@ -154,6 +154,12 @@ const GROUPS = [
     python: 'unanchored-affix-replace',
     go: 'go-rules/unanchored-affix-replace',
   },
+  {
+    jvm: 'CaseMismatchedLookup',
+    typescript: 'nitpicker/no-case-mismatched-lookup',
+    python: 'case-mismatched-lookup',
+    go: 'go-rules/case-mismatched-lookup',
+  },
 ];
 
 function spring(rule) {

@@ -39,6 +39,19 @@ function replaceDescription(subject?: string): string {
 }
 
 
+function lookupDescription(subject?: string): string {
+  const [kind = '', rest = ''] = parts(subject);
+  const [casing = '', collection = '', key = ''] = rest.split(PIPE);
+  return kind === 'raw'
+    ? `\`${collection}\` is filled with the ${casing}-cased ` +
+        `\`${key}\` but looked up with \`${key}\` as written, so a ` +
+        `value with other capitals misses`
+    : `The key is ${casing}-cased but \`${collection}\` holds values ` +
+        `in their original case, so a value that is not already ` +
+        `${casing}-case never matches`;
+}
+
+
 export const MINED_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -59,5 +72,14 @@ export const MINED_HINTS: readonly RuleHint[] = [
       'Use `name.removesuffix(".git")` or `path.removeprefix(root)`, ' +
       'or set the field on the parsed URL ' +
       '(`parsed._replace(netloc=...)`).',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['case-mismatched-lookup'],
+    describe: lookupDescription,
+    allowed:
+      'Normalize both sides where the collection is built ' +
+      '(`{v.lower() for v in values}`), or compare with `casefold()` ' +
+      'on each side.',
   },
 ];
