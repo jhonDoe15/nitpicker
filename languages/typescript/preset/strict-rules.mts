@@ -58,6 +58,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-non-latin1-header-value',
   'nitpicker/no-btoa-on-runtime-text',
   'nitpicker/no-unencoded-url-part',
+  'nitpicker/no-dynamic-import-of-path',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',

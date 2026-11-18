@@ -137,6 +137,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-non-latin1-header-value': 'error',
     'nitpicker/no-btoa-on-runtime-text': 'error',
     'nitpicker/no-unencoded-url-part': 'error',
+    'nitpicker/no-dynamic-import-of-path': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

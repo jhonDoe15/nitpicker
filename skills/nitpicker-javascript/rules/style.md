@@ -178,6 +178,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A value put into a URL is encoded or set through `URL`: `encodeURIComponent(value)` in a query value or a path segment,
   `url.searchParams.set(name, value)` on `new URL(base)` instead of appending `?name=value` to a base that may carry a query,
   and an encoded user name and password in a connection URL (`nitpicker/no-unencoded-url-part`).
+- A dynamic `import()` of a file goes through a file URL: `await import(pathToFileURL(file).href)`, never a path from
+  `path.resolve`, `path.join` or `require.resolve`, which fails on Windows drive paths (`nitpicker/no-dynamic-import-of-path`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
