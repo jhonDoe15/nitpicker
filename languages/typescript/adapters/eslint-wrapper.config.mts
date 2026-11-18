@@ -4,6 +4,7 @@ import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared
 import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mjs';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
+import { guardedEntry } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -43,7 +44,7 @@ export default (
     [...entriesOf(policyModule), ...scopedEntries(extraPolicyModule)],
     process.env,
   )
-).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath));
+).map((entry) => guardedEntry(rebaseTypeScriptProject(entry, projectRoot, projectConfigPath)));
 
 function entriesOf(module: unknown): PolicyEntry[] {
   return listOf(fieldOf(module, DEFAULT_EXPORT)).map(fieldsOf);
