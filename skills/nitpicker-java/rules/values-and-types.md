@@ -43,6 +43,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Widen before you multiply: `System.currentTimeMillis() + ttlSeconds * 1000L`, `(long) hour * 60`,
   `TimeUnit.SECONDS.toMillis(ttlSeconds)` or `Math.multiplyExact`; an `int` product added to a `long` has
   already overflowed (`pmd/IntProductWidenedLate`).
+- Ask the subtype question from the right side before casting to `Foo`: `Foo.class.isAssignableFrom(type)`
+  (`ClassUtils.isAssignable(Foo.class, type)`) or `value instanceof Foo`; `type.isAssignableFrom(Foo.class)`
+  accepts only `Foo` and its supertypes (`pmd/ReversedAssignableCheck`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
