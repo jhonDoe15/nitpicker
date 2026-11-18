@@ -289,12 +289,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - `nitpicker/no-unencoded-url-part`: a URL built in a template literal with a value that is not encoded. It reports a query value
   (`${api}/search?q=${query}`, `?redirect=${target}`, `?ref=${branch}`) whose name says free text (a query, search,
   branch, ref, tag, title, name, message, URL, path, redirect, callback or error value), a path segment of a URL
-  (`https://host/branches/${branch}`) for a branch, ref, tag, title, file name, user name, label, query or e-mail value, a
+  (`https://host/branches/${branch}`) for a branch, ref, tag, title, file name, user name, label, query, token or e-mail value, a
   `?` appended to a callback, redirect, action or return URL that may already carry a query
   (`${callbackURL}?error=${message}`), `new URL(`${path}/x`, base)` with a path that may start with `//`, and a user name or
   password put into the credential slot of a `postgres://`, `mysql://`, `redis://`, `mongodb://` or `amqp://` URL. Numbers,
   ids, constants, URL parts (`url.pathname`), values in `encodeURIComponent`, `encodeURI`, `URLSearchParams` or `.toString()`,
-  tagged templates, text with whitespace and a branch after `/blob/`, `/tree/`, `/heads/` and the like (which keep slashes)
+  tagged templates, text with whitespace, a branch after `/blob/`, `/tree/`, `/heads/`, `/branch/`, `/archive/`,
+  `/tar.gz/` and the like (which keep slashes), a `?` appended to a `...returnUrl` and files named `__mocks__` or `*.mock.*`
   are not reported. Allowed forms: `encodeURIComponent(value)`, `url.searchParams.set(name, value)` on a `new URL(base)`, and
   `key.split('/').map(encodeURIComponent).join('/')` for a key that keeps its slashes. Joins with `+`, doubled slashes and
   ids in paths are not checked.

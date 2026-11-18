@@ -448,7 +448,8 @@ Unencoded URL parts: `nitpicker/no-unencoded-url-part` (production source, in `e
 puts a free-text value into a URL query value or path segment without `encodeURIComponent`, appends `?` to a callback or
 redirect URL that may carry a query, passes a path that may start with `//` to `new URL(path, base)`, or puts a raw user
 name or password into a database connection URL. `URL` with `searchParams`, encoded values, numbers, ids and constants are
-allowed.
+allowed. Constant routes that keep slashes (`/archive/`, `/branch/`) and mock files are skipped.
+
 Dynamic import of a path: `nitpicker/no-dynamic-import-of-path` (production source, in `eslint-lint`) reports `import(x)` where `x`
 is a filesystem path (a `path.resolve`, `path.join`, `require.resolve`, `fileURLToPath` or `realpathSync` result, a current-directory
 concatenation, or a variable named like a path in a Node file that never builds a file URL). `import(pathToFileURL(x).href)`,
@@ -499,7 +500,7 @@ Time-only unique names: `nitpicker/no-time-only-unique-name` (production source,
 directory, file name or record id whose only varying part is the current time (`Date.now()`, `new
 Date().toISOString()`, `performance.now()`): a path under `tmpdir()`, the path given to `mkdir` or `writeFile`, and an
 `id`, `_id`, `uid`, `key` or `name` value or fallback. A random or counter part, or any other variable in the name, is
-
+allowed.
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

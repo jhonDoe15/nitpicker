@@ -19,6 +19,7 @@ import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-un
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
+import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
 import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
@@ -100,6 +101,7 @@ export const partRules = {
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
   'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
