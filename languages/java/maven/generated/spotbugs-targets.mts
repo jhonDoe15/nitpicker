@@ -3,6 +3,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
+import { compiledProgram } from '../programs/helper-programs.mts';
 import {
   type GeneratedLocation,
   PROCESSOR_OUTPUT,
@@ -23,9 +24,11 @@ type ListOptions = {
   readonly reportDir: string;
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly compile?: typeof compiledProgram;
 };
 
 const HELPER = path.join(GRADLE_DIRECTORY, 'generated', 'GeneratedClasses.java');
+const GENERATED_CLASSES = 'GeneratedClasses';
 const TARGET_LIST = 'spotbugs-targets.txt';
 
 function rootArguments(flag: string, roots: readonly string[]): string[] {
@@ -37,6 +40,7 @@ export function handWrittenClasses({
   reportDir,
   spawn,
   timeoutMs,
+  compile = compiledProgram,
 }: ListOptions): SpotbugsTargets | undefined {
   const generated = [
     ...generatedRoots(module, module.sourceRoots),
@@ -46,10 +50,21 @@ export function handWrittenClasses({
     return undefined;
   }
   const list = path.join(reportDir, TARGET_LIST);
+  const classes = compile({
+    tool: GENERATED_CLASSES,
+    name: 'generated-classes',
+    sources: [HELPER],
+    version: '1',
+    libraries: [],
+    cwd: module.basedir,
+    spawn,
+    timeoutMs,
+  });
   runJava({
-    tool: 'GeneratedClasses',
+    tool: GENERATED_CLASSES,
+    classpath: [classes],
+    mainClass: GENERATED_CLASSES,
     args: [
-      HELPER,
       list,
       ...['--classes', module.outputDirectory],
       ...rootArguments('--generated', generated),

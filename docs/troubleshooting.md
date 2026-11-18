@@ -1022,6 +1022,14 @@ Maven runs on is older, and no suitable one is installed in the places nitpicker
 the system package. Or run Maven itself on JDK 21. On Gradle, the toolchain service finds or downloads
 the JDK.
 
+### Tool hosting misbehaves
+
+**Symptom.** A Maven run with several modules prints `nitpicker: Java tools run in separate JVMs per module (tool hosting is off: ...)`, or a Java tool reports something a run on one module does not, or `java` processes named `nitpicker.host.ToolHost` stay after a crashed run.
+
+**Cause.** Maven runs with two or more modules keep one resident JVM per tool (see [Shared tool JVMs on Maven](internals.md#shared-tool-jvms-on-maven)). The first line is only a notice: the run went on with a JVM per tool and module, which is slower, not different. A tool whose static state leaks between modules, or a sandbox that blocks Unix sockets, can make the hosted result differ.
+
+**Fix.** Set `NITPICKER_NO_TOOL_HOSTS=1` to turn hosting off; the results are those of a separate JVM per tool and module. Set `NITPICKER_TOOL_HOSTS_TRACE=<file>` to see which jobs ran hosted. Report a difference with the trace and the tool's name. A host exits by itself when the run that started it is gone; if one remains, kill it by its process id.
+
 ## Platforms
 
 ### Windows and WSL

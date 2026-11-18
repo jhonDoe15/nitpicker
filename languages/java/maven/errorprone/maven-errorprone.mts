@@ -6,6 +6,7 @@ import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
 import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
+import { compiledProgram } from '../programs/helper-programs.mts';
 import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
@@ -44,6 +45,7 @@ type ArgumentSet = CompileSet & {
 };
 
 const ERROR_PRONE = 'errorprone';
+const ERROR_PRONE_TOOL = 'Error Prone';
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, ERROR_PRONE);
 const COMPILER_PACKAGES = [
   ...['api', 'file', 'main', 'model', 'parser'],
@@ -234,18 +236,37 @@ function analyze(
     writeFileSync(report, '[]\n');
     return;
   }
-  runJava({
-    java: errorProneJava({ preview: usesPreview(compiler), spawn, environment }),
+  const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
+  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
+}
+
+type ReportContext = Pick<ErrorProneContext, 'module' | 'spawn' | 'timeoutMs'>;
+
+function runReport(
+  { module, spawn, timeoutMs }: ReportContext,
+  java: string,
+  { report, argumentFiles }: { readonly report: string; readonly argumentFiles: readonly string[] },
+): void {
+  const classes = compiledProgram({
+    tool: ERROR_PRONE_TOOL,
+    name: 'errorprone-report',
+    sources: [path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java')],
+    version: '1',
+    libraries: [],
+    cwd: module.basedir,
     spawn,
     timeoutMs,
-    tool: 'Error Prone',
+    java,
+  });
+  runJava({
+    java,
+    spawn,
+    timeoutMs,
+    tool: ERROR_PRONE_TOOL,
+    classpath: [classes],
+    mainClass: 'ErrorProneReport',
     jvmArgs: [...JVM_FLAGS, ...runnerFlags(timeoutMs)],
-    args: [
-      path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java'),
-      report,
-      path.join(RUNNER_DIRECTORY, 'checks.json'),
-      ...argumentFiles,
-    ],
+    args: [report, path.join(RUNNER_DIRECTORY, 'checks.json'), ...argumentFiles],
     cwd: module.basedir,
     accept: (result) => result.status === 0 && existsSync(report),
   });

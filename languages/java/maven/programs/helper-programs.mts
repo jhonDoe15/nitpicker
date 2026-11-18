@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { javaCommand, runJava } from './java-command.mts';
 import { cacheDirectory, publishDirectory } from '../maven-tools.mjs';
+import { probeJava } from './probe/java-probe-cache.mts';
 
 const PROPERTY_SEPARATOR = ' = ';
 
@@ -25,9 +26,7 @@ type Program = {
 type CacheInput = Pick<Program, 'sources' | 'version' | 'root' | 'release'> & { readonly jdk: Jdk };
 
 function jdkIdentity(tool: string, spawn: JavaSpawn, java: string): Jdk {
-  const result = spawn(java, ['-XshowSettings:properties', '-version'], {
-    encoding: 'utf8',
-  });
+  const result = probeJava(java, ['-XshowSettings:properties', '-version'], spawn);
   if (result.error !== undefined || result.status !== 0) {
     throw new Error(
       `${tool} need the JDK identity, but java -version failed: ${result.error?.message ?? result.stderr}`,
@@ -116,7 +115,7 @@ export function compiledProgram({
         '-d',
         staging,
       ],
-      classpath: libraries,
+      classpath: libraries.length === 0 ? undefined : libraries,
       args: sources,
       cwd,
       spawn,

@@ -1167,6 +1167,14 @@ A full run always runs its head.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
+- `NITPICKER_NO_TOOL_HOSTS`: any value turns off the shared tool JVMs a Maven run with two or more
+  modules uses (see [tool hosting](troubleshooting.md#tool-hosting-misbehaves)). Each tool then starts
+  its own JVM per module, as before. Results are identical; only the time differs.
+- `NITPICKER_TOOL_HOSTS`: set by a Maven run for the tool processes it starts, to the directory of its
+  tool JVMs. Do not set it yourself.
+- `NITPICKER_TOOL_HOSTS_TRACE`: a file the run appends one line to for each tool job
+  (`hosted <tool>`, `fallback <tool>`, `relative <tool>`, or `off <reason>`), for finding out which
+  jobs ran in a shared JVM.
 
 See [typescript-single-command.md](typescript-single-command.md) for the full model, and
 [a stale or shared cache](troubleshooting.md#a-stale-or-shared-cache) when a cached result looks wrong.
