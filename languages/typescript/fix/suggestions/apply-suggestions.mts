@@ -1,5 +1,10 @@
 import { keepsBehaviour } from './suggestion-checks.mts';
-import { isRuleSelected, suggestionName, type LintMessage } from './typed/suggestion-views.mts';
+import {
+  isRuleSelected,
+  pickedSuggestions,
+  suggestionName,
+  type LintMessage,
+} from './typed/suggestion-views.mts';
 
 const BYTE_ORDER_MARK = '﻿';
 
@@ -21,10 +26,14 @@ export function singleSuggestionEdit(
   if (fatal === true || fix !== undefined) {
     return undefined;
   }
-  if (suggestions?.length !== 1) {
+  const picked = ruleId === undefined ? undefined : pickedSuggestions[ruleId];
+  const offered = (suggestions ?? []).filter(
+    ({ messageId }) => picked === undefined || messageId === picked,
+  );
+  if (offered.length !== 1) {
     return undefined;
   }
-  const edit = suggestions[0]?.fix;
+  const edit = offered[0]?.fix;
   const [start, end] = edit?.range ?? [];
   const valid =
     typeof start === 'number' &&

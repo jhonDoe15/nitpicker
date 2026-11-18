@@ -1,6 +1,7 @@
 import {
   isListedSuggestion as untypedIsListedSuggestion,
   isRuleSelected as untypedIsRuleSelected,
+  pickedSuggestions as untypedPickedSuggestions,
   suggestionName as untypedSuggestionName,
   suggestionRules as untypedSuggestionRules,
 } from '../suggestion-rules.mts';
@@ -33,3 +34,5 @@ export const isListedSuggestion: (
 export const suggestionName: (rule: string | undefined) => string = untypedSuggestionName;
 
 export const suggestionRules: Readonly<Record<string, string>> = untypedSuggestionRules;
+
+export const pickedSuggestions: Readonly<Record<string, string>> = untypedPickedSuggestions;

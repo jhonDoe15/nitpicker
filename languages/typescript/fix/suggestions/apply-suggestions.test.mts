@@ -30,6 +30,7 @@ const expected: Readonly<Record<string, string>> = {
     "export function wrap(): number {\n  try {\n    return 1;\n  } catch (error) {\n    throw new Error('failed', { cause: error });\n  }\n}\n",
   '@typescript-eslint/require-await':
     'function one(): number {\n  return 1;\n}\n\nexport async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n',
+  'no-useless-escape': "export const dot = 'a.b';\n",
   '@typescript-eslint/prefer-find':
     'export function first(names: readonly string[]): string | undefined {\n  return names.find((name) => name.length > 2);\n}\n',
   '@typescript-eslint/await-thenable':
