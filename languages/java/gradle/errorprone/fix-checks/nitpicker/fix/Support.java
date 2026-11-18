@@ -15,10 +15,15 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.type.TypeKind;
 
 /** Shared helpers of the fix-only checks: removals, imports and source text. */
 final class Support {
@@ -150,6 +155,33 @@ final class Support {
       }
     }
     fix.removeImport(found.getQualifiedIdentifier().toString());
+  }
+
+  static boolean stableValue(Type type, VisitorState state) {
+    if (type == null || type.getKind() != TypeKind.DECLARED || !(type.tsym instanceof Symbol.ClassSymbol)) {
+      return false;
+    }
+    Types types = state.getTypes();
+    if (types.unboxedType(type).isPrimitive()
+        || type.tsym.getQualifiedName().contentEquals("java.lang.String")
+        || type.tsym.getKind() == ElementKind.ENUM
+        || type.tsym.getKind() == ElementKind.RECORD) {
+      return true;
+    }
+    if (type.tsym.isInterface() || type.tsym.getKind() != ElementKind.CLASS) {
+      return false;
+    }
+    for (Type current = type; current != null && current.tsym != null; current = types.supertype(current)) {
+      if (current.tsym.getQualifiedName().contentEquals("java.lang.Object")) {
+        return true;
+      }
+      for (Symbol member : current.tsym.members().getSymbols()) {
+        if (member instanceof Symbol.VarSymbol field && !field.isStatic() && (field.flags() & Flags.FINAL) == 0) {
+          return false;
+        }
+      }
+    }
+    return false;
   }
 
   static Boolean emptiness(Tree.Kind kind, int constant) {
