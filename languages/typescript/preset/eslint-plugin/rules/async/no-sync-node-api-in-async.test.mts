@@ -18,6 +18,9 @@ const blocking = (api: string, module = 'fs', context = 'an async function', pre
     data: { api, context, alternative: `${prefix}${alternativeOf(module, api)}` },
   },
 ];
+const suggested = (api: string, output: string, module = 'fs') => [
+  { ...blocking(api, module)[0], suggestions: [{ messageId: 'awaitTwin', output }] },
+];
 const inCallback = (api: string) => blocking(api, 'fs', 'an async function', CALLBACK_ADVICE);
 const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
 const WORKER = 'import { isMainThread } from "node:worker_threads";';
@@ -29,20 +32,29 @@ const blockers: CaseRow[] = [
     blocking('readFileSync'),
   ],
   [
-    'import * as fs from "fs"; export const save = async (path, data) => { fs.writeFileSync(path, data); };',
-    blocking('writeFileSync'),
+    'import * as fs from "fs"; export const save = async (path, data) => { fs.writeFileSync("a.txt", data); };',
+    suggested(
+      'writeFileSync',
+      'import * as fs from "fs"; export const save = async (path, data) => { await fs.promises.writeFile("a.txt", data); };',
+    ),
   ],
   [
     'import fs from "node:fs"; export async function stat(path) { return fs.statSync(path); }',
-    blocking('statSync'),
+    suggested(
+      'statSync',
+      'import fs from "node:fs"; export async function stat(path) { return await fs.promises.stat(path); }',
+    ),
   ],
   [
     'import { readFileSync as read } from "node:fs"; export async function load(path) { return read(path); }',
     blocking('readFileSync'),
   ],
   [
-    'const fs = require("fs"); exports.load = async function (path) { return fs.readFileSync(path); };',
-    blocking('readFileSync'),
+    'const fs = require("fs"); exports.load = async function (path) { return fs.readFileSync("a.txt"); };',
+    suggested(
+      'readFileSync',
+      'const fs = require("fs"); exports.load = async function (path) { return await fs.promises.readFile("a.txt"); };',
+    ),
   ],
   [
     'const { readFileSync } = require("node:fs"); exports.load = async (path) => readFileSync(path);',
@@ -97,8 +109,11 @@ const blockers: CaseRow[] = [
     [...blocking('readdirSync'), ...inCallback('statSync')],
   ],
   [
-    'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => fs.readFileSync(file))); }',
-    blocking('readFileSync'),
+    'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => fs.readFileSync("a.txt"))); }',
+    suggested(
+      'readFileSync',
+      'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => await fs.promises.readFile("a.txt"))); }',
+    ),
   ],
   [
     'import fs from "node:fs"; export async function all(files) { return files.map((file) => { return fs.readFileSync(file); }); }',
