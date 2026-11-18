@@ -8,7 +8,7 @@ import {
   effectsOptions,
   effectsProperties,
   moduleEffectsOptions,
-} from './effects-options.mjs';
+} from './effects-options.mts';
 
 const roots: string[] = [];
 

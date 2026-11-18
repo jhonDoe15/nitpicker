@@ -1,4 +1,4 @@
-import { gradleTarget } from '../gradle-wrapper/gradle-command.mjs';
+import { gradleTarget } from '../gradle-wrapper/gradle-command.mts';
 import { gradleOptions } from '../gradle-wrapper/gradle-stages.mts';
 import { type GradleResult, runGradle } from '../gradle-wrapper/gradle-process.mts';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mts';
@@ -6,8 +6,8 @@ import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/fa
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
-import { failingTestsError } from '../../builds/test-failures.mjs';
-import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mjs';
+import { failingTestsError } from '../../builds/test-failures.mts';
+import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mts';
 import { MINUTE_MS } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
@@ -98,7 +98,7 @@ export function runGradleStage({
   policy,
   spawn,
 }: StageRun): void {
-  const target: unknown = gradleTarget({ projectRoot, configured: gradle, args });
+  const target: unknown = callUntyped(gradleTarget, { projectRoot, configured: gradle, args });
   const command = textOf(fieldOf(target, 'command'));
   const result = runGradle(
     command,

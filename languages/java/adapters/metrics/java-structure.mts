@@ -9,7 +9,7 @@ import {
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mts';
 import { javaLineLengthFindings } from '../size/line-length.mts';
-import { javaLineLength } from '../style/java-style.mjs';
+import { javaLineLength } from '../style/java-style.mts';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';

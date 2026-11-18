@@ -2,12 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import {
-  type InheritedMethod,
-  type Locate,
-  inheritedMethod,
-  superclassOf,
-} from './inherited-tests.mts';
+import { type InheritedMethod, inheritedMethod, superclassOf } from './inherited-tests.mts';
+import type { Locate } from './typed/locate-type.mts';
 import { templateMethods, testMethod } from './test-methods.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 import {

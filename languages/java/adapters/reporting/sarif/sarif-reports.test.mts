@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
-import { readSarifReport, sarifFindings } from './sarif-reports.mjs';
+import { readSarifReport, sarifFindings } from './sarif-reports.mts';
 
 type Context = {
   readonly projectRoot: string;

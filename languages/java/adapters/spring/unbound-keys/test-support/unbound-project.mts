@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { unboundPropertyProblems } from '../unbound-keys.mjs';
+import { unboundPropertyProblems } from '../unbound-keys.mts';
 import { callUntyped } from '../../../typed/java-values.mts';
 import { fieldsOf, listOf, textOf } from '../../../../../../shared/values/readers.mts';
 import { metadataJson, writeJar } from './metadata-jar.mts';

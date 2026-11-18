@@ -9,8 +9,8 @@ import {
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import { GRADLE_DIRECTORY, readPinnedTools } from '../../../builds/java-build.mjs';
-import { javaCommand, runJava } from '../../../maven/maven-command.mjs';
+import { GRADLE_DIRECTORY, readPinnedTools } from '../../../builds/java-build.mts';
+import { javaCommand, runJava } from '../../../maven/maven-command.mts';
 import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
@@ -27,7 +27,7 @@ type CompileOptions = {
   readonly timeoutMs: undefined;
 };
 const gradleDirectory: string = GRADLE_DIRECTORY;
-const pinnedAsm: () => { readonly asm: string } = readPinnedTools;
+const pinnedAsm: () => Readonly<Record<string, string>> = readPinnedTools;
 const javaBinary: (name: string) => string = javaCommand;
 const sourcesOf: (directory: string, options: { recursive: boolean }) => string[] = programSources;
 const compile: (options: CompileOptions) => string = compiledProgram;
@@ -106,7 +106,7 @@ export function runEngineOnSamples({ maven = 'mvn' }: { maven?: string } = {}): 
   work: string;
   report: unknown;
 } {
-  const version = pinnedAsm().asm;
+  const version = pinnedAsm()['asm'] ?? '';
   const libraries = asmJars(maven, version);
   const engineSources = path.join(gradleDirectory, NAME);
   const engine = compile({

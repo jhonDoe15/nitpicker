@@ -46,7 +46,7 @@ const E2E_EVIDENCE = {
   ),
   'line: checkstyle/FileTabCharacter over checkstyle/Indentation': path.resolve(
     import.meta.dirname,
-    '../../maven/preset/maven-preset-checkstyle.e2e.test.mjs',
+    '../../maven/preset/maven-preset-checkstyle.e2e.test.mts',
   ),
 };
 const roots: string[] = [];

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { untrimmedRequestTextProblems as problemsUntyped } from './untrimmed-request-text.mjs';
+import { untrimmedRequestTextProblems as problemsUntyped } from './untrimmed-request-text.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

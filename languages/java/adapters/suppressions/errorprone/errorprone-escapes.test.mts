@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { INLINE_SUPPRESSION_RULE, fileFindings } from '../java-suppressions.mjs';
+import { INLINE_SUPPRESSION_RULE, fileFindings } from '../java-suppressions.mts';
 import { callUntyped, findingsOf } from '../../typed/java-values.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { ERROR_PRONE_MESSAGE } from './errorprone-escapes.mjs';
+import { ERROR_PRONE_MESSAGE } from './errorprone-escapes.mts';
 
 const ROUTE = textOf(
   callUntyped(exceptionRoute, { rule: 'errorprone/InlineSuppression', path: 'A.java' }),

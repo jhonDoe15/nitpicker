@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { collectJavaFindings } from '../../java-diff.mts';
-import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out/fan-out-details.mjs';
+import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out/fan-out-details.mts';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence as appendUntyped } from '../../../../../shared/messages/exception-sentence.mjs';
 import { textOf } from '../../../../../shared/values/readers.mts';

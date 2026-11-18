@@ -10,7 +10,7 @@ import { appendSentence, exceptionRoute } from '../../test-support/views/java-e2
 import {
   REUSABLE_OBJECT_MESSAGE as REUSABLE_OBJECT_MESSAGE_UNTYPED,
   REUSABLE_OBJECT_RULE as REUSABLE_OBJECT_RULE_UNTYPED,
-} from '../../../../messages/reuse/reusable-objects.mjs';
+} from '../../../../messages/reuse/reusable-objects.mts';
 
 const REUSABLE_OBJECT_MESSAGE: string = REUSABLE_OBJECT_MESSAGE_UNTYPED;
 const REUSABLE_OBJECT_RULE: string = REUSABLE_OBJECT_RULE_UNTYPED;

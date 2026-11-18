@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import {
   blankLiterals as blankLiteralsUntyped,
   pathInside as pathInsideUntyped,
-} from '../review-rules/java-sources.mjs';
+} from '../review-rules/java-sources.mts';
 
 const blankLiterals: (text: string) => string = blankLiteralsUntyped;
 const pathInside: (base: string, relative: string) => string = pathInsideUntyped;

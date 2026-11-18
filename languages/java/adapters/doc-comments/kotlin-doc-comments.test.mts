@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kotlinDocComments as untypedKotlinDocComments } from './kotlin-doc-comments.mjs';
+import { kotlinDocComments as untypedKotlinDocComments } from './kotlin-doc-comments.mts';
 
 const kotlinDocComments: (
   source: string,

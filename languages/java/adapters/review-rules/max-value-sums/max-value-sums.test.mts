@@ -2,22 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  MAX_VALUE_RULE,
-  readMaxValueFindings as untypedReadMaxValueFindings,
-} from './max-value-sums.mjs';
-
-type MaxValueFinding = {
-  readonly rule: string;
-  readonly path: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
-
-const readMaxValueFindings: (
-  projectRoot: string,
-  options: { readonly projects: readonly unknown[]; readonly kotlin: boolean },
-) => MaxValueFinding[] = untypedReadMaxValueFindings;
+import { MAX_VALUE_RULE, readMaxValueFindings } from './max-value-sums.mts';
 
 const roots: string[] = [];
 const PROJECT = {

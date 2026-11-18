@@ -6,13 +6,13 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
+import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mts';
 import {
   INLINE_SUPPRESSIBLE_RULES,
   INLINE_SUPPRESSION_RULE,
   fileFindings as fileFindingsUntyped,
   readInlineSuppressionFindings as readInlineSuppressionFindingsUntyped,
-} from './java-suppressions.mjs';
+} from './java-suppressions.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 

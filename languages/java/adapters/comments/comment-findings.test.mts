@@ -7,7 +7,7 @@ import {
   commentFindings as untypedCommentFindings,
   readCommentFindings as untypedReadCommentFindings,
   TASK_MARKER_RULE,
-} from './comment-findings.mjs';
+} from './comment-findings.mts';
 
 import type { JavaFinding } from '../typed/java-values.mts';
 

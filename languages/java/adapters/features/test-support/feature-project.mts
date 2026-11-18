@@ -129,13 +129,13 @@ const GRAPH_RULES = new Set([
 
 export function projectFindings(
   project: FeatureTestProject,
-  { kotlin = false, policy = {} }: Partial<{ kotlin: boolean; policy: JavaPolicy }> = {},
+  { kotlin, policy = {} }: { kotlin?: true | undefined; policy?: JavaPolicy } = {},
 ): JavaFinding[] {
   const { findings } = projectWideReport(project.root, {
     projects: project.projects,
     mergedRoot: path.join(project.root, '.reports', 'merged'),
     manifest: { sourceRoots: project.projects[0]?.sourceRoots ?? [] },
-    kotlin,
+    kotlin: kotlin === true,
     policy,
   });
   return findings.filter(({ rule }) => GRAPH_RULES.has(rule) || rule.startsWith('domain-'));

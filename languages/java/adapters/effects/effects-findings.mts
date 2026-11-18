@@ -5,7 +5,7 @@ import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/
 import {
   sourceFileOf as untypedSourceFileOf,
   sourceLocator as untypedSourceLocator,
-} from '../reporting/kotlin-reports.mjs';
+} from '../reporting/kotlin-reports.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import {
   fieldOf,
@@ -15,7 +15,7 @@ import {
   textsOf,
 } from '../../../../shared/values/readers.mts';
 import { callUntyped, type JavaFinding } from '../typed/java-values.mts';
-import { EFFECTS_MESSAGES } from './effects-messages.mjs';
+import { EFFECTS_MESSAGES } from './effects-messages.mts';
 import { reportOf, type EffectsReport, type LocatedFact } from './effects-types.mts';
 
 type Locator = (packageDirectory: string, fileName: string) => string | undefined;

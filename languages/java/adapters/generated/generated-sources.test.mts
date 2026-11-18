@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   isGeneratedJvm,
   withoutGeneratedSources as untypedWithoutGeneratedSources,
-} from './generated-sources.mjs';
+} from './generated-sources.mts';
 
 const withoutGeneratedSources: (
   findings: { path: string; rule: string }[],

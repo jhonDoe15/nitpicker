@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { classLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
-import { inModule } from '../../builds/module-path.mjs';
+import { inModule } from '../../builds/module-path.mts';
 import { inheritanceDepths } from './inheritance.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';

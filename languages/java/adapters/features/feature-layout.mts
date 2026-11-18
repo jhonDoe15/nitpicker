@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mjs';
+import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mts';
 import { featureUnits } from './feature-units.mts';
 import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';

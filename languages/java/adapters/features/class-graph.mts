@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { inModule as inModuleUntyped } from '../../builds/module-path.mjs';
+import { inModule as inModuleUntyped } from '../../builds/module-path.mts';
 import {
   kotlinModules as kotlinModulesUntyped,
   readKotlinMetrics as readKotlinMetricsUntyped,
-} from '../kotlin/kotlin-metrics.mjs';
-import { outerClass as outerClassUntyped } from '../../ingest/class-names.mjs';
+} from '../kotlin/kotlin-metrics.mts';
+import { outerClass as outerClassUntyped } from '../../ingest/class-names.mts';
 import { parseJdeps } from '../metrics/java-coupling.mts';
+import type { Metrics } from '../kotlin/kotlin-metrics.mts';
 import type { KotlinModules } from '../metrics/java-coupling-types.mts';
 import { readDeclarations as readDeclarationsUntyped } from '../review-rules/source-declarations.mts';
 import type {
@@ -25,8 +26,8 @@ type ProjectRead = {
 };
 
 const inModule: (modulePath: string | undefined, relativePath: string) => string = inModuleUntyped;
-const readKotlinMetrics: (reportRoot: string) => unknown = readKotlinMetricsUntyped;
-const kotlinModules: (metrics: unknown) => KotlinModules = kotlinModulesUntyped;
+const readKotlinMetrics: (reportRoot: string) => Metrics = readKotlinMetricsUntyped;
+const kotlinModules: (metrics: Metrics) => KotlinModules = kotlinModulesUntyped;
 const outerClass: (className: string) => string = outerClassUntyped;
 const readDeclarations: (
   projectRoot: string,

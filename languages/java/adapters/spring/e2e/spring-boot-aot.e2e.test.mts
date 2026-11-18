@@ -3,7 +3,7 @@ import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync }
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 import { fieldOf, parseJson } from '../../../../../shared/values/readers.mts';
 
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
