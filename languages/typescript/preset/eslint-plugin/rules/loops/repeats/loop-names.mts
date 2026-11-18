@@ -5,9 +5,12 @@ import {
   type LoopNode,
   type VisitorKeys,
 } from '../loop-shapes.mts';
+import { nameOf } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 type Declared = TSESTree.Node | null | undefined;
+
+const CONSUMING_METHODS = new Set(['shift', 'pop', 'next', 'dequeue']);
 
 function patternNames(pattern: Declared): string[] {
   if (pattern === null || pattern === undefined) {
@@ -47,6 +50,23 @@ export function bodyDeclaredNames(loop: LoopNode, visitorKeys: VisitorKeys): Set
   );
 }
 
+export function isConsumingCall(node: TSESTree.Node): boolean {
+  const value = node.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
+  return (
+    value.type === AST_NODE_TYPES.CallExpression &&
+    value.callee.type === AST_NODE_TYPES.MemberExpression &&
+    CONSUMING_METHODS.has(nameOf(value.callee.property) ?? '')
+  );
+}
+
+function isOwnStep(node: TSESTree.AssignmentExpression, visitorKeys: VisitorKeys): boolean {
+  const own = patternNames(node.left);
+  const steps =
+    node.right.type === AST_NODE_TYPES.BinaryExpression ||
+    node.right.type === AST_NODE_TYPES.MemberExpression;
+  return steps && own.some((name) => referencedNames(node.right, visitorKeys).has(name));
+}
+
 function isSelfStep(node: TSESTree.Node, visitorKeys: VisitorKeys): boolean {
   if (node.type === AST_NODE_TYPES.UpdateExpression) {
     return true;
@@ -54,12 +74,16 @@ function isSelfStep(node: TSESTree.Node, visitorKeys: VisitorKeys): boolean {
   if (node.type !== AST_NODE_TYPES.AssignmentExpression) {
     return false;
   }
-  const own = patternNames(node.left);
-  return (
-    node.operator !== '=' ||
-    (node.right.type === AST_NODE_TYPES.BinaryExpression &&
-      own.some((name) => referencedNames(node.right, visitorKeys).has(name)))
-  );
+  return node.operator !== '=' || isConsumingCall(node.right) || isOwnStep(node, visitorKeys);
+}
+
+function testAssignedNames(loop: LoopNode, visitorKeys: VisitorKeys): string[] {
+  const test = 'test' in loop ? loop.test : undefined;
+  return test === null || test === undefined
+    ? []
+    : descendants(test, visitorKeys, isFunction)
+        .filter((node) => node.type === AST_NODE_TYPES.AssignmentExpression)
+        .flatMap((node) => patternNames(node.left));
 }
 
 function updatedNames(loop: LoopNode, visitorKeys: VisitorKeys): string[] {
@@ -85,7 +109,11 @@ export function itemNames(found: EnclosingLoop, visitorKeys: VisitorKeys): Set<s
     return new Set(declarationNames(loop.left));
   }
   const init = loop.type === AST_NODE_TYPES.ForStatement ? loop.init : undefined;
-  return new Set([...declarationNames(init), ...updatedNames(loop, visitorKeys)]);
+  return new Set([
+    ...declarationNames(init),
+    ...updatedNames(loop, visitorKeys),
+    ...testAssignedNames(loop, visitorKeys),
+  ]);
 }
 
 export function referencedNames(node: TSESTree.Node, visitorKeys: VisitorKeys): Set<string> {
