@@ -37,7 +37,6 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     messages: wastedStepMessages,
   },
   create(context) {
-    const { sourceCode } = context;
     const report = optionalReporter(context);
     return {
       MemberExpression(member) {
@@ -56,7 +55,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         report(fallbackSpread(context, spread));
       },
       LogicalExpression(logical) {
-        report(lengthCheck(sourceCode, logical));
+        report(lengthCheck(context, logical));
       },
     };
   },

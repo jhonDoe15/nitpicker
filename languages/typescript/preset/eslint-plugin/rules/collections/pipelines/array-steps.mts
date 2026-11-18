@@ -1,4 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { lengthCheckFix } from '../../../fixes/collections/length-check-fix.mts';
+import { fixable } from '../../../fixes/support/descriptors.mts';
+import type { Context } from '../../security/security-values.mts';
 import { isNode, type SourceCode } from '../../typed/node-views.mts';
 import {
   calledMember,
@@ -190,12 +193,13 @@ function lengthRead(node: TSESTree.Node): TSESTree.MemberExpression | undefined 
 }
 
 export function lengthCheck(
-  sourceCode: SourceCode,
+  context: Context,
   logical: TSESTree.LogicalExpression,
 ): TSESLint.ReportDescriptor<'lengthCheck'> | undefined {
   if (logical.operator === '??') {
     return undefined;
   }
+  const { sourceCode } = context;
   const length = lengthTest(sourceCode, logical.left);
   const method = logical.operator === '&&' ? 'some' : 'every';
   const tests = logical.operator === '&&' ? NON_EMPTY : EMPTY;
@@ -207,10 +211,13 @@ export function lengthCheck(
     !hasCall(called.receiver) &&
     sourceCode.getText(called.receiver) === length.receiver;
   return same
-    ? {
-        node: logical.left,
-        messageId: 'lengthCheck',
-        data: { method, answer: String(method === 'every') },
-      }
+    ? fixable(
+        {
+          node: logical.left,
+          messageId: 'lengthCheck',
+          data: { method, answer: String(method === 'every') },
+        },
+        lengthCheckFix(context, logical, called.receiver),
+      )
     : undefined;
 }
