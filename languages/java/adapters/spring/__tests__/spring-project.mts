@@ -201,6 +201,7 @@ const REVIEW_RULES = new Set([
   'CallValueStoredInSharedField',
   'BufferNeverReleased',
   'PooledFieldNotReset',
+  'HandleReleasedOnlyOnSuccess',
   'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',

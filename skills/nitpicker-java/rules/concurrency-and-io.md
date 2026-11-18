@@ -95,6 +95,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A pooled object (a class that recycles itself through a `Recycler` or `ObjectPool` handle) resets every field it
   assigns after creation before `handle.recycle(this)` (`position = null;`), or assigns it in every factory method
   (`pmd/PooledFieldNotReset`).
+- A handle that a `thenCompose` or `thenApply` lambda receives (a ledger, a pooled connection, a channel) is released
+  in `whenComplete` or `handle` so it also runs when a later stage fails, never only in a nested `thenApply`
+  (`pmd/HandleReleasedOnlyOnSuccess`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the

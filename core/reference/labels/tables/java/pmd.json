@@ -62,6 +62,7 @@
   "pmd/GenericTypeName": ["style"],
   "pmd/GlobalStateLeakInTest": ["tests"],
   "pmd/GuardLogStatement": ["performance"],
+  "pmd/HandleReleasedOnlyOnSuccess": ["bug", "async"],
   "pmd/HardcodedSecret": ["security"],
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/InconsistentFieldLocking": ["bug"],
