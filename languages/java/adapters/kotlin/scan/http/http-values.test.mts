@@ -114,6 +114,14 @@ describe('httpValues', () => {
       'fun f(request: HttpServletRequest) = request.contentType.split(";")',
     ],
     [
+      'the parameters after the semicolon',
+      'fun f(request: HttpServletRequest) = request.contentType.split(";")[1]',
+    ],
+    [
+      'a semicolon split of Accept',
+      'fun f(request: HttpServletRequest) = request.getHeader("Accept").split(";")[0]',
+    ],
+    [
       'a split with a regex',
       'fun f(headers: HttpHeaders) = headers["Cookie"]!!.split(Regex("\\\\s*;\\\\s*"))',
     ],
@@ -129,6 +137,14 @@ describe('httpValues', () => {
     [
       'a forwarded-for list',
       'fun f(request: HttpServletRequest) = request.getHeader("X-Forwarded-For").split(",")',
+    ],
+    [
+      'the media type read as the part before the semicolon',
+      'fun f(request: HttpServletRequest) = request.contentType.split(";")[0].trim().lowercase()',
+    ],
+    [
+      'the media type read with first()',
+      'fun f(request: HttpServletRequest) = request.contentType.split(";").first().trim()',
     ],
     ['a split on a slash', 'fun f(request: HttpServletRequest) = request.contentType.split("/")'],
     ['a split of another string', 'fun f(text: String) = text.split(",")'],

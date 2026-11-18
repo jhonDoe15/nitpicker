@@ -28,6 +28,10 @@ tester.run('no-raw-http-value', rule, {
     "const type = headers.get('content-type'); if (type === null) { run(); }",
     "const type = headers.get('content-type'); if (type === other) { run(); }",
     "const [first] = headers.get('x-forwarded-for').split(',');",
+    "const contentType = headers.get('content-type'); const mediaType = contentType?.split(';')[0].trim().toLowerCase();",
+    "const mediaType = req.headers['content-type'].split(';')[0].trim().toLowerCase();",
+    "const mediaType = headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();",
+    "const vary = res.headers.get('vary') || ''; if (!/(?:^|,)\\s*(?:\\*|accept-encoding)\\s*(?:,|$)/i.test(vary)) { run(); }",
     "const parts = req.headers['content-type'].split('/');",
     "const type = headers.get('content-type'); let copy = type; copy = 'x'; if (copy === 'text/html') { run(); }",
     "const value = headers.get('Content-Type');",
@@ -99,6 +103,19 @@ tester.run('no-raw-http-value', rule, {
       [
         "const [type, charset] = request.headers['content-type'].split(';');",
         handSplit('content-type'),
+      ],
+      [
+        "const [, charset] = request.headers['content-type'].split(';');",
+        handSplit('content-type'),
+      ],
+      ["const param = request.headers['content-type'].split(';')[1];", handSplit('content-type')],
+      [
+        "const vary = res.headers.get('vary') || ''; if (!/(?:^|,)(?:\\*|accept-encoding)(?:,|$)/i.test(vary)) { run(); }",
+        handSplit('vary'),
+      ],
+      [
+        "const type = headers.get('accept')?.split(';')[0].trim().toLowerCase();",
+        handSplit('accept'),
       ],
       ['const cookies = req.headers.cookie.split(/;\\s*/);', handSplit('cookie')],
       [

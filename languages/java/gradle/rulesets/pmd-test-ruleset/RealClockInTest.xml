@@ -1,5 +1,5 @@
   <rule name="RealClockInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This test reads the real clock, so its result depends on when it runs. Pass a fixed time in: a Clock.fixed(...) the subject takes, now(clock) with that clock, or a fixed Instant. Measuring elapsed time or a polling deadline is allowed: System.nanoTime(), a start time subtracted later, or now() compared in a loop.">
+        message="This test reads the real clock, so its result depends on when it runs. Pass a fixed time in: a Clock.fixed(...) the subject takes, now(clock) with that clock, or a fixed Instant. An Instant that only marks presence (setDeletedAt(Instant.now())), bases relative values or feeds Clock.fixed is allowed, and so is measuring elapsed time or a polling deadline: System.nanoTime(), a start time subtracted later, or now() compared in a loop.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -33,7 +33,22 @@ let $timeTypes := ('Instant', 'LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedD
           $name := string($declarator/VariableId/@Name),
           $scope := $declarator/ancestor::*[self::Block or self::LambdaExpression][1],
           $uses := $scope//VariableAccess[@Name = $name]
-      return $name != '' and exists($uses) and (every $use in $uses satisfies $measured($use)) }
+      return $name != '' and exists($uses) and (every $use in $uses satisfies $measured($use)) },
+    $relativeTop := function($n) {
+      $n/ancestor-or-self::*[not(parent::MethodCall[matches(@MethodName, '^(?:plus|minus)')] and not(preceding-sibling::*))][1] },
+    $marker := function($t) {
+      exists($t/parent::ArgumentList[@Size = 1]/parent::MethodCall[matches(@MethodName, '^set\w*(?:Timestamp|At|Time|Instant|Date|On)$')])
+      or exists($t/parent::ArgumentList/parent::MethodCall[@MethodName = 'fixed']
+                  [*[1][self::TypeExpression/ClassType/@SimpleName = 'Clock']]) },
+    $presence := function($n) {
+      let $t := $relativeTop($n),
+          $declarator := $t/parent::VariableDeclarator[parent::LocalVariableDeclaration],
+          $name := string($declarator/VariableId/@Name),
+          $scope := $declarator/ancestor::*[self::Block or self::LambdaExpression][1],
+          $uses := $scope//VariableAccess[@Name = $name]
+      return $marker($t)
+        or ($name != '' and exists($uses)
+            and (every $use in $uses satisfies ($measured($use) or $marker($relativeTop($use))))) }
 return
 (
   //MethodCall[pmd-java:matchesSig('java.time.Instant#now()')
@@ -57,6 +72,7 @@ return
   | //ConstructorCall[pmd-java:typeIsExactly('java.util.Date')][ArgumentList/@Size = 0]
 )
   [not($measured(.) or $local(.))]
+  [not(self::MethodCall[pmd-java:matchesSig('java.time.Instant#now()')][$presence(.)])]
   [not(ancestor::CompilationUnit//MethodCall[@MethodName = 'mockStatic']
          /ArgumentList/ClassLiteral/ClassType/@SimpleName = $timeTypes)]
 ]]></value>

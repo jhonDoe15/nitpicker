@@ -24,6 +24,12 @@ export const STEREOTYPES = group(
   inPackage(STEREOTYPE, 'Component', 'Service', 'Repository', 'Controller'),
   inPackage(WEB, 'RestController', 'ControllerAdvice', 'RestControllerAdvice'),
 );
+export const PROPERTY_READERS = group(
+  [...STEREOTYPES],
+  inPackage(`${SPRING}.boot.context.properties`, 'ConfigurationProperties'),
+  twins('inject.Named', 'annotation.ManagedBean'),
+  inPackage('org.aspectj.lang.annotation', 'Aspect'),
+);
 export const CONTROLLERS = group(
   inPackage(STEREOTYPE, 'Controller'),
   inPackage(WEB, 'RestController'),

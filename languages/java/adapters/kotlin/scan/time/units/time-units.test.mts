@@ -61,6 +61,7 @@ describe('timeUnitMismatches', () => {
       'fun open(ttlSeconds: Long) = connect(timeoutMs = ttlSeconds)',
     ],
     ['delay with seconds', 'suspend fun pause(retrySeconds: Long) { delay(retrySeconds) }'],
+    ['a millisecond name stored as seconds', 'val elapsedSecs = elapsedMs'],
     [
       'a local val keeps the unit of its clock',
       'fun stale(limitSeconds: Long): Boolean {\n        val now = System.currentTimeMillis()\n        return now > limitSeconds\n    }',
@@ -107,6 +108,8 @@ describe('timeUnitMismatches', () => {
     ['unit text in a string', 'val hint = "timeoutMs = ttlSeconds"'],
     ['a named constant factor', 'fun ms(ttlSeconds: Long) = ttlSeconds * MILLIS_PER_SECOND'],
     ['division by a whole second', 'val nowSeconds = System.currentTimeMillis() / 1000'],
+    ['division of a millisecond name', 'val elapsedSecs = elapsedMs / 1000.0'],
+    ['a second name times a thousand', 'val timeoutMs = timeoutSecs * 1000'],
     [
       'chained on a new line',
       'fun ms(ttlSeconds: Long) = Duration\n        .ofSeconds(ttlSeconds)\n        .toMillis()',
