@@ -77,6 +77,9 @@ const KOTLIN_WORD_LIST = [
 ];
 const KOTLIN_WORDS = new RegExp(String.raw`\b(?:${KOTLIN_WORD_LIST.join('|')})\b`, 'g');
 const VALUE_SHAPES = new Set([0, 2]);
+const CONTROL_SHAPE = 3;
+const STRONG_SHAPES = new Set([0, 3, 4, 5, 6, 7]);
+const NEUTRAL_LINE = /^(?:[\]})]+[,;]?)?$/;
 
 export function generatedFile(scanned) {
   const header = scanned.comments.find(({ start }) => scanned.code.slice(0, start).trim() === '');
@@ -205,12 +208,30 @@ function readsAsProse(text) {
   return WORD_RUN.test(withoutGroups(keywordsMarked));
 }
 
-function isCodeLine(text) {
+function codeShape(text) {
   if (text === '' || SENTENCE.test(text) || NOT_CODE.test(text)) {
-    return false;
+    return -1;
   }
   const shape = CODE_SHAPES.findIndex((candidate) => candidate.test(text));
-  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text));
+  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text)) ? shape : -1;
+}
+
+function isCodeLine(text) {
+  return codeShape(text) !== -1;
+}
+
+function isStrongShape(shape, text) {
+  return STRONG_SHAPES.has(shape) && (shape !== CONTROL_SHAPE || text.endsWith('{'));
+}
+
+function confidentlyCode(lines) {
+  const texts = lines.filter((line) => !NEUTRAL_LINE.test(line));
+  const shapes = texts.map(codeShape);
+  return (
+    shapes.length > 0 &&
+    !shapes.includes(-1) &&
+    shapes.some((shape, at) => isStrongShape(shape, texts[at]))
+  );
 }
 
 function firstCodeLine(lines) {
@@ -246,6 +267,7 @@ export function commentedOutCode(scanned) {
             offset: group[0].start,
             subject: lines[index],
             end: group.at(-1).end,
+            confident: confidentlyCode(lines),
           },
         ];
   });

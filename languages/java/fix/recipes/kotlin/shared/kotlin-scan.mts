@@ -47,6 +47,8 @@ export type KotlinMarker = {
   readonly end: number;
 };
 
+export type KotlinCodeMarker = KotlinMarker & { readonly confident: boolean };
+
 export const lineAt: (text: string, index: number) => number = untypedLineAt;
 
 export const braceDepths: (code: string) => Int32Array = untypedBraceDepths;
