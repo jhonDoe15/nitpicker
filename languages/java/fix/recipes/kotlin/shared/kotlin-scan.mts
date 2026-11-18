@@ -2,6 +2,7 @@ import type { Span } from '../../../../adapters/near-duplicates/extract-types.mt
 import { lineAt as untypedLineAt } from '../../../../../../shared/conventions/lines.mjs';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
+  afterGroup as untypedAfterGroup,
   braceDepths as untypedBraceDepths,
   closingIndex as untypedClosingIndex,
   enclosingOpen as untypedEnclosingOpen,
@@ -51,6 +52,7 @@ export const lineAt: (text: string, index: number) => number = untypedLineAt;
 export const braceDepths: (code: string) => Int32Array = untypedBraceDepths;
 
 export const closingIndex: (code: string, open: number) => number = untypedClosingIndex;
+export const afterGroup: (code: string, at: number, opening: RegExp) => number = untypedAfterGroup;
 
 export const enclosingOpen: (code: string, offset: number) => number = untypedEnclosingOpen;
 

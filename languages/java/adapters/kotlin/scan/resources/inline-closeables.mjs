@@ -1,4 +1,4 @@
-import { closingIndex, inImport } from '../kotlin-source.mjs';
+import { afterGroup, closingIndex, inImport } from '../kotlin-source.mjs';
 import { LOOKBEHIND, chainStart, openedCloseables, segmentBefore } from './closeable-calls.mjs';
 
 const RULE = 'UnclosedInlineResource';
@@ -92,8 +92,7 @@ function argumentOwner(code, span) {
 }
 
 function memberEnd(code, from) {
-  const open = /^\s*(?:<[^<>()]*>\s*)?\(/.exec(code.slice(from));
-  return open === null ? from : closingIndex(code, from + open[0].length - 1) + 1;
+  return afterGroup(code, from, /^\s*(?:<[^<>()]*>\s*)?\(/);
 }
 
 function nextUse(code, span) {

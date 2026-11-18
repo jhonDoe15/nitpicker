@@ -2,6 +2,7 @@ import { braceDepths, matchesFrom } from './kotlin-brackets.mjs';
 import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 export {
+  afterGroup,
   braceDepths,
   closingIndex,
   enclosingOpen,

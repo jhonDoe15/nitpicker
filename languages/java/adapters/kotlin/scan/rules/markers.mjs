@@ -1,5 +1,5 @@
 import { hasGeneratorHeader } from '../../../../../../shared/conventions/generator-marker.mjs';
-import { closingIndex } from '../kotlin-source.mjs';
+import { afterGroup } from '../kotlin-source.mjs';
 
 const ANNOTATION = /(?<![\w`])@([A-Za-z_]\w*:)?(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)/g;
 const METHOD_TARGETS = new Set(['get:', 'set:']);
@@ -87,8 +87,7 @@ export function generatedFile(scanned) {
 }
 
 function skipArguments(code, at) {
-  const open = /^\s*\(/.exec(code.slice(at));
-  return open === null ? at : closingIndex(code, at + open[0].length - 1) + 1;
+  return afterGroup(code, at, /^\s*\(/);
 }
 
 function nextStep(code, at) {
