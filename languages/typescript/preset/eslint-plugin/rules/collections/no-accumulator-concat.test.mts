@@ -56,7 +56,22 @@ tester.run('no-accumulator-concat with types', rule, {
         ].join('\n'),
       ),
       errors: [
-        { messageId: 'loopConcat', line: 3 },
+        {
+          messageId: 'loopConcat',
+          line: 3,
+          suggestions: [
+            {
+              messageId: 'pushOntoArray',
+              output: [
+                'export function lists(groups: number[][]) {',
+                '  const all: number[] = [];',
+                '  for (const group of groups) { for (const item of group) all.push(item); }',
+                '  return groups.reduce((acc: number[], group) => acc.concat(group), all);',
+                '}',
+              ].join('\n'),
+            },
+          ],
+        },
         { messageId: 'concat', line: 4 },
       ],
     },

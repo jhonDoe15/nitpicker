@@ -3,7 +3,7 @@ import type { Context } from '../../../rules/security/security-values.mts';
 import type { SourceCode } from '../../../rules/typed/node-views.mts';
 import { hasCommentIn } from '../../support/ranges.mts';
 import { applyEdits, type TextEdit } from './text-edits.mts';
-import { hasDenseArrayType } from '../type-proofs.mts';
+import { hasDenseArrayType } from './type-proofs.mts';
 
 export type Callback = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
 export type ReduceSite = {

@@ -4,10 +4,11 @@ import { enclosingLoop } from '../loops/loop-shapes.mts';
 import { hasArrayType } from '../support/checked-types.mts';
 import { contains, nameOf } from '../typed/node-views.mts';
 import { concatReduceFix } from '../../fixes/collections/reduce/concat-reduce-fix.mts';
-import { fixable } from '../../fixes/support/descriptors.mts';
+import { loopConcatFix } from '../../fixes/collections/loops/loop-concat-fix.mts';
+import { fixable, suggestible } from '../../fixes/support/descriptors.mts';
 
 type FunctionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression;
-type MessageId = 'concat' | 'loopConcat';
+type MessageId = 'concat' | 'loopConcat' | 'pushOntoArray';
 type Docs = { readonly requiresTypeChecking: boolean };
 type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
 type LoopSite = {
@@ -66,20 +67,25 @@ function outsideDefinition(
     : undefined;
 }
 
-function isLoopCopy(context: Context, node: TSESTree.AssignmentExpression): boolean {
+function loopCopyVariable(
+  context: Context,
+  node: TSESTree.AssignmentExpression,
+): TSESLint.Scope.Variable | undefined {
   const { left, right, operator } = node;
   if (
     operator !== '=' ||
     left.type !== AST_NODE_TYPES.Identifier ||
     !isConcatOf(right, left.name)
   ) {
-    return false;
+    return undefined;
   }
   const found = enclosingLoop(node, context);
   const definition = found && outsideDefinition(context, left, found);
   const start =
     definition?.type === DefinitionType.Variable ? (definition.node.init ?? undefined) : undefined;
-  return definition !== undefined && isArrayValue(context, left, start);
+  return definition !== undefined && isArrayValue(context, left, start)
+    ? findVariable(context, left, left.name)
+    : undefined;
 }
 
 function reducerStart(reducer: FunctionNode): TSESTree.Node | undefined {
@@ -112,6 +118,7 @@ export const rule: TSESLint.RuleModule<MessageId, [], Docs> = {
   meta: {
     type: 'problem',
     fixable: 'code',
+    hasSuggestions: true,
     docs: {
       description: 'Do not concatenate onto an accumulator array on every step of reduce or a loop',
       requiresTypeChecking: true,
@@ -120,6 +127,8 @@ export const rule: TSESLint.RuleModule<MessageId, [], Docs> = {
     messages: {
       concat:
         'Concatenating onto the accumulator copies it on every step, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`, `Object.groupBy`), or push into an array created before the loop. An exception fits only when the list is always tiny.',
+      pushOntoArray:
+        'Push onto the array in place instead of copying it on every pass. This changes the array in place, so it is offered only when nothing else holds the array during the loop.',
       loopConcat:
         'This loop copies `{{name}}` with `concat` on every pass, so the work grows with the square of the list. Build the result in one pass (`flatMap`, `Object.fromEntries(items.map(...))`), or push into an array created before the loop. An exception fits only when the list is always tiny.',
     },
@@ -138,8 +147,14 @@ export const rule: TSESLint.RuleModule<MessageId, [], Docs> = {
         }
       },
       AssignmentExpression(node) {
-        if (isLoopCopy(context, node)) {
-          context.report({ node, messageId: 'loopConcat', data: { name: nameOf(node.left) } });
+        const variable = loopCopyVariable(context, node);
+        if (variable !== undefined) {
+          context.report(
+            suggestible(
+              { node, messageId: 'loopConcat', data: { name: nameOf(node.left) } },
+              { messageId: 'pushOntoArray', plan: loopConcatFix(context, variable) },
+            ),
+          );
         }
       },
     };
