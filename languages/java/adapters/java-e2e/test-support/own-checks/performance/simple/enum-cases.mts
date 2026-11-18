@@ -1,5 +1,13 @@
 import { simpleCase, type Shape } from './simple-case.mts';
 
+const UTIL_MAP = 'java.util.Map';
+const UTIL_SET = 'java.util.Set';
+const UTIL_COLLECTION = 'java.util.Collection';
+const UTIL_ENUM_SET = 'java.util.EnumSet';
+const UTIL_HASH_MAP = 'java.util.HashMap';
+const UTIL_HASH_SET = 'java.util.HashSet';
+const UTIL_LIST = 'java.util.List';
+
 const CHECK = 'UseEnumCollections';
 const COLOR: Shape = ['enum Color {\n  RED,\n  GREEN\n}'];
 
@@ -7,8 +15,8 @@ export const ENUM_CASES = [
   simpleCase({
     check: CHECK,
     name: 'EnumLocalSet',
-    imports: ['java.util.HashSet', 'java.util.Set'],
-    importsAfter: ['java.util.EnumSet', 'java.util.Set'],
+    imports: [UTIL_HASH_SET, UTIL_SET],
+    importsAfter: [UTIL_ENUM_SET, UTIL_SET],
     members: [COLOR],
     statements: [
       ['Set<Color> seen = new HashSet<>();', 'Set<Color> seen = EnumSet.noneOf(Color.class);'],
@@ -17,8 +25,8 @@ export const ENUM_CASES = [
   simpleCase({
     check: CHECK,
     name: 'EnumFieldMap',
-    imports: ['java.util.HashMap', 'java.util.List', 'java.util.Map'],
-    importsAfter: ['java.util.EnumMap', 'java.util.List', 'java.util.Map'],
+    imports: [UTIL_HASH_MAP, UTIL_LIST, UTIL_MAP],
+    importsAfter: ['java.util.EnumMap', UTIL_LIST, UTIL_MAP],
     members: [
       COLOR,
       [
@@ -30,25 +38,12 @@ export const ENUM_CASES = [
   simpleCase({
     check: CHECK,
     name: 'EnumInline',
-    imports: [
-      'java.util.Collection',
-      'java.util.HashMap',
-      'java.util.HashSet',
-      'java.util.Map',
-      'java.util.Set',
-    ],
-    importsAfter: [
-      'java.util.Collection',
-      'java.util.EnumMap',
-      'java.util.EnumSet',
-      'java.util.HashSet',
-      'java.util.Map',
-      'java.util.Set',
-    ],
+    imports: [UTIL_COLLECTION, UTIL_HASH_MAP, UTIL_HASH_SET, UTIL_MAP, UTIL_SET],
+    importsAfter: [UTIL_COLLECTION, 'java.util.EnumMap', UTIL_ENUM_SET, UTIL_MAP, UTIL_SET],
     members: [
       COLOR,
-      ['static void accept(Set<Color> colors) {}', undefined],
-      ['static void acceptAll(Collection<Color> colors) {}', undefined],
+      ['static void accept(Set<Color> colors) {}'],
+      ['static void acceptAll(Collection<Color> colors) {}'],
       [
         'Set<Color> fresh() {\n  return new HashSet<>();\n}',
         'Set<Color> fresh() {\n  return EnumSet.noneOf(Color.class);\n}',
@@ -70,14 +65,14 @@ export const ENUM_CASES = [
     check: CHECK,
     name: 'EnumDeclined',
     imports: [
-      'java.util.Collection',
-      'java.util.EnumSet',
-      'java.util.HashMap',
-      'java.util.HashSet',
+      UTIL_COLLECTION,
+      UTIL_ENUM_SET,
+      UTIL_HASH_MAP,
+      UTIL_HASH_SET,
       'java.util.LinkedHashSet',
-      'java.util.List',
-      'java.util.Map',
-      'java.util.Set',
+      UTIL_LIST,
+      UTIL_MAP,
+      UTIL_SET,
     ],
     members: [
       COLOR,
@@ -109,7 +104,7 @@ export const ENUM_CASES = [
     check: CHECK,
     name: 'EnumTypeVariable',
     typeParameters: '<T extends Enum<T>>',
-    imports: ['java.util.HashSet', 'java.util.Set'],
+    imports: [UTIL_HASH_SET, UTIL_SET],
     parameters: 'Class<T> type',
     statements: [['Set<T> bound = new HashSet<>();']],
   }),
