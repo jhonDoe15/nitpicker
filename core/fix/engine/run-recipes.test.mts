@@ -200,6 +200,20 @@ describe('runRecipes', () => {
       `--fix left a.txt:1 demo/shout (demo) for a later run: ${String(MAX_PASSES)} passes did not get to it`,
     ]);
   });
+  it('keeps the note of an applied fix after later passes plan again', () => {
+    const root = project({ 'a.txt': 'loud\n' });
+    const noted = recipe({
+      plan: (context) => {
+        const planned = wordFixes('loud', 'LOUD', context);
+        return { fixes: planned.fixes.map((fix) => ({ ...fix, note: 'kept the case' })) };
+      },
+    });
+
+    const result = run(root, [noted]);
+
+    expect(read(root, 'a.txt')).toBe('LOUD\n');
+    expect(result.notes).toEqual(['--fix applied a.txt:1 demo/shout (demo): kept the case']);
+  });
   it('leaves a file that changed after the plan read it, and says so', () => {
     const root = project({ 'a.txt': 'quiet\n' });
     const racing = recipe({

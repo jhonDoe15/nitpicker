@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
-import type { Planned, ReplaceEdit } from '../../typed/project-types.mts';
+import type { ReplaceEdit } from '../../typed/project-types.mts';
 import { alignRegions } from '../lockstep.mts';
 import {
   holeArgumentText,
@@ -21,6 +21,7 @@ import {
   type Aligned,
   type Both,
   type ExtractEnv,
+  type Extracted,
   type Hole,
   type InputPair,
   type LineSpan,
@@ -36,6 +37,7 @@ import {
   helperNameFor,
   indentedBy,
   withLineEndingOf,
+  withWidened,
 } from '../typed/typed-views.mts';
 import { writesOf } from '../writes.mts';
 import { ownNodes, runAnalysis } from './flow.mts';
@@ -64,6 +66,7 @@ type Plan = {
   readonly name: string;
   readonly holes: readonly NamedHole[];
   readonly inputs: readonly InputPair[];
+  readonly precise: boolean;
 };
 
 const ts = typescriptApi();
@@ -193,14 +196,14 @@ function inputTypeText(input: InputPair, env: ExtractEnv): string {
 }
 
 function parameterTexts(
-  { inputs, holes }: Pick<Plan, 'inputs' | 'holes'>,
+  { inputs, holes, precise }: Pick<Plan, 'inputs' | 'holes' | 'precise'>,
   env: ExtractEnv,
 ): string[] {
   const typed = isTypeScriptFile(env.path);
   const own = inputs.map((input) =>
     typed ? `${input.nodes[0].text}: ${inputTypeText(input, env)}` : input.nodes[0].text,
   );
-  return [...own, ...holes.map((hole) => holeParameterText(hole, env.checker, { typed }))];
+  return [...own, ...holes.map((hole) => holeParameterText(hole, env.checker, { typed, precise }))];
 }
 
 function helperDeclaration(plan: Plan, env: ExtractEnv): string {
@@ -240,7 +243,7 @@ function editsFor(plan: Plan, env: ExtractEnv): ReplaceEdit[] {
   }));
 }
 
-export function partialExtraction(input: PartialInput, env: ExtractEnv): Planned<ReplaceEdit> {
+export function partialExtraction(input: PartialInput, env: ExtractEnv): Extracted {
   const found = analysis(input, env);
   if (found.declined !== undefined) {
     return found;
@@ -254,5 +257,8 @@ export function partialExtraction(input: PartialInput, env: ExtractEnv): Planned
   }
   env.claim(name);
   const plan = { ...found, name, holes, inputs: found.aligned.inputs };
-  return { edits: editsFor(plan, env) };
+  return withWidened(
+    editsFor({ ...plan, precise: true }, env),
+    editsFor({ ...plan, precise: false }, env),
+  );
 }
