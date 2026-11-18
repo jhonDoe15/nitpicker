@@ -5,6 +5,11 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'nitpicker/shorter-boolean-logic': {
+    path: 'src/main/samples/s47.ts',
+    input: 'export function above(n: number): boolean {\n  return n > 3 && n > 5;\n}\n',
+    output: 'export function above(n: number): boolean {\n  return n > 5;\n}\n',
+  },
   'nitpicker/simpler-boolean-logic': {
     path: 'src/main/samples/s46.ts',
     input:
