@@ -1,7 +1,8 @@
+import { createRequire } from 'node:module';
 import { TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import tseslint from 'typescript-eslint';
 import { SAFE as untypedSafe } from '../../../../../core/fix/engine/safety.mjs';
 import { isNode } from '../../../preset/eslint-plugin/rules/typed/node-views.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 export type CoreEdit = { readonly start: number; readonly end: number; readonly text: string };
 export type CorePlan = { readonly edits: readonly CoreEdit[] } | { readonly declined: string };
@@ -38,6 +39,21 @@ type CoreRecipe = {
 };
 
 const SAFE: string = untypedSafe;
+const require = createRequire(import.meta.url);
+
+type Parser = TSESLint.Parser.LooseParserModule;
+
+function isParser(value: unknown): value is Parser {
+  return typeof fieldOf(value, 'parseForESLint') === 'function';
+}
+
+function typescriptParser(): Parser {
+  const parser = fieldOf(require('typescript-eslint'), 'parser');
+  if (!isParser(parser)) {
+    throw new TypeError('typescript-eslint has no parser');
+  }
+  return parser;
+}
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 
 function lint(name: string, text: string, { rule, options = [] }: CoreRecipe) {
@@ -48,7 +64,7 @@ function lint(name: string, text: string, { rule, options = [] }: CoreRecipe) {
       {
         files: ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],
         languageOptions: {
-          parser: tseslint.parser,
+          parser: typescriptParser(),
           sourceType: 'module',
           ecmaVersion: 'latest',
           parserOptions: { ecmaFeatures: { jsx: name.endsWith('x') } },
