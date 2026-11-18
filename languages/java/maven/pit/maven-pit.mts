@@ -9,6 +9,7 @@ import {
   writeSkippedTests,
   writeUnmutatedFailures,
 } from '../../builds/pit-failure/pit-skipped.mts';
+import { baseRetryStopped, writeRetryStopped } from '../../builds/pit-failure/retry-stopped.mts';
 import { classFiles, pitClasspath, pitTests } from '../maven-tests.mts';
 import { pitRunTargets } from '../module/pit-scope.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -22,6 +23,9 @@ type PitAttempt = PitLimit & { readonly extra?: readonly string[] };
 type PitReport = PitRun & { readonly report: string };
 
 const MINUTE_MS = 60_000;
+const BASE_RETRY_STOPPED =
+  'PIT did not run again without them: the same test classes failed on the base, where PIT ' +
+  'without them did not finish in time. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give PIT more time';
 const OFF = 'false';
 
 function defaultTimeoutMs(): number {
@@ -120,29 +124,43 @@ function failureOutput(error: unknown): string {
 }
 
 function pitRan(options: PitOptions, { pitDir, limit, targets }: PitLimit): boolean {
+  const started = Date.now();
   try {
     pitAttempt(options, { pitDir, limit, targets });
     return true;
   } catch (error) {
-    if (!writeUnmutatedFailures(pitDir, failureOutput(error))) {
+    const output = failureOutput(error);
+    if (!writeUnmutatedFailures(pitDir, output)) {
       writePitFailure(pitDir, error);
       return false;
     }
-    return retriedWithoutFailingTests(options, { pitDir, targets }, error);
+    if (baseRetryStopped(pitDir, options['history'], output)) {
+      writePitFailure(pitDir, BASE_RETRY_STOPPED);
+      return false;
+    }
+    const left = Math.min(timeLeftMs(options), limit - (Date.now() - started));
+    return retriedWithoutFailingTests(options, { pitDir, targets, limit: left }, { error, output });
   }
 }
 
-function retriedWithoutFailingTests(options: PitOptions, run: PitRun, error: unknown): boolean {
-  const limit = timeLeftMs(options);
-  if (limit < MINUTE_MS) {
-    writePitFailure(run.pitDir, error);
+function retriedWithoutFailingTests(
+  options: PitOptions,
+  run: PitLimit,
+  first: { readonly error: unknown; readonly output: string },
+): boolean {
+  if (run.limit < MINUTE_MS) {
+    writePitFailure(run.pitDir, first.error);
     return false;
   }
+  const started = Date.now();
   try {
-    pitAttempt(options, { ...run, limit, extra: ['--skipFailingTests'] });
+    pitAttempt(options, { ...run, extra: ['--skipFailingTests'] });
     writeSkippedTests(run.pitDir);
     return true;
   } catch (retryError) {
+    if (Date.now() - started >= run.limit) {
+      writeRetryStopped(run.pitDir, first.output);
+    }
     writePitFailure(run.pitDir, retryError);
     return false;
   }
