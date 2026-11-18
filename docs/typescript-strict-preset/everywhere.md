@@ -89,6 +89,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   run plain functions and a callback that first tests a mounted or disposed flag (`if (mounted.current)`,
   `if (!this._disposed)`) are left alone. Allowed: keep the handle and clear it when the work settles
   (`finally`), on unmount or in dispose, or pass an `AbortSignal` the owner aborts.
+- `nitpicker/no-per-call-debounce`: a debounced or throttled function must be created once. It reports
+  `debounce` and `throttle` from `lodash`, `lodash-es`, `lodash.debounce`, `lodash.throttle`, `lodash/debounce`,
+  `es-toolkit`, `throttle-debounce`, `just-debounce-it`, `just-throttle` or `underscore` (or a local function with
+  that name) when the call is invoked at once (`debounce(fn, 100)(value)`), is an argument of a call in a class
+  method that is not a constructor or an `init*`, `setup*`, `ngOnInit` or mount-style method, is kept in a local that
+  the same function calls (`const d = debounce(fn, 100); d(value)`), or sits in a React
+  component or hook body (or a handler inside it) outside `useMemo`, `useCallback`, `useRef`, `useState` and
+  effects. Each call or render then gets a new timer, so nothing is debounced. A factory that returns the
+  debounced function, a class field, a module-level constant, `this.f = debounce(...)` and the RxJS operators are left
+  alone. Allowed: create it once (a field, module scope, `useMemo`, `useRef`) and call that function.
 - `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
   a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
   assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,

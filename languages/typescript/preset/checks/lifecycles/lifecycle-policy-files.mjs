@@ -24,4 +24,6 @@ export const LIFECYCLE_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/registrations/no-per-call-registration.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/timers/timeout-contexts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/timers/no-uncleared-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/debounce/debounce-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/debounce/no-per-call-debounce.mjs',
 ];

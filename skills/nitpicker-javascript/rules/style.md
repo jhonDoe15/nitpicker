@@ -51,6 +51,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A `setTimeout` that rejects or aborts a promise keeps its handle and clears it when the promise settles
   (`.finally(() => clearTimeout(timer))`), and a timer started in an event handler of a component or a disposable
   class keeps its id and clears it on unmount or dispose (`nitpicker/no-uncleared-timeout`).
+- Create a `debounce` or `throttle` function once (a class field, module scope, `useMemo` or `useRef`), never per
+  call or per render: a new one each time has its own timer, so nothing is debounced
+  (`nitpicker/no-per-call-debounce`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
