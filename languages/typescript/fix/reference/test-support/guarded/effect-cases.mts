@@ -67,4 +67,13 @@ export const EFFECT_CASES: readonly GuardedCase[] = [
     input: counter('readonly #next = (): number => register();'),
     selected: ['{\n  readonly #next = (): number => register();\n}', '{}'],
   },
+  {
+    rule: 'no-empty',
+    input:
+      'export function parse(text: string): unknown {\n  try {\n    return JSON.parse(text);\n  } catch {}\n  return undefined;\n}\n',
+  },
+  {
+    rule: 'no-empty',
+    input: 'export function check(ready: boolean): void {\n  if (ready) {\n  }\n}\n',
+  },
 ];

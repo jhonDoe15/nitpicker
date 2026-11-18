@@ -5,6 +5,11 @@ export type AutomaticSample = {
 };
 
 export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
+  'no-empty-static-block': {
+    path: 'src/main/samples/s40.ts',
+    input: 'export class Empty {\n  static {}\n\n  readonly size = 1;\n}\n',
+    output: 'export class Empty {\n  readonly size = 1;\n}\n',
+  },
   '@typescript-eslint/no-duplicate-type-constituents': {
     path: 'src/main/samples/s00.ts',
     input: 'export type Id = string | string;\n',
