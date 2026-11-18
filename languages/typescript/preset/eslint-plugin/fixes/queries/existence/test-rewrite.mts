@@ -21,18 +21,6 @@ const COUNT_POLARITY = new Map<string, readonly [Polarity, number]>([
   ['===', ['absent', 0]],
   ['==', ['absent', 0]],
 ]);
-const STANDALONE = new Set<string>([
-  AST_NODE_TYPES.IfStatement,
-  AST_NODE_TYPES.WhileStatement,
-  AST_NODE_TYPES.DoWhileStatement,
-  AST_NODE_TYPES.ReturnStatement,
-  AST_NODE_TYPES.VariableDeclarator,
-  AST_NODE_TYPES.ArrowFunctionExpression,
-  AST_NODE_TYPES.ExpressionStatement,
-  AST_NODE_TYPES.LogicalExpression,
-  AST_NODE_TYPES.ConditionalExpression,
-]);
-
 function sideOf(binary: TSESTree.BinaryExpression, operand: TSESTree.Node): TSESTree.Node {
   return binary.left === operand ? binary.right : binary.left;
 }
@@ -68,12 +56,4 @@ export function countPolarity(
 
 export function negated(text: string): string {
   return `!${text}`;
-}
-
-export function placed(parent: TSESTree.Node | undefined, text: string): string {
-  const safe =
-    parent !== undefined &&
-    (STANDALONE.has(parent.type) ||
-      (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === '!'));
-  return safe ? text : `(${text})`;
 }

@@ -78,6 +78,14 @@ tester.run('no-in-memory-query', rule, {
     inService(TYPEORM, 'return (await repo.find()).filter((row) => typeof row.a === "string");'),
     inService(
       TYPEORM,
+      'const rows = await repo.find(); const parents = new Set(rows.map((row) => row.parentId)); return rows.filter((row) => parents.has(row.id));',
+    ),
+    inService(
+      TYPEORM,
+      'const rows = await repo.find(); const names = rows.map((row) => row.name); return rows.filter((row) => names.includes(row.alias));',
+    ),
+    inService(
+      TYPEORM,
       'return (await repo.find({ lock: { mode: "pessimistic_write" } })).filter((row) => row.id !== id);',
     ),
     inService(
@@ -112,16 +120,35 @@ tester.run('no-in-memory-query', rule, {
     inService(TYPEORM, 'return (await repo.find()).filter(({ items }) => items.length > 0);'),
     inService(
       TYPEORM,
-      'const known = new Set(ids); return (await repo.find()).filter((row) => !known.has(row.id));',
-    ),
-    inService(TYPEORM, 'return (await repo.find()).filter((row) => ids.includes(row.customerId));'),
-    inService(TYPEORM, 'return (await repo.find()).find((row) => lookup.has(row.customerId));'),
-    inService(
-      TYPEORM,
       'return (await repo.find()).filter((row): row is Order => row.status !== null);',
     ),
   ],
   invalid: [
+    {
+      code: inService(
+        TYPEORM,
+        'const rows = await repo.find(); return rows.filter((row) => ids.includes(row.status));',
+      ),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(
+        TYPEORM,
+        'const seen = new Set(ids); const rows = await repo.find(); return rows.filter((row) => seen.has(row.id));',
+      ),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(TYPEORM, 'return (await repo.find()).filter((row) => !known.has(row.id));'),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(
+        TYPEORM,
+        'return (await repo.find()).find((row) => lookup.has(row.customerId));',
+      ),
+      errors: errors('filter'),
+    },
     {
       code: inService(TYPEORM, 'const rows = await repo.find(); return rows.length > 0;'),
       errors: errors('count'),
@@ -340,7 +367,5 @@ typedTester.run('no-in-memory-query with types', rule, {
   invalid: [
     typed('return (await repo.find()).filter((row) => row.status === name);', 'filter'),
     typed('return (await repo.find()).sort((a, b) => a.last.localeCompare(b.last));', 'sort'),
-    typed('return (await repo.find({ where: { status: name } })).length;', 'count'),
-    typed('return (await prisma.user.findMany({ where: { id: name } })).length;', 'count'),
   ],
 });

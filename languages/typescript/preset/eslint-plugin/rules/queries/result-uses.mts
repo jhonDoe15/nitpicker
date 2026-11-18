@@ -146,7 +146,7 @@ function methodShape(context: Context, member: TSESTree.MemberExpression): Use |
   const [callback] = call.arguments;
   if (
     FILTER_METHODS.has(method) &&
-    isColumnComparison(callback) &&
+    isColumnComparison(context, callback, member.object) &&
     readsOnlyFields(context, callback, { rows: 1 })
   ) {
     return { node: call, shape: FILTER };
