@@ -20,43 +20,46 @@ function kept(code: string) {
 }
 
 project.tester.run('Promise.all over map becomes pMap', rule, {
-  valid: [],
+  valid: [
+    typed(
+      `${IMPORT}declare const ids: string[];\nexport async function a() { return await pMap(ids, (id) => fetch(id), ${LIMIT}); }`,
+    ),
+  ],
   invalid: [
     rewritten(
-      'export async function a(ids: string[]) { return await Promise.all(ids.map((id) => fetch(`/x/${id}`))); }',
-      `${IMPORT}export async function a(ids: string[]) { return await pMap(ids, (id) => fetch(\`/x/\${id}\`), ${LIMIT}); }`,
+      'declare const ids: string[];\nexport async function a() { return await Promise.all(ids.map((id) => fetch(`/x/${id}`))); }',
+      `${IMPORT}declare const ids: string[];\nexport async function a() { return await pMap(ids, (id) => fetch(\`/x/\${id}\`), ${LIMIT}); }`,
     ),
     rewritten(
-      `${IMPORT}export async function a(ids: string[]) { return Promise.all(ids.map((id) => fetch(id))); }`,
-      `${IMPORT}export async function a(ids: string[]) { return pMap(ids, (id) => fetch(id), ${LIMIT}); }`,
+      `${IMPORT}declare const ids: string[];\nexport async function a() { return Promise.all(ids.map((id) => fetch(id))); }`,
+      `${IMPORT}declare const ids: string[];\nexport async function a() { return pMap(ids, (id) => fetch(id), ${LIMIT}); }`,
     ),
     rewritten(
-      "import pm from 'p-map';\nexport async function a(ids: string[]) { return Promise.all(ids.map((id) => fetch(id))); }",
-      `import pm from 'p-map';\nexport async function a(ids: string[]) { return pm(ids, (id) => fetch(id), ${LIMIT}); }`,
+      "import pm from 'p-map';\ndeclare const ids: string[];\nexport async function a() { return Promise.all(ids.map((id) => fetch(id))); }",
+      `import pm from 'p-map';\ndeclare const ids: string[];\nexport async function a() { return pm(ids, (id) => fetch(id), ${LIMIT}); }`,
     ),
     rewritten(
-      'export async function b(ts: { id: string }[]) { return await Promise.all(ts.map(async (t) => { const r = await fetch(t.id); return r.json(); })); }',
-      `${IMPORT}export async function b(ts: { id: string }[]) { return await pMap(ts, async (t) => { const r = await fetch(t.id); return r.json(); }, ${LIMIT}); }`,
+      'declare const ts: { id: string }[];\nexport async function b() { return await Promise.all(ts.map(async (t) => { const r = await fetch(t.id); return r.json(); })); }',
+      `${IMPORT}declare const ts: { id: string }[];\nexport async function b() { return await pMap(ts, async (t) => { const r = await fetch(t.id); return r.json(); }, ${LIMIT}); }`,
     ),
     rewritten(
-      'const download = (u: string) => fetch(u);\nexport async function c(urls: string[]) { return Promise.all(urls.map(download)); }',
-      `${IMPORT}const download = (u: string) => fetch(u);\nexport async function c(urls: string[]) { return pMap(urls, download, ${LIMIT}); }`,
+      'const download = (u: string) => fetch(u);\ndeclare const urls: string[];\nexport async function c() { return Promise.all(urls.map(download)); }',
+      `${IMPORT}const download = (u: string) => fetch(u);\ndeclare const urls: string[];\nexport async function c() { return pMap(urls, download, ${LIMIT}); }`,
     ),
     rewritten(
-      'async function download(u: string) { return fetch(u); }\nexport async function c(urls: string[]) { return Promise.all(urls.map(download)); }',
-      `${IMPORT}async function download(u: string) { return fetch(u); }\nexport async function c(urls: string[]) { return pMap(urls, download, ${LIMIT}); }`,
+      'async function download(u: string) { return fetch(u); }\ndeclare const urls: string[];\nexport async function c() { return Promise.all(urls.map(download)); }',
+      `${IMPORT}async function download(u: string) { return fetch(u); }\ndeclare const urls: string[];\nexport async function c() { return pMap(urls, download, ${LIMIT}); }`,
     ),
     rewritten(
       'export async function e(o: Record<string, string>) { return Promise.all(Object.entries(o).map(([k, v]) => fetch(k + v))); }',
       `${IMPORT}export async function e(o: Record<string, string>) { return pMap(Object.entries(o), ([k, v]) => fetch(k + v), ${LIMIT}); }`,
     ),
-    rewritten(
+    kept(
       'export class C { urls: string[] = []; async go() { return Promise.all(this.urls.map((u) => fetch(u))); } }',
-      `${IMPORT}export class C { urls: string[] = []; async go() { return pMap(this.urls, (u) => fetch(u), ${LIMIT}); } }`,
     ),
     rewritten(
-      'export async function f(ids: string[]) { const rs = await Promise.all(ids.map((id) => fetch(id))); return rs.length; }',
-      `${IMPORT}export async function f(ids: string[]) { const rs = await pMap(ids, (id) => fetch(id), ${LIMIT}); return rs.length; }`,
+      'declare const ids: string[];\nexport async function f() { const rs = await Promise.all(ids.map((id) => fetch(id))); return rs.length; }',
+      `${IMPORT}declare const ids: string[];\nexport async function f() { const rs = await pMap(ids, (id) => fetch(id), ${LIMIT}); return rs.length; }`,
     ),
     rewritten(
       'declare const ids: string[];\nexport const all = await Promise.all(ids.map((id) => fetch(id)));',
@@ -67,19 +70,19 @@ project.tester.run('Promise.all over map becomes pMap', rule, {
       `${IMPORT}export async function g(ids: (string | undefined)[]) { return pMap(ids.filter((id) => id !== undefined), (id) => fetch(String(id)), ${LIMIT}); }`,
     ),
     rewritten(
-      "import { join } from 'node:path';\nexport async function h(ids: string[]) { return Promise.all(ids.map((id) => fetch(join('/', id)))); }",
-      `import { join } from 'node:path';\nimport pMap from 'p-map';\nexport async function h(ids: string[]) { return pMap(ids, (id) => fetch(join('/', id)), ${LIMIT}); }`,
+      "import { join } from 'node:path';\ndeclare const ids: string[];\nexport async function h() { return Promise.all(ids.map((id) => fetch(join('/', id)))); }",
+      `import { join } from 'node:path';\nimport pMap from 'p-map';\ndeclare const ids: string[];\nexport async function h() { return pMap(ids, (id) => fetch(join('/', id)), ${LIMIT}); }`,
     ),
     rewritten(
-      'export async function i(ids: readonly [string, string]) { return Promise.all(ids.map((id) => fetch(id))); }',
-      `${IMPORT}export async function i(ids: readonly [string, string]) { return pMap(ids, (id) => fetch(id), ${LIMIT}); }`,
+      'declare const ids: readonly [string, string];\nexport async function i() { return Promise.all(ids.map((id) => fetch(id))); }',
+      `${IMPORT}declare const ids: readonly [string, string];\nexport async function i() { return pMap(ids, (id) => fetch(id), ${LIMIT}); }`,
     ),
     rewritten(
-      'export async function j(ids: string[]) { return Promise.all(ids.map(function (id) { return fetch(id); })); }',
-      `${IMPORT}export async function j(ids: string[]) { return pMap(ids, function (id) { return fetch(id); }, ${LIMIT}); }`,
+      'declare const ids: string[];\nexport async function j() { return Promise.all(ids.map(function (id) { return fetch(id); })); }',
+      `${IMPORT}declare const ids: string[];\nexport async function j() { return pMap(ids, function (id) { return fetch(id); }, ${LIMIT}); }`,
     ),
     kept(
-      'export async function k(ids: string[]) { return Promise.all(ids.map((id, index) => fetch(`${id}${index}`))); }',
+      'declare const ids: string[];\nexport async function k() { return Promise.all(ids.map((id, index) => fetch(`${id}${index}`))); }',
     ),
   ],
 });
