@@ -8,7 +8,6 @@ import {
   fileLimitFindings,
   inModuleOf,
   jdepsEdges,
-  jvmReuseOf,
   maxValueFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
@@ -26,6 +25,7 @@ import {
   type KotlinNodes,
   type ReportProject,
 } from './typed/project-wide-views.mts';
+import { jvmReuseAhead } from './reuse-ahead/reuse-ahead.mts';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -232,7 +232,7 @@ export function projectWideReport(
     kotlin,
     policy: { layout: policy.layout, exceptions: policy.exceptions },
   });
-  const reuse = jvmReuseOf(projectRoot, {
+  const reuse = jvmReuseAhead(projectRoot, {
     projects,
     kotlin,
     policy: { ...policy, layout: features.layout },

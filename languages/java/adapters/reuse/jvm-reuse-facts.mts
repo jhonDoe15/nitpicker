@@ -19,6 +19,7 @@ import {
   projectSourceFiles as untypedProjectSourceFiles,
 } from '../review-rules/java-sources.mjs';
 import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mjs';
+import { toolSlots } from '../../maven/parallel/tool-slots.mts';
 import { definitionKey } from './jvm-definition-keys.mts';
 import { importFacts } from './jvm-reference-uses.mts';
 import { fileBindings, projectIndex, referenceScope } from './jvm-references.mts';
@@ -29,6 +30,7 @@ import {
   type Entry,
   type Parsed,
   type ReuseFacts,
+  type ReusePart,
 } from './jvm-reuse-types.mts';
 import {
   aliasEntryFields,
@@ -44,6 +46,7 @@ type ReuseOptions = {
   readonly projects: readonly Project[];
   readonly kotlin?: true | false;
   readonly policy?: JavaPolicy;
+  readonly decisionWorkers?: number;
 };
 type BaselineEntry = {
   readonly unchanged: boolean;
@@ -114,14 +117,19 @@ function parse(text: string, file: string): Parsed {
   return readJvmDefinitions(text, { kotlin: file.endsWith('.kt') });
 }
 
-function isPublished(project: Project): boolean {
-  if (project.reportRoot === undefined) {
+export function publishedOf(reportRoot: string | undefined): boolean {
+  if (reportRoot === undefined) {
     return false;
   }
-  const manifest = pathInside(project.reportRoot, 'manifest.json');
+  const manifest = pathInside(reportRoot, 'manifest.json');
   return (
     existsSync(manifest) && fieldOf(parseJson(readFileSync(manifest, 'utf8')), 'published') === true
   );
+}
+
+function isPublished(project: Project): boolean {
+  const published = fieldOf(project, 'published');
+  return typeof published === 'boolean' ? published : publishedOf(project.reportRoot);
 }
 
 function neutralDefinition(
@@ -241,34 +249,49 @@ export function readJvmReuseFindings(projectRoot: string, options: ReuseOptions)
   return readJvmReuse(projectRoot, options).findings;
 }
 
-export function readJvmReuse(
+export function readReusePart(
   projectRoot: string,
-  { projects, kotlin = false, policy = {} }: ReuseOptions,
-): { findings: JavaFinding[]; imports: unknown } {
+  { projects, kotlin = false, policy = {}, decisionWorkers = toolSlots() }: ReuseOptions,
+): ReusePart {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: textsOf(policy.exclude) });
-  const language = kotlin ? 'kotlin' : 'java';
   const exceptions = policy.exceptions ?? [];
-  const findings = [
-    ...findingsOf(
+  return {
+    findings: findingsOf(
       callUntyped(sharedFactFindings, facts, {
-        language,
+        language: kotlin ? 'kotlin' : 'java',
         analyzerName: REUSE_TOOL,
         rules: REUSE_RULES,
-        policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
+        policy: { exceptions },
         baseline: baselineOf(projectRoot, policy),
         collisionFixFor: (importer: string) =>
           importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined,
+        decisionWorkers,
       }),
     ),
-    ...findingsOf(
-      callUntyped(sharedFactFindings, facts, {
-        language,
-        analyzerName: COUPLING_TOOL,
-        rules: SHARED_USAGE_RULES,
-        policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
-      }),
-    ),
-    ...(kotlin ? kotlinEntryPointFindings(facts, exceptions) : []),
-  ];
-  return { findings, imports: facts.imports };
+    entryFindings: kotlin ? kotlinEntryPointFindings(facts, exceptions) : [],
+    usage: { modules: facts.modules, packages: facts.packages, imports: facts.imports },
+  };
+}
+
+export function withSharedUsage(
+  { findings, entryFindings, usage }: ReusePart,
+  { kotlin = false, policy = {} }: Omit<ReuseOptions, 'projects'>,
+): { findings: JavaFinding[]; imports: unknown } {
+  const layout = policy.layout === undefined ? {} : { layout: policy.layout };
+  const shared = findingsOf(
+    callUntyped(sharedFactFindings, usage, {
+      language: kotlin ? 'kotlin' : 'java',
+      analyzerName: COUPLING_TOOL,
+      rules: SHARED_USAGE_RULES,
+      policy: { exceptions: policy.exceptions ?? [], ...layout },
+    }),
+  );
+  return { findings: [...findings, ...shared, ...entryFindings], imports: usage.imports };
+}
+
+export function readJvmReuse(
+  projectRoot: string,
+  options: ReuseOptions,
+): { findings: JavaFinding[]; imports: unknown } {
+  return withSharedUsage(readReusePart(projectRoot, options), options);
 }
