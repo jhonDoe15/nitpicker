@@ -7,6 +7,7 @@ import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.ParenthesizedTree;
@@ -149,5 +150,34 @@ final class Support {
       }
     }
     fix.removeImport(found.getQualifiedIdentifier().toString());
+  }
+
+  static Boolean emptiness(Tree.Kind kind, int constant) {
+    return switch (kind) {
+      case EQUAL_TO -> constant == 0 ? Boolean.TRUE : null;
+      case NOT_EQUAL_TO -> constant == 0 ? Boolean.FALSE : null;
+      case GREATER_THAN -> constant == 0 ? Boolean.FALSE : null;
+      case GREATER_THAN_EQUAL -> constant == 1 ? Boolean.FALSE : null;
+      case LESS_THAN -> constant == 1 ? Boolean.TRUE : null;
+      case LESS_THAN_EQUAL -> constant == 0 ? Boolean.TRUE : null;
+      default -> null;
+    };
+  }
+
+  static Tree.Kind mirrored(Tree.Kind kind) {
+    return switch (kind) {
+      case EQUAL_TO, NOT_EQUAL_TO -> kind;
+      case GREATER_THAN -> Tree.Kind.LESS_THAN;
+      case GREATER_THAN_EQUAL -> Tree.Kind.LESS_THAN_EQUAL;
+      case LESS_THAN -> Tree.Kind.GREATER_THAN;
+      case LESS_THAN_EQUAL -> Tree.Kind.GREATER_THAN_EQUAL;
+      default -> null;
+    };
+  }
+
+  static Integer integer(ExpressionTree tree) {
+    return Support.unparenthesized(tree) instanceof LiteralTree literal && literal.getValue() instanceof Integer value
+        ? value
+        : null;
   }
 }

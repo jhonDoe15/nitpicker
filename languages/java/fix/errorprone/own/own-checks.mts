@@ -10,6 +10,7 @@ const GRADLE_DIRECTORY: string = untypedGradleDirectory;
 export const OWN_CHECKS_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone', 'fix-checks');
 
 const PMD = 'pmd';
+const EFFECTS = 'effects';
 
 export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'UseStandardCharsets', tool: PMD, safety: SAFE },
@@ -26,6 +27,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'GeneratedOnHandWrittenCode', tool: PMD, safety: REVIEW },
   { check: 'SpringDataNoSaveInLoop', tool: PMD, safety: REVIEW },
   { check: 'SpringDataBatchOfOne', tool: PMD, safety: REVIEW },
+  { check: 'EntityLoadedForExistence', tool: EFFECTS, safety: REVIEW },
 ]);
 
 const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));
