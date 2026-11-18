@@ -193,6 +193,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-incomplete-escaping`).
 - Generated source code writes a value as `JSON.stringify(value)`, not between hand-written quotes
   (`nitpicker/no-hand-quoted-generated-code`).
+- Text received from a socket or an HTTP response is passed through `util.stripVTControlCharacters` (or `strip-ansi`) before it is
+  printed to the terminal (`nitpicker/no-unstripped-remote-text`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

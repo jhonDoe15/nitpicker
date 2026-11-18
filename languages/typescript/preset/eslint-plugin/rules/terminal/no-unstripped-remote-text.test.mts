@@ -19,6 +19,7 @@ tester.run('no-unstripped-remote-text', rule, {
   valid: [
     allowed('const res = await fetch(u); const body = await res.json(); console.log(body);'),
     allowed('socket.on("message", (data) => console.log(data));'),
+    allowed('socket.on("message", (data) => this.logger.debug(`got ${data.text}`));'),
     allowed('const res = await fetch(u); console.log(`${res.status} ${res.statusText}`);'),
     allowed(
       'socket.on("console", (payload) => logger.info(stripVTControlCharacters(payload.text)));',

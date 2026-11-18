@@ -136,6 +136,7 @@
   "eslint/nitpicker/no-unowned-async-assertion": ["tests", "async"],
   "eslint/nitpicker/no-unsafe-deserialization": ["security"],
   "eslint/nitpicker/no-unsafe-path-join": ["security"],
+  "eslint/nitpicker/no-unstripped-remote-text": ["bug", "security"],
   "eslint/nitpicker/no-untrimmed-request-text": ["bug"],
   "eslint/nitpicker/no-unused-dom-environment": ["tests", "performance"],
   "eslint/nitpicker/no-unvalidated-schema-field": ["security", "maintainability"],
