@@ -195,6 +195,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- An option read from an options or config object is defaulted with `??`, not `||`: `options.ipv6Subnet ?? 64`,
+  `options.forceObject ?? config.forceObject`, so an explicit `false`, `0` or `''` from the caller stays
+  (`nitpicker/no-falsy-default`).
 - A cache or lookup decides presence from the key, not from the stored value: `if (!m.has(k)) { m.set(k, make()); }`
   then `m.get(k)!`, and `key in record` or `Object.hasOwn(record, key)` for a record of `unknown` values, because a
   cached `0`, `''`, `false` or `undefined` is a hit (`nitpicker/no-lookup-as-presence`).
