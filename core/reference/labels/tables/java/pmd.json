@@ -124,6 +124,7 @@
   "pmd/RetryInTest": ["tests"],
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],
+  "pmd/ReversedAssignableCheck": ["bug"],
   "pmd/SecretInLog": ["security"],
   "pmd/ServerOrContainerPerTest": ["tests", "performance"],
   "pmd/ServiceLocatorLookup": ["maintainability"],

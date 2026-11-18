@@ -1519,6 +1519,57 @@ return (
 )[$perCall(.)]
 ]]></value></property></properties>
   </rule>
+  <rule name="ReversedAssignableCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The operands of this type test are reversed: type.isAssignableFrom(Foo.class) is true only when type is Foo or one of its supertypes, so every subclass of Foo is rejected, yet the code then casts a value to Foo as if the test had passed. Put the type of the value on the argument side: Foo.class.isAssignableFrom(type) (ClassUtils.isAssignable(Foo.class, type) in Spring), or test the value itself with value instanceof Foo or Foo.class.isInstance(value). A test that asks whether a Foo can be injected into a parameter of type type is right as written and has no cast after it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [(@MethodName = 'isAssignableFrom' and ArgumentList/@Size = 1
+    and not(*[1]/self::ClassLiteral) and not(*[1]/self::ArgumentList) and *[1][pmd-java:typeIs('java.lang.Class')]
+    and ArgumentList/*[1][self::ClassLiteral/ClassType])
+   or (@MethodName = 'isAssignable' and ArgumentList/@Size = 2
+       and (pmd-java:matchesSig('org.springframework.util.ClassUtils#isAssignable(_*)')
+            or pmd-java:matchesSig('org.apache.commons.lang3.ClassUtils#isAssignable(_*)'))
+       and not(ArgumentList/*[1]/self::ClassLiteral) and ArgumentList/*[2][self::ClassLiteral/ClassType])]
+  [let $call := .,
+       $type := if (@MethodName = 'isAssignableFrom') then *[1] else ArgumentList/*[1],
+       $literal := ArgumentList/*[last()][self::ClassLiteral]/ClassType/@SimpleName,
+       $local := if ($type/self::VariableAccess)
+                 then ancestor::MethodDeclaration[1]//VariableDeclarator[VariableId/@Name = $type/@Name]/*[last()]
+                 else (),
+       $tested := ($type/self::MethodCall[@MethodName = 'getClass']/*[1][self::VariableAccess]/@Name,
+                   $local/self::MethodCall[@MethodName = 'getClass']/*[1][self::VariableAccess]/@Name),
+       $casts := function($scope, $tested, $literal) {
+         exists($scope/descendant-or-self::CastExpression[ClassType/@SimpleName = $literal]
+                  [*[last()][self::VariableAccess or self::FieldAccess]
+                            [empty($tested) or @Name = $tested]
+                            [let $n := @Name
+                             return empty(ancestor::MethodDeclaration[1]//VariableDeclarator[VariableId/@Name = $n]
+                                            /*[last()][self::ConstructorCall
+                                                       or descendant-or-self::MethodCall[@MethodName = 'newInstance']])]])
+       }
+   return some $test in ancestor::*[self::IfStatement or self::ConditionalExpression]
+                          [exists(*[1]/descendant-or-self::*[. is $call])]
+          satisfies
+            (let $between := $call/ancestor::*[exists(. intersect $test/*[1]/descendant-or-self::*)],
+                 $negated := count($between/self::UnaryExpression[@Operator = '!']) mod 2 = 1
+             return empty($between/self::InfixExpression[@Operator = '||'])
+                    and empty($between/self::InfixExpression[@Operator = '&&'][$negated])
+                    and (if (not($negated)) then $casts($test/*[2], $tested, $literal)
+                         else $casts($test/*[3], $tested, $literal)
+                              or ($test/self::IfStatement and not($test/@Else = true())
+                                  and $test/*[2][self::ReturnStatement or self::ThrowStatement
+                                                 or self::ContinueStatement or self::BreakStatement
+                                                 or (self::Block and *[last()][self::ReturnStatement
+                                                     or self::ThrowStatement or self::ContinueStatement
+                                                     or self::BreakStatement])]
+                                  and $casts($test/following-sibling::*, $tested, $literal))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, the configure method of a Guice Module, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
     <priority>3</priority>
