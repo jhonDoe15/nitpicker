@@ -1766,3 +1766,12 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   `Number.isSafeInteger` (the value is clamped or truncated), a `+(value as Date)` conversion, or a probe on the
   parameter of a `.filter` callback. Allowed form: `Number.isFinite(x)`. The same form runs as `NanOnlyGuard` (Java and Kotlin), `nan-only-guard`
   (Python) and `go-rules/nan-only-guard` (Go).
+- `nitpicker/no-negative-count`: `text.repeat(n)`, `new Array(n)` or `Array(n)` where `n` is a subtraction of two
+  non-literals (also a sum that contains one, or a local with one assignment of that), with no guard. `String.prototype.repeat`
+  and `Array` throw a `RangeError` for a negative count, so `' '.repeat(width - text.length)` fails once the text is wider
+  than the column. Not reported: a right side that is a literal (`level - 1`), `Math.max(0, ...)` or `Math.abs(...)` around
+  the subtraction, a sink inside an `if`, `?:` or `&&` whose test compares the two sides (or the local), an earlier `if`
+  that leaves when it compares them, a subtraction of two literals, a left side named `max`, `largest`, `longest` or `lengths` or built with
+  `Math.max`, and a right side computed with `Math.min`, `Math.round`, `Math.floor` or `Math.ceil`. Allowed forms: `Math.max(0, a - b)`, or compare
+  first. The same form runs as `NegativeCountArgument` (Java and Kotlin) and `go-rules/negative-count` (Go); Python is not
+  covered because `"x" * -1` returns an empty string.

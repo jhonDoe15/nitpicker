@@ -292,6 +292,13 @@ value with `<` or `>`. `nan-only-guard` (script) reports `math.isnan(x)` on a `f
 `pmd/NanOnlyGuard` `Double.isNaN` on a parsed double in Java and Kotlin, and `go-rules/nan-only-guard` `math.IsNaN` on a
 `strconv.ParseFloat` result or a float division or product in Go, under the same conditions.
 
+Negative counts: `nitpicker/no-negative-count` (production source, in `eslint-lint`) in the TypeScript and JavaScript presets
+reports `.repeat(a - b)`, `new Array(a - b)` and `Array(a - b)` (also through a local, or a sum containing a subtraction of
+non-literals) with no `Math.max(0, ...)` and no comparison of the two sides that dominates the call. `pmd/NegativeCountArgument`
+in Java and Kotlin reports `repeat`, `copyOf`, `new ArrayList<>(n)` and Kotlin `take`, `takeLast`, `drop`, `dropLast` and
+`List(n)`; `go-rules/negative-count` reports `strings.Repeat`, `bytes.Repeat`, `slices.Grow` and `make` of a slice. Python
+is not covered.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

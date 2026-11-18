@@ -93,6 +93,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [HTML built from unescaped values](java-preset/html-built-from-unescaped-values.md)
 - [Response bodies parsed before the status is checked](java-preset/response-bodies-parsed-before-the-status-is-checked.md)
 - [NaN-only checks on parsed numbers](java-preset/nan-only-checks-on-parsed-numbers.md)
+- [Counts computed by subtraction](java-preset/counts-computed-by-subtraction.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

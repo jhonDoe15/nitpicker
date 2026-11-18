@@ -3,9 +3,10 @@ import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { pathInside, projectSourceFiles } from '../java-sources.mjs';
 import { parseSource } from '../max-value-sums/source-file.mjs';
 import { NAN_GUARD_CHECK } from './nan-guard/nan-guard.mjs';
+import { NEGATIVE_COUNT_CHECK } from './negative-count/negative-count.mjs';
 import { RESPONSE_BODY_CHECK } from './response-body/response-body.mjs';
 
-export const VALUE_CHECKS = [RESPONSE_BODY_CHECK, NAN_GUARD_CHECK];
+export const VALUE_CHECKS = [RESPONSE_BODY_CHECK, NAN_GUARD_CHECK, NEGATIVE_COUNT_CHECK];
 
 export const VALUE_CHECK_EXCEPTION_RULES = VALUE_CHECKS.map(({ rule }) => `pmd/${rule}`);
 

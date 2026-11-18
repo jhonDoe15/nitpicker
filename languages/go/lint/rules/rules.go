@@ -15,6 +15,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lifecycles"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/markup"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/nanguard"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/negativecount"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
@@ -54,6 +55,7 @@ func Analyzers() []*analysis.Analyzer {
 			replacements.Analyzer,
 			markup.Analyzer,
 			responsejson.Analyzer,
+			negativecount.Analyzer,
 			nanguard.Analyzer,
 		},
 	)

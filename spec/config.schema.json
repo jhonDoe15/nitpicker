@@ -2392,6 +2392,7 @@
                             "pmd/UnescapedHtmlValue",
                             "pmd/UncheckedResponseBody",
                             "pmd/NanOnlyGuard",
+                            "pmd/NegativeCountArgument",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

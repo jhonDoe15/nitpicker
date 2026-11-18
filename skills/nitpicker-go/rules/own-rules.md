@@ -84,6 +84,8 @@ the allowed form and ends with its exception entry.
   never the raw value.
 - A parsed or computed float is checked for infinity as well as NaN (`go-rules/nan-only-guard`): `math.IsNaN(x)`
   alone lets `+Inf` and `-Inf` through; add `math.IsInf(x, 0)` or a range check.
+- A count computed by subtraction is never negative when it reaches `strings.Repeat`, `bytes.Repeat`, `slices.Grow` or
+  `make` (`go-rules/negative-count`): `if pad := width - len(text); pad > 0 { ... }` or `max(0, width-len(text))`.
 - A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
   `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a

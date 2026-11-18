@@ -130,3 +130,5 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.
 - A parsed double is checked with `x.isFinite()`, not only `x.isNaN()`: `"Infinity"` and `"1e999"` parse to an
   infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
+- A count that is a subtraction is clamped before `take`, `takeLast`, `drop`, `dropLast`, `repeat` or `List(n)`:
+  `list.takeLast((a.size - b.size).coerceAtLeast(0))`; a negative count throws (`pmd/NegativeCountArgument`).

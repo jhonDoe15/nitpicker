@@ -114,3 +114,5 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   parser (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.
 - A parsed double is checked with `Double.isFinite(x)`, not only `Double.isNaN(x)`: `"Infinity"` and `"1e999"` parse to
   an infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
+- A count that is a subtraction is clamped before `repeat`, `Arrays.copyOf` or `new ArrayList<>(n)`:
+  `" ".repeat(Math.max(0, width - text.length()))`; a negative count throws (`pmd/NegativeCountArgument`).

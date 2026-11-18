@@ -11,4 +11,10 @@ export const VALUE_CHECK_TEXTS = {
       '`Double.isNaN(x)`, `Float.isNaN(x)` or `x.isNaN()` on a local assigned from `Double.parseDouble`, `Double.valueOf`, `Float.parseFloat`, `toDoubleOrNull` or `toFloatOrNull`, in a method that has no `isFinite` or `isInfinite` call, no infinity constant and no relational comparison of that local.',
     why: '`Infinity` and `-Infinity` pass an `isNaN` check, and a text such as "Infinity" or "1e999" parses to them, so the value goes on as a limit or an amount. Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
   },
+  NegativeCountArgument: {
+    anchor: 'counts-computed-by-subtraction',
+    summary:
+      "`repeat`, `copyOf`, `new ArrayList<>(n)` (Kotlin also `take`, `takeLast`, `drop`, `dropLast`, `List(n)`) called with a count that is a subtraction of two non-constants, directly or through a local, with no `Math.max`, `coerceAtLeast` or `coerceIn` and no earlier comparison of the two sides.",
+    why: "A negative count throws `IllegalArgumentException` (or `NegativeArraySizeException`) as soon as the right side is the larger one. Nitpicker reads the sources of every module for it and prints it as a PMD rule.",
+  },
 };
