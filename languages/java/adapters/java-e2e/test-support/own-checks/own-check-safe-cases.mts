@@ -172,4 +172,25 @@ public class Flags {
 `,
     lines: [5],
   },
+  {
+    check: 'SimplifiedTernary',
+    file: `${MAIN}/Choice.java`,
+    before: `package demo;
+
+public class Choice {
+  boolean either(boolean ready, boolean late) {
+    return ready ? true : late;
+  }
+}
+`,
+    after: `package demo;
+
+public class Choice {
+  boolean either(boolean ready, boolean late) {
+    return ready || late;
+  }
+}
+`,
+    lines: [5],
+  },
 ];

@@ -63,8 +63,12 @@ final class Precedence {
   }
 
   static String negated(ExpressionTree tree, VisitorState state) {
+    return negated(tree, 0, state);
+  }
+
+  static String negated(ExpressionTree tree, int minimum, VisitorState state) {
     if (tree instanceof UnaryTree unary && unary.getKind() == Tree.Kind.LOGICAL_COMPLEMENT) {
-      return Support.source(Support.unparenthesized(unary.getExpression()), state);
+      return wrap(Support.unparenthesized(unary.getExpression()), minimum, state);
     }
     return "!" + wrap(tree, UNARY, state);
   }
