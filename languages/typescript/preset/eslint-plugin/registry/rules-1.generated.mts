@@ -33,6 +33,7 @@ import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
+import { rule as ruleNoEmptyEverySignal } from '../rules/empty-lists/no-empty-every-signal.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
-import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -135,6 +135,7 @@ export const partRules = {
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
   'no-eager-relation': ruleNoEagerRelation,
+  'no-empty-every-signal': ruleNoEmptyEverySignal,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
-  'no-string-as-regex': ruleNoStringAsRegex,
 };

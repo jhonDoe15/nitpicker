@@ -195,6 +195,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- An "all done" or "all cancelled" signal over a list that can be empty checks the list first:
+  `tools.length > 0 && tools.every(...)`, because `every` is true for no items
+  (`nitpicker/no-empty-every-signal`, report-only).
 - An explicit key and a spread of an object that can carry the same key are ordered on purpose: the explicit
   value goes last when it must win (`{ ...data, id: idOrSelector }`, `<Button {...props} disabled={loading} />`),
   and a caller default goes first or is read as `options.mode ?? 'detailed'` (`nitpicker/no-shadowed-spread-key`).

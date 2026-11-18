@@ -1639,6 +1639,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   an object literal that lacks the key, a file under `testing`, `test-utils` or `__fixtures__`, and a spread
   of a local variable. An exception fits when the
   spread is meant to override or the explicit key is meant to win.
+- `nitpicker/no-empty-every-signal` (type-aware, production source; report-only: its findings print as design
+  notes and never fail the change): `xs.every(...)` over an array that can be empty, used as an all-done signal,
+  because `every` is `true` for an empty array. Reported: the call is assigned to a name that starts with `all`,
+  `every` or `each` (`const allToolsCancelled = tools.every(...)`), or is the test of an `if` or `?:` whose branch
+  calls `stop`, `finish`, `complete`, `cancel`, `delete`, `remove`, `send`, `close`, `end`, `abort`, `resolve`,
+  `dispose`, `shutdown`, `terminate` or `kill`; and the array is a function parameter, a property read, the result
+  of `.filter(...)` or a variable holding one. Write `tools.length > 0 && tools.every(...)`. Not reported: a
+  tuple, a local array literal, and a function that also reads `xs.length`, `xs[0]`, `xs.some`, `xs.find`,
+  `xs.findIndex`, `xs.at` or `isNonEmpty(xs)`, which counts as an empty-list guard (so `xs.length === 0 || xs.every(...)`
+  and `xs.length > 0 && xs.every(...)` both pass here). When an empty list should count as done, keep `every`
+  and add an exception for the rule.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,

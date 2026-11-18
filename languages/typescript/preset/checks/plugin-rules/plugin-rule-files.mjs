@@ -243,4 +243,6 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/presence/lookups/index-lookups.mjs',
   'languages/typescript/preset/eslint-plugin/rules/spreads/no-shadowed-spread-key.mjs',
   'languages/typescript/preset/eslint-plugin/rules/spreads/spread-facts.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/empty-lists/no-empty-every-signal.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/empty-lists/every-receivers.mjs',
 ];

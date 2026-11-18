@@ -32,6 +32,10 @@ describe('report-only ESLint rules', () => {
     expect(classificationOf('nitpicker/no-presence-truthiness')).toBe('descriptive');
   });
 
+  it('classifies the empty every signal rule as descriptive', () => {
+    expect(classificationOf('nitpicker/no-empty-every-signal')).toBe('descriptive');
+  });
+
   it('keeps other rules enforceable', () => {
     expect(classificationOf('nitpicker/no-decided-condition')).toBe('enforceable');
   });

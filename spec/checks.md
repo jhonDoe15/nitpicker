@@ -398,6 +398,7 @@ Shadowed spread keys: `nitpicker/no-shadowed-spread-key` (production source, in 
 parameter written before a spread (an object literal property or a JSX attribute) whose type declares the same key as optional,
 and a string or number literal written after a spread of a parameter typed `*Options`, `*Config`, `*Settings` or `*Props` that
 declares the key as optional. A spread named `overrides` or `defaults`, test-support files, a default before the spread, a value read from the spread and a forced boolean are allowed.
+
 Empty every signals: `nitpicker/no-empty-every-signal` (production source, in `eslint-lint`, type-aware, report-only) reports
 `xs.every(...)` over a parameter, property, `.filter(...)` result or variable holding one, when the result is assigned to an
 `all`, `every` or `each` name or is the test of an `if` or `?:` whose branch stops, finishes, cancels, deletes, removes or
