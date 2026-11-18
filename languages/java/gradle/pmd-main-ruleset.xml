@@ -44,6 +44,41 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="CachedEntityFieldNotSerializable" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This mapped field of a second-level cached entity (@Cacheable or Hibernate @Cache) holds a project type that is not Serializable (or a collection of them). A cache that serializes entries (Ehcache with off-heap or disk tiers, a distributed cache) throws NotSerializableException on the write, or skips the entry, while tests with an in-memory cache pass. Make the type implement Serializable (public abstract class Attribute implements Serializable), mark the field @Transient or transient, or cache the entity with a JSON serializer. An exception fits a cache that keeps entries by reference.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mappings := ('Type', 'JdbcTypeCode', 'Convert'),
+    $unserializable := function($t, $unit) {
+      let $imported := $unit/ImportDeclaration[@ImportedSimpleName = $t/@SimpleName],
+          $local := $unit//ClassDeclaration[@SimpleName = $t/@SimpleName],
+          $root := string-join(tokenize($unit/PackageDeclaration/@Name, '\.')[position() le 2], '.')
+      return exists($t[self::ClassType][pmd-java:typeIs('java.lang.Object')][not(pmd-java:typeIs('java.io.Serializable'))])
+         and empty($local[@Interface = true()])
+         and (if (exists($imported)) then (some $i in $imported satisfies starts-with($i/@ImportedName, concat($root, '.')))
+              else (exists($local)
+                    or (empty($unit/ImportDeclaration[@ImportOnDemand = true()][@Static = false()])
+                        and not($t/@SimpleName = ('Object', 'Iterable', 'Runnable', 'CharSequence', 'Thread', 'Process',
+                                                  'Record', 'Comparable', 'AutoCloseable', 'ThreadLocal', 'Runtime')))))
+    }
+return
+  //ClassDeclaration[ModifierList/Annotation[(@SimpleName = 'Cacheable' and not(.//BooleanLiteral[@True = false()]))
+                                            or @SimpleName = 'Cache']]
+    [ancestor::CompilationUnit/ImportDeclaration[@ImportedName = ('jakarta.persistence.Cacheable', 'javax.persistence.Cacheable',
+                                                               'org.hibernate.annotations.Cache')]]
+    /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = ('static', 'transient'))]
+      [ModifierList/Annotation[@SimpleName = $mappings]]
+      [not(ModifierList/Annotation[@SimpleName = 'Transient'])]
+      [let $unit := ancestor::CompilationUnit,
+           $type := *[self::ClassType or self::ArrayType][1]
+       return $unserializable($type, $unit) or (some $a in $type/TypeArguments/ClassType satisfies $unserializable($a, $unit))]
+    /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CachedFutureKeepsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This field caches a CompletableFuture and later calls return it, but nothing ever resets it after a failure, so a first attempt that fails is replayed to every later caller instead of being retried. Reset the field when the attempt fails, and only if it still holds this attempt: future.whenComplete((value, error) -&gt; reset(future, error)), or keep the future in an AtomicReference and call compareAndSet(future, null). An exception fits only when keeping the first failure is intended.">
     <priority>3</priority>

@@ -21,6 +21,7 @@
   "pmd/BigIntegerInstantiation": ["simplification"],
   "pmd/BooleanFlagParameter": ["maintainability"],
   "pmd/BufferNeverReleased": ["bug", "reliability"],
+  "pmd/CachedEntityFieldNotSerializable": ["bug", "persistence"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],
   "pmd/CheckResultSet": ["bug"],
