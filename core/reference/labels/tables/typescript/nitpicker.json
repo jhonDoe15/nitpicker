@@ -113,6 +113,7 @@
   "eslint/nitpicker/no-unatomic-writes": ["reliability", "persistence"],
   "eslint/nitpicker/no-unbounded-query-array": ["bug", "persistence"],
   "eslint/nitpicker/no-uncleared-timeout": ["bug", "reliability"],
+  "eslint/nitpicker/no-unclosed-file-descriptor": ["reliability"],
   "eslint/nitpicker/no-uncoerced-request-input": ["bug"],
   "eslint/nitpicker/no-uncollected-tests": ["tests"],
   "eslint/nitpicker/no-undefined-only-env-check": ["bug"],

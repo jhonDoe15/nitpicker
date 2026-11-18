@@ -196,6 +196,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
   a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
+- A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
+  to create or empty a file use `writeFileSync(path, '')`, and close a descriptor given to `spawn` as stdio in the parent
+  (`nitpicker/no-unclosed-file-descriptor`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

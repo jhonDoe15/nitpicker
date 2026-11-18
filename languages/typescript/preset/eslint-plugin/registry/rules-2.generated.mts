@@ -10,6 +10,7 @@ import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framewo
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
+import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
@@ -84,6 +85,7 @@ export const partRules = {
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
+  'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,

@@ -290,7 +290,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   whose result is dropped as an expression statement, or is kept in a local of a function that never closes it
   (`closeSync(fd)`, `close(fd)`, `handle.close()`) and never hands it on. Passing the descriptor to `spawn` as `stdio`
   or to another `fs` call does not transfer ownership, so the parent still has to close it. A descriptor that is
-  returned, stored in a field, passed to another function (`createReadStream(null, { fd })`, `register(fd)`), declared
+  returned, stored in a field, passed to another function (`createReadStream(null, { fd })`, `register(fd)`), used by a
+  `process.stdout.write` or `process.stderr.write` override that lives as long as the process, declared
   with `await using`, or kept in a module-level variable is not reported, and neither is a `FileHandle` whose stream
   owns it (`handle.createReadStream()`). Allowed forms: `writeFileSync(path, '')` to create or empty a file, and
   `try { ... } finally { closeSync(fd); }`.
