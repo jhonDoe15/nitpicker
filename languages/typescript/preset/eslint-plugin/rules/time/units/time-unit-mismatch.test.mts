@@ -39,6 +39,8 @@ tester.run('time-unit-mismatch on arithmetic and comparisons', rule, {
     'export const same = (aSeconds: number, bSecs: number) => aSeconds + bSecs;',
     'export const count = (items: number[], atoms: number) => items.length + atoms;',
     'export const pick = (fast: boolean, ms: number) => fast ? ms : 0;',
+    'export const elapsed = (elapsedMs: number) => { const elapsedSeconds = elapsedMs / 1000.0; return elapsedSeconds; };',
+    'export const timeout = (timeoutSeconds: number) => { const timeoutMs = timeoutSeconds * 1000; return timeoutMs; };',
   ],
   invalid: [
     invalid(

@@ -22,7 +22,7 @@ public final class Logs {
   }
 
   void environment(String token) {
-    log.info("{}", System.getenv("API_TOKEN")); // violation: SecretInLog
+    log.info("{}", System.getenv("API_TOKEN")); // violation: SecretInLog, ConfigurationReadOutsideCompositionRoot
     MDC.put("token", token); // violation: SecretInLog
     log.info("{}", token == null ? "none" : token); // violation: SecretInLog
   }
@@ -48,6 +48,24 @@ public final class Logs {
     log.info("count {}", config.getTokenCount());
     MDC.put("user", token);
     other.info(token);
+  }
+
+  void parsed(String token) {
+    try {
+      Kind.valueOf(token);
+    } catch (IllegalArgumentException e) {
+      log.warn("unknown token " + token);
+    }
+  }
+
+  void notParsed(String token) {
+    Kind.valueOf("A");
+    log.warn("unknown token " + token); // violation: SecretInLog
+  }
+
+  enum Kind {
+    A,
+    B
   }
 
   String mask(String value) {

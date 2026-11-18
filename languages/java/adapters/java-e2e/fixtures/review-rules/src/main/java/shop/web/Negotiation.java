@@ -131,6 +131,19 @@ public final class Negotiation {
     return type.split(";")[1]; // violation: HandSplitHttpHeader
   }
 
+  public static String mediaType(HttpServletRequest request) {
+    return request.getHeader("Content-Type").split(";")[0].trim().toLowerCase();
+  }
+
+  public static String heldMediaType(HttpServletRequest request) {
+    String type = request.getHeader("Content-Type");
+    return type.split(";")[0];
+  }
+
+  public static String firstCookie(HttpServletRequest request) {
+    return request.getHeader("Cookie").split(";")[0]; // violation: HandSplitHttpHeader
+  }
+
   public static String[] cookies(HttpServletRequest request) {
     return request.getHeader("Cookie").split("; "); // violation: HandSplitHttpHeader
   }

@@ -37,6 +37,7 @@ ruleTester.run(
         "import { findByRole } from './queries.js'; await expect(findByRole('x')).rejects.toThrow();",
         "const { findByRole } = createFinder(); await expect(findByRole('x')).rejects.toThrow();",
         'cy.get(".ready").should("be.visible");',
+        "import legacy = require('./legacy'); await expect(load()).resolves.toBeUndefined();",
       ].map((code) => ({ filename: '/repo/tests/e2e/flow.spec.ts', code })),
       {
         filename: '/repo/tests/fixtures/pause.ts',
@@ -79,6 +80,7 @@ ruleTester.run(
         'const pause = 1000; cy.wait(pause);',
         'const pause = 2 * 500; cy.wait(pause);',
         "cy.get('.row').click(); cy.wait(250).then(check);",
+        "import legacy = require('./legacy'); cy.wait(500);",
       ].map((code) => ({
         filename: '/repo/cypress/e2e/flow.cy.ts',
         code,
