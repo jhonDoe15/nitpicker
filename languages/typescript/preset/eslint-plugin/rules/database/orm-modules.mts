@@ -104,7 +104,7 @@ export function ormLocals(
   return new Set<string | undefined>(locals);
 }
 
-function rootName(node: TSESTree.Node): string | undefined {
+export function rootName(node: TSESTree.Node): string | undefined {
   const steps = chainOf(unwrapped(node), (current) => {
     if (current.type === AST_NODE_TYPES.MemberExpression) {
       return unwrapped(current.object);
@@ -121,7 +121,11 @@ export function isForeignReceiver(
 ): boolean {
   const name = rootName(receiver);
   const binding = name === undefined ? undefined : scope.bindings.get(name);
-  return binding !== undefined && !binding.source.startsWith('.') && !ormFamilyOf(binding.source) !== undefined;
+  return (
+    binding !== undefined &&
+    !binding.source.startsWith('.') &&
+    ormFamilyOf(binding.source) === undefined
+  );
 }
 
 export function calleeLabel(
