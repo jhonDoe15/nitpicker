@@ -20,6 +20,7 @@ import { WIRING_RULES } from './wiring/wiring.mjs';
 import { STARTUP_RULES } from './lifecycle/startup-cleanup.mjs';
 import { UNRELEASED_RULES } from './lifecycle/unreleased.mjs';
 import { foreignKeyGate } from '../../../jpa/foreign-keys/key-gate.mjs';
+import { sequenceGate } from '../../../jpa/sequence-ids.mjs';
 
 const RULES = [
   ...BEAN_RULES,
@@ -73,6 +74,7 @@ export function springFindings(
     projectRoot,
     javaRoots,
     foreignKeys = foreignKeyGate(projectRoot),
+    sequenceIds = sequenceGate(projectRoot),
     rules = RULES,
     message = springMessage,
   },
@@ -85,6 +87,7 @@ export function springFindings(
     allOpen: manifest.kotlinAllOpen,
     projectFiles,
     checksForeignKeys: foreignKeys,
+    allowsSequenceIds: sequenceIds,
   };
   return springViews({ files, projectFiles, projectRoot, javaRoots }).flatMap((view) =>
     rules
