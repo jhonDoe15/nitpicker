@@ -64,6 +64,12 @@ PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat 
 already covers it, and its edit overlaps the Error Prone one, so the second is skipped),
 `ArrayTypeStyle`, `MultipleVariableDeclarations`, `NeedBraces`, `AvoidStarImport`.
 
+When a run selects only the twin (`--fix --rule pmd/MissingOverride`), the Error Prone check that
+clears it runs too, and its fixes are reported under both rules. The twins are in
+`languages/java/fix/errorprone/checks/twin-rules.mts`: `pmd/UnusedPrivateMethod` and
+`spotbugs/UPM_UNCALLED_PRIVATE_METHOD` (with `UnusedMethod`), `pmd/MissingOverride` (with
+`MissingOverride`) and `pmd/UnnecessaryVarargsArrayCreation` (with `ExplicitArrayForVarargs`).
+
 ## Near-duplicate extraction
 
 `java-extract-near-duplicate` is a review recipe for `structure/near-duplicate`: it runs only with `--fix --rule`, because nothing compiles the result. It parses each main

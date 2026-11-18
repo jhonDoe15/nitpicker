@@ -1,6 +1,7 @@
 import { hunkEdit } from '../patch/hunk-edits.mts';
 import { ownChecksOf, ownRule } from '../own/own-checks.mts';
 import { REVIEW_CHECKS, ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
+import { twinsOf } from '../checks/twin-rules.mts';
 import type {
   FixRecipe,
   RecipeEdit,
@@ -50,8 +51,11 @@ function fileFixes(
     const placed = editOf(text, name, entry);
     if (placed !== undefined) {
       const key = `${entry.label}:${String(placed.line)}`;
+      const at = { path: name, line: placed.line };
+      const twins = twinsOf(entry.label).map((rule) => ({ ...rule, ...at }));
       found.set(key, {
-        finding: { ...ruleFor(entry.label), path: name, line: placed.line },
+        finding: { ...ruleFor(entry.label), ...at },
+        ...(twins.length === 0 ? {} : { alsoFixes: twins }),
         edits: [...(found.get(key)?.edits ?? []), placed.edit],
       });
     }
@@ -75,7 +79,7 @@ function recipeOf({ id, checks, safety, entries, ruleFor = ruleOf }: RecipeSpec)
   const names = new Set(checks);
   return {
     id,
-    rules: checks.map(ruleFor),
+    rules: checks.flatMap((check) => [ruleFor(check), ...twinsOf(check)]),
     presets: PRESETS,
     scope: 'file',
     safety,

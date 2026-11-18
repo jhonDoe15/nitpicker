@@ -200,6 +200,7 @@ describe('--fix with Error Prone on Gradle', () => {
     expect(result.fixedFiles).toEqual([`${JAVA}/Changed.java`]);
     expect(result.fixedFindings).toEqual([
       `${JAVA}/Changed.java:9 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${JAVA}/Changed.java:9 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
     expect(result.toolErrors).toEqual([]);
   });
@@ -345,6 +346,7 @@ describe('--fix with Error Prone on Maven', () => {
     expect(read(repository, `${JAVA}/Untouched.java`)).toBe(CLASS('Untouched'));
     expect(result.fixedFindings).toEqual([
       `${JAVA}/Changed.java:9 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${JAVA}/Changed.java:9 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
     expect(result.toolErrors).toEqual([]);
   });
