@@ -2,7 +2,7 @@ import { gradleTarget } from '../gradle-wrapper/gradle-command.mjs';
 import { gradleOptions } from '../gradle-wrapper/gradle-stages.mts';
 import { type GradleResult, runGradle } from '../gradle-wrapper/gradle-process.mts';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mts';
-import { condenseFailure } from '../gradle-wrapper/diagnostics/failure-text.mts';
+import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/failure-text.mts';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
@@ -27,6 +27,9 @@ type StageRun = Omit<StageCheck, 'command'> & {
   readonly gradle: string | undefined;
   readonly spawn: unknown;
 };
+const RATE_LIMIT_ADVICE =
+  'A package repository rate-limited the build (HTTP 429), so this is not a problem in the project: rerun later.';
+
 type FailureContext = Pick<StageCheck, 'command' | 'budget'> & { readonly policy: JavaPolicy };
 
 function outputOf(result: GradleResult): string {
@@ -43,7 +46,10 @@ function failedStage(
   }
   const detail = condenseFailure(outputOf(result), projectRoot) || 'no diagnostic output';
   const where = policy.snapshot === 'base' ? 'on the base' : 'on your change';
-  return new Error(`${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}`);
+  const retry = isRateLimited(outputOf(result)) ? `\n${RATE_LIMIT_ADVICE}` : '';
+  return new Error(
+    `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}`,
+  );
 }
 
 export function assertGradleSucceeded(

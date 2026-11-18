@@ -17,6 +17,10 @@ const FAILURE_START = /^(?:FAILURE: |\* What went wrong:)/u;
 const SECTION = /^\* (?<name>[A-Z][\w ]*):$/u;
 const CHAIN = /^(?<indent>\s*)> (?<text>.+)$/u;
 const CAUSE = /^\s*Caused by:/u;
+const TRACE_LINE =
+  /^\s+(?:at |\.\.\. \d+ more)|^\s*(?:Caused by|Suppressed):|^[\w$.]+(?:Exception|Error|Throwable)\b/u;
+const WARNING = /\bWARN(?:ING)?\b/u;
+const RATE_LIMITED = /\bstatus code 429\b|\bToo Many Requests\b/u;
 const OWN_INIT_SCRIPT = /nitpicker\.init\.gradle\b/u;
 const MAX_LINES = 12;
 const MAX_LINE_LENGTH = 300;
@@ -102,12 +106,29 @@ function fitted(lines: readonly string[], projectRoot: string): string[] {
     .map((line) => (line.length > MAX_LINE_LENGTH ? `${line.slice(0, MAX_LINE_LENGTH)}…` : line));
 }
 
+function isWarningTrace(lines: readonly string[], index: number): boolean {
+  const owner = lines.slice(0, index).findLast((line) => !TRACE_LINE.test(line));
+  return WARNING.test(owner ?? '');
+}
+
+function failureCauses(lines: readonly string[]): string[] {
+  return lines.flatMap((line, index) =>
+    CAUSE.test(line) && !isWarningTrace(lines, index) ? [line.trim()] : [],
+  );
+}
+
+export function isRateLimited(text: string): boolean {
+  const lines = withoutToolNoise(text).split('\n');
+  const start = lines.findIndex((line) => FAILURE_START.test(line));
+  return start >= 0 && RATE_LIMITED.test(failureLines(lines.slice(start)).join('\n'));
+}
+
 export function condenseFailure(text: string, projectRoot: string): string {
   const lines = withoutToolNoise(text).split('\n');
   const start = lines.findIndex((line) => FAILURE_START.test(line));
   const before = start < 0 ? lines : lines.slice(0, start);
   const failure = start < 0 ? [] : failureLines(lines.slice(start));
-  const causes = before.filter((line) => CAUSE.test(line)).map((line) => line.trim());
+  const causes = failureCauses(before);
   const kept = [...compilerLines(text, projectRoot), ...failure, ...causes];
   const tail = lines.filter((line) => line.trim() !== '' && !GRADLE_DOCS.test(line));
   return fitted(kept.length > 0 ? kept : tail.slice(-MAX_LINES), projectRoot).join('\n');

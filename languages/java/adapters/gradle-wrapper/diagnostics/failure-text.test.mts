@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { condenseFailure, withoutToolNoise } from './failure-text.mts';
+import { condenseFailure, isRateLimited, withoutToolNoise } from './failure-text.mts';
 
 const NOTICE = 'Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1';
 const ROOT = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-failure-text-')));
@@ -203,6 +203,45 @@ describe('condenseFailure', () => {
       "Execution failed for task ':nitpickerPit'.",
       cause,
     ]);
+  });
+
+  it('leaves out the cause of a stack trace that a warning logged and the build went past', () => {
+    const cause = 'Caused by: java.net.SocketException: Connection reset';
+    const text = [
+      'WARN RuleApplicator - Exception applying rule CloseResource on file Indices.java, continuing',
+      'java.lang.RuntimeException: rule failed',
+      '\tat net.sourceforge.pmd.RuleApplicator.apply(RuleApplicator.java:79)',
+      'Caused by: java.lang.NullPointerException: "type" is null',
+      '\tat net.sourceforge.pmd.CloseResourceRule.getResourceTypeName(CloseResourceRule.java:685)',
+      '\t... 12 more',
+      '> Task :compileJava',
+      'Download failed',
+      cause,
+      banner([
+        '* What went wrong:',
+        "Could not HEAD 'https://repo.maven.apache.org/maven2/org/pitest/pitest-command-line.pom'.",
+        '> Received status code 429 from server: Too Many Requests',
+        '',
+      ]),
+    ].join('\n');
+
+    expect(condenseFailure(text, ROOT).split('\n')).toEqual([
+      "Could not HEAD 'https://repo.maven.apache.org/maven2/org/pitest/pitest-command-line.pom'.",
+      '> Received status code 429 from server: Too Many Requests',
+      cause,
+    ]);
+  });
+
+  it('takes a rate limit from the failure block only, not from a test log that mentions it', () => {
+    const testLog = ['RetryTest > backsOffOn429() FAILED', '    status code 429 was not retried'];
+    const failure = banner([
+      '* What went wrong:',
+      "Could not HEAD 'https://repo.maven.apache.org/maven2/a.pom'.",
+      '> Received status code 429 from server: Too Many Requests',
+      '',
+    ]);
+
+    expect([isRateLimited(testLog.join('\n')), isRateLimited(failure)]).toEqual([false, true]);
   });
 
   it('keeps the last lines of a failure without a Gradle failure block, at most 12', () => {
