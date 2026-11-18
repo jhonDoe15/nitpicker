@@ -374,7 +374,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `options.headers`, `init.headers` or `extraHeaders` and also writes a known header name as a literal key (`Content-Type`,
   `Authorization`, `Accept`, `User-Agent`, `Cookie`, `X-Api-Key`, ...) in any case. Object keys are case-sensitive and header names
   are not, so a caller `content-type` is sent next to the default `Content-Type` (`fetch` joins them as `application/json, text/plain`)
-  and the override never happens. A spread that goes through a call (a normalizer, `Object.fromEntries`, `new Headers(...)`) or
+  and the override never happens. A lowercase key next to `req.headers`, `request.headers` or `incoming.headers`
+  (Node lowercases those keys) is not reported. A spread that goes through a call (a normalizer, `Object.fromEntries`, `new Headers(...)`) or
   resolves to a local object literal, and a `Headers` instance, are not reported. Allowed forms: `new Headers(init)` with `has` and
   `set`, or lowercasing every key before merging.
 - `nitpicker/no-inconsistent-comparator`: a function given to `sort` or `toSorted` (inline, or a same-file function or

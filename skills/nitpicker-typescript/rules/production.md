@@ -218,6 +218,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A redirect or callback target taken from the request is never accepted because it starts with `/`: `//host` and `/\host` are other
   sites. Resolve it against a fixed origin and compare the origin back, allow only exact paths, or reject `//`, backslashes and
   encoded separators (`nitpicker/no-slash-only-redirect-guard`).
+- Request headers from a caller are merged through `new Headers(init)` with `has` and `set` (or with every key lowercased), not spread
+  into an object next to `Content-Type` or `Authorization` keys, because header names ignore case and the object keys do not
+  (`nitpicker/no-case-mixed-header-merge`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
