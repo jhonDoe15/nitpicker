@@ -70,6 +70,7 @@
   "eslint/nitpicker/no-orm-schema-sync": ["reliability", "persistence"],
   "eslint/nitpicker/no-parameter-mutation": ["maintainability"],
   "eslint/nitpicker/no-partial-output-assertion": ["tests"],
+  "eslint/nitpicker/no-per-call-debounce": ["bug", "performance"],
   "eslint/nitpicker/no-per-call-registration": ["bug", "reliability"],
   "eslint/nitpicker/no-presence-truthiness": ["bug"],
   "eslint/nitpicker/no-process-access-outside-composition-root": ["maintainability"],

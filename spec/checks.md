@@ -446,6 +446,13 @@ with a dispose-style method whose callback uses `this`, when no `clearTimeout` i
 cancel it. Timers that keep their handle, `.unref()`ed timers, sleeps and callbacks that first test a mounted or disposed
 flag are left alone.
 
+Debounce created per call: `nitpicker/no-per-call-debounce` (strict preset, production source) reports `debounce` or
+`throttle` from lodash, es-toolkit, throttle-debounce and similar libraries that is invoked at once, passed as an
+argument inside a class method that is not a constructor or initializer, or created in a React component or hook body
+outside `useMemo`, `useCallback`, `useRef`, `useState` and effects, or kept in a local that the same function calls.
+Each call or render gets its own timer, so nothing
+is debounced. Fields, module-level constants, factories that return the function and RxJS operators are left alone.
+
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
 guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a
