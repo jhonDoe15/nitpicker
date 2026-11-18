@@ -30,9 +30,10 @@ export function typedIoProject(
   prefix: string,
   store: string,
   files: Record<string, string> = {},
+  packages: Record<string, string> = IO_PACKAGES,
 ): TypedIoProject {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), `nitpicker-${prefix}-`)));
-  for (const [name, declarations] of Object.entries(IO_PACKAGES)) {
+  for (const [name, declarations] of Object.entries(packages)) {
     const folder = path.join(root, 'node_modules', name);
     mkdirSync(folder, { recursive: true });
     writeFileSync(path.join(folder, 'index.d.ts'), `${declarations}\n`);

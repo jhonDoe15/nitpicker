@@ -1,5 +1,8 @@
-import type { TSESLint } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
 import { isQueryResult, queryScope } from './query-calls.mts';
+import { isForeignCall } from './receivers/orm-callee.mts';
+import { isLockedRead } from './receivers/locked-reads.mts';
+import { unwrapped } from '../security/security-values.mts';
 import { AGGREGATE, COUNT, FILTER, SORT, resultSite, useOf } from './result-uses.mts';
 
 const EXCEPTION =
@@ -27,7 +30,11 @@ export const rule: TSESLint.RuleModule<
     const scope = queryScope(context);
     return {
       AwaitExpression(node) {
-        if (!isQueryResult(scope, node)) {
+        const call = unwrapped(node.argument);
+        const query = call.type === AST_NODE_TYPES.CallExpression ? call : undefined;
+        const skipped =
+          query === undefined || isForeignCall(context, query) || isLockedRead(query);
+        if (skipped || !isQueryResult(scope, node)) {
           return;
         }
         const site = resultSite(context, node);
