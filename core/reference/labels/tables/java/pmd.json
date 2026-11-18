@@ -20,6 +20,7 @@
   "pmd/BacktrackingRegex": ["performance", "security"],
   "pmd/BigIntegerInstantiation": ["simplification"],
   "pmd/BooleanFlagParameter": ["maintainability"],
+  "pmd/BufferNeverReleased": ["bug", "reliability"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],
   "pmd/CheckResultSet": ["bug"],

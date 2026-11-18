@@ -90,6 +90,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A singleton bean, servlet or filter does not store a value built from a call's argument in an instance field
   (`this.currency = requestedCurrency` in a service method): keep it in a local, key it by caller in a concurrent
   map, or use a prototype-scoped bean (`pmd/CallValueStoredInSharedField`).
+- A Netty `ByteBuf` that a method allocates, retains or encodes is released in a `finally` (`buf.release()`) or handed
+  on (returned, stored, `ctx.write(buf)`, `out.add(buf)`), never only read and dropped (`pmd/BufferNeverReleased`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the
