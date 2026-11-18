@@ -46,6 +46,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- An explicit key and a spread of an object that can carry the same key are ordered on purpose: the explicit
+  value goes last when it must win (`{ ...data, id: idOrSelector }`, `<Button {...props} disabled={loading} />`),
+  and a caller default goes first or is read as `options.mode ?? 'detailed'` (`nitpicker/no-shadowed-spread-key`).
 - An option read from an options or config object is defaulted with `??`, not `||`: `options.ipv6Subnet ?? 64`,
   `options.forceObject ?? config.forceObject`, so an explicit `false`, `0` or `''` from the caller stays
   (`nitpicker/no-falsy-default`).

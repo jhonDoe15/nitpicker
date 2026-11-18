@@ -1624,6 +1624,21 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   message, a comparison with `undefined` on a value type without it, and
   a condition that also tests the key with `in` or `has`. When a stored empty value must be computed again,
   add an exception for the rule.
+- `nitpicker/no-shadowed-spread-key` (type-aware, production source): a key written next to a spread of an object
+  whose type can carry the same key, where one of the two silently wins. Reported: a function parameter written
+  before the spread (`{ id: idOrSelector, ...data }`, `{ id, ...data }`, and the JSX form
+  `<Button disabled={loading} {...props} />`) when the spread's type declares the key as optional (a required
+  key is TypeScript's TS2783), so a caller's `data.id` or `disabled={false}` replaces the explicit value; and a
+  string or number literal written after a spread of a parameter, or of a member of a parameter, whose type is
+  named `*Options`, `*Config`, `*Settings` or `*Props` and declares the key as optional
+  (`{ ...start.codexConfig, model_reasoning_summary: 'detailed' }`), so the caller's value is ignored. Write the
+  spread first for the first form (`{ ...data, id: idOrSelector }`), and the default before the spread or
+  `mode: options.mode ?? 'detailed'` for the second. Not reported: a literal or constant before the spread (a
+  default), a value that reads the spread (`id: data.id`), a boolean or `undefined` after the spread (a forced
+  flag or a cleared key), a key the spread type lacks, a spread named `overrides` or `defaults`, a spread of
+  an object literal that lacks the key, a file under `testing`, `test-utils` or `__fixtures__`, and a spread
+  of a local variable. An exception fits when the
+  spread is meant to override or the explicit key is meant to win.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,

@@ -92,6 +92,7 @@
   "eslint/nitpicker/no-self-recursion": ["reliability", "maintainability"],
   "eslint/nitpicker/no-server-or-worker-per-test": ["tests", "performance"],
   "eslint/nitpicker/no-service-locator": ["maintainability"],
+  "eslint/nitpicker/no-shadowed-spread-key": ["bug"],
   "eslint/nitpicker/no-shared-stateful-regex": ["bug"],
   "eslint/nitpicker/no-shared-test-state": ["tests"],
   "eslint/nitpicker/no-shell-string-command": ["security"],

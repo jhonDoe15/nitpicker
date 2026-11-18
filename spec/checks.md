@@ -393,9 +393,11 @@ or `== null` when the branch that handles the miss stores the same key with `m.s
 or can hold the tested value, and `record[key] !== undefined` with a variable key on a record of `unknown` values. The
 allowed forms are `m.has(k)`, `key in record` and `Object.hasOwn(record, key)`. A `|| 0` or `|| ''` fallback and a text or
 number map that only stores non-empty values are not reported.
+
 Shadowed spread keys: `nitpicker/no-shadowed-spread-key` (production source, in `eslint-lint`, type-aware) reports a function
 parameter written before a spread (an object literal property or a JSX attribute) whose type declares the same key as optional,
 and a string or number literal written after a spread of a parameter typed `*Options`, `*Config`, `*Settings` or `*Props` that
+declares the key as optional. A spread named `overrides` or `defaults`, test-support files, a default before the spread, a value read from the spread and a forced boolean are allowed.
 Empty every signals: `nitpicker/no-empty-every-signal` (production source, in `eslint-lint`, type-aware, report-only) reports
 `xs.every(...)` over a parameter, property, `.filter(...)` result or variable holding one, when the result is assigned to an
 `all`, `every` or `each` name or is the test of an `if` or `?:` whose branch stops, finishes, cancels, deletes, removes or
