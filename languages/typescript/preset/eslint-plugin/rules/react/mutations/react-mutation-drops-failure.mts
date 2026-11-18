@@ -39,8 +39,11 @@ function handlesRejection(call: TSESTree.CallExpression): boolean {
     return ['catch', 'then'].includes(nameOf(chained.property) ?? '');
   }
   let node: TSESTree.Node = call;
-  while (node.parent.type !== AST_NODE_TYPES.Program) {
-    const { parent } = node;
+  for (
+    let parent: TSESTree.Node | undefined = node.parent;
+    parent !== undefined;
+    parent = node.parent
+  ) {
     if (
       parent.type === AST_NODE_TYPES.TryStatement &&
       parent.block === node &&
