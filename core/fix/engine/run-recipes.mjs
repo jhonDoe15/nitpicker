@@ -22,7 +22,9 @@ function selectedFixes(planned, recipe, run) {
     throw new Error(`recipe ${recipe.id} returned no fixes list`);
   }
   return planned.fixes.filter(
-    ({ finding } = {}) => run.selected.size === 0 || run.selected.has(ruleName(finding ?? {})),
+    ({ finding, alsoFixes = [] } = {}) =>
+      run.selected.size === 0 ||
+      [finding ?? {}, ...alsoFixes].some((named) => run.selected.has(ruleName(named))),
   );
 }
 

@@ -728,7 +728,7 @@
       "line": 5
     },
     {
-      "tool": "errorprone",
+      "tool": "pmd",
       "rule": "FieldCanBeFinal",
       "path": "src/main/java/probe/G2Stored.java",
       "line": 4
@@ -1076,7 +1076,7 @@
       "line": 7
     },
     {
-      "tool": "errorprone",
+      "tool": "pmd",
       "rule": "FieldCanBeFinal",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 7

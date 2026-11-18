@@ -669,7 +669,6 @@
     "ExpectedExceptionChecker",
     "ExplicitArrayForVarargs",
     "ExtendsAutoValue",
-    "FieldCanBeFinal",
     "FieldCanBeLocal",
     "FloggerLogWithCause",
     "FloggerMessageFormat",
@@ -781,6 +780,7 @@
     "ConstantField",
     "EmptyIf",
     "EqualsMissingNullable",
+    "FieldCanBeFinal",
     "FieldCanBeStatic",
     "FieldMissingNullable",
     "ForEachIterable",
@@ -962,14 +962,6 @@
     "UnrecognisedJavadocTag"
   ],
   "classExemptions": {
-    "FieldCanBeFinal": [
-      "jakarta.persistence.Embeddable",
-      "jakarta.persistence.Entity",
-      "jakarta.persistence.MappedSuperclass",
-      "javax.persistence.Embeddable",
-      "javax.persistence.Entity",
-      "javax.persistence.MappedSuperclass"
-    ],
     "IdentifierName": ["com.tngtech.archunit.junit.AnalyzeClasses"],
     "PrivateConstructorForUtilityClass": [
       "com.tngtech.archunit.junit.AnalyzeClasses",
@@ -1161,7 +1153,6 @@
     "ExtendsAutoValue",
     "ExtendsObject",
     "FallThrough",
-    "FieldCanBeFinal",
     "FieldCanBeLocal",
     "FilesLinesLeak",
     "Finalize",

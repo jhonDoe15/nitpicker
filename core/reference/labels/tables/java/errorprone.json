@@ -150,7 +150,6 @@
   "errorprone/ExtendsAutoValue": ["bug"],
   "errorprone/ExtendsObject": ["simplification"],
   "errorprone/FallThrough": ["bug"],
-  "errorprone/FieldCanBeFinal": ["simplification"],
   "errorprone/FieldCanBeLocal": ["simplification"],
   "errorprone/Finalize": ["bug"],
   "errorprone/Finally": ["bug"],

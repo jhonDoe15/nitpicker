@@ -17,11 +17,7 @@ import {
   reportedViolations,
 } from '../__tests__/spring-project.mts';
 
-const GUARDED_ERROR_PRONE_RULES = new Set([
-  'FieldCanBeFinal',
-  'PrivateConstructorForUtilityClass',
-  'MissingOverride',
-]);
+const GUARDED_ERROR_PRONE_RULES = new Set(['PrivateConstructorForUtilityClass', 'MissingOverride']);
 
 describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   let projectRoot: string | undefined;
@@ -68,7 +64,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     expect(CHECKSTYLE_VERSION.exec(report)?.[1]).toBe('13.5.0');
   });
 
-  it('reports no FieldCanBeFinal in JPA entities and no utility-class finding on configuration classes', () => {
+  it('reports no utility-class finding on configuration classes', () => {
     const root = String(projectRoot);
     const findings = readErrorProneFindings({
       reportRoot: path.join(root, 'build', 'nitpicker'),
