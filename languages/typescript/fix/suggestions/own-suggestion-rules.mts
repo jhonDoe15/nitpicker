@@ -1,4 +1,5 @@
 export const OWN_SUGGESTION_RULES = Object.freeze([
+  'no-accumulating-spread',
   'no-disabled-tls-verification',
   'no-falsy-default',
   'no-raised-test-timeout',
