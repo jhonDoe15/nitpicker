@@ -98,6 +98,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
   parameters on to another method of the same class; call that method (or, when it is less visible, rename it to the alias's name and delete the alias).
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
+- An override that forwards to `super` or to a delegate of its own supertype passes every parameter it
+  receives (`return delegate.render(template, locale, strict);`), not the shorter overload that drops
+  one (`pmd/ForwardDropsParameter`).
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
