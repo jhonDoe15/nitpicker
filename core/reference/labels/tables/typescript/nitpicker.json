@@ -106,6 +106,7 @@
   "eslint/nitpicker/no-sql-string-building": ["security", "persistence"],
   "eslint/nitpicker/no-stale-retry-after-conflict": ["bug", "persistence"],
   "eslint/nitpicker/no-string-as-regex": ["bug", "security"],
+  "eslint/nitpicker/no-string-length-as-byte-count": ["bug", "reliability"],
   "eslint/nitpicker/no-switched-off-tests": ["tests"],
   "eslint/nitpicker/no-sync-node-api-in-async": ["performance", "async"],
   "eslint/nitpicker/no-task-outliving-resource": ["bug", "reliability", "async"],

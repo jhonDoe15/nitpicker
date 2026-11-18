@@ -247,6 +247,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   the round trip silently loses bytes. Allowed forms: `new TextDecoder('utf-8', { fatal: true })`, which throws on malformed
   input, or keeping the bytes. Display-only decoding (logging, terminal output), reads written to another path, and
   `JSON.parse(readFileSync(path, 'utf8'))` of a config file are not reported.
+- `nitpicker/no-string-length-as-byte-count`: `text.length` of a string (by type, or a string literal, template, annotated
+  `string` variable or `JSON.stringify` result) compared with, added to, used as a `for` loop bound stepped by, or sliced with a
+  value named in bytes (`MAX_KEY_BYTES`, `maxBytes`, `chunkByteSize`, `limitInBytes`). `.length` counts UTF-16 code units, so
+  non-ASCII text passes the check and is cut or rejected later, or a chunk splits a multi-byte character. Allowed forms:
+  `Buffer.byteLength(text, 'utf8')`, `new TextEncoder().encode(text).byteLength`, or slicing the encoded bytes. `Buffer` and
+  `Uint8Array` lengths, `byteLength`, array lengths and limits not named in bytes are not reported. Go counts bytes in
+  `len(string)`; the Python and Java forms are left for a parity review.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

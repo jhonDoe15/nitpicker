@@ -186,6 +186,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Bytes that are parsed, compared or written back are decoded with `new TextDecoder('utf-8', { fatal: true })`, not with a
   lenient decoder or a `'utf8'` read written to the same file, which turn invalid bytes into U+FFFD
   (`nitpicker/no-lossy-utf8-decode`).
+- A limit stated in bytes is checked on bytes: `Buffer.byteLength(text, 'utf8')` or the length of the `TextEncoder` output,
+  not `text.length`, and chunks are cut from the encoded bytes (`nitpicker/no-string-length-as-byte-count`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
