@@ -608,11 +608,11 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   Logging does not, so `LogExceptionFirst` reports it, alone when the exception fills the last
   placeholder and the count matches. `null` is not taken for an exception. The Kotlin preset has the same rules as
   `kotlin-source/LogFormatArguments` and `kotlin-source/LogExceptionFirst`. Python is covered by
-  ruff `PLE1205`, `PLE1206` and the `G` rules. TypeScript has no counterpart yet: `console.*` and
-  `util.format` append an argument with no placeholder and print a placeholder with no argument as
-  written, so nothing is lost there, but pino drops a value passed after a message without a
-  placeholder for it (`log.info("loaded config", config)`), and so does winston without
-  `format.splat()`; that needs its own rule for those libraries.
+  ruff `PLE1205`, `PLE1206` and the `G` rules. TypeScript and JavaScript have
+  `nitpicker/no-dropped-log-arguments`: `console.*` and `util.format` append an argument with no
+  placeholder and print a placeholder with no argument as written, so nothing is lost there, but pino
+  drops a value passed after a message without a placeholder for it (`log.info("loaded config", config)`),
+  and so does winston without `format.splat()`.
 - `GeneratedMemberCycle` and `GeneratedEqualsSkipsSuperclass` check what Lombok generates; Lombok
   itself stays allowed. PMD reports each candidate (a non-static field of a class with a generated
   member, or a Lombok class with an `extends` and no `callSuper`), and the source filter in
