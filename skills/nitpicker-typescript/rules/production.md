@@ -183,6 +183,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   bytes-to-base64 step), because `btoa` throws for any character above U+00FF (`nitpicker/no-btoa-on-runtime-text`).
 - A header value made from a path, route, user name, request data or JSON is encoded first (`encodeURIComponent`, base64),
   because headers throw for characters above U+00FF (`nitpicker/no-non-latin1-header-value`).
+- Bytes that are parsed, compared or written back are decoded with `new TextDecoder('utf-8', { fatal: true })`, not with a
+  lenient decoder or a `'utf8'` read written to the same file, which turn invalid bytes into U+FFFD
+  (`nitpicker/no-lossy-utf8-decode`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
