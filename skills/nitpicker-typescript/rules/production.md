@@ -73,6 +73,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - `JSON.stringify` gets values it can write: convert a `bigint`, `Map`, `Set` or `RegExp` first (`String(id)`,
   `[...map]`, `regex.source`) or pass a replacer, never the raw value as a cache key or id
   (`nitpicker/no-lossy-json-stringify`).
+- `text.split(separator, limit)` drops everything past `limit` parts: split once at `indexOf(separator)` and `slice`
+  both sides, or take `[head, ...rest]` and `rest.join(separator)` when the last field may hold the separator
+  (`nitpicker/no-truncating-split-limit`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

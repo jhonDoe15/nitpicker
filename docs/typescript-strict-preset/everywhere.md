@@ -409,13 +409,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `Date`) is not entered, and `any`, `unknown` and type parameters are not reported. Allowed forms: a replacer
   function (`JSON.stringify(value, (_, v) => typeof v === 'bigint' ? `${v}n` : v)`), a `toJSON` method, or converting
   first (`String(id)`, `[...map]`, `Object.fromEntries(map)`, `regex.source`).
-- `nitpicker/no-truncating-split-limit`: `text.split(separator, limit)` with a `:` or `=` separator and a whole-number `limit` of 2 or more whose
+- `nitpicker/no-truncating-split-limit`: `text.split(separator, limit)` with any separator and a whole-number `limit` of 2 or more whose
   last part is read: destructured into exactly `limit` names (`const [user, password] = decoded.split(':', 2)`),
   indexed at `limit - 1` (`arg.split('=', 2)[1]`), or taken with `.pop()` or `.at(-1)`, directly or through a variable
   the result is stored in. JavaScript stops after `limit` parts and drops the rest of the text, unlike Java, Python
   and Go, which keep the remainder in the last part, so a password with a colon or a flag value with `=` is cut short.
   `split(sep, 1)[0]`, a destructuring with fewer names than the limit and a split without a limit are not reported (a
-  split without a limit whose key and value are destructured is a separate rule). Allowed forms: split once at
+  split without a limit whose key and value are destructured is a separate rule), nor is a regular expression
+  separator with a capture group. Allowed forms: split once at
   `indexOf(separator)` and `slice` both sides, or `const [head, ...rest] = text.split(separator)` and
   `rest.join(separator)`. The rule reads no types.
 - `nitpicker/no-unguarded-json-parse`: `JSON.parse(text)` outside a `try` with a `catch` (and outside a promise chain
