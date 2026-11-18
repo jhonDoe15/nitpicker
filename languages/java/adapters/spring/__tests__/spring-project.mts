@@ -213,6 +213,7 @@ const REVIEW_RULES = new Set([
   'HashCodeDisagreesWithEquals',
   'EqualsLeavesOutField',
   'CopyMethodDropsField',
+  'SecretDigestEquals',
   'AnnotationAttributeNotResolved',
 ]);
 const roots: string[] = [];

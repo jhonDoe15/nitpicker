@@ -136,6 +136,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A password or secret digest is never compared with `equals` (`pmd/SecretDigestEquals`): check a password with
+  `passwordEncoder.matches(raw, stored)` (a salted encoder never returns the stored value again), and compare an
+  HMAC or a digest of a secret with `MessageDigest.isEqual(expected, actual)`, which takes constant time.
 - Resolve every string attribute of an annotation the way its siblings are (`pmd/AnnotationAttributeNotResolved`):
   when a method passes `listener.topics()` and `listener.group()` through `resolve(...)`,
   `resolveEmbeddedValue` or `evaluate(...)`, pass `listener.consumes()` through it too, so a placeholder or
