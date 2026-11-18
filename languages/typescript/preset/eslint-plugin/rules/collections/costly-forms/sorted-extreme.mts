@@ -17,7 +17,7 @@ const ENDS = new Set(['pop', 'shift']);
 const FIRST = 0;
 const LAST = -1;
 
-function isIndexZero(property: TSESTree.Node): boolean {
+export function isIndexZero(property: TSESTree.Node): boolean {
   const value = unwrapped(property);
   return (
     numberValue(value) === FIRST || (value.type === AST_NODE_TYPES.Literal && value.value === '0')

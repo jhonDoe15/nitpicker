@@ -1,24 +1,20 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { unwrapped } from '../repeated-runs.mts';
 
-function isSimpleKey(node: TSESTree.Node): boolean {
-  return node.type === AST_NODE_TYPES.Literal;
-}
-
 export function isSimpleValue(node: TSESTree.Node): boolean {
-  const value = unwrapped(node);
-  switch (value.type) {
-    case AST_NODE_TYPES.Identifier:
-    case AST_NODE_TYPES.ThisExpression:
-    case AST_NODE_TYPES.Literal:
-      return true;
-    case AST_NODE_TYPES.MemberExpression:
-      return (
-        !value.optional &&
-        isSimpleValue(value.object) &&
-        (!value.computed || isSimpleKey(value.property))
-      );
-    default:
+  let current = unwrapped(node);
+  while (current.type === AST_NODE_TYPES.MemberExpression) {
+    if (
+      current.optional ||
+      (current.computed && current.property.type !== AST_NODE_TYPES.Literal)
+    ) {
       return false;
+    }
+    current = unwrapped(current.object);
   }
+  return (
+    current.type === AST_NODE_TYPES.Identifier ||
+    current.type === AST_NODE_TYPES.ThisExpression ||
+    current.type === AST_NODE_TYPES.Literal
+  );
 }
