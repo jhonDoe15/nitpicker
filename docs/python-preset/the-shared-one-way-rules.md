@@ -1036,7 +1036,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   attribute annotated that way and read as `self.items`, or a project function with such a return annotation.
   An iteration skips flagged items when its loop body, comprehension or call names the flag, when it goes over
   a call of a project function that reads the flag (`live(items)`), or when the collection is typed with a
-  narrowed type (`NonDeleted[Item]`, `Live[Item]`). A name that says the collection is narrowed (`visible_items`, `active`, `live`, `non_deleted`) and a name the function reassigns are not judged; a plain copy, `sorted(...)` and a dict index builder are not iterations that select items. The rule fires only
+  narrowed type (`NonDeleted[Item]`, `Live[Item]`). A name that says the collection is narrowed (`visible_items`, `active`, `live`, `non_deleted`) and a name the function reassigns are not judged, and a collection whose name says it includes flagged items (`items_including_deleted`, `with_deleted`) is neither judged nor counted; a plain copy, `sorted(...)` and a dict index builder are not iterations that select items. The rule fires only
   with at least five iterations over the type and at least 80% of them skipping flagged items; undo, redo, sync,
   restore, trash, purge, history, snapshot, export and serialize functions and tests are not counted. Collections
   without an annotation and the rows of a query are not judged (`soft-delete-filter-missing` covers the query).

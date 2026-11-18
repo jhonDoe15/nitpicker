@@ -210,6 +210,16 @@ describe.skipIf(!enabled)('deleted-item-filter-missing', () => {
         [],
       ],
       [
+        'a collection whose name says it includes deleted items',
+        code(
+          ...record('Card'),
+          ...guarded('Card'),
+          'def f(items_including_deleted: list[Card]):',
+          '    return [i.sku for i in items_including_deleted]',
+        ),
+        [],
+      ],
+      [
         'a list that the function reassigns',
         code(
           ...record('Part'),
@@ -219,6 +229,41 @@ describe.skipIf(!enabled)('deleted-item-filter-missing', () => {
           '    return [i.sku for i in items]',
         ),
         [],
+      ],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('reports the plain collection when others include deleted items on purpose', () => {
+    const [actual, expected] = outcomes([
+      [
+        'one loop over the plain collection among loops over an including-deleted one',
+        code(
+          ...record('Dot'),
+          ...guarded('Dot'),
+          'def g(all_including_deleted: list[Dot]):',
+          '    return [i.sku for i in all_including_deleted]',
+          '',
+          '',
+          'def h(with_deleted: list[Dot]):',
+          '    return [i.sku for i in with_deleted]',
+          '',
+          '',
+          'def i(items: list[Dot]):',
+          '    return [x.sku for x in items]',
+        ),
+        ['deleted-item-filter-missing:42 i|Dot|is_deleted|is_deleted|5 of 6'],
+      ],
+      [
+        'a collection whose name only starts like an including-deleted one',
+        code(
+          ...record('Bar'),
+          ...guarded('Bar'),
+          'def f(items_with_deleted_at: list[Bar]):',
+          '    return [i.sku for i in items_with_deleted_at]',
+        ),
+        ['deleted-item-filter-missing:34 f|Bar|is_deleted|is_deleted|5 of 6'],
       ],
     ]);
 

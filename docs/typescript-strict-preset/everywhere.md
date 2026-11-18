@@ -712,7 +712,12 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   (`filter(isLive)`) or called on the item in the body (`if (!isLive(item)) continue`), or when the item type is narrowed, the flag
   declared as `false` (`true` for `isVisible`, `null` or `undefined` for `deletedAt`), as in `NonDeleted<T>`. A changed
   iteration that does not is reported with the flag, the share, the guard form, the most used helper that returns narrowed
-  items and the narrowed type alias. A flag below the threshold is never followed, an iteration with a function reference
+  items and the narrowed type alias. Iterations over a collection that is meant to include flagged items are left out of both the
+  share and the report: a receiver whose name says so (`elementsIncludingDeleted`, `withDeletedItems()`, `getAllIncludingDeleted()`, also
+  through a `const` it was assigned to), and an iteration over a parameter that every call site in the program fills with
+  such a value. The bar stays at 80%: on a large editor codebase where only about half of the iterations skip deleted items,
+  most of the rest read ids, indexes and positions of items that callers already filtered, and a lower bar reports those
+  as often as it finds a real miss, so a project below it is not followed. A flag below the threshold is never followed, an iteration with a function reference
   instead of an inline callback is not judged, a loop that assigns the flag is skipped, and undo, trash, restore and sync code takes the exception. Without a type
   program (no `tsconfig`) the rule is silent, so JavaScript projects without type information are not covered.
 - Route handlers without the project's auth requirement (`nitpicker/no-route-without-auth`, syntactic): the followed

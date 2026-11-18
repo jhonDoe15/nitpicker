@@ -1,6 +1,6 @@
 import type { TSESLint } from '@typescript-eslint/utils';
 import { typeServices } from '../security/security-values.mts';
-import { followedFlag, iterationsOf, type Followed } from './project-index.mts';
+import { followedFlag, isIntended, iterationsOf, type Followed } from './project-index.mts';
 
 function allowedForms(followed: Followed): string {
   const forms = [`a guard on \`${followed.name}\``];
@@ -46,9 +46,8 @@ export const rule: TSESLint.RuleModule<
         const sourceFile = esTreeNodeToTSNodeMap.get(program);
         const checker = tsProgram.getTypeChecker();
         for (const iteration of iterationsOf(sourceFile, checker)) {
-          const followed = iteration.guarded
-            ? undefined
-            : followedFlag(tsProgram, iteration.flag.key);
+          const skipped = iteration.guarded || isIntended(tsProgram, iteration.node);
+          const followed = skipped ? undefined : followedFlag(tsProgram, iteration.flag.key);
           if (followed !== undefined) {
             const start = sourceFile.getLineAndCharacterOfPosition(
               iteration.node.getStart(sourceFile),
