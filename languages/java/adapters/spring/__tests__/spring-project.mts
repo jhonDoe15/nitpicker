@@ -200,6 +200,7 @@ const REVIEW_RULES = new Set([
   'CachedFutureKeepsFailure',
   'ImmutableCollectionChanged',
   'CopyConstructorSharesCollection',
+  'ToMapDuplicateKey',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',
