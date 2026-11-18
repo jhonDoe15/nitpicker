@@ -179,6 +179,12 @@ removed from the files that lose them.
   passes it to `format` of a `DateFormat`. The two `write` copies and the two `read` copies of the Sql
   adapters are one fix, so the new class carries all of their shared methods at once.
 
+`jvm-shorter-condition` is a review recipe for `structure/shorter-condition` in Java and Kotlin. It
+writes the form the finding names in place of the condition, in parentheses where an operator wraps
+it, and skips a condition that holds a comment or whose text appears twice on its line. The shorter
+form evaluates fewer operands, so an operand that could throw or has a side effect no longer runs;
+that is why a person selects it.
+
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
 method. It takes the locals and parameters the run reads, and copies the `throws` clause that the
