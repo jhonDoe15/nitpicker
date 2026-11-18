@@ -194,6 +194,7 @@ const REVIEW_RULES = new Set([
   'PendingFuturesNotFailedOnClose',
   'TimerNotStoppedOnClose',
   'CachedFutureKeepsFailure',
+  'CleanupLoopStopsOnFailure',
   'CloseDereferencesUnopenedField',
   'PlainCollectionInConcurrentMap',
   'UnsynchronizedSharedCollection',
