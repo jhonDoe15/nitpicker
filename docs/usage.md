@@ -2951,7 +2951,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
 | `nitpicker/no-wasted-collection-step`                | safe   | safe: spread fallbacks and copies, length tests, `flatMap`, `some`; review: `await` in `Promise.all`, `Promise.all([p])` |
 | `nitpicker/no-accumulating-spread`                   | safe   | writes `Object.fromEntries(xs.map(...))`, `map` or `flatMap` for a `reduce` that spreads its accumulator (typed code)    |
-| `nitpicker/no-accumulator-concat`                    | safe   | writes `flatMap` for a `reduce` that concatenates onto its accumulator (typed code)                                     |
+| `nitpicker/no-accumulator-concat`                    | safe   | writes `flatMap` for a `reduce` that concatenates onto its accumulator (typed code)                                      |
 | `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
 | `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
 | `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
@@ -2959,6 +2959,7 @@ finding as it is. No fix adds a comment.
 | `nitpicker/no-disabled-tls-verification`             | review | removes the option or assignment that turns verification off                                                             |
 | `nitpicker/no-shell-string-command`                  | review | turns a plain command template into an `execFile` call with an argument array, or drops `shell: true`                    |
 | `nitpicker/no-accumulating-spread`                   | review | declares a fresh array `const` and pushes onto it for a loop that rebuilds it with spread on every pass                  |
+| `nitpicker/no-accumulator-concat`                    | review | pushes onto a fresh array (`for...of` for an Array) for `x = x.concat(y)` in a loop and declares it `const`              |
 
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule

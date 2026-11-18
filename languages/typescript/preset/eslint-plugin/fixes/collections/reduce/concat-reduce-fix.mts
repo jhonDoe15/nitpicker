@@ -9,7 +9,7 @@ import {
   rewrittenCall,
   type Callback,
 } from './reduce-site.mts';
-import { hasMethod, isPlainConcatArgument } from '../type-proofs.mts';
+import { hasMethod, isPlainConcatArgument } from './type-proofs.mts';
 
 function isOnlyConcat(
   node: TSESTree.Node,

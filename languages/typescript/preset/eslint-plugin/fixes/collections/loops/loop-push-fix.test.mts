@@ -138,6 +138,11 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
     declines(
       '  let out: string[] = [];\n  const alias = out;\n  for (const x of xs) {\n    out = [...out, x.id];\n  }\n  return alias;',
     ),
+    pushes(
+      loopOf('out.push(x.id);\n    out = [...out, x.id.toUpperCase()];'),
+      constLoopOf('out.push(x.id);\n    out.push(x.id.toUpperCase());'),
+    ),
+    declines(loopOf('out.push(out);\n    out = [...out, x.id];')),
     declines(loopOf('out = [...out, x.id];\n    history.push(out);')),
     declines(loopOf('out = [...out, x.id];\n    use(out);')),
     declines(loopOf('out = [...out, x.id];\n    if (x.n) return out;')),

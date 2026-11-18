@@ -9,7 +9,7 @@ import {
   type Callback,
   type ReduceSite,
 } from './reduce-site.mts';
-import { hasObjectFromEntries, isPrimitiveKey } from '../type-proofs.mts';
+import { hasObjectFromEntries, isPrimitiveKey } from './type-proofs.mts';
 
 type EntryProperty = TSESTree.Property;
 

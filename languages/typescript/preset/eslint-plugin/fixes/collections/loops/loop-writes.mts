@@ -16,15 +16,53 @@ export type Accumulation = {
   readonly loops: readonly TSESTree.Node[];
 };
 
-function writeOf(variable: Variable, reference: Reference): Write | undefined {
+export type WriteParser = (variable: Variable, reference: Reference) => Write | undefined;
+
+function statementAssignment(reference: Reference): TSESTree.AssignmentExpression | undefined {
   const assignment = reference.identifier.parent;
+  return assignment.type === AST_NODE_TYPES.AssignmentExpression &&
+    assignment.operator === '=' &&
+    assignment.left === reference.identifier &&
+    assignment.parent.type === AST_NODE_TYPES.ExpressionStatement
+    ? assignment
+    : undefined;
+}
+
+export function concatWrite(variable: Variable, reference: Reference): Write | undefined {
+  const assignment = statementAssignment(reference);
+  const call = assignment?.right;
   if (
-    assignment.type !== AST_NODE_TYPES.AssignmentExpression ||
-    assignment.operator !== '=' ||
-    assignment.left !== reference.identifier ||
-    assignment.parent.type !== AST_NODE_TYPES.ExpressionStatement ||
-    assignment.right.type !== AST_NODE_TYPES.ArrayExpression
+    assignment === undefined ||
+    call?.type !== AST_NODE_TYPES.CallExpression ||
+    call.optional ||
+    call.typeArguments !== undefined ||
+    call.arguments.length !== 1 ||
+    call.arguments[0]?.type === AST_NODE_TYPES.SpreadElement
   ) {
+    return undefined;
+  }
+  const { callee } = call;
+  const isConcat =
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    !callee.computed &&
+    !callee.optional &&
+    callee.property.type === AST_NODE_TYPES.Identifier &&
+    callee.property.name === 'concat' &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
+    variable.references.some(({ identifier }) => identifier === callee.object);
+  return isConcat && assignment.parent.type === AST_NODE_TYPES.ExpressionStatement
+    ? {
+        statement: assignment.parent,
+        assignment,
+        lead: callee.object as TSESTree.Identifier,
+        tail: call.arguments,
+      }
+    : undefined;
+}
+
+export function spreadWrite(variable: Variable, reference: Reference): Write | undefined {
+  const assignment = statementAssignment(reference);
+  if (assignment?.right.type !== AST_NODE_TYPES.ArrayExpression) {
     return undefined;
   }
   const [lead, ...tail] = assignment.right.elements;
@@ -33,7 +71,10 @@ function writeOf(variable: Variable, reference: Reference): Write | undefined {
   const isSelf =
     target?.type === AST_NODE_TYPES.Identifier &&
     variable.references.some((candidate) => candidate.identifier === target);
-  return isSelf && present.length === tail.length && present.length > 0
+  return isSelf &&
+    present.length === tail.length &&
+    present.length > 0 &&
+    assignment.parent.type === AST_NODE_TYPES.ExpressionStatement
     ? { statement: assignment.parent, assignment, lead: target, tail: present }
     : undefined;
 }
@@ -50,6 +91,7 @@ export function outerLoop(
 export function accumulationOf(
   variable: Variable,
   declaration: TSESTree.Node,
+  parse: WriteParser,
 ): Accumulation | undefined {
   const writes: Write[] = [];
   const reads: Reference[] = [];
@@ -57,7 +99,7 @@ export function accumulationOf(
     if (reference.init === true) {
       continue;
     }
-    const write = reference.isWrite() ? writeOf(variable, reference) : undefined;
+    const write = reference.isWrite() ? parse(variable, reference) : undefined;
     if (reference.isWrite() && write === undefined) {
       return undefined;
     }

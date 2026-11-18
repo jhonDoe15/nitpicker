@@ -11,7 +11,7 @@ import {
   type Callback,
   type ReduceSite,
 } from './reduce-site.mts';
-import { hasDenseArrayType, hasMethod } from '../type-proofs.mts';
+import { hasDenseDefiniteArrayType, hasMethod } from './type-proofs.mts';
 
 type Rewrite = { readonly method: 'map' | 'flatMap'; readonly result: string };
 
@@ -39,7 +39,7 @@ function rewriteOf(context: Context, tail: readonly TSESTree.Node[]): Rewrite | 
     return { method: 'flatMap', result: `[${items}]` };
   }
   if (only?.type === AST_NODE_TYPES.SpreadElement) {
-    return hasDenseArrayType(context, only.argument)
+    return hasDenseDefiniteArrayType(context, only.argument)
       ? { method: 'flatMap', result: expressionText(sourceCode, only.argument) }
       : undefined;
   }

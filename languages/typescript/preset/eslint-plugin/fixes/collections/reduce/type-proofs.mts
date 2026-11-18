@@ -1,9 +1,9 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { arrayItemTypes, itemTypesOf } from '../../rules/support/array-items.mts';
-import { hasArrayType } from '../../rules/support/checked-types.mts';
-import { typeServices, type Context } from '../../rules/security/security-values.mts';
-import { ts } from '../../rules/typed/typescript-views.mts';
+import { arrayItemTypes, itemTypesOf } from '../../../rules/support/array-items.mts';
+import { hasArrayType } from '../../../rules/support/checked-types.mts';
+import { typeServices, type Context } from '../../../rules/security/security-values.mts';
+import { ts } from '../../../rules/typed/typescript-views.mts';
 
 const NEVER_OBJECT_FLAGS =
   ts.TypeFlags.StringLike |
@@ -42,12 +42,29 @@ export function isPrimitiveKey(context: Context, node: TSESTree.Node): boolean {
   );
 }
 
-function isPlainConcatMember(checker: TypeScript.TypeChecker, member: TypeScript.Type): boolean {
+const NULLISH_FLAGS = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
+
+export function hasDenseDefiniteArrayType(context: Context, node: TSESTree.Node): boolean {
+  const services = typeServices(context);
+  return (
+    services !== undefined &&
+    !membersOf(services.getTypeAtLocation(node)).some(
+      (member) => (member.flags & NULLISH_FLAGS) !== 0,
+    ) &&
+    hasDenseArrayType(context, node)
+  );
+}
+
+function isPlainConcatMember(
+  checker: TypeScript.TypeChecker,
+  member: TypeScript.Type,
+  arrays: boolean,
+): boolean {
   if ((member.flags & NEVER_OBJECT_FLAGS) !== 0) {
     return true;
   }
   if (checker.isArrayType(member) || checker.isTupleType(member)) {
-    return !(itemTypesOf(checker, member) ?? [member]).some(mayBeHole);
+    return arrays && !(itemTypesOf(checker, member) ?? [member]).some(mayBeHole);
   }
   return (
     (member.flags & ts.TypeFlags.Object) !== 0 &&
@@ -56,15 +73,23 @@ function isPlainConcatMember(checker: TypeScript.TypeChecker, member: TypeScript
   );
 }
 
-export function isPlainConcatArgument(context: Context, node: TSESTree.Node): boolean {
+function isPlainConcatValue(context: Context, node: TSESTree.Node, arrays: boolean): boolean {
   const services = typeServices(context);
   if (services === undefined) {
     return false;
   }
   const checker = services.program.getTypeChecker();
   return membersOf(services.getTypeAtLocation(node)).every((member) =>
-    isPlainConcatMember(checker, member),
+    isPlainConcatMember(checker, member, arrays),
   );
+}
+
+export function isPlainConcatArgument(context: Context, node: TSESTree.Node): boolean {
+  return isPlainConcatValue(context, node, true);
+}
+
+export function isAppendedAsOne(context: Context, node: TSESTree.Node): boolean {
+  return isPlainConcatValue(context, node, false);
 }
 
 export function hasMethod(context: Context, node: TSESTree.Node, name: string): boolean {
