@@ -193,6 +193,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-directory-passing-existence-check`).
 - A `Location` header or a configured path is resolved against the request URL before it is followed or redirected to:
   `new URL(location, requestUrl)`, `Response.redirect(new URL(path, request.url))` (`nitpicker/no-unresolved-relative-url`).
+- A redirect or callback target taken from the request is never accepted because it starts with `/`: `//host` and `/\host` are other
+  sites. Resolve it against a fixed origin and compare the origin back, allow only exact paths, or reject `//`, backslashes and
+  encoded separators (`nitpicker/no-slash-only-redirect-guard`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

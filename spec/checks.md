@@ -481,6 +481,7 @@ request target or in `new URL(location)` with no base, `Response.redirect(path)`
 Slash-only redirect guards: `nitpicker/no-slash-only-redirect-guard` (production source, in `eslint-lint`) reports a redirect target
 (`callbackUrl`, `redirectTo`, `returnTo`, `next`) accepted by `startsWith('/')`, `v[0] === '/'` or a bare `^/` regex and then returned or redirected
 to in a function with no `//`, backslash or origin check, and `router.push(url.pathname + ...)` after an origin check that does not reject a `//` pathname.
+
 Case-mixed header merges: `nitpicker/no-case-mixed-header-merge` (production source, in `eslint-lint`) reports an object literal used as `headers` that spreads caller
 Inconsistent comparators: `nitpicker/no-inconsistent-comparator` (production source, in `eslint-lint`) reports a
 `sort` or `toSorted` comparator whose every result is a non-zero number literal (equal items are never `0`), and a
