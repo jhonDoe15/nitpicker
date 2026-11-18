@@ -13,4 +13,5 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'reusable-object-per-call',
   'strict-boolean-expressions',
   'unbounded-fan-out',
+  'unbounded-reactive-fan-out',
 ]);

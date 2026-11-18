@@ -30,7 +30,11 @@ type Entry = {
   readonly origin: Invocation | undefined;
 };
 type HelperCall = { readonly call: Invocation; readonly helper: FunctionNode };
-export type SuggestedFix = { readonly messageId: string; readonly plan: ReportFix | undefined };
+export type SuggestedFix = {
+  readonly messageId: string;
+  readonly plan: ReportFix | undefined;
+  readonly data?: Readonly<Record<string, string>>;
+};
 type Group = {
   readonly node: TSESTree.CallExpression;
   readonly combinator: string;
