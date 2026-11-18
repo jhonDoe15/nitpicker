@@ -95,7 +95,36 @@ export function symbolTypeString(
   return symbol === undefined ? 'unknown' : typeString(checker, checker.getTypeOfSymbol(symbol));
 }
 
-function sideTypes(hole: Hole, checker: TypeScript.TypeChecker): string[] {
+function literalTypeText(
+  node: TypeScript.Node,
+  checker: TypeScript.TypeChecker,
+): string | undefined {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.getText();
+  }
+  const type = checker.getTypeAtLocation(node);
+  return type.isNumberLiteral() ? checker.typeToString(type) : undefined;
+}
+
+function literalTypes(hole: Hole, checker: TypeScript.TypeChecker): string[] | undefined {
+  if (hole.kind !== 'literal') {
+    return undefined;
+  }
+  const texts = (['a', 'b'] as const).map((side) =>
+    literalTypeText(hole.occurrences[0][side], checker),
+  );
+  return texts.every((text) => text !== undefined) ? texts : undefined;
+}
+
+function sideTypes(
+  hole: Hole,
+  checker: TypeScript.TypeChecker,
+  precise: boolean,
+): readonly string[] {
+  const literals = precise ? literalTypes(hole, checker) : undefined;
+  if (literals !== undefined) {
+    return literals;
+  }
   return (['a', 'b'] as const).map((side) => {
     const node = hole.occurrences[0][side];
     return hole.kind === 'parameter'
@@ -107,12 +136,12 @@ function sideTypes(hole: Hole, checker: TypeScript.TypeChecker): string[] {
 export function holeParameterText(
   hole: NamedHole,
   checker: TypeScript.TypeChecker,
-  { typed }: { readonly typed: boolean },
+  { typed, precise = false }: { readonly typed: boolean; readonly precise?: boolean },
 ): string {
   if (!typed) {
     return hole.name;
   }
-  const types = [...new Set(sideTypes(hole, checker))];
+  const types = [...new Set(sideTypes(hole, checker, precise))];
   const joined = types.join(' | ');
   const type =
     hole.kind === 'thunk' ? `() => ${types.length > 1 ? `(${joined})` : joined}` : joined;
