@@ -1,0 +1,56 @@
+  <rule name="CompletionWithoutFailurePath" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Forward the failure to the result: return the composed stage (return source.thenCompose(value -&gt; next(value))), or chain .exceptionally(error -&gt; fail(result, error)) with a method that calls result.completeExceptionally(error), or read the throwable in whenComplete (value, error) and call completeExceptionally(error) when it is not null. This callback completes a result future, resumes an AsyncResponse or sets a DeferredResult, but when the source future fails it never runs, or it runs without looking at the throwable, so the result stays pending and its caller waits forever. An exception fits only when a pending result is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $success := function($call) {
+      $call[(@MethodName = 'complete' and *[1][pmd-java:typeIs('java.util.concurrent.CompletableFuture')])
+        or (@MethodName = 'resume' and *[1][pmd-java:typeIs('jakarta.ws.rs.container.AsyncResponse')
+              or pmd-java:typeIs('javax.ws.rs.container.AsyncResponse')])
+        or (@MethodName = 'setResult' and *[1][pmd-java:typeIs('org.springframework.web.context.request.async.DeferredResult')])
+        or (@MethodName = 'onResponse' and *[1][pmd-java:typeIs('org.opensearch.core.action.ActionListener')
+              or pmd-java:typeIs('org.elasticsearch.action.ActionListener')])]
+    },
+    $failure := function($call) {
+      $call[@MethodName = ('completeExceptionally', 'cancel', 'onFailure', 'setErrorResult')
+        or (@MethodName = 'resume' and ArgumentList/*[1][pmd-java:typeIs('java.lang.Throwable')])]
+    },
+    $recoveries := ('exceptionally', 'exceptionallyAsync', 'exceptionallyCompose', 'exceptionallyComposeAsync',
+      'handle', 'handleAsync', 'whenComplete', 'whenCompleteAsync')
+return
+  //ExpressionStatement/MethodCall
+    [@MethodName = ('thenAccept', 'thenAcceptAsync', 'thenApply', 'thenApplyAsync', 'thenCompose',
+                    'thenComposeAsync', 'thenRun', 'thenRunAsync')]
+    [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]]
+    [not(*[1]/descendant-or-self::MethodCall[@MethodName = ('completedFuture', 'completedStage')])]
+    [let $stage := .,
+         $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+         $lambda := ArgumentList/LambdaExpression[1]
+     return exists($lambda) and exists($method)
+       and (some $done in $lambda//MethodCall[exists($success(.))][*[1][self::VariableAccess or self::FieldAccess]]
+            satisfies (let $name := string($done/*[1]/@Name),
+                           $failures := $method//MethodCall[exists($failure(.))][*[1][(self::VariableAccess or self::FieldAccess)
+                                                                                  and @Name = $name]]
+                       return empty($lambda/LambdaParameterList//VariableId[@Name = $name])
+                         and empty($lambda//VariableId[@Name = $name])
+                         and empty($failures[ancestor::CatchClause or ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall
+                                                [@MethodName = $recoveries]])
+                         and (exists($failures) or empty($method//VariableDeclarator[VariableId/@Name = $name]
+                                                         [*[2][self::ConstructorCall]])
+                              or not($done/@MethodName = 'complete'))))]
+|
+  //MethodCall[@MethodName = ('handle', 'handleAsync', 'whenComplete', 'whenCompleteAsync')]
+    [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]]
+    [ArgumentList/LambdaExpression[1][LambdaParameterList[@Size = 2]]
+       [let $error := LambdaParameterList/LambdaParameter[2]/VariableId/@Name,
+            $value := LambdaParameterList/LambdaParameter[1]/VariableId/@Name
+        return empty(.//VariableAccess[@Name = $error])
+          and exists(.//VariableAccess[@Name = $value])
+          and not(starts-with($error, '_') or matches($error, '^(ignored?|unused)$', 'i'))
+          and exists(.//MethodCall[exists($success(.))][*[1][(self::VariableAccess or self::FieldAccess)
+                       and not(@Name = ancestor::LambdaExpression[1]/LambdaParameterList//VariableId/@Name)]])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

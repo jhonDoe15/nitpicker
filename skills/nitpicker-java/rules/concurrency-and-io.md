@@ -66,6 +66,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
+- A result future, `AsyncResponse` or `DeferredResult` that a callback completes gets the failure too: return the
+  composed stage, chain `.exceptionally(error -> ...)` that fails the result, or read the throwable in
+  `handle`/`whenComplete` and call `completeExceptionally(error)`; a dropped `thenAccept(value -> result.complete(value))`
+  or a `handle((value, ex) -> ...)` that never reads `ex` leaves the caller waiting (`pmd/CompletionWithoutFailurePath`).
 - A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
   `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
 - A `close()` or `stop()` that releases a collection of delegates in a loop closes each one in its own `try`/`catch`,

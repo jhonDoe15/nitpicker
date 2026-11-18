@@ -207,6 +207,7 @@ const REVIEW_RULES = new Set([
   'PooledFieldNotReset',
   'HandleReleasedOnlyOnSuccess',
   'CachedEntityFieldNotSerializable',
+  'CompletionWithoutFailurePath',
   'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
