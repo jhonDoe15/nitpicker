@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GOSEC_HINTS } from './gosec-hints.mjs';
-import { lintMessage, lintRule } from './lint-rules.mjs';
+import { GOSEC_HINTS } from './gosec-hints.mts';
+import { lintMessage, lintRule } from './lint-rules.mts';
 
 const LINT_FIXTURES = path.join(import.meta.dirname, '../../lint/fixtures');
 

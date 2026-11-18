@@ -63,3 +63,21 @@ export function waitForFile(filePath: string): Promise<void> {
     }
   });
 }
+
+export type ScriptAnalyzer = {
+  readonly name: string;
+  readonly version: string;
+  readonly configurationHash: string;
+  readonly exclusions: readonly string[];
+  readonly createInvocation: () => { readonly command: string; readonly args: readonly string[] };
+};
+
+export function scriptAnalyzer(name: string, script: string): ScriptAnalyzer {
+  return {
+    name,
+    version: '1',
+    configurationHash: 'h',
+    exclusions: [],
+    createInvocation: () => ({ command: process.execPath, args: ['--eval', script] }),
+  };
+}

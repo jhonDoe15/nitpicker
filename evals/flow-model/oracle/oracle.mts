@@ -13,6 +13,7 @@ import type {
 import type { Primitive } from '../model/syntax-types.mts';
 import { compileEntry, entryShape } from './compile.mts';
 import { buildInput, createWorld, requireFor } from './world.mts';
+import { appendAll } from '../../../shared/lists/lists.mts';
 
 const DEFAULT_EXECUTION_LIMIT = 2000;
 
@@ -41,7 +42,10 @@ function domainsOf(spec: SpecNode, path: string): Domain[] {
       continue;
     }
     const entries = isTree(item.spec) ? Object.entries(item.spec) : [];
-    pending.push(...entries.map(([key, value]) => ({ spec: value, path: `${item.path}.${key}` })));
+    appendAll(
+      pending,
+      entries.map(([key, value]) => ({ spec: value, path: `${item.path}.${key}` })),
+    );
   }
   return domains;
 }
@@ -103,7 +107,7 @@ function successors(execution: OracleExecution, prefix: readonly number[]): numb
       (index) => index > 0,
     );
     const open = position >= prefix.length;
-    next.push(...(open ? alternatives.map((index) => [...taken.slice(0, position), index]) : []));
+    appendAll(next, open ? alternatives.map((index) => [...taken.slice(0, position), index]) : []);
   }
   return next;
 }
@@ -116,7 +120,7 @@ function explore(run: Run, assignment: Assignment): boolean {
     }
     const execution = execute(run.load, run.setup, { assignment, prefix });
     run.executions.push(execution);
-    queue.push(...successors(execution, prefix));
+    appendAll(queue, successors(execution, prefix));
   }
   return true;
 }

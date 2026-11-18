@@ -54,3 +54,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Rows from `.iterator()`, `yield_per`, `stream_results` or a server-side cursor are handled as they
   arrive, flushing a fixed-size batch inside the loop, never appended to one list of every row
   (`streamed-rows-collected`).
+- HTTP text: lowercase (`lower()` or `casefold()`) a header value, host, cookie name or file extension before
+  comparing it, and parse `Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match` and `Cookie` with
+  `email.message`, `werkzeug.http` or `http.cookies.SimpleCookie` instead of `split(",")` or `split(";")`
+  (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
+  library that is itself the parser takes an exception.

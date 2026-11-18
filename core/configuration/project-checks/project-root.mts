@@ -9,6 +9,7 @@ import {
 } from '../../../shared/messages/troubleshooting.mjs';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
 import { detectedPreset, markerFilesIn } from './project-check-views.mts';
+import { uvWorkspaceOf } from './uv-workspace.mjs';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 const chainOf: (start: string, next: (current: string) => string | undefined) => string[] =
@@ -16,7 +17,14 @@ const chainOf: (start: string, next: (current: string) => string | undefined) =>
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
-export function resolveProjectRoot(cwd: string = process.cwd()): string {
+export type ProjectRootOptions = {
+  readonly noProjectAdvice?: ((repositoryRoot: string) => string | undefined) | undefined;
+};
+
+export function resolveProjectRoot(
+  cwd: string = process.cwd(),
+  { noProjectAdvice }: ProjectRootOptions = {},
+): string {
   const current = realpathSync(cwd);
   const repositoryRoot = repositoryRootOf(current);
   const directories = chainOf(current, (directory: string) => {
@@ -24,13 +32,15 @@ export function resolveProjectRoot(cwd: string = process.cwd()): string {
     return directory === repositoryRoot || directory === parent ? undefined : parent;
   });
   const projectRoot = directories.find(
-    (directory: string) => markerFilesIn(directory, PROJECT_MARKERS).length > 0,
+    (directory: string) =>
+      markerFilesIn(directory, PROJECT_MARKERS).length > 0 ||
+      uvWorkspaceOf(directory) !== undefined,
   );
   if (projectRoot !== undefined) {
     return projectRoot;
   }
   throw troubleshootingError(
-    noProjectMessage(current, repositoryRoot),
+    noProjectMessage(current, repositoryRoot, noProjectAdvice?.(repositoryRoot)),
     TROUBLESHOOTING_ANCHORS.noProjectFound,
   );
 }
@@ -57,12 +67,19 @@ function repositoryRootOf(directory: string): string {
   }
 }
 
-function noProjectMessage(current: string, repositoryRoot: string): string {
+function noProjectMessage(
+  current: string,
+  repositoryRoot: string,
+  suggestion: string | undefined,
+): string {
   const where =
     current === repositoryRoot
       ? `in the repository root ${current}`
       : `between ${current} and repository root ${repositoryRoot}`;
   const detected = detectedPreset(current);
+  if (suggestion !== undefined && detected === undefined) {
+    return `No package.json or ${CONFIG_FILE_NAME} found ${where}. ${suggestion}`;
+  }
   const advice =
     detected === undefined
       ? `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`

@@ -4,6 +4,7 @@ import {
   policyDigest,
   policyFindings,
 } from '../reporting/review/policy-findings.mts';
+import type { DeclaredMoves } from './moved-names/declared/move-types.mts';
 import { attachFixes } from './fixes/attach-fixes.mts';
 import {
   type AnalyzerOutcome,
@@ -12,13 +13,19 @@ import {
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
+import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
 import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
-import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
+import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 import { runProfileSummary } from '../../quick/summary.mts';
+import { skippedSummary } from '../skipping/lines.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
+import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
+import { labeledFindings, labeledOutcomes, labelRun } from '../../labels/label-filter.mts';
+import type { LabelFilter } from '../../labels/taxonomy.mts';
 import { fieldOf, fieldsOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { areaOf } from '../reporting/format/rule-groups/finding-areas.mts';
 
 type ScopedOutcome = AnalyzerOutcome & { readonly outside?: number };
 
@@ -42,6 +49,10 @@ export type ReportContext = {
   readonly scope?: unknown;
   readonly quick?: unknown;
   readonly staged?: unknown;
+  readonly labels?: LabelFilter | undefined;
+  readonly labelsOf?: LabelsOf | undefined;
+  readonly policyAnalyzers?: readonly unknown[] | undefined;
+  readonly skippedAnalyzers?: readonly string[] | undefined;
 };
 
 export type CombineRequest = ReportContext & {
@@ -50,6 +61,8 @@ export type CombineRequest = ReportContext & {
   readonly fixRecipes?: unknown[] | undefined;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
+  readonly baseToHeadPackages?: Moves | undefined;
+  readonly baseToHeadDeclared?: DeclaredMoves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
   readonly policies?: { readonly base?: unknown; readonly head?: unknown } | undefined;
 };
@@ -63,7 +76,6 @@ export type DiffReport = {
   readonly toolErrors: ReportEntry[];
   readonly notes: ReportEntry[];
   text?: unknown;
-  fixPlans?: unknown[];
 };
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
@@ -71,6 +83,7 @@ type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly metadata?: MetadataMap;
   readonly notes: ReportEntry[];
   readonly toolErrors: ReportEntry[];
+  readonly hidden?: number;
 };
 
 const withFixes: (
@@ -79,6 +92,13 @@ const withFixes: (
   recipes: unknown[] | undefined,
 ) => Finding[] = attachFixes;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
+const withoutSharedOverlaps: (runs: { readonly baseRun: unknown; readonly headRun: unknown }) => {
+  readonly baseRun: unknown;
+  readonly headRun: unknown;
+} = withoutSharedCrossToolOverlaps;
+const skippedFields: (context: {
+  readonly skippedAnalyzers?: readonly string[] | undefined;
+}) => object = skippedSummary;
 const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
   withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
@@ -92,20 +112,37 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
+  const deduplicated = withoutSharedOverlaps(context);
   const baseRun = withSharedDirectives(
-    withDependencies(context.baseRun, objectOf(policies.base)),
+    withDependencies(deduplicated.baseRun, objectOf(policies.base)),
     context.analyzers,
   );
   const headRun = withSharedDirectives(
-    withDependencies(context.headRun, objectOf(policies.head)),
+    withDependencies(deduplicated.headRun, objectOf(policies.head)),
     context.analyzers,
   );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
-  const outcomes = scopedOutcomes(compared.outcomes, context.scope);
-  const notes = scopedNotes(compared.notes, context.scope);
-  const metadata = mergeMetadata(baseRun.metadata, headRun.metadata);
-  const report = buildReport({ ...context, outcomes, notes, toolErrors, metadata });
+  const labelsOf = context.labelsOf ?? findingLabeler({ areaOf });
+  const labeled = labeledOutcomes(
+    scopedOutcomes(compared.outcomes, context.scope),
+    context.labels,
+    labelsOf,
+  );
+  const notes = labeledFindings(
+    scopedNotes(compared.notes, context.scope),
+    context.labels,
+    labelsOf,
+  );
+  const report = buildReport({
+    ...context,
+    outcomes: labeled.outcomes,
+    notes: notes.findings,
+    toolErrors,
+    metadata: mergeMetadata(baseRun.metadata, headRun.metadata),
+    hidden: labeled.hidden,
+    labelsOf,
+  });
   return {
     ...report,
     newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
@@ -130,6 +167,12 @@ export function noChangesReport(
     reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
+export function allSkippedReport(context: Parameters<typeof noChangesReport>[0]): DiffReport {
+  const report = noChangesReport(context);
+  const { noChanges, ...summary } = report.summary;
+  return { ...report, summary: { ...summary, skippedAll: noChanges } };
 }
 
 const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
@@ -188,11 +231,20 @@ function policyReview(
   };
 }
 
+function labelCountsOf(findings: readonly Finding[], labelsOf: LabelsOf | undefined): object {
+  if (findings.length === 0) {
+    return {};
+  }
+  const labelsFor = labelsOf ?? findingLabeler({ areaOf });
+  return { labelCounts: labelCounts(findings.map((finding) => ({ labels: labelsFor(finding) }))) };
+}
+
 function runAndScopeSummary(context: BuildContext, outcomes: readonly ScopedOutcome[]): object {
   const outside = outcomes.reduce((total, { outside: count }) => total + (count ?? 0), 0);
   return {
     ...profileSummary({ quick: context.quick, staged: context.staged }),
     ...scopedSummary(context.scope, outside),
+    ...labelRun(context.labels, context.hidden ?? 0),
   };
 }
 
@@ -210,7 +262,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(analyzers, configOverrides, context.metadata),
+      policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides, context.metadata),
       configOverrides,
       policyChanges,
       policyLoosenings,
@@ -221,14 +273,19 @@ function buildReport(context: BuildContext): DiffReport {
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...runAndScopeSummary(context, outcomes),
+      ...skippedFields(context),
       tools: outcomes.map(({ tool }) => tool),
-      exclusions: declaredExclusions(analyzers),
+      exclusions: declaredExclusions(context.policyAnalyzers ?? analyzers),
       renamedPaths: context.baseToHeadRenames.size,
       elapsedMs: Date.now() - startedAt,
       overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',
       newEnforceableFindings: newFindings.filter(
         (finding) => finding.classification === 'enforceable',
       ).length,
+      ...labelCountsOf(
+        newFindings.filter((finding) => finding.classification === 'enforceable'),
+        context.labelsOf,
+      ),
     },
     newFindings: sorted(newFindings),
     resolvedFindings: sorted(collect(outcomes, 'resolvedFindings')),

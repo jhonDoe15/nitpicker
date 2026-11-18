@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 const STRINGS = /"""([\s\S]*?)"""|"((?:\\.|[^"\\\n])*)"/gu;
 const NODE = /@?\s*(?<![\w$])(?:[\w.]*\.)?NamedAttributeNode\s*\(([^()]*)\)/gu;
 const SUBGRAPH = /(?<![\w$])(?:[\w.]*\.)?NamedSubgraph\s*\(/gu;
@@ -68,7 +69,10 @@ export function namedGraphPaths(argumentsText) {
     const path = [...prefix, node.name];
     paths.push(path);
     const children = depth < MAX_SUBGRAPH_DEPTH ? (subgraphs.get(node.subgraph) ?? []) : [];
-    pending.push(...children.map((child) => ({ node: child, prefix: path, depth: depth + 1 })));
+    appendAll(
+      pending,
+      children.map((child) => ({ node: child, prefix: path, depth: depth + 1 })),
+    );
   }
   return paths.filter((path) => path.every(Boolean));
 }

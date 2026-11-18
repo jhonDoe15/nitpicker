@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { spotbugsLaunch } from './spotbugs-launch.mjs';
+import { spotbugsLaunch } from './spotbugs-launch.mts';
 
 describe('spotbugsLaunch', () => {
   const module = { sourceRoots: ['/missing/src'], outputDirectory: '/work/classes' };

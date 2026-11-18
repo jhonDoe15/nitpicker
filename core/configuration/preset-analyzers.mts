@@ -4,14 +4,14 @@ import {
   type ProfiledAnalyzer,
   analyzersOf,
 } from '../../shared/values/analyzers.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 import { configureAnalyzers } from './configure-analyzers.mts';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
-import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
-import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
+import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mts';
+import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mts';
 import {
   configuredAnalyzers,
   javascriptAnalyzers,
@@ -35,6 +35,17 @@ export function presetAnalyzers(
   }
   const language = languageAnalyzers(config);
   return [...language, ...hygieneAnalyzers, ...optInAnalyzers(config, language)];
+}
+
+const repositoryCheckNames = new Set(hygieneAnalyzers.map(({ name }) => name));
+
+export function withRepositoryChecks<T extends { readonly name: string }>(
+  analyzers: readonly T[],
+  overlay: ProjectOverlay | undefined,
+): readonly T[] {
+  return overlay?.repositoryChecks === false
+    ? analyzers.filter(({ name }) => !repositoryCheckNames.has(name))
+    : analyzers;
 }
 
 function languageAnalyzers(config: NitpickerConfig): Analyzer[] {

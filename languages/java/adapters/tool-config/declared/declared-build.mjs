@@ -3,6 +3,7 @@ import path from 'node:path';
 import { childAt, parseXml } from '../../../../../shared/ingest/common.mjs';
 import { gradleStatements } from '../../../builds/narrowing/gradle-script.mjs';
 import { buildFiles } from '../../../conventions/build-style/build-files.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const SKIPPED_DIRECTORIES = new Set([
   'node_modules',
@@ -49,15 +50,15 @@ function walk(root) {
     if (directory !== '' && entries.some((entry) => entry.name === '.git')) {
       continue;
     }
-    pending.push(
-      ...entries
+    appendAll(
+      pending,
+      entries
         .filter((entry) => entry.isDirectory() && !skipped(entry.name, directory))
         .map((entry) => relativeOf(directory, entry.name)),
     );
-    found.push(
-      ...entries
-        .filter((entry) => entry.isFile())
-        .map((entry) => relativeOf(directory, entry.name)),
+    appendAll(
+      found,
+      entries.filter((entry) => entry.isFile()).map((entry) => relativeOf(directory, entry.name)),
     );
   }
   return found;

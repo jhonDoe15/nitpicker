@@ -10,7 +10,8 @@ import {
   selectedCodeFixes,
   type CodeFix,
   type SourceText,
-} from './typed/code-fix-views.mts';
+} from './code-fix-rules.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type Edit = { readonly start: number; readonly end: number; readonly text: string };
 type Group = {
@@ -149,7 +150,10 @@ function fixPass(state: PassState): boolean {
     if (next !== text) {
       texts.set(name, next);
       fixService.setText(name, next);
-      done.push(...groups.map(({ rule, line }) => ({ name, rule, line })));
+      appendAll(
+        done,
+        groups.map(({ rule, line }) => ({ name, rule, line })),
+      );
       changed = true;
     }
   }

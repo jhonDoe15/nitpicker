@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildFlags, vet, VET_REPORT } from './go-vet.mjs';
+import { buildFlags, vet, VET_REPORT } from './go-vet.mts';
 import { vetFindings } from '../typed/go-report-readers.mts';
+import { createGoContext } from '../typed/go-run-readers.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-vet-'));
@@ -73,12 +74,16 @@ describe('vetFindings', () => {
     ['stderr, as older Go writes it', { stdout: '', stderr: diagnostic(6) }],
   ])('reads the JSON diagnostics from %s', (_stream, output) => {
     const reportRoot = mkdtempSync(path.join(root, 'report-'));
-    vet({
-      projectRoot: root,
-      reportRoot,
-      environment: {},
-      spawn: () => ({ status: 0, ...output }),
-    });
+    vet(
+      createGoContext({
+        projectRoot: root,
+        settings: {},
+        policy: {},
+        reportRoot,
+        environment: {},
+        spawn: () => ({ status: 0, ...output }),
+      }),
+    );
     const findings = vetFindings(root, readFileSync(path.join(reportRoot, VET_REPORT), 'utf8'));
     expect(findings.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual([
       'printf shop/price.go',

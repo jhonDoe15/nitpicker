@@ -2,7 +2,7 @@ import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import {
   rule as noSqlStringBuilding,
   taggedForm as untypedTaggedForm,
-} from './no-sql-string-building.mjs';
+} from './no-sql-string-building.mts';
 
 const taggedForm: (library?: string) => string = untypedTaggedForm;
 const tester = typescriptRuleTester();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validatePythonConfig } from './python-config.mjs';
+import { validatePythonConfig } from './python-config.mts';
 
 const TYPESCRIPT_ONLY = ['layout', 'exceptions'];
 function validate(config: Readonly<Record<string, unknown>>): void {

@@ -182,6 +182,32 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
   `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
   (Python).
+- TypeScript and JavaScript have no map collector that fails on an `undefined` or `null` value (the Java
+  `pmd/NullMapValue` rule for `Collectors.toMap`): `Object.fromEntries` and `Map` accept both, so no rule covers it.
+- `nitpicker/no-raw-http-value`: HTTP text compared by exact case or split by hand, in all production
+  code (not in tests). A value read by `headers.get('x')`, `req.header('x')`, `req.get('x')`,
+  `req.headers['x']` or `req.headers.accept`, of a header whose value is case-insensitive
+  (`Content-Type`, `Accept*`, `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`,
+  `Cache-Control`, `Authorization`, `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like),
+  directly or through a local that is never assigned again (also behind `trim()`, `?? ''` and
+  `|| ''`), is reported when it meets a string literal with a letter in `===`, `==`, `!==`, `!=`,
+  `startsWith`, `endsWith`, `includes`, `indexOf`, a `switch`, `in`, a regular expression without
+  the `i` flag, or as the key of `Set.has`, `Map.get`, `Array.includes` or `table[value]`. Also
+  reported: a structured header (`Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match`,
+  `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by `split(',')` or `split(';')` or
+  matched by a regular expression with a separator, `name.startsWith('__Host-')` or
+  `'__Secure-'` on a cookie name, a file extension from `extname` or `split('.').pop()` used as the
+  key of a table named `mime` or `contentType` without `toLowerCase()`, and a header name written
+  with capitals (`req.headers['Content-Type']`) on the request's `headers` object, which Node
+  lowercases. The allowed forms are `value.toLowerCase()` before the comparison, or a parser: the
+  `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework's own helper
+  (`req.accepts`, `req.is`, `c.req.parseBody`). A header name read through `Headers.get`,
+  `req.header` or `req.get` is case-insensitive and never reported, an HTTP method is case-sensitive
+  and not part of the rule, and a parsed `URL` already lowercases its `protocol` and `hostname`, so those are reported only when compared with a literal that has capitals (`u.protocol === 'HTTPS:'` never matches). Types (`Headers`, `Request`, `URL`, `IncomingHttpHeaders`) are used when available, names such as `headers` and `req` otherwise. A library
+  that is itself the parser takes an exception for this rule. The same forms run as
+  `pmd/HttpValueCase` and `pmd/HandSplitHttpHeader` (Java), `kotlin-source/HttpValueCase` and
+  `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
+  (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
   that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,
@@ -413,7 +439,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,
   `findLast`, `findLastIndex`, the mapping function of `Array.from(items, fn)`, and a
-  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mjs` classifies them:
+  `sort`/`toSorted` comparator). Calls are recognized as `support/io-effects.mts` classifies them:
   with the type checker first, a call whose receiver type or declaration comes from a database
   package (`pg`, `mysql2`, `mongodb`, `mongoose`, `redis`, `ioredis`, `typeorm`, `sequelize`,
   `knex`, `drizzle-orm`, `@prisma/client`, `better-sqlite3`, `@aws-sdk/client-dynamodb` and
@@ -480,6 +506,19 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   array or a tuple (a string's `concat` is not reported); without it, the variable or the `reduce`
   start value must be an array literal. Allowed forms: `flatMap`, `Object.fromEntries`,
   `Object.groupBy`, or push into an array created before the loop.
+- `nitpicker/no-array-spread-arguments`: a list of unknown length is not spread into `push`,
+  `unshift` or `splice` of an array, or into `Math.max`, `Math.min`, `String.fromCharCode` or
+  `String.fromCodePoint` (`target.push(...items)`, `Math.max(...sizes)`), in all production code.
+  Each item becomes one argument, and V8 throws `RangeError: Maximum call stack size exceeded` once
+  a list reaches about 125,000 items, which a large project's findings, files or lines do. Other
+  calls are left alone, since their spread arguments are parameter lists (`path.join(...parts)`).
+  With the type checker an array, typed array, `Set`, `Map` or `any` value is reported (a tuple or a
+  string is not), and `push`, `unshift` and `splice` only on an array; without it, every spread
+  argument of those calls is. An array or string literal (`Math.max(...[a, b])`, also as both
+  branches of `? :`), a function's own rest parameter or `arguments` passed on, a call on `super`,
+  and a local variable named `Math` or `String` are never reported. Allowed forms: a loop that pushes
+  each item, `concat`, a comparison per item for a largest or smallest value, or an exception for
+  a list that is always short.
 - `nitpicker/no-lazy-relation-in-loop` (needs the type checker): `await item.relation` in a loop or
   iteration callback over the result of a TypeORM `find`, `findAndCount`, `findBy`,
   `findAndCountBy` (on a repository, or on an `EntityManager` with the entity first:
@@ -571,6 +610,130 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   own message: it no longer publishes a rolled-back change, but a crash after the commit still
   loses the message. Write the message to an outbox table in the same transaction and let a relay
   publish it, or use change data capture or a database-backed queue.
+- `nitpicker/no-query-per-parent`: a GraphQL field resolver that calls a database or remote function once per
+  parent object, when the parent type is returned as a list somewhere in the schema, is reported: a list of N
+  parents costs N queries and nothing in the code looks like a loop. The resolvers are a NestJS method with
+  `@ResolveField` (`@nestjs/graphql`) or a type-graphql method with `@FieldResolver`, whose parent type is the
+  class decorator `@Resolver(() => View)` (or the type of its `@Parent()` or `@Root()` parameter), and the field
+  functions of a resolver map (`resolvers: { View: { owner: (view) => ... } }`, also with `resolve`) in a file
+  that imports Apollo Server, Mercurius, graphql-yoga or graphql-tools; root fields (`Query`, `Mutation`,
+  `Subscription`) are never reported. A parent counts as a list when `@Query(() => [View])`, `@Field(() => [View])`
+  or the like names it, or an SDL string holds `: [View!]!`, in the program's files (the current file without
+  the type checker); a type only ever returned alone is not reported. The call is classified like
+  `nitpicker/no-io-in-loop`, through a project service too when the type checker runs. Allowed forms: a
+  DataLoader (`loaders.owner.load(parent.ownerId)`, `loadMany`), a read from a request-scoped cache, data already on
+  the parent. Prisma `findUnique` and `findUniqueOrThrow` (also the fluent `findUnique(...).relation()` form) are
+  batched by Prisma within a tick, so they are not reported. Calls in a loop or iteration callback inside the resolver stay with `nitpicker/no-io-in-loop`.
+- `nitpicker/no-lookup-per-element`: an RxJS `mergeMap`, `flatMap`, `concatMap`, `switchMap` or `exhaustMap` over
+  `from(items)` (or `of(...items)`, also behind `map`, `filter`, `tap`) whose function reaches a database or remote
+  call that reads the element is reported, with or without a concurrency limit: N elements make N queries or
+  requests. The function may be an inline function, a function in the same file passed by name, or call helpers
+  (a project service too when the type checker runs). Fetch the rows in one batched query before the pipeline
+  (`findByIds`, `WHERE id IN (...)`, a batch endpoint) and join them to the elements in memory. A
+  `bufferCount`, `toArray`, `take` or other grouping operator before the lookup, a fixed literal collection, a
+  function that does not read the element, and a `mergeMap` without a limit over a remote client that
+  `nitpicker/unbounded-reactive-fan-out` already reports are left alone.
+- `nitpicker/no-stale-retry-after-conflict`: a retry after a TypeORM optimistic-lock conflict that saves a
+  stale or unchanged entity is reported. The retry is a p-retry, async-retry, exponential-backoff or
+  cockatiel call, or a hand-written `for`/`while` retry loop, that names `OptimisticLockVersionMismatchError`
+  (in its arguments, in the cockatiel policy it runs, or in the loop), around `repository.save(entity)` or
+  `manager.save(Order, entity)`. Two shapes: the saved entity, or the object spread into the saved literal,
+  was loaded before the retried scope and nothing inside the scope reads the database or assigns it (every
+  attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
+  `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
+  re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
+  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+  Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
+- Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
+  as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM, and the second form only where the project opens transactions
+  somewhere (the followed convention `typescript.transactions`, measured from non-test source: `.transaction(`,
+  `$transaction(`, `.transactional(`, `startTransaction(`, `@Transactional()`). Inside a transaction
+  callback (`manager.transaction(async (m) => ...)`, `prisma.$transaction(async (tx) => ...)`,
+  Drizzle and Knex `transaction(...)`, Kysely `transaction().execute(...)`) a write through a client or
+  repository that is not the callback's parameter (`this.roleRepository.save(...)`, a module-level `prisma`)
+  is reported, because it runs outside that transaction; a call that passes the parameter on (`{ transaction: t }`),
+  one rooted at another function's parameter and a callback with no parameter are not. Sequelize writes are
+  judged by their options (no `transaction` key); a MikroORM `em.transactional` routes the global entity manager into
+  its transaction, so it is not judged. A function that awaits writes to two or more different tables
+  (a repository's name, `manager.save(Entity, ...)`, `prisma.order.create`, `insert(orders)`,
+  `insertInto("orders")`, `knex("orders").insert`, `Order.create`) outside any transaction is reported at the
+  second one; a write through a parameter (the caller may pass the transaction in), a call that passes a
+  transaction-named argument, a `@Transactional()` method, a `withTransaction`/`inTransaction` callback (CLS
+  transaction hosts), a function that calls `begin()` or `startTransaction()` (MikroORM, query runners), writes in the
+  branches of one `if`/`switch` or either side of an `if` branch that returns or throws, a
+  write in a `catch` or `finally` and two writes to one table are left alone, each write is judged by the ORM its own
+  receiver belongs to when TypeORM and MikroORM are both present, and a table the rule cannot
+  name is not compared. The advisory rule reports a write to a table that follows a read of the same table
+  (`findOne`, `findFirst`, `count`, `exists`, `selectFrom`) whose result decided an insert (`create`, `insert`,
+  `save` of a new object) or, for a `count` or `exists` check, any write, in an `if` (also as a guard clause that
+  returns or throws); a not-found or permission guard before an `update`, `save` or `delete` of the row just
+  loaded is left alone. It also needs no transaction, no lock option (`lock`, `forUpdate`,
+  `pessimistic`) and no atomic form (`upsert`, `on conflict`, a `version` or `updatedAt` condition) in the write; it is
+  classified report-only until measured on more projects. Both name the allowed forms: one transaction with
+  its manager passed down, an atomic statement, or a row lock inside the transaction.
+- One failing item must not stop the rest of a job (`nitpicker/no-unisolated-job-loop`, needing the type
+  checker to see the I/O inside helpers): in a NestJS `@Cron`, `@Interval` or `@Timeout` method (imported from
+  `@nestjs/schedule`), a `@Process` method or the `process` method of a `@Processor` class or a
+  `WorkerHost` subclass (`@nestjs/bull`, `@nestjs/bullmq`), a BullMQ `new Worker(name, fn)` callback, an
+  Agenda `define(name, fn)` callback and a `node-cron` `schedule(expression, fn)` callback, a `for...of` or
+  `for await` loop whose body awaits a database or remote call (direct or through helpers) that is not inside a
+  `try` with a `catch` that does not throw, or followed by `.catch(handler)` (or `.then(ok, handler)`) on that
+  call, is reported. A loop that only enqueues (a message effect), a loop body that uses `Promise.allSettled`, a
+  loop over a literal list and a loop outside such a handler stay quiet; a `try` whose `catch` rethrows, or a
+  `try`/`finally` with no `catch`, does not isolate the item and is reported. Plain `for`, `while` and `forEach`
+  loops are not checked. The message names the allowed forms: a `try`/`catch` or `.catch(...)` per item that
+  records the failure, one queued job per item, or `allSettled` with the failures reported; a job that must fail
+  as a whole so the run is retried takes the exception.
+- Reads that skip the project's soft-delete or visibility filter (`nitpicker/no-unfiltered-soft-delete-read`): the
+  followed convention `typescript.softDeleteFilters` lists, per table, the column (`deletedAt`, `deleted_at`,
+  `isDeleted`, `deleted`, `archived`, `visibility`, `isVisible`, `hidden` and their variants) or the helper
+  (a function named for deleted, visible, active, archived, trashed or live rows, such as
+  `withDefaultVisibility`, called in the query or passed to `$call`) that at least 80% of the reads of that table
+  apply, with at least five reads measured from non-test source at the merge base. A read is a Kysely
+  `selectFrom`/join, a Knex `knex('table')` chain, a Drizzle `select().from(table)`/join, a Prisma `findMany` and its
+  siblings, a TypeORM repository `find*`/`count`/`exists`, a Sequelize model read, a MikroORM `find` or a TypeORM
+  query builder run with `getMany`, `getOne` and the like, and it applies the filter when the call mentions the column
+  (a `where` key, `table.column` text or member, `whereNull`), including a deliberate `IS NOT NULL` or `Not(IsNull())`
+  and the acknowledgements `withDeleted`, `onlyDeleted`, `includeDeleted`, `withTrashed` and `unscoped`. With a majority,
+  a changed read or join of that table without any of them is reported with the column and the helper the project
+  uses; a table below the threshold, or a project with no majority, is never reported. Relation loads (`include`,
+  `select`, `relations`), ordering and a query built in one expression and run elsewhere are not judged, and
+  a trash, restore, purge or admin query takes the exception.
+- Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
+  the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
+  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,
+  `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`, `forEach` or `flatMap`, which covers lookups and index
+  computations) is judged against the whole checked program, not the changed file: it follows the flag when at least five
+  iterations over that item type exist in non-test source and at least 80% of them skip flagged items. An iteration skips
+  them when its body mentions the flag, when an earlier `filter`/`find` step in its receiver chain does, when the receiver is a
+  call of a helper named for live items (`getNonDeletedElements`, `activeItems`), when such a helper is passed by reference
+  (`filter(isLive)`) or called on the item in the body (`if (!isLive(item)) continue`), or when the item type is narrowed, the flag
+  declared as `false` (`true` for `isVisible`, `null` or `undefined` for `deletedAt`), as in `NonDeleted<T>`. A changed
+  iteration that does not is reported with the flag, the share, the guard form, the most used helper that returns narrowed
+  items and the narrowed type alias. A flag below the threshold is never followed, an iteration with a function reference
+  instead of an inline callback is not judged, a loop that assigns the flag is skipped, and undo, trash, restore and sync code takes the exception. Without a type
+  program (no `tsconfig`) the rule is silent, so JavaScript projects without type information are not covered.
+- Route handlers without the project's auth requirement (`nitpicker/no-route-without-auth`, syntactic): the followed
+  convention `typescript.routeAuth` records how routes declare auth, measured from non-test source at the merge base.
+  A NestJS handler is a method with `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Options` or `@Head` (from
+  `@nestjs/common`) in a `@Controller` class; its auth declarations are the decorators at method and class level whose
+  name has an auth word (`Auth`, `Authenticated`, `Authorize`, `UseGuards`, `Roles`, `Permission`, `Jwt`, `Scopes`,
+  ...; documentation and throttling names such as `ApiBearerAuth`, `Throttle` or `ThrottlerGuard` are not auth), as a shape of the name plus the option keys of an object argument (`@Authenticated({ permission })`), and a
+  public marker is a name with `Public` or `Anonymous` (or a skip-auth name) or an auth option set to `false`
+  (`permission: false`). When at least ten handlers exist and one shape covers at least half of them and, with the
+  public ones, at least 90%, a handler with neither the shape nor a public marker is reported, naming the shape.
+  With a global guard (`APP_GUARD`, `useGlobalGuards`, or an auth-named middleware applied with
+  `consumer.apply(...).forRoutes(...)`) nothing is followed. Without a majority, where more than half of at least
+  five handlers declare a guard or auth decorator, a handler with no auth decorator at method or class level and
+  no public marker is reported. Express, Fastify, Koa router, Hono and Restify route calls (`app.get('/path', ...)`
+  on a receiver created by the framework (`express()`, `Router()`, `Fastify()`, `new Hono()`), typed as one, or
+  registered through `register`, with a path first and a handler last; calls are read in source order) follow the same 90% rule on the auth middleware name (a
+  name with an auth word) among the route's own middleware, `preHandler`/`onRequest` options, and a
+  `use(...)`/`addHook(...)` on the same receiver before it; there is no public marker, so a route whose path names
+  `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
+  `public` or `oauth` is left alone. The service form (a request id reaching a repository call
+  without the project's access check) needs data flow and is not covered.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
@@ -622,6 +785,42 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
   followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
   `exceptions` entry.
+- No query rows loaded only to be changed or deleted the same way (`nitpicker/no-loaded-rows-saved-back`,
+  needs the type checker for TypeORM, Sequelize and MikroORM). It reads the query results of
+  `nitpicker/no-in-memory-query` and reports, at the write, three shapes: a `for...of` or `forEach` whose
+  body only assigns row fields (`=`) to values that do not read the row (literals, other variables,
+  `new Date()`, `Date.now()`), followed by `save(rows)` (TypeORM), `bulkCreate(rows, { updateOnDuplicate })`
+  (Sequelize) or `flush()` on the same entity manager (MikroORM); `remove(rows)`, `softRemove(rows)` or
+  `removeAndFlush(rows)`; and rows mapped to one field (`rows.map((row) => row.id)`, also through a variable
+  read once or `In`, `inArray`) that only feeds a delete or update by those ids (`delete`, `deleteMany`,
+  `destroy`, `softDelete`, `nativeDelete`, `update`, `updateMany`, `nativeUpdate`, or a Drizzle
+  `delete`/`update` with `.where(inArray(...))`). Use `update(criteria, values)` or `delete(criteria)`
+  (TypeORM), `updateMany`/`deleteMany` (Prisma), `Model.update(values, { where })`/`destroy({ where })`
+  (Sequelize), `nativeUpdate`/`nativeDelete` (MikroORM), or `update().set().where()`/`delete().where()`
+  (Drizzle). A loop body that reads the row, calls a function or emits an event, rows that are used
+  another way too (returned, passed on), paged queries, queries with `select`, `columns` or `attributes`,
+  and entities with a hook (`BeforeUpdate`, `AfterRemove` and the like), a version column
+  (`VersionColumn`, `version: true`), a relation with `cascade`, `orphanRemoval` or `orphanedRowAction`, a
+  subscriber or a `Model.addHook` call, or whose class cannot be resolved, are left alone. A delete or update
+  of another table or model keyed by the loaded rows' ids is not this shape. Per-row `save`, `update` and `remove` calls inside the loop are
+  `nitpicker/no-io-in-loop`'s.
+- No whole rows loaded only to read one column or to test existence (`nitpicker/no-whole-rows-for-one-value`,
+  needs the type checker for the column form). On the query results of `nitpicker/no-in-memory-query` it
+  reports a result only mapped to one field of its rows (`rows.map((row) => row.email)` or
+  `.map(({ email }) => email)`, directly or through a variable read once), when the type checker finds the
+  field as a declared column (a getter, a method, a relation without a column decorator or an unresolved type
+  stays silent): select the column (`select: { email: true }` in TypeORM and Prisma, `attributes` in
+  Sequelize, `fields` in MikroORM, `db.select({ email: users.email })` in Drizzle). It also reports a
+  `count`/`countBy` result that is only compared with zero or one (`> 0`, `>= 1`, `!== 0`, `=== 0`, `< 1`,
+  or used as a condition) and a `findOne`, `findOneBy`, `findFirst` or `findUnique` result that is only a
+  condition (`if (row)`, `!row`, `Boolean(row)`, `!== null`, `== undefined`, a ternary test), directly or
+  through a variable read once: use `exists` or `existsBy` (TypeORM), `findFirst({ where, select: { id: true } })`
+  (Prisma), `findOne` with `attributes: ['id']` (Sequelize) or `fields` (MikroORM). A query that already
+  selects (`select`, `columns`, `attributes`, `fields`), a `findOne` with a lock option (`lock`, `forUpdate`,
+  `skipLocked`; `exists` cannot lock), a paged query, rows that are used another way, and
+  ids that only feed a delete or update (`nitpicker/no-loaded-rows-saved-back`'s) are left alone.
+  Drizzle's `select({ value: count() })` existence form and its one-column form are not covered: its rows
+  have no model class to read the field from, and the count comes back as a row.
 - No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
   counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
   `multiple-collection-joins`): the database returns one row for every pair of their elements. It
@@ -692,6 +891,15 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
   `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
   contradicting-constant forms. Kotlin has no counterpart yet.
+- `nitpicker/shorter-boolean-logic` (production and test files of both presets): an `&&`/`||`
+  condition with at most 6 distinct operands, none with an effect or able to fail, that a truth
+  table or the solver proves equal to a condition with fewer operands. It prints the shorter form
+  from the original operands in their order: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)`
+  is `a`, `(x >= 0 && x < 10) || (x >= 10 && x < 20)` is `x >= 0 && x < 20`. An operand that guards a
+  later one (a null check before a member read, bounds before an index) or that TypeScript narrows
+  on stays, a float comparison is never negated into another, a value that is not a boolean counts
+  only as the test of an `if`, loop or ternary, and an operand that the operands before it decide is
+  left to `nitpicker/no-decided-condition`.
 - Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
   and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
   `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
@@ -846,6 +1054,11 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   A bounded read that must finish before the function can continue goes in a reviewed
   `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
   `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  The JVM-only effects rules for an async method that does its blocking work and wraps the result
+  (`Futures.immediateFuture(dao.find())`) and for sync code that waits on its async twin
+  (`findByIdAsync(id).get()`) have no TypeScript rule: the first form with a Node call is
+  `Promise.resolve(readFileSync(...))`, which this rule reports through its `*Sync` call, and a
+  Promise has no blocking wait, so the second form does not exist.
   Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
   recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
   whole.
@@ -1093,15 +1306,27 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   condition that the guards before it in the same function already decide. Reported: an `if`,
   `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
   always true or always false given an earlier `if` that returned, threw, broke or continued, the
-  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  `if` or `else` branch it sits in, the test of the loop it sits in, the `case` of a `switch` over a variable it sits in, an earlier `node:assert` call (`assert(c)`, `assert.ok(c)`, `assert.strictEqual(x, literal)`) or call of a project function with an `asserts c` signature, the branch of a ternary it sits in, a function it
+  sits in (for names that are never reassigned), a `const`/`let` initialised or assigned a literal
+  until it is written again, or the operands before it in
   the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
   decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
   `catch` parameter); a fact that reads a member is dropped on any member write and on any call
   that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
   variable written elsewhere, an import or an unresolved global is dropped on such a call. The
   conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
-  values are compared. An order comparison counts as a number comparison only when both operands
-  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  values are compared; the type checker tells it that `.length` (of a string, array or typed array),
+  `.size` (of a `Map` or `Set`) and the result of `indexOf`, `lastIndexOf`, `findIndex` and
+  `search` are whole numbers (at least 0, and at least -1), that `Math.abs(x)` is not negative and
+  that `Math.random()` is in `[0, 1)`. A call of a module-level function (a declaration, or a
+  `const` arrow or function expression) whose body is a single `return` of a side-effect-free
+  expression is read as that expression with the arguments bound, through at most 2 levels and
+  never through recursion, and the message names the helper; methods, helpers that read a variable
+  the call site does not see and helpers in other files stay opaque. An order comparison counts as a number comparison only when both operands
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. The same facts decide a
+  coercion of the tested value: `x ? Boolean(x) : d`, `x ? !!x : d`, `if (x) return Boolean(x)` and
+  `x && Boolean(x)` are always `true` (in the other branch, always `false`), so either the coercion
+  or the test is wrong; the message says to use the value itself or fix the test. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
   `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
@@ -1317,7 +1542,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same project or anonymous type check on each named step.
   `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
-  `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
+  `eslint-plugin/rules/analysis/mutation/mutating-methods.mts`.
 - `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`
   on a parameter that is optional, defaulted to `undefined` or `null`, or typed
   `| undefined` / `| null`, when its type also has a falsy value that is not absent (`number`,
@@ -1334,9 +1559,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   comparison: `count > 0`, `index !== -1`, `items.length > 0`, `id !== undefined` for an optional
   number, and `value ?? fallback` for a default. A union that mixes a number with another type
   (`string | number`) is reported too. Strings, objects, `any`/`unknown` and nullable booleans and
-  strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
-  `allowNullableBoolean`, `allowAny`): a nullable boolean is only wrong when `false` carries a
-  meaning of its own, so it is left out for now rather than reported everywhere. Not reported: a
+  strings stay allowed here (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`): `nitpicker/no-presence-truthiness` reports the part of those
+  that is a presence test, as notes. Not reported: a
   link of a sort comparator chain (`a.rank - b.rank || a.name.localeCompare(b.name)`, a `compare...`
   call), when the chain ends in another comparison rather than a literal; a bit test
   (`flags & MASK`); an operand whose `||` chain falls back to `0` (`count || 0`, `(ready && count) ||
@@ -1346,6 +1571,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same. When `0` must take the same path as a missing value, add an exception for the rule. In the
   JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
   and is not reported.
+- `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
+  findings print as design notes and never fail the change): an optional string
+  (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
+  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
+  `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
+  `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
+  Write `x !== undefined`, `x != null`, `typeof x === 'string'`, or `x ?? d` for a default. Not
+  reported: a plain `string` or `boolean`, a string union of non-empty literals, `x || ''` and
+  `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
+  which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
+  path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
+  from JSDoc and inference (`checkJs`).
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
@@ -1380,7 +1618,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
   `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
   range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
-  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mts`. `regexp/no-super-linear-move` is
   off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
   from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
@@ -1458,3 +1696,8 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
+- The "no limit" integer overflow that the Java, Kotlin and Go presets report (`Integer.MAX_VALUE` plus an offset
+  becoming a negative index) has no counterpart in the TypeScript and JavaScript presets: numbers are doubles, so a
+  sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
+  sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
+  reported.

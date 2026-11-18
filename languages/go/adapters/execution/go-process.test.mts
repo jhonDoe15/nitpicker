@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGoContext } from '../typed/go-run-readers.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
-import { run } from './go-process.mjs';
+import { run } from './go-process.mts';
 
 type Result = { status: number | null; stdout?: string; stderr?: string; error?: Error };
 

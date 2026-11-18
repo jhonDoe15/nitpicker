@@ -47,17 +47,33 @@ export const STRUCTURE_NOTES = {
   'near-duplicate': [
     'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, sharing a run of statements, or the same logic written another way.',
     'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
-    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
+    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types, and Go functions that differ only in the number type, are a type-specialized family and are not reported.',
   ],
   'decided-condition': [
     'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
+    'The same holds for a coercion of the tested value inside the branch the test decides (`x ? Boolean(x) : d`, `bool(x)` under `if x:`): it is always true there, so either the coercion or the test is wrong.',
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
+  'shorter-condition': [
+    'A condition with an exactly equivalent form that has fewer operands: an operand that a later one implies, two operands that merge (complement, absorption, adjacent or overlapping ranges).',
+    'The longer condition says the same thing twice; agents repeat range checks and guards more than people do.',
+    'Write the printed shorter form. The message prints it from the original operands, in order, and names the operand that makes the other redundant.',
+  ],
   'duplicate-branch': [
-    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
+    'Two arms of one branch (an `if` chain, a ternary, a `switch`, a `select` or a `when`) with the same body; report-only, the same statements at the start or end of every arm, adjacent guards that end in a jump with one body (one `a || b`), and a nested `if`/`else` that repeats the outer `else` (one `a && b`).',
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
     'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
+  ],
+  'result-slip': [
+    'A comparison that cannot test what it was written for: a sign-only result (`compareTo`, `localeCompare`) compared with a value other than 0, or an index search tested with `> 0`.',
+    'A comparator may return any positive or negative number, and `indexOf(x) > 0` skips a match at position 0; both pass most tests and fail on the first unlucky input.',
+    'Compare the result with 0, or test `>= 0` (or use a containment check).',
+  ],
+  'integer-slip': [
+    'Integer arithmetic that gives the wrong answer for some inputs a solver can name: a difference compared with 0 or returned from a comparator (it overflows), `Math.abs` of a value that can be the smallest integer used as an index or bucket, and a remainder compared with a positive value on a value that can be negative (Kotlin).',
+    'These pass tests on small numbers and fail on a large or negative input, with a wrong order, a negative index or a missed match.',
+    'Compare the operands (`Integer.compare`), use `Math.floorMod`, or compare the remainder with 0.',
   ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
@@ -183,6 +199,11 @@ export const STRUCTURE_NOTES = {
     'Two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants.',
     'A grouping repeated in several places is a rule of its own; a new constant has to be added to every copy.',
     'Give the type one function that answers the question, and call it from each place.',
+  ],
+  'field-limit-mismatch': [
+    'A bounded string column (`VARCHAR(n)` in a schema or migration, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern (`@Size`, `@Pattern`, `@Digits`, zod, class-validator, pydantic, Go `validate` tags) that admits more than the column holds; or an OpenAPI or JSON Schema `maxLength`, `minLength` or `maximum` that differs from the validation of the same field. A generated DTO counts the spec as its validation.',
+    'Input that passes validation then fails at the database as a 500 instead of a 400, or the published contract accepts values the server rejects. Fields are matched by entity or table name and field name; a column wider than its validation is never reported.',
+    'Give the field a validation bound equal to the column width (`@Size(max = 30)`, `.max(30)`, `Field(max_length=30)`, `validate:"max=30"`) and make the spec state the same bounds; only fields whose limits changed are reported on a change.',
   ],
   'foreign-state-decision': [
     'Two or more functions outside a class with behaviour that branch on the same 2 or more of its fields.',

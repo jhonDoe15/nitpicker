@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { quickSummary } from './summary.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
+import { appendAll } from '../../shared/lists/lists.mts';
 
 type Invocation = ReturnType<ProfiledAnalyzer['createInvocation']>;
 
@@ -63,6 +64,22 @@ function quickAnalyzer(analyzer: ProfiledAnalyzer): ProfiledAnalyzer {
   return analyzer;
 }
 
+export function withoutTestRun(analyzers: readonly ProfiledAnalyzer[]): {
+  readonly analyzers: readonly ProfiledAnalyzer[];
+  readonly skipped: readonly string[];
+} {
+  const changed = analyzers.filter(
+    (analyzer) =>
+      analyzer.custom !== true && analyzer.quick !== true && QUICK_SKIPPED_TOOLS.has(analyzer.name),
+  );
+  return {
+    analyzers: analyzers.map((analyzer) =>
+      changed.includes(analyzer) ? quickAnalyzer(analyzer) : analyzer,
+    ),
+    skipped: [...new Set(changed.flatMap(({ name }) => QUICK_SKIPPED_TOOLS.get(name) ?? []))],
+  };
+}
+
 function isSkipped(analyzer: ProfiledAnalyzer): boolean {
   return analyzer.custom !== true && QUICK_SKIPPED_ANALYZERS.includes(analyzer.name);
 }
@@ -76,7 +93,7 @@ function skippedChecks(analyzers: readonly ProfiledAnalyzer[]): string[] {
   ];
 }
 
-function withDependencies(
+export function withDependencies(
   analyzers: readonly ProfiledAnalyzer[],
   names: readonly string[],
 ): ProfiledAnalyzer[] {
@@ -90,7 +107,7 @@ function withDependencies(
     for (const dependency of added) {
       selected.add(dependency);
     }
-    pending.push(...added);
+    appendAll(pending, added);
   }
   return analyzers.filter(({ name }) => selected.has(name));
 }

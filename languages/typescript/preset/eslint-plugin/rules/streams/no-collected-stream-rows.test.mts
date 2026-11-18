@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-collected-stream-rows.mjs';
+import { rule } from './no-collected-stream-rows.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/thumbnails/adapters/thumbnail-jobs.ts';

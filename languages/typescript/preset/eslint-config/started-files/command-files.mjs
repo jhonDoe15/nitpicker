@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { shellCommands } from '../../../../../shared/started-files/shell-commands.mjs';
+import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 const RUNNERS = new Set([
   'node',
@@ -105,8 +106,8 @@ function scanRunnerArguments(tokens, directory) {
       continue;
     }
     const step = scanToken(tokens, index, directory);
-    found.entryPoints.push(...step.entryPoints);
-    found.defaultExports.push(...step.defaultExports);
+    appendAll(found.entryPoints, step.entryPoints);
+    appendAll(found.defaultExports, step.defaultExports);
     skip = step.skip;
     if (step.stop) {
       break;

@@ -2,10 +2,10 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { untrackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
-import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mts';
 import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mts';
 import { readPythonFindings } from './python-reports.mts';
-import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mjs';
+import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mts';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -35,6 +35,8 @@ import {
   trackTemporaryPath,
   withTroubleshooting,
 } from './typed/runner/runner-views.mts';
+import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
+import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 const UNEXPECTED_FAILURE_RULES: Readonly<Record<string, string>> = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -187,7 +189,10 @@ export function analyzePythonSnapshot({
           toolError(
             {
               rule: textOf(fieldOf(error, 'rule') ?? UNEXPECTED_FAILURE_RULES[part]),
-              message: error instanceof Error ? error.message : String(error),
+              message: withInternalFrames(
+                error instanceof Error ? error.message : String(error),
+                error,
+              ),
             },
             part,
           ),
@@ -247,13 +252,5 @@ function main(runnerArguments: readonly string[]): void {
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 
-if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
-  try {
-    main(process.argv.slice(2));
-  } catch (error) {
-    process.stderr.write(
-      `Python differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
+const entry = { moduleFile: import.meta.filename, adapter: 'Python', main };
+process.exitCode = runAdapterMain(entry, process) ?? process.exitCode;

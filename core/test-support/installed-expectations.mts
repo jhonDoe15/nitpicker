@@ -97,25 +97,19 @@ export function expectedDirtyFindings(links: InstalledLinks): object[] {
     },
   ];
 }
-export function expectedSnapshotOutput(links: InstalledLinks): string {
+export function expectedSnapshotOutput(): string {
   return [
     "Following this project's conventions:",
     '  Trailing commas: none (used by 1 of 1 measured files)',
-    'Nitpicker quality snapshot',
-    'Status: violations',
-    'Enforceable findings: 2',
-    'Descriptive findings: 0',
-    'Tool errors: 0',
+    '',
+    'Quality snapshot summary',
+    '✖ 2 enforceable findings',
+    `  prettier-format/prettier/prettier: ${PRETTIER_MESSAGE}`,
+    '    src/main/example.ts:1, 3',
+    'By analyzer:',
+    '  prettier-format: 2 enforceable, 0 descriptive',
     'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
-    '',
-    'Per-tool counts:',
-    'prettier-format: total=2 enforceable=2 descriptive=0',
-    '',
-    'Enforceable findings:',
-    `prettier-format/prettier/prettier src/main/example.ts:1 ${PRETTIER_MESSAGE}`,
-    `prettier-format/prettier/prettier src/main/example.ts:3 ${PRETTIER_MESSAGE}`,
-    '',
-    `Rule reference: ${links.tagRoot}/docs/rules/README.md (nitpicker explain <tool/rule> prints one rule)`,
+    'Full diagnostics: reports/snapshot/report.txt',
     'nitpicker: head: running 1 analyzer',
     '',
   ].join('\n');
@@ -127,9 +121,10 @@ export function expectedDirtyOutput(): string {
 Quality gate summary
 ✖ 3 new enforceable violations
   by area: format 2 · lint 1
+  by label: bug 1 · style 2 (focus with --label <label>)
+  eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
   prettier-format/prettier/prettier: ${PRETTIER_MESSAGE}
     src/main/example.ts:1, 3
-  eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
 Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
 Full diagnostics: reports/dirty/report.txt
 nitpicker: base 2 analyzers cached (node_modules/.cache/nitpicker; use --no-cache to rerun)

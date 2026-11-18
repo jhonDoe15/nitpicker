@@ -1,15 +1,10 @@
 import { renderMessage as untypedRender } from '../../../../shared/policy.mjs';
 import { hash as untypedHash } from '../../../../shared/rules/finding-helpers.mjs';
-import { applyRuleHints as untypedApplyHints } from '../../rules/rule-hints.mjs';
+import { applyRuleHints as untypedApplyHints } from '../../rules/rule-hints.mts';
 import {
   importLinterCompleted as untypedCompleted,
   ingestImportLinter as untypedImportLinter,
-} from '../import-linter.mjs';
-import {
-  functionBlocks as untypedFunctionBlocks,
-  ingestMutmut as untypedMutmut,
-  statusOfExitCode as untypedStatus,
-} from '../mutmut.mjs';
+} from '../import-linter.mts';
 import type { FindingsResult, IngestedFinding } from './ingest-types.mts';
 
 export const renderMessage: (
@@ -24,7 +19,4 @@ export const ingestImportLinter: (
   text: string,
   options?: { files?: Map<string, string> },
 ) => FindingsResult = untypedImportLinter;
-export const ingestMutmut: (data: unknown, options?: { tool?: string }) => FindingsResult =
-  untypedMutmut;
-export const statusOfExitCode: (exitCode: unknown) => string = untypedStatus;
-export const functionBlocks: (source: string) => Map<string, string[]> = untypedFunctionBlocks;
+export { functionBlocks, ingestMutmut, statusOfExitCode } from '../mutmut.mts';

@@ -1,10 +1,10 @@
 import {
   assertionEvidence,
-  followedHelpers,
   MIN_FILES,
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
+import { followedHelpers } from '../../../shared/conventions/detect.mjs';
 import { COLUMNS } from '../../../shared/conventions/settings.mjs';
 import { FORMATTER_VERSION } from './build-style/java-formatter-options.mjs';
 import { formatterProfile, javaIndentation, javaLineLength } from './measures/java-layout.mjs';

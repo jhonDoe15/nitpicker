@@ -3,6 +3,7 @@ import { print } from '../print.mjs';
 import { key, term, withChildren } from '../terms.mjs';
 import { factorNegations } from './negation-factoring.mjs';
 import { sameRange, SIMPLER_REWRITES } from './simpler-rewrites.mjs';
+import { appendAll } from '../../lists/items.mjs';
 
 const MAX_ROUNDS = 20;
 const ROUNDS = Array.from({ length: MAX_ROUNDS }, (_, index) => index);
@@ -14,7 +15,7 @@ function simplify(node, booleanContext) {
   ROUNDS.some(() => {
     const normal = normalize(current, { booleanContext, rewrites: SIMPLER_REWRITES });
     const factored = factorNegations(normal.term);
-    rewrites.push(...normal.rewrites, ...factored.rewrites);
+    appendAll(rewrites, [...normal.rewrites, ...factored.rewrites]);
     current = factored.term;
     return factored.rewrites.length === 0;
   });
@@ -57,7 +58,7 @@ function differences(before, after) {
   const pending = [[before, after]];
   for (const [left, right] of pending) {
     if (key(left) !== key(right)) {
-      pending.push(...nextPairs(left, right, found));
+      appendAll(pending, nextPairs(left, right, found));
     }
   }
   return found;

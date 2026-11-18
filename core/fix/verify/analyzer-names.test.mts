@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mts';
 import {
   PYTHON_ANALYZER_NAME,
   createPythonAnalyzers,
-} from '../../../languages/python/adapters/python-analyzer.mjs';
+} from '../../../languages/python/adapters/python-analyzer.mts';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { analyzersToVerify } from './analyzer-names.mts';
+import { textsOf } from '../../../shared/values/readers.mts';
 
 describe('analyzersToVerify', () => {
   it('picks the analyzers that report the fixed tools and the compile check', () => {
@@ -37,7 +38,9 @@ describe('analyzersToVerify', () => {
     ['java', createJavaAnalyzer(), 'checkstyle'],
     ['kotlin', createJavaAnalyzer({ kotlin: true }), 'detekt'],
   ])('selects the %s analyzer, which compiles the project', (name, analyzer, tool) => {
-    expect(analyzersToVerify([analyzer], [tool])).toEqual({ names: [name], unmatched: [] });
+    expect(
+      analyzersToVerify([{ ...analyzer, reportedTools: textsOf(analyzer.reportedTools) }], [tool]),
+    ).toEqual({ names: [name], unmatched: [] });
   });
 
   it('selects the Python analyzer, which runs the type checker', () => {

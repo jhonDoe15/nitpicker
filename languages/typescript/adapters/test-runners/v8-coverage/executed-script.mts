@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { EncodedSourceMap } from '@jridgewell/trace-mapping';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { largest } from '../../../../../shared/lists/lists.mts';
 
 export type FunctionCoverage = Profiler.FunctionCoverage;
 
@@ -110,10 +111,10 @@ export function readLoadedSources(directory: string | undefined): Map<string, st
 }
 
 function scriptLength(functions: readonly FunctionCoverage[]): number {
-  return Math.max(
+  return largest([
     0,
     ...functions.flatMap(({ ranges }) => ranges.map(({ endOffset }) => endOffset)),
-  );
+  ]);
 }
 
 function isFileCode(code: string, file: ExecutedCode): boolean {

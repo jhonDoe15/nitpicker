@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { STRUCTURE_REPORT } from '../adapters/analysis/python-structure.mjs';
+import { STRUCTURE_REPORT } from '../adapters/analysis/python-structure.mts';
 import { createMetrics, pythonUsable, script } from './python-helpers.mts';
 import { readPythonStructureFindings } from './typed/metric-views.mts';
 

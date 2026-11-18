@@ -9,15 +9,16 @@ import {
   djangoSettingsModule,
   djangoSubdirectory,
   pytestNamesDjangoSettings,
-} from './python-django.mjs';
+} from './python-django.mts';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
   testCommand,
   testsRan,
   UNITTEST_SCRIPT,
-} from './python-test-runner.mjs';
+} from './python-test-runner.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { runnerContext } from './test-support/runner-context.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 
 const { temporaryRoot } = useGitFixtures();
@@ -188,14 +189,19 @@ describe('test runner detection', () => {
   });
 });
 describe('Django and nose2 commands', () => {
-  const contextFor = (root: string, testRunner: string) => ({
-    projectRoot: root,
-    project: { testRunner },
-    launcher: {
-      description: 'test',
-      launch: () => ({ command: process.execPath, args: ['-e', 'console.log("5.1.0")'], env: {} }),
-    },
-  });
+  const contextFor = (root: string, testRunner: string) =>
+    runnerContext({
+      projectRoot: root,
+      testRunner,
+      launcher: {
+        description: 'test',
+        launch: () => ({
+          command: process.execPath,
+          args: ['-e', 'console.log("5.1.0")'],
+          env: {},
+        }),
+      },
+    });
 
   it.each([
     ['django', { [DJANGO_SCRIPT]: DJANGO_MANAGE }, [DJANGO_SCRIPT, 'test', '--noinput']],
@@ -210,11 +216,7 @@ describe('Django and nose2 commands', () => {
   });
 });
 describe('unittest command', () => {
-  const contextFor = (root: string) => ({
-    projectRoot: root,
-    reportRoot: '/reports',
-    project: { testRunner: 'unittest' },
-  });
+  const contextFor = (root: string) => runnerContext({ projectRoot: root, testRunner: 'unittest' });
   const timed = [UNITTEST_SCRIPT, path.join('/reports', 'pytest-junit.xml'), 'discover'];
 
   it('discovers from the project when there is no tests directory, timing each test', () => {

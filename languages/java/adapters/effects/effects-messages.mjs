@@ -1,3 +1,11 @@
+import { DELETED_MESSAGES } from './messages/deleted.mjs';
+import { JOB_MESSAGES } from './messages/jobs.mjs';
+import { RACE_MESSAGES } from './messages/races.mjs';
+import { callPath, code } from './messages/text.mjs';
+
+export { callPath };
+
+const REMOTE = 'remote';
 const BOUNDED = {
   java: [
     'a bounded executor (`Executors.newFixedThreadPool(n)`, a bounded `ThreadPoolExecutor`)',
@@ -19,15 +27,6 @@ const ONE_QUERY = '`findAllById`, `saveAll`, `WHERE id IN (...)`';
 const LOOPS_FINE =
   'Paging, polling and retry loops are fine; a loop the rule misjudges (a cursor kept in an object or array, a page count read first) goes in `exceptions`.';
 
-function code(text) {
-  return `\`${text}\``;
-}
-
-export function callPath(path) {
-  const [first, ...rest] = path.map(code);
-  return rest.length === 0 ? `calls ${first}` : `calls ${[first, ...rest].join(', which calls ')}`;
-}
-
 const REDIS_BATCH = '`MGET` (`opsForValue().multiGet(keys)`) or a pipeline (`executePipelined`)';
 
 function loopIo({ method, kind, form, path, store }, language) {
@@ -44,7 +43,7 @@ function loopIo({ method, kind, form, path, store }, language) {
       'and running them concurrently still sends one query per item.',
     ].join(' ');
   }
-  if (kind === 'remote') {
+  if (kind === REMOTE) {
     return [
       "Use the service's batch endpoint for all items, or, when it has none, bound the concurrency with",
       `${BOUNDED[language]}: ${where} once per loop item, one request each. ${LOOPS_FINE}`,
@@ -147,6 +146,111 @@ function dualWrite({ method, form, write, path }) {
   ].join(' ');
 }
 
+const BATCH_FIELDS = {
+  spring: '`@BatchMapping` (one call for all parents) or a registered `DataLoader`',
+  dgs: 'a `@DgsDataLoader` (one call for all parents) read through `DataLoader.load`',
+};
+
+function graphqlField({ method, framework, kind, path }) {
+  const target = kind === REMOTE ? 'requests' : 'queries';
+  return [
+    `Batch this field with ${BATCH_FIELDS[framework]}, or read the value from the parent object:`,
+    `${code(`${method}()`)} ${callPath(path)} once per parent object, so a list of N parents`,
+    `sends N ${target}, and nothing in the code looks like a loop.`,
+  ].join(' ');
+}
+
+function reactiveLookup({ method, kind, path, limited }) {
+  const target = kind === REMOTE ? 'requests' : 'queries';
+  const bound = limited
+    ? 'The concurrency argument bounds how many run at once, but each element still sends its own query.'
+    : '';
+  return [
+    'Fetch all the elements with one call (`findAllById`, `where id in (:ids)`, a batch endpoint), then join the',
+    `results in memory: ${code(`${method}()`)} ${callPath(path)} once per element of an in-memory collection`,
+    `inside a reactive pipeline, so N elements send N ${target}.`,
+    bound,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+const LIFECYCLE = [
+  'An entity with `@Version`, `@PreUpdate`/`@PreRemove`, `@EntityListeners`, auditing, domain events or cascades',
+  'is not reported, because a bulk statement skips what these run.',
+].join(' ');
+
+function rowsChanged({ method, form, origin, entity }) {
+  if (form === 'delete') {
+    return [
+      'Delete the rows with one statement (`deleteAllInBatch`, or a `@Modifying` delete query with the same',
+      'where clause)',
+      `instead of loading them first: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to`,
+      `delete them. ${LIFECYCLE}`,
+    ].join(' ');
+  }
+  return [
+    'Change the rows with one statement (`@Modifying @Query("update ' +
+      entity +
+      ' e set e.status = :to where ...")`)',
+    `instead of loading them: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to set the`,
+    `same value on each and write them back. ${LIFECYCLE}`,
+  ].join(' ');
+}
+
+function oneColumn({ method, entity, property, origin }) {
+  const column = property.replace(/^(get|is)/u, '');
+  const name = column.charAt(0).toLowerCase() + column.slice(1);
+  return [
+    `Select only the column with a projection (\`@Query("select e.${name} from ${entity} e where ...")\`,`,
+    `an interface or record projection): ${code(`${method}()`)} loads whole ${code(entity)} entities with`,
+    code(origin),
+    `only to read ${code(`${property}()`)} from each, with their eager relations.`,
+  ].join(' ');
+}
+
+function existence({ method, form, origin }) {
+  const how =
+    form === 'count'
+      ? `counts the matching rows with ${code(origin)} only to compare the count with zero`
+      : `loads the whole row with ${code(origin)} only to test whether it is there`;
+  return [
+    'Ask the database with `existsBy...` (or an `exists` query) instead, which stops at the first row:',
+    `${code(`${method}()`)} ${how}.`,
+  ].join(' ');
+}
+
+function staleRetry({ method, scope, object, write }) {
+  const where =
+    scope === '@Retryable'
+      ? 'is retried by `@Retryable` after an optimistic-lock conflict but takes the object to save as a parameter'
+      : `retries after an optimistic-lock conflict (${scope}) but sends an object that was read or built outside` +
+        ' the retry';
+  return [
+    'Re-read the row by id and re-apply the change inside the retried scope',
+    '(`Mono.defer { findById(id).map(change).flatMap(save) }`, a loop that loads the row on each attempt,',
+    `or a \`@Retryable\` method that takes the id): ${code(`${method}()`)} ${where},`,
+    `then calls ${code(write)} with ${code(object)}, which keeps the old version,`,
+    'so every attempt fails the same way.',
+  ].join(' ');
+}
+
+function asyncBlocking({ method, wrapper, path }) {
+  return [
+    'Submit the work to an executor (`executor.submit`, `supplyAsync(..., executor)`),',
+    "use the client's real async API, or make the method synchronous:",
+    `${code(`${method}()`)} ${callPath(path)} on the calling thread and only wraps the`,
+    `result with ${code(wrapper)}, so a caller on an event-loop or single-thread executor waits on it.`,
+  ].join(' ');
+}
+
+function asyncTwin({ method, async, sync }) {
+  return [
+    `Call the synchronous ${code(sync)} instead: ${code(`${method}()`)} waits on ${code(async)}, which takes an`,
+    'executor thread, blocks the caller anyway and turns every failure into an `ExecutionException`.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -155,6 +259,17 @@ export const EFFECTS_MESSAGES = {
   RemoteCallUnderLock: remoteUnderLock,
   RetryWithoutIdempotency: retryWrite,
   DualWriteWithoutOutbox: dualWrite,
+  GraphqlFieldPerParent: graphqlField,
+  ReactiveLookupPerElement: reactiveLookup,
+  RowsChangedInMemory: rowsChanged,
+  EntityLoadedForOneColumn: oneColumn,
+  EntityLoadedForExistence: existence,
+  RetryWithStaleObject: staleRetry,
+  ...RACE_MESSAGES,
+  AsyncMethodDoesBlockingWork: asyncBlocking,
+  WaitOnAsyncTwin: asyncTwin,
+  ...JOB_MESSAGES,
+  ...DELETED_MESSAGES,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

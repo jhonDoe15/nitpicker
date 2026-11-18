@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from './run-analyzers.mts';
 import { mergeMetadata, metadataValue } from './report/analyzer-metadata.mts';
-import { createFindingsCache, runBaseWithCache } from '../cache/findings-cache.mts';
+import { createFindingsCache } from '../cache/findings-cache.mts';
+import { runBaseWithCache } from '../cache/entries/run-with-cache.mts';
 
 const noTasks = () => ({ reports: [], errors: [], skipped: [], timings: [] });
 

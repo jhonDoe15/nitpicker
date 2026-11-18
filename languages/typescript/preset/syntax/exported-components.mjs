@@ -1,6 +1,7 @@
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { syntaxChildren } from './children.mjs';
 import { isComponentName } from './component-names.mjs';
+import { appendAll } from '../../../../shared/lists/items.mjs';
 
 export const DEFAULT_EXPORT = 'default';
 const COMPONENT_BASES = new Set(['Component', 'PureComponent']);
@@ -43,7 +44,7 @@ function isJsxValue(expression) {
       return true;
     }
     if (node !== undefined) {
-      pending.push(...valueChildren(node));
+      appendAll(pending, valueChildren(node));
     }
   }
   return false;
@@ -59,7 +60,7 @@ function returnsJsx(fn) {
       return true;
     }
     if (!ts.isFunctionLike(node) && !ts.isReturnStatement(node)) {
-      pending.push(...syntaxChildren(node));
+      appendAll(pending, syntaxChildren(node));
     }
   }
   return false;

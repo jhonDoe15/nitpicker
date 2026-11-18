@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ingestPit } from '../pit.mjs';
+import { ingestPit } from '../pit.mts';
 import { createGeneratedFilter } from './generated-filter.mjs';
 
 const FILE = 'src/main/kotlin/demo/Demo.kt';

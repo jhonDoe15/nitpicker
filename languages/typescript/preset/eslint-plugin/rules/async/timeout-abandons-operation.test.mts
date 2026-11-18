@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './timeout-abandons-operation.mjs';
+import { rule } from './timeout-abandons-operation.mts';
 
 const tester = typescriptRuleTester();
 const abandoned = (timeout: string, operation: string) => [

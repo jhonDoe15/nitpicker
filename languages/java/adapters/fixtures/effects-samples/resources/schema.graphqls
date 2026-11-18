@@ -1,0 +1,21 @@
+type Query {
+  orders: [Order!]!
+  account: Account
+}
+
+type Order {
+  id: ID!
+  customer: Customer
+  price: String
+  status: String
+}
+
+type Customer {
+  id: ID!
+  name: String
+}
+
+type Account {
+  id: ID!
+  owner: String
+}

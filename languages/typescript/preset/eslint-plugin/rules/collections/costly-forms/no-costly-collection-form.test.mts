@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './no-costly-collection-form.mjs';
+import { rule } from './no-costly-collection-form.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/routing/adapters/routes.ts';

@@ -1,24 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { readImportsReport as untypedReadImportsReport } from '../../analysis/python-coupling.mjs';
+import { readImportsReport } from '../../analysis/python-coupling.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import type { ImportStatement } from '../../analysis/typed/python-graph-types.mts';
 import { useScannedProjects } from '../test-support/scanned-projects.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
-type ImportEntry = {
-  readonly module?: string;
-  readonly names: readonly string[];
-  readonly typeOnly: boolean;
-  readonly guarded: boolean;
-  readonly line: number;
-  readonly local: boolean;
-};
-const readImportsReport: (reportRoot: string) => {
-  readonly imports: Readonly<Record<string, readonly ImportEntry[]>>;
-} = untypedReadImportsReport;
-
 const scannedProject = useScannedProjects();
 
-function scanReport(code: string): readonly ImportEntry[] {
+function scanReport(code: string): readonly ImportStatement[] {
   const { reportRoot } = scannedProject({ 'src/mod.py': code });
   return readImportsReport(reportRoot).imports['src/mod.py'] ?? [];
 }
@@ -36,7 +26,9 @@ function guards(code: string): string[] {
 }
 
 function locals(code: string): string[] {
-  return scanReport(code).map(({ names, local }) => `${names.join(',')} ${String(local)}`);
+  return scanReport(code).map(
+    (entry) => `${entry.names.join(',')} ${String(fieldOf(entry, 'local'))}`,
+  );
 }
 
 describe.skipIf(!pythonE2eEnabled)('import scan of if TYPE_CHECKING blocks', () => {

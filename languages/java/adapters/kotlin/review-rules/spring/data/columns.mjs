@@ -12,6 +12,7 @@ import {
 } from './data-types.mjs';
 import { simpleName } from '../view/member-types.mjs';
 import { annotatedWith, membersOf } from './entities.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 const STRING = /\bSTRING\b/u;
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'SortedMap', 'TreeMap']);
@@ -80,8 +81,9 @@ function convertedType(classes, declared) {
       return type;
     }
     if (directConverter(last) === undefined && path.length <= CONVERTER_DEPTH) {
-      paths.push(
-        ...basesOf(classes, last)
+      appendAll(
+        paths,
+        basesOf(classes, last)
           .filter((base) => !path.includes(base))
           .map((base) => [...path, base]),
       );

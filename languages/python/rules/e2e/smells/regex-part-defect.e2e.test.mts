@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkRules, readRegexSites } from '../../../adapters/analysis/python-ast-rules.mjs';
+import { checkRules, readRegexSites } from '../../../adapters/analysis/python-ast-rules.mts';
 import { toolContext } from '../../test-support/python-rule-scripts.mts';
 import { ingestRulesReport } from '../../../ingest/rules-report.mts';
 

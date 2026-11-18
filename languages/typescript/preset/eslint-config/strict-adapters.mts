@@ -1,12 +1,12 @@
 import { linterConfigs } from './typed/config-types.mts';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mts';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mts';
 import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
-} from './strict/strict-control-flow.mjs';
+} from './strict/strict-control-flow.mts';
 import { codeExtensions, builtInExcludedGlobs } from '../layout.mjs';
 
 export function adapterGlobsFor(sourceRoots: readonly string[]): string[] {

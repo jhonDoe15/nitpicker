@@ -1,25 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { writeFiles } from '../../../../../../core/diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 import { routeOf, run, type RuleFinding } from '../test-support/facts.mts';
 import { JUNIT_HEAD } from '../test-support/sources.mts';
 import { HONESTY_RULES, testHonestyFindings } from './test-honesty.mjs';
 
-const roots: string[] = [];
-afterAll(() => {
-  for (const root of roots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function projectWith(files: Record<string, string>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-honesty-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  const root = temporaryRoot('nitpicker-kotlin-honesty-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -93,6 +83,9 @@ describe('testHonestyFindings', () => {
       'DroppedCallbackInTest',
       'MessageAfterAssertion',
       'GlobalStateLeakInTest',
+      'RealClockInTest',
+      'RandomInTest',
+      'NetworkInTest',
       'SharedTestState',
     ]);
   });

@@ -1,3 +1,6 @@
+import path from 'node:path';
+import { largest } from '../../../../shared/lists/items.mjs';
+
 const NAMED_SOURCES = /\.(java|kt|groovy|scala|py)$/u;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 const QUALIFIED_TOKEN = /(?<![\w$./])[A-Za-z_$][\w$]*(?:[./][A-Za-z_$][\w$]*)+/gu;
@@ -5,14 +8,33 @@ const DESCRIPTOR_PREFIX = /^[BCDFIJSZ]*L/u;
 const PYTHON_PACKAGE = '__init__';
 const KOTLIN_FACADE = 'Kt';
 const AMBIGUOUS = Symbol('ambiguous');
+const PLACEHOLDER = '_';
 
-export function qualifiedNameMoves(renames) {
+export function qualifiedNameMoves(renames, { skip = new Set() } = {}) {
+  const pairs = [...renames]
+    .filter(([oldPath]) => !skip.has(oldPath))
+    .flatMap(([oldPath, newPath]) => namePairs(oldPath, newPath));
+  return new Map([...agreedPairs(pairs)].filter(([from]) => from.includes('.')));
+}
+
+export function bareFileMoves(renames, { skip = new Set(), packageDirs = new Set() } = {}) {
+  const own = [...renames]
+    .filter(([oldPath]) => !skip.has(oldPath))
+    .map(([oldPath, newPath]) => [
+      oldPath,
+      namePairs(oldPath, newPath, { withFacades: false, packageDirs }).find(
+        ([from]) => !from.includes('.'),
+      ),
+    ])
+    .filter(([, pair]) => pair !== undefined && !pair[0].includes('.'));
+  return new Map(own);
+}
+
+export function agreedPairs(pairs) {
   const moves = new Map();
-  for (const [oldPath, newPath] of renames) {
-    for (const [from, to] of namePairs(oldPath, newPath)) {
-      const known = moves.get(from);
-      moves.set(from, known === undefined || known === to ? to : AMBIGUOUS);
-    }
+  for (const [from, to] of pairs) {
+    const known = moves.get(from);
+    moves.set(from, known === undefined || known === to ? to : AMBIGUOUS);
   }
   return new Map([...moves].filter(([, to]) => to !== AMBIGUOUS));
 }
@@ -32,19 +54,35 @@ function packageOf(name) {
   return end === -1 ? undefined : name.slice(0, end);
 }
 
-function namePairs(oldPath, newPath, { withFacades = true } = {}) {
+function namePairs(oldPath, newPath, { withFacades = true, packageDirs = new Set() } = {}) {
   const oldExtension = NAMED_SOURCES.exec(oldPath)?.[1];
   if (oldExtension === undefined || oldExtension !== NAMED_SOURCES.exec(newPath)?.[1]) {
     return [];
   }
   const from = nameSegments(oldPath, oldExtension);
   const to = nameSegments(newPath, oldExtension);
-  const pairs = Array.from({ length: from.length - 1 }, (_, index) =>
-    pairAt(from, to, from.length - index),
-  ).filter((pair) => pair !== undefined && pair[0] !== pair[1]);
+  const pairs =
+    from.length === 1
+      ? topLevelPairs({ name: from[0], to, packageDirs, extension: oldExtension, newPath })
+      : Array.from({ length: from.length - 1 }, (_, index) =>
+          pairAt(from, to, from.length - index),
+        ).filter((pair) => pair !== undefined && pair[0] !== pair[1]);
   return withFacades && oldExtension === 'kt'
     ? [...pairs, ...pairs.map(([left, right]) => [left + KOTLIN_FACADE, right + KOTLIN_FACADE])]
     : pairs;
+}
+
+export function directoryNamePairs(oldDirectory, newDirectory) {
+  const from = [...oldDirectory.split('/'), PLACEHOLDER];
+  const to = [...newDirectory.split('/'), PLACEHOLDER];
+  return Array.from({ length: from.length - 1 }, (_, index) =>
+    pairAt(from, to, from.length - index),
+  )
+    .filter((pair) => pair !== undefined && pair[0] !== pair[1])
+    .map(([left, right]) => [
+      left.slice(0, -PLACEHOLDER.length - 1),
+      right.slice(0, -PLACEHOLDER.length - 1),
+    ]);
 }
 
 function nameSegments(filePath, extension) {
@@ -52,6 +90,21 @@ function nameSegments(filePath, extension) {
   return extension === 'py' && segments.at(-1) === PYTHON_PACKAGE
     ? segments.slice(0, -1)
     : segments;
+}
+
+function topLevelPairs({ name, to, packageDirs, extension, newPath }) {
+  const isPackage = path.posix.basename(newPath) === `${PYTHON_PACKAGE}.py`;
+  const checked = to.slice(0, isPackage ? to.length : to.length - 1);
+  const dirs = checked.map((_, index) => to.slice(0, index + 1).join('/'));
+  const start = dirs.length === 0 ? 0 : dirs.findIndex((directory) => packageDirs.has(directory));
+  const rest = to.slice(start);
+  const valid =
+    extension === 'py' &&
+    start !== -1 &&
+    dirs.slice(start).every((directory) => packageDirs.has(directory)) &&
+    rest.every((segment) => IDENTIFIER.test(segment)) &&
+    !(rest.length === 1 && rest[0] === name);
+  return valid ? [[name, rest.join('.')]] : [];
 }
 
 function pairAt(from, to, nameLength) {
@@ -77,7 +130,7 @@ function matchingRootLength(oldRoot, to, firstName) {
     length,
     shared: sharedTail(oldRoot, to.slice(0, length)),
   }));
-  const best = Math.max(...scored.map(({ shared }) => shared));
+  const best = largest(scored.map(({ shared }) => shared));
   if (best === 0) {
     return sharedHead(oldRoot, to) > 0 && oldRoot.length < to.length ? oldRoot.length : undefined;
   }
@@ -146,4 +199,32 @@ function remapPrefix(token, moves, ends = [token.length, ...boundaries(token)]) 
   return found === undefined
     ? undefined
     : moves.get(found.key.replaceAll('/', '.')).replaceAll('.', separator) + token.slice(found.end);
+}
+
+const BARE_SUBJECT = /^((?:[\w-]+:)*)([A-Za-z_$][\w$]*)(?=[#$]|$)/u;
+const NAMING_PREFIX = /(?:^|:)(?:class|test|module-cycle):$/u;
+const SYMBOL_PREFIX = /^(?:cov:)?$/u;
+const BARE_DESCRIPTOR = /(?<=[(;[BCDFIJSZ)])L([A-Za-z_$][\w$]*);/gu;
+
+function remapSubject(text, bare) {
+  const match = BARE_SUBJECT.exec(text);
+  if (match === null) {
+    return text;
+  }
+  const [whole, prefix, name] = match;
+  const named =
+    NAMING_PREFIX.test(prefix) || (whole.length < text.length && SYMBOL_PREFIX.test(prefix));
+  return bare.has(name) && named ? `${prefix}${bare.get(name)}${text.slice(whole.length)}` : text;
+}
+
+export function remapBareNames(text, bare) {
+  if (bare.size === 0 || typeof text !== 'string') {
+    return text;
+  }
+  const subject = remapSubject(text, bare);
+  return subject.includes('(')
+    ? subject.replace(BARE_DESCRIPTOR, (whole, name) =>
+        bare.has(name) ? `L${bare.get(name).replaceAll('.', '/')};` : whole,
+      )
+    : subject;
 }

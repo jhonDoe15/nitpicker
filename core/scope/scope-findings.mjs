@@ -47,6 +47,11 @@ export function scopeSummary(scope, outside) {
   return scope === undefined ? {} : { scope: { paths: scope.paths, outside } };
 }
 
+export function projectLine(summary) {
+  const projectPath = summary?.projectPath;
+  return typeof projectPath === 'string' && projectPath !== '.' ? [`Project: ${projectPath}`] : [];
+}
+
 export function scopeLine(summary) {
   if (summary?.scope === undefined) {
     return [];

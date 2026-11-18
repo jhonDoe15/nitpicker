@@ -1,4 +1,5 @@
 import { withoutAnsi } from './terminal/terminal-text.mjs';
+import { appendAll } from '../lists/items.mjs';
 
 const MAX_CAUSE_DEPTH = 3;
 const MAX_CAUSE_LINES = 10;
@@ -37,7 +38,10 @@ function causeLines(error, message) {
       shown.push(line);
     }
     if (depth < MAX_CAUSE_DEPTH) {
-      pending.push(...innerErrors(inner).map((next) => ({ inner: next, depth: depth + 1 })));
+      appendAll(
+        pending,
+        innerErrors(inner).map((next) => ({ inner: next, depth: depth + 1 })),
+      );
     }
   }
   const causes = shown.slice(1);

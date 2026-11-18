@@ -2,7 +2,7 @@ import type * as Prettier from 'prettier';
 import {
   isIgnoredByLayers as isIgnoredByUntypedLayers,
   layeredPrettierOptions as untypedLayeredPrettierOptions,
-} from '../prettier/prettier-layers.mjs';
+} from '../prettier/prettier-layers.mts';
 
 export type PrettierLayers = {
   readonly precedence: readonly string[];
@@ -18,8 +18,11 @@ export const isIgnoredByLayers: (
 ) => Promise<boolean> = isIgnoredByUntypedLayers;
 
 export const layeredPrettierOptions: (
-  prettier: typeof Prettier,
-  layers: PrettierLayers & { readonly policyOptions: Prettier.Options },
+  prettier: Pick<typeof Prettier, 'resolveConfig'>,
+  layers: PrettierLayers & {
+    readonly policyOptions: Prettier.Options;
+    readonly onConfigError?: (error: unknown) => void;
+  },
 ) => Promise<Prettier.Options> = untypedLayeredPrettierOptions;
 
 export function prettierOptionsOf(value: unknown): Prettier.Options {

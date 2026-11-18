@@ -3,14 +3,14 @@ import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE,
   SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
-} from '../../adapters/spring/__tests__/spring-arch-project.mjs';
-import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mjs';
+} from '../../adapters/spring/__tests__/spring-arch-project.mts';
+import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mts';
 import {
   useMavenPresetProject,
   enabled,

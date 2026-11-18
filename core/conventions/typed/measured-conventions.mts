@@ -25,6 +25,7 @@ export function layoutFilter(config: NitpickerConfig, headPolicy: HeadPolicy): A
   const formatted = prettierPatterns(layout).map(globMatcher);
   const scopes: Readonly<Record<string, (file: string) => boolean>> = {
     layout: (file: string) => layout.isSourceFile(file) || layout.isTestFile(file),
+    source: (file: string) => layout.isSourceFile(file),
     'test-code': (file: string) => layout.isTestFile(file) || TEST_SUPPORT_PATH.test(file),
     'formatted-data': (file: string) =>
       formatted.some((pattern) => pattern.test(file)) &&

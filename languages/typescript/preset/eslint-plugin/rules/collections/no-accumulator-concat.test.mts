@@ -1,6 +1,6 @@
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-accumulator-concat.mjs';
+import { rule } from './no-accumulator-concat.mts';
 
 const ruleTester = typescriptRuleTester();
 

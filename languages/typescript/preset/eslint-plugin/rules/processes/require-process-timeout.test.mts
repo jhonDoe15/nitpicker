@@ -1,5 +1,5 @@
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './require-process-timeout.mjs';
+import { rule } from './require-process-timeout.mts';
 
 const tester = typescriptRuleTester();
 const CP =

@@ -65,6 +65,13 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   setter of a project class. Set it through junit-pioneer (`@SetSystemProperty`, `@RestoreSystemProperties`,
   `@DefaultLocale`, `@DefaultTimeZone`) or system-stubs, or save the old value and restore it in `finally` or
   `@AfterEach`/`@AfterAll`.
+- No real clock, unseeded randomness or network in tests (`RealClockInTest`, `RandomInTest`, `NetworkInTest`): pass the
+  subject a `Clock.fixed(...)` or a fixed `Instant` instead of `Instant.now()`/`LocalDate.now()`/
+  `System.currentTimeMillis()`; use `new Random(42)` and fixed values instead of `new Random()`, `Math.random()` or
+  `ThreadLocalRandom`, and compare a fixed UUID, not `UUID.randomUUID()`; in a unit test, point HTTP clients at
+  `localhost` (MockWebServer, WireMock, `MockRestServiceServer`) or a mock. Measuring time is fine (`System.nanoTime()`,
+  `now()` compared with a deadline in a polling loop). Calls to a real service belong in an integration test (`*IT`,
+  an integration source set, or `@SpringBootTest`).
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one

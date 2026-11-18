@@ -548,6 +548,127 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="HandSplitHttpHeader" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This splits a structured header by hand, which breaks on quoted values, whitespace around separators and quality weights. Parse it instead: MediaType.parseMediaType(value) or MediaType.parseMediaTypes(value) for Content-Type and Accept, ContentDisposition.parse(value), HttpCookie.parse(value) or the servlet cookie API for cookies. A library that is itself the parser takes an exceptions entry.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $names := 'accept(?:-charset|-encoding|-language)?|content-(?:type|disposition|language)|cache-control|if-none-match|if-match|cookie|set-cookie|forwarded|vary|prefer|link',
+    $headerArg := function($arg) {
+      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $names, ')"$'), 'i')]
+             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $names, ')$'), 'i')])
+    },
+    $direct := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1])
+        or @MethodName = 'getContentType' and ArgumentList/@Size = 0 and pmd-java:typeIs('java.lang.String')
+        or @MethodName = ('orElse', 'orElseThrow', 'get')
+           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1])]]])
+    },
+    $local := function($e) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $name]]
+            [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$direct(*[2])]])
+    },
+    $parameter := function($e) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter[VariableId/@Name = $name]
+          [ClassType[@SimpleName = 'String']]
+          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1])]]])
+    },
+    $base := function($e) { $direct($e) or $local($e) or $parameter($e) },
+    $source := function($e) {
+      $base($e) or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1])])
+    },
+    $separator := function($e) { exists($e[self::StringLiteral][matches(@Image, '^"[\s,;\\|\[\]*+s]*[,;][\s,;\\|\[\]*+s]*"$')]) }
+return (
+  //MethodCall[@MethodName = 'split'][$source(*[1]) and $separator(ArgumentList/*[1])]
+  | //ConstructorCall[ClassType/@SimpleName = 'StringTokenizer'][$source(ArgumentList/*[1]) and $separator(ArgumentList/*[2])]
+  | //MethodCall[@MethodName = ('tokenizeToStringArray', 'commaDelimitedListToStringArray', 'commaDelimitedListToSet',
+                                'delimitedListToStringArray')]
+      [$source(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1])]
+      [*[1][self::MethodCall[@MethodName = ('on', 'onPattern', 'compile')]]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HttpValueCase" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This compares exact text, but media types, charsets, encodings, URI schemes and hosts, cookie name prefixes and file extensions are case-insensitive, so Application/JSON, HTTPS or photo.PNG is missed. Lowercase the value first (value.toLowerCase(Locale.ROOT)) or use equalsIgnoreCase, or parse it: MediaType.parseMediaType(value) and MimeTypeUtils for media types, URI.getScheme() compared with equalsIgnoreCase. Header names read with getHeader or HttpHeaders ignore case already.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $names := 'accept(?:-charset|-encoding|-language)?|content-(?:type|encoding|language|disposition)|transfer-encoding|connection|upgrade|cache-control|pragma|authorization|proxy-authorization|www-authenticate|expect|te|host|origin|forwarded|x-forwarded-(?:proto|host|scheme)|sec-fetch-\w+|vary',
+    $headerArg := function($arg) {
+      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $names, ')"$'), 'i')]
+             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $names, ')$'), 'i')])
+    },
+    $direct := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1])
+        or @MethodName = 'getContentType' and ArgumentList/@Size = 0 and pmd-java:typeIs('java.lang.String')
+        or @MethodName = ('orElse', 'orElseThrow', 'get')
+           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1])]]
+        or @MethodName = ('getScheme', 'getHost') and ArgumentList/@Size = 0
+           and *[1][pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('org.springframework.web.util.UriComponents')]])
+    },
+    $extension := function($e) {
+      exists($e[self::MethodCall][
+        @MethodName = ('getExtension', 'getFilenameExtension', 'getFileExtension')
+        or @MethodName = 'substring' and .//MethodCall[@MethodName = 'lastIndexOf']/ArgumentList/StringLiteral[@Image = '"."']])
+    },
+    $local := function($e, $origin) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $name]]
+            [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$origin(*[2])]])
+    },
+    $parameter := function($e) {
+      exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter[VariableId/@Name = $name]
+          [ClassType[@SimpleName = 'String']]
+          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1])]]])
+    },
+    $base := function($e) { $direct($e) or $local($e, $direct) or $parameter($e) },
+    $source := function($e) {
+      $base($e) or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1])])
+    },
+    $extensionSource := function($e) { $extension($e) or $local($e, $extension) },
+    $lit := function($e) {
+      exists($e[self::StringLiteral][matches(@Image, '[a-zA-Z]')]
+             | $e[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]+$')]
+                 [pmd-java:typeIs('java.lang.String')])
+    },
+    $plain := function($call) {
+      not($call/*[1][self::MethodCall[@MethodName = ('toLowerCase', 'toUpperCase')]])
+    }
+return (
+  //MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 1]
+      [$source(*[1]) and $lit(ArgumentList/*[1]) or $lit(*[1]) and $source(ArgumentList/*[1])]
+  | //MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 2][*[1][self::TypeExpression or self::AmbiguousName]]
+      [$source(ArgumentList/*[1]) and $lit(ArgumentList/*[2]) or $lit(ArgumentList/*[1]) and $source(ArgumentList/*[2])]
+  | //MethodCall[@MethodName = ('startsWith', 'endsWith', 'contains', 'matches', 'indexOf')][ArgumentList/@Size >= 1]
+      [$source(*[1]) and $lit(ArgumentList/*[1])]
+      [not(@MethodName = 'matches' and contains(ArgumentList/*[1]/@Image, '(?i)'))]
+  | (//SwitchStatement | //SwitchExpression)[$source(*[1])][.//SwitchLabel/StringLiteral]
+  | //MethodCall[@MethodName = ('contains', 'containsKey', 'get', 'getOrDefault', 'indexOf')]
+      [$source(ArgumentList/*[1]) and not($source(*[1]))]
+  | //MethodCall[@MethodName = 'startsWith'][$lit(ArgumentList/*[1])]
+      [ArgumentList/StringLiteral[matches(@Image, '^"__(?:Host|Secure)-')]][$plain(.)]
+  | //MethodCall[@MethodName = ('get', 'containsKey', 'getOrDefault')]
+      [*[1][self::VariableAccess or self::FieldAccess][matches(@Name, 'mime|content_?type', 'i')]]
+      [$extensionSource(ArgumentList/*[1])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) and HttpClient.newBuilder().connectTimeout(...) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.">
     <priority>2</priority>
@@ -2424,6 +2545,112 @@ return (
     [ArgumentList/ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.digests.MD5Digest')
       or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD4Digest')
       or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD2Digest')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="NullMapValue" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map collector throws NullPointerException when the value function of toMap, toUnmodifiableMap or toConcurrentMap, or the classifier of groupingBy, returns null, which a Map.Entry::getValue over Object, wildcard or @Nullable values, a @Nullable method, Map.get, orElse(null) and a null branch can. Filter the nulls first (filter(e -&gt; e.getValue() != null)), map them (Objects.toString, Optional), or collect into a HashMap with collect(HashMap::new, (m, e) -&gt; m.put(k, v), Map::putAll) when nulls are meant to be kept. An exception fits only for a value that is never null but not declared so.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mapTypes := ('Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap', 'NavigableMap', 'ConcurrentMap',
+                  'ConcurrentHashMap', 'AbstractMap'),
+    $valueCollectors := ('toMap', 'toUnmodifiableMap', 'toConcurrentMap'),
+    $groupings := ('groupingBy', 'groupingByConcurrent'),
+    $passThrough := ('stream', 'parallelStream', 'filter', 'sorted', 'peek', 'distinct', 'limit', 'skip',
+                     'takeWhile', 'dropWhile', 'parallel', 'sequential', 'unordered'),
+    $nullable := ('Nullable', 'CheckForNull'),
+    $nullableMethods := function($node) {
+      $node/ancestor::CompilationUnit//MethodDeclaration[ModifierList/Annotation[@SimpleName = $nullable]]/@Name
+      | $node/ancestor::CompilationUnit//RecordComponent[ModifierList/Annotation[@SimpleName = $nullable]]/VariableId/@Name
+    },
+    $nullableValueType := function($type) {
+      exists($type[self::ClassType[@SimpleName = $mapTypes]]
+        [empty(TypeArguments) or TypeArguments/*[2][self::WildcardType or Annotation[@SimpleName = $nullable]
+                                                    or self::ClassType[@SimpleName = 'Object']]])
+    },
+    $declarations := function($access) {
+      let $name := $access/@Name
+      return $access/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]//VariableId[@Name = $name]
+             | $access/ancestor::ClassBody/FieldDeclaration/VariableDeclarator/VariableId[@Name = $name]
+             | $access/ancestor::RecordDeclaration/RecordComponentList/RecordComponent/VariableId[@Name = $name]
+    },
+    $typesOf := function($variables) {
+      $variables/(parent::FormalParameter | parent::VariableDeclarator/parent::*| parent::RecordComponent)/ClassType
+    },
+    $declaredTypes := function($access) {
+      $typesOf($declarations($access))
+      | $typesOf(for $alias in $declarations($access)/parent::VariableDeclarator/*[2][self::VariableAccess]
+                 return $declarations($alias))
+    },
+    $nullableMap := function($source) {
+      exists($source[pmd-java:typeIs('java.util.Properties')])
+      or (some $type in (
+            if ($source[self::VariableAccess or self::FieldAccess]) then $declaredTypes($source)
+            else if ($source[self::MethodCall])
+              then $source/ancestor::CompilationUnit//MethodDeclaration[@Name = $source/@MethodName]/ClassType
+            else ()) satisfies $nullableValueType($type))
+      or exists($source[self::MethodCall][@MethodName = ('readValue', 'convertValue', 'fromJson')]
+                [pmd-java:typeIs('java.util.Map')])
+    },
+    $entryValue := function($function) {
+      exists($function[self::MethodReference[@MethodName = 'getValue'][TypeExpression/ClassType[@SimpleName = 'Entry']]
+        | self::LambdaExpression[*[last()]/(self::CastExpression/*[last()] | self::*)
+            [self::MethodCall[@MethodName = 'getValue'][ArgumentList/@Size = 0][*[1][self::VariableAccess]]]]])
+    },
+    $identityMap := function($step) {
+      exists($step[@MethodName = 'map']/ArgumentList/LambdaExpression
+        [*[last()][self::VariableAccess][@Name = ../LambdaParameterList/LambdaParameter/VariableId/@Name]])
+    },
+    $nullEntries := function($call) {
+      some $collect in $call/parent::ArgumentList/parent::MethodCall[@MethodName = 'collect'] satisfies
+        (some $entries in $collect/*[1]/descendant-or-self::MethodCall[@MethodName = 'entrySet'][ArgumentList/@Size = 0]
+         satisfies
+           (let $steps := $entries/ancestor::* intersect $collect/descendant::*
+            return
+              (every $step in $steps satisfies
+                ($step is $step/../*[1]
+                 and $step[self::MethodCall][@MethodName = $passThrough or $identityMap(.)]))
+              and empty($steps[self::MethodCall][@MethodName = 'filter']
+                         [.//MethodCall[@MethodName = 'getValue']
+                          and (.//NullLiteral or .//InstanceofExpression
+                               or .//MethodCall[@MethodName = ('nonNull', 'isNull')])])
+              and $nullableMap($entries/*[1])))
+    },
+    $nullResult := function($result, $function) {
+      exists($result[self::NullLiteral
+        | self::ConditionalExpression[*[2][self::NullLiteral] or *[3][self::NullLiteral]]
+        | self::MethodCall[@MethodName = 'orElse'][ArgumentList/*[1][self::NullLiteral]]
+        | self::MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1][*[1][pmd-java:typeIs('java.util.Map')]]
+        | self::MethodCall[@MethodName = $nullableMethods($function)]])
+    },
+    $nullFunction := function($function) {
+      exists($function[self::MethodReference]
+               [@MethodName = $nullableMethods(.)
+                or @MethodName = 'get' and *[1][self::VariableAccess or self::FieldAccess][pmd-java:typeIs('java.util.Map')]])
+      or (some $result in ($function[self::LambdaExpression]/*[last()][not(self::Block)]
+                           | $function[self::LambdaExpression]/Block//ReturnStatement/*[1])
+          satisfies $nullResult($result, $function))
+    },
+    $reaches := function($call, $function) {
+      $nullFunction($function) or ($entryValue($function) and $nullEntries($call))
+    },
+    $helpers := //MethodDeclaration[.//MethodCall[@MethodName = $valueCollectors]
+                  [pmd-java:typeIs('java.util.stream.Collector')]/ArgumentList/*[2][self::VariableAccess]]
+return (
+  //MethodCall[@MethodName = $valueCollectors][pmd-java:typeIs('java.util.stream.Collector')]
+    [$reaches(., ArgumentList/*[2])]
+  | //MethodCall[@MethodName = $groupings][pmd-java:typeIs('java.util.stream.Collector')]
+    [$reaches(., ArgumentList/*[1])]
+  | //MethodCall[some $helper in $helpers satisfies (@MethodName = $helper/@Name
+      and (some $forwarded in $helper//MethodCall[@MethodName = $valueCollectors]
+             [pmd-java:typeIs('java.util.stream.Collector')]/ArgumentList/*[2][self::VariableAccess]/@Name
+           satisfies (let $index := count($helper/FormalParameters/FormalParameter[VariableId/@Name = $forwarded]
+                                          /preceding-sibling::FormalParameter) + 1
+                      return $reaches(., ArgumentList/*[$index]))))]
+)
 ]]></value>
       </property>
     </properties>

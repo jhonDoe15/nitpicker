@@ -1,6 +1,6 @@
 import { typedCaseProject } from '../../test-support/projects/typed-ts-project.mts';
-import { rule as noFalsyDefault } from '../../rules/signatures/no-falsy-default.mjs';
-import { rule as noMutatingMethod } from '../../rules/domain/no-mutating-method-in-domain.mjs';
+import { rule as noFalsyDefault } from '../../rules/signatures/no-falsy-default.mts';
+import { rule as noMutatingMethod } from '../../rules/domain/no-mutating-method-in-domain.mts';
 
 const { tester, typed } = typedCaseProject<never[]>({
   prefix: 'nitpicker-code-fixes-',

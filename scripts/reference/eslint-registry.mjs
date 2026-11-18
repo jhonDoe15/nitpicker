@@ -3,12 +3,13 @@ import * as prettier from 'prettier';
 import { byCodePoint, readRegistryFile, registryFiles } from './registry-files.mjs';
 
 const PLUGIN = 'languages/typescript/preset/eslint-plugin';
-const REGISTRY_NAME = 'rules.generated.mjs';
+const REGISTRY_NAME = 'rules.generated.mts';
 const PARTS_FOLDER = 'registry';
 const PART_SIZE = 100;
 const RULE_EXPORT = /^export const rule\b/mu;
+const MODULE_EXTENSIONS = ['.mts', '.mjs'];
 const SKIPPED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__']);
-const SKIPPED_FILES = new Set(['index.mjs', REGISTRY_NAME]);
+const SKIPPED_FILES = new Set(['index.mts', REGISTRY_NAME]);
 
 const ESLINT_REGISTRY = `${PLUGIN}/${REGISTRY_NAME}`;
 
@@ -32,17 +33,23 @@ function idProblems(rules) {
   ];
 }
 
+function emittedFrom(sources) {
+  return (file) => file.endsWith('.mjs') && sources.has(`${file.slice(0, -'.mjs'.length)}.mts`);
+}
+
 /**
  * The plugin's rules, found from its folders: each module that exports `rule` is the rule named
  * after its file, which must be kebab-case. Sorted by id; two modules with one name are an error.
  */
 export function eslintPluginRules(repositoryRoot) {
   const root = path.join(repositoryRoot, PLUGIN);
-  const rules = registryFiles(root, '.mjs', SKIPPED_FOLDERS)
-    .filter((file) => !SKIPPED_FILES.has(path.posix.basename(file)))
-    .filter((file) => RULE_EXPORT.test(readRegistryFile(root, file)))
-    .map((file) => ({ id: path.posix.basename(file, '.mjs'), file: `./${file}` }))
-    .toSorted(byId);
+  const isEmitted = emittedFrom(new Set(registryFiles(root, '.mts', SKIPPED_FOLDERS)));
+  const rules = MODULE_EXTENSIONS.flatMap((extension) =>
+    registryFiles(root, extension, SKIPPED_FOLDERS)
+      .filter((file) => !(SKIPPED_FILES.has(path.posix.basename(file)) || isEmitted(file)))
+      .filter((file) => RULE_EXPORT.test(readRegistryFile(root, file)))
+      .map((file) => ({ id: path.posix.basename(file, extension), file: `./${file}` })),
+  ).toSorted(byId);
   const problems = idProblems(rules);
   if (problems.length > 0) {
     throw new Error(`The ESLint plugin's rule modules have problems: ${problems.join('; ')}`);
@@ -74,7 +81,7 @@ function aggregateSource(count) {
 }
 
 function partName(number) {
-  return `rules-${number}.generated.mjs`;
+  return `rules-${number}.generated.mts`;
 }
 
 /**

@@ -13,6 +13,7 @@ import type {
   ReporterEvent,
   NodeTestReport,
 } from './node-test-report-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
 const CANCELLED_BY_PARENT = 'cancelledByParent';
@@ -136,7 +137,7 @@ function record(state: FileState, type: ResultEvent['type'], data: ResultData): 
             cancelled: data.details?.error?.failureType === CANCELLED_BY_PARENT,
           },
         ];
-  state.pending.push(...lifted, ...own);
+  appendAll(state.pending, [...lifted, ...own]);
 }
 
 const ERROR_LINE = /^\w*Error\b/u;

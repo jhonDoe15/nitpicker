@@ -1,3 +1,4 @@
+import type { TSESLint } from '@typescript-eslint/utils';
 import type { Rule } from 'eslint';
 import accessibility from 'eslint-plugin-jsx-a11y-x';
 import hooks from 'eslint-plugin-react-hooks';
@@ -5,7 +6,7 @@ import reactDom from 'eslint-plugin-react-dom';
 import reactWebApi from 'eslint-plugin-react-web-api';
 import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
-import { inReactTestFilesOnly as untypedInReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mjs';
+import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mts';
 import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
 import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
 import {
@@ -29,8 +30,29 @@ type RuleTable = Readonly<Record<string, Rule.RuleModule>>;
 type Hints = Readonly<Record<string, string>>;
 type Locals = { readonly named: string | undefined; readonly namespace: string | undefined };
 
-const inReactTestFilesOnly: (create: Rule.RuleModule['create']) => Rule.RuleModule['create'] =
-  untypedInReactTestFilesOnly;
+type PluginContext = Readonly<TSESLint.RuleContext<string, unknown[]>>;
+
+function isContext(value: unknown): value is Rule.RuleContext & PluginContext {
+  return typeof value === 'object' && value !== null && 'report' in value;
+}
+
+function isListener(value: unknown): value is Rule.RuleListener & TSESLint.RuleListener {
+  return typeof value === 'object' && value !== null;
+}
+
+function bridged<Value>(value: unknown, holds: (each: unknown) => each is Value): Value {
+  if (!holds(value)) {
+    throw new TypeError('The rule context or listener has an unexpected shape.');
+  }
+  return value;
+}
+
+function testFilesOnly(rule: Rule.RuleModule): Rule.RuleModule['create'] {
+  const create = inReactTestFilesOnly((context: PluginContext): TSESLint.RuleListener =>
+    bridged(rule.create(bridged(context, isContext)), isListener),
+  );
+  return (context) => bridged(create(bridged(context, isContext)), isListener);
+}
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
 function typeChecked(rule: Rule.RuleModule): Rule.RuleModule {
@@ -209,7 +231,7 @@ function testingLibraryRule(name: string, hint: string): Rule.RuleModule {
       ? extendedTestingLibraryRules['prefer-user-event-setup']
       : ruleNamed(testingLibrary.rules, name);
   const rule = withoutFixes(withHint(upstream, hint));
-  return { ...rule, create: inReactTestFilesOnly((context) => rule.create(context)) };
+  return { ...rule, create: testFilesOnly(rule) };
 }
 
 export const testingLibraryPlugin = {

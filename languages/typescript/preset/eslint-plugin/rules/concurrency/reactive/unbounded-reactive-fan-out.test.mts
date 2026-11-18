@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from './unbounded-reactive-fan-out.mjs';
+import { rule } from './unbounded-reactive-fan-out.mts';
 
 const RX =
   'import { forkJoin, from, merge, combineLatest, zip, of, mergeMap, mergeAll, concatMap, bufferCount, toArray, map, defer, flatMap } from "rxjs";\n';

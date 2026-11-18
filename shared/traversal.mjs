@@ -1,3 +1,4 @@
+import { appendAll } from './lists/items.mjs';
 function stackIterator(items) {
   return {
     [Symbol.iterator]() {
@@ -69,4 +70,16 @@ export function objectChildren(node) {
     .filter(([key]) => key !== 'parent')
     .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
     .filter((value) => value !== null && typeof value === 'object');
+}
+
+export function expandsFully(root, children) {
+  const pending = [root];
+  for (const node of pending) {
+    const next = children(node);
+    if (next === undefined) {
+      return false;
+    }
+    appendAll(pending, next);
+  }
+  return true;
 }

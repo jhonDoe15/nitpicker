@@ -2,7 +2,11 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { publishHeadPolicy } from '../conventions/resolve.mts';
-import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
+import {
+  configureAll,
+  presetAnalyzers,
+  withRepositoryChecks,
+} from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mts';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
@@ -11,7 +15,7 @@ import {
   createLayeredStore,
   resolveCacheStore,
 } from '../diff/cache/cache-stores.mts';
-import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
+import { publishBaseSnapshot, WITHOUT_CHANGED_TESTS } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
@@ -23,7 +27,7 @@ import {
 } from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';
-import type { NitpickerConfig } from '../../shared/values/config-types.mts';
+import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 
 const HELP = '--help';
 
@@ -42,6 +46,7 @@ type CacheCli = {
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
+  readonly configOverlay?: ProjectOverlay | undefined;
 };
 
 type ShardOptions = {
@@ -130,8 +135,11 @@ function writeOutcome({
   readonly result: PublishOutcome;
   readonly selected: readonly Analyzer[];
 }): number {
+  const analyzersPublished = result.published.filter(
+    (name) => !name.endsWith(WITHOUT_CHANGED_TESTS),
+  );
   stdout.write(
-    `Published ${String(result.published.length)} of ${String(selected.length)} base snapshots` +
+    `Published ${String(analyzersPublished.length)} of ${String(selected.length)} base snapshots` +
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
@@ -156,12 +164,15 @@ export function runCacheCommand(cli: CacheCli): number {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot),
   );
-  const config: NitpickerConfig = loadConfig(projectRoot);
+  const config: NitpickerConfig = loadConfig(projectRoot, { overlay: cli.configOverlay });
   const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const selected = selectedAnalyzers(
-    configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+    withRepositoryChecks(
+      configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+      cli.configOverlay,
+    ),
     options,
   );
   const store = writableStore(projectRoot, cli);

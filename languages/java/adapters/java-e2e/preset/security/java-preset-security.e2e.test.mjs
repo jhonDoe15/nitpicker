@@ -3,8 +3,8 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { commitBranch, runGitIn, summarize } from '../../../test-support/gradle-e2e.mjs';
-import { runJavaDiff } from '../../../java-diff.mjs';
+import { commitBranch, runGitIn, summarize } from '../../../test-support/gradle-e2e.mts';
+import { runJavaDiff } from '../../../java-diff.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

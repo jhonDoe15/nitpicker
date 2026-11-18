@@ -4,24 +4,27 @@ import {
   BINARY_NAME,
   SPRING_KEYS,
   SPRING_ROLES,
-} from '../../../languages/java/adapters/spring-arch/spring-roles.mjs';
+} from '../../../languages/java/adapters/spring-arch/spring-roles.mts';
 import {
   HISTORY_KEYS,
   HISTORY_THRESHOLD_KEYS,
   WHOLE_NUMBER_BOUNDS,
   isWholeNumberKey,
 } from '../scopes/history-settings.mts';
-import type { ConventionDefinition } from '../../../shared/values/config-types.mts';
+import type {
+  ChoiceConvention,
+  ConventionDefinition,
+} from '../../../shared/values/config-types.mts';
 import type { JsonSchema } from './schema-parts.mts';
 import type { SchemaTable, TextTable } from '../views/schema-views.mts';
 
-function optionText(definition: ConventionDefinition, option: string): string {
+function optionText(definition: ChoiceConvention, option: string): string {
   const unit = definition.unit === undefined ? '' : ` ${definition.unit}`;
   return `"${option}" (${definition.optionLabels?.[option] ?? `${option}${unit}`})`;
 }
 
 function choiceSchema(definition: ConventionDefinition): JsonSchema {
-  if (definition.kind === 'names') {
+  if (definition.options === undefined) {
     return {
       description: `${definition.label}: ${definition.namesMeaning ?? 'the names of the helper functions that count as assertions'}.`,
       type: 'array',

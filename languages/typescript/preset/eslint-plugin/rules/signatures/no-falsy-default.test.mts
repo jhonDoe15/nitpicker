@@ -1,10 +1,11 @@
 import { namedErrorProject } from '../../test-support/projects/typed-ts-project.mts';
-import { rule } from './no-falsy-default.mjs';
-import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
+import { rule } from './no-falsy-default.mts';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mts';
 
 const { tester, typed } = namedErrorProject('nitpicker-falsy-default-', 'falsyDefault');
 
-tester.run('no-falsy-default', withoutFixes(rule), {
+tester.run('no-falsy-default', withoutFixes(ruleModule(rule)), {
   valid: [
     'export function pick(limit?: number) { return limit ?? 10; }',
     'export function pick(limit = 10) { return limit || 20; }',

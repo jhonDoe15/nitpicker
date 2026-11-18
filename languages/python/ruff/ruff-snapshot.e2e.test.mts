@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
+import { RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mts';
 import { installedRuffRules } from '../reference/ruff-selection.mts';
 import { parseRuffSnapshot } from '../reference/typed/ruff-rule-views.mts';
 import type { RuffRule, RuffSnapshot } from '../reference/typed/ruff-rule-views.mts';

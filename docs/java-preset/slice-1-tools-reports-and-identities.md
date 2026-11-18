@@ -14,7 +14,7 @@ tool adds on top of rule and path.
 | google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
 | JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
-Notes on the glue in `java-reports.mjs`:
+Notes on the glue in `java-reports.mts`:
 
 - **Paths.** PMD writes absolute `file://` URIs; SpotBugs writes paths relative to a source root
   (`demo/Bad.java`); JaCoCo writes package-relative paths. All become project-relative

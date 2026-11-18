@@ -7,6 +7,7 @@ import {
   SKIPPED_SUPER_RULE,
 } from '../../../../../messages/generated-members/rule-names.mjs';
 import { kotlinClasses, kotlinTypeReferences, resolveKotlinClass } from './kotlin-types.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 export { MEMBER_CYCLE_RULE, SKIPPED_SUPER_RULE };
 
@@ -154,7 +155,10 @@ function inheritedState(classes, entry) {
       return found;
     }
     const names = stateOf(parent).filter((name) => !overridden.has(name));
-    found.push(...names.map((name) => ({ name, parent })));
+    appendAll(
+      found,
+      names.map((name) => ({ name, parent })),
+    );
     chain.push(parent);
   }
   return found;

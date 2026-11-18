@@ -10,19 +10,33 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import nitpicker.effects.auth.HandlerAuth;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
+import nitpicker.effects.deleted.InMemory;
+import nitpicker.effects.deleted.QueryFilter;
+import nitpicker.effects.deleted.SoftDelete;
 import nitpicker.effects.flow.Program;
+import nitpicker.effects.futures.AsyncBlocking;
+import nitpicker.effects.graphql.GraphqlFields;
+import nitpicker.effects.races.CheckThenWrite;
+import nitpicker.effects.graphql.Schema;
+import nitpicker.effects.jobs.JobLoops;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
+import nitpicker.effects.reactive.ReactiveLookups;
 import nitpicker.effects.rules.AccumulatorCopy;
 import nitpicker.effects.rules.DualWrite;
 import nitpicker.effects.rules.HeldScope;
 import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
+import nitpicker.effects.retries.StaleRetry;
+import nitpicker.effects.rows.Projections;
+import nitpicker.effects.rows.SetBasedUpdates;
 import nitpicker.effects.rules.RetryWrite;
 import nitpicker.effects.scopes.Scopes;
 import org.objectweb.asm.ClassReader;
@@ -40,6 +54,7 @@ public final class Effects {
     List<String> mainDirectories = new ArrayList<>();
     List<String> classPath = new ArrayList<>();
     List<String> dependencies = new ArrayList<>();
+    List<String> resources = new ArrayList<>();
     Map<String, String> options = new HashMap<>();
     for (String line : Files.readAllLines(Path.of(args[1]), StandardCharsets.UTF_8)) {
       int space = line.indexOf(' ');
@@ -51,6 +66,7 @@ public final class Effects {
         case "main" -> mainDirectories.add(value);
         case "classpath" -> classPath.add(value);
         case "dependency" -> dependencies.add(value);
+        case "resources" -> resources.add(value);
         case "option" -> options.put(value.split("=", 2)[0], value.contains("=") ? value.split("=", 2)[1] : "");
         default -> { }
       }
@@ -68,7 +84,9 @@ public final class Effects {
         load(index, Path.of(dependency), report, true);
       }
       Budget.begin(longOption(options, "timeBudgetSeconds"));
-      run(new Program(index), report, options);
+      List<String> schemaRoots = new ArrayList<>(mainDirectories);
+      schemaRoots.addAll(resources);
+      run(new Program(index), report, options, Schema.listTypes(schemaRoots));
       report.unreadableLibraries(index.unreadable());
       int[] supertypes = index.supertypeCoverage();
       report.note("unresolved", Map.of("supertypes", supertypes[0], "total", supertypes[1]));
@@ -78,18 +96,32 @@ public final class Effects {
     Files.writeString(Path.of(args[0]), report.toJson(), StandardCharsets.UTF_8);
   }
 
-  static void run(Program program, Report report, Map<String, String> options) {
+  static void run(Program program, Report report, Map<String, String> options, Set<String> listTypes) {
+    new CheckThenWrite(program, report).run();
     Summaries summaries = new Summaries(program);
     summaries.compute();
     program.io((flow, index) -> flow.insns[index] instanceof MethodInsnNode call
         && summaries.kind(call.owner, call.name, call.desc) != null);
     new LoopIo(program, summaries, report).run();
     new AccumulatorCopy(program, report).run();
-    new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
+    new GraphqlFields(program, summaries, listTypes, report).run();
+    Entities entities = new Entities(program.index, batchFetchSize(options) > 1);
+    new LazyRelation(program, entities, report).run();
+    new ReactiveLookups(program, summaries, report).run();
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
     new RetryWrite(program, scopes, report).run();
     new DualWrite(program, report).run();
+    new SetBasedUpdates(program, scopes, report).run();
+    new Projections(program, report).run();
+    new StaleRetry(program, summaries, report).run();
+    new AsyncBlocking(program, summaries, report).run();
+    new JobLoops(program, summaries, report).run();
+    SoftDelete soft = new SoftDelete(program.index);
+    QueryFilter filter = new QueryFilter(program, soft, report);
+    filter.run();
+    new InMemory(program, soft, entities, filter.reported(), report).run();
+    new HandlerAuth(program, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

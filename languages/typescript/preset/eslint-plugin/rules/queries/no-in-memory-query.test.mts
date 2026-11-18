@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
-import { rule } from './no-in-memory-query.mjs';
+import { rule } from './no-in-memory-query.mts';
 
 const TYPEORM = 'import { Repository } from "typeorm";';
 const SEQUELIZE = 'import { Model } from "sequelize";';

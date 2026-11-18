@@ -22,6 +22,7 @@ import {
   NAMED_GRAPHS,
   NAMED_QUERIES,
 } from './data-types.mjs';
+import { appendAll } from '../../../../../../../shared/lists/items.mjs';
 
 const RULE = 'JpaMultipleCollectionFetch';
 const QUERY_CALLS = new Set(['createQuery', 'createSelectionQuery']);
@@ -72,7 +73,7 @@ function relations(projectFiles) {
       if (own.relation !== undefined) {
         return own.relation;
       }
-      pending.push(...(pending.length > MAX_SUPERS ? [] : (own.supers ?? [])));
+      appendAll(pending, pending.length > MAX_SUPERS ? [] : (own.supers ?? []));
     }
     return undefined;
   };

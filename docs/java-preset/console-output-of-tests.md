@@ -41,8 +41,8 @@ Part of the [Java preset guide](../java-preset.md).
 - **Limits.** Output a test prints from a thread after it ends is attributed by the build to
   whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
   in the run that has it; allow it in `testConsole.allow` with the reason.
-- **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
-  `maven/results/maven-test-results.test.mjs`, and `spring/e2e/java-spring-console-gradle.e2e.test.mjs` and `java-spring-console-maven.e2e.test.mjs`, which
+- **Tests.** `adapters/test-times/console-output.test.mts`, `console-findings.test.mjs`,
+  `maven/results/maven-test-results.test.mjs`, and `spring/e2e/java-spring-console-gradle.e2e.test.mts` and `java-spring-console-maven.e2e.test.mts`, which
   commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
   Maven, that it is the only console finding: Spring's startup output, the WARN line a service logs
   in an unchanged `@SpringBootTest`, and a renumbered line in an edited test all stay baselined.

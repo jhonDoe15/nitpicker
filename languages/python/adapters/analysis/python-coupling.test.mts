@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { scanImports } from './python-coupling.mjs';
+import { scanImports } from './python-coupling.mts';
 import {
   analyzePythonCoupling,
   importEdges,

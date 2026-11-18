@@ -1,4 +1,5 @@
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { labelLines } from '../../../labels/label-filter.mts';
 
 type Named = { readonly name: string };
 
@@ -29,5 +30,8 @@ export function partialRunField(partialRun: unknown): object {
 
 export function partialRunLines(summary: unknown): string[] {
   const partialRun = fieldOf(summary, 'partialRun');
-  return partialRun === undefined ? [] : [textOf(fieldOf(partialRun, 'message'))];
+  return [
+    ...(partialRun === undefined ? [] : [textOf(fieldOf(partialRun, 'message'))]),
+    ...labelLines(summary),
+  ];
 }

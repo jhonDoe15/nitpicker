@@ -31,6 +31,7 @@ import type {
   SourceAnalysis,
   WalkStep,
 } from './typed/analysis-types.mts';
+import { appendAll, largest } from '../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -108,7 +109,7 @@ export function analyzeSource(source: string, filename: string): SourceAnalysis 
         source: normalizePath(filename),
         function: names.get(node),
         ...location(sourceFile, node),
-        parameters: Math.max(...chain.map((link) => link.parameters.length)),
+        parameters: largest(chain.map((link) => link.parameters.length)),
         ...functionBodyMetrics(chain.at(-1) ?? node),
       });
     }
@@ -171,7 +172,7 @@ function distribution(entries: readonly Measured[], property: Metric): Distribut
     p50: percentile(values, 0.5),
     p90: percentile(values, 0.9),
     p95: percentile(values, 0.95),
-    max: values.length === 0 ? undefined : Math.max(...values),
+    max: values.length === 0 ? undefined : largest(values),
   };
 }
 
@@ -200,8 +201,8 @@ export function analyzeProductionFiles(
     const displayPath = normalizePath(path.join(displayRoot, path.relative(root, file)));
     const analysis = analyzeSource(readFileSync(file, 'utf8'), displayPath);
     lines += analysis.lines;
-    functions.push(...analysis.functions);
-    classes.push(...analysis.classes);
+    appendAll(functions, analysis.functions);
+    appendAll(classes, analysis.classes);
   }
 
   return {

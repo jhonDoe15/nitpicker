@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
-import { glob, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../typed/head-policy.mts';
 import type * as Prettier from 'prettier';
 import type { StaticCheckOptions } from './arguments.mts';
@@ -13,8 +13,10 @@ import {
 } from '../typed/prettier-layers.mts';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { messageOf } from '../../../../shared/values/readers.mts';
 import { formattingHunks } from '../prettier/format-hunks.mts';
 import { listUnformattedInParallel } from '../prettier/parallel-cli.mts';
+import { matchingFiles } from '../prettier/matching-files.mts';
 import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
 
 const PRETTIER_MESSAGE = `These lines are not formatted with Prettier. ${formatAdvice()}`;
@@ -45,13 +47,14 @@ export async function runPrettier(options: StaticCheckOptions): Promise<Finding[
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
-  if ((await matchingFiles(options)).length === 0) {
+  const files = await matchingFiles(options.projectRoot, options.patterns);
+  if (files.length === 0) {
     return [];
   }
   const installedPolicy = installPrettierPolicy(options, options.ignoreRelativePath);
   try {
     if (usesLayeredPrettier()) {
-      return await layeredFormattingFindings(options, installedPolicy, prettierPrecedence());
+      return await layeredFormattingFindings(options, installedPolicy, files);
     }
     const unformattedFiles = listUnformattedFiles(options, installedPolicy);
     return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
@@ -111,30 +114,22 @@ function listUnformattedFilesSerially(
   return unformattedFiles;
 }
 
-async function matchingFiles(options: StaticCheckOptions): Promise<string[]> {
-  const perPattern = await Promise.all(
-    options.patterns.map((pattern) => Array.fromAsync(glob(pattern, { cwd: options.projectRoot }))),
-  );
-  return [...new Set(perPattern.flat())];
-}
-
 async function layeredFormattingFindings(
   options: StaticCheckOptions,
   installedPolicy: InstalledPolicy,
-  precedence: readonly string[],
+  files: readonly string[],
 ): Promise<Finding[]> {
   const prettier = await importPrettier();
   const policyOptions = readPrettierPolicy(installedPolicy.configPath);
   const layout = readLayout();
-  const candidates = (await matchingFiles(options)).filter(
-    (relativePath) => !layout.isExcluded(relativePath),
-  );
+  const candidates = files.filter((relativePath) => !layout.isExcluded(relativePath));
   const layers = {
-    precedence,
+    precedence: prettierPrecedence(),
     policyIgnorePath: installedPolicy.ignorePath,
     projectRoot: options.projectRoot,
     liveProjectRoot: options.liveProjectRoot,
   };
+  const configErrors: unknown[] = [];
   const perFile = await Promise.all(
     candidates.map(async (relativePath) => {
       if (await isIgnoredByLayers(prettier, { ...layers, relativePath })) {
@@ -142,7 +137,14 @@ async function layeredFormattingFindings(
       }
       const source = await readFile(path.join(options.projectRoot, relativePath), 'utf8');
       const formatted = await prettier.format(source, {
-        ...(await layeredPrettierOptions(prettier, { ...layers, policyOptions, relativePath })),
+        ...(await layeredPrettierOptions(prettier, {
+          ...layers,
+          policyOptions,
+          relativePath,
+          onConfigError: (error) => {
+            configErrors.push(error);
+          },
+        })),
         filepath: path.join(options.projectRoot, relativePath),
       });
       return formatted === source
@@ -150,7 +152,28 @@ async function layeredFormattingFindings(
         : formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
     }),
   );
-  return perFile.flat();
+  return [...configNotLoaded(options.analyzerName, configErrors), ...perFile.flat()];
+}
+
+function configNotLoaded(tool: string, errors: readonly unknown[]): Finding[] {
+  const [first] = errors;
+  if (first === undefined) {
+    return [];
+  }
+  const reason = messageOf(first).split('\n')[0] ?? '';
+  return [
+    {
+      tool,
+      rule: 'prettier/config-not-loaded',
+      path: '.',
+      identity: 'config-not-loaded',
+      message:
+        `Prettier could not load the project's own config (${reason}), so the files it covers ` +
+        "were checked without it. Install the package the config names where the project's " +
+        'package.json can resolve it, or point the config at a file.',
+      classification: 'descriptive',
+    },
+  ];
 }
 
 async function importPrettier(): Promise<typeof Prettier> {

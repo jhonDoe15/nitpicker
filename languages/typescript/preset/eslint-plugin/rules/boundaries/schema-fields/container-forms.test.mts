@@ -1,8 +1,8 @@
 import type { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
-import { rule } from '../no-unvalidated-schema-field.mjs';
-import { SCHEMA_FORMS } from './schema-forms.mjs';
+import { rule } from '../no-unvalidated-schema-field.mts';
+import { SCHEMA_FORMS } from './schema-forms.mts';
 
 type CaseRow = [string, Exclude<RuleTester.InvalidTestCase['errors'], number>];
 
@@ -10,7 +10,8 @@ const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const forms: Record<keyof typeof SCHEMA_FORMS, { allowed: string; example: string }> = SCHEMA_FORMS;
+const forms: Readonly<Record<keyof typeof SCHEMA_FORMS, { allowed?: string; example: string }>> =
+  SCHEMA_FORMS;
 const field = { messageId: 'unvalidatedField' };
 const fields = (count: number) => Array.from({ length: count }, () => field);
 const loose = (id: keyof typeof SCHEMA_FORMS, form: string) => ({

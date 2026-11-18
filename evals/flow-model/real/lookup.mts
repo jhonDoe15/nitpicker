@@ -5,10 +5,10 @@ import type { Edit } from '../fixtures/source.mts';
 import type { Contracts, Expectation, Inputs } from '../model/contract-types.mts';
 import { sha256 } from '../report/canonical.mts';
 
-export const LOOKUP_FILE = 'core/diff/cache/findings-cache.mts';
+export const LOOKUP_FILE = 'core/diff/cache/entries/run-with-cache.mts';
 export const LOOKUP_ENTRY = 'lookUpCachedReport';
 const RESOLVER_NAME = 'resolvedAnalyzerMetadata';
-const RESOLVER = `../execution/report/analyzer-metadata.mts#${RESOLVER_NAME}`;
+const RESOLVER = `../../execution/report/analyzer-metadata.mts#${RESOLVER_NAME}`;
 const VARIANT_DIRECTORY = 'reports/flow-model/real/variants';
 
 export const LOOKUP_CONTRACTS = Object.freeze({

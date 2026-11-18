@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
-import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
+import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mts';
 import { buildViews as untypedBuildViews } from './build-view.mjs';
 import {
   REVIEW_TOOL,
@@ -326,6 +326,9 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/DroppedCallbackInTest',
       'pmd/MessageAfterAssertion',
       'pmd/GlobalStateLeakInTest',
+      'pmd/RealClockInTest',
+      'pmd/RandomInTest',
+      'pmd/NetworkInTest',
       'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',

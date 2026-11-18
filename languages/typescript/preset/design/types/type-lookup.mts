@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from '../syntax/typed.mts';
 import type { Registry, TypeEntry } from '../design-types.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Scope = { readonly registry: Registry; readonly checker: TypeScript.TypeChecker };
 
@@ -47,7 +48,7 @@ function significantMembers(typeNode: TypeScript.TypeNode): TypeScript.TypeNode[
     if (ts.isParenthesizedTypeNode(node)) {
       pending.push(node.type);
     } else if (ts.isUnionTypeNode(node)) {
-      pending.push(...node.types);
+      appendAll(pending, node.types);
     } else if (!isNullishTypeNode(node)) {
       kept.push(node);
     }

@@ -3,12 +3,34 @@ import ts from 'typescript';
 import { expect, it } from 'vitest';
 import { findUnusedPublicContractMethods } from './public-contract-usage.mts';
 
-function analyzeFixture(consumer: string, testConsumer = '') {
+const IMPLEMENTED_PORT =
+  'export interface Port { required(): void; optional(): void; } ' +
+  'export class Implementation implements Port { required() {} optional() {} }';
+
+type LookupSpy = (name: string | symbol) => void;
+
+type FixtureOptions = { readonly contract?: string; readonly spy?: LookupSpy };
+
+function spiedChecker(program: ts.Program, spy: LookupSpy): void {
+  const getTypeChecker = program.getTypeChecker.bind(program);
+  program.getTypeChecker = () =>
+    new Proxy(getTypeChecker(), {
+      get(target, name) {
+        if (name === 'getSymbolAtLocation') {
+          return () => {
+            spy(name);
+          };
+        }
+        const value: unknown = Reflect.get(target, name);
+        return value;
+      },
+    });
+}
+
+function analyzeFixture(consumer: string, testConsumer = '', options: FixtureOptions = {}) {
+  const contract = options.contract ?? IMPLEMENTED_PORT;
   const sources = new Map([
-    [
-      '/contract.ts',
-      'export interface Port { required(): void; optional(): void; } export class Implementation implements Port { required() {} optional() {} }',
-    ],
+    ['/contract.ts', contract],
     ['/consumer.ts', `import { Implementation, Port } from "./contract"; ${consumer}`],
     ['/consumer.test.ts', `import { Implementation } from "./contract"; ${testConsumer}`],
   ]);
@@ -33,6 +55,9 @@ function analyzeFixture(consumer: string, testConsumer = '') {
     { noLib: true, module: ts.ModuleKind.CommonJS },
     host,
   );
+  if (options.spy !== undefined) {
+    spiedChecker(program, options.spy);
+  }
   return findUnusedPublicContractMethods(program, { sourceRoot: '/' });
 }
 
@@ -73,4 +98,20 @@ it('does not treat self-calls as external consumers of a public contract', () =>
       'class Adapter implements Port { required() { this.optional(); } optional() {} } new Adapter().required();',
     ),
   ).toEqual([{ file: 'contract.ts', contract: 'Port', method: 'optional' }]);
+});
+
+it('looks up no symbols when no class implements an exported interface', () => {
+  const lookups: (string | symbol)[] = [];
+  const consumer = 'const value = { run() {} }; value.run(); const { run } = value; run();';
+  const contract =
+    'export interface Port { required(): void; } export class Plain { required() {} }';
+  expect(
+    analyzeFixture(consumer, '', {
+      contract,
+      spy: (name) => {
+        lookups.push(name);
+      },
+    }),
+  ).toEqual([]);
+  expect(lookups).toEqual([]);
 });
