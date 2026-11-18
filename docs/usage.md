@@ -2991,7 +2991,7 @@ compile, and they never run in the gate. Each check edits one file, so none rena
 `pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
 `pmd/LogStringConcatenation` and `pmd/UseCollectionIsEmpty` are on the safe list. The others
 (`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
-`pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`) change what the
+`pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`, `effects/EntityLoadedForExistence`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
 under the nearest rule. A fix that rewrites a whole statement, such as a loop whose saves are
