@@ -15,6 +15,13 @@ function error(data: Record<string, string> = {}) {
 
 tester.run('unbounded-fan-out', rule, {
   valid: [
+    'await Promise.race(urls.map((url) => globalThis.fetch(url)));',
+    'import { default as http } from "axios"; await Promise.any(ids.map((id) => http.post("/x", id)));',
+    'export const first = (mirrors: string[]) => Promise.race(mirrors.map((mirror) => fetch(mirror)));',
+    'export const first = async (mirrors: string[]) => await Promise.any(mirrors.map((mirror) => fetch(mirror)));',
+    'import axios from "axios"; export const first = (ids: string[]) => Promise.race(ids.map(async (id) => { const response = await axios.get(id); return response.data; }));',
+    'const winner = await Promise.any(hosts.map((host) => fetch(`https://${host}/health`)));',
+    'const results = []; for (const url of urls) { results.push(fetch(url)); } await Promise.race(results);',
     'await Promise.all([fetch(a), fetch(b)]);',
     'await Promise.all(["a", "b"].map((url) => fetch(url)));',
     'const URLS = ["a", "b"]; await Promise.all(URLS.map((url) => fetch(url)));',
@@ -142,20 +149,8 @@ tester.run('unbounded-fan-out', rule, {
       errors: error({ combinator: 'Promise.allSettled', operation: 'fetch()', collection: 'urls' }),
     },
     {
-      code: 'await Promise.race(urls.map((url) => globalThis.fetch(url)));',
-      errors: error({
-        combinator: 'Promise.race',
-        operation: 'globalThis.fetch()',
-        collection: 'urls',
-      }),
-    },
-    {
       code: 'import axios from "axios"; await Promise.all(ids.map((id) => axios.get(`/orders/${id}`)));',
       errors: error({ operation: 'axios.get()', collection: 'ids' }),
-    },
-    {
-      code: 'import { default as http } from "axios"; await Promise.any(ids.map((id) => http.post("/x", id)));',
-      errors: error({ combinator: 'Promise.any', operation: 'http.post()', collection: 'ids' }),
     },
     {
       code: 'import axios from "axios"; const api = axios.create({ baseURL: "/v1" }); await Promise.all(ids.map((id) => api.get(id)));',
