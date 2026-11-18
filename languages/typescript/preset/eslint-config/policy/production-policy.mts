@@ -142,6 +142,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-case-sensitive-path-compare': 'error',
     'nitpicker/no-double-decode': 'error',
     'nitpicker/no-directory-passing-existence-check': 'error',
+    'nitpicker/no-unresolved-relative-url': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
