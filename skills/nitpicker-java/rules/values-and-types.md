@@ -111,6 +111,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - An absent `Optional` is turned into a value with `orElse(default)`, `orElseThrow(() -> new NotFoundException(id))`
   or `orElse(null)` plus a null check where it is used; `orElseGet(null)` passes a null `Supplier` and throws
   when the value is absent (`pmd/OptionalOrElseGetNull`).
+- A `Collectors.toMap` over parsed text or request data (a split string, file lines, cookies, headers) has a merge
+  function that says what a repeated key means, `toMap(Cookie::getName, Cookie::getValue, (first, second) -> first)`,
+  or uses `groupingBy` (`pmd/ToMapDuplicateKey`).
 - A collection that the code changes later is built mutable: `new ArrayList<>(List.of("#"))`, not `Arrays.asList`, `List.of`, `Map.of`, `Collections.emptyList()` or `Stream.toList()`, whose `add`, `put` and `remove` throw
   `UnsupportedOperationException` (`pmd/ImmutableCollectionChanged`).
 - A copy constructor copies the collections it takes from the other object (`new ArrayList<>(other.items)`,

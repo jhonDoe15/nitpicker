@@ -208,6 +208,7 @@
   "pmd/TaskOutlivesTryResource": ["bug", "async"],
   "pmd/TestClassWithoutTestCases": ["tests"],
   "pmd/TimerNotStoppedOnClose": ["reliability", "async"],
+  "pmd/ToMapDuplicateKey": ["bug"],
   "pmd/TooFewBranchesForASwitchStatement": ["simplification"],
   "pmd/TriStateBoolean": ["maintainability"],
   "pmd/UnboundedCollectionField": ["reliability", "performance"],
