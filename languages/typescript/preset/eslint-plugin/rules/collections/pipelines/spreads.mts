@@ -1,4 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { Context } from '../../security/security-values.mts';
+import { fallbackSpreadFix } from '../../../fixes/collections/fallback-spread-fix.mts';
+import { fixable } from '../../../fixes/support/descriptors.mts';
 import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mts';
 
 const ARRAY_RESULTS = new Set([
@@ -100,6 +103,7 @@ export function uselessSpread(
 }
 
 export function fallbackSpread(
+  context: Context,
   spread: TSESTree.SpreadElement,
 ): TSESLint.ReportDescriptor<'fallbackInSpread'> | undefined {
   const value = unwrapped(spread.argument);
@@ -110,6 +114,9 @@ export function fallbackSpread(
   return FALLBACKS.has(value.operator) &&
     fallback.type === AST_NODE_TYPES.ObjectExpression &&
     fallback.properties.length === 0
-    ? { node: spread, messageId: 'fallbackInSpread', data: { operator: value.operator } }
+    ? fixable(
+        { node: spread, messageId: 'fallbackInSpread', data: { operator: value.operator } },
+        fallbackSpreadFix(context, spread, value),
+      )
     : undefined;
 }

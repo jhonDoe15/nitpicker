@@ -28,6 +28,7 @@ const wastedStepMessages = {
 export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'suggestion',
+    fixable: 'code',
     docs: {
       description:
         'Disallow collection and promise steps that copy for nothing or walk the data twice, where a single step says the same',
@@ -52,7 +53,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         report(uselessSpread(array));
       },
       'ObjectExpression > SpreadElement'(spread) {
-        report(fallbackSpread(spread));
+        report(fallbackSpread(context, spread));
       },
       LogicalExpression(logical) {
         report(lengthCheck(sourceCode, logical));
