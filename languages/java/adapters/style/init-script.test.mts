@@ -118,10 +118,10 @@ describe('the Gradle init script and the formatter style', () => {
     ]);
   });
 
-  it('checks the same main and test Java files before and during formatting', () => {
+  it('checks the same hand-written main and test Java files before and during formatting', () => {
     expect(blockStartingWith('def javaFiles = {')).toEqual([
       'def javaFiles = {',
-      '(mainSources.files + testSourceDirectories()).findAll { it.exists() }',
+      '(lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }',
       ".collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()",
       '}',
     ]);

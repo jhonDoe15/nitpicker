@@ -4,6 +4,7 @@ import { type XmlElement, childAt, childrenAt } from '../../../../shared/values/
 import type { KotlinRoots } from '../typed/kotlin-types.mts';
 import { jdkRequirements } from '../configuration/toolchain/toolchain-jdk.mts';
 import { executionsOf, goalsOf, pluginsOf, textAt } from '../configuration/pom-elements.mts';
+import { inside } from '../generated/generated-roots.mts';
 
 const KOTLIN_PLUGIN = 'org.jetbrains.kotlin:kotlin-maven-plugin';
 const MAIN_GOALS = ['compile', 'kapt'];
@@ -80,18 +81,13 @@ function allOpenOf(plugin: XmlElement): KotlinRoots['allOpen'] {
   };
 }
 
-function within(parent: string, directory: string): boolean {
-  const relative = path.relative(parent, directory);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-}
-
 function insideModule({ basedir, buildDirectory }: RootsModule, directory: string): boolean {
-  return within(basedir, directory) && !within(buildDirectory, directory);
+  return inside(basedir, directory) && !inside(buildDirectory, directory);
 }
 
 function outermost(directories: readonly string[]): string[] {
   return directories.filter(
-    (directory) => !directories.some((other) => other !== directory && within(other, directory)),
+    (directory) => !directories.some((other) => other !== directory && inside(other, directory)),
   );
 }
 

@@ -6,10 +6,10 @@ import {
   hasGeneratorMarker,
   readFileHead,
 } from '../../../../shared/conventions/generator-marker.mjs';
+import ROOT_RULES from '../../gradle/generated/generated-roots.json' with { type: 'json' };
 
 const SOURCE_FILE = /\.(?:java|kt)$/u;
-const BUILD_OUTPUT =
-  /(?:^|\/)(?:build\/generated|target\/generated-(?:test-)?sources|(?:build|target)\/delombok)\//u;
+const BUILD_OUTPUT = new RegExp(ROOT_RULES.buildOutput, 'u');
 const GENERATED_LOOKING =
   /(?:^|\/)(?:generated|generated-sources|generated-test-sources|gen)\/|(?:^|\/)src\/[^/]+\/generated\//u;
 

@@ -4,7 +4,7 @@ import { pathInside } from '../../../../shared/filesystem.mjs';
 import { validateJvmSection } from '../../adapters/settings/jvm-section.mjs';
 import { GRADLE_BUILD_FILES, JAVA_BUILD_TOOLS } from '../java-build.mjs';
 
-export const JAVA_KEYS = ['buildTool'];
+export const JAVA_KEYS = ['buildTool', 'analyzeGeneratedSources'];
 
 const BUILD_FILES = { maven: ['pom.xml'], gradle: GRADLE_BUILD_FILES };
 
@@ -12,6 +12,12 @@ export function validateJavaBuildSetting(config) {
   const java = validateJvmSection(config, 'java', JAVA_KEYS);
   if (java?.buildTool !== undefined && !JAVA_BUILD_TOOLS.includes(java.buildTool)) {
     throw configError(`"java.buildTool" must be one of: ${JAVA_BUILD_TOOLS.join(', ')}`);
+  }
+  if (
+    java?.analyzeGeneratedSources !== undefined &&
+    typeof java.analyzeGeneratedSources !== 'boolean'
+  ) {
+    throw configError('"java.analyzeGeneratedSources" must be true or false');
   }
 }
 

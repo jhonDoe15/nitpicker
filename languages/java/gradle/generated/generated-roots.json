@@ -1,0 +1,5 @@
+{
+  "buildOutput": "(?:^|/)(?:build/generated|target/generated-(?:test-)?sources|(?:build|target)/delombok)/",
+  "probeFile": "Sample.java",
+  "processorOutput": "generated-sources/annotations"
+}

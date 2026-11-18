@@ -1,0 +1,13 @@
+def rulesFile = new File(buildscript.sourceFile.parentFile, 'generated-roots.json')
+def rules = new groovy.json.JsonSlurper().parse(rulesFile, 'UTF-8')
+def buildOutput = java.util.regex.Pattern.compile(rules.buildOutput as String)
+
+ext.nitpickerProcessorOutput = rules.processorOutput as String
+ext.nitpickerIsGeneratedRoot = { File projectDir, File buildDir, File directory ->
+    def module = projectDir.toPath().toAbsolutePath().normalize()
+    def build = module.resolve(buildDir.toPath()).normalize()
+    def root = module.resolve(directory.toPath()).normalize()
+    def relative = module.relativize(root).toString().replace(File.separator, '/')
+    (build != module && build.startsWith(module) && root.startsWith(build)) ||
+        buildOutput.matcher(relative + '/' + rules.probeFile).find()
+}

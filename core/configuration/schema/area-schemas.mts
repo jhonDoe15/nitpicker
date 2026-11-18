@@ -274,6 +274,11 @@ export const java = scope('Java and Kotlin build settings (java and kotlin prese
     'The build tool when the project has both a pom.xml and a Gradle build: "maven" or "gradle". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.',
     JAVA_BUILD_TOOLS,
   ),
+  analyzeGeneratedSources: {
+    description:
+      'Set to true to also analyze generated sources (build-directory roots such as protobuf output, and annotation processor output); default false.',
+    type: 'boolean',
+  },
 });
 
 export const go = scope('Go preset settings.', GO_SETTING_KEYS, {

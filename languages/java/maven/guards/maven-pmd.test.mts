@@ -337,19 +337,26 @@ function reportFiles(reportDir: string): (string | undefined)[] {
   );
 }
 
-function cpd(run: { report: string; stderr: string; ending: string }) {
+function cpd(run: { report: string; stderr: string; ending: string; configs?: unknown }) {
   const root = fakeCpdJava(run);
   const basedir = path.join(root, 'app');
   const reportDir = path.join(basedir, 'target/nitpicker');
+  const generatedRoot = path.join(basedir, 'target/generated-sources/proto');
   mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
+  mkdirSync(generatedRoot, { recursive: true });
   mkdirSync(reportDir, { recursive: true });
   for (const stale of ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt']) {
     writeFileSync(path.join(reportDir, stale), 'stale');
   }
   runCpd({
-    module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
+    module: {
+      basedir,
+      sourceRoots: [path.join(basedir, 'src/main/java'), generatedRoot],
+      testSourceRoots: [],
+    },
     reportDir,
     tools: { pmd: ['/tools/pmd.jar'] },
+    configs: run.configs,
   });
   const tokens = readFileSync(path.join(root, 'arguments'), 'utf8').split('\n');
   return {
@@ -370,6 +377,20 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
       path.join(GRADLE_DIRECTORY, 'CpdReport.java'),
       path.join(run.basedir, 'target/nitpicker/cpd.xml'),
       path.join(run.basedir, 'src/main/java'),
+    ]);
+  });
+
+  it('reads generated source roots only when the project opts in', () => {
+    const opted = cpd({
+      report: CPD_XML,
+      stderr: '',
+      ending: 'exit 0',
+      configs: { generated: { analyze: true } },
+    });
+
+    expect(opted.arguments.slice(-2)).toEqual([
+      path.join(opted.basedir, 'src/main/java'),
+      path.join(opted.basedir, 'target/generated-sources/proto'),
     ]);
   });
 

@@ -9,7 +9,8 @@ tasks.register('nitpickerCpd') {
     def skipped = reportDir.map { it.file('cpd-skipped.txt') }
     def writtenSourceSets = { sourceSets.findAll { !generatedSourceSet(it) } }
     def sourceDirectories = {
-        writtenSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
+        def declared = writtenSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
+        project.ext.nitpickerHandWrittenDirs(declared).findAll { it.exists() }
     }
     inputs.files({ writtenSourceSets()*.allJava }).withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')

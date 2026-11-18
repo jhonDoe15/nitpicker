@@ -23,6 +23,19 @@ public final class Probe {
     switch (args[0]) {
       case "flags" -> System.out.print(ErrorProneReport.pluginArgument(Files.readString(Path.of(rest.get(0))),
           List.of(), true, false, List.of(), Boolean.parseBoolean(rest.get(1))));
+      case "generated" -> {
+        List<String> input = Files.readAllLines(Path.of(rest.get(0)));
+        List<String> declared =
+            input.subList(2, input.size()).stream().map(flag -> "--errorprone-flag=" + flag).toList();
+        List<String> lines = ErrorProneReport.withoutGenerated(
+            List.of("--skip-generated", "--generated-root=" + input.get(0)), declared);
+        String prefix = "--errorprone-flag=-XepExcludedPaths:";
+        String pattern = lines.stream().filter(line -> line.startsWith(prefix)).findFirst().orElse(prefix)
+            .substring(prefix.length());
+        String path = new java.net.URI("file", null, input.get(1), null).getPath();
+        boolean matches = java.util.regex.Pattern.compile(pattern).matcher(path).matches();
+        System.out.print(String.join(" ", lines) + "\\n" + matches);
+      }
       case "slices" -> ErrorProneReport.slices(rest).forEach(slice -> System.out.println(slice.size()));
       default -> System.out.print(
           ErrorProneReport.immutableInReach(List.of("-classpath", rest.get(0)), rest.subList(1, rest.size())));
@@ -51,10 +64,14 @@ describe.runIf(enabled)(
     });
 
     function probe(args: readonly string[], flags: readonly string[] = []): string {
-      const run = spawnSync('java', [...flags, '-cp', work, 'Probe', ...args], {
-        encoding: 'utf8',
-        timeout: JAVA_TIMEOUT_MS,
-      });
+      const run = spawnSync(
+        'java',
+        ['-Dstdout.encoding=UTF-8', ...flags, '-cp', work, 'Probe', ...args],
+        {
+          encoding: 'utf8',
+          timeout: JAVA_TIMEOUT_MS,
+        },
+      );
       expect(run.status, run.stderr).toBe(0);
       return run.stdout;
     }
@@ -107,6 +124,41 @@ describe.runIf(enabled)(
       mkdirSync(path.dirname(path.join(classes, IMMUTABLE_CLASS)), { recursive: true });
       writeFileSync(path.join(classes, IMMUTABLE_CLASS), '');
       expect(probe(['reach', classes, plain])).toBe('true');
+    });
+
+    describe('leaving generated roots out', () => {
+      const root = '/work/my app ü [1]/build/generated';
+
+      function generated(file: string, declared: readonly string[] = []): string[] {
+        const input = path.join(mkdtempSync(path.join(work, 'generated-')), 'input.txt');
+        writeFileSync(input, [root, file, ...declared].join('\n'), 'utf8');
+        return probe(['generated', input]).split('\n');
+      }
+
+      it('excludes the files under a root whose name has spaces, a non-ASCII letter and a bracket', () => {
+        const [flags = '', matches] = generated(`${root}/proto/Api.java`);
+
+        expect(matches).toBe('true');
+        expect(flags.split(' ')).toEqual([
+          '--errorprone-flag=-XepDisableWarningsInGeneratedCode',
+          '--errorprone-flag=-XepExcludedPaths:.*(?:/work/my\\x{20}app\\x{20}ü\\x{20}\\[1\\]/build/generated)/.*',
+        ]);
+      });
+
+      it('leaves hand-written files and look-alike directories alone', () => {
+        expect(generated('/work/my app ü [1]/src/main/java/Hand.java')[1]).toBe('false');
+        expect(generated('/work/my app ü [1]/build/generatedX/Hand.java')[1]).toBe('false');
+        expect(generated('/work/my-app ü [1]/build/generated/Api.java')[1]).toBe('false');
+      });
+
+      it('joins the pattern the project declared', () => {
+        const [flags = '', matches] = generated('/work/legacy/Old.java', [
+          '-XepExcludedPaths:.*/legacy/.*',
+        ]);
+
+        expect(matches).toBe('true');
+        expect(flags.match(/-XepExcludedPaths:/gu)).toHaveLength(1);
+      });
     });
 
     it('splits the sources into one slice per worker, keeping 40 files or more in each', () => {
