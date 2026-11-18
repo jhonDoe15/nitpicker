@@ -10,6 +10,7 @@ import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-fi
 import type { FixOutcome } from '../../../../../core/fix/typed/fix-types.mts';
 import { fixJava } from '../test-support/fix-java.mts';
 import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mts';
+import { PERFORMANCE_CASES } from '../../java-e2e/test-support/own-checks/own-check-projects.mts';
 
 type Repository = { readonly root: string };
 
@@ -78,10 +79,13 @@ function fix(repository: Repository, selectedRules?: readonly string[]): FixOutc
 function byText(left: string, right: string): number {
   return left.localeCompare(right);
 }
-const RULES = OWN_CHECKS.map(({ tool, check }) => `${tool}/${check}`);
-const SAFE = OWN_CHECKS.filter(({ safety }) => safety === 'safe').map(
-  ({ check }) => `pmd/${check}`,
+const IN_FIXTURES = 'LogStringConcatenation';
+const PERFORMANCE_CHECKS = new Set(
+  PERFORMANCE_CASES.map(({ check }) => check).filter((check) => check !== IN_FIXTURES),
 );
+const CHECKS = OWN_CHECKS.filter(({ check }) => !PERFORMANCE_CHECKS.has(check));
+const RULES = CHECKS.map(({ tool, check }) => `${tool}/${check}`);
+const SAFE = CHECKS.filter(({ safety }) => safety === 'safe').map(({ check }) => `pmd/${check}`);
 const WIRE = 'src/main/java/demo/Wire.java';
 
 function reportedRules(result: FixOutcome): string[] {

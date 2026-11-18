@@ -13,6 +13,7 @@
   "languages/java/adapters/kotlin-e2e/fix/kotlin-fix-recipe.e2e.test.mts": 20,
   "languages/java/adapters/kotlin-e2e/fix/kotlin-fix.e2e.test.mts": 114,
   "languages/java/adapters/kotlin-e2e/fix/kotlin-own-checks.e2e.test.mts": 224,
+  "languages/java/adapters/kotlin-e2e/fix/performance/kotlin-performance-fix.e2e.test.mts": 70,
   "languages/java/adapters/kotlin-e2e/guards/kotlin-preset-guards-allowed.e2e.test.mts": 64,
   "languages/java/adapters/kotlin-e2e/guards/kotlin-preset-guards-banned.e2e.test.mts": 57,
   "languages/java/adapters/kotlin-e2e/guards/kotlin-preset-guards-exception.e2e.test.mts": 63,
