@@ -53,7 +53,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Split text read from a file on every line terminator (`text.split(/\r?\n/)`), not `split('\n')`, which leaves
   a `\r` on each line of a CRLF file (`nitpicker/no-newline-only-line-split`).
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
-  throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+  throws on text that is not a URL, and `decodeURIComponent(text)` and `decodeURI(text)` throw on a stray `%`:
+  wrap them in a `try` with a `catch` that keeps the raw text or answers 400 (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,

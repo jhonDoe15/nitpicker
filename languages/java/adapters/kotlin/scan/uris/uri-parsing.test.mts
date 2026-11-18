@@ -4,7 +4,8 @@ import { dynamicUris as untypedDynamicUris } from './uri-parsing.mjs';
 
 const dynamicUris: Check<Ruled> = untypedDynamicUris;
 
-const IMPORTS = 'import java.net.URI\nimport java.net.URISyntaxException\n\n';
+const IMPORTS =
+  'import java.net.URI\nimport java.net.URISyntaxException\nimport java.net.URLDecoder\n\n';
 
 function found(body: string, header = IMPORTS) {
   const source = `${header}fun link(text: String, path: String): Any? {\n${body}\n}\n`;
@@ -58,6 +59,13 @@ describe('dynamicUris', () => {
     ],
     ['a property of a value', '    return URI.create(path.URL)'],
     ['a parameter in capitals', '    return URI.create(BASE)\n}\n\nfun other(BASE: String) {'],
+    ['URLDecoder.decode of a parameter', '    return URLDecoder.decode(text, "UTF-8")'],
+    ['URLDecoder.decode with a charset', '    return URLDecoder.decode(text, Charsets.UTF_8)'],
+    ['URLDecoder.decode written in full', '    return java.net.URLDecoder.decode(text, "UTF-8")'],
+    [
+      'URLDecoder.decode in a try that catches another exception',
+      '    try {\n        return URLDecoder.decode(text, "UTF-8")\n    } catch (e: IllegalStateException) {\n        return null\n    }',
+    ],
     ['a function reference to URI.create', '    return listOf(text).map(URI::create)'],
     ['a constructor reference', '    return listOf(text).map(::URI)'],
   ])('flags %s', (_name, body) => {
@@ -100,6 +108,15 @@ describe('dynamicUris', () => {
       '    try {\n        return listOf(text).map { URI.create(it) }\n    } catch (e: IllegalArgumentException) {\n        return null\n    }',
     ],
     ['a try expression', '    return try { URI.create(text) } catch (e: Exception) { null }'],
+    ['a decode of a constant', '    return URLDecoder.decode("a%20b", "UTF-8")'],
+    [
+      'a decode in runCatching',
+      '    return runCatching { URLDecoder.decode(text, "UTF-8") }.getOrNull()',
+    ],
+    [
+      'a decode in a try that catches IllegalArgumentException',
+      '    try {\n        return URLDecoder.decode(text, "UTF-8")\n    } catch (e: IllegalArgumentException) {\n        return null\n    }',
+    ],
     ['a comment', '    // URI.create(text)\n    return null'],
     ['text in a string', '    return "URI.create(text)"'],
     ['runCatching with parentheses', '    return runCatching() { URI.create(text) }.getOrNull()'],
@@ -119,6 +136,12 @@ describe('dynamicUris', () => {
     expect(
       found('    return null\n}\n\nclass URI(val text: String)\n\nfun URI(value: Int) {', ''),
     ).toEqual([]);
+  });
+
+  it('passes URLDecoder when it is not imported', () => {
+    expect(found('    return URLDecoder.decode(text, "UTF-8")', 'import java.net.URI\n\n')).toEqual(
+      [],
+    );
   });
 
   it('flags URI.create when the whole package is imported', () => {

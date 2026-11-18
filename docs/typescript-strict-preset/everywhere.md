@@ -1519,8 +1519,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   code points and the Go form (`s[:n]`) is not covered.
 - `nitpicker/no-unhandled-url-parse`: `decodeURIComponent(text)` and `decodeURI(text)` (also through `globalThis`) on
   text that is not constant or built by `encodeURIComponent` throw `URIError: URI malformed` on a stray `%`, so a
-  `try` with a `catch` around the call in the same function is required (`.map(decodeURIComponent)` as a bare
-  reference is not reported; the Java and Kotlin presets report `URLDecoder.decode` the same way under
+  `try` with a `catch` around the call in the same function is required (a decode inside a `.then(...)` callback
+  with a `.catch(...)` or a second argument, or after a `/%/.test(text)` on the same text in the same function,
+  is accepted; `.map(decodeURIComponent)` as a bare reference is not reported; the Java and Kotlin presets report `URLDecoder.decode` the same way under
   `UriCreateDynamic`). Also: `new URL(text)` or `new URL(text, base)` (also
   `new globalThis.URL`) where `text` or `base` is neither a constant string (a literal, a template
   or `+` of constants, or a `const` holding one) nor a `URL` value (a `new URL(...)` constant, a

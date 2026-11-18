@@ -7,8 +7,24 @@ function flagged(code: string) {
   return { code, errors: [{ messageId: 'unhandledUrlParse' }] };
 }
 
+function decodeFlagged(code: string) {
+  return { code, errors: [{ messageId: 'unhandledDecode' }] };
+}
+
 tester.run('no-unhandled-url-parse', rule, {
   valid: [
+    'export const name = decodeURIComponent("a%20b");',
+    'const PART = "a%20b"; export const name = decodeURI(PART);',
+    'export function round(text: string) { return decodeURIComponent(encodeURIComponent(text)); }',
+    'export const names = values.map(decodeURIComponent);',
+    'export function decode(text: string) { return text; }',
+    'export function safe(text: string) { try { return decodeURIComponent(text); } catch { return text; } }',
+    'export function safe(texts: string[]) { try { return texts.map((text) => decodeURI(text)); } catch ' +
+      '{ return texts; } }',
+    'export function other(text: string) { return text.decodeURIComponent(text); }',
+    'export const later = (text: string) => load().then(() => decodeURI(text)).catch(() => text);',
+    'export const both = (text: string) => load().then(() => decodeURI(text), () => text);',
+    'export const plain = (text: string) => (/%/.test(text) ? decodeURIComponent(text) : text);',
     'export const home = new URL("https://shop.example/");',
     'export const home = new URL(`https://shop.example/`);',
     'const BASE = "https://shop.example"; export const help = new URL(BASE + "/help");',
@@ -43,10 +59,47 @@ tester.run('no-unhandled-url-parse', rule, {
     'export function api(base: URL) { return new URL("/api", base); }',
     'const ROOT = new URL("../", import.meta.url); export function file(name: string) { return new URL(name, ROOT); }',
     'export function page(path: string) { return new URL("/x", window.location.origin); }',
-    'export function parse(text?: string) { if (!text || !URL.canParse(text)) { return undefined; } return new URL(text!); }',
+    'export function parse(text?: string) { if (!text || !URL.canParse(text)) { return undefined; } return ' +
+      'new URL(text!); }',
     `const A = "a"; export const long = new URL(${'A + '.repeat(30)}"https://a");`,
   ],
   invalid: [
+    decodeFlagged('export const later = (text: string) => load().then(() => decodeURI(text));'),
+    decodeFlagged(
+      'export const other = (text: string) => (/%/.test(text) ? 1 : decodeURI(other));',
+    ),
+    decodeFlagged('export function name(text: string) { return decodeURIComponent(text); }'),
+    decodeFlagged('export function path(pathname: string) { return decodeURI(pathname); }'),
+    decodeFlagged(
+      'export function name(text: string) { return globalThis.decodeURIComponent(text); }',
+    ),
+    decodeFlagged('export function name(req: Req) { return decodeURIComponent(req.params.name); }'),
+    decodeFlagged('export function name(text: string) { return decodeURIComponent(`a/${text}`); }'),
+    decodeFlagged(
+      'export function parts(texts: string[]) { return texts.map((text) => decodeURIComponent(text)); }',
+    ),
+    decodeFlagged(
+      [
+        'export function name(text: string) {',
+        '  try {',
+        '    return 1;',
+        '  } catch {',
+        '    return decodeURIComponent(text);',
+        '  }',
+        '}',
+      ].join('\n'),
+    ),
+    decodeFlagged(
+      [
+        'export function name(text: string) {',
+        '  try {',
+        '    return function later() { return decodeURIComponent(text); };',
+        '  } catch (error) {',
+        '    return error;',
+        '  }',
+        '}',
+      ].join('\n'),
+    ),
     flagged('export function parse(text: string) { return new URL(text); }'),
     flagged(
       'export function parse(path: string) { return new URL(`https://shop.example/${path}`); }',

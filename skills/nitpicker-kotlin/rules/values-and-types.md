@@ -47,7 +47,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `encode()`, `URI(scheme, host, path, fragment)`), or parse where the failure is handled
   (`runCatching { URI.create(text) }`, a `try` that catches `IllegalArgumentException`);
   `URI.create(text)` and `URI(text)` on a non-constant string are flagged
-  (`kotlin-source/UriCreateDynamic`).
+  (`kotlin-source/UriCreateDynamic`). `URLDecoder.decode(text, charset)` throws the same exception on a stray `%`:
+  catch it too.
 - Regexes: escape a runtime value before it goes into a pattern (`Regex.escape(name)`), pass a
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,

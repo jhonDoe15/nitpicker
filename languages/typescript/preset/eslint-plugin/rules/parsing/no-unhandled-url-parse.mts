@@ -1,24 +1,27 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
-  isFunctionNode,
   resolveConstant,
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { ancestorsOf, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { nameOf, type SourceCode } from '../typed/node-views.mts';
 import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
+import {
+  isGuarded,
+  isInsideTry,
+  isPercentTest,
+  isPromiseCaught,
+  functionOf,
+  type Candidate,
+  type Guard,
+} from './handled-contexts.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
-type Candidate = { readonly node: TSESTree.NewExpression; readonly argument: TSESTree.Node };
-type Guard = { readonly text: string; readonly scope: TSESTree.Node | undefined };
-
 const MAX_PARTS = 100;
+const DECODERS = new Set(['decodeURI', 'decodeURIComponent']);
+const ENCODERS = new Set(['encodeURI', 'encodeURIComponent']);
 const PARSED_MEMBERS = new Set(['href', 'url', 'origin']);
-const NAMED_FUNCTIONS = new Set<string>([
-  AST_NODE_TYPES.FunctionDeclaration,
-  AST_NODE_TYPES.FunctionExpression,
-]);
 
 function isUrlIdentifier(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.Identifier && node.name === 'URL';
@@ -50,6 +53,28 @@ function isUrlTyped(context: SourceContext, node: TSESTree.Node): boolean {
   const [only] = definitions;
   const type = definitions.length === 1 && only !== undefined ? annotatedType(only) : undefined;
   return type?.type === AST_NODE_TYPES.TSTypeReference && isUrlIdentifier(type.typeName);
+}
+
+function globalCallName(node: TSESTree.Node): string | undefined {
+  const callee = node.type === AST_NODE_TYPES.CallExpression ? node.callee : undefined;
+  if (callee?.type === AST_NODE_TYPES.Identifier) {
+    return callee.name;
+  }
+  return callee?.type === AST_NODE_TYPES.MemberExpression &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
+    callee.object.name === 'globalThis' &&
+    !callee.computed
+    ? nameOf(callee.property)
+    : undefined;
+}
+
+function isDecoder(node: TSESTree.CallExpression): boolean {
+  return DECODERS.has(globalCallName(node) ?? '');
+}
+
+function isEncoded(node: TSESTree.Node): boolean {
+  const value = unwrapOf(node, ASSERTION_FORMS);
+  return value.type === AST_NODE_TYPES.CallExpression && ENCODERS.has(globalCallName(value) ?? '');
 }
 
 function isCanParse(node: TSESTree.CallExpression): boolean {
@@ -138,88 +163,107 @@ function isModuleBase(context: SourceContext, node: TSESTree.Node | undefined): 
   return false;
 }
 
-function inBlock(block: TSESTree.Node, node: TSESTree.Node): boolean {
-  return block.range[0] <= node.range[0] && node.range[1] <= block.range[1];
-}
-
-function isInsideTry(node: TSESTree.Node): boolean {
-  const scope = ancestorsOf(node).find((ancestor) => NAMED_FUNCTIONS.has(ancestor.type));
-  return ancestorsOf(node).some(
-    (ancestor) =>
-      ancestor.type === AST_NODE_TYPES.TryStatement &&
-      ancestor.handler !== null &&
-      inBlock(ancestor.block, node) &&
-      (scope === undefined || inBlock(scope, ancestor)),
+function isUnhandledParse(context: SourceContext, node: TSESTree.NewExpression): boolean {
+  const [argument, base] = node.arguments;
+  return (
+    isUrlConstructor(node.callee) &&
+    argument !== undefined &&
+    argument.type !== AST_NODE_TYPES.SpreadElement &&
+    !isModuleBase(context, base) &&
+    !(isSafeText(context, argument) && (base === undefined || isSafeText(context, base))) &&
+    !isInsideTry(node)
   );
 }
 
-function functionOf(node: TSESTree.Node): TSESTree.Node | undefined {
-  return ancestorsOf(node).find(
-    (ancestor) => isFunctionNode(ancestor) || ancestor.type === AST_NODE_TYPES.Program,
+function isUnhandledDecode(context: SourceContext, node: TSESTree.CallExpression): boolean {
+  const [argument] = node.arguments;
+  return (
+    isDecoder(node) &&
+    argument !== undefined &&
+    argument.type !== AST_NODE_TYPES.SpreadElement &&
+    !isConstantText(context, argument) &&
+    !isEncoded(argument) &&
+    !isInsideTry(node) &&
+    !isPromiseCaught(node)
   );
 }
 
-function isGuarded(
-  sourceCode: SourceCode,
-  candidate: Candidate,
-  guards: readonly Guard[],
-): boolean {
-  const text = sourceCode.getText(unwrapOf(candidate.argument, ASSERTION_FORMS));
-  const scopes = new Set<TSESTree.Node | undefined>([
-    candidate.node,
-    ...ancestorsOf(candidate.node),
-  ]);
-  return guards.some((guard) => guard.text === text && scopes.has(guard.scope));
+function guardOf(sourceCode: SourceCode, node: TSESTree.CallExpression): Guard | undefined {
+  const [argument] = node.arguments;
+  return argument === undefined
+    ? undefined
+    : {
+        text: sourceCode.getText(unwrapOf(argument, ASSERTION_FORMS)),
+        scope: functionOf(node),
+      };
 }
 
-export const rule: TSESLint.RuleModule<'unhandledUrlParse'> = {
+export const rule: TSESLint.RuleModule<'unhandledUrlParse' | 'unhandledDecode'> = {
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Require new URL(text) on runtime text to be checked with URL.canParse, parsed with URL.parse, or wrapped in a try',
+        'Require new URL(text) and decodeURI(Component)(text) on runtime text to be checked, parsed without ' +
+        'throwing, or wrapped in a try',
     },
     schema: [],
     messages: {
+      unhandledDecode:
+        'Handle the failure of this decode: `decodeURIComponent(text)` and `decodeURI(text)` throw `URIError: ' +
+        'URI malformed` on a `%` that does not start a valid escape (`100%.png`, a stray `%` in a cookie, ' +
+        'query value or path), so one odd request or file crashes the middleware or fails the build. Wrap ' +
+        'the call in a `try` with a `catch` that keeps the raw text or answers 400, or call a helper that ' +
+        'does (`safeDecode`, `tryDecode`). Constant text and text built by `encodeURIComponent` in the same ' +
+        'call are fine.',
       unhandledUrlParse:
-        'Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`.',
+        'Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, ' +
+        'or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError ' +
+        'on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, ' +
+        'user or header value turns this call into an error response. Constant text and a base are fine, ' +
+        'and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and ' +
+        '`new URL(path, import.meta.url)`.',
     },
   },
   create(context) {
     const { sourceCode } = context;
     const candidates: Candidate[] = [];
+    const decodes: Candidate[] = [];
     const guards: Guard[] = [];
+    const percentGuards: Guard[] = [];
+
+    function reportUnguarded(
+      found: readonly Candidate[],
+      among: readonly Guard[],
+      messageId: 'unhandledUrlParse' | 'unhandledDecode',
+    ): void {
+      for (const candidate of found) {
+        if (!isGuarded(sourceCode, candidate, among)) {
+          context.report({ node: candidate.node, messageId });
+        }
+      }
+    }
 
     return {
       NewExpression(node: TSESTree.NewExpression) {
-        const [argument, base] = node.arguments;
-        if (
-          !isUrlConstructor(node.callee) ||
-          argument === undefined ||
-          argument.type === AST_NODE_TYPES.SpreadElement ||
-          isModuleBase(context, base) ||
-          (isSafeText(context, argument) && (base === undefined || isSafeText(context, base))) ||
-          isInsideTry(node)
-        ) {
-          return;
+        const [argument] = node.arguments;
+        if (argument !== undefined && isUnhandledParse(context, node)) {
+          candidates.push({ node, argument });
         }
-        candidates.push({ node, argument });
       },
       CallExpression(node: TSESTree.CallExpression) {
         const [argument] = node.arguments;
-        if (isCanParse(node) && argument !== undefined) {
-          guards.push({
-            text: sourceCode.getText(unwrapOf(argument, ASSERTION_FORMS)),
-            scope: functionOf(node),
-          });
+        if (argument !== undefined && isUnhandledDecode(context, node)) {
+          decodes.push({ node, argument });
+        }
+        const guard =
+          isCanParse(node) || isPercentTest(node) ? guardOf(sourceCode, node) : undefined;
+        if (guard !== undefined) {
+          (isCanParse(node) ? guards : percentGuards).push(guard);
         }
       },
       'Program:exit'() {
-        for (const candidate of candidates) {
-          if (!isGuarded(sourceCode, candidate, guards)) {
-            context.report({ node: candidate.node, messageId: 'unhandledUrlParse' });
-          }
-        }
+        reportUnguarded(candidates, guards, 'unhandledUrlParse');
+        reportUnguarded(decodes, percentGuards, 'unhandledDecode');
       },
     };
   },

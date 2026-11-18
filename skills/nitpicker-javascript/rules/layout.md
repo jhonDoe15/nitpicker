@@ -15,7 +15,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
   Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
-  throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+  throws on text that is not a URL, and `decodeURIComponent(text)` and `decodeURI(text)` throw on a stray `%`:
+  wrap them in a `try` with a `catch` that keeps the raw text or answers 400 (`nitpicker/no-unhandled-url-parse`).
 - Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
   not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
   separator (`nitpicker/no-truncating-pair-split`).
