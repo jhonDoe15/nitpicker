@@ -46,6 +46,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Ask the subtype question from the right side before casting to `Foo`: `Foo.class.isAssignableFrom(type)`
   (`ClassUtils.isAssignable(Foo.class, type)`) or `value instanceof Foo`; `type.isAssignableFrom(Foo.class)`
   accepts only `Foo` and its supertypes (`pmd/ReversedAssignableCheck`).
+- Do not cast a value from a `Map<String, Object>` or `Properties` read from JDBC, YAML or JSON straight to a number
+  or date: use `((Number) row.get("count")).intValue()`, `Integer.parseInt(String.valueOf(value))`,
+  `rs.getObject(column, LocalDate.class)` or a typed binding (`pmd/MapValueCastToNumber`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches

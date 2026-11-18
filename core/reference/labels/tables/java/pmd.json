@@ -94,6 +94,7 @@
   "pmd/LogFormatArguments": ["bug"],
   "pmd/LogStringConcatenation": ["performance"],
   "pmd/LogicInversion": ["simplification"],
+  "pmd/MapValueCastToNumber": ["bug"],
   "pmd/MethodWithSameNameAsEnclosingClass": ["style"],
   "pmd/MissingSerialVersionUID": ["maintainability"],
   "pmd/MixedTimeUnits": ["bug"],

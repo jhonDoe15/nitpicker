@@ -156,6 +156,7 @@ const REVIEW_RULES = new Set([
   'EpochNarrowedToInt',
   'IntProductWidenedLate',
   'ReversedAssignableCheck',
+  'MapValueCastToNumber',
   'ClassLoadEffect',
   'LockOrderInversion',
   'InconsistentFieldLocking',
