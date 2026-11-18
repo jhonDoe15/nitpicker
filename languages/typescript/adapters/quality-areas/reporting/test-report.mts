@@ -19,7 +19,6 @@ import {
   type ProcessOutput,
   type ProjectTestRun,
   type ToolErrorDetails,
-  failingTestEntries,
   testsFailAnchor,
   testsFailHeadline,
   testsFailOnBase,
@@ -39,7 +38,6 @@ import {
   firstLine,
   missingEnvironmentHints,
   missingSetupHints,
-  mockPinHeadline,
   timeoutText,
   unhandledErrors,
   unhandledErrorText,
@@ -47,6 +45,7 @@ import {
   assertionDetails,
 } from './failure-lines.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { NO_RERUN_VERDICT, type RerunVerdict, failureGroupLines } from './reruns/rerun-groups.mts';
 
 const COULD_NOT_RUN = 'could not run';
 
@@ -62,12 +61,12 @@ function isCoverageReport(value: unknown): value is CoverageReport {
   return typeof value === 'object' && value !== null;
 }
 
-type MockPin = { readonly mockPin: boolean };
+type MockPin = { readonly mockPin?: RerunVerdict };
 
 export function coverageFailureFindings(
   options: QualityAreaOptions,
   { report, result, runnerName, precedingCommands }: ProjectTestRun,
-  { mockPin }: MockPin = { mockPin: false },
+  { mockPin = NO_RERUN_VERDICT }: MockPin = {},
 ): Finding[] {
   const failures = testFailures(report, options.projectRoot);
   const [firstFailure] = failures;
@@ -97,7 +96,7 @@ export function coverageFailureFindings(
         runnerName,
         precedingCommands,
         snapshot: ran ? options.snapshot : undefined,
-        mockPin: ran && mockPin,
+        mockPin: ran ? mockPin : NO_RERUN_VERDICT,
       }),
       anchor: testsFailAnchor(options.snapshot),
     }),
@@ -232,9 +231,12 @@ function failureEntry({ file, name, assertion }: Failure): string {
 export function formatTestFailures(
   report: TestReport | undefined,
   projectRoot: string,
-  { runnerName, precedingCommands, snapshot, mockPin }: FailureContext & MockPin = {
-    mockPin: false,
-  },
+  {
+    runnerName,
+    precedingCommands,
+    snapshot,
+    mockPin = NO_RERUN_VERDICT,
+  }: FailureContext & MockPin = {},
 ): string {
   if (snapshot === 'base') {
     const failures = testFailures(report, projectRoot);
@@ -252,24 +254,19 @@ export function formatTestFailures(
 function failureText(
   report: TestReport | undefined,
   projectRoot: string,
-  { runnerName, mockPin }: FailureContext & MockPin,
+  { runnerName, mockPin = NO_RERUN_VERDICT }: FailureContext & MockPin,
 ): string {
   const failures = testFailures(report, projectRoot);
   const failedCount =
     typeof report?.numFailedTests === 'number' && Number.isInteger(report.numFailedTests)
       ? Math.max(report.numFailedTests, failures.length)
       : failures.length;
-  const headline = mockPin
-    ? mockPinHeadline(failedCount, runnerName)
-    : testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
+    const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
     return `${headline.slice(0, -1)}; the report named no test.`;
   }
   return [
-    headline,
-    ...failingTestEntries(
-      failures.map(({ assertion, ...failure }) => ({ ...failure, message: assertion })),
-    ),
+    ...failureGroupLines(failures, { verdict: mockPin, failedCount, runnerName }),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
     ...missingEnvironmentHints(notLoaded(failures)),
   ].join('\n');

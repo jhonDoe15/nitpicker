@@ -3,7 +3,13 @@ import { runProjectTests } from './run-project-tests.mts';
 import { RUNNER_NAMES } from '../../preset/test-runner/runners.mjs';
 import type { TestOptions, TestReport, TestRun } from './typed/runner-types.mts';
 import type { TextOutput } from '../quality-areas/typed/area-types.mts';
+import {
+  NO_RERUN_VERDICT,
+  type RerunVerdict,
+  testKey,
+} from '../quality-areas/reporting/reruns/rerun-groups.mts';
 
+type Outcomes = { readonly failed: ReadonlySet<string>; readonly passed: ReadonlySet<string> };
 type Rerun = {
   readonly options: TestOptions;
   readonly files: readonly string[];
@@ -21,6 +27,35 @@ function failedFiles(report: TestReport | undefined, projectRoot: string): strin
         .map((result) => path.resolve(projectRoot, String(result.name))),
     ),
   ];
+}
+
+function testsWithStatus(
+  report: TestReport | undefined,
+  { projectRoot, status }: { readonly projectRoot: string; readonly status: string },
+): Set<string> {
+  return new Set(
+    (report?.testResults ?? []).flatMap((result) => {
+      const file = path
+        .relative(projectRoot, path.resolve(projectRoot, String(result.name)))
+        .replaceAll('\\', '/');
+      return (result.assertionResults ?? [])
+        .filter((assertion) => assertion.status === status)
+        .map((assertion) =>
+          testKey(file, assertion.fullName ?? assertion.title ?? '<unknown test>'),
+        );
+    }),
+  );
+}
+
+function outcomes(report: TestReport | undefined, projectRoot: string): Outcomes {
+  return {
+    failed: testsWithStatus(report, { projectRoot, status: 'failed' }),
+    passed: testsWithStatus(report, { projectRoot, status: 'passed' }),
+  };
+}
+
+function both(left: ReadonlySet<string>, right: ReadonlySet<string>): Set<string> {
+  return new Set([...left].filter((key) => right.has(key)));
 }
 
 const MAX_RERUN_FILES = 20;
@@ -72,35 +107,48 @@ function filesToRerun(options: TestOptions, run: TestRun, output: TextOutput): s
   return files;
 }
 
-async function failsWithPin(rerun: Rerun): Promise<boolean> {
-  const pinned = await rerunOnce(rerun, false);
-  if (pinned !== undefined && !pinned.failed) {
-    note(
-      rerun.output,
-      'the failing tests pass when rerun with the pin, so the failure is not caused by it',
-    );
-  }
-  return pinned?.failed === true;
-}
-
-export async function passesWithoutMockPin(
+export async function mockPinVerdict(
   options: TestOptions,
   run: TestRun,
   output: TextOutput,
-): Promise<boolean> {
+): Promise<RerunVerdict> {
   const files = filesToRerun(options, run, output);
   if (files.length === 0) {
-    return false;
+    return NO_RERUN_VERDICT;
   }
   const rerun = { options, files, output };
   const started = Date.now();
-  if (!(await failsWithPin(rerun))) {
-    return false;
+  const control = await rerunOnce(rerun, false);
+  return control === undefined
+    ? NO_RERUN_VERDICT
+    : verdictAfterControl(rerun, { first: run, control, started });
+}
+
+async function verdictAfterControl(
+  rerun: Rerun,
+  {
+    first,
+    control,
+    started,
+  }: { readonly first: TestRun; readonly control: TestRun; readonly started: number },
+): Promise<RerunVerdict> {
+  const { options, output } = rerun;
+  const firstFailed = outcomes(first.report, options.projectRoot).failed;
+  const pinnedRun = outcomes(control.report, options.projectRoot);
+  const loadSensitive = both(firstFailed, pinnedRun.passed);
+  const stillFailing = both(firstFailed, pinnedRun.failed);
+  if (stillFailing.size === 0) {
+    note(
+      output,
+      'the failing tests pass when rerun with the pin, so the failure is not caused by it',
+    );
+    return { pinned: new Set(), loadSensitive };
   }
   if (Date.now() - started > RERUN_BUDGET_MS) {
     note(output, 'the control rerun took too long; the unpinned rerun was skipped');
-    return false;
+    return { pinned: new Set(), loadSensitive };
   }
   const unpinned = await rerunOnce(rerun, true);
-  return unpinned !== undefined && !unpinned.failed && (unpinned.report.numTotalTests ?? 0) > 0;
+  const unpinnedRun = outcomes(unpinned?.report, options.projectRoot);
+  return { pinned: both(stillFailing, unpinnedRun.passed), loadSensitive };
 }
