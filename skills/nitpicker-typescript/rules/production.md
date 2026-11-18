@@ -45,6 +45,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
   not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
   separator (`nitpicker/no-truncating-pair-split`).
+- A `Map`, `Set` or record key made of several runtime strings is not joined with a delimiter
+  (`` `${row}-${col}` ``): use `JSON.stringify([row, col])` or a nested `Map`, since `'a-b'` with `'c'` and `'a'`
+  with `'b-c'` are the same key (`nitpicker/no-ambiguous-lookup-key`).
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a

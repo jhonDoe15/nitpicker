@@ -76,3 +76,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   read `time.monotonic()` for both ends of a duration or a timeout; keep `time.time()` for stored timestamps.
 - Split `key:value` text once (`text.partition(":")` or `text.split(":", 1)`), not with `text.split(":")[1]`,
   which drops what follows the second separator (`pair-split-drops-rest`).
+- Key a dict or set by a tuple (`(tenant, name)`) or a `NamedTuple`, not by `f"{tenant}:{name}"`, which collides when a
+  part holds the delimiter (`delimited-lookup-key`).

@@ -186,6 +186,7 @@ const REVIEW_RULES = new Set([
   'HttpValueCase',
   'HandSplitHttpHeader',
   'PairSplitDropsRest',
+  'DelimitedLookupKey',
   'StreamedRowsCollected',
   'SpringDataFilterInQuery',
   'HardcodedSecret',

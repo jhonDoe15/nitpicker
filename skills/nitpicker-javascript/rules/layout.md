@@ -19,6 +19,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
   not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
   separator (`nitpicker/no-truncating-pair-split`).
+- A `Map`, `Set` or object key made of several runtime strings is not joined with a delimiter
+  (`` `${row}-${col}` ``): use `JSON.stringify([row, col])` or a nested `Map`, since `'a-b'` with `'c'` and `'a'`
+  with `'b-c'` are the same key. The check needs the type checker, which TypeScript projects have.
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,

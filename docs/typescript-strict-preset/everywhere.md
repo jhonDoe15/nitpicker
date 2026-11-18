@@ -1484,6 +1484,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `hash`, `index` or `count`) or a part is an object, which becomes `[object Object]`. Different tuples then
   share one key (`'a-b'` with `'c'` and `'a'` with `'b-c'`), so one entry overwrites another. Allowed forms:
   `JSON.stringify([a, b])`, a nested `Map`, an encoder that escapes the delimiter, or parts that are numbers.
+  One string part with numbers is not reported, since the number cannot hold the delimiter, and neither is a
+  `toString()` of a value typed `number | bigint`, or a key that holds `Date.now()`, `Math.random()` or a
+  generated id, since it is unique anyway. The same form runs as `pmd/DelimitedLookupKey` (Java),
+  `delimited-lookup-key` (Python) and `go-rules/delimited-lookup-key` (Go).
 - `nitpicker/no-host-port-colon-split`: `host.split(':')` (with or without a limit) or
   `host.slice(0, host.indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host` (also
   as a property), or on a read of the `host`, `x-forwarded-host` or `:authority` header (`req.get('host')`,

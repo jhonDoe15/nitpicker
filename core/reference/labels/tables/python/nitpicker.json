@@ -20,6 +20,7 @@
   "python-rules/copied-constant-in-test": ["tests"],
   "python-rules/credential-shape": ["security"],
   "python-rules/deleted-item-filter-missing": ["bug"],
+  "python-rules/delimited-lookup-key": ["bug"],
   "python-rules/dual-write-without-outbox": ["reliability", "persistence"],
   "python-rules/eager-relationship": ["performance", "persistence"],
   "python-rules/enum-string-constants": ["maintainability"],
