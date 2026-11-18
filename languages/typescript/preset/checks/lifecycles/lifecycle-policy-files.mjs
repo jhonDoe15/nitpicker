@@ -18,4 +18,8 @@ export const LIFECYCLE_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/growth/no-add-only-collection.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/memo/cache-bindings.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/memo/no-cached-rejection.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/shared/scopes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/shared/per-item.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/registrations/registration-calls.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/registrations/no-per-call-registration.mjs',
 ];

@@ -431,6 +431,14 @@ in the Java preset and `kotlin-source/TimerNotStoppedOnClose` in the Kotlin pres
 `Timer` that close never shuts down) and `go-rules/ticker-not-stopped` in the Go preset (`time.NewTicker`
 without `Stop`).
 
+Per-call registrations: `nitpicker/no-per-call-registration` (strict preset, production source) reports, in a class
+method that runs once per event or item (a handler named `on*` or `handle*`, a method called in a loop or from a
+callback given to `on*` or `subscribe`, or passed as a handler; an arrow function field counts), `this._register(x)` or
+`add(x)` on a disposable-store field with a disposable created in the call, and `process.on` with a handler created in
+the call, when the method does not guard the registration (`if (!this.f)`), release the field, clear the store, remove
+the process listener or let the registered callback remove its own entry, and is not only called from the constructor. The owner's store
+then grows by one entry per call until the owner is disposed.
+
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
 guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a

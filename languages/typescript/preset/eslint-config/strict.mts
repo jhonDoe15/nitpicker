@@ -124,6 +124,7 @@ const productionSourceRules = {
   'nitpicker/settle-pending-on-close': 'error',
   'nitpicker/release-listeners-on-close': 'error',
   'nitpicker/no-add-only-collection': 'error',
+  'nitpicker/no-per-call-registration': 'error',
   'nitpicker/no-tri-state-boolean': 'error',
   'nitpicker/no-unhandled-url-parse': 'error',
   'nitpicker/reusable-object-per-call': 'error',
