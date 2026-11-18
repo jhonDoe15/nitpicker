@@ -67,6 +67,7 @@
   "pmd/NegativeCountArgument": ["bug"],
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
+  "pmd/PairSplitDropsRest": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UnescapedHtmlValue": ["bug", "security"],
   "pmd/UncheckedResponseBody": ["bug"],

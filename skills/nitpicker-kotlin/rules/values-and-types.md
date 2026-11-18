@@ -28,6 +28,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `ContentDisposition.parse` or
   `HttpCookie.parse` instead of `split(",")` or `split(";")` (`kotlin-source/HttpValueCase`,
   `kotlin-source/HandSplitHttpHeader`). A library that is itself the parser takes an exception.
+- Split `key:value` text once: `text.split(":", limit = 2)`, or `substringBefore` with `substringAfter`, not
+  `text.split(":")[1]` or `val (key, value) = text.split(":")`, which drop what follows the second separator
+  (`kotlin-source/PairSplitDropsRest`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
   milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never

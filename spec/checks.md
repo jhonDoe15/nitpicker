@@ -409,6 +409,32 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+Truncating pair splits: `nitpicker/no-truncating-pair-split` (production source, in `eslint-lint`) reports a
+two-name destructuring of `text.split(':')` or `text.split('=')`, or its `[1]` element, which drops everything
+after the second separator. Cutting at the first separator, `[key, ...rest]` with `rest.join(sep)` and a constant
+or clock-named receiver are allowed. The same definition runs as `pmd/PairSplitDropsRest` (Java) and
+`kotlin-source/PairSplitDropsRest` (Kotlin).
+or clock-named receiver are allowed. The same definition runs as `pmd/PairSplitDropsRest` (Java),
+`kotlin-source/PairSplitDropsRest` (Kotlin), `pair-split-drops-rest` (Python script) and
+`go-rules/pair-split-drops-rest` (Go, `[1]` of `strings.Split`).
+Ambiguous lookup keys: `nitpicker/no-ambiguous-lookup-key` (production source, in `eslint-lint`, type-aware)
+reports a `Map`, `Set` or record key joined from two runtime strings (or an object) with a delimiter, such as
+`` `${row}-${col}` ``, `[a, b].join('-')` or `a + ':' + b`, where different tuples give the same key.
+`JSON.stringify([a, b])`, a nested `Map` and numeric parts are allowed. The same definition runs as
+`pmd/DelimitedLookupKey` (Java).
+Host and port splits: `nitpicker/no-host-port-colon-split` (production source, in `eslint-lint`) reports
+`split(':')` and `slice(0, indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host`, or
+on a `Host`, `X-Forwarded-Host` or `:authority` header read, which breaks IPv6 literals. Parsing with `new URL` is
+allowed. The same definition runs as `pmd/HostPortColonSplit` (Java) and `kotlin-source/HostPortColonSplit`
+(Kotlin).
+Newline-only line splits: `nitpicker/no-newline-only-line-split` (production source, in `eslint-lint`) reports
+`split('\n')` and `indexOf('\n')` on text read from a file or on a comment's value. `split(/\r?\n/)` and
+normalised line endings are allowed. The same definition runs as `pmd/NewlineOnlyLineSplit` (Java) and
+`kotlin-source/NewlineOnlyLineSplit` (Kotlin).
+Surrogate-splitting cuts: `nitpicker/no-surrogate-splitting-cut` (production source, in `eslint-lint`) reports a
+string cut by `slice(0, n)`, `substring(0, n)` or `substr(0, n)` under a `text.length > n` guard, which can split a
+surrogate pair. Cutting on code points or graphemes is allowed. The same definition runs as
+`pmd/SurrogateSplittingCut` (Java) and `kotlin-source/SurrogateSplittingCut` (Kotlin).
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

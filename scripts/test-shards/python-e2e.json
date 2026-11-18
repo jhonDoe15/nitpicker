@@ -158,6 +158,7 @@
   "languages/python/rules/e2e/stale-retries/stale-retry.e2e.test.mjs": 2,
   "languages/python/rules/e2e/tasks/cleanup.e2e.test.mts": 2,
   "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mts": 3,
+  "languages/python/rules/e2e/text-splits/pair-split-drops-rest.e2e.test.mts": 2,
   "languages/python/rules/e2e/time/time-units.e2e.test.mts": 2,
   "languages/python/rules/e2e/updates/in-memory-update.e2e.test.mjs": 7,
   "languages/python/rules/e2e/updates/narrow-reads.e2e.test.mjs": 4,

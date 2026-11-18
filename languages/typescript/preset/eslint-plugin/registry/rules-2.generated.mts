@@ -7,6 +7,7 @@ import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-hel
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mts';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
+import { rule as ruleNoTruncatingPairSplit } from '../rules/pair-splits/no-truncating-pair-split.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
@@ -85,6 +86,7 @@ export const partRules = {
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
+  'no-truncating-pair-split': ruleNoTruncatingPairSplit,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,

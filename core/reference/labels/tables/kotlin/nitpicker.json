@@ -35,6 +35,7 @@
   "kotlin-source/MutationIgnoreMarker": ["tests"],
   "kotlin-source/NullMapValue": ["bug"],
   "kotlin-source/OperandSlip": ["bug"],
+  "kotlin-source/PairSplitDropsRest": ["bug"],
   "kotlin-source/ParameterMutation": ["maintainability"],
   "kotlin-source/PendingFuturesNotFailedOnClose": ["reliability", "async"],
   "kotlin-source/PlainTextRegex": ["simplification", "performance"],

@@ -200,6 +200,7 @@ describe('readKotlinSourceFindings', () => {
         'MutationIgnoreMarker',
         'NullMapValue',
         'OperandSlip',
+        'PairSplitDropsRest',
         'ParameterMutation',
         'PendingFuturesNotFailedOnClose',
         'PlainTextRegex',
