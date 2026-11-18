@@ -11,6 +11,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- A branch that handles a null or `undefined` value either leaves or is the whole story
+  (`nitpicker/no-null-branch-fall-through`): `if (value == null) { out.append('null'); }` followed by
+  `value.name` fails on the null path or handles the value twice. End the branch with `return`
+  (or `throw`), or put the use in an `else`.
 - A condition in its shortest exact form (`nitpicker/shorter-boolean-logic`): `n > 5`, not `n > 3 && n > 5`;
   `a`, not `(a && b) || (a && !b)`; `x >= 0 && x < 20`, not two adjacent ranges joined by `||`.
 - Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
