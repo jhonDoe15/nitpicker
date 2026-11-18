@@ -61,13 +61,6 @@ export const AUTOMATIC_SAMPLES: Readonly<Record<string, AutomaticSample>> = {
     output:
       'class Base {\n  public readonly size: number;\n  public constructor(size: number) {\n    this.size = size;\n  }\n}\n\nexport class Sized extends Base {}\n',
   },
-  '@typescript-eslint/no-useless-default-assignment': {
-    path: 'src/main/samples/s33.ts',
-    input:
-      'export function sized({ size = 3 }: { readonly size: number }): number {\n  return size;\n}\n',
-    output:
-      'export function sized({ size }: { readonly size: number }): number {\n  return size;\n}\n',
-  },
   '@typescript-eslint/no-wrapper-object-types': {
     path: 'src/main/samples/s09.ts',
     input: 'export function upper(text: String): string {\n  return text.toUpperCase();\n}\n',
