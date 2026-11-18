@@ -86,6 +86,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/regex/no-string-as-regex.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-parameter-mutation.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/json-values/no-lossy-json-stringify.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/json-values/lossy-types.mjs',
   'languages/typescript/preset/eslint-plugin/rules/prototype-keys/no-prototype-key-access.mjs',
   'languages/typescript/preset/eslint-plugin/rules/prototype-keys/key-guards.mjs',
   'languages/typescript/preset/eslint-plugin/rules/prototype-keys/loop-keys.mjs',

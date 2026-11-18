@@ -205,6 +205,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A merge or lookup keyed by input text skips `__proto__`, `constructor` and `prototype`, or uses
   `Object.hasOwn(table, key)`, a `Map` or an `Object.create(null)` table, never `key in table` on an object literal
   (`nitpicker/no-prototype-key-access`).
+- `JSON.stringify` gets values it can write: convert a `bigint`, `Map`, `Set` or `RegExp` first (`String(id)`,
+  `[...map]`, `regex.source`) or pass a replacer, never the raw value as a cache key or id
+  (`nitpicker/no-lossy-json-stringify`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
