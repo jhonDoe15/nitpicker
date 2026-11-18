@@ -101,6 +101,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - An override that forwards to `super` or to a delegate of its own supertype passes every parameter it
   receives (`return delegate.render(template, locale, strict);`), not the shorter overload that drops
   one (`pmd/ForwardDropsParameter`).
+- Fill each setter or builder slot with the value named for it (`config.timeColumn(timeColumn)`, not
+  `config.tableName(timeColumn)`), and pass every member of a numbered family (`type1, type2, type3`),
+  not one twice (`pmd/SiblingValuePassed`).
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or

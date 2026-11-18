@@ -132,6 +132,7 @@ const REVIEW_RULES = new Set([
   'StaticForwardingWrapper',
   'ForwardingMethodAlias',
   'ForwardDropsParameter',
+  'SiblingValuePassed',
   'ServiceLocatorLookup',
   'SingularAndPluralMember',
   'timeout-abandons-operation',

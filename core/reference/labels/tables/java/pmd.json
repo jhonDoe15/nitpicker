@@ -146,6 +146,7 @@
   "pmd/ServerOrContainerPerTest": ["tests", "performance"],
   "pmd/ServiceLocatorLookup": ["maintainability"],
   "pmd/SharedTestState": ["tests"],
+  "pmd/SiblingValuePassed": ["bug"],
   "pmd/SimplifiableTestAssertion": ["tests", "simplification"],
   "pmd/SimplifiedTernary": ["simplification"],
   "pmd/SimplifyBooleanExpressions": ["simplification"],
