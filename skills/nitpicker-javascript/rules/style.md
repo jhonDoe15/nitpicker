@@ -169,6 +169,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Escaping for another syntax covers the escape character too: one regex with a callback over the backslash and the quote
   (`value.replace(/[\\"]/g, (c) => '\\' + c)`), or `JSON.stringify`, and unescaping is one pass with a callback
   (`nitpicker/no-incomplete-escaping`).
+- Generated source code writes a value as `JSON.stringify(value)`, not between hand-written quotes
+  (`nitpicker/no-hand-quoted-generated-code`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

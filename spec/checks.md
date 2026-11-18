@@ -409,6 +409,7 @@ Blank number coercion: `nitpicker/no-blank-number-coercion` (production source, 
 of a string that can be empty (or an untyped env, query, form or config read) when the result is checked only with `isNaN`,
 `Number.isNaN` or `Number.isFinite`, because `Number("")` is 0. A blank check on the text, `parseInt` or `parseFloat`, and a
 check at the zero boundary (`> 0`, `>= 1`) are allowed.
+
 Base64 of runtime text: `nitpicker/no-btoa-on-runtime-text` (production source, in `eslint-lint`) reports `btoa`, `window.btoa`,
 `globalThis.btoa` and `self.btoa` called on a value that is not a constant, a `String.fromCharCode` binary string or an
 `encodeURIComponent` result and not inside a `try` with a `catch`, because `btoa` throws for characters above U+00FF.
@@ -420,7 +421,8 @@ object of a call, unless it is encoded, because header values throw for characte
 
 Lossy UTF-8 decoding: `nitpicker/no-lossy-utf8-decode` (production source, in `eslint-lint`) reports a lenient `TextDecoder` whose
 text reaches `JSON.parse`, a hash, a write or a non-constant equality test, and a `'utf8'` file read whose text is written back to
-the same path, because invalid UTF-8 is replaced by U+FFFD without an error.
+the same path, because invalid UTF-8 is replaced by U+FFFD without an error. Base64 input, text and config files and build
+scripts are not reported.
 
 String length against byte limits: `nitpicker/no-string-length-as-byte-count` (production source, in `eslint-lint`) reports the
 `.length` of a string compared with, added to, stepped by or sliced with a value whose name says bytes, because `.length` counts
@@ -431,14 +433,16 @@ adds a backslash before a quote or brace without escaping the backslash, and a c
 from other escape sequences.
 
 Hand-quoted generated code: `nitpicker/no-hand-quoted-generated-code` (production source, in `eslint-lint`) reports a template literal
-that writes JavaScript or TypeScript source and puts a runtime value between two matching quotes; `JSON.stringify(value)` is the
-allowed form.
+that writes JavaScript or TypeScript source and puts a runtime value between two matching quotes after `from`, `import`, `require(`, `[`,
+`.default(` or a declaration `=`; `JSON.stringify(value)` is the allowed form. Error, `throw` and `console` messages are not reported.
 
 Remote text in the terminal: `nitpicker/no-unstripped-remote-text` (production source, in `eslint-lint`, Node files only) reports
+`console`, `stdout`/`stderr` writes and bare `logger` calls (not `this.logger`) that print a socket message or an HTTP response body without
 `stripVTControlCharacters`, because control sequences can rewrite the terminal.
 
 CSS selectors from runtime values: `nitpicker/no-unescaped-css-selector` (production source, in `eslint-lint`) reports a selector
 passed to `querySelector`, `querySelectorAll`, `closest`, `matches`, `cy.get` or `page.$` that places a variable after `#`, `.` or an
+attribute `=` without `CSS.escape`; constant members, count-like names and a backslash `replace` are allowed.
 
 Unencoded URL parts: `nitpicker/no-unencoded-url-part` (production source, in `eslint-lint`) reports a template literal that
 puts a free-text value into a URL query value or path segment without `encodeURIComponent`, appends `?` to a callback or
