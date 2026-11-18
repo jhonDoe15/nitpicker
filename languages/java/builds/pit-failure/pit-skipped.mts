@@ -52,12 +52,18 @@ export function unmutatedFailures(output: unknown): UnmutatedTest[] {
   return [...new Map(tests.map((test) => [test.label, test])).values()];
 }
 
+function namedSome(names: readonly string[]): string {
+  const shown = names.slice(0, LISTED_TESTS);
+  const rest = names.length - shown.length;
+  return rest > 0 ? `${shown.join(', ')} and ${String(rest)} more` : shown.join(', ');
+}
+
 export function unmutatedSummary(tests: readonly UnmutatedTest[]): string {
-  const classes = new Set(tests.map(({ testClass }) => simpleName(testClass)));
+  const classes = [...new Set(tests.map(({ testClass }) => simpleName(testClass)))];
   const where =
-    classes.size === 1
-      ? `in ${String([...classes][0])}`
-      : `in ${String(classes.size)} test classes`;
+    classes.length === 1
+      ? `in ${String(classes[0])}`
+      : `in ${String(classes.length)} test classes (${namedSome(classes)})`;
   const [noun, verb] = tests.length === 1 ? ['test', 'it passes'] : ['tests', 'they pass'];
   return (
     `${String(tests.length)} ${noun} ${where} did not pass without mutation under PIT; ` +
@@ -82,9 +88,7 @@ function skippedNotice(
   tests: readonly UnmutatedTest[],
   { moduleDir, part }: SkippedPlace,
 ): JavaFinding {
-  const shown = tests.slice(0, LISTED_TESTS).map(({ label }) => label);
-  const rest = tests.length - shown.length;
-  const named = rest > 0 ? `${shown.join(', ')} and ${String(rest)} more` : shown.join(', ');
+  const named = namedSome(tests.map(({ label }) => label));
   return {
     tool: 'pit',
     rule: SKIPPED_RULE,
