@@ -1670,6 +1670,53 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SharedStatefulHelperField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field keeps a stateful helper (SimpleDateFormat, DateFormat, NumberFormat, Calendar, Matcher, Cipher, Mac, Deflater, Inflater, CRC32, BeanWrapper, ExponentialBackOff) in a static field or in a singleton bean, so every thread shares one instance. These types keep state between calls, so concurrent use gives wrong dates, wrong matches or one caller's retry state shared with everyone. Use an immutable replacement (DateTimeFormatter, a Pattern constant with pattern.matcher(text) per call), create the instance per call (new ExponentialBackOff.Builder().build() in a method), or hold it in a ThreadLocal. An exception fits a field that is only used inside synchronized on one lock.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $stateful := ('java.text.DateFormat', 'java.text.NumberFormat', 'java.util.Calendar',
+                  'java.util.regex.Matcher', 'javax.crypto.Cipher', 'javax.crypto.Mac', 'java.util.zip.Deflater',
+                  'java.util.zip.Inflater', 'java.util.zip.CRC32', 'org.springframework.beans.BeanWrapper',
+                  'com.google.api.client.util.ExponentialBackOff', 'com.google.api.client.util.BackOff'),
+    $readOnly := function($u) {
+      exists($u/parent::MethodCall[@MethodName = 'clone'][*[1] is $u])
+        or exists($u/parent::ArgumentList/parent::MethodCall
+                    [@MethodName = ('getTimestamp', 'getDate', 'getTime', 'setTimestamp', 'setDate', 'setTime')])
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'])
+    }
+return //ClassBody/FieldDeclaration
+  [ClassType[some $t in $stateful satisfies pmd-java:typeIs($t)]]
+  [@Static = true()
+   or ancestor::ClassDeclaration[1]
+        [ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Component')
+           or pmd-java:typeIs('org.springframework.stereotype.Service')
+           or pmd-java:typeIs('org.springframework.stereotype.Repository')
+           or pmd-java:typeIs('org.springframework.stereotype.Controller')
+           or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+           or pmd-java:typeIs('jakarta.inject.Singleton') or pmd-java:typeIs('javax.inject.Singleton')]]
+        [empty(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Scope')
+           or pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+           or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')])]]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $uses := ancestor::ClassBody[1]//(VariableAccess | FieldAccess)[@Name = $name]
+                  [empty(ancestor::VariableDeclarator[VariableId/@Name = $name][parent::FieldDeclaration])]
+   return not(exists(ancestor::ClassBody[1]//AssignmentExpression
+                       [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+                       [*[2][self::VariableAccess]
+                            [@Name = ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                                       /FormalParameters/FormalParameter/VariableId/@Name]]))
+      and (if (empty($uses)) then not(pmd-java:modifiers() = 'private')
+           else ((some $u in $uses satisfies not($guarded($u)))
+                 and not(every $u in $uses satisfies $readOnly($u))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SingularAndPluralMember" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.">
     <priority>3</priority>

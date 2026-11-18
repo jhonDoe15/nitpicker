@@ -128,6 +128,7 @@
   "pmd/SecretInLog": ["security"],
   "pmd/ServerOrContainerPerTest": ["tests", "performance"],
   "pmd/ServiceLocatorLookup": ["maintainability"],
+  "pmd/SharedStatefulHelperField": ["bug", "async"],
   "pmd/SharedTestState": ["tests"],
   "pmd/SimplifiableTestAssertion": ["tests", "simplification"],
   "pmd/SimplifiedTernary": ["simplification"],
