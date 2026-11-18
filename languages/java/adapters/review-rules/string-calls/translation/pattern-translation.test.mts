@@ -49,9 +49,11 @@ function java(body: string) {
 }
 
 function kotlin(body: string) {
-  return scan('src/main/kotlin/shop/Globs.kt', `package shop\nclass Globs {\n${body}\n}\n`, true).map(
-    ({ location }) => location.line,
-  );
+  return scan(
+    'src/main/kotlin/shop/Globs.kt',
+    `package shop\nclass Globs {\n${body}\n}\n`,
+    true,
+  ).map(({ location }) => location.line);
 }
 
 describe('Java pattern translation', () => {
@@ -91,7 +93,9 @@ describe('Java pattern translation', () => {
       ),
     ).toEqual([]);
     expect(
-      java('String label(String glob) {\n  return glob.replace("**", ".*").replace("*", "[^/]*");\n}'),
+      java(
+        'String label(String glob) {\n  return glob.replace("**", ".*").replace("*", "[^/]*");\n}',
+      ),
     ).toEqual([]);
     expect(
       java('Pattern single(String glob) {\n  return Pattern.compile(glob.replace("*", ".*"));\n}'),

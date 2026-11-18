@@ -185,6 +185,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - User text used as a `LIKE`, `contains`, `startsWith` or `$regex` filter value is escaped first
   (`startsWith: escapeSqlLikePattern(name)`): `%`, `_` and `\` in it are wildcards otherwise
   (`nitpicker/no-unescaped-filter-value`).
+- A replacement that comes from data is passed as a function, `text.replace(pattern, () => value)`: a string
+  replacement reads `$&`, `$1` and `$$` (`nitpicker/no-expanding-replacement-string`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

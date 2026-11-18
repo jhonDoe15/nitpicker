@@ -42,14 +42,19 @@ describe('signature rule messages', () => {
     ],
     ['compatibility-shim', 'odd', '`odd` keeps an old name working'],
     [
+      'expanding-replacement',
+      'name',
+      'The replacement `name` is built at run time, and `re.sub` reads `\\1`, `\\g<name>` and backslash escapes in it',
+    ],
+    [
       'pattern-translation',
       'regex|glob',
-      '`glob` is turned into a regular expression by `replace` calls that leave the target\'s metacharacters unescaped',
+      "`glob` is turned into a regular expression by `replace` calls that leave the target's metacharacters unescaped",
     ],
     [
       'pattern-translation',
       'like|term',
-      '`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target\'s metacharacters unescaped',
+      "`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target's metacharacters unescaped",
     ],
   ])('describe %s for %s', (rule, subject, description) => {
     expect(describeRuleFinding(rule, subject)).toBe(description);

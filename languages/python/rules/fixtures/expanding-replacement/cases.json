@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "expanding-replacement",
+    "mention": "lambda _: value"
+  }
+]

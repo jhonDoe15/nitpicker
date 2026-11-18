@@ -92,6 +92,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-singular-and-plural-prop',
   'nitpicker/no-sql-string-building',
   'nitpicker/no-string-as-regex',
+  'nitpicker/no-expanding-replacement-string',
   'nitpicker/no-cached-rejection',
   'nitpicker/no-cleanup-skipped-on-failure',
   'nitpicker/no-task-outliving-resource',

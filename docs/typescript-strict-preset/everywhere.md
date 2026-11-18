@@ -1660,6 +1660,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   of the input. Not covered: a filter object built in another function, a value from a call that is not a text
   method, and `new RegExp(value)` (`nitpicker/no-string-as-regex`). The Java, Python and Go presets have no
   counterpart yet.
+- `nitpicker/no-expanding-replacement-string` (type-aware): `replace` or `replaceAll` on a string with a
+  replacement that is not a function and not constant. The replacement string reads `$&`, `` $` ``, `$'`, `$$`
+  and `$1`, so a `$` in a value from a file, a URL, a config or a user (`css.replace(dep.placeholder, dep.url)`,
+  `prompt.replace('{conversation}', text)`) is expanded instead of inserted. The pattern may be a string or a
+  RegExp. Not reported: a constant string or a `const` holding one, a template or `+` whose constant text
+  contains a `$` (the `$1` is meant), a function, a number, a boolean, a string literal union without `$`,
+  `String(number)`, a call with `escape` or `quote` in its name, `value.replace(/\$/g, '$$$$')` and code inside
+  `if (!value.includes('$'))`. Allowed
+  form: a function (`text.replace(pattern, () => value)`) or escaping the dollars. Without types (plain
+  JavaScript without JSDoc) the rule sees nothing. The same form runs as `expanding-replacement` (Python and
+  Go) and `pmd/ExpandingReplacement` (Java and Kotlin).
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of

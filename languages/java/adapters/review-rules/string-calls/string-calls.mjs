@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { pathInside, projectSourceFiles } from '../java-sources.mjs';
 import { parseSource } from '../max-value-sums/source-file.mjs';
+import { findExpandingReplacements } from './replacements/replacements.mjs';
 import { findTranslations } from './translation/chains.mjs';
 
 export const PATTERN_TRANSLATION_RULE = 'PatternTranslation';
-export const STRING_CALL_RULES = [PATTERN_TRANSLATION_RULE];
+export const EXPANDING_REPLACEMENT_RULE = 'ExpandingReplacement';
+export const STRING_CALL_RULES = [PATTERN_TRANSLATION_RULE, EXPANDING_REPLACEMENT_RULE];
 export const STRING_CALL_EXCEPTION_RULES = STRING_CALL_RULES.map((rule) => `pmd/${rule}`);
 
 function translationMessage({ kind, root }) {
@@ -20,7 +22,17 @@ function translationMessage({ kind, root }) {
   );
 }
 
-function sourceFindings(finding, source) {
+function replacementMessage({ value, kotlin }) {
+  const form = kotlin
+    ? '`Regex.escapeReplacement(value)`, or the lambda overload `regex.replace(text) { value }`'
+    : '`Matcher.quoteReplacement(value)`, or `String.replace(CharSequence, CharSequence)`, which is literal';
+  return (
+    `The replacement \`${value}\` is built at run time and read as a template: \`$1\`, \`\${name}\` and a backslash in it ` +
+    `are expanded or throw instead of being inserted. Use ${form}.`
+  );
+}
+
+function translationFindings(finding, source) {
   return findTranslations(source).map(({ kind, line, root, method }) =>
     finding({
       rule: PATTERN_TRANSLATION_RULE,
@@ -31,6 +43,23 @@ function sourceFindings(finding, source) {
       message: translationMessage({ kind, root }),
     }),
   );
+}
+
+function replacementFindings(finding, source) {
+  return findExpandingReplacements(source).map(({ line, method, value, owner }) =>
+    finding({
+      rule: EXPANDING_REPLACEMENT_RULE,
+      file: source.file,
+      line,
+      symbol: value,
+      key: `${source.file}:${owner}:${method}:${value}`,
+      message: replacementMessage({ value, kotlin: source.kotlin }),
+    }),
+  );
+}
+
+function sourceFindings(finding, source) {
+  return [...translationFindings(finding, source), ...replacementFindings(finding, source)];
 }
 
 export function readStringCallFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
@@ -50,3 +79,8 @@ export function readStringCallFindings(projectRoot, { projects, kotlin = false, 
 }
 
 export const PATTERN_TRANSLATION_ALLOWED = translationMessage({ kind: 'regex', root: '<value>' });
+
+export const EXPANDING_REPLACEMENT_ALLOWED = replacementMessage({
+  value: '<value>',
+  kotlin: false,
+});

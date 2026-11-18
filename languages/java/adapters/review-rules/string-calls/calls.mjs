@@ -11,7 +11,9 @@ export function stringValue(token) {
     return undefined;
   }
   return body.replaceAll(/\\(u[\da-fA-F]{4}|.)/gu, (_, code) =>
-    code.length === 5 ? String.fromCharCode(Number.parseInt(code.slice(1), 16)) : (ESCAPES[code] ?? code),
+    code.length === 5
+      ? String.fromCharCode(Number.parseInt(code.slice(1), 16))
+      : (ESCAPES[code] ?? code),
   );
 }
 

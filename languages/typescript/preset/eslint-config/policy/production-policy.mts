@@ -178,6 +178,7 @@ function productionGuardRules({
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',
     'nitpicker/time-unit-mismatch': 'error',
+    'nitpicker/no-expanding-replacement-string': 'error',
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
