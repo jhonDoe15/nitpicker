@@ -33,6 +33,7 @@
   "eslint/nitpicker/no-decided-condition": ["simplification"],
   "eslint/nitpicker/no-default-export": ["style"],
   "eslint/nitpicker/no-dev-dependency-in-production": ["bug", "maintainability"],
+  "eslint/nitpicker/no-directory-passing-existence-check": ["bug"],
   "eslint/nitpicker/no-disabled-tls-verification": ["security"],
   "eslint/nitpicker/no-double-decode": ["bug"],
   "eslint/nitpicker/no-dropped-test-callback": ["tests", "bug"],

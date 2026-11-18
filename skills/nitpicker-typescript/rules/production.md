@@ -210,6 +210,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-case-sensitive-path-compare`).
 - A query or route value is used as it arrives: `URLSearchParams`, `router.query`, `req.query`, `req.params` and `ctx.query` are
   already decoded, so `decodeURIComponent` goes only on raw text such as `location.search` (`nitpicker/no-double-decode`).
+- A path that comes from configuration or the caller is checked with `stat(p)` and `isFile()` (or read in a `try` that handles
+  `ENOENT` and `EISDIR`) before it is read, not with `existsSync`, `access` or `pathExists`, which a directory passes
+  (`nitpicker/no-directory-passing-existence-check`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -32,6 +32,7 @@ import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
+import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/files/no-directory-passing-existence-check.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
 import { rule as ruleNoDoubleDecode } from '../rules/urls/decoding/no-double-decode.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-wit
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
-import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -134,6 +134,7 @@ export const partRules = {
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
+  'no-directory-passing-existence-check': ruleNoDirectoryPassingExistenceCheck,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-double-decode': ruleNoDoubleDecode,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
-  'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
 };

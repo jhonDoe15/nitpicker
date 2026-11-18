@@ -188,6 +188,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-case-sensitive-path-compare`).
 - A query or route value is used as it arrives: `URLSearchParams`, `router.query`, `req.query`, `req.params` and `ctx.query` are
   already decoded, so `decodeURIComponent` goes only on raw text such as `location.search` (`nitpicker/no-double-decode`).
+- A path that comes from configuration or the caller is checked with `stat(p)` and `isFile()` (or read in a `try` that handles
+  `ENOENT` and `EISDIR`) before it is read, not with `existsSync`, `access` or `pathExists`, which a directory passes
+  (`nitpicker/no-directory-passing-existence-check`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
