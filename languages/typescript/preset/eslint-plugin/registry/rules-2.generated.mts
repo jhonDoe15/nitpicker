@@ -1,3 +1,4 @@
+import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
@@ -78,6 +79,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
