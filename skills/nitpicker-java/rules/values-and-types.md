@@ -36,6 +36,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `ContentDisposition.parse` or `HttpCookie.parse` instead of `split(",")` or `split(";")`
   (`pmd/HttpValueCase`, `pmd/HandSplitHttpHeader`). `getHeader` and `HttpHeaders` ignore the case of the
   name; a library that is itself the parser takes an exception.
+- Library getters that answer `null` are checked before use: `request.getQueryString()`, `getHeader(name)`,
+  `getParameter(name)`, `getPathInfo()`, `getSession(false)` and
+  `Package.getImplementationVersion()`. Compare with `null`, or fall back with
+  `Objects.requireNonNullElse(request.getParameter("page"), "1")` (`pmd/NullableLibraryResult`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an

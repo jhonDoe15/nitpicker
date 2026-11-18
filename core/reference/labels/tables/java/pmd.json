@@ -109,6 +109,7 @@
   "pmd/NonExhaustiveSwitch": ["bug"],
   "pmd/NonStaticInitializer": ["maintainability"],
   "pmd/NullAssignment": ["maintainability"],
+  "pmd/NullableLibraryResult": ["bug"],
   "pmd/OneDeclarationPerLine": ["style"],
   "pmd/OptionalOrElseGetNull": ["bug"],
   "pmd/ParameterMutation": ["maintainability"],
