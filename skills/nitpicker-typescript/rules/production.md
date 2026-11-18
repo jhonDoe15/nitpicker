@@ -215,6 +215,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-directory-passing-existence-check`).
 - A `Location` header or a configured path is resolved against the request URL before it is followed or redirected to:
   `new URL(location, requestUrl)`, `Response.redirect(new URL(path, request.url))` (`nitpicker/no-unresolved-relative-url`).
+- A redirect or callback target taken from the request is never accepted because it starts with `/`: `//host` and `/\host` are other
+  sites. Resolve it against a fixed origin and compare the origin back, allow only exact paths, or reject `//`, backslashes and
+  encoded separators (`nitpicker/no-slash-only-redirect-guard`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

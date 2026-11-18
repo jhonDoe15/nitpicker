@@ -109,6 +109,7 @@
   "eslint/nitpicker/no-shell-string-command": ["security"],
   "eslint/nitpicker/no-silent-catch": ["reliability"],
   "eslint/nitpicker/no-singular-and-plural-prop": ["maintainability"],
+  "eslint/nitpicker/no-slash-only-redirect-guard": ["security", "bug"],
   "eslint/nitpicker/no-sql-string-building": ["security", "persistence"],
   "eslint/nitpicker/no-stale-retry-after-conflict": ["bug", "persistence"],
   "eslint/nitpicker/no-string-as-regex": ["bug", "security"],
