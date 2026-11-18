@@ -239,6 +239,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   Node's `setHeader` throw for a character above U+00FF and non-English text fails where ASCII test data passes. Allowed forms:
   `encodeURIComponent`, `encodeURI` or base64, decoded on the other side. Literals, numbers and values the type checker shows
   as numbers or string literal unions are skipped.
+- `nitpicker/no-lossy-utf8-decode`: bytes decoded to text with silent replacement where the text is then parsed, compared or
+  written back. It reports `new TextDecoder()` (no label or a UTF-8 label, no `fatal: true`, no streaming second argument) whose
+  decoded text reaches `JSON.parse`, a hash `update`, a write call, or an equality test against a non-constant, directly or
+  through one variable; and `readFile`/`readFileSync` with `'utf8'` (or `buffer.toString('utf8')` of a `readFile` buffer) whose
+  text is written back to the same path, also through a call such as `transform(content)`. Invalid UTF-8 becomes U+FFFD, so
+  the round trip silently loses bytes. Allowed forms: `new TextDecoder('utf-8', { fatal: true })`, which throws on malformed
+  input, or keeping the bytes. Display-only decoding (logging, terminal output), reads written to another path, and
+  `JSON.parse(readFileSync(path, 'utf8'))` of a config file are not reported.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

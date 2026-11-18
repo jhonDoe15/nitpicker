@@ -1,3 +1,4 @@
+import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
@@ -74,6 +75,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,

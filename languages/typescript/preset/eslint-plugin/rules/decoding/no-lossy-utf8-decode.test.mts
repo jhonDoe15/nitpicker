@@ -10,6 +10,14 @@ function flagged(code: string, messageId: 'decoder' | 'file') {
 tester.run('no-lossy-utf8-decode', rule, {
   valid: [
     {
+      code:
+        'import { readFileSync, writeFileSync } from "node:fs"; export function f() { ' +
+        'writeFileSync("package.json", readFileSync("package.json", "utf8").replace("a", "b")); }',
+    },
+    {
+      code: 'export const v = JSON.parse(new TextDecoder().decode(base64url.decode(segment)));',
+    },
+    {
       code: 'const d = new TextDecoder("utf-8", { fatal: true }); export const v = JSON.parse(d.decode(bytes));',
     },
     {
