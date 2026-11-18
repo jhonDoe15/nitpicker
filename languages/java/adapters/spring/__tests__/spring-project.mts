@@ -210,6 +210,7 @@ const REVIEW_RULES = new Set([
   'GeneratedEqualsSkipsSuperclass',
   'HashCodeDisagreesWithEquals',
   'EqualsLeavesOutField',
+  'CopyMethodDropsField',
 ]);
 const roots: string[] = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
