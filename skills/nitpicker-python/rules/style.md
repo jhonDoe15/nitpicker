@@ -72,3 +72,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A bounds check before a read rejects with `index >= len(items)` (or accepts with `index < len(items)`): `index > len(items)`
   lets `index == len(items)` through to an `IndexError` (`index-bound-off-by-one`); `>` is right only for an insertion
   position.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads (`wall-clock-elapsed`):
+  read `time.monotonic()` for both ends of a duration or a timeout; keep `time.time()` for stored timestamps.

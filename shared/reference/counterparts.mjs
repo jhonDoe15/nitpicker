@@ -108,6 +108,12 @@ const GROUPS = [
     typescript: 'nitpicker/no-overflowing-backoff',
     go: 'go-rules/backoff-shift-overflow',
   },
+  {
+    jvm: 'WallClockElapsed',
+    typescript: 'nitpicker/no-wall-clock-elapsed',
+    python: 'wall-clock-elapsed',
+    go: 'go-rules/wall-clock-elapsed',
+  },
 ];
 
 function spring(rule) {

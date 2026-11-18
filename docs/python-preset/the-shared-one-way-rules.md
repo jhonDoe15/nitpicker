@@ -1994,3 +1994,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   (`self.items`). Not reported: insertion positions (`x.insert(index, v)`), another list, a function that also checks
   `index >= len(x)` or `index < len(x)`, a reassigned index, a branch that does not leave, and test files. Reject with
   `>=` and accept with `<`.
+- `wall-clock-elapsed` reports a local assigned once from `time.time()`, `time.time_ns()`, `datetime.now()` or
+  `datetime.utcnow()` whose every read is a subtraction from another wall-clock read, when the difference is compared or
+  passed to a `record`, `observe`, `timing`, `histogram` or `distribution` call: the wall clock jumps with NTP
+  corrections, so a timeout fires early or never and a duration turns negative. Not reported: a start that is also
+  stored, sent or compared with a stored timestamp, a reassigned name, and test files. Read `time.monotonic()` or
+  `time.perf_counter()` instead.

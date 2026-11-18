@@ -157,6 +157,7 @@ function productionGuardRules({
     ],
     'nitpicker/no-io-in-loop': 'error',
     'nitpicker/no-unchecked-response-json': 'error',
+    'nitpicker/no-wall-clock-elapsed': 'error',
     'nitpicker/no-overflowing-backoff': 'error',
     'nitpicker/no-index-bound-off-by-one': 'error',
     'nitpicker/no-negative-count': 'error',

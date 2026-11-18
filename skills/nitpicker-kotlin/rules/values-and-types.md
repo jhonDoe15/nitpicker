@@ -136,3 +136,6 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is right only for an insertion position.
 - A backoff delay does not grow by `1L shl attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`); the shift
   wraps and the delay turns negative (`pmd/BackoffShiftOverflow`).
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `System.nanoTime()` or `TimeSource.Monotonic.markNow()` instead of subtracting two `Instant.now()` or
+  `System.currentTimeMillis()` readings (`pmd/WallClockElapsed`).

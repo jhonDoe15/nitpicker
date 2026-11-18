@@ -2395,6 +2395,7 @@
                             "pmd/NegativeCountArgument",
                             "pmd/IndexBoundOffByOne",
                             "pmd/BackoffShiftOverflow",
+                            "pmd/WallClockElapsed",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

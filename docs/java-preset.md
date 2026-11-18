@@ -96,6 +96,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Counts computed by subtraction](java-preset/counts-computed-by-subtraction.md)
 - [Index checks that let the length through](java-preset/index-checks-that-let-the-length-through.md)
 - [Backoff delays that overflow](java-preset/backoff-delays-that-overflow.md)
+- [Elapsed time measured with the wall clock](java-preset/elapsed-time-measured-with-the-wall-clock.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)
