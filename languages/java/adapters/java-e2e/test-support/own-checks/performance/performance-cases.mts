@@ -5,6 +5,7 @@ import { REUSABLE_OBJECT_CASES } from './hoisting/reusable-object-cases.mts';
 import { LOG_CASES } from './log-cases.mts';
 import { SET_CASES } from './sets/sets-cases.mts';
 import { ENUM_CASES } from './simple/enum-cases.mts';
+import { GC_CASES } from './simple/gc-cases.mts';
 import { PLAIN_TEXT_CASES } from './simple/plain-text-cases.mts';
 import { RANDOM_CASES } from './simple/random-cases.mts';
 import { SORT_CASES } from './simple/sort-cases.mts';
@@ -26,4 +27,5 @@ export const PERFORMANCE_REVIEW_CASES = [
   ...ENUM_CASES,
   ...SORT_CASES,
   ...PLAIN_TEXT_CASES,
+  ...GC_CASES,
 ];

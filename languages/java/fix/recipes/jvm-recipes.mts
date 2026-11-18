@@ -3,6 +3,7 @@ import type { FixRecipe } from '../../../../core/fix/typed/fix-types.mts';
 import { kotlinFinalNewlineRecipe } from './final-newline.mts';
 import { SPRING_CONFIG_RECIPES } from './spring/config/config-recipes.mts';
 import { missingEnableRecipe } from './spring/enable/missing-enable.mts';
+import { explicitGcRecipe } from './kotlin/calls/explicit-gc.mts';
 import { useCheckNotNullRecipe, useRequireNotNullRecipe } from './kotlin/contracts/not-null.mts';
 import { useCheckOrErrorRecipe, useRequireRecipe } from './kotlin/contracts/preconditions.mts';
 import { emptyBlocksRecipe } from './kotlin/declarations/empty-blocks.mts';
@@ -58,6 +59,7 @@ export const JVM_RECIPES = defineRecipes([
   commentedCodeRecipe,
   mayBeConstRecipe,
   mayBeConstReviewRecipe,
+  explicitGcRecipe,
   modifierOrderRecipe,
   optionalAbstractRecipe,
   focusedTestRecipe,

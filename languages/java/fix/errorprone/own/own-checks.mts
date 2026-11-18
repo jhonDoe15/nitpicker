@@ -23,6 +23,7 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'UseEnumCollections', tool: PMD, safety: REVIEW },
   { check: 'SortForExtreme', tool: PMD, safety: REVIEW },
   { check: 'PlainTextRegex', tool: PMD, safety: REVIEW },
+  { check: 'DoNotCallGarbageCollectionExplicitly', tool: PMD, safety: REVIEW },
   { check: 'LiteralsFirstInComparisons', tool: PMD, safety: REVIEW },
   { check: 'PreserveStackTrace', tool: PMD, safety: REVIEW },
   { check: 'SpringConstructorInjection', tool: PMD, safety: REVIEW },
@@ -43,15 +44,6 @@ const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));
 
 export function ownCheck(check: string): OwnCheck | undefined {
   return BY_CHECK.get(check);
-}
-
-export function ownCheckClass(check: string): string {
-  return /^[A-Z0-9]+(_[A-Z0-9]+)+$/u.test(check)
-    ? check
-        .split('_')
-        .map((word) => `${word.slice(0, 1)}${word.slice(1).toLowerCase()}`)
-        .join('')
-    : check;
 }
 
 export function ownChecksOf(safety: string): string[] {

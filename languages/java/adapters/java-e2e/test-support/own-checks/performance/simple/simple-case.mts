@@ -1,6 +1,8 @@
 const MAIN = 'src/main/java/demo';
 
-const HUNK_GAP = 6;
+const HUNK_GAP = 4;
+
+type Span = readonly [first: number, last: number];
 
 export type Shape = readonly [before: string, after?: string];
 
@@ -31,7 +33,34 @@ function importBlock(imports: readonly string[]): string[] {
   return imports.length === 0 ? [] : [...imports.map((name) => `import ${name};`), ''];
 }
 
-function sourceOf(options: Options, side: 0 | 1): { text: string; changed: number[] } {
+type Builder = {
+  readonly lines: string[];
+  readonly changed: Span[];
+  readonly side: 0 | 1;
+};
+
+function addShape(builder: Builder, shape: Shape, indent: string): void {
+  const { lines, changed, side } = builder;
+  const [before, after = before] = shape;
+  if (before !== after) {
+    const was = before.split('\n');
+    const now = after.split('\n');
+    const prefix = was.findIndex((line, index) => line !== now[index]);
+    const room = Math.min(was.length, now.length) - prefix;
+    const suffix = [...was.keys()].findIndex(
+      (offset) => offset >= room || was.at(-1 - offset) !== now.at(-1 - offset),
+    );
+    changed.push([
+      lines.length + 1 + prefix,
+      lines.length + Math.max(was.length - suffix, prefix + 1),
+    ]);
+  }
+  for (const line of indented(side === 0 ? before : after, indent)) {
+    lines.push(line);
+  }
+}
+
+function sourceOf(options: Options, side: 0 | 1): { text: string; changed: Span[] } {
   const { name, imports = [], importsAfter = imports, members = [], parameters = '' } = options;
   const { statements = [] } = options;
   const lines: string[] = [
@@ -39,35 +68,28 @@ function sourceOf(options: Options, side: 0 | 1): { text: string; changed: numbe
     '',
     ...importBlock(side === 0 ? imports : importsAfter),
   ];
-  const changed: number[] = [];
-  const add = (shape: Shape, indent: string): void => {
-    const [before, after = before] = shape;
-    if (before !== after) {
-      const was = before.split('\n');
-      const now = after.split('\n');
-      changed.push(lines.length + 1 + was.findIndex((line, index) => line !== now[index]));
-    }
-    lines.push(...indented(side === 0 ? before : after, indent));
-  };
+  const builder: Builder = { lines, changed: [], side };
   lines.push(`public class ${name}${options.typeParameters ?? ''} {`);
-  members.forEach((member) => {
-    add(member, '  ');
-  });
+  for (const member of members) {
+    addShape(builder, member, '  ');
+  }
   if (statements.length > 0) {
     lines.push(`  void shapes(${parameters}) {`);
-    statements.forEach((statement) => {
-      add(statement, '    ');
-    });
+    for (const statement of statements) {
+      addShape(builder, statement, '    ');
+    }
     lines.push('  }');
   }
   lines.push('}', '');
-  return { text: lines.join('\n'), changed };
+  return { text: lines.join('\n'), changed: builder.changed };
 }
 
-function groupStarts(changed: readonly number[]): number[] {
-  return changed.filter(
-    (line, index) => index === 0 || line - (changed[index - 1] ?? 0) > HUNK_GAP,
-  );
+function groupStarts(changed: readonly Span[]): number[] {
+  return changed
+    .filter(
+      ([first], index) => index === 0 || first - (changed[index - 1]?.[1] ?? 0) - 1 > HUNK_GAP,
+    )
+    .map(([first]) => first);
 }
 
 export function simpleCase(options: Options): SimpleCase {

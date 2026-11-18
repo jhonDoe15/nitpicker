@@ -1,5 +1,6 @@
 nitpicker.fix.DetachedTestCase
 nitpicker.fix.DmiRandomUsedOnlyOnce
+nitpicker.fix.DoNotCallGarbageCollectionExplicitly
 nitpicker.fix.EntityLoadedForExistence
 nitpicker.fix.GeneratedOnHandWrittenCode
 nitpicker.fix.LinearLookupInLoop
