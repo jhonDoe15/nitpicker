@@ -453,6 +453,12 @@ outside `useMemo`, `useCallback`, `useRef`, `useState` and effects, or kept in a
 Each call or render gets its own timer, so nothing
 is debounced. Fields, module-level constants, factories that return the function and RxJS operators are left alone.
 
+Registry entries deleted by a stale teardown: `nitpicker/no-unguarded-registry-delete` (strict preset, production
+source) reports `map.delete(key)` in a function nested after `map.set(key, value)` (a disposable, a close callback, a
+`finally`, a returned function) when it does not compare `map.get(key)` with the registered value, so a newer entry
+under the same key is removed. Fresh keys, functions that reject duplicate keys with `has` or an earlier `get`, comparisons
+through an alias of the value and deletes in the same call are left alone.
+
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
 guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a

@@ -24,6 +24,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Create a `debounce` or `throttle` function once (a class field, module scope, `useMemo` or `useRef`), never per
   call or per render: a new one each time has its own timer, so nothing is debounced
   (`nitpicker/no-per-call-debounce`).
+- A teardown that deletes a registry entry by key first checks that the entry is still its own registration:
+  `if (map.get(key) === value) { map.delete(key); }`, because a newer registration may have reused the key
+  (`nitpicker/no-unguarded-registry-delete`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
