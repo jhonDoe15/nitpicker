@@ -333,10 +333,12 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `listen(port)`, `listen(port, callback)` and `listen({ port })` on a server made by `http`, `https`, `net` or `http2`
   `createServer`, `express()`, `connect()`, `polka()` or `new Koa()` from a module the file imports (directly or through a
   local variable or a `use`/`get`/`on` chain), and only when the file is a local helper: it imports `electron` or `vscode`,
-  sits under a `bin`, `cli`, `electron`, `desktop` or `extension` folder, or the server variable, the enclosing function,
-  its strings or the file name mention oauth, sso, redirect, authorize, login, loopback or an auth code. A host argument,
+  sits under a `cli`, `electron`, `desktop` or `extension` folder, or the server variable, the enclosing function, the
+  file name, the request handler given to `createServer` or the `listen` callback mention oauth, sso, redirect,
+  authorize, login, loopback or an auth code (other routes and strings in the function do not count). A host argument,
   a `host`, `hostname` or `path` property, a spread, a string path, and any call with a host or an unknown second argument
-  pass, as does an ordinary server entry point. Allowed form: `server.listen(port, '127.0.0.1', callback)` or
+  pass, as does an ordinary server entry point, a port probe (`listen(0)`, or a server closed in the `listen`
+  callback) and an options variable as first argument (`listen(options)`). Allowed form: `server.listen(port, '127.0.0.1', callback)` or
   `listen({ port, host: '127.0.0.1' })`; a service that must accept remote connections passes `'0.0.0.0'` explicitly.
 - `nitpicker/no-unguarded-cyclic-recursion` (needs the type checker): a function that calls itself with a value read
   through a property that can lead back to an earlier node, and has no visited set or depth limit, so a cycle (an

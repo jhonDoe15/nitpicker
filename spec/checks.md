@@ -473,6 +473,10 @@ inputs, and a memo cache that the same file clears is not reported.
 
 Local servers on every interface: `nitpicker/no-listen-on-all-interfaces` (production source, in `eslint-lint`) reports
 `listen(port)`, `listen(port, callback)` and `listen({ port })` without a host on an `http`, `https`, `net`, `http2`,
+Express, Connect, Polka or Koa server in a local helper file (an Electron or VS Code host, a CLI folder, or a server
+variable, function, file name, request handler or listen callback that mentions oauth, sso, redirect, authorize or
+login). A host, a socket path, a spread, a port probe or an ordinary server entry point is not reported.
+
 Cyclic recursion: `nitpicker/no-unguarded-cyclic-recursion` (production source, in `eslint-lint`, type-aware) reports a
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped

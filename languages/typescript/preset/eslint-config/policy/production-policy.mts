@@ -128,6 +128,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-unclosed-file-descriptor': 'error',
     'nitpicker/no-release-outside-finally': 'error',
     'nitpicker/no-incomplete-cache-key': 'error',
+    'nitpicker/no-listen-on-all-interfaces': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

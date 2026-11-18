@@ -54,6 +54,7 @@
   "eslint/nitpicker/no-interval-polling-in-tests": ["tests"],
   "eslint/nitpicker/no-io-in-loop": ["performance"],
   "eslint/nitpicker/no-lazy-relation-in-loop": ["performance", "persistence"],
+  "eslint/nitpicker/no-listen-on-all-interfaces": ["security"],
   "eslint/nitpicker/no-loaded-rows-saved-back": ["performance", "persistence"],
   "eslint/nitpicker/no-local-time-zone": ["bug"],
   "eslint/nitpicker/no-lookup-per-element": ["performance", "async"],
