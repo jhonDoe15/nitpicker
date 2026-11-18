@@ -120,5 +120,5 @@ export async function runScopedMutation(
     ...weakened,
   ]
     .filter(({ rule, path }) => !isExcepted(rule, path))
-    .concat(skippedModulesNotice(options.analyzerName, tested.skipped));
+    .concat(head.notes ?? [], skippedModulesNotice(options.analyzerName, tested.skipped));
 }

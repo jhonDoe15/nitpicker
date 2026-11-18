@@ -38,7 +38,11 @@ export type MutationReport = { readonly files?: Readonly<Record<string, Mutation
 
 export type MutationOutcome =
   | { readonly skipped: Finding[]; readonly report?: undefined }
-  | { readonly report: MutationReport; readonly skipped?: undefined };
+  | {
+      readonly report: MutationReport;
+      readonly skipped?: undefined;
+      readonly notes?: readonly Finding[];
+    };
 
 export type StrykerConfig = Readonly<Record<string, unknown>>;
 
