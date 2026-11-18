@@ -147,6 +147,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   when a method passes `listener.topics()` and `listener.group()` through `resolve(...)`,
   `resolveEmbeddedValue` or `evaluate(...)`, pass `listener.consumes()` through it too, so a placeholder or
   expression in it is not taken literally. An attribute that is meant to be literal stays raw.
+- A loop uses its loop variable (`pmd/LoopVariableUnused`): `for (String name : names) ctx.getBean(name, type)`,
+  `delegates.get(i).handle(ctx)`, not `names[0]` or `delegates.get(0)` on every pass. A loop that only repeats
+  work names its variable `ignored`.
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
