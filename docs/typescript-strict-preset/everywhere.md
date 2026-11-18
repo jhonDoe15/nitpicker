@@ -254,6 +254,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `Buffer.byteLength(text, 'utf8')`, `new TextEncoder().encode(text).byteLength`, or slicing the encoded bytes. `Buffer` and
   `Uint8Array` lengths, `byteLength`, array lengths and limits not named in bytes are not reported. Go counts bytes in
   `len(string)`; the Python and Java forms are left for a parity review.
+- `nitpicker/no-incomplete-escaping`: a `.replace`/`.replaceAll` chain that escapes or unescapes by hand and skips the escape
+  character. Escape direction: a replacement that puts a backslash before a matched quote, backtick or brace
+  (`'\\"'`, `'\\$&'`) where no earlier step of the chain, and no other `replace` in the same function, matches the backslash
+  itself (`value.replace(/"/g, '\\"')` leaves `a\"b` ambiguous). Unescape direction: a chain that decodes sequences one kind at
+  a time and handles `\\` in a separate step, so the order decides the result. Allowed forms: one regex covering the escape
+  character and the specials with a callback (`value.replace(/[\\"]/g, (c) => '\\' + c)`), a single-pass unescape with a
+  callback, or a library escaper (driver quoting functions, `JSON.stringify`, `JSON.parse`). A chain that starts from another
+  call's result, a regex-escape helper whose class includes `\`, and callback replacements are not reported. Python
+  `str.replace` and Java `String.replace` have the same chains and are left for a parity review.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

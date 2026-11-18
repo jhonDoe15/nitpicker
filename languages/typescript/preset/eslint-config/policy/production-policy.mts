@@ -128,6 +128,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-shadowed-spread-key': 'error',
     'nitpicker/no-lookup-as-presence': 'error',
     'nitpicker/no-in-presence-check': 'error',
+    'nitpicker/no-incomplete-escaping': 'error',
     'nitpicker/no-string-length-as-byte-count': 'error',
     'nitpicker/no-lossy-utf8-decode': 'error',
     'nitpicker/no-non-latin1-header-value': 'error',
