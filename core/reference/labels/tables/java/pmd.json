@@ -109,6 +109,7 @@
   "pmd/OneDeclarationPerLine": ["style"],
   "pmd/ParameterMutation": ["maintainability"],
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
+  "pmd/PlainCollectionInConcurrentMap": ["bug", "async"],
   "pmd/PlainTextRegex": ["simplification", "performance"],
   "pmd/PreserveStackTrace": ["reliability"],
   "pmd/PrimitiveWrapperInstantiation": ["simplification"],
