@@ -133,6 +133,35 @@ describe('loadTestEnvironments', () => {
     );
   });
 
+  function pnpmProject(hoisted: Record<string, string>): string {
+    const store = 'node_modules/.pnpm/vitest@4.1.11/node_modules';
+    const root = projectWith(
+      {
+        ...configWith(''),
+        ...hoisted,
+        [`${store}/vitest/package.json`]: JSON.stringify({ name: 'vitest' }),
+        ...Object.fromEntries(
+          Object.entries(fakeVite('jsdom')).map(([file, text]) => [
+            `${store}/${file.slice(13)}`,
+            text,
+          ]),
+        ),
+      },
+      { vite: 'none' },
+    );
+    symlinkSync(path.join(root, store, 'vitest'), path.join(root, 'node_modules/vitest'), 'dir');
+    return root;
+  }
+
+  it('loads vite from beside vitest on a pnpm layout that does not hoist vite', () => {
+    expect(loadTestEnvironments({ projectRoot: pnpmProject({}) }).environment).toBe('jsdom');
+  });
+
+  it('prefers the vite beside vitest over another vite the project hoists', () => {
+    const root = pnpmProject(fakeVite('node'));
+    expect(loadTestEnvironments({ projectRoot: root }).environment).toBe('jsdom');
+  });
+
   it('says so when the project has no vite at all', () => {
     const root = projectWith(configWith(jsdomConfig), { vite: 'none' });
     expect(loadTestEnvironments({ projectRoot: root }).notice?.message).toMatch(

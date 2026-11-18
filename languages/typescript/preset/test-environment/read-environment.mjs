@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chainOf } from '../../../../shared/traversal.mjs';
@@ -30,13 +30,25 @@ function parentDirectory(directory) {
   return parent === directory ? undefined : parent;
 }
 
-function viteManifestFrom(root) {
-  const manifestPath = chainOf(root, parentDirectory)
-    .map((directory) => path.join(directory, 'node_modules/vite/package.json'))
+function installedManifest(root, name) {
+  return chainOf(root, parentDirectory)
+    .map((directory) => path.join(directory, 'node_modules', name, 'package.json'))
     .find((candidate) => existsSync(candidate));
+}
+
+function viteBesideVitest(root) {
+  const vitestManifest = installedManifest(root, 'vitest');
+  if (vitestManifest === undefined) {
+    return undefined;
+  }
+  return installedManifest(path.dirname(realpathSync(vitestManifest)), 'vite');
+}
+
+function viteManifestFrom(root) {
+  const manifestPath = viteBesideVitest(root) ?? installedManifest(root, 'vite');
   if (manifestPath === undefined) {
     throw troubleshootingError(
-      `vite is not installed at or above ${root}`,
+      `vite is not installed at or above ${root}, nor beside its vitest`,
       TROUBLESHOOTING_ANCHORS.missingPeer,
     );
   }
