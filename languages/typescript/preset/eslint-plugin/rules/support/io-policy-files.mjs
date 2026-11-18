@@ -3,6 +3,7 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulator-concat.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/reactive/no-lookup-per-element.mjs',
   'languages/typescript/preset/eslint-plugin/rules/deleted-items/flags.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/deleted-items/including-deleted.mjs',
   'languages/typescript/preset/eslint-plugin/rules/deleted-items/iterations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/deleted-items/no-unguarded-deleted-items.mjs',
   'languages/typescript/preset/eslint-plugin/rules/deleted-items/project-index.mjs',
