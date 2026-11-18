@@ -124,9 +124,9 @@ describe('the Maven build in a quick run', () => {
   it('skips the tests when no test source uses ArchUnit, since a project may fail a run of no tests', () => {
     const args = buildArguments(true, { archunit: false });
 
-    expect(args).toContain('-DskipTests');
-    expect(args).not.toContain('-DskipTests=false');
-    expect(args.some((argument) => argument.startsWith('-Dtest='))).toBe(false);
+    expect(
+      args.filter((argument) => argument === 'test' || /^-D(?:test|skipTests)\b/u.test(argument)),
+    ).toEqual(['test', '-DskipTests']);
   });
 
   it('plans the goals from the run mode', () => {
