@@ -46,7 +46,7 @@ public final class Pauses {
     try {
       Thread.sleep(millis);
     } catch (InterruptedException e) { // violation: SwallowedInterrupt
-      LOG.warning(String.valueOf(new IllegalStateException(e)));
+      LOG.warning(String.valueOf(new IllegalStateException(e))); // violation: CatchLogWithoutException
     }
   }
 
