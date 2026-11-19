@@ -89,6 +89,23 @@ describe('timeout policy changes', () => {
     ]);
   });
 
+  it('keeps a project member that was renamed, and detects a member that is new', () => {
+    const base = config({ projects: { jvm: project(ceilings(20_000), ['test/a.test.mjs']) } });
+    const renamedMember = config({
+      projects: { jvm: project(ceilings(20_000), ['test/a.test.mts']) },
+    });
+    const renames = new Map([['test/a.test.mts', 'test/a.test.mjs']]);
+    function basePathOf(file: string): string {
+      return renames.get(file) ?? file;
+    }
+    expect(timeoutChanges(base, renamedMember, basePathOf)).toEqual({ loosened: [], changed: [] });
+    expect(timeoutChanges(base, renamedMember).loosened.map(({ text }) => text)).toEqual([
+      'test timeout project jvm membership added: ["test/a.test.mts"] (java)',
+      'test timeout project jvm testDeclarationCeilingMs raised from 10000 to 20000',
+      'test timeout project jvm hookDeclarationCeilingMs raised from 10000 to 20000',
+    ]);
+  });
+
   it.each([
     ['detects', 5_000, true],
     ['allows', 20_000, false],

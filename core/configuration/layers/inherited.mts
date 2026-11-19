@@ -5,8 +5,8 @@ import type { ConfigLayer, ConfigSettings } from '../../../shared/values/config-
 import { isPlainObject, textOf } from '../../../shared/values/readers.mts';
 import { TYPESCRIPT_PRESETS } from '../scopes/layout-settings.mts';
 import { validateConfig } from '../validate.mts';
-import { readLayers } from './layers.mjs';
-import { rebasedSettings as untypedRebasedSettings } from './rebase/rebase-paths.mjs';
+import { readLayers } from './layers.mts';
+import { rebasedSettings as untypedRebasedSettings } from './rebase/rebase-paths.mts';
 
 const rebasedSettings: (
   config: ConfigSettings,

@@ -1,6 +1,7 @@
 import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mts';
 import { fakeGoFormat as untypedFakeGoFormat } from '../../../languages/go/fix/test-support/fake-go-format.mts';
 import { fakePythonTools as untypedFakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mts';
+import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
 import { recipeSpecs } from './engine-views.mts';
 import type { PlanContext, RecipeSpec } from './engine-views.mts';
 import type { CliRunInput } from '../../command/test-support/fixture-types.mts';
@@ -23,18 +24,27 @@ export type PythonTools = FakeTools & {
   readonly callsOf: (operation: string) => readonly ToolCall[];
 };
 
-export const fakeGoFormat: () => ToolSet = untypedFakeGoFormat;
+export function fakeGoFormat(): ToolSet {
+  const tools = untypedFakeGoFormat();
+  return { executeFixCommand: (invocation) => callUntyped(tools.executeFixCommand, invocation) };
+}
 
 export { fakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mts';
 
-export const fakePythonTools: (options?: {
+export function fakePythonTools(options?: {
   readonly lintEdit?: (file: string, input: string) => string;
   readonly lintStatus?: number;
   readonly formatFailure?: string;
   readonly jupyterMissing?: true;
   readonly missingFormatter?: true;
   readonly sourceFixes?: true;
-}) => PythonTools = untypedFakePythonTools;
+}): PythonTools {
+  const tools = untypedFakePythonTools(options);
+  return {
+    ...tools,
+    executeFixCommand: (invocation) => callUntyped(tools.executeFixCommand, invocation),
+  };
+}
 
 export const jvmRecipes = recipeSpecs(JVM_RECIPES);
 

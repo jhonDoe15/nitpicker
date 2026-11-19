@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, readdirSync } from 'node:fs';
-import { containedPath } from '../../common/contained-path.mjs';
+import { containedPath } from '../../tool-steps/paths/contained-path.mts';
 
 const GIT_TIMEOUT_MS = 10_000;
 const MODE_MASK = 0o777;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
-import { javascriptPresetHint, scriptProjectPreset } from './preset-detection.mjs';
+import { javascriptPresetHint, scriptProjectPreset } from './preset-detection.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

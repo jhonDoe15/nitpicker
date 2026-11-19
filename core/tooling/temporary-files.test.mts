@@ -1,11 +1,14 @@
-import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mts';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
 
-const moduleUrl = new URL('./temporary-files.mjs', import.meta.url).href;
+const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
+
+const moduleUrl = checkoutModuleUrl(new URL('./temporary-files.mjs', import.meta.url)).href;
 const temporaryRoots: string[] = [];
 
 type Scenario = { result: SpawnSyncReturns<string>; target: string };

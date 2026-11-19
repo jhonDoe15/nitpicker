@@ -1,12 +1,13 @@
-import { applyFixes as untypedApplyFixes } from '../engine/edits/apply-edits.mjs';
-import { sourceOf as untypedSourceOf } from '../engine/edits/check-fixes.mjs';
-import { checkRealPath as untypedCheckRealPath } from '../engine/edits/real-paths.mjs';
+import { applyFixes as untypedApplyFixes } from '../engine/edits/apply-edits.mts';
+import { sourceOf as untypedSourceOf } from '../engine/edits/check-fixes.mts';
+import { checkRealPath as untypedCheckRealPath } from '../engine/edits/real-paths.mts';
 import {
   indexListing as untypedIndexListing,
   restoreIndex as untypedRestoreIndex,
-} from '../engine/edits/untrack.mjs';
-import { trackCleanup as untypedTrackCleanup } from '../../tooling/temporary-files.mjs';
+} from '../engine/edits/untrack.mts';
+import { trackCleanup as untypedTrackCleanup } from '../../tooling/temporary-files.mts';
 import { fieldOf, listOf, numberOr, parseJson, textOf } from '../../../shared/values/readers.mts';
+import type { FixEntry, RecipeEdit, Snapshot } from '../typed/edit-types.mts';
 import type { PlannedFix } from '../typed/fix-types.mts';
 
 export type FileState = { readonly bytes: Buffer; readonly mode: number };
@@ -15,27 +16,12 @@ export type Original = FileState | { readonly createdUnder?: string | undefined 
 
 export type FixedState = FileState | { readonly gone: true };
 
-export type JournalEdit =
-  | { readonly type: 'move'; readonly from: string; readonly to: string }
-  | {
-      readonly type: 'delete' | 'write' | 'replace' | 'untrack' | 'chmod' | 'json' | 'code';
-      readonly path: string;
-    };
+export type JournalEdit = RecipeEdit;
 
-export type JournalEntry = {
-  readonly name: string;
-  readonly fix: {
-    readonly edits: readonly JournalEdit[];
-    readonly finding?: PlannedFix['finding'];
-    readonly alsoFixes?: readonly NonNullable<PlannedFix['finding']>[];
-  };
-} & (
-  | { readonly recipe: string; readonly safety: string; readonly scope?: string | undefined }
-  | { readonly recipe?: undefined; readonly safety?: undefined; readonly scope?: undefined }
-);
+export type JournalEntry = FixEntry;
 
-export type ApplyResult = {
-  readonly applied: JournalEntry[];
+export type ApplyResult<Entry extends JournalEntry = JournalEntry> = {
+  readonly applied: Entry[];
   readonly changedMeanwhile: string[];
   readonly errors: string[];
 };
@@ -62,18 +48,18 @@ export type Change = {
 
 export type JournalWriter = {
   readonly projectRoot: string;
-  readonly apply: (
-    snapshot: unknown,
-    entries: readonly JournalEntry[],
+  readonly apply: <Entry extends JournalEntry>(
+    snapshot: Snapshot,
+    entries: readonly Entry[],
     tool?: string,
-  ) => ApplyResult;
+  ) => ApplyResult<Entry>;
 };
 
-export const applyFixes: (
+export const applyFixes: <Entry extends JournalEntry>(
   projectRoot: string,
-  snapshot: unknown,
-  entries: readonly JournalEntry[],
-) => ApplyResult = untypedApplyFixes;
+  snapshot: Snapshot,
+  entries: readonly Entry[],
+) => ApplyResult<Entry> = untypedApplyFixes;
 export const sourceOf: (edit: JournalEdit) => string = untypedSourceOf;
 export const checkRealPath: (projectRoot: string, name: string) => string = untypedCheckRealPath;
 export const indexListing: (projectRoot: string, name: string) => string = untypedIndexListing;

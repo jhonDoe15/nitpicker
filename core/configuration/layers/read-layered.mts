@@ -12,9 +12,9 @@ import type {
 import { isPlainObject, messageOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { SUPPORTED_PRESETS, validateConfig, validateKeys } from '../validate.mts';
 import { inheritedLayers } from './inherited.mts';
-import { readLayers as untypedReadLayers } from './layers.mjs';
-import { mergeLayers as untypedMergeLayers, settingsOf as untypedSettingsOf } from './merge.mjs';
-import { validateProjects as untypedValidateProjects } from './settings.mjs';
+import { readLayers as untypedReadLayers } from './layers.mts';
+import { mergeLayers as untypedMergeLayers, settingsOf as untypedSettingsOf } from './merge.mts';
+import { validateProjects as untypedValidateProjects } from './settings.mts';
 
 const withCanonicalRules: (config: unknown) => unknown = untypedCanonicalRules;
 const withKotlinRuleAliases: (config: unknown) => unknown = untypedKotlinAliases;

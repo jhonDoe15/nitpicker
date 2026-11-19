@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkRecipe, defineRecipes, ruleName } from './recipes.mjs';
+import { checkRecipe, defineRecipes, ruleName } from './recipes.mts';
 import { activeRecipes } from '../test-support/engine-views.mts';
 
 const valid = {

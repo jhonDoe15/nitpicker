@@ -1,4 +1,5 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { count } from '../report/console.mts';
 
 type ListedProject = {
   readonly path: string;
@@ -16,10 +17,6 @@ export type Listing = {
 };
 
 const MAX_OUTSIDE = 5;
-
-function count(total: number, word: string): string {
-  return `${String(total)} ${word}${total === 1 ? '' : 's'}`;
-}
 
 function sourceLine(listing: Listing): string {
   const total = count(listing.projects.length, 'project');

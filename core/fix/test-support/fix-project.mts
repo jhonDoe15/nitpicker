@@ -5,7 +5,7 @@ import { policy } from '../../diff/execution/test-support/analyzer-findings.mts'
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
-import { containedPath } from '../common/contained-path.mjs';
+import { containedPath } from '../tool-steps/paths/contained-path.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import { parseJson } from '../../../shared/values/readers.mts';
 

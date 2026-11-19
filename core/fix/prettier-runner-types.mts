@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type * as prettier from 'prettier';
-import { prettierPrecedence as untypedPrecedence } from '../../languages/typescript/preset/head-policy.mjs';
+import { prettierPrecedence as untypedPrecedence } from '../../languages/typescript/preset/head-policy.mts';
 import {
   isIgnoredByLayers as untypedIsIgnoredByLayers,
   layeredPrettierOptions as untypedLayeredOptions,

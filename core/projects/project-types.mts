@@ -14,6 +14,29 @@ export type ProjectEntry = {
   readonly later?: true;
 };
 
+export type WorkspaceMember = {
+  readonly path: string;
+  readonly origin: string;
+};
+
+export type WorkspaceDeclaration = {
+  readonly declared: boolean;
+  readonly members: readonly WorkspaceMember[];
+};
+
+export type DetectedProjects = {
+  readonly declared: boolean;
+  readonly entries: readonly WorkspaceMember[];
+  readonly multiple: boolean;
+};
+
+export type DependencyUnit = {
+  readonly names: readonly string[];
+  readonly needs: readonly string[];
+  readonly folders: readonly string[];
+  readonly labels?: ReadonlyMap<string, string>;
+};
+
 export type PlanContext = {
   readonly root: string;
   readonly repositoryRoot: string;
@@ -24,7 +47,7 @@ export type PlanContext = {
 
 export type Inspection = {
   readonly files: readonly string[];
-  readonly undeclared?: readonly unknown[];
+  readonly undeclared?: readonly WorkspaceMember[];
   readonly plan?: MonorepoPlan;
 };
 
@@ -48,7 +71,7 @@ export type MonorepoPlan = {
   readonly rootConfig: NitpickerConfig;
   readonly source: 'declared' | 'detected';
   readonly projects: readonly PlanProject[];
-  readonly undeclared: readonly unknown[];
+  readonly undeclared: readonly WorkspaceMember[];
   readonly submodules?: readonly string[];
 };
 

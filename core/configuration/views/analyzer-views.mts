@@ -18,7 +18,7 @@ import {
   applyLegacyInventory as untypedApplyLegacyInventory,
   applyTestRunner as untypedApplyTestRunner,
   applyThresholds as untypedApplyThresholds,
-} from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
 
 export type StyleFiles = (policyRoot: string) => readonly string[];
 
@@ -46,23 +46,38 @@ export const pythonConfigFiles: StyleFiles = untypedPythonConfigFiles;
 
 export const formatterChoiceFiles: StyleFiles = untypedFormatterChoiceFiles;
 
-export const applyLayout: (
+export function applyLayout(
   analyzers: readonly Analyzer[],
   headPolicy: object | undefined,
-) => Analyzer[] = untypedApplyLayout;
+): Analyzer[] {
+  return analyzersOf(callUntyped(untypedApplyLayout, analyzers, headPolicy));
+}
 
-export const applyTestRunner: (
+export function applyTestRunner(
   analyzers: readonly Analyzer[],
   headPolicy: object | undefined,
-) => Analyzer[] = untypedApplyTestRunner;
+): Analyzer[] {
+  return analyzersOf(callUntyped(untypedApplyTestRunner, analyzers, headPolicy));
+}
 
-export const applyThresholds: (
+export function applyThresholds(
   analyzers: readonly Analyzer[],
   thresholds: object | undefined,
   headPolicy: object | undefined,
-) => Analyzer[] = untypedApplyThresholds;
+): Analyzer[] {
+  return analyzersOf(callUntyped(untypedApplyThresholds, analyzers, thresholds, headPolicy));
+}
 
-export const applyLegacyInventory: (
+function isProfiled(value: unknown): value is ProfiledAnalyzer {
+  return (
+    typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string'
+  );
+}
+
+export function applyLegacyInventory(
   analyzers: readonly Analyzer[],
   legacyInventory: string | undefined,
-) => ProfiledAnalyzer[] = untypedApplyLegacyInventory;
+): ProfiledAnalyzer[] {
+  const result = callUntyped(untypedApplyLegacyInventory, analyzers, legacyInventory);
+  return Array.isArray(result) ? result.filter(isProfiled) : [];
+}

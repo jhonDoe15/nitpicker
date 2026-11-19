@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isStale } from '../../../scripts/schema/gen-config-schema.mts';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { KEYS } from '../validate.mts';
 import { SCHEMA_URL } from './config-schema.mts';
 import {

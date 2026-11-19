@@ -6,8 +6,8 @@ import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-reposit
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { describeConfigOverrides } from '../configuration/config.mts';
 import { validateConfig } from '../configuration/validate.mts';
-import { resolveComparison } from '../diff/git/repository/git.mjs';
-import { resolveHeadPolicy as untypedHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { resolveComparison } from '../diff/git/repository/git.mts';
+import { resolveHeadPolicy as untypedHeadPolicy } from '../../languages/typescript/preset/head-policy.mts';
 import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './resolve.mts';
 
