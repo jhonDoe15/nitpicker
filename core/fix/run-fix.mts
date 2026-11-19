@@ -1,4 +1,4 @@
-import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mts';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { fixTypeScript } from '../../languages/typescript/fix/typescript-fix.mts';
 import { dryRun as untypedDryRun } from './dry-run/dry-run.mts';
@@ -6,8 +6,8 @@ import {
   createJournal as untypedCreateJournal,
   journalWriter as untypedJournalWriter,
 } from './dry-run/journal.mts';
-import { fixerError as untypedFixerError } from './common/fix-command.mjs';
-import { directWriter as untypedDirectWriter } from './engine/writer.mjs';
+import { fixerError as untypedFixerError } from './tool-steps/commands/fix-command.mts';
+import { directWriter as untypedDirectWriter } from './engine/writer.mts';
 import { lowerBaseline as untypedLowerBaseline } from './all-files/lower-baseline.mts';
 import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mts';
 import { languageFixers as untypedLanguageFixers } from './language-fixers.mts';

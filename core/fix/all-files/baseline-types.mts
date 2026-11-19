@@ -1,4 +1,4 @@
-import { writeTexts as untypedWriteTexts } from '../engine/write-texts.mjs';
+import { writeTexts as untypedWriteTexts } from '../engine/write-texts.mts';
 import {
   fieldOf,
   fieldsOf,

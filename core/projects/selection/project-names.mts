@@ -1,5 +1,5 @@
-import { readTextInside } from '../discovery/repository-files.mjs';
-import { readPyproject } from '../../configuration/project-checks/uv-workspace.mjs';
+import { readTextInside } from '../discovery/repository-files.mts';
+import { readPyproject } from '../../configuration/project-checks/uv-workspace.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 
 const GRADLE_SETTINGS = ['settings.gradle', 'settings.gradle.kts'];

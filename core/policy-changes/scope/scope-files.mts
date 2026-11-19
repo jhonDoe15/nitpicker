@@ -23,7 +23,11 @@ export function usesLayout(config: PolicyConfig): boolean {
 }
 
 export function layoutOf(config: PolicyConfig): ReturnType<typeof resolveLayout> {
-  return resolveLayout(config.layout, [], { javascript: config.preset === 'javascript' });
+  return resolveLayout(
+    config.layout,
+    [],
+    config.preset === 'javascript' ? { javascript: true } : {},
+  );
 }
 
 function extensionsOf(config: PolicyConfig): readonly string[] {

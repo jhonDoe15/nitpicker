@@ -1,5 +1,5 @@
-import { JVM_MARKERS } from '../discovery/jvm-builds.mjs';
-import { PYTHON_PROJECT_MARKERS } from '../discovery/python-projects.mjs';
+import { JVM_MARKERS } from '../discovery/jvm-builds.mts';
+import { PYTHON_PROJECT_MARKERS } from '../discovery/python-projects.mts';
 
 export type Language = {
   readonly name: string;

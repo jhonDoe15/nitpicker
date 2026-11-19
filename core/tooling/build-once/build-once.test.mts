@@ -8,7 +8,7 @@ import {
   withSharedBuildDirectory,
 } from './build-once.mts';
 import { textOf } from '../../../shared/values/readers.mts';
-import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
+import { removeTrackedTemporaryPaths } from '../temporary-files.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
 const ABSENT_PROCESS_ID = 2_147_483_646;

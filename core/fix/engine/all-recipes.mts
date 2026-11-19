@@ -1,5 +1,5 @@
-import { defineRecipes } from './recipes.mjs';
-import { SHARED_RECIPES } from '../recipes/shared-recipes.mjs';
+import { defineRecipes } from './recipes.mts';
+import { SHARED_RECIPES } from '../recipes/shared-recipes.mts';
 import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mts';
 import { errorProneRecipes } from '../../../languages/java/fix/errorprone/recipes/error-prone-recipes.mts';
 import { PYTHON_RECIPES } from '../../../languages/python/fix/recipes/python-recipes.mts';

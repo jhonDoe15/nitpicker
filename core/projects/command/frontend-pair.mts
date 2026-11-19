@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   detectedPreset,
   scriptProjectPreset,
-} from '../../configuration/project-checks/preset-detection.mjs';
+} from '../../configuration/project-checks/preset-detection.mts';
 import { existingConfig } from '../../init/files/config-file.mts';
 import { WEB_SOURCE_FOLDERS } from '../plan/project-entry.mts';
 import type { MonorepoLayout, ProjectEntry } from '../../init/monorepo/monorepo-types.mts';
@@ -17,7 +17,6 @@ type Marker = {
 const JVM_PRESETS = new Set(['java', 'kotlin']);
 
 const markerOf: (root: string) => Marker | undefined = detectedPreset;
-const scriptPresetOf: (config: object, root: string) => string | undefined = scriptProjectPreset;
 
 function setsNoProject(root: string): boolean {
   const existing = existingConfig(root);
@@ -32,7 +31,9 @@ function setsNoProject(root: string): boolean {
 function frontendEntry(root: string): ProjectEntry | undefined {
   for (const folder of WEB_SOURCE_FOLDERS) {
     const config = { layout: { sourceRoots: [folder] } };
-    const preset = existsSync(path.join(root, folder)) ? scriptPresetOf(config, root) : undefined;
+    const preset = existsSync(path.join(root, folder))
+      ? scriptProjectPreset(config, root)
+      : undefined;
     if (preset !== undefined) {
       return { path: '.', preset };
     }

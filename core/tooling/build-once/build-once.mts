@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mts';
 
 type BuildFiles = { result: string; failure: string; lock: string };
 type Settled = { text: string; failure?: undefined } | { failure: string; text?: undefined };

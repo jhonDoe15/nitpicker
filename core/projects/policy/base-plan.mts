@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runGit } from '../../diff/git/repository/command.mjs';
+import { runGit } from '../../diff/git/repository/command.mts';
 import { declaresProjects } from '../plan/enclosing.mts';
 import { inspectRepository } from '../plan/inspect.mts';
-import { canChangePlan, isPlanInput, withBaseTree as untypedWithBaseTree } from './base-tree.mjs';
+import { canChangePlan, isPlanInput, withBaseTree as untypedWithBaseTree } from './base-tree.mts';
 import { messageOf } from '../../../shared/values/readers.mts';
 import type { MonorepoPlan } from '../project-types.mts';
 

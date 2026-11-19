@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { editDistance } from '../../../shared/messages/closest-match.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';
+import { normalizeProjectPath } from '../../configuration/layers/settings.mts';
 import { projectNames } from './project-names.mts';
 import type { PlanProject } from '../project-types.mts';
 

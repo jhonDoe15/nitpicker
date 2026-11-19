@@ -5,7 +5,7 @@ import {
   PYTHON_SKIPPED_FOLDERS,
   SCRIPT_SKIPPED_FOLDERS,
   skippedFolderGlobs as untypedSkippedFolderGlobs,
-} from '../../tooling/jscpd/skipped-folders.mjs';
+} from '../../tooling/jscpd/skipped-folders.mts';
 import scriptConfig from '../../../languages/typescript/preset/defaults/jscpd.json' with { type: 'json' };
 import { NON_PRODUCTION_GLOBS as UNTYPED_NON_PRODUCTION_GLOBS } from '../../../languages/python/adapters/analysis/python-sources.mts';
 import { skippedFoldersOf } from '../types/config-readers.mts';

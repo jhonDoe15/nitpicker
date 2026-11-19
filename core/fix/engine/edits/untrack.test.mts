@@ -5,7 +5,7 @@ import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-r
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
 import { applyFixes, createSnapshot } from '../../test-support/engine-views.mts';
 import type { Edit } from '../../test-support/engine-views.mts';
-import { isTracked, untrackPath } from './untrack.mjs';
+import { isTracked, untrackPath } from './untrack.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 

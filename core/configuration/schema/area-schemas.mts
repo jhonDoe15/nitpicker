@@ -13,8 +13,8 @@ import {
   CLASS_LIMIT_DEFAULTS,
   FOLDER_DEPTH_DEFAULTS,
 } from '../../../shared/project-rules/size-rules.mjs';
-import { sourceRoots, testRoots } from '../../../languages/typescript/preset/layout.mjs';
-import { stylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
+import { sourceRoots, testRoots } from '../../../languages/typescript/preset/layout.mts';
+import { stylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mts';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mts';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mts';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mts';

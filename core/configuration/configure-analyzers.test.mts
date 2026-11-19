@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mts';
+import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mts';
 import {
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,

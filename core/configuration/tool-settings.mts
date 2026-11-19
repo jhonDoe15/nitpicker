@@ -8,7 +8,7 @@ import {
 import { configError, DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../shared/config.mjs';
 import { isPlainObject } from './views/config-views.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
-import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
+import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mts';
 import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 

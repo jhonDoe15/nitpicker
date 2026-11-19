@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { realTemporaryDirectory } from '../../tooling/temporary-files.mjs';
+import { realTemporaryDirectory } from '../../tooling/temporary-files.mts';
 import { createJournal } from './journal.mts';
 import { restoreJournal } from './restore.mts';
 import { errorCode } from '../typed/error-text.mts';

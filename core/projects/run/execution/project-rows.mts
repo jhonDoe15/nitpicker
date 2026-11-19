@@ -2,8 +2,8 @@ import path from 'node:path';
 import { clearDiffReports } from '../../../diff/reporting/reporters.mts';
 import { clearSnapshotReports } from '../../../snapshot/reporters.mts';
 import { reportFolder as untypedReportFolder } from '../../plan/project-entry.mts';
-import { projectHeading } from '../../report/console.mjs';
-import { outcomeOf, writeFailureReport } from '../../report/outcome.mjs';
+import { projectHeading } from '../../report/console.mts';
+import { outcomeOf, writeFailureReport } from '../../report/outcome.mts';
 import type { SharedWorktree } from '../../../diff/comparison/snapshots/run-types.mts';
 import type {
   Comparison,
@@ -58,6 +58,9 @@ function runSelected(
   try {
     const options = { ...cli.options, ...extras.options, outputRoot: reportRoot };
     const exitCode = runProject(options, extras.cli);
+    if (typeof exitCode !== 'number') {
+      throw new TypeError('a project run in this process must finish before its outcome is read');
+    }
     return outcomeOf({ exitCode, reportRoot, error: undefined });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
