@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { compileErrorsOf } from '../../builds/compile-errors/compile-findings.mjs';
+import { compileErrorsOf } from '../../builds/compile-errors/compile-findings.mts';
 import { dependencyFile } from '../quick/maven-build-arguments.mts';
 import { relativeTo } from '../module/module-paths.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
