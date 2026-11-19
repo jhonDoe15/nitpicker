@@ -1565,6 +1565,15 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   that catches `KeyError`, `LookupError` or `Exception`, a mapping the code builds itself, a typed
   model, and test files. The message names the allowed form: `.get(key)` with the missing case handled, a
   `key in mapping` guard or a `try` that catches `KeyError`.
+  comprehension filter) and a parameter of a class that is never falsy
+  (`Path`, a project class) are not reported. A `QuerySet` parameter counts as falsy (an empty,
+  permission-filtered queryset is a valid value), and so does an unannotated parameter that defaults
+  to `None` when the function replaces it with a queryset built from a model manager and queryset
+  methods (`qs = qs or Attribute.objects.filter(owner=user)`); `.first()` and `.get()` are not querysets. A method of a project class derived from `QuerySet` or `Manager`
+  (also behind `as_manager()` or `from_queryset`) counts when it has no annotation or a `QuerySet`
+  annotation and every `return` is a chain on `self` (`self.filter(...)`, `self.get_queryset()...`);
+  a method that returns a row (`self.get(...)`, `.create(...)`) does not. The allowed form tests `None` only:
+  `limit if limit is not None else DEFAULT_LIMIT`, `qs if qs is not None else Row.objects.all()`.
 - `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
   reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
   annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
@@ -1583,6 +1592,17 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   plain `str` or `bool`, `x or ''` and `x or False`, a test that does not use the value, a name the
   function binds again, and test files. When an empty string or `False` must take the same path as
   a missing value, add an exception for the rule.
+  Item 3 of the same rule, a lookup in a mapping of numbers, is reported too: `usage.get("a") or
+usage.get("b") or 0` and `options.get("limit") or 10` on a parameter or annotated local typed
+  `dict[str, int | float]` (also `Mapping`), where `0` is a stored value that the `or` replaces; an
+  `if (v := table.get(k)):` or `v = table.get(k)` followed by `if v:` whose branch stores or returns `v` (an assignment or a `return`; a value only
+  passed to a call is not); and an `or` chain of two or more `.get(key)` lookups on a name assigned once
+  from `json.loads(...)`, `.json()` or `.model_dump()` that ends in a number or `None` (a text, list or
+  dict fallback is not reported). An `or` chain in a condition (`if`, `while`, `assert`, `bool(...)`) is not
+  reported. Not reported: `table.get(key) or 0`, a lookup with a default
+  argument, a mapping of strings or an unannotated one, a rebound mapping, a test whose branch does
+  not use the value, and a single lookup of parsed data with a default. The allowed form tests
+  `None` only: `value = table.get(key)`, then `value if value is not None else DEFAULT`.
 - `http-value-case` reports HTTP text compared by exact case, in production code. A value read by
   `request.headers["x"]`, `request.headers.get("x")` (any mapping or attribute named `*headers`) or
   `request.content_type`, of a header whose value is case-insensitive (`Content-Type`, `Accept*`,
@@ -1747,9 +1767,19 @@ ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A l
   last operand of an `and`/`or` outside a condition, an `or` that ends in `0` (`count or 0`), a name
   the function binds again (`count = len(rows)`, a loop target, an import, a nested `def`, an
   `except ... as` or a `match` capture; `count -= 1` and `count = count - 1` keep it a number), a
-  name of a nested function, a field of a class from another module, and a value whose type is
-  not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
-  `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
+  name of a nested function, and a value whose type is not known. The sources are wider than the
+  annotated names: a number field of a project class read through a parameter annotated with that class,
+  including one imported from another module (the annotation must resolve to the project class through its
+  import; a library class of the same name does not count), the result of a call whose project function has a
+  number return annotation (`if (state := running_state()):`, a local assigned once from it, or the call
+  tested directly; a method call counts only when its receiver is `self` or `cls` in the defining class or a
+  name annotated with that class), a `timedelta`, and a `QuerySet` (a parameter, annotated local, or a local
+  assigned once from a model manager chain made only of queryset methods such as `Row.objects.filter(...)`,
+  `.exclude()`, `.order_by()`, `.values()`, `.annotate()` or `.select_related()`; `.get()`,
+  `.create_user()`, `.get_current()` and a non-Django `self.objects.keys()` are not querysets). The allowed form compares: `count > 0`, `count != 0`,
+  `index != -1`, `count is not None` for an optional value, `qs.exists()` for a queryset and
+  `len(items) > 0` when emptiness is meant. Typed library stubs are not read, so a call to a
+  library function that returns a number is not a source. This is the counterpart of the TypeScript preset's
   `nitpicker/strict-boolean-expressions`.
 - `untrimmed-request-text` reports request text that reaches a lookup without `strip()`, in a route
   handler (a decorated FastAPI or Flask function) or a function taking `request` (a Django view) of a module

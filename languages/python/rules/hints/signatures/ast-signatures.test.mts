@@ -15,6 +15,11 @@ describe('signature rule messages', () => {
       '`page(limit)` replaces a falsy argument with a default, so `0`, `""`, `[]` and `False` count as not given',
     ],
     [
+      'number-truthiness',
+      'run(state)',
+      '`run(state)` is a number, zero duration or queryset tested for truth, so `0` or an empty value reads as false or missing',
+    ],
+    [
       'null-branch-fall-through',
       'value|value.name',
       'The null branch handles `value` and then falls through to `value.name`, which uses `value`',
@@ -53,6 +58,8 @@ describe('signature rule messages', () => {
   it.each([
     ['tri-state-boolean', 'an enum'],
     ['falsy-default', 'is not None'],
+    ['number-truthiness', 'qs.exists()'],
+    ['presence-truthiness', 'table.get(key)'],
     ['parameter-mutation', 'Build and return a new value'],
     ['compatibility-shim', 'delete the old name'],
   ])('name the allowed form of %s and end with the exception route', (rule, form) => {
