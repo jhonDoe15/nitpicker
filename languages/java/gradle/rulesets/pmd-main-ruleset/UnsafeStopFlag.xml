@@ -1,0 +1,40 @@
+  <rule name="UnsafeStopFlag" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This boolean flag is polled in the loop of run() or call() and set from another method, but it is neither volatile nor guarded by one lock. Without a happens-before edge the JIT may read it once and keep it in a register, so the loop never sees the write and the shutdown hangs or the worker spins forever; the class compiles and passes on a fast machine. Declare it volatile (private volatile boolean running = true), use an AtomicBoolean, or read and write it under the same lock. An exception fits a flag that is written only after the thread has stopped, or one that is confined to a single thread by design.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $loops := ('run', 'call', 'doRun', 'runLoop', 'loop'),
+    $guarded := function($node) {
+      exists($node/ancestor::SynchronizedStatement)
+      or exists($node/ancestor::MethodDeclaration[1][ModifierList/@ExplicitModifiers = 'synchronized'])
+    },
+    $isField := function($n, $name) {
+      exists($n[self::VariableAccess[@Name = $name]
+                | self::FieldAccess[@Name = $name][*[1][self::ThisExpression]]])
+    }
+return //ClassDeclaration[ExtendsList/ClassType[@SimpleName = 'Thread']
+                           or ImplementsList/ClassType[@SimpleName = ('Runnable', 'Callable')]]
+  /ClassBody/FieldDeclaration[PrimitiveType[@Kind = 'boolean']]
+    [not(ModifierList/@ExplicitModifiers = ('volatile', 'final'))]
+  /VariableDeclarator
+  [let $name := @Name,
+       $class := ancestor::ClassDeclaration[1],
+       $readers := $class/ClassBody/MethodDeclaration[@Name = $loops][empty(.//VariableId[@Name = $name])],
+       $conditions := $readers/(.//WhileStatement/*[1] | .//DoStatement/*[last()]
+                                | .//ForStatement/*[not(self::ForInit or self::ForUpdate or self::Block or ends-with(local-name(), 'Statement'))][1]
+                                | .//*[self::WhileStatement or self::DoStatement or self::ForStatement]/Block/IfStatement
+                                    [*[2][self::BreakStatement or self::ReturnStatement
+                                          or self::Block/*[self::BreakStatement or self::ReturnStatement]]]/*[1]),
+       $reads := $conditions/descendant-or-self::*[self::VariableAccess or self::FieldAccess]
+                   [$isField(., $name)],
+       $writes := $class/ClassBody//AssignmentExpression[$isField(*[1], $name)]
+                    [let $method := ancestor::MethodDeclaration[1]
+                     return exists($method) and empty($method//VariableId[@Name = $name])
+                       and not(some $r in $readers satisfies $r is $method)]
+   return exists($reads) and exists($writes)
+     and (some $access in ($reads, $writes) satisfies not($guarded($access)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
