@@ -120,6 +120,7 @@
   "pmd/LockOrderInversion": ["bug"],
   "pmd/LogExceptionFirst": ["reliability"],
   "pmd/LogFormatArguments": ["bug"],
+  "pmd/LogPlaceholderSlip": ["bug"],
   "pmd/LogStringConcatenation": ["performance"],
   "pmd/LoggerForOtherClass": ["bug", "maintainability"],
   "pmd/LogicInversion": ["simplification"],
