@@ -32,6 +32,7 @@
   "python-rules/empty-sequence-access": ["bug"],
   "python-rules/enum-string-constants": ["maintainability"],
   "python-rules/env-none-only-check": ["bug"],
+  "python-rules/except-misses-raised-exception": ["bug", "reliability"],
   "python-rules/exhaustive-enum-predicate": ["bug"],
   "python-rules/explicit-any": ["maintainability"],
   "python-rules/falsy-default": ["bug"],

@@ -10,4 +10,18 @@ export const FAILURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Put the undo step in `finally`: `token = var.set(value)`, then `try: yield` (or the work) and `finally: var.reset(token)`. In a context manager that holds several undo steps, register each one with `contextlib.ExitStack().callback(...)`, or write a class with `__exit__`.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['except-misses-raised-exception'],
+    describe: (subject) => {
+      const [call = '', missing = ''] = subject.split(' misses ');
+      const fix =
+        missing === 'ValueError'
+          ? 'catch the common base, `except ValueError` (it covers `JSONDecodeError` and `UnicodeDecodeError`)'
+          : `add \`${missing}\` to the handler`;
+      return `\`${call}\` can also raise ${missing}, which the \`except\` clause does not list: that failure escapes the handler and crashes the request or task instead of taking the fallback or error path; ${fix}`;
+    },
+    allowed:
+      'Catch the common base: `except ValueError` for `json.loads` and `request.json()` (it covers `JSONDecodeError` and `UnicodeDecodeError`), `except (ValueError, TypeError, OverflowError)` for `timedelta(**value)` built from input. `except Exception` fits when any failure should take the same path.',
+  },
 ];
