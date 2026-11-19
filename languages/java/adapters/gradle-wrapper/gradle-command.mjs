@@ -12,54 +12,64 @@ const PINNED_GRADLE = /^distributionUrl=.*gradle-([\d.]+(?:-[\w.]+)?)-(?:bin|all
 export function gradleTarget(options) {
   return wrapperTarget({
     ...options,
-    args: [...isolatedProjectsOff(options.projectRoot), ...options.args],
+    args: [...isolatedProjectsOff(options.projectRoot, options.environment ?? {}), ...options.args],
     wrapper: 'gradlew',
     windowsWrapper: 'gradlew.bat',
     tool: 'gradle',
   });
 }
 
+function childPath(folder, name) {
+  const base = folder.endsWith(path.sep) ? folder : folder + path.sep;
+  const full = path.resolve(folder, name);
+  return full.startsWith(base) ? full : undefined;
+}
+
+function isFile(file) {
+  return file !== undefined && statSync(file, { throwIfNoEntry: false })?.isFile() === true;
+}
+
+function ancestors(folder) {
+  const parent = path.dirname(folder);
+  return parent === folder ? [folder] : [folder, ...ancestors(parent)];
+}
+
 function buildFolders(projectRoot) {
-  const folders = [];
-  let folder = path.resolve(projectRoot);
-  for (;;) {
-    folders.push(folder);
-    const parent = path.dirname(folder);
-    if (
-      parent === folder ||
-      BUILD_ROOT_MARKERS.some((marker) => existsSync(path.join(folder, marker)))
-    ) {
-      return folders;
-    }
-    folder = parent;
-  }
+  const folders = ancestors(path.resolve(projectRoot));
+  const root = folders.findIndex((folder) =>
+    BUILD_ROOT_MARKERS.some((marker) => {
+      const file = childPath(folder, marker);
+      return file !== undefined && existsSync(file);
+    }),
+  );
+  return root === -1 ? folders : folders.slice(0, root + 1);
 }
 
 function nearestFile(projectRoot, name) {
   return buildFolders(projectRoot)
-    .map((folder) => path.join(folder, name))
-    .find((file) => statSync(file, { throwIfNoEntry: false })?.isFile() === true);
+    .map((folder) => childPath(folder, name))
+    .find(isFile);
 }
 
 function textIfFile(file) {
-  return statSync(file, { throwIfNoEntry: false })?.isFile() === true
-    ? readFileSync(file, 'utf8')
-    : '';
+  return isFile(file) ? readFileSync(file, 'utf8') : '';
 }
 
-export function gradlePropertiesTexts(projectRoot, environment = process.env) {
+export function gradlePropertiesTexts(projectRoot, environment) {
   const userHome = environment['GRADLE_USER_HOME'] || path.join(homedir(), '.gradle');
-  return [...buildFolders(projectRoot), userHome].map((folder) =>
-    textIfFile(path.join(folder, 'gradle.properties')),
+  return [...buildFolders(projectRoot), path.resolve(userHome)].map((folder) =>
+    textIfFile(childPath(folder, 'gradle.properties')),
   );
 }
 
-export function isolatedProjectsOff(projectRoot, environment = process.env) {
+export function isolatedProjectsOff(projectRoot, environment) {
   const properties = gradlePropertiesTexts(projectRoot, environment);
   const names = properties.flatMap((text) =>
     [...text.matchAll(ISOLATED_PROJECTS)].map((match) => match[1]),
   );
-  return [...new Set(names)].toSorted().map((name) => `-D${name}=false`);
+  return [...new Set(names)]
+    .toSorted((left, right) => left.localeCompare(right))
+    .map((name) => `-D${name}=false`);
 }
 
 export function pinnedGradleVersion(projectRoot) {

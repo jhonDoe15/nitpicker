@@ -27,6 +27,7 @@ type StageRun = Omit<StageCheck, 'command'> & {
   readonly projectRoot: string;
   readonly gradle: string | undefined;
   readonly spawn: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 const RATE_LIMIT_ADVICE =
   'A package repository rate-limited the build (HTTP 429), so this is not a problem in the project: rerun later.';
@@ -108,13 +109,14 @@ export function runGradleStage({
   checkTests,
   policy,
   spawn,
+  environment,
 }: StageRun): void {
-  const target: unknown = gradleTarget({ projectRoot, configured: gradle, args });
+  const target: unknown = gradleTarget({ projectRoot, configured: gradle, args, environment });
   const command = textOf(fieldOf(target, 'command'));
   const result = runGradle(
     command,
     textsOf(fieldOf(target, 'args')),
-    gradleOptions(fieldOf(target, 'shell'), { projectRoot, budget, spawn }),
+    gradleOptions(fieldOf(target, 'shell'), { projectRoot, budget, spawn, environment }),
   );
   assertGradleSucceeded(result, projectRoot, {
     reportBase,

@@ -81,14 +81,16 @@ describe.skipIf(!enabled)(
     it.each(['quick', 'full'] as const)('runs PMD on each source file once in a %s run', (run) => {
       const files = pmdFilesByReport(ranOf(runs, run).reports).flat();
 
-      expect(files.toSorted()).toEqual([...new Set(files)].toSorted());
-      expect(files).toContain('Counter.java');
+      expect(files.toSorted()).toEqual(['Counter.java', 'Greeter.java']);
     });
 
     it('compiles the module whose module path comes from an argument provider with Error Prone', () => {
       expect(
-        rulesAt(ranOf(runs, 'quick').findings, 'platform/api/src/main/java/demo/api/Greeter.java'),
-      ).toContain('errorprone SystemOut');
+        rulesAt(
+          ranOf(runs, 'quick').findings,
+          'platform/api/src/main/java/demo/api/Greeter.java',
+        ).filter((rule) => rule.startsWith('errorprone ')),
+      ).toEqual(['errorprone SystemOut']);
     });
 
     it('measures coverage in the full run, where check depends on jacocoTestReport', () => {

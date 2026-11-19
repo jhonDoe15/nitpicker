@@ -12,7 +12,6 @@ type ProjectFiles = Readonly<Record<string, { readonly text?: string; readonly m
 
 const roots: string[] = [];
 let previousGradle: string | undefined;
-let previousUserHome: string | undefined;
 
 function project(files: ProjectFiles = {}): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-')));
@@ -33,21 +32,14 @@ function wrapper(text = EXECUTABLE.text): ProjectFiles {
 
 beforeEach(() => {
   previousGradle = process.env['NITPICKER_GRADLE'];
-  previousUserHome = process.env['GRADLE_USER_HOME'];
   delete process.env['NITPICKER_GRADLE'];
-  process.env['GRADLE_USER_HOME'] = project();
 });
 
 afterEach(() => {
-  for (const [name, value] of [
-    ['NITPICKER_GRADLE', previousGradle],
-    ['GRADLE_USER_HOME', previousUserHome],
-  ] as const) {
-    if (value === undefined) {
-      delete process.env[name];
-    } else {
-      process.env[name] = value;
-    }
+  if (previousGradle === undefined) {
+    delete process.env['NITPICKER_GRADLE'];
+  } else {
+    process.env['NITPICKER_GRADLE'] = previousGradle;
   }
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -110,11 +102,11 @@ describe.skipIf(process.platform === 'win32')('gradleTarget', () => {
   it('does not look above the root of the build or the repository', () => {
     const outer = project({ ...wrapper(), 'inner/settings.gradle': {}, 'other/.git': {} });
 
-    for (const inner of ['inner', 'other']) {
-      expect(
+    expect(
+      ['inner', 'other'].map((inner) =>
         gradleTarget({ projectRoot: path.join(outer, inner), configured: undefined, args }),
-      ).toEqual(plain('gradle'));
-    }
+      ),
+    ).toEqual([plain('gradle'), plain('gradle')]);
   });
 
   it('uses the Maven wrapper at the root of the reactor for one of its modules', () => {
@@ -152,10 +144,12 @@ describe.skipIf(process.platform === 'win32')('gradleTarget', () => {
       'settings.gradle': {},
     });
 
-    expect(gradleTarget({ projectRoot: root, configured: undefined, args })).toEqual(
+    const environment = { GRADLE_USER_HOME: project() };
+
+    expect(gradleTarget({ projectRoot: root, configured: undefined, args, environment })).toEqual(
       plain(path.join(root, 'gradlew'), ['-Dorg.gradle.isolated-projects=false', ...args]),
     );
-    expect(isolatedProjectsOff(project({ 'settings.gradle': {} }))).toEqual([]);
+    expect(isolatedProjectsOff(project({ 'settings.gradle': {} }), environment)).toEqual([]);
   });
 
   it('reads Isolated Projects from the Gradle user home and under its earlier property name', () => {
@@ -234,7 +228,10 @@ describe('gradleTarget on Windows', () => {
 
 describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
   const failing = '#!/bin/sh\necho "ran $0 in $PWD" >&2\nexit 1\n';
-  function messageOf(root: string, options: { readonly gradle: string | undefined }): string {
+  function messageOf(
+    root: string,
+    options: { readonly gradle: string | undefined; readonly environment?: NodeJS.ProcessEnv },
+  ): string {
     return textOf(analyzeJavaSnapshot(root, options).findings[0]?.message);
   }
 
@@ -270,15 +267,17 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
         text: 'distributionUrl=https\\://services.gradle.org/distributions/gradle-9.9.1-all.zip\n',
       },
     });
-    const previousPath = process.env['PATH'];
-    process.env['PATH'] = `${tools}${path.delimiter}${previousPath ?? ''}`;
-    try {
-      expect(messageOf(root, { gradle: undefined })).toContain(
-        'The build pins Gradle 9.9.1 in gradle/wrapper/gradle-wrapper.properties, but no gradlew script',
-      );
-    } finally {
-      process.env['PATH'] = previousPath;
-    }
+    const environment = {
+      ...process.env,
+      PATH: `${tools}${path.delimiter}${process.env['PATH'] ?? ''}`,
+    };
+
+    expect(messageOf(root, { gradle: undefined, environment })).toBe(
+      `Java preset failed on your change: ran ${tools}/gradle in .\n` +
+        'The build pins Gradle 9.9.1 in gradle/wrapper/gradle-wrapper.properties, but no gradlew ' +
+        'script was found, so the gradle on the PATH ran instead: add the wrapper script or set ' +
+        `NITPICKER_GRADLE.\n${textOf(linkSentence('gradleFails'))}`,
+    );
   });
 
   it('runs the configured command instead of the wrapper', () => {

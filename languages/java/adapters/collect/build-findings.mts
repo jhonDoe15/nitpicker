@@ -62,13 +62,14 @@ function runJavaPreset(
     budget = budgetOf(gradleBudget()),
     testsFailedModules = [],
     testsSkipped,
+    environment,
   }: PresetRun,
 ): void {
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlinArguments(kotlinRun, (kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
-      ...gradleWorkerArguments(projectRoot),
+      ...gradleWorkerArguments(projectRoot, environment ?? {}),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -84,7 +85,17 @@ function runJavaPreset(
       budget,
     });
     const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
+    const options = {
+      projectRoot,
+      gradle,
+      budget,
+      reportBase,
+      since,
+      checkTests,
+      policy,
+      spawn,
+      environment,
+    };
     for (const stage of stages) {
       runGradleStage({ args: stage(), ...options });
     }
