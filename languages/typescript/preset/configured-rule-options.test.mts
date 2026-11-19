@@ -20,9 +20,13 @@ function ruleSetting(entry: Linter.Config | undefined, ruleId: string): Linter.R
   return setting;
 }
 
+function isConfigured(setting: unknown): boolean {
+  return setting !== undefined && setting !== 'off';
+}
+
 function configured(ruleId: string): Linter.RuleEntry {
   return ruleSetting(
-    presetConfig.findLast((entry) => entry.rules?.[ruleId] !== undefined),
+    presetConfig.findLast((entry) => isConfigured(entry.rules?.[ruleId])),
     ruleId,
   );
 }
@@ -129,7 +133,7 @@ async function ruleSettings(policy?: object) {
   const settingOf = (ruleId: string): unknown =>
     listOf(config)
       .map((entry) => fieldOf(fieldOf(entry, 'rules'), ruleId))
-      .findLast((setting) => setting !== undefined);
+      .findLast(isConfigured);
   const optionsOf = (ruleId: string): unknown => listOf(settingOf(ruleId))[1];
   return {
     typeImports: settingOf('@typescript-eslint/consistent-type-imports'),

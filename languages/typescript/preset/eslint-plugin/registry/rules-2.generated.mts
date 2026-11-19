@@ -1,3 +1,6 @@
+import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
+import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
+import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
@@ -40,6 +43,7 @@ import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unm
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
 import { rule as ruleNoUnpagedListing } from '../rules/listings/no-unpaged-listing.mts';
+import { rule as ruleNoUnpinnedAssertion } from '../test-assertions/no-unpinned-assertion.mts';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
@@ -87,6 +91,9 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-secret-in-log': ruleNoSecretInLog,
+  'no-self-recursion': ruleNoSelfRecursion,
+  'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
@@ -129,6 +136,7 @@ export const partRules = {
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
   'no-unpaged-listing': ruleNoUnpagedListing,
+  'no-unpinned-assertion': ruleNoUnpinnedAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,

@@ -72,6 +72,7 @@
   "pmd/NegativeCountArgument": ["bug"],
   "pmd/NewlineOnlyLineSplit": ["bug"],
   "pmd/MalformedQueryText": ["bug", "persistence"],
+  "pmd/NullBranchFallThrough": ["bug"],
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/PairSplitDropsRest": ["bug"],

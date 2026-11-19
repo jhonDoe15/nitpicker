@@ -20,6 +20,7 @@ import { WIRING_RULES } from './wiring/wiring.mjs';
 import { STARTUP_RULES } from './lifecycle/startup-cleanup.mjs';
 import { UNRELEASED_RULES } from './lifecycle/unreleased.mjs';
 import { foreignKeyGate } from '../../../jpa/foreign-keys/key-gate.mjs';
+import { sequenceGate } from '../../../jpa/sequence-ids.mjs';
 
 const RULES = [
   ...BEAN_RULES,
@@ -43,6 +44,27 @@ const RULES = [
   ...LOOP_RULES,
 ];
 
+const SPRING_DATA_RULES = new Set([
+  'SpringDataRowWriteInLoop',
+  'SpringDataNoFlush',
+  'SpringDataNoSaveInLoop',
+  'SpringDataSaveInLoopHelper',
+  'SpringDataNativeQuery',
+]);
+const SPRING_DATA_JAR = /(^|[\\/])spring-data-(commons|jpa)-[^\\/]*\.jar$/u;
+const SPRING_DATA_PACKAGE = 'org.springframework.data.';
+
+function usesSpringData(manifest, projectFiles) {
+  const classpath = manifest.springClasspath ?? [];
+  return (
+    classpath.length === 0 ||
+    classpath.some((entry) => SPRING_DATA_JAR.test(entry)) ||
+    projectFiles.some((file) =>
+      (file.imports ?? []).some(({ path }) => path.startsWith(SPRING_DATA_PACKAGE)),
+    )
+  );
+}
+
 export function springFindings(
   files,
   {
@@ -52,6 +74,7 @@ export function springFindings(
     projectRoot,
     javaRoots,
     foreignKeys = foreignKeyGate(projectRoot),
+    sequenceIds = sequenceGate(projectRoot),
     rules = RULES,
     message = springMessage,
   },
@@ -59,14 +82,17 @@ export function springFindings(
   if (manifest.spring !== true) {
     return [];
   }
+  const springData = usesSpringData(manifest, projectFiles);
   const options = {
     allOpen: manifest.kotlinAllOpen,
     projectFiles,
     checksForeignKeys: foreignKeys,
+    allowsSequenceIds: sequenceIds,
   };
   return springViews({ files, projectFiles, projectRoot, javaRoots }).flatMap((view) =>
     rules
       .flatMap((rule) => rule(view, options))
+      .filter(({ rule }) => springData || !SPRING_DATA_RULES.has(rule))
       .toSorted((left, right) => left.line - right.line)
       .map(({ rule, line, symbol, key }) =>
         finding({

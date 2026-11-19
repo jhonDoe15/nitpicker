@@ -88,3 +88,8 @@ function nextArgumentsEnd(code, from) {
 export function afterCall(code, from) {
   return chainOf(from, (position) => nextArgumentsEnd(code, position)).at(-1) ?? from;
 }
+
+export function afterGroup(code, at, opening) {
+  const open = opening.exec(code.slice(at));
+  return open === null ? at : closingIndex(code, at + open[0].length - 1) + 1;
+}

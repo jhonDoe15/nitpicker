@@ -14,6 +14,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
   `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`
   (`out = null`); restructure instead.
+- Spring `Assert.notNull` checks for null, nothing else (`pmd/AssertNotNullWrongCheck`): test a condition with
+  `Assert.isTrue(count >= 0, "...")`, and check a `String`, collection or map that must not be empty with
+  `Assert.hasText`, `hasLength` or `notEmpty`. `Assert.notNull(count >= 0, ...)`, `Assert.notNull(longValue, ...)`
+  and `Assert.notNull(name, "name must not be empty")` always pass.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
@@ -47,10 +51,26 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `\r` on each line (`pmd/NewlineOnlyLineSplit`).
 - Truncate text after `Character.isHighSurrogate(text.charAt(end - 1))` (then `end--`), or by code point, not
   `text.substring(0, max)`, which can split an emoji (`pmd/SurrogateSplittingCut`).
+- Library getters that answer `null` are checked before use: `request.getQueryString()`, `getHeader(name)`,
+  `getParameter(name)`, `getPathInfo()`, `getSession(false)` and
+  `Package.getImplementationVersion()`. Compare with `null`, or fall back with
+  `Objects.requireNonNullElse(request.getParameter("page"), "1")` (`pmd/NullableLibraryResult`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
   `Instant`, never `(int) (System.currentTimeMillis() / 1000)` (`pmd/EpochNarrowedToInt`).
+- Widen before you multiply: `System.currentTimeMillis() + ttlSeconds * 1000L`, `(long) hour * 60`,
+  `TimeUnit.SECONDS.toMillis(ttlSeconds)` or `Math.multiplyExact`; an `int` product added to a `long` has
+  already overflowed (`pmd/IntProductWidenedLate`).
+- Ask the subtype question from the right side before casting to `Foo`: `Foo.class.isAssignableFrom(type)`
+  (`ClassUtils.isAssignable(Foo.class, type)`) or `value instanceof Foo`; `type.isAssignableFrom(Foo.class)`
+  accepts only `Foo` and its supertypes (`pmd/ReversedAssignableCheck`).
+- Do not cast a value from a `Map<String, Object>` or `Properties` read from JDBC, YAML or JSON straight to a number
+  or date: use `((Number) row.get("count")).intValue()`, `Integer.parseInt(String.valueOf(value))`,
+  `rs.getObject(column, LocalDate.class)` or a typed binding (`pmd/MapValueCastToNumber`).
+- Use `getName()` (or `getTypeName()`) for keys, builders and messages: `getCanonicalName()` is `null` for anonymous and
+  local classes and lambdas; when the dotted source name is needed, fall back with
+  `name != null ? name : type.getName()` (`pmd/CanonicalNameMayBeNull`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
@@ -71,6 +91,15 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/GeneratedMemberCycle`). `@Data` or `@EqualsAndHashCode` on a subclass of a class with fields
   states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
   (`pmd/GeneratedEqualsSkipsSuperclass`).
+- `equals` and `hashCode` read the same fields: `hashCode` may use a subset of what `equals` compares, never a field
+  `equals` ignores, and never `super.hashCode()` or `System.identityHashCode(this)` next to an `equals` that compares
+  fields (`pmd/HashCodeDisagreesWithEquals`). Keep mutable state out of both.
+- A field the constructor sets and a getter exposes belongs in `equals` and `hashCode`: add the new field to both
+  methods (`Objects.equals(extension, that.extension)`, `Objects.hash(groupId, artifactId, extension)`), or mark it
+  `transient` or name it as a cache, lock or listener when it is not part of the value (`pmd/EqualsLeavesOutField`).
+- A copy constructor, `clone()`, `toBuilder()` or `copy()` copies every field the class declares: when you add a
+  field, add it to the copy too (`.tracker(this.tracker)`, `this.tracker = other.tracker`). A field that starts fresh
+  in the copy (a lock, a cache, a counter, a listener list) is `transient` or named as such (`pmd/CopyMethodDropsField`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it, with no `default` (`pmd/ExhaustiveSwitchHasDefault`, also for
   a pattern switch). A classic `switch` statement needs `default`.
@@ -81,6 +110,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
   parameters on to another method of the same class; call that method (or, when it is less visible, rename it to the alias's name and delete the alias).
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
+- An override that forwards to `super` or to a delegate of its own supertype passes every parameter it
+  receives (`return delegate.render(template, locale, strict);`), not the shorter overload that drops
+  one (`pmd/ForwardDropsParameter`).
+- Fill each setter or builder slot with the value named for it (`config.timeColumn(timeColumn)`, not
+  `config.tableName(timeColumn)`), and pass every member of a numbered family (`type1, type2, type3`),
+  not one twice (`pmd/SiblingValuePassed`).
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
@@ -104,6 +139,19 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
   (`pmd/NullMapValue`).
+- An absent `Optional` is turned into a value with `orElse(default)`, `orElseThrow(() -> new NotFoundException(id))`
+  or `orElse(null)` plus a null check where it is used; `orElseGet(null)` passes a null `Supplier` and throws
+  when the value is absent (`pmd/OptionalOrElseGetNull`).
+- A `Collectors.toMap` over parsed text or request data (a split string, file lines, cookies, headers) has a merge
+  function that says what a repeated key means, `toMap(Cookie::getName, Cookie::getValue, (first, second) -> first)`,
+  or uses `groupingBy` (`pmd/ToMapDuplicateKey`).
+- Output whose order matters (generated files, SQL column lists, schemas, config text) is built from a
+  `LinkedHashMap`, `LinkedHashSet`, `TreeMap` or a sorted stream, not from a `HashMap` or `HashSet` joined or appended in
+  iteration order (`pmd/HashOrderInOrderedOutput`).
+- A collection that the code changes later is built mutable: `new ArrayList<>(List.of("#"))`, not `Arrays.asList`, `List.of`, `Map.of`, `Collections.emptyList()` or `Stream.toList()`, whose `add`, `put` and `remove` throw
+  `UnsupportedOperationException` (`pmd/ImmutableCollectionChanged`).
+- A copy constructor copies the collections it takes from the other object (`new ArrayList<>(other.items)`,
+  `List.copyOf`) when either object changes them later (`pmd/CopyConstructorSharesCollection`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
@@ -118,6 +166,16 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target
   first (`pmd/PatternTranslation`): `Pattern.quote(glob).replace("*", ".*")`, never the raw value; for `LIKE`
   escape `%`, `_` and the escape character, then map the wildcards.
+- A password or secret digest is never compared with `equals` (`pmd/SecretDigestEquals`): check a password with
+  `passwordEncoder.matches(raw, stored)` (a salted encoder never returns the stored value again), and compare an
+  HMAC or a digest of a secret with `MessageDigest.isEqual(expected, actual)`, which takes constant time.
+- Resolve every string attribute of an annotation the way its siblings are (`pmd/AnnotationAttributeNotResolved`):
+  when a method passes `listener.topics()` and `listener.group()` through `resolve(...)`,
+  `resolveEmbeddedValue` or `evaluate(...)`, pass `listener.consumes()` through it too, so a placeholder or
+  expression in it is not taken literally. An attribute that is meant to be literal stays raw.
+- A loop uses its loop variable (`pmd/LoopVariableUnused`): `for (String name : names) ctx.getBean(name, type)`,
+  `delegates.get(i).handle(ctx)`, not `names[0]` or `delegates.get(0)` on every pass. A loop that only repeats
+  work names its variable `ignored`.
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
@@ -150,3 +208,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.
 - An object-store or search listing follows its pages (`pmd/UnpagedListing`): `listObjectsV2Paginator(request)` or a loop on
   `isTruncated()` and `nextContinuationToken()`, and a RediSearch query sets `limit(offset, count)` and loops.
+- A null branch that does not leave is not followed by a use of the same value
+  (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
+  branch with `return` or `throw`, or put the use in an `else`.

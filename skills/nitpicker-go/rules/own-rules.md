@@ -94,6 +94,9 @@ the allowed form and ends with its exception entry.
   keep the `time.Time` and use `time.Since(start)` instead of subtracting two `time.Now().Unix()` values.
 - A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
   `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
+- A nil branch that does not leave is not followed by a use of the same value
+  (`go-rules/nil-branch-fall-through`): `if v == nil { log.Println(...) }` then `v.Field` panics on the nil
+  path. End the branch with `return` (or `continue`), or use an `else`.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
   constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
   product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison

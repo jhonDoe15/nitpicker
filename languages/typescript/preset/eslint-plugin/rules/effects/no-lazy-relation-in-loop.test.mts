@@ -96,6 +96,10 @@ tester.run('no-lazy-relation-in-loop', rule, {
       'for (const invoice of await invoices.find()) { use(await invoice.owner); }',
       'const found = await orders.find(); for (const order of found) { const { buyer } = order; use(await buyer); }',
       "const found = await orders.find({ relations: ['customer'] }); for (const order of found) { const { customer } = order; use(await customer); }",
+      'const found = await orders.find(); for (const order of found) { const { ...rest } = order; use(rest); }',
+      'const found = await orders.find(); for (const { customer } of found) { use(await customer); }',
+      'const found = await orders.find(); for (const order of found) { const { customer = null } = order; use(await customer); }',
+      'const found = await orders.find(); for (const order of found) { const { [key]: value } = order; use(await value); }',
     ].map((body) => typed(inRun(body))),
     ...[
       'const found = await orders.find(); for (const order of found) { use(plain(order)); }',
@@ -139,6 +143,9 @@ tester.run('no-lazy-relation-in-loop', rule, {
     ),
     invalid(
       'const found = await orders.find(); for (const order of found) { const { customer } = order; use(await customer); }',
+    ),
+    invalid(
+      'const found = await orders.find(); for (const order of found) { const { customer: owner } = order; use(await owner); }',
     ),
     invalid(`const found = await orders.find({ relations: ['lines'] }); ${loop}`),
     invalid(`const found = await orders.findBy({ total: 1 }); ${loop}`),

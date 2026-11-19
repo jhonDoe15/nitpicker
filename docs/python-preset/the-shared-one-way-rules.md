@@ -59,6 +59,7 @@ are listed at the end.
 | Precondition messages                           | the message names the value that is checked                                                                                                                                            | `precondition-message-names-other-value` (script)                                                                                                                                                                                                                                                                                                                                   |
 | Query text built from parts                     | a placeholder after each operator, one value per column, a space before each fragment                                                                                                  | `malformed-query-text` (script)                                                                                                                                                                                                                                                                                                                                                     |
 | Listings                                        | `get_paginator("list_objects_v2")`, a `NextContinuationToken` loop, `Query(...).paging(offset, count)`                                                                                 | `unpaged-listing` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| Null branch that continues                      | `if x is None:` then `return` (or `else:`), so the null case is handled once                                                                                                           | `null-branch-fall-through` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Host and port values                            | `urllib.parse.urlsplit('//' + host)` and its `.hostname` and `.port`, or `ipaddress.ip_address`                                                                                        | `host-port-colon-split` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Lookup keys from joined text                    | a tuple key (`(tenant, name)`), a `NamedTuple` or a frozen dataclass, not `f"{tenant}:{name}"`                                                                                         | `delimited-lookup-key` (script)                                                                                                                                                                                                                                                                                                                                                     |
@@ -77,6 +78,7 @@ are listed at the end.
 | Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                                                  | `lazy-relation-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Field resolvers per parent                      | a `DataLoader` created once per request (`strawberry.dataloader.DataLoader`, `aiodataloader`); data already on the parent                                                              | `resolver-query-per-parent` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
+| Cache writes inside a transaction               | write the cache after the commit: `transaction.on_commit(lambda: cache.delete(key))` in Django, after the `session.begin()` block or in an `after_commit` event in SQLAlchemy          | `cache-write-in-transaction` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Retries after a stale row                       | read the row again by id inside each attempt and apply the change again (`session.get(Order, order_id)`, then `commit()`)                                                              | `stale-retry` (script)                                                                                                                                                                                                                                                                                                                                                              |
 | Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                                                 | `dual-write-without-outbox` (script)                                                                                                                                                                                                                                                                                                                                                |
@@ -844,7 +846,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   (`requests`, `httpx`, `aiohttp`, `sqlite3`, `psycopg`, `asyncpg`, `pymongo`, `redis`, `boto3` clients by
   service, `Session` of SQLAlchemy), from the project's own functions (a function has the kinds of the
   calls in its body and of the project functions it calls, so the finding names the path: `fetch_order()`,
-  which calls `requests.get()`; a call is followed into a nested function, a method of `self`, of a local
+  which calls `requests.get()`; calls inside a module-level memo, the branch that tests a `global` name for
+  `None` or falsiness and assigns it (or the code after an early return of it), and in a `functools.cache`
+  function without parameters, run once per process and are not counted; a call is followed into a nested function, a method of `self`, of a local
   or annotated instance (`client = PriceClient()`, `PriceClient().price()`, `self.client: PriceClient`)
   and a static or class method called through the class), and, where no import tells, from the receiver
   name (`repo`, `db`, `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes
@@ -938,6 +942,19 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   The message says the connection stays checked out for the remote latency and names the allowed
   forms: call before the transaction or after the commit, and, when the remote effect must match the
   outcome of the transaction, an outbox row written inside it and sent by a worker.
+- `cache-write-in-transaction` reports a cache write inside the same transaction scopes (`with
+transaction.atomic():`, `@transaction.atomic`, `session.begin()`, `engine.begin()` and the others
+  above): Django `cache` and `caches[...]` from `django.core.cache` calling `set`, `add`, `delete`,
+  `set_many`, `delete_many`, `incr`, `decr`, `touch`, `clear`, `get_or_set` or `incr_version`, and a
+  redis client (a value built by `redis.Redis`, `redis.from_url`, `valkey` or `pymemcache`, or a name
+  with `redis` or `cache` in it) calling `set`, `setex`, `delete`, `hset`, `expire`, `incr` and the other
+  write commands. A module-level or instance `dict` counts only when `d[key] = value` stores a value that
+  comes from a write in the same block: the result of `Model.objects.create(...)`, `get_or_create(...)`,
+  an object passed to `session.add(...)` or saved with `save()`, or a value computed from one. A dict
+  filled from a read, a cache read, a callback given to `transaction.on_commit` (it runs after the commit),
+  an `after_commit` listener and any write after the block are not reported. The message names the
+  allowed form: `transaction.on_commit(...)` in Django, after the block or in an `after_commit` event in
+  SQLAlchemy.
 - `remote-call-under-lock` reports a `remote` call inside `with lock:` or `async with lock:` where the
   lock is a `threading`, `asyncio`, `anyio`, `trio` or `multiprocessing` lock or condition assigned in
   the project (also `self._lock`) or a name ending in `lock` or `mutex`, a `filelock.FileLock(...)` or
@@ -1046,7 +1063,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   attribute annotated that way and read as `self.items`, or a project function with such a return annotation.
   An iteration skips flagged items when its loop body, comprehension or call names the flag, when it goes over
   a call of a project function that reads the flag (`live(items)`), or when the collection is typed with a
-  narrowed type (`NonDeleted[Item]`, `Live[Item]`). A name that says the collection is narrowed (`visible_items`, `active`, `live`, `non_deleted`) and a name the function reassigns are not judged; a plain copy, `sorted(...)` and a dict index builder are not iterations that select items. The rule fires only
+  narrowed type (`NonDeleted[Item]`, `Live[Item]`). A name that says the collection is narrowed (`visible_items`, `active`, `live`, `non_deleted`) and a name the function reassigns are not judged, and a collection whose name says it includes flagged items (`items_including_deleted`, `with_deleted`) is neither judged nor counted; a plain copy, `sorted(...)` and a dict index builder are not iterations that select items. The rule fires only
   with at least five iterations over the type and at least 80% of them skipping flagged items; undo, redo, sync,
   restore, trash, purge, history, snapshot, export and serialize functions and tests are not counted. Collections
   without an annotation and the rows of a query are not judged (`soft-delete-filter-missing` covers the query).
@@ -1412,7 +1429,15 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
 - `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
   reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
   annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
-  or `False` reads as missing: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
+  or `False` reads as missing, and only when the project shows that falsy value is valid there (the
+  finding names the evidence): the annotation is a `TypeVar` or a `Literal[...]` that contains `''` or
+  `False`, or the name receives a literal `''`, `0` or `False` elsewhere in the project (a
+  keyword or positional argument passed to that very function (the callee is matched by its simple
+  name; an unresolved callee gives no evidence), a `**{...}` dict entry passed to it, or an
+  assignment to an attribute of another object for a class field of that name), tests included. An initial assignment, a class field or a parameter default is
+  the "not set yet" value and is not evidence. A
+  value with no such evidence, such as a `str | None` read from a request, is not reported. Reported
+  forms: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
   annotated local (a parameter is `falsy-default`'s), `filter(None, items)` and
   `[v for v in items if v]` over a `list`, `Sequence`, `Iterable` or `set` of such a type. The
   allowed form tests `None` only (`x is not None`, `x if x is not None else d`). Not reported: a
@@ -1494,6 +1519,20 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   and passes no `MaxKeys`. Allowed form: `get_paginator("list_objects_v2")`, a loop on the token, or
   `Query(...).paging(offset, count)`. A response only tested for presence (`["KeyCount"] > 0`,
   `"Contents" not in response`) is not reported.
+- `null-branch-fall-through` reports `if x is None:` (or `x == None:`, `None is x`, `self.field`)
+  with no `else` whose body does something (a call, a write, an append, a log, an assignment of a
+  placeholder to another variable) and does not leave (`return`, `raise`, `break`, `continue`,
+  `sys.exit`, `exit`, `os._exit`, or an assignment to `x`), when later in the same block `x` is read
+  as present: `x.attr`, `x.method()`, `x[i]`, `for item in x`, `len(x)` (also `list`, `tuple`,
+  `set`, `sorted`, `sum`, `iter`, `enumerate`, `min`, `max`), unpacking, `*x`, or an argument of a
+  call the branch also made with a placeholder (`out.append("null")` then `out.append(str(x))`). It is
+  reported on the `if` line, and the message names the first later use (`x.foo()`, shortened to 40 characters), not its line. A branch that calls a function or method other than `print`, a logging call or a writer given
+  literals does not count when `x` is `self.field` or a module variable, since that call may set
+  it; `fail(...)`, `abort`, `die`, `panic` or a same-file function that only raises count as leaving,
+  and `match x:` with a `case None` ends the search. A use inside `try` is still reported.
+  Not reported: an empty branch (`pass`), `if not x:`, a use
+  after another test of `x` (`if x is not None`, `x and x.attr`, `x if x else ...`, `assert x`,
+  `isinstance`), a lambda or function that is not called on the spot, and test files.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

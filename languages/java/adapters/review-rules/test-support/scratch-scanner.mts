@@ -1,17 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach } from 'vitest';
-
-const PROJECT = {
-  qualifier: '',
-  sourceRoots: ['src/main/java'],
-  testSourceRoots: ['src/test/java'],
-  kotlinSourceRoots: ['src/main/kotlin'],
-  kotlinTestSourceRoots: ['src/test/kotlin'],
-};
-
-type ReadOptions = { readonly projects: readonly unknown[]; readonly kotlin: boolean };
+import { PROJECT, type ReadOptions, useTempProjects } from './temp-projects.mts';
 
 export type ReadFindings<Found> = (projectRoot: string, options: ReadOptions) => Found[];
 
@@ -25,25 +12,8 @@ export function scratchScanner<Found>(options: {
   prefix: string;
   read: ReadFindings<Found>;
 }): (files: Readonly<Record<string, string>>, kotlin: boolean) => Found[] {
-  const roots: string[] = [];
-  afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-  return (files, kotlin) => {
-    const root = mkdtempSync(path.join(tmpdir(), options.prefix));
-    roots.push(root);
-    for (const [file, text] of Object.entries(files)) {
-      const full = path.resolve(root, file);
-      if (!full.startsWith(root + path.sep)) {
-        throw new Error(`${file} leaves the scratch root`);
-      }
-      mkdirSync(path.dirname(full), { recursive: true });
-      writeFileSync(full, text);
-    }
-    return options.read(root, { projects: [PROJECT], kotlin });
-  };
+  const projectWith = useTempProjects(options.prefix);
+  return (files, kotlin) => options.read(projectWith(files), { projects: [PROJECT], kotlin });
 }
 
 export function ruleLineRunners(options: {

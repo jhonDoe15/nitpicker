@@ -29,6 +29,7 @@ import { maxValueEntry } from './review-entries/max-value.mjs';
 import { stringCallEntries } from './review-entries/string-calls.mjs';
 import { valueCheckEntries } from './review-entries/value-checks.mjs';
 import { minedEntries } from './review-entries/mined-rules.mjs';
+import { nullFallThroughEntry } from './review-entries/null-fall-through.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -276,6 +277,7 @@ export function jvmNitpickerEntries() {
     ...stringCallEntries(),
     ...valueCheckEntries(),
     ...minedEntries(),
+    nullFallThroughEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

@@ -36,7 +36,8 @@ export const HYGIENE_RULES = [
   {
     id: HYGIENE_RULE_IDS.committedEnvFile,
     check: REPOSITORY_HYGIENE,
-    limit: 'a committed `.env` file (templates such as `.env.example` are fine)',
+    limit:
+      'a committed `.env` file with secret values (templates and secret-manager references are fine)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

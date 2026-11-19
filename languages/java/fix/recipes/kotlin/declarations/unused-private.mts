@@ -6,6 +6,32 @@ import { removalSpan } from '../shared/spans.mts';
 const PROPERTY =
   /^([ \t]*)private[ \t]+(?:val|var)[ \t]+([A-Za-z]\w*)[ \t]*(?::[^=\n]+)?=[^\n]*$/gmu;
 const ALLOWED = /^(?:ignored|expected|serialVersionUID)$/u;
+const ACCESSOR_NEXT = /^[^\S\n]*\n\s*(?:get|set)\b/u;
+const PURE_NAMES = [
+  '(?:mutable|array)?(?:list|set|map)Of',
+  '(?:mutable)?(?:List|Set|Map)Of',
+  'empty(?:List|Set|Map)',
+  'arrayOf',
+  'Regex',
+  'Any',
+  'StringBuilder',
+  'ArrayList',
+  'HashMap',
+  'HashSet',
+  'LinkedHashMap',
+  'AtomicInteger',
+  'AtomicLong',
+];
+const PURE_CALLS = new RegExp(`\\b(?:${PURE_NAMES.join('|')})(?=\\s*\\()`, 'gu');
+const TRAILING_CONTINUATION = /[-+*/%&|<>=?:,.([{]\s*$/u;
+const LEADING_CONTINUATION = /^\s*(?:\?\.|\?:|&&|\|\||==|!=|as\b|[-+*/%<>.])/u;
+const CALL = /[\w`]\s*[({]/u;
+
+function pureInitializer(text: string): boolean {
+  const initializer = text.slice(text.indexOf('=') + 1).replaceAll(PURE_CALLS, '');
+  return !CALL.test(initializer);
+}
+
 const FUNCTION = /^([ \t]*)private[ \t]+fun[ \t]+([A-Za-z]\w*)[ \t]*\(/gmu;
 
 function mentions(source: string, name: string): number {
@@ -31,6 +57,10 @@ function balanced(text: string): boolean {
   );
 }
 
+function continues(text: string, rest: string): boolean {
+  return TRAILING_CONTINUATION.test(text) || LEADING_CONTINUATION.test(rest);
+}
+
 function removal(source: string, start: number, end: number): KotlinEdit[] {
   return [{ ...removalSpan(source, start, end), text: '' }];
 }
@@ -43,6 +73,9 @@ function properties({ code, source }: ScannedKotlin): KotlinFound[] {
         bareAbove(code, index) &&
         balanced(text) &&
         !/\bby\b/u.test(text) &&
+        pureInitializer(text) &&
+        !ACCESSOR_NEXT.test(code.slice(index + text.length)) &&
+        !continues(text, code.slice(index + text.length)) &&
         mentions(source, name) === 1,
     )
     .map(({ index, 0: text, 1: indent = '' }) => ({

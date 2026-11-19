@@ -30,6 +30,7 @@ tester.run('no-singular-and-plural-prop', rule, {
     'export * from "./mail";',
     'export { send } from "./mail";',
     "import { z } from 'zod'; export const Query = z.object({ tag: z.string(), tags: z.array(z.string()) });",
+    "import z = require('zod'); export const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",
     "import { z } from 'zod'; export const Query = z.object({ tag: z.string().optional(), tags: z.array(z.number()).optional() });",
     "import { z } from 'zod'; export const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string().optional()).optional() });",
     "import { z } from './schema'; export const Query = z.object({ tag: z.string().optional(), tags: z.array(z.string()).optional() });",

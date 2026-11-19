@@ -1,9 +1,11 @@
 import { globSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   NODE_TEST_OPTIONS_NITPICKER_SETS,
   RUNNER_NAMES,
 } from '../../../preset/test-runner/runners.mjs';
+import { NODE_DEFAULT_PATTERNS } from '../../../preset/test-runner/test-files/test-file-patterns.mjs';
 import { spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
 import type { RunnerCommand, TestOptions, TestRun } from '../typed/runner-types.mts';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';
@@ -20,12 +22,17 @@ import {
   workerCount,
 } from '../test-run.mts';
 
+const IMPORT_OPTION = '--import';
+const REQUIRE_OPTION = '--require';
+
 const REPORTER = checkoutModuleUrl(new URL('node-test-reporter.mjs', import.meta.url)).href;
+const RESTORE_MOCKS = path.join(import.meta.dirname, 'restore-mocks.cjs');
+const REQUIRE_HOOK_OPTIONS = new Set([REQUIRE_OPTION, '-r']);
+const IN_PROCESS_OPTION = /(?:^|\s)--(?:experimental-)?test-isolation[=\s]+none(?:\s|$)/u;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
-const SCRIPT_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
 const LOADER_OPTIONS = new Set([
-  '--import',
-  '--require',
+  IMPORT_OPTION,
+  REQUIRE_OPTION,
   '-r',
   '--loader',
   '--experimental-loader',
@@ -33,18 +40,9 @@ const LOADER_OPTIONS = new Set([
 
 const SKIPPED_DIRECTORY = /^(?:node_modules|\.nitpicker-diff-.*)$/u;
 
-const NODE_DEFAULT_PATTERNS = [
-  `**/*.test.${SCRIPT_EXTENSIONS}`,
-  `**/*-test.${SCRIPT_EXTENSIONS}`,
-  `**/*_test.${SCRIPT_EXTENSIONS}`,
-  `**/test-*.${SCRIPT_EXTENSIONS}`,
-  `**/test.${SCRIPT_EXTENSIONS}`,
-  `**/test/**/*.${SCRIPT_EXTENSIONS}`,
-];
-
 const VALUED_NODE_OPTIONS = new Set([
-  '--import',
-  '--require',
+  IMPORT_OPTION,
+  REQUIRE_OPTION,
   '-r',
   '--loader',
   '--experimental-loader',
@@ -88,6 +86,19 @@ function typeStrippingArguments(
     : [];
 }
 
+function restoreMocksArguments(
+  nodeArguments: readonly string[],
+  scriptOptions: readonly string[],
+): string[] {
+  const usesRequireHook = nodeArguments.some((token) =>
+    REQUIRE_HOOK_OPTIONS.has(token.split('=')[0] ?? token),
+  );
+  const runsInProcess = IN_PROCESS_OPTION.test([...nodeArguments, ...scriptOptions].join(' '));
+  return usesRequireHook || runsInProcess
+    ? [REQUIRE_OPTION, RESTORE_MOCKS]
+    : [IMPORT_OPTION, pathToFileURL(RESTORE_MOCKS).href];
+}
+
 function entryName(entry: unknown): string {
   const name = fieldOf(entry, 'name');
   return typeof name === 'string' ? name : String(entry);
@@ -125,6 +136,7 @@ export function nodeTestSelection(
     nodeArguments: [
       ...command.nodeArguments,
       ...typeStrippingArguments(command.nodeArguments, files),
+      ...restoreMocksArguments(command.nodeArguments, scriptOptions),
     ],
     scriptOptions,
     testFiles: selectedTestFiles(

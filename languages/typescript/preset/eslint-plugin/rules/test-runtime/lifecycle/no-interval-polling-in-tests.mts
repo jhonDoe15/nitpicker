@@ -1,20 +1,22 @@
 import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
 import { readLayout } from '../../typed/policy-views.mts';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mts';
 
 const { isTestFixture } = readLayout();
 
 export const rule: TSESLint.RuleModule<'intervalPolling'> = {
   meta: {
     type: 'problem',
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
-      intervalPolling: 'Prefer vi.waitFor / expect.poll over setInterval polling in tests.',
+      intervalPolling: 'Prefer {{pollInstead}} over setInterval polling in tests.',
     },
   },
   create(context) {
     if (isTestFixture(context.filename)) {
       return {};
     }
+    const { pollInstead } = vocabularyOf(context);
     return {
       CallExpression(node) {
         const callee = node.callee;
@@ -26,7 +28,7 @@ export const rule: TSESLint.RuleModule<'intervalPolling'> = {
             callee.object.name === 'globalThis' &&
             callee.property.name === 'setInterval')
         ) {
-          context.report({ node, messageId: 'intervalPolling' });
+          context.report({ node, messageId: 'intervalPolling', data: { pollInstead } });
         }
       },
     };

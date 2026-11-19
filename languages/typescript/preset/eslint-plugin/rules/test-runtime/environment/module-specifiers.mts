@@ -6,8 +6,17 @@ type Node = TypeScript.Node;
 export type ModuleImport = { readonly specifier: string; readonly forced: boolean };
 
 const STORYBOOK_RENDERERS = new Set(['composeStories', 'composeStory']);
-const MODULE_MOCKS = new Set(['mock', 'doMock', 'importActual', 'importMock']);
-const TEST_API_OBJECTS = new Set(['vi', 'vitest']);
+const MODULE_MOCKS = new Set([
+  'mock',
+  'doMock',
+  'importActual',
+  'importMock',
+  'requireActual',
+  'requireMock',
+  'unstable_mockModule',
+  'setMock',
+]);
+const TEST_API_OBJECTS = new Set(['vi', 'vitest', 'jest']);
 
 function isTypeOnlyImport(node: TypeScript.ImportDeclaration): boolean {
   const clause = node.importClause;
@@ -39,6 +48,25 @@ function stringArgument(node: TypeScript.CallExpression): string | undefined {
   return argument !== undefined && ts.isStringLiteralLike(argument) ? argument.text : undefined;
 }
 
+function isNodeTestModuleMock(callee: TypeScript.Expression): boolean {
+  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'module') {
+    return false;
+  }
+  const receiver = callee.expression;
+  return ts.isIdentifier(receiver)
+    ? receiver.text === 'mock'
+    : ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'mock';
+}
+
+function isTestApiModuleCall(callee: TypeScript.Expression): boolean {
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    TEST_API_OBJECTS.has(callee.expression.text) &&
+    MODULE_MOCKS.has(callee.name.text)
+  );
+}
+
 function moduleCallSpecifier(node: TypeScript.CallExpression): string | undefined {
   const callee = node.expression;
   if (callee.kind === ts.SyntaxKind.ImportKeyword) {
@@ -47,12 +75,9 @@ function moduleCallSpecifier(node: TypeScript.CallExpression): string | undefine
   if (ts.isIdentifier(callee)) {
     return callee.text === 'require' ? stringArgument(node) : undefined;
   }
-  const isMock =
-    ts.isPropertyAccessExpression(callee) &&
-    ts.isIdentifier(callee.expression) &&
-    TEST_API_OBJECTS.has(callee.expression.text) &&
-    MODULE_MOCKS.has(callee.name.text);
-  return isMock ? stringArgument(node) : undefined;
+  return isTestApiModuleCall(callee) || isNodeTestModuleMock(callee)
+    ? stringArgument(node)
+    : undefined;
 }
 
 export function isOpaqueModuleCall(node: Node): boolean {
