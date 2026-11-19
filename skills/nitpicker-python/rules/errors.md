@@ -28,3 +28,5 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - `min(xs)`, `max(xs)` and `xs[0]` or `xs[-1]` on a list that a filtered comprehension, `filter(...)`, a
   queryset or a query function produced raise on an empty sequence: pass
   `default=`, check `if xs:` first, or use `next(iter(xs), None)` or `qs.first()` (`empty-sequence-access`).
+- A duration is `(now - start).total_seconds()`; `.seconds` is only the 0 to 86399 part of a `timedelta` and
+  ignores its days (`timedelta-seconds-as-total`).
