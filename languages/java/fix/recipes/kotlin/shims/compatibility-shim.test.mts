@@ -132,12 +132,23 @@ describe('kotlinCompatibilityShimRecipe', () => {
       files.other,
     ]);
   });
-  it('reaches users in files that did not change', () => {
+  it('reaches users in files that did not change and leaves an overloaded replacement', () => {
     const alias = 'package demo\n\nclass Order\n\ntypealias Purchase = Order\n';
     const files = { [MAIN]: alias, [USER]: 'package demo\n\nval p: Purchase? = null\n' };
+    const overloaded = [
+      'package demo',
+      '',
+      'fun price(a: Int): Int = a',
+      'fun price(a: String): Int = 0',
+      '',
+      '@Deprecated("use price", ReplaceWith("price(a)"))',
+      'fun cost(a: Int): Int = price(a)',
+      '',
+    ].join('\n');
 
     expect(applyProject(kotlinCompatibilityShimRecipe, files, {}, [MAIN])[USER]).toBe(
       'package demo\n\nval p: Order? = null\n',
     );
+    expect(fix({ [MAIN]: overloaded })).toEqual({ [MAIN]: overloaded });
   });
 });

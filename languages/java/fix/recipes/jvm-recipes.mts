@@ -12,6 +12,7 @@ import { varCouldBeValRecipe } from './kotlin/declarations/var-could-be-val.mts'
 import { explicitItRecipe } from './kotlin/idioms/explicit-it.mts';
 import { useIsNullOrEmptyRecipe, useOrEmptyRecipe } from './kotlin/idioms/null-or-empty.mts';
 import { unnecessaryLetRecipe } from './kotlin/idioms/unnecessary-let.mts';
+import { kotlinForwardingWrapperRecipe } from './kotlin/forwarding/forwarding-wrapper.mts';
 import { catchLogRecipe } from './kotlin/logging/catch-log.mts';
 import { logConcatenationRecipe } from './kotlin/logging/log-concatenation.mts';
 import {
@@ -87,6 +88,7 @@ export const JVM_RECIPES = defineRecipes([
   focusedTestRecipe,
   kotlinRetryInTestRecipe,
   kotlinCompatibilityShimRecipe,
+  kotlinForwardingWrapperRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
