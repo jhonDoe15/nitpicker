@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { readHeadPolicy, type LibraryChoices } from '../../typed/policy-views.mts';
 import { unwrapped } from '../../security/security-values.mts';
 import { isObjectArgument } from '../argument-kinds.mts';
-import { appendAll } from '../../../../../../../shared/lists/lists.mts';
+import { expandsFully as untypedExpandsFully } from '../../../../../../../shared/traversal.mjs';
 import { logReceiver, presentLibraries, presentLogger } from '../logger-calls.mts';
 
 type MessageId = 'structuredFields' | 'trailingFields';
@@ -20,16 +20,13 @@ function staticParts(node: TSESTree.Node): readonly TSESTree.Node[] | undefined 
   return inner.type === AST_NODE_TYPES.Literal ? [] : undefined;
 }
 
+const expandsFully: (
+  root: TSESTree.Node,
+  children: (node: TSESTree.Node) => readonly TSESTree.Node[] | undefined,
+) => boolean = untypedExpandsFully;
+
 function isStatic(node: TSESTree.Node): boolean {
-  const pending = [node];
-  for (const next of pending) {
-    const parts = staticParts(next);
-    if (parts === undefined) {
-      return false;
-    }
-    appendAll(pending, parts);
-  }
-  return true;
+  return expandsFully(node, staticParts);
 }
 
 function isBuilt(node: TSESTree.Node): boolean {
