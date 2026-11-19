@@ -193,7 +193,7 @@ function isSkipped(file, match, imported = file.imported) {
   const { code } = file.scanned;
   const qualified = match.slice(1).some((group) => group !== undefined);
   return (
-    (!qualified && !imported) ||
+    !(qualified || imported) ||
     inImport(code, match.index) ||
     DECLARED.test(code.slice(Math.max(0, match.index - MODIFIER_WINDOW), match.index))
   );

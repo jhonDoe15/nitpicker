@@ -37,7 +37,7 @@ export const rule: TSESLint.RuleModule<'hostSplit'> = {
     messages: {
       hostSplit:
         'Do not cut a host and port at `:`. An IPv6 literal (`[::1]:3000`) has colons of its own, so the ' +
-        'host becomes `[` and the port is lost or wrong. Parse it with `new URL(`http://${host}`)` and read ' +
+        `host becomes \`[\` and the port is lost or wrong. Parse it with \`new URL(\`http://\${host}\`)\` and read ` +
         '`hostname` and `port`, or cut after the closing bracket. A value that is known not to be an IPv6 ' +
         'address takes an exception.',
     },

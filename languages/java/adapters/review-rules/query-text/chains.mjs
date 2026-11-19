@@ -51,20 +51,23 @@ export function chainFrom(source, start) {
   const { tokens } = source;
   const operands = [{ from: start, to: start + 1, literal: true }];
   let end = start + 1;
-  while (tokens[end]?.text === '+' && end + 1 < tokens.length) {
-    const from = end + 1;
+  const pending = [end];
+  for (const position of pending) {
+    if (tokens[position]?.text !== '+' || position + 1 >= tokens.length) {
+      break;
+    }
+    const from = position + 1;
     const literal = tokens[from].kind === 'string';
     const to = literal ? from + 1 : Math.max(from + 1, operandEnd(source, from));
     operands.push({ from, to, literal });
     end = to;
+    pending.push(to);
   }
   return { operands, end };
 }
 
 export function chainText(source, operands) {
   return operands
-    .map(({ from, to, literal }) =>
-      literal ? stringText(source.tokens[from], source.kotlin) : OPAQUE,
-    )
+    .map(({ from, literal }) => (literal ? stringText(source.tokens[from], source.kotlin) : OPAQUE))
     .join('');
 }

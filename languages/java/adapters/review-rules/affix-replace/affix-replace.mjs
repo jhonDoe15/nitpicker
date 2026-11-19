@@ -13,7 +13,9 @@ export const AFFIX_REPLACE_RULE = 'AffixRemovedByReplace';
 export const AFFIX_REPLACE_EXCEPTION_RULE = `pmd/${AFFIX_REPLACE_RULE}`;
 
 const SUFFIX_LITERAL = /^\.[a-z0-9]{1,8}$/iu;
-const AFFIX_WORDS = new Set(['suffix', 'prefix']);
+const SUFFIX = 'suffix';
+const PREFIX = 'prefix';
+const AFFIX_WORDS = new Set([SUFFIX, PREFIX]);
 const CHECKS = new Set(['startsWith', 'endsWith']);
 const REPLACEMENTS = new Set(['', '~']);
 
@@ -29,25 +31,21 @@ function isStringReceiver(source, receiver, strings) {
 function affixKind(source, arg, replacement) {
   const text = literalText(source.tokens[arg.from]);
   if (arg.to - arg.from === 1 && text !== undefined) {
-    return SUFFIX_LITERAL.test(text) && replacement === '' ? 'suffix' : undefined;
+    return SUFFIX_LITERAL.test(text) && replacement === '' ? SUFFIX : undefined;
   }
   const name = lastName(source, arg);
   const last = name === undefined ? undefined : wordsOf(name).at(-1);
   const affix = AFFIX_WORDS.has(last) || isDirectoryName(name);
-  return affix && REPLACEMENTS.has(replacement)
-    ? last === 'suffix'
-      ? 'suffix'
-      : 'prefix'
-    : undefined;
+  if (!(affix && REPLACEMENTS.has(replacement))) {
+    return undefined;
+  }
+  return last === SUFFIX ? SUFFIX : PREFIX;
 }
 
 function guardStart(source, call) {
   const { tokens, partner } = source;
   const start = startOfStatement(source, call.receiver.from);
-  let before = start - 1;
-  while (before >= 0 && tokens[before].text === '{') {
-    before -= 1;
-  }
+  const before = tokens.slice(0, start).findLastIndex((token) => token.text !== '{');
   const condition = tokens[before]?.text === ')' ? partner[before] : -1;
   return condition >= 0 && tokens[condition - 1]?.text === 'if' ? condition : start;
 }
@@ -93,11 +91,11 @@ export function findAffixReplaces(source) {
 }
 
 function messageFor(kind, kotlin) {
-  const part = kind === 'suffix' ? 'suffix' : 'prefix';
+  const part = kind === SUFFIX ? SUFFIX : PREFIX;
   const fix = kotlin
     ? '`removeSuffix(".git")` or `removePrefix(root)`'
     : '`endsWith` and `substring`, or `startsWith` and `substring` for a prefix';
-  const where = kind === 'suffix' ? 'end' : 'start';
+  const where = kind === SUFFIX ? 'end' : 'start';
   return (
     `\`replace\` removes the ${part} anywhere in the text, not only at the ${where} ` +
     `(\`blog.git.io\` loses its \`.git\`). Remove it with an anchored check: ${fix}.`
@@ -110,4 +108,4 @@ export const affixReplaceRule = {
   message: ({ kind }, kotlin) => messageFor(kind, kotlin),
 };
 
-export const AFFIX_REPLACE_ALLOWED = messageFor('suffix', false);
+export const AFFIX_REPLACE_ALLOWED = messageFor(SUFFIX, false);

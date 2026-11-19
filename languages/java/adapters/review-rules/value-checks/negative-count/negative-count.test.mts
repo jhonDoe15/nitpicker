@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
-import { NEGATIVE_COUNT_CHECK as untypedCheck } from './negative-count.mjs';
+import { namesOf } from '../../test-support/check-runner.mts';
+import { NEGATIVE_COUNT_CHECK } from './negative-count.mjs';
 
-type Found = { readonly line: number; readonly name: string };
-
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
-
-function names(body: string, kotlin = false): string[] {
-  return check
-    .find(parseSource(`class A {\n${body}\n}\n`, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ name }) => name);
-}
+const names = namesOf(NEGATIVE_COUNT_CHECK);
 
 describe('NegativeCountArgument in Java', () => {
   it('reports repeat and constructors given a subtraction', () => {
@@ -61,7 +51,7 @@ describe('NegativeCountArgument in Kotlin', () => {
           'fun merge(a: List<Int>, b: List<Int>) = a + b.takeLast(b.size - a.size)',
           'fun rest(a: List<Int>, n: Int) = a.drop(a.size - n)',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual(['takeLast', 'drop']);
   });
@@ -74,7 +64,7 @@ describe('NegativeCountArgument in Kotlin', () => {
           'fun loop(n: Int, m: Int) { repeat(n - m) { println(it) } }',
           'fun pad(t: String, w: Int) = " ".repeat(maxOf(0, w - t.length))',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual([]);
   });

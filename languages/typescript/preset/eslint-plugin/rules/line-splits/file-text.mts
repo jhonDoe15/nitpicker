@@ -56,8 +56,11 @@ function innerStep(value: TSESTree.Node): TSESTree.Node | undefined | false {
 }
 
 export function isFileText(context: SourceContext, node: TSESTree.Node): boolean {
-  let current: TSESTree.Node | undefined = node;
-  for (let step = 0; step < MAX_STEPS && current !== undefined; step += 1) {
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    if (pending.length > MAX_STEPS) {
+      return false;
+    }
     const value: TSESTree.Node = unchained(resolveConstant(context, current) ?? current);
     if (value.type === AST_NODE_TYPES.CallExpression && readsFile(value)) {
       return true;
@@ -66,7 +69,9 @@ export function isFileText(context: SourceContext, node: TSESTree.Node): boolean
     if (inner === false) {
       return false;
     }
-    current = inner;
+    if (inner !== undefined) {
+      pending.push(inner);
+    }
   }
   return false;
 }

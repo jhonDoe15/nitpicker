@@ -11,11 +11,11 @@ const PAIR_MESSAGES = {
     'separator twice takes an exception.',
 };
 
-const BLANK_SPLIT = /\.\s*split\s*\(\s*(["'])[ ]*\1\s*\)/g;
+const BLANK_SPLIT = /\.\s*split\s*\(\s*(["']) *\1\s*\)/g;
 const PAIR_SPLIT = /^\.\s*split\s*\(\s*(?:"[:=]"|':'|'=')\s*\)$/;
 const SECOND_PART = /^\s*\??\[\s*1\s*\]/;
 const STATEMENT_END = /^[ \t]*(?:\n|;|$)/;
-const DESTRUCTURING = /\bva[lr]\s*\(\s*(_|[A-Za-z]\w*)\s*,\s*(_|[A-Za-z]\w*)\s*\)\s*=\s*([^\n]*)$/;
+const DESTRUCTURING = /\bva[lr]\s*\(\s*(_|[A-Za-z]\w*)\s*,\s*(_|[A-Za-z]\w*)\s*\)\s*=([^\n]*)$/;
 const CLOCK_NAME = /^(?:h|m|s|hh|mm|ss|hours?|minutes?|mins?|seconds?|secs?|hrs?)$/i;
 const CLOCK_SOURCE = /time|clock|duration|hhmm|ratio|aspect/i;
 

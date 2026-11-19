@@ -3,6 +3,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { wordsOf as untypedWords } from '../../../../../../shared/naming/name-words.mjs';
 
 export const wordsOf: (name: string) => string[] = untypedWords;
+const PENULTIMATE = -2;
 const DIRECTORY_WORDS = new Set([
   'path',
   'pathname',
@@ -32,22 +33,29 @@ const LOCATION_WORDS = new Set([
 ]);
 
 export function nameText(node: TSESTree.Node): string | undefined {
-  switch (node.type) {
-    case AST_NODE_TYPES.Identifier:
-      return node.name;
-    case AST_NODE_TYPES.MemberExpression:
-      return node.computed || node.property.type !== AST_NODE_TYPES.Identifier
+  const pending = [node];
+  for (const item of pending) {
+    if (item.type === AST_NODE_TYPES.Identifier) {
+      return item.name;
+    }
+    if (item.type === AST_NODE_TYPES.MemberExpression) {
+      return item.computed || item.property.type !== AST_NODE_TYPES.Identifier
         ? undefined
-        : node.property.name;
-    case AST_NODE_TYPES.CallExpression:
-      return nameText(node.callee);
-    case AST_NODE_TYPES.ChainExpression:
-    case AST_NODE_TYPES.TSNonNullExpression:
-    case AST_NODE_TYPES.TSAsExpression:
-      return nameText(node.expression);
-    default:
+        : item.property.name;
+    }
+    if (item.type === AST_NODE_TYPES.CallExpression) {
+      pending.push(item.callee);
+    } else if (
+      item.type === AST_NODE_TYPES.ChainExpression ||
+      item.type === AST_NODE_TYPES.TSNonNullExpression ||
+      item.type === AST_NODE_TYPES.TSAsExpression
+    ) {
+      pending.push(item.expression);
+    } else {
       return undefined;
+    }
   }
+  return undefined;
 }
 
 function nameHas(node: TSESTree.Node, words: ReadonlySet<string>): boolean {
@@ -57,11 +65,21 @@ function nameHas(node: TSESTree.Node, words: ReadonlySet<string>): boolean {
   }
   const parts = wordsOf(name);
   const last = parts.at(-1) ?? '';
-  return words.has(last) || (last === 'name' && parts.at(-2) === 'package');
+  return words.has(last) || (last === 'name' && parts.at(PENULTIMATE) === 'package');
 }
 
-export const isDirectoryName = (node: TSESTree.Node): boolean => nameHas(node, DIRECTORY_WORDS);
-export const isHostName = (node: TSESTree.Node): boolean => nameHas(node, HOST_WORDS);
-export const isLocationName = (node: TSESTree.Node): boolean => nameHas(node, LOCATION_WORDS);
-export const isPrefixName = (node: TSESTree.Node): boolean =>
-  nameText(node)?.toLowerCase() === 'prefix';
+export function isDirectoryName(node: TSESTree.Node): boolean {
+  return nameHas(node, DIRECTORY_WORDS);
+}
+
+export function isHostName(node: TSESTree.Node): boolean {
+  return nameHas(node, HOST_WORDS);
+}
+
+export function isLocationName(node: TSESTree.Node): boolean {
+  return nameHas(node, LOCATION_WORDS);
+}
+
+export function isPrefixName(node: TSESTree.Node): boolean {
+  return nameText(node)?.toLowerCase() === 'prefix';
+}

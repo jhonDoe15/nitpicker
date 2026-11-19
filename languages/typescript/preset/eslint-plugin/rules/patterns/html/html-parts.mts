@@ -107,7 +107,7 @@ export function fragmentOf(node: Node): Fragment | undefined {
 
 export function isFragmentTop(node: Node): boolean {
   const holder = node.parent;
-  if (holder == null) {
+  if (holder === undefined) {
     return true;
   }
   if (node.type === AST_NODE_TYPES.TemplateLiteral) {
@@ -129,7 +129,7 @@ const DIAGNOSTIC_CALLS = new Set<string>([
 
 export function isDiagnosticText(node: Node): boolean {
   const holder = node.parent;
-  if (holder == null) {
+  if (holder === undefined) {
     return false;
   }
   if (holder.type === AST_NODE_TYPES.ThrowStatement) {
@@ -154,12 +154,14 @@ function isPlainRun(text: string): boolean {
   return !PLAIN_RUN.test(text.trim());
 }
 
+function literalPartsText(parts: readonly (string | Node)[]): string {
+  return parts.map((part) => (typeof part === 'string' ? part : '')).join('');
+}
+
 export function isPlacedInMarkup(fragment: Fragment, value: Node): boolean {
   const at = fragment.parts.indexOf(value);
-  const text = (parts: readonly (string | Node)[]) =>
-    parts.map((part) => (typeof part === 'string' ? part : '')).join('');
-  const before = text(fragment.parts.slice(0, at));
-  const after = text(fragment.parts.slice(at + 1));
+  const before = literalPartsText(fragment.parts.slice(0, at));
+  const after = literalPartsText(fragment.parts.slice(at + 1));
   const open = before.lastIndexOf('<');
   if (open > before.lastIndexOf('>')) {
     return true;

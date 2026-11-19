@@ -9,18 +9,19 @@ const LINE_MESSAGES = {
     'fine.',
 };
 
-const NEWLINE_CALL = /\.\s*(?:split|indexOf|lastIndexOf)\s*\(\s*"[ ]*"\s*\)/g;
+const NEWLINE_CALL = /\.\s*(?:split|indexOf|lastIndexOf)\s*\(\s*" *"\s*\)/g;
 const NEWLINE_ARGUMENT = /^\.\s*(?:split|indexOf|lastIndexOf)\s*\(\s*"\\n"\s*\)$/;
 const BYTES_TO_TEXT = String.raw`readBytes\s*\(\s*\)\s*\.\s*decodeToString`;
 const FILE_READ = String.raw`(?:readText|readString|${BYTES_TO_TEXT}|readAllBytes)\s*\([^()]*\)`;
 const TRIMS = String.raw`(?:\s*\??\.\s*(?:trim|trimEnd|trimStart)\s*\(\s*\))*`;
-const READ_RECEIVER = new RegExp(String.raw`(?:${FILE_READ})${TRIMS}\s*$`);
+const READ_RECEIVER = new RegExp(String.raw`${FILE_READ}${TRIMS}\s*$`);
 const NAMED_READ = new RegExp(
-  String.raw`(?<![\w$])va[lr]\s+([A-Za-z_]\w*)\s*(?::\s*String\s*)?=\s*[^\n]*?` +
+  String.raw`(?<![\w$])va[lr]\s+([A-Za-z_]\w*)\s*(?::\s*String\s*)?=\s*(?:[^\s][^\n]*?)?` +
     String.raw`${FILE_READ}${TRIMS}\s*(?:\n|;|$)`,
   'g',
 );
-const NAME_BEFORE = /([A-Za-z_]\w*)\s*\??\s*$/;
+const NAME_BEFORE = /([A-Za-z_]\w*)\s*(?:\?\s*)?$/;
+const NAME_WINDOW = 200;
 const LINE_ENDING_AWARE = /\\r|\\u2028|\\R|lines\(\)/;
 
 export function newlineOnlyLineSplits(scanned) {
@@ -31,7 +32,7 @@ export function newlineOnlyLineSplits(scanned) {
   const fileTexts = new Set([...code.matchAll(NAMED_READ)].map((match) => match[1]));
   return [...code.matchAll(NEWLINE_CALL)].flatMap((match) => {
     const end = match.index + match[0].length;
-    const before = code.slice(Math.max(0, match.index - 200), match.index);
+    const before = code.slice(Math.max(0, match.index - NAME_WINDOW), match.index);
     const named = NAME_BEFORE.exec(before)?.[1];
     return NEWLINE_ARGUMENT.test(source.slice(match.index, end)) &&
       (READ_RECEIVER.test(before) || (named !== undefined && fileTexts.has(named)))

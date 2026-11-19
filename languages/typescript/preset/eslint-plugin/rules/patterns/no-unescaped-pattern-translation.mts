@@ -87,7 +87,7 @@ function check(context: Context, node: TSESTree.CallExpression): void {
   }
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {

@@ -9,7 +9,9 @@ const CLOCK_SOURCE = /time|clock|duration|hhmm|ratio|aspect/iu;
 const SECOND_PART = 1;
 const KEY_PREFIX = /([:=])["'`]$/u;
 
-function patternName(element: TSESTree.Node | null): string | undefined {
+type PatternElement = TSESTree.ArrayPattern['elements'][number];
+
+function patternName(element: PatternElement | undefined): string | undefined {
   const target = element?.type === AST_NODE_TYPES.AssignmentPattern ? element.left : element;
   return target?.type === AST_NODE_TYPES.Identifier ? target.name : undefined;
 }
@@ -20,7 +22,7 @@ function isTruncatingPattern(pattern: TSESTree.ArrayPattern): boolean {
     pattern.elements.length === 2 &&
     first?.type !== AST_NODE_TYPES.RestElement &&
     second?.type !== AST_NODE_TYPES.RestElement &&
-    ![first, second].some((element) => CLOCK_NAME.test(patternName(element ?? null) ?? ''))
+    ![first, second].some((element) => CLOCK_NAME.test(patternName(element) ?? ''))
   );
 }
 
@@ -28,7 +30,7 @@ const EQUALITY = new Set(['===', '!==', '==', '!=']);
 
 function isComparedToText(node: TSESTree.MemberExpression): boolean {
   const { parent } = node;
-  if (parent?.type !== AST_NODE_TYPES.BinaryExpression || !EQUALITY.has(parent.operator)) {
+  if (parent.type !== AST_NODE_TYPES.BinaryExpression || !EQUALITY.has(parent.operator)) {
     return false;
   }
   const other = parent.left === node ? parent.right : parent.left;
@@ -122,8 +124,12 @@ export const rule: TSESLint.RuleModule<'truncatedPair'> = {
     const state: PairState = { context, pending: [], keyed: [] };
 
     return {
-      CallExpression: (node: TSESTree.CallExpression) => collectPrefix(state, node),
-      'Program:exit': () => reportPending(state),
+      CallExpression(node: TSESTree.CallExpression) {
+        collectPrefix(state, node);
+      },
+      'Program:exit'() {
+        reportPending(state);
+      },
       VariableDeclarator(node: TSESTree.VariableDeclarator) {
         if (
           node.id.type === AST_NODE_TYPES.ArrayPattern &&

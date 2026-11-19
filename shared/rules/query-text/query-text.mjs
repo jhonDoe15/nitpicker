@@ -34,45 +34,61 @@ const KEYWORDS = new Set([
 const PROSE_WORD =
   /\b(?:the|this|that|these|those|are|was|were|been|of|to|which|because|should|would|could)\b/giu;
 const PROSE_WORDS = 2;
-const SCRIPT_CALL = /redis\.call\(/u;
+const SCRIPT_CALL = 'redis.call(';
 const WORD_END = /[A-Za-z0-9_]$/u;
 const WORD_START = /^[A-Za-z0-9_]/u;
 const FIRST_WORD = /^([A-Za-z]+)/u;
 const LAST_WORD = /([A-Za-z]+)$/u;
 const SNIPPET = 40;
 
-export const isFullQuery = (text) => FULL_QUERY.test(text);
-export const isQueryText = (text) => FULL_QUERY.test(text) || FRAGMENT.test(text);
+const PAREN_STEPS = new Map([
+  ['(', 1],
+  [')', -1],
+]);
+const BRACKET_STEPS = new Map([
+  ['(', 1],
+  ['[', 1],
+  ['{', 1],
+  [')', -1],
+  [']', -1],
+  ['}', -1],
+]);
 
-function topLevelCount(text) {
-  let depth = 0;
+export function isFullQuery(text) {
+  return FULL_QUERY.test(text);
+}
+
+function isQueryText(text) {
+  return FULL_QUERY.test(text) || FRAGMENT.test(text);
+}
+
+function* codeCharacters(text, from) {
   let quote = '';
-  let count = text.trim() === '' ? 0 : 1;
-  for (const character of text) {
+  for (const [offset, character] of text.slice(from).split('').entries()) {
     if (quote !== '') {
       quote = character === quote ? '' : quote;
     } else if (character === "'" || character === '"') {
       quote = character;
     } else {
-      depth += '([{'.includes(character) ? 1 : ')]}'.includes(character) ? -1 : 0;
-      count += character === ',' && depth === 0 ? 1 : 0;
+      yield { index: from + offset, character };
     }
+  }
+}
+
+function topLevelCount(text) {
+  let depth = 0;
+  let count = text.trim() === '' ? 0 : 1;
+  for (const { character } of codeCharacters(text, 0)) {
+    depth += BRACKET_STEPS.get(character) ?? 0;
+    count += character === ',' && depth === 0 ? 1 : 0;
   }
   return count;
 }
 
 function valuesList(text, from) {
   let depth = 1;
-  let quote = '';
-  for (let index = from; index < text.length; index += 1) {
-    const character = text[index];
-    if (quote !== '') {
-      quote = character === quote ? '' : quote;
-    } else if (character === "'" || character === '"') {
-      quote = character;
-    } else {
-      depth += character === '(' ? 1 : character === ')' ? -1 : 0;
-    }
+  for (const { index, character } of codeCharacters(text, from)) {
+    depth += PAREN_STEPS.get(character) ?? 0;
     if (depth === 0) {
       return text.slice(from, index);
     }
@@ -100,20 +116,26 @@ function around(text, index) {
     .trim();
 }
 
+function operandProblem(text, complete) {
+  if (!STRUCTURE.test(text)) {
+    return undefined;
+  }
+  const found = MID_OPERATOR.exec(text) ?? (complete ? END_OPERATOR.exec(text) : undefined);
+  return found === null || found === undefined
+    ? undefined
+    : { kind: 'operand', snippet: around(text, found.index) };
+}
+
 export function queryTextProblem(text, { complete }) {
   if (!isQueryText(text) || (text.match(PROSE_WORD) ?? []).length >= PROSE_WORDS) {
     return undefined;
   }
-  const structured = STRUCTURE.test(text);
-  const middle = structured ? MID_OPERATOR.exec(text) : null;
-  if (middle !== null) {
-    return { kind: 'operand', snippet: around(text, middle.index) };
-  }
-  const end = complete && structured ? END_OPERATOR.exec(text) : null;
-  if (end !== null) {
-    return { kind: 'operand', snippet: around(text, end.index) };
-  }
-  return columnCountProblem(text);
+  return operandProblem(text, complete) ?? columnCountProblem(text);
+}
+
+function joinedSnippet(left, right) {
+  const half = SNIPPET / 2;
+  return `${left.slice(-half)}${right.slice(0, half)}`.replaceAll(/\s+/gu, ' ');
 }
 
 export function runTogether(left, right) {
@@ -121,16 +143,9 @@ export function runTogether(left, right) {
   const first = FIRST_WORD.exec(right)?.[1]?.toLowerCase();
   const together = WORD_END.test(left) && WORD_START.test(right);
   const keyword = KEYWORDS.has(last) || KEYWORDS.has(first);
-  return together &&
-    keyword &&
-    (isQueryText(left) || isQueryText(right) || SCRIPT_CALL.test(`${left}${right}`))
-    ? {
-        kind: 'joined',
-        snippet: `${left.slice(-SNIPPET / 2)}${right.slice(0, SNIPPET / 2)}`.replaceAll(
-          /\s+/gu,
-          ' ',
-        ),
-      }
+  const query = isQueryText(left) || isQueryText(right) || `${left}${right}`.includes(SCRIPT_CALL);
+  return together && keyword && query
+    ? { kind: 'joined', snippet: joinedSnippet(left, right) }
     : undefined;
 }
 

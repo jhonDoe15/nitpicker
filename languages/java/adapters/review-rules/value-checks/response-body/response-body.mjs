@@ -1,6 +1,6 @@
 import { callBefore, declarations, eachFrame, ownUses, textsOf } from '../scan.mjs';
 
-export const RESPONSE_BODY_RULE = 'UncheckedResponseBody';
+const RESPONSE_BODY_RULE = 'UncheckedResponseBody';
 
 const JSON_PARSERS = new Set([
   'readValue',

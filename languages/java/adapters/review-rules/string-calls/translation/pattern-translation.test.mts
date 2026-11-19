@@ -1,60 +1,23 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { readStringCallFindings as untypedRead } from '../string-calls.mjs';
+import { describe, expect, it } from 'vitest';
+import {
+  type LocatedFinding,
+  type ReadFindings,
+  ruleLineRunners,
+} from '../../test-support/scratch-scanner.mts';
+import {
+  PATTERN_TRANSLATION_RULE,
+  readStringCallFindings as untypedRead,
+} from '../string-calls.mjs';
 
-type Finding = {
-  readonly rule: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
+const read: ReadFindings<LocatedFinding> = untypedRead;
 
-const read: (
-  projectRoot: string,
-  options: { readonly projects: readonly unknown[]; readonly kotlin: boolean },
-) => Finding[] = untypedRead;
-
-const roots: string[] = [];
-const PROJECT = {
-  qualifier: '',
-  sourceRoots: ['src/main/java'],
-  testSourceRoots: ['src/test/java'],
-  kotlinSourceRoots: ['src/main/kotlin'],
-  kotlinTestSourceRoots: ['src/test/kotlin'],
-};
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+const { java, kotlin } = ruleLineRunners({
+  prefix: 'nitpicker-jvm-translation-',
+  read,
+  rule: PATTERN_TRANSLATION_RULE,
+  className: 'Globs',
+  javaImports: 'import java.util.regex.Pattern;\n',
 });
-
-function scan(file: string, text: string, kotlin: boolean) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jvm-translation-'));
-  roots.push(root);
-  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-  writeFileSync(path.join(root, file), text);
-  return read(root, { projects: [PROJECT], kotlin }).filter(
-    ({ rule }) => rule === 'PatternTranslation',
-  );
-}
-
-function java(body: string) {
-  return scan(
-    'src/main/java/shop/Globs.java',
-    `package shop;\nimport java.util.regex.Pattern;\nclass Globs {\n${body}\n}\n`,
-    false,
-  ).map(({ location }) => location.line);
-}
-
-function kotlin(body: string) {
-  return scan(
-    'src/main/kotlin/shop/Globs.kt',
-    `package shop\nclass Globs {\n${body}\n}\n`,
-    true,
-  ).map(({ location }) => location.line);
-}
 
 describe('Java pattern translation', () => {
   it('reports a glob turned into a regex without quoting', () => {

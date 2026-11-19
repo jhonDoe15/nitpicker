@@ -9,7 +9,7 @@ function failing(messageId: 'prefix' | 'suffix' | 'origin', codes: readonly stri
 
 ruleTester.run('no-prefix-without-boundary', rule, {
   valid: cases([
-    'if (pathname === base || pathname.startsWith(`${base}/`)) {}',
+    `if (pathname === base || pathname.startsWith(\`\${base}/\`)) {}`,
     "if (pathname === base || pathname.startsWith(base + '/')) {}",
     'if (pathname.startsWith(base + path.sep)) {}',
     "const prefix = base + '/'; if (pathname.startsWith(prefix)) {}",
@@ -25,7 +25,7 @@ ruleTester.run('no-prefix-without-boundary', rule, {
     "if (name.startsWith('use')) {}",
     'if (line.startsWith(prefix)) {}',
     "if (hostname === domain || hostname.endsWith('.' + domain)) {}",
-    'if (host === domain || host.endsWith(`.${domain}`)) {}',
+    `if (host === domain || host.endsWith(\`.\${domain}\`)) {}`,
     "if (hostname.endsWith('.example.com')) {}",
     "if (email.endsWith('@example.com')) {}",
     "if (file.endsWith('.ts')) {}",
@@ -44,7 +44,7 @@ ruleTester.run('no-prefix-without-boundary', rule, {
     'if (item.id.startsWith(prefix)) {}',
     "if (hostname.startsWith('[') && hostname.endsWith(']')) {}",
     'const prefix = dir.endsWith(sep) ? dir : dir + sep; if (filePath.startsWith(prefix)) {}',
-    "const base = d.endsWith('/') ? d : `${d}/`; if (pathname.startsWith(base)) {}",
+    `const base = d.endsWith('/') ? d : \`\${d}/\`; if (pathname.startsWith(base)) {}`,
     "let b = d; if (!b.endsWith('/')) b += '/'; if (pathname.startsWith(b)) {}",
     "if (pathname.startsWith(base) && pathname[base.length] === '/') {}",
     'if (route.startsWith(basePath) && route.length === basePath.length) {}',
@@ -55,7 +55,7 @@ ruleTester.run('no-prefix-without-boundary', rule, {
       'if (pathname.startsWith(base)) {}',
       'const inside = filePath.startsWith(rootDir);',
       'if (pathname.startsWith(this.base)) {}',
-      'if (url.pathname.startsWith(`/repos/${owner}/${name}`)) {}',
+      `if (url.pathname.startsWith(\`/repos/\${owner}/\${name}\`)) {}`,
       "if (pathname.startsWith('/repos/' + owner)) {}",
       'if (imp.startsWith(packageName)) {}',
       'if (pathname.startsWith(config.basePath)) {}',

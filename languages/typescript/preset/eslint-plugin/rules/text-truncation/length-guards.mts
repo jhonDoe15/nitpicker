@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { orderedOperandsOf } from '../typed/syntax-views.mts';
 import type { SourceCode } from '../typed/node-views.mts';
 import { ancestorsOf } from '../typed/node-views.mts';
 
@@ -19,11 +20,11 @@ function lengthOf(node: TSESTree.Node, receiver: string, sourceCode: SourceCode)
   );
 }
 
-interface BoundQuery {
+type BoundQuery = {
   receiver: string;
   operators: ReadonlySet<string>;
   sourceCode: SourceCode;
-}
+};
 
 const FLIPPED = new Map([
   ['<', '>'],
@@ -32,11 +33,8 @@ const FLIPPED = new Map([
   ['>=', '<='],
 ]);
 
-function comparedBound(test: TSESTree.Node, query: BoundQuery): string | undefined {
+function operandBound(test: TSESTree.Node, query: BoundQuery): string | undefined {
   const { receiver, operators, sourceCode } = query;
-  if (test.type === AST_NODE_TYPES.LogicalExpression && test.operator === '&&') {
-    return comparedBound(test.left, query) ?? comparedBound(test.right, query);
-  }
   if (test.type !== AST_NODE_TYPES.BinaryExpression) {
     return undefined;
   }
@@ -49,15 +47,32 @@ function comparedBound(test: TSESTree.Node, query: BoundQuery): string | undefin
     : undefined;
 }
 
-function leaves(node: TSESTree.Node): boolean {
-  if (node.type === AST_NODE_TYPES.ReturnStatement || node.type === AST_NODE_TYPES.ThrowStatement) {
-    return true;
+function comparedBound(test: TSESTree.Node, query: BoundQuery): string | undefined {
+  for (const operand of orderedOperandsOf(test, '&&')) {
+    const bound = operandBound(operand, query);
+    if (bound !== undefined) {
+      return bound;
+    }
   }
-  return (
-    node.type === AST_NODE_TYPES.BlockStatement &&
-    node.body.length > 0 &&
-    leaves(node.body.at(-1) as TSESTree.Node)
-  );
+  return undefined;
+}
+
+function leaves(node: TSESTree.Node): boolean {
+  const chain: TSESTree.Node[] = [node];
+  for (const current of chain) {
+    if (
+      current.type === AST_NODE_TYPES.ReturnStatement ||
+      current.type === AST_NODE_TYPES.ThrowStatement
+    ) {
+      return true;
+    }
+    const last = current.type === AST_NODE_TYPES.BlockStatement ? current.body.at(-1) : undefined;
+    if (last === undefined) {
+      return false;
+    }
+    chain.push(last);
+  }
+  return false;
 }
 
 function guardTest(ancestor: TSESTree.Node, node: TSESTree.Node): TSESTree.Node | undefined {

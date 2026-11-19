@@ -160,6 +160,10 @@ export function operandsOf(root: TSESTree.Node, operator: string): TSESTree.Node
   return operands;
 }
 
+export function orderedOperandsOf(root: TSESTree.Node, operator: string): TSESTree.Node[] {
+  return operandsOf(root, operator).toSorted((left, right) => left.range[0] - right.range[0]);
+}
+
 export function memberKeyOf(
   member: { readonly computed: boolean; readonly property: TSESTree.Node },
   fallback: string,
@@ -281,4 +285,13 @@ export function chainRootName(node: TSESTree.Node): string | undefined {
     return link.type === AST_NODE_TYPES.CallExpression ? link.callee : undefined;
   }).at(-1);
   return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
+}
+
+export function callbackReceiverOf(fn: TSESTree.Node): TSESTree.Node | undefined {
+  const call = fn.parent;
+  return call?.type === AST_NODE_TYPES.CallExpression &&
+    call.arguments.some((argument) => argument === fn) &&
+    call.callee.type === AST_NODE_TYPES.MemberExpression
+    ? call.callee.object
+    : undefined;
 }

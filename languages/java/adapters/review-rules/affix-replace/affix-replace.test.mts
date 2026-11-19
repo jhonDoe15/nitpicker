@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
+import { sourceRunners } from '../test-support/source-runners.mts';
 import { findAffixReplaces as untypedFind } from './affix-replace.mjs';
 
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
 const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
 
-function java(body: string) {
-  const text = `class Names {\n  void use(String name, String suffix, String root, String path) {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Names.java', kotlin: false })).map(({ kind }) => kind);
-}
-
-function kotlin(body: string) {
-  const text =
-    `class Names {\n  fun use(name: String, suffix: String, root: ` +
-    `String, path: String) {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Names.kt', kotlin: true })).map(({ kind }) => kind);
-}
+const { java, kotlin } = sourceRunners({
+  find,
+  pick: ({ kind }) => kind,
+  java: {
+    file: 'Names.java',
+    wrap: (body) =>
+      `class Names {\n  void use(String name, String suffix, String root, String path) {\n${body}\n  }\n}\n`,
+  },
+  kotlin: {
+    file: 'Names.kt',
+    wrap: (body) =>
+      `class Names {\n  fun use(name: String, suffix: String, root: ` +
+      `String, path: String) {\n${body}\n  }\n}\n`,
+  },
+});
 
 describe('AffixRemovedByReplace', () => {
   it('reports a suffix or prefix removed by replace in Java', () => {

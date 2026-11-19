@@ -34,7 +34,7 @@ describe('queryTextProblem', () => {
 
   it('compares the columns and values of an insert', () => {
     const text = 'INSERT INTO lock_table (a, b, c) VALUES (?, ?)';
-    expect(problem(text, { complete: true })).toMatchObject({
+    expect(problem(text, { complete: true })).toEqual({
       kind: 'count',
       columns: 3,
       values: 2,
@@ -63,6 +63,9 @@ describe('runTogether', () => {
   });
 
   it('formats a message that shows the text', () => {
-    expect(message({ kind: 'joined', snippet: 'tWHERE' })).toContain('tWHERE');
+    expect(message({ kind: 'joined', snippet: 'tWHERE' })).toBe(
+      'The query parts join into `...tWHERE...`, which runs two words together. ' +
+        'Start each appended fragment with a space.',
+    );
   });
 });

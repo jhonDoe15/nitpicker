@@ -5,13 +5,15 @@ import { initializerOf, literalText } from '../affix-boundaries/boundaries.mjs';
 export const CASE_LOOKUP_RULE = 'CaseMismatchedLookup';
 export const CASE_LOOKUP_EXCEPTION_RULE = `pmd/${CASE_LOOKUP_RULE}`;
 
+const LOWER = 'lower';
+const UPPER = 'upper';
 const NORMALIZERS = new Map([
-  ['toLowerCase', 'lower'],
-  ['toLocaleLowerCase', 'lower'],
-  ['lowercase', 'lower'],
-  ['toUpperCase', 'upper'],
-  ['toLocaleUpperCase', 'upper'],
-  ['uppercase', 'upper'],
+  ['toLowerCase', LOWER],
+  ['toLocaleLowerCase', LOWER],
+  ['lowercase', LOWER],
+  ['toUpperCase', UPPER],
+  ['toLocaleUpperCase', UPPER],
+  ['uppercase', UPPER],
 ]);
 const LOOKUPS = new Set(['contains', 'get', 'containsKey', 'indexOf', 'remove']);
 const FILLS = new Set(['add', 'put', 'set']);
@@ -41,7 +43,7 @@ function normalizedKey(source, range) {
 }
 
 function hasCase(text, casing) {
-  return text !== (casing === 'lower' ? text.toLowerCase() : text.toUpperCase());
+  return text !== (casing === LOWER ? text.toLowerCase() : text.toUpperCase());
 }
 
 function literalElements(source, range) {
@@ -180,6 +182,6 @@ export const caseLookupRule = {
 };
 
 export const CASE_LOOKUP_ALLOWED = messageFor(
-  { kind: 'original', casing: 'lower', collection: '<names>' },
+  { kind: 'original', casing: LOWER, collection: '<names>' },
   false,
 );

@@ -1,5 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { escapeText, unwrap } from '../support/flow/guard-forms.mts';
+import { ancestorsOf } from '../typed/node-views.mts';
+import { enclosingUnit } from '../support/flow/enclosing-unit.mts';
+import { escapeText as escapeRegExp, mathMethodOf, unwrap } from '../support/flow/guard-forms.mts';
 
 type MessageId = 'overflowingShift' | 'unboundedPower';
 type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
@@ -28,11 +30,7 @@ function growthOf(node: TSESTree.Node): Growth | undefined {
   }
   if (
     value.type === AST_NODE_TYPES.CallExpression &&
-    value.callee.type === AST_NODE_TYPES.MemberExpression &&
-    value.callee.object.type === AST_NODE_TYPES.Identifier &&
-    value.callee.object.name === 'Math' &&
-    value.callee.property.type === AST_NODE_TYPES.Identifier &&
-    value.callee.property.name === 'pow' &&
+    mathMethodOf(value) === 'pow' &&
     value.arguments.length === 2 &&
     value.arguments[0] !== undefined &&
     isNumber(value.arguments[0], 2) &&
@@ -45,13 +43,25 @@ function growthOf(node: TSESTree.Node): Growth | undefined {
   return undefined;
 }
 
-function coreOf(node: TSESTree.Node): TSESTree.Node {
-  const value = unwrap(node);
+function offsetBase(value: TSESTree.Node): TSESTree.Node | undefined {
   return value.type === AST_NODE_TYPES.BinaryExpression &&
     (value.operator === '-' || value.operator === '+') &&
     value.right.type === AST_NODE_TYPES.Literal
-    ? coreOf(value.left)
-    : value;
+    ? value.left
+    : undefined;
+}
+
+function coreOf(node: TSESTree.Node): TSESTree.Node {
+  let core = unwrap(node);
+  const pending = [core];
+  for (const value of pending) {
+    core = value;
+    const base = offsetBase(value);
+    if (base !== undefined) {
+      pending.push(unwrap(base));
+    }
+  }
+  return core;
 }
 
 function nameOf(node: TSESTree.Node): string | undefined {
@@ -64,24 +74,9 @@ function nameOf(node: TSESTree.Node): string | undefined {
     : undefined;
 }
 
-function enclosing(node: TSESTree.Node): TSESTree.Node {
-  let current: TSESTree.Node = node;
-  while (current.parent !== undefined && current.parent.type !== AST_NODE_TYPES.Program) {
-    current = current.parent;
-    if (
-      current.type === AST_NODE_TYPES.FunctionDeclaration ||
-      current.type === AST_NODE_TYPES.FunctionExpression ||
-      current.type === AST_NODE_TYPES.ArrowFunctionExpression
-    ) {
-      break;
-    }
-  }
-  return current;
-}
-
 function isBounded(context: Context, node: TSESTree.Node, exponent: TSESTree.Node): boolean {
-  const text = context.sourceCode.getText(enclosing(node));
-  const name = escapeText(context.sourceCode.getText(coreOf(exponent)));
+  const text = context.sourceCode.getText(enclosingUnit(node));
+  const name = escapeRegExp(context.sourceCode.getText(coreOf(exponent)));
   const forms = [
     `Math\\.min\\(\\s*${name}\\s*,`,
     `Math\\.min\\([^,)]*,\\s*${name}\\s*\\)`,
@@ -92,12 +87,15 @@ function isBounded(context: Context, node: TSESTree.Node, exponent: TSESTree.Nod
 }
 
 function isTimerArgument(node: TSESTree.Node): boolean {
-  let current = node;
-  while (current.parent !== undefined && current.parent.type !== AST_NODE_TYPES.Program) {
-    const { parent } = current;
+  const chain = [node, ...ancestorsOf(node)];
+  for (const [index, current] of chain.entries()) {
+    const parent = chain[index + 1];
+    if (parent === undefined) {
+      return false;
+    }
     if (
       parent.type === AST_NODE_TYPES.CallExpression &&
-      parent.arguments.includes(current as TSESTree.CallExpressionArgument)
+      parent.arguments.some((argument) => argument === current)
     ) {
       const callee = nameOf(parent.callee);
       return callee !== undefined && TIMER_CALL.test(callee);
@@ -109,34 +107,21 @@ function isTimerArgument(node: TSESTree.Node): boolean {
     ) {
       return false;
     }
-    current = parent;
   }
   return false;
 }
 
 function clamped(context: Context, product: TSESTree.Node): boolean {
-  let current: TSESTree.Node = product;
-  while (current.type !== AST_NODE_TYPES.Program) {
-    const parent = current.parent;
-    if (parent === undefined || parent === null) {
-      return false;
-    }
-    if (
-      parent.type === AST_NODE_TYPES.CallExpression &&
-      parent.callee.type === AST_NODE_TYPES.MemberExpression &&
-      parent.callee.object.type === AST_NODE_TYPES.Identifier &&
-      parent.callee.object.name === 'Math' &&
-      parent.callee.property.type === AST_NODE_TYPES.Identifier &&
-      parent.callee.property.name === 'min'
-    ) {
+  for (const parent of ancestorsOf(product)) {
+    if (mathMethodOf(parent) === 'min') {
       return true;
     }
     if (
       parent.type === AST_NODE_TYPES.VariableDeclarator &&
       parent.id.type === AST_NODE_TYPES.Identifier
     ) {
-      const text = context.sourceCode.getText(enclosing(parent));
-      return new RegExp(`Math\\.min\\([^)]*\\b${escapeText(parent.id.name)}\\b`, 'u').test(text);
+      const text = context.sourceCode.getText(enclosingUnit(parent));
+      return new RegExp(`Math\\.min\\([^)]*\\b${escapeRegExp(parent.id.name)}\\b`, 'u').test(text);
     }
     if (
       parent.type !== AST_NODE_TYPES.BinaryExpression &&
@@ -144,12 +129,11 @@ function clamped(context: Context, product: TSESTree.Node): boolean {
     ) {
       return false;
     }
-    current = parent;
   }
   return false;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -181,7 +165,7 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
           return;
         }
         const retry = RETRY_NAME.test(nameOf(coreOf(growth.exponent)) ?? '');
-        if ((!retry && !isTimerArgument(node)) || (!growth.shift && clamped(context, node))) {
+        if (!(retry || isTimerArgument(node)) || (!growth.shift && clamped(context, node))) {
           return;
         }
         context.report({

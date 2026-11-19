@@ -58,8 +58,10 @@ function isWallValue(context: Context, node: TSESTree.Node): boolean {
   }
   const [definition] = variableOf(context, node)?.defs ?? [];
   const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : null;
-  return init !== null && init !== undefined && isWallRead(init);
+    definition?.node.type === AST_NODE_TYPES.VariableDeclarator
+      ? (definition.node.init ?? undefined)
+      : undefined;
+  return init !== undefined && isWallRead(init);
 }
 
 function differenceOf(node: TSESTree.Node): TSESTree.BinaryExpression | undefined {
@@ -93,7 +95,7 @@ function usedAsLimit(node: TSESTree.Node): boolean {
   }
   return (
     parent?.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments.includes(node as TSESTree.CallExpressionArgument) &&
+    parent.arguments.some((argument) => argument === node) &&
     RECORDERS.test(recorderName(parent))
   );
 }
@@ -104,7 +106,7 @@ function reachesSink(context: Context, difference: TSESTree.BinaryExpression): b
   }
   const { parent } = difference;
   if (
-    parent?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    parent.type !== AST_NODE_TYPES.VariableDeclarator ||
     parent.id.type !== AST_NODE_TYPES.Identifier
   ) {
     return false;
@@ -155,7 +157,7 @@ function checkLocal(context: Context, node: TSESTree.VariableDeclarator): void {
   }
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Measure elapsed time and timeouts with a monotonic clock' },

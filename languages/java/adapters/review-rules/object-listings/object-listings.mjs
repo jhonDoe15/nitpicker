@@ -42,14 +42,11 @@ function importsAny(source, prefixes) {
 
 function singleKey(source, body) {
   const { tokens } = source;
-  for (let index = body.from; index < body.to; index += 1) {
-    const limited =
-      MAX_KEYS.has(tokens[index].text) && ['(', '='].includes(tokens[index + 1]?.text);
-    if (limited && tokens[index + 2]?.text === '1') {
-      return true;
-    }
-  }
-  return false;
+  return tokens.slice(body.from, body.to).some((token, offset) => {
+    const index = body.from + offset;
+    const limited = MAX_KEYS.has(token.text) && ['(', '='].includes(tokens[index + 1]?.text);
+    return limited && tokens[index + 2]?.text === '1';
+  });
 }
 
 function mentionsMarker(source, body, markers) {
@@ -60,14 +57,20 @@ function mentionsMarker(source, body, markers) {
 
 function insideLoop(source, index) {
   const { tokens, opener, partner } = source;
-  for (let open = opener[index]; open >= 0; open = opener[open]) {
-    const before = tokens[open - 1]?.text;
-    const header = before === ')' ? tokens[partner[open - 1] - 1]?.text : undefined;
-    if (tokens[open].text === '{' && (before === 'do' || header === 'while' || header === 'for')) {
-      return true;
+  const chain = [opener[index]];
+  for (const open of chain) {
+    if (open >= 0) {
+      chain.push(opener[open]);
     }
   }
-  return false;
+  return chain.some((open) => {
+    if (!(open >= 0)) {
+      return false;
+    }
+    const before = tokens[open - 1]?.text;
+    const header = before === ')' ? tokens[partner[open - 1] - 1]?.text : undefined;
+    return tokens[open].text === '{' && (before === 'do' || header === 'while' || header === 'for');
+  });
 }
 
 function unpaged(source, call, table) {
@@ -75,7 +78,7 @@ function unpaged(source, call, table) {
   if (frame === undefined || call.receiver === undefined) {
     return false;
   }
-  return !mentionsMarker(source, frame.body, table.markers) && !singleKey(source, frame.body);
+  return !(mentionsMarker(source, frame.body, table.markers) || singleKey(source, frame.body));
 }
 
 export function findUnpagedListings(source) {

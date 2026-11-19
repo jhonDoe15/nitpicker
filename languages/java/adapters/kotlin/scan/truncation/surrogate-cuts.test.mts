@@ -1,17 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { type Check, type Ruled, scanKotlinSource } from '../typed/typed-scan.mts';
+import { describeBodyCases } from '../typed/body-cases.mts';
+import type { Check, Ruled } from '../typed/typed-scan.mts';
 import { surrogateSplittingCuts as untypedCuts } from './surrogate-cuts.mjs';
 
 const surrogateSplittingCuts: Check<Ruled> = untypedCuts;
 
-function found(body: string) {
-  return surrogateSplittingCuts(
-    scanKotlinSource(`fun shorten(text: String, max: Int): String {\n${body}\n}\n`),
-  ).length;
-}
-
-describe('surrogateSplittingCuts', () => {
-  it.each([
+describeBodyCases({
+  title: 'surrogateSplittingCuts',
+  check: surrogateSplittingCuts,
+  header: `fun shorten(text: String, max: Int): String {`,
+  reports: [
     [
       'take after a length check',
       '    return if (text.length > max) text.take(max - 1) + "…" else text',
@@ -25,11 +22,8 @@ describe('surrogateSplittingCuts', () => {
       'subSequence',
       '    if (text.length > max) return text.subSequence(0, max).toString()\n    return text',
     ],
-  ])('reports %s', (_name, body) => {
-    expect(found(body)).toBe(1);
-  });
-
-  it.each([
+  ],
+  clean: [
     ['no length check', '    return text.take(max)'],
     ['another bound', '    return if (text.length > 10) text.take(max) else text'],
     ['the first character', '    return if (text.length > max) text.take(1) else text'],
@@ -40,7 +34,5 @@ describe('surrogateSplittingCuts', () => {
     ['an ascii name', '    return if (hash.length > max) hash.take(max) else hash'],
     ['a different receiver', '    return if (text.length > max) other.take(max) else text'],
     ['a comment', '    // if (text.length > max) text.take(max)\n    return text'],
-  ])('leaves %s alone', (_name, body) => {
-    expect(found(body)).toBe(0);
-  });
+  ],
 });

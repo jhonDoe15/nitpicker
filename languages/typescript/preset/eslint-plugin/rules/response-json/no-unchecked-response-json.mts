@@ -1,28 +1,27 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { calleeNameOf } from '../typed/syntax-views.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 type MessageId = 'uncheckedJson';
 
 const BODY_READERS = new Set(['json', 'text', 'blob', 'arrayBuffer', 'formData', 'clone', 'body']);
 const FETCH_OWNERS = new Set(['globalThis', 'window', 'self']);
 
-function isFetchCall(node: TSESTree.Node | null | undefined): boolean {
-  if (node?.type !== AST_NODE_TYPES.CallExpression) {
+function isFetchCall(node: TSESTree.Node | undefined): boolean {
+  if (node?.type !== AST_NODE_TYPES.CallExpression || calleeNameOf(node.callee) !== 'fetch') {
     return false;
   }
   const { callee } = node;
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name === 'fetch';
-  }
   return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    FETCH_OWNERS.has(callee.object.name) &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.property.name === 'fetch'
+    callee.type === AST_NODE_TYPES.Identifier ||
+    (callee.type === AST_NODE_TYPES.MemberExpression &&
+      callee.object.type === AST_NODE_TYPES.Identifier &&
+      FETCH_OWNERS.has(callee.object.name))
   );
 }
 
-function unwrapAwait(node: TSESTree.Node | null | undefined): TSESTree.Node | null | undefined {
+function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
   return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
 }
 
@@ -44,24 +43,26 @@ function isThenCallbackOfFetch(param: TSESTree.Identifier): boolean {
 
 function isResponseOrigin(definition: TSESLint.Scope.Definition): boolean {
   const { node, name } = definition;
-  if (definition.type === 'Variable' && node.type === AST_NODE_TYPES.VariableDeclarator) {
-    return node.id === name && isFetchCall(unwrapAwait(node.init));
+  if (
+    definition.type === DefinitionType.Variable &&
+    node.type === AST_NODE_TYPES.VariableDeclarator
+  ) {
+    return node.id === name && isFetchCall(unwrapAwait(node.init ?? undefined));
   }
   return (
-    definition.type === 'Parameter' &&
+    definition.type === DefinitionType.Parameter &&
     name.type === AST_NODE_TYPES.Identifier &&
     isThenCallbackOfFetch(name)
   );
 }
 
 function isInTryWithCatch(node: TSESTree.Node): boolean {
-  let child = node;
-  let parent: TSESTree.Node | undefined = node.parent;
-  for (
-    ;
-    parent !== undefined && parent.type !== AST_NODE_TYPES.Program;
-    child = parent, parent = parent.parent
-  ) {
+  const chain = [node];
+  for (const child of chain) {
+    const parent = child.parent ?? undefined;
+    if (parent === undefined || parent.type === AST_NODE_TYPES.Program) {
+      return false;
+    }
     if (
       parent.type === AST_NODE_TYPES.TryStatement &&
       parent.block === child &&
@@ -76,6 +77,7 @@ function isInTryWithCatch(node: TSESTree.Node): boolean {
     ) {
       return false;
     }
+    chain.push(parent);
   }
   return false;
 }
@@ -125,7 +127,7 @@ function isJsonRead(
     : undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Check the status of a fetch response before reading its body as JSON' },

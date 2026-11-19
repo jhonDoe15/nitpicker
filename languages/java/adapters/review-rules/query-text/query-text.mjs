@@ -29,21 +29,31 @@ const QUERY_CALLS = new Set([
   'format',
   'sql',
 ]);
+const KEY_LENGTH = 40;
 const BLOCK_STARTS = new Set(['if', 'for', 'while', 'try', 'synchronized', 'switch', 'when']);
 
-function nextStatement(source, from) {
+function statementEnd(source, { from, index, end, group }) {
   const { tokens, kotlin } = source;
-  for (const { index, end, group } of forward(source, from)) {
-    const { text } = tokens[index];
-    if (text === '}' && !group) {
+  const { text } = tokens[index];
+  if (text === '{' && group && BLOCK_STARTS.has(tokens[from].text)) {
+    return end;
+  }
+  const ends = kotlin ? index > from && startsNewLine(tokens, index) : text === ';' && !group;
+  if (!ends) {
+    return undefined;
+  }
+  return kotlin ? index : end;
+}
+
+function nextStatement(source, from) {
+  const { tokens } = source;
+  for (const step of forward(source, from)) {
+    if (tokens[step.index].text === '}' && !step.group) {
       return undefined;
     }
-    if (text === '{' && group && BLOCK_STARTS.has(tokens[from].text)) {
-      return { from, to: end };
-    }
-    const ends = kotlin ? index > from && startsNewLine(tokens, index) : text === ';' && !group;
-    if (ends) {
-      return { from, to: kotlin ? index : end };
+    const to = statementEnd(source, { from, ...step });
+    if (to !== undefined) {
+      return { from, to };
     }
   }
   return undefined;
@@ -82,7 +92,7 @@ function isComplete(source, { start, end, text }) {
 }
 
 function runTogetherPair(source, operand, following) {
-  if (!operand.literal || !following?.literal) {
+  if (!(operand.literal && following?.literal)) {
     return undefined;
   }
   const left = stringText(source.tokens[operand.from], source.kotlin);
@@ -105,7 +115,7 @@ function queryFinding(token, { text, problem }) {
     line: token.line,
     kind: problem.kind,
     symbol: problem.kind,
-    key: problem.snippet ?? text.slice(0, 40),
+    key: problem.snippet ?? text.slice(0, KEY_LENGTH),
     problem,
   };
 }
@@ -122,17 +132,20 @@ function queryAt(source, index) {
 export function findMalformedQueries(source) {
   const { tokens } = source;
   const found = [];
-  let index = 0;
-  while (index < tokens.length) {
+  const pending = [0];
+  for (const index of pending) {
+    if (index >= tokens.length) {
+      break;
+    }
     if (tokens[index].kind !== 'string' || tokens[index - 1]?.text === '+') {
-      index += 1;
+      pending.push(index + 1);
       continue;
     }
     const { end, finding } = queryAt(source, index);
     if (finding !== undefined) {
       found.push(finding);
     }
-    index = end;
+    pending.push(end);
   }
   return found;
 }

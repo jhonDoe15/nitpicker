@@ -22,11 +22,13 @@ const PATH_SHAPED = /^(?:[/~@]|[\w.-]+\/)/u;
 const AFFIX_CALLS = new Set(['startsWith', 'endsWith']);
 const WORD_LITERAL = /[\p{L}\p{N}]/u;
 const LOOKAHEAD = 60;
+const THIS_MEMBER_TOKENS = 3;
 
 function isStringReceiver(source, receiver, strings) {
   const { tokens } = source;
   const last = tokens[receiver.to - 1];
-  const member = receiver.to - receiver.from === 3 && tokens[receiver.from].text === 'this';
+  const member =
+    receiver.to - receiver.from === THIS_MEMBER_TOKENS && tokens[receiver.from].text === 'this';
   const plain = receiver.to - receiver.from === 1 || member;
   if (plain) {
     return strings.has(last.text);

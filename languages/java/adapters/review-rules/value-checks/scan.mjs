@@ -15,8 +15,8 @@ export function statementEnd(source, from) {
 export function declarations(source, { from, to }) {
   const { tokens } = source;
   const found = [];
-  for (let index = from + 1; index < to; index += 1) {
-    const { text, kind } = tokens[index];
+  for (const [offset, { text, kind }] of tokens.slice(from + 1, to).entries()) {
+    const index = from + 1 + offset;
     const before = tokens[index - 1].text;
     if (kind === 'identifier' && tokens[index + 1]?.text === '=' && before !== '.') {
       found.push({ name: text, at: index, end: statementEnd(source, index + 2) });
@@ -28,8 +28,9 @@ export function declarations(source, { from, to }) {
 export function ownUses(source, { from, to }, name) {
   const { tokens } = source;
   const uses = [];
-  for (let index = from; index < to; index += 1) {
-    const isName = tokens[index].text === name && tokens[index - 1]?.text !== '.';
+  for (const [offset, token] of tokens.slice(from, to).entries()) {
+    const index = from + offset;
+    const isName = token.text === name && tokens[index - 1]?.text !== '.';
     if (isName && tokens[index + 1]?.text !== '=') {
       uses.push(index);
     }

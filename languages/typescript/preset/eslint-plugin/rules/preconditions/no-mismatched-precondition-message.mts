@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { unwrapped } from '../typed/syntax-views.mts';
@@ -6,9 +6,11 @@ import { unwrapped } from '../typed/syntax-views.mts';
 type MessageId = 'mismatch';
 type Node = TSESTree.Node;
 
-const ASSERTIONS = new Set(['assert', 'invariant']);
+const ASSERT = 'assert';
+const { DefinitionType, ScopeType } = TSESLint.Scope;
+const ASSERTIONS = new Set([ASSERT, 'invariant']);
 const SUBJECT = new RegExp(
-  '^[`\'"]?([A-Za-z_$][\\w$]*)[`\'"]?\\s+' +
+  '^[`\'"]?([a-z_$][\\w$]*)[`\'"]?\\s+' +
     "(?:must|should|is|are|was|cannot|can't|can not|may not|has|have|required|needs|not)\\b",
   'iu',
 );
@@ -25,17 +27,22 @@ function normalized(name: string): string {
 }
 
 function operandNames(node: Node): string[] {
-  const inner = unwrapped(node);
-  if (inner.type === AST_NODE_TYPES.Identifier) {
-    return [inner.name];
+  const names: string[] = [];
+  const pending: Node[] = [unwrapped(node)];
+  for (const inner of pending) {
+    if (inner.type === AST_NODE_TYPES.Identifier) {
+      names.unshift(inner.name);
+    } else if (inner.type === AST_NODE_TYPES.ThisExpression) {
+      names.unshift('this');
+    } else if (
+      inner.type === AST_NODE_TYPES.MemberExpression &&
+      inner.property.type === AST_NODE_TYPES.Identifier
+    ) {
+      names.unshift(inner.property.name);
+      pending.push(unwrapped(inner.object));
+    }
   }
-  if (
-    inner.type === AST_NODE_TYPES.MemberExpression &&
-    inner.property.type === AST_NODE_TYPES.Identifier
-  ) {
-    return [...operandNames(inner.object), inner.property.name];
-  }
-  return inner.type === AST_NODE_TYPES.ThisExpression ? ['this'] : [];
+  return names;
 }
 
 function isNullLiteral(node: Node): boolean {
@@ -99,8 +106,9 @@ function isLocalValue(context: SourceContext, node: Node, name: string): boolean
   const definition = variable?.defs[0];
   return (
     definition !== undefined &&
-    (definition.type === 'Parameter' ||
-      (definition.type === 'Variable' && variable?.scope.variableScope.type === 'function'))
+    (definition.type === DefinitionType.Parameter ||
+      (definition.type === DefinitionType.Variable &&
+        variable?.scope.variableScope.type === ScopeType.function))
   );
 }
 
@@ -114,9 +122,8 @@ function namedInScope(context: SourceContext, node: Node, message: string): stri
   return candidates.find((name) => !HOOK_NAME.test(name) && inScope(context, node, name));
 }
 
-function mentions(root: Node | null | undefined, name: string): boolean {
+function mentions(root: Node | undefined, name: string): boolean {
   return (
-    root !== null &&
     root !== undefined &&
     [...depthFirst<Node>(root, nodeChildren)].some(
       (node) => node.type === AST_NODE_TYPES.Identifier && node.name === name,
@@ -130,7 +137,10 @@ function isDerivedFrom(
   pair: { checked: string; named: string },
 ): boolean {
   const definition = findVariable(context, node, pair.checked)?.defs[0];
-  return definition?.type === 'Variable' && mentions(definition.node.init, pair.named);
+  return (
+    definition?.type === DefinitionType.Variable &&
+    mentions(definition.node.init ?? undefined, pair.named)
+  );
 }
 
 function messageNames(message: string, names: readonly string[]): boolean {
@@ -138,12 +148,12 @@ function messageNames(message: string, names: readonly string[]): boolean {
   return names.some((name) => name !== 'this' && words.has(normalized(name)));
 }
 
-interface Precondition {
+type Precondition = {
   report: Node;
   checked: Node | undefined;
   message: string | undefined;
   at: Node;
-}
+};
 
 function mismatchData(
   context: SourceContext,
@@ -171,13 +181,13 @@ function assertionName(callee: Node): string | undefined {
   return callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.object.type === AST_NODE_TYPES.Identifier &&
     callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'assert' &&
+    callee.object.name === ASSERT &&
     callee.property.name === 'ok'
-    ? 'assert'
+    ? ASSERT
     : undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Name the checked value in a precondition message' },
@@ -189,12 +199,12 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
     },
   },
   create(context) {
-    const verify = (precondition: Precondition) => {
+    function verify(precondition: Precondition): void {
       const data = mismatchData(context, precondition);
       if (data !== undefined) {
         context.report({ node: precondition.report, messageId: 'mismatch', data });
       }
-    };
+    }
 
     return {
       IfStatement(node) {

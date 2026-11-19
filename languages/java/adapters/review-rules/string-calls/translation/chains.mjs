@@ -2,7 +2,9 @@ import { frameAt } from '../../max-value-sums/source-file.mjs';
 import { isOperator, methodCalls, receiverStart, singleToken, stringValue } from '../calls.mjs';
 
 const REPLACE_NAMES = ['replace', 'replaceAll', 'replaceFirst'];
-const REGEX_ENTRIES = new Set(['compile', 'Regex', 'matches', 'toRegex']);
+const TO_REGEX = 'toRegex';
+const ROOT_LENGTH = 40;
+const REGEX_ENTRIES = new Set(['compile', 'Regex', 'matches', TO_REGEX]);
 const REGEX_TOKENS = new Set([
   '.*',
   '.+',
@@ -28,13 +30,13 @@ function linkOf(source, call) {
   return { call, replacement, start: receiverStart(source, call.dot) };
 }
 
-function chainEndingAt(source, links, call) {
-  const chain = [];
-  let current = call;
-  while (current !== undefined) {
-    chain.push(current);
+function chainEndingAt(links, call) {
+  const chain = [call];
+  for (const current of chain) {
     const before = links.find(({ call: other }) => other.close === current.call.dot - 1);
-    current = before;
+    if (before !== undefined) {
+      chain.push(before);
+    }
   }
   return chain.toReversed();
 }
@@ -63,7 +65,7 @@ function reachesRegex(source, link) {
     return true;
   }
   const after = partner[link.call.open] + 1;
-  if (isOperator(tokens[after], ['.']) && tokens[after + 1]?.text === 'toRegex') {
+  if (isOperator(tokens[after], ['.']) && tokens[after + 1]?.text === TO_REGEX) {
     return true;
   }
   const equals = tokens[first - 1];
@@ -83,7 +85,7 @@ function regexUse(source, index) {
   const open = opener[index];
   const entry = tokens[open - 1]?.text;
   const call = open >= 0 && tokens[open].text === '(' && REGEX_ENTRIES.has(entry);
-  return call || (tokens[index + 1]?.text === '.' && tokens[index + 2]?.text === 'toRegex');
+  return call || (tokens[index + 1]?.text === '.' && tokens[index + 2]?.text === TO_REGEX);
 }
 
 function isConstantRoot(source, { from, to }) {
@@ -99,7 +101,7 @@ export function findTranslations(source) {
     if (isReceiverOfLink(links, top)) {
       return [];
     }
-    const chain = chainEndingAt(source, links, top);
+    const chain = chainEndingAt(links, top);
     const root = { from: chain[0].start, to: chain[0].call.dot };
     const replacements = chain.map(({ replacement }) => replacement ?? '');
     const kind = kindOf(replacements);
@@ -118,7 +120,7 @@ export function findTranslations(source) {
           {
             kind,
             line: top.call.line,
-            root: text.join('').slice(0, 40),
+            root: text.join('').slice(0, ROOT_LENGTH),
             method: frameAt(source, top.call.open)?.name,
           },
         ]

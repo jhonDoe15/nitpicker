@@ -9,7 +9,7 @@ import { queryTextRule } from '../query-text/query-text.mjs';
 import { caseLookupRule } from '../case-lookups/case-lookups.mjs';
 import { affixReplaceRule } from '../affix-replace/affix-replace.mjs';
 
-export const MINED_RULES = [
+const MINED_RULES = [
   affixBoundaryRule,
   affixReplaceRule,
   caseLookupRule,

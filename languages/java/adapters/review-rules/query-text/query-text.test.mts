@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
+import { sourceRunners } from '../test-support/source-runners.mts';
 import { findMalformedQueries as untypedFind } from './query-text.mjs';
 
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
 const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
 
-function java(body: string) {
-  const text = `class Mapper {\n  String build(String group) {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Mapper.java', kotlin: false })).map(({ kind }) => kind);
-}
-
-function kotlin(body: string) {
-  const text = `class Mapper {\n  fun build(group: String): String {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Mapper.kt', kotlin: true })).map(({ kind }) => kind);
-}
+const { java, kotlin } = sourceRunners({
+  find,
+  pick: ({ kind }) => kind,
+  java: {
+    file: 'Mapper.java',
+    wrap: (body) => `class Mapper {\n  String build(String group) {\n${body}\n  }\n}\n`,
+  },
+  kotlin: {
+    file: 'Mapper.kt',
+    wrap: (body) => `class Mapper {\n  fun build(group: String): String {\n${body}\n  }\n}\n`,
+  },
+});
 
 describe('MalformedQueryText in Java', () => {
   it('reports an operator with no operand, as in the config mapper fix', () => {

@@ -10,7 +10,9 @@ const MARKUP = new RegExp(`(?<![\\w)\\]])</?(?:${TAGS})(?=[\\s>/]|$|\\\\)`, 'u')
 const SAFE = /escape|encode|sanitize|html|quote|clean/iu;
 const NUMBERS = /^(?:length|size|count|toInt|toLong|ordinal)$/u;
 const TEMPLATE_PART = /\$\{([^}]*)\}|\$([\p{L}_][\p{L}\p{N}_]*)/gu;
-const TEXT_VERBS = /%(?:\d+\$)?[-+# 0,(]*(?:\d+)?(?:\.\d+)?([a-zA-Z%])/gu;
+const MAX_VALUE_LENGTH = 40;
+const STOPS = new Set([',', ';', '=', 'return', '{', '}']);
+const TEXT_VERBS = /%(?:\d+\$)?[-+# ,(\d]*(?:\.\d+)?([a-zA-Z%])/gu;
 
 function isMarkupToken(token) {
   return token.kind === 'string' && MARKUP.test(token.text);
@@ -33,13 +35,18 @@ function isSafeTokens(tokens, numbers) {
 function operandsOf(source, { from, to }) {
   const operands = [];
   let start = from;
+  let resume = from;
   const { tokens, partner } = source;
-  for (let index = from; index < to; index += 1) {
-    if (isOperator(tokens[index], ['+']) && !tokens[index + 1]?.text?.startsWith('+')) {
+  for (const [offset, token] of tokens.slice(from, to).entries()) {
+    const index = from + offset;
+    if (index < resume) {
+      continue;
+    }
+    if (isOperator(token, ['+']) && !tokens[index + 1]?.text?.startsWith('+')) {
       operands.push({ from: start, to: index });
       start = index + 1;
     } else if (partner[index] > index) {
-      index = partner[index];
+      resume = partner[index] + 1;
     }
   }
   return [...operands, { from: start, to }];
@@ -50,19 +57,18 @@ function expressionAround(source, index) {
   const boundary = opener[index];
   const from = boundary + 1;
   const to = boundary >= 0 && partner[boundary] > boundary ? partner[boundary] : tokens.length;
-  const stops = new Set([',', ';', '=', 'return', '{', '}']);
-  let start = index;
-  let end = index + 1;
-  while (start > from && !(stops.has(tokens[start - 1].text) && opener[start - 1] === boundary)) {
-    start -= 1;
+  function isStop(at) {
+    return STOPS.has(tokens[at].text) && opener[at] === boundary;
   }
-  while (end < to && !(stops.has(tokens[end].text) && opener[end] === boundary)) {
-    end += 1;
-  }
-  return { from: start, to: end };
+  const before = tokens.slice(from, index).findLastIndex((_, offset) => isStop(from + offset));
+  const after = tokens.slice(index + 1, to).findIndex((_, offset) => isStop(index + 1 + offset));
+  return {
+    from: before === -1 ? Math.min(from, index) : from + before + 1,
+    to: after === -1 ? Math.max(to, index + 1) : index + 1 + after,
+  };
 }
 
-function concatenationFinding(source, index) {
+function concatenationFinding(source, index, numbers) {
   const span = expressionAround(source, index);
   const operands = operandsOf(source, span);
   if (
@@ -71,7 +77,6 @@ function concatenationFinding(source, index) {
   ) {
     return undefined;
   }
-  const numbers = numericNames(source);
   const bad = operands.find(
     (operand) =>
       !isSafeTokens(source.tokens.slice(operand.from, operand.to), numbers) &&
@@ -97,14 +102,16 @@ function templateFinding(token, numbers) {
   return bad === undefined ? undefined : (bad[1] ?? bad[2]);
 }
 
-function formatFindings(source, call) {
+function formatFindings(source, call, numbers) {
   const [format, ...values] = call.args;
   const token = format === undefined ? undefined : source.tokens[format.from];
   const direct =
     call.name === 'format' && token?.kind === 'string' && format.to - format.from === 1;
   const owner = source.tokens[call.dot - 1];
   const formatted = call.name === 'formatted' && owner?.kind === 'string';
-  const pattern = direct ? token : formatted ? owner : undefined;
+  const pattern = [direct ? token : undefined, formatted ? owner : undefined].find(
+    (item) => item !== undefined,
+  );
   const list = direct ? values : call.args;
   if (pattern === undefined || !isMarkupToken(pattern)) {
     return [];
@@ -115,16 +122,14 @@ function formatFindings(source, call) {
   return verbs.flatMap(([, verb], position) => {
     const argument = list[position];
     const tokens = argument === undefined ? [] : source.tokens.slice(argument.from, argument.to);
-    return argument !== undefined &&
-      'sS'.includes(verb) &&
-      !isSafeTokens(tokens, numericNames(source))
+    return argument !== undefined && 'sS'.includes(verb) && !isSafeTokens(tokens, numbers)
       ? [
           {
             line: call.line,
             value: tokens
               .map(({ text }) => text)
               .join('')
-              .slice(0, 40),
+              .slice(0, MAX_VALUE_LENGTH),
           },
         ]
       : [];
@@ -135,38 +140,43 @@ function ownerAt(source, at) {
   return frameAt(source, at)?.name;
 }
 
-function markupFindings(source, index, seen) {
+function markupFindings(source, index, { seen, numbers }) {
   const token = source.tokens[index];
   const owner = ownerAt(source, index);
   const found = [];
-  const template = source.kotlin ? templateFinding(token, numericNames(source)) : undefined;
+  const template = source.kotlin ? templateFinding(token, numbers) : undefined;
   if (template !== undefined) {
-    found.push({ line: token.line, value: template.slice(0, 40), owner });
+    found.push({ line: token.line, value: template.slice(0, MAX_VALUE_LENGTH), owner });
   }
-  const concat = concatenationFinding(source, index);
+  const concat = concatenationFinding(source, index, numbers);
   if (concat !== undefined && !seen.has(concat.span.from)) {
     seen.add(concat.span.from);
     const words = source.tokens.slice(concat.bad.from, concat.bad.to).map(({ text }) => text);
-    found.push({ line: token.line, value: words.join('').slice(0, 40), owner });
+    found.push({ line: token.line, value: words.join('').slice(0, MAX_VALUE_LENGTH), owner });
   }
   return found;
 }
 
-function formatMarkup(source) {
+function formatMarkup(source, numbers) {
   return methodCalls(source, ['format', 'formatted'])
     .filter((call) => !isDiagnosticText(source, call.open))
     .flatMap((call) =>
-      formatFindings(source, call).map((hit) => ({ ...hit, owner: ownerAt(source, call.open) })),
+      formatFindings(source, call, numbers).map((hit) => ({
+        ...hit,
+        owner: ownerAt(source, call.open),
+      })),
     );
 }
 
 export function findUnescapedMarkup(source) {
-  const seen = new Set();
+  const state = { seen: new Set(), numbers: numericNames(source) };
   const found = [];
   for (const [index, token] of source.tokens.entries()) {
     if (token.kind === 'string' && isMarkupToken(token) && !isDiagnosticText(source, index)) {
-      found.push(...markupFindings(source, index, seen));
+      for (const finding of markupFindings(source, index, state)) {
+        found.push(finding);
+      }
     }
   }
-  return [...found, ...formatMarkup(source)];
+  return [...found, ...formatMarkup(source, state.numbers)];
 }

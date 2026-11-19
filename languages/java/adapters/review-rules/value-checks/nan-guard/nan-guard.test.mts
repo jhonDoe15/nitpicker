@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
-import { NAN_GUARD_CHECK as untypedCheck } from './nan-guard.mjs';
+import { linesOf } from '../../test-support/check-runner.mts';
+import { NAN_GUARD_CHECK } from './nan-guard.mjs';
 
-type Found = { readonly line: number; readonly name: string };
-
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
-
-function lines(body: string, kotlin = false): number[] {
-  return check
-    .find(parseSource(`class A {\n${body}\n}\n`, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ line }) => line);
-}
+const lines = linesOf(NAN_GUARD_CHECK);
 
 describe('NanOnlyGuard in Java', () => {
   it('reports isNaN as the only check on a parsed double', () => {
@@ -75,7 +65,7 @@ describe('NanOnlyGuard in Kotlin', () => {
           '  return value',
           '}',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual([4]);
   });

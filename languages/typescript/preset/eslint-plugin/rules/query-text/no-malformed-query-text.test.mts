@@ -14,7 +14,7 @@ ruleTester.run('no-malformed-query-text', rule, {
     "let where = ''; where += ' AND group_id LIKE '; where += '?';",
     "let where = ''; where += ' AND group_id LIKE '; if (x) { where += '?'; }",
     "const q = 'SELECT * FROM t WHERE a = ' + id;",
-    'const q = `SELECT * FROM t WHERE a = ${id}`;',
+    `const q = \`SELECT * FROM t WHERE a = \${id}\`;`,
     "const q = 'SELECT * FROM t ' + 'WHERE a = ?';",
     "const q = 'SELECT * FROM t' + ' WHERE a = ?';",
     "const q = 'INSERT INTO t (a, b) VALUES (?, ?)';",

@@ -9,7 +9,7 @@ function flagged(code: string) {
 
 tester.run('no-host-port-colon-split', rule, {
   valid: [
-    'export const url = new URL(`http://${req.get("host")}`);',
+    `export const url = new URL(\`http://\${req.get("host")}\`);`,
     'export const parts = value.split(":");',
     'export const [h, m] = time.split(":");',
     'export const parts = address.split(":");',
@@ -18,7 +18,7 @@ tester.run('no-host-port-colon-split', rule, {
     'export const first = hostname.split("/");',
     'export const i = host.lastIndexOf(":");',
     'export const [a] = headers.get("content-type").split(":");',
-    'export const h = new URL(`http://${host}`).hostname;',
+    `export const h = new URL(\`http://\${host}\`).hostname;`,
     'export const p = host.slice(0, host.lastIndexOf(":"));',
     'export function split(host: string) { if (host.startsWith("[")) { return host; } return host.split(":"); }',
     'export function split(host: string) { return isIPv6(host) ? host : host.split(":")[0]; }',

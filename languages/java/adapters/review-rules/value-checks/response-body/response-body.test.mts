@@ -1,19 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
-import { RESPONSE_BODY_CHECK as untypedCheck } from './response-body.mjs';
+import { linesOf } from '../../test-support/check-runner.mts';
+import { RESPONSE_BODY_CHECK } from './response-body.mjs';
 
-type Found = { readonly line: number; readonly name: string };
-
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
-
-function lines(body: string, kotlin = false): number[] {
-  const wrapped = `class A {\n${body}\n}\n`;
-  return check
-    .find(parseSource(wrapped, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ line }) => line);
-}
+const lines = linesOf(RESPONSE_BODY_CHECK);
 
 describe('UncheckedResponseBody in Java', () => {
   it('reports a body mapped as JSON before the status is read', () => {
@@ -112,7 +101,7 @@ describe('UncheckedResponseBody in Kotlin', () => {
           '  return Json.decodeFromString(response.body())',
           '}',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual([4]);
   });
@@ -127,7 +116,7 @@ describe('UncheckedResponseBody in Kotlin', () => {
           '  return Json.decodeFromString(response.body())',
           '}',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual([]);
   });

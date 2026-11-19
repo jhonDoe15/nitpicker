@@ -1,7 +1,7 @@
 import { startsNewLine } from '../../max-value-sums/source-file.mjs';
 import { declarations, eachFrame, ownUses, statementEnd, textsOf } from '../scan.mjs';
 
-export const WALL_CLOCK_RULE = 'WallClockElapsed';
+const WALL_CLOCK_RULE = 'WallClockElapsed';
 
 const WALL_STATIC = new Set([
   'Instant',
@@ -12,10 +12,13 @@ const WALL_STATIC = new Set([
 ]);
 const CLOCK_METHODS = new Set(['instant', 'millis']);
 const RELATIONS = new Set(['<', '>', '<=', '>=']);
-const RECORDERS = /^(?:record|observe|timing|recordTime|distribution)/u;
+const SUBTRACTION_WINDOW = 8;
+const BETWEEN_WINDOW = 12;
+const RECORDERS = /^(?:record|observe|timing|distribution)/u;
 
 function isWallRead(tokens, from, to) {
-  for (let index = from; index < to; index += 1) {
+  for (const [offset] of tokens.slice(from, to).entries()) {
+    const index = from + offset;
     const { text } = tokens[index];
     const next = tokens[index + 1]?.text;
     const owner = tokens[index - 2]?.text ?? '';
@@ -48,24 +51,32 @@ function elapsedUse(source, { range, use, walls }) {
   const lastBefore = tokens[use - 2];
   const subtraction =
     before === '-' &&
-    (isWallRead(tokens, Math.max(range.from, use - 8), use - 1) || walls.has(lastBefore?.text));
+    (isWallRead(tokens, Math.max(range.from, use - SUBTRACTION_WINDOW), use - 1) ||
+      walls.has(lastBefore?.text));
   const between =
-    textsOf(source, use - 2, use).join('') === 'between(' && isWallRead(tokens, use, use + 12);
+    textsOf(source, use - 2, use).join('') === 'between(' &&
+    isWallRead(tokens, use, use + BETWEEN_WINDOW);
   return subtraction || between;
+}
+
+function statementStart(source, range, use) {
+  const { tokens } = source;
+  const candidates = Array.from(
+    { length: Math.max(0, use - range.from) },
+    (_, offset) => use - offset,
+  );
+  const boundary = candidates.find(
+    (start) =>
+      [';', '{', '}'].includes(tokens[start - 1].text) ||
+      (source.kotlin && startsNewLine(tokens, start)),
+  );
+  return boundary ?? range.from;
 }
 
 function usedAsLimit(source, range, use) {
   const { tokens } = source;
   const end = statementEnd(source, use);
-  let start = use;
-  while (
-    start > range.from &&
-    ![';', '{', '}'].includes(tokens[start - 1].text) &&
-    !(source.kotlin && startsNewLine(tokens, start))
-  ) {
-    start -= 1;
-  }
-  const statement = tokens.slice(start, end);
+  const statement = tokens.slice(statementStart(source, range, use), end);
   if (statement.some(({ text }) => RELATIONS.has(text))) {
     return true;
   }

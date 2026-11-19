@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { orderedOperandsOf } from '../typed/syntax-views.mts';
 import {
   resolveConstant,
   stringValue,
@@ -38,18 +39,12 @@ function joinParts(node: TSESTree.CallExpression): readonly TSESTree.Node[] | un
       (element) => element !== null && element.type !== AST_NODE_TYPES.SpreadElement,
     ) &&
     (separator === undefined || isDelimiter(separator))
-    ? (elements as readonly TSESTree.Node[])
+    ? elements
     : undefined;
 }
 
-function sumOperands(node: TSESTree.Node): readonly TSESTree.Node[] {
-  return node.type === AST_NODE_TYPES.BinaryExpression && node.operator === '+'
-    ? [...sumOperands(node.left), ...sumOperands(node.right)]
-    : [node];
-}
-
 function concatenatedParts(node: TSESTree.BinaryExpression): readonly TSESTree.Node[] | undefined {
-  const operands = sumOperands(node);
+  const operands = orderedOperandsOf(node, '+');
   const parts = operands.filter((operand) => stringValue(operand) === undefined);
   const separated = operands.some(
     (operand, index) =>

@@ -74,7 +74,9 @@ tester.run('no-unhandled-url-parse', rule, {
       'export function name(text: string) { return globalThis.decodeURIComponent(text); }',
     ),
     decodeFlagged('export function name(req: Req) { return decodeURIComponent(req.params.name); }'),
-    decodeFlagged('export function name(text: string) { return decodeURIComponent(`a/${text}`); }'),
+    decodeFlagged(
+      `export function name(text: string) { return decodeURIComponent(\`a/\${text}\`); }`,
+    ),
     decodeFlagged(
       'export function parts(texts: string[]) { return texts.map((text) => decodeURIComponent(text)); }',
     ),

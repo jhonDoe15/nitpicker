@@ -1,15 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { type Check, type Ruled, scanKotlinSource } from '../typed/typed-scan.mts';
+import { describeBodyCases } from '../typed/body-cases.mts';
+import type { Check, Ruled } from '../typed/typed-scan.mts';
 import { newlineOnlyLineSplits as untypedLineSplits } from './line-splits.mjs';
 
 const newlineOnlyLineSplits: Check<Ruled> = untypedLineSplits;
 
-function found(body: string) {
-  return newlineOnlyLineSplits(scanKotlinSource(`fun load(file: File) {\n${body}\n}\n`)).length;
-}
-
-describe('newlineOnlyLineSplits', () => {
-  it.each([
+describeBodyCases({
+  title: 'newlineOnlyLineSplits',
+  check: newlineOnlyLineSplits,
+  header: `fun load(file: File) {`,
+  reports: [
     ['a split of readText', '    val lines = file.readText().split("\\n")'],
     ['a split of a trimmed read', '    val lines = file.readText().trim().split("\\n")'],
     ['a split of Files.readString', '    val lines = Files.readString(path).split("\\n")'],
@@ -19,11 +18,8 @@ describe('newlineOnlyLineSplits', () => {
       'a named read with a charset',
       '    val text = file.readText(Charsets.UTF_8)\n    val end = text.lastIndexOf("\\n")',
     ],
-  ])('reports %s', (_name, body) => {
-    expect(found(body)).toBe(1);
-  });
-
-  it.each([
+  ],
+  clean: [
     ['lines()', '    val lines = file.readText().lines()'],
     ['a generated text', '    val lines = generated.split("\\n")'],
     ['a regex split', '    val lines = file.readText().split(Regex("\\\\r?\\\\n"))'],
@@ -34,7 +30,5 @@ describe('newlineOnlyLineSplits', () => {
       '    val text = file.readText().replace("\\r\\n", "\\n")\n    val lines = text.split("\\n")',
     ],
     ['a comment', '    // file.readText().split("\\n")'],
-  ])('leaves %s alone', (_name, body) => {
-    expect(found(body)).toBe(0);
-  });
+  ],
 });

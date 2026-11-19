@@ -7,13 +7,18 @@ import {
 import { unwrapped } from '../typed/syntax-views.mts';
 
 type Node = TSESTree.Node;
-export type Casing = 'lower' | 'upper';
+type ElementList = TSESTree.ArrayExpression['elements'];
+
+const LOWER = 'lower';
+const UPPER = 'upper';
+
+export type Casing = typeof LOWER | typeof UPPER;
 
 const NORMALIZERS = new Map<string, Casing>([
-  ['toLowerCase', 'lower'],
-  ['toLocaleLowerCase', 'lower'],
-  ['toUpperCase', 'upper'],
-  ['toLocaleUpperCase', 'upper'],
+  ['toLowerCase', LOWER],
+  ['toLocaleLowerCase', LOWER],
+  ['toUpperCase', UPPER],
+  ['toLocaleUpperCase', UPPER],
 ]);
 const COLLECTION_CONSTRUCTORS = new Set(['Set', 'Map']);
 
@@ -36,16 +41,19 @@ export function normalizedKey(
 }
 
 export function hasCase(text: string, casing: Casing): boolean {
-  return text !== (casing === 'lower' ? text.toLowerCase() : text.toUpperCase());
+  return text !== (casing === LOWER ? text.toLowerCase() : text.toUpperCase());
 }
 
-function literalsOf(items: readonly (Node | null)[]): string[] | undefined {
-  const values = items.map((item) => (item === null ? undefined : stringValue(item)));
-  return values.every((value) => value !== undefined) ? (values as string[]) : undefined;
+function literalsOf(items: readonly (ElementList[number] | undefined)[]): string[] | undefined {
+  const values = items.map((item) => {
+    const present = item ?? undefined;
+    return present === undefined ? undefined : stringValue(present);
+  });
+  return values.every((value) => value !== undefined) ? values : undefined;
 }
 
-function entryKey(entry: Node | null): Node | null {
-  return entry?.type === AST_NODE_TYPES.ArrayExpression ? (entry.elements[0] ?? null) : null;
+function entryKey(entry: ElementList[number]): ElementList[number] | undefined {
+  return entry?.type === AST_NODE_TYPES.ArrayExpression ? entry.elements[0] : undefined;
 }
 
 function constructed(node: TSESTree.NewExpression): string[] | undefined {

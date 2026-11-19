@@ -36,7 +36,7 @@ function check(
   }
 }
 
-export const rule: TSESLint.RuleModule<'unescapedValue', []> = {
+export const rule: TSESLint.RuleModule<'unescapedValue'> = {
   meta: {
     type: 'problem',
     docs: {

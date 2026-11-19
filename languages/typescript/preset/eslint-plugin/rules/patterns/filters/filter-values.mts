@@ -5,8 +5,13 @@ import {
   type SourceContext,
 } from '../../analysis/constant-resolution.mts';
 import { unwrapped } from '../../security/security-values.mts';
-import { calleeNameOf, operandsOf } from '../../typed/syntax-views.mts';
-import { isEscapeCall, isEscapingLink, replaceReceiver } from '../replace-chains.mts';
+import { operandsOf } from '../../typed/syntax-views.mts';
+import {
+  isEscapeCall,
+  isEscapingLink,
+  replaceReceiver,
+  textReceiverOf,
+} from '../replace-chains.mts';
 
 type Node = TSESTree.Node;
 
@@ -38,14 +43,7 @@ function textReceiver(node: Node): Node | undefined {
   if (node.type !== AST_NODE_TYPES.CallExpression) {
     return undefined;
   }
-  if (node.callee.type === AST_NODE_TYPES.MemberExpression) {
-    return TEXT_PRESERVING.has(calleeNameOf(node.callee) ?? '') ? node.callee.object : undefined;
-  }
-  return node.callee.type === AST_NODE_TYPES.Identifier &&
-    node.callee.name === 'String' &&
-    node.arguments.length === 1
-    ? node.arguments[0]
-    : undefined;
+  return textReceiverOf(node, TEXT_PRESERVING);
 }
 
 function isNamedEscaped(node: Node): boolean {
@@ -68,31 +66,64 @@ function chained(node: Node): Node {
   return node.type === AST_NODE_TYPES.ChainExpression ? node.expression : node;
 }
 
-function findLeaf(context: SourceContext, node: Node, depth: number): Node | undefined {
-  const target = chained(unwrapped(node));
+type Step = { readonly node: Node; readonly depth: number; readonly path: readonly number[] };
+type Found = { readonly leaf: Node; readonly path: readonly number[] };
+type Expansion = { readonly leaf: Node | undefined; readonly next: readonly Step[] };
+
+function child(step: Step, node: Node, index: number, depth = step.depth): Step {
+  return { node, depth, path: [...step.path, index] };
+}
+
+function expand(context: SourceContext, step: Step): Expansion {
+  const target = chained(unwrapped(step.node));
   const inner = parts(target);
   if (inner.length > 0) {
-    return inner.map((part) => findLeaf(context, part, depth)).find((leaf) => leaf !== undefined);
+    return { leaf: undefined, next: inner.map((part, index) => child(step, part, index)) };
   }
   if (isEscapeCall(target) || isEscapingReplace(target) || isNamedEscaped(target)) {
-    return undefined;
+    return { leaf: undefined, next: [] };
   }
   const receiver = textReceiver(target);
   if (receiver !== undefined) {
-    return findLeaf(context, receiver, depth);
+    return { leaf: undefined, next: [child(step, receiver, 0)] };
   }
-  if (target.type === AST_NODE_TYPES.Identifier && depth < MAX_DEPTH) {
-    const resolved = resolveConstant(context, target);
-    if (resolved !== undefined && resolved !== target) {
-      return findLeaf(context, resolved, depth + 1);
+  const resolved =
+    target.type === AST_NODE_TYPES.Identifier && step.depth < MAX_DEPTH
+      ? resolveConstant(context, target)
+      : undefined;
+  if (resolved !== undefined && resolved !== target) {
+    return { leaf: undefined, next: [child(step, resolved, 0, step.depth + 1)] };
+  }
+  const isLeaf =
+    target.type === AST_NODE_TYPES.Identifier || target.type === AST_NODE_TYPES.MemberExpression;
+  return { leaf: isLeaf ? target : undefined, next: [] };
+}
+
+function comparePaths(left: readonly number[], right: readonly number[]): number {
+  for (const [index, value] of left.entries()) {
+    const other = right[index] ?? 0;
+    if (value !== other) {
+      return value - other;
     }
   }
-  return target.type === AST_NODE_TYPES.Identifier ||
-    target.type === AST_NODE_TYPES.MemberExpression
-    ? target
-    : undefined;
+  return 0;
 }
 
 export function unescapedLeaf(context: SourceContext, node: Node): Node | undefined {
-  return findLeaf(context, node, 0);
+  const pending: Step[] = [{ node, depth: 0, path: [] }];
+  const found: Found[] = [];
+  for (const step of pending) {
+    const { leaf, next } = expand(context, step);
+    if (leaf !== undefined) {
+      found.push({ leaf, path: step.path });
+    }
+    for (const item of next) {
+      pending.push(item);
+    }
+  }
+  const first = found.reduce<Found | undefined>(
+    (best, item) => (best === undefined || comparePaths(item.path, best.path) < 0 ? item : best),
+    undefined,
+  );
+  return first?.leaf;
 }

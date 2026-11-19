@@ -24,7 +24,7 @@ ruleTester.run('no-unanchored-affix-replace', rule, {
     'const out = name.replace(...args);',
     'url.port = nextPort;',
     "const text = name.replace(pattern, '');",
-    "const name = `${id}.json`; const key = name.replace('.json', '');",
+    `const name = \`\${id}.json\`; const key = name.replace('.json', '');`,
     "const name = id + '.json'; const key = name.replace('.json', '');",
     "if (file.startsWith(rootDir)) { return file.replace(rootDir, ''); }",
     "if (name.endsWith('.git')) { r = name.replace('.git', ''); }",

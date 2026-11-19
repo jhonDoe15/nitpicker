@@ -14,10 +14,10 @@ function like(code: string) {
 
 tester.run('no-unescaped-pattern-translation', rule, {
   valid: [
-    "export function allow(value: string, path: string) { const source = escapeRegExp(value).replace(/\\\\\\*\\\\\\*/g, '.*').replace(/\\\\\\*/g, '[^/]*'); return new RegExp(`^${source}$`).test(path); }",
-    "export function allow(value: string) { return new RegExp(`^${value.replace(/[.+^${}()|[\\]\\\\]/g, '\\\\$&').replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$`); }",
-    "export function allow(value: string) { return new RegExp(`^${lodash.escapeRegExp(value).replace(/\\\\\\*/g, '.*').replace(/\\\\\\?/g, '.')}$`); }",
-    "export function allow(path: string) { return new RegExp(`^${'src/**/*.ts'.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$`).test(path); }",
+    `export function allow(value: string, path: string) { const source = escapeRegExp(value).replace(/\\\\\\*\\\\\\*/g, '.*').replace(/\\\\\\*/g, '[^/]*'); return new RegExp(\`^\${source}$\`).test(path); }`,
+    `export function allow(value: string) { return new RegExp(\`^\${value.replace(/[.+^\${}()|[\\]\\\\]/g, '\\\\$&').replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$\`); }`,
+    `export function allow(value: string) { return new RegExp(\`^\${lodash.escapeRegExp(value).replace(/\\\\\\*/g, '.*').replace(/\\\\\\?/g, '.')}$\`); }`,
+    `export function allow(path: string) { return new RegExp(\`^\${'src/**/*.ts'.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$\`).test(path); }`,
     "const GLOB = 'src/**/*.ts';\nexport function allow(path: string) { return new RegExp(GLOB.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')).test(path); }",
     "export function allow(value: string) { return value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*'); }",
     "export function allow(value: string) { return new RegExp(value.replace(/\\*\\*/g, '.*')); }",
@@ -35,13 +35,13 @@ tester.run('no-unescaped-pattern-translation', rule, {
   ],
   invalid: [
     regex(
-      "export function allow(value: string, path: string) { const source = value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*'); return new RegExp(`^${source}$`).test(path); }",
+      `export function allow(value: string, path: string) { const source = value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*'); return new RegExp(\`^\${source}$\`).test(path); }`,
     ),
     regex(
       "export function allow(value: string) { return new RegExp('^' + value.replaceAll('**', '.*').replaceAll('*', '[^/]*') + '$'); }",
     ),
     regex(
-      "export function allow(value: string) { return new RegExp(`^${value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$`); }",
+      `export function allow(value: string) { return new RegExp(\`^\${value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$\`); }`,
     ),
     regex(
       "export function allow(value: string) { return RegExp(value.trim().replace(/\\?/g, '.').replace(/\\*/g, '.*'), 'i'); }",
@@ -53,7 +53,7 @@ tester.run('no-unescaped-pattern-translation', rule, {
       "export function like(re: RegExp) { return re.source.replace(/\\.\\*/g, '%').replace(/\\./g, '_'); }",
     ),
     like(
-      "export function like(glob: string) { return `${glob.replace(/\\*/g, '%').replace(/\\?/g, '_')}`; }",
+      `export function like(glob: string) { return \`\${glob.replace(/\\*/g, '%').replace(/\\?/g, '_')}\`; }`,
     ),
     like(
       "export function like(glob: string) { return glob.replaceAll('*', '%').replaceAll('?', '_').replaceAll('%%', '%'); }",
@@ -69,10 +69,10 @@ const { tester: typedTester, typed } = typedRegexProject('nitpicker-pattern-tran
 typedTester.run('no-unescaped-pattern-translation with types', rule, {
   valid: [
     typed(
-      "export function allow(value: string) { return new RegExp(`^${value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$`); }",
+      `export function allow(value: string) { return new RegExp(\`^\${value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$\`); }`,
     ),
     typed(
-      "export function allow(value: string) { const source = value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*'); return new RegExp(`^${source}$`); }",
+      `export function allow(value: string) { const source = value.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*'); return new RegExp(\`^\${source}$\`); }`,
     ),
   ],
   invalid: [
@@ -81,7 +81,7 @@ typedTester.run('no-unescaped-pattern-translation with types', rule, {
       [{ messageId: 'regexTranslation', data: {} }],
     ),
     typed(
-      "const OPTIONS = { glob: process.env.GLOB ?? '' };\nexport function allow() { return new RegExp(`^${OPTIONS.glob.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$`); }",
+      `const OPTIONS = { glob: process.env.GLOB ?? '' };\nexport function allow() { return new RegExp(\`^\${OPTIONS.glob.replace(/\\*\\*/g, '.*').replace(/\\*/g, '[^/]*')}$\`); }`,
       [{ messageId: 'regexTranslation', data: {} }],
     ),
   ],

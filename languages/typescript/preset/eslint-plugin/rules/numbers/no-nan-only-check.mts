@@ -1,10 +1,16 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isLiteral } from '../typed/syntax-views.mts';
-import { unwrap } from '../support/flow/guard-forms.mts';
+import {
+  escapeText as escapeRegExp,
+  soleInitializer,
+  unwrap,
+} from '../support/flow/guard-forms.mts';
 
 type MessageId = 'nanOnly';
 
-const PARSER_NAMES = new Set(['Number', 'parseFloat']);
+const NUMBER = 'Number';
+
+const PARSER_NAMES = new Set([NUMBER, 'parseFloat']);
 const GUARD_PARENTS = new Set<string>([
   AST_NODE_TYPES.IfStatement,
   AST_NODE_TYPES.ConditionalExpression,
@@ -21,7 +27,7 @@ function nanArgument(node: TSESTree.CallExpression): TSESTree.Node | undefined {
   const member =
     callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'Number' &&
+    callee.object.name === NUMBER &&
     callee.property.type === AST_NODE_TYPES.Identifier &&
     callee.property.name === 'isNaN';
   const [argument] = node.arguments;
@@ -39,14 +45,18 @@ function isDateCast(node: TSESTree.Node): boolean {
   );
 }
 
+function probeInner(value: TSESTree.Node): TSESTree.Node | undefined {
+  if (value.type === AST_NODE_TYPES.UnaryExpression && value.operator === '+') {
+    return value.argument;
+  }
+  return value.type === AST_NODE_TYPES.CallExpression && value.arguments.length === 1
+    ? value.arguments[0]
+    : value;
+}
+
 function probedName(node: TSESTree.Node): string | undefined {
   const value = unwrap(node);
-  const inner =
-    value.type === AST_NODE_TYPES.UnaryExpression && value.operator === '+'
-      ? value.argument
-      : value.type === AST_NODE_TYPES.CallExpression && value.arguments.length === 1
-        ? value.arguments[0]
-        : value;
+  const inner = probeInner(value);
   return inner?.type === AST_NODE_TYPES.Identifier ? inner.name : undefined;
 }
 
@@ -75,7 +85,7 @@ function isParse(node: TSESTree.CallExpression): boolean {
   return (
     callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'Number' &&
+    callee.object.name === NUMBER &&
     callee.property.type === AST_NODE_TYPES.Identifier &&
     callee.property.name === 'parseFloat'
   );
@@ -83,23 +93,23 @@ function isParse(node: TSESTree.CallExpression): boolean {
 
 function canBeInfinite(node: TSESTree.Node): boolean {
   const value = unwrap(node);
-  switch (value.type) {
-    case AST_NODE_TYPES.CallExpression:
-      return isParse(value);
-    case AST_NODE_TYPES.UnaryExpression:
-      return value.operator === '+' && !isLiteral(value.argument) && !isDateCast(value.argument);
-    case AST_NODE_TYPES.BinaryExpression:
-      if (value.operator === '/') {
-        return !isNonZeroLiteral(value.right);
-      }
-      return (
-        (value.operator === '*' || value.operator === '**') &&
-        !isLiteral(value.left) &&
-        !isLiteral(value.right)
-      );
-    default:
-      return false;
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return isParse(value);
   }
+  if (value.type === AST_NODE_TYPES.UnaryExpression) {
+    return value.operator === '+' && !isLiteral(value.argument) && !isDateCast(value.argument);
+  }
+  if (value.type !== AST_NODE_TYPES.BinaryExpression) {
+    return false;
+  }
+  if (value.operator === '/') {
+    return !isNonZeroLiteral(value.right);
+  }
+  return (
+    (value.operator === '*' || value.operator === '**') &&
+    !isLiteral(value.left) &&
+    !isLiteral(value.right)
+  );
 }
 
 function isNonZeroLiteral(node: TSESTree.Node): boolean {
@@ -107,14 +117,18 @@ function isNonZeroLiteral(node: TSESTree.Node): boolean {
 }
 
 function isGuardPosition(node: TSESTree.Node): boolean {
-  let top = node;
-  while (
-    top.parent !== undefined &&
-    ((top.parent.type === AST_NODE_TYPES.UnaryExpression && top.parent.operator === '!') ||
-      top.parent.type === AST_NODE_TYPES.LogicalExpression)
-  ) {
-    top = top.parent;
+  const chain = [node];
+  for (const current of chain) {
+    const above = current.parent;
+    if (
+      above !== undefined &&
+      ((above.type === AST_NODE_TYPES.UnaryExpression && above.operator === '!') ||
+        above.type === AST_NODE_TYPES.LogicalExpression)
+    ) {
+      chain.push(above);
+    }
   }
+  const top = chain.at(-1) ?? node;
   const { parent } = top;
   if (parent === undefined || !GUARD_PARENTS.has(parent.type)) {
     return false;
@@ -128,45 +142,30 @@ function isGuardPosition(node: TSESTree.Node): boolean {
 }
 
 function enclosingFunction(node: TSESTree.Node): TSESTree.Node {
-  let current: TSESTree.Node = node;
-  while (current.type !== AST_NODE_TYPES.Program) {
-    current = current.parent;
-    if (
-      current.type === AST_NODE_TYPES.FunctionDeclaration ||
-      current.type === AST_NODE_TYPES.FunctionExpression ||
-      current.type === AST_NODE_TYPES.ArrowFunctionExpression
-    ) {
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.Program) {
       return current;
     }
+    const { parent } = current;
+    if (
+      parent.type === AST_NODE_TYPES.FunctionDeclaration ||
+      parent.type === AST_NODE_TYPES.FunctionExpression ||
+      parent.type === AST_NODE_TYPES.ArrowFunctionExpression
+    ) {
+      return parent;
+    }
+    pending.push(parent);
   }
-  return current;
-}
-
-function initializer(
-  context: TSESLint.RuleContext<MessageId, []>,
-  node: TSESTree.Identifier,
-): TSESTree.Node | undefined {
-  const variable = context.sourceCode
-    .getScope(node)
-    .references.find(({ identifier }) => identifier === node)?.resolved;
-  const [definition] = variable?.defs ?? [];
-  const writes = variable?.references.filter((reference) => reference.isWrite()) ?? [];
-  if (
-    variable?.defs.length !== 1 ||
-    writes.length !== 1 ||
-    definition?.node.type !== AST_NODE_TYPES.VariableDeclarator
-  ) {
-    return undefined;
-  }
-  return definition.node.init ?? undefined;
+  return node;
 }
 
 function isBounded(text: string, name: string): boolean {
-  const escaped = name.replaceAll(/[$]/gu, String.raw`\$`);
+  const escaped = escapeRegExp(name);
   return new RegExp(`\\b${escaped}\\b\\s*[<>]|[<>]=?\\s*${escaped}\\b`, 'u').test(text);
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Check a parsed or computed number with isFinite, not only isNaN' },
@@ -186,7 +185,9 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
           return;
         }
         const source =
-          argument.type === AST_NODE_TYPES.Identifier ? initializer(context, argument) : argument;
+          argument.type === AST_NODE_TYPES.Identifier
+            ? soleInitializer(context, argument)
+            : argument;
         if (source === undefined || !canBeInfinite(source) || isFilterProbe(argument)) {
           return;
         }

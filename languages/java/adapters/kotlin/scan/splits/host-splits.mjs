@@ -8,14 +8,14 @@ const HOST_MESSAGES = {
     'an IPv6 address takes an exception.',
 };
 
-const COLON_CALL = /\.\s*(?:split|substringBefore|substringAfter)\s*\(\s*(["'])[ ]*\1/g;
+const COLON_CALL = /\.\s*(?:split|substringBefore|substringAfter)\s*\(\s*(["']) *\1/g;
 const COLON_ARGUMENT = /^\.\s*(?:split|substringBefore|substringAfter)\s*\(\s*(?:":"|':')/;
 const HOST_RECEIVER = new RegExp(
   [
     String.raw`(?:(?<![\w$])(?:host|hostname|authority|origin|[a-z0-9]+Host)`,
     String.raw`|(?:getHeader|getHeaderString|header|get|first|headers)\s*[\[(]\s*`,
     String.raw`"(?:[Hh]ost|[Xx]-[Ff]orwarded-[Hh]ost|:authority)"\s*[\])])`,
-    String.raw`\s*(?:\?|!!)?\s*$`,
+    String.raw`\s*(?:(?:\?|!!)\s*)?$`,
   ].join(''),
 );
 const IPV6_AWARE = /isIPv6|ipv6|IPv6|"\["|"\]"/;
