@@ -13,9 +13,12 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A database write and a message publish do not share a function: write an outbox row in the same transaction and let a relay publish it and mark that row sent (`dual-write-without-outbox`).
 - Related writes share one transaction (`with session.begin():`, `with transaction.atomic():`), written through the session the block opened; a check that decides a create is atomic (`get_or_create`, `ON CONFLICT`) or locks the row (`select_for_update()`, `with_for_update()`) (`related-writes-without-transaction`, `write-outside-transaction`, `check-then-write-race`).
 - Scheduled and queued jobs (Celery tasks, APScheduler jobs, Django management commands) isolate each item of a loop that does I/O: a `try`/`except` per item that records the failure, or one task per item with `.delay(item)` (`job-item-failure-stops-run`).
-- Reads of a model with a soft-delete or visibility column apply the filter the project's other reads use (`deleted_at__isnull=True`, `.alive()`, a filtering default manager, SQLAlchemy `with_loader_criteria`); trash, restore, purge and admin code reads deleted rows on purpose (`soft-delete-filter-missing`).
+- Reads of a model with a soft-delete or visibility column apply the filter the project's other reads use (`deleted_at__isnull=True`, `.alive()`, a filtering default manager, SQLAlchemy `with_loader_criteria`); trash, restore, purge and admin code reads deleted rows on purpose; the same holds for an activity flag (`active=True`, `internal=False`, `user__is_active=True`) and a scoping method such as `.restrict(request.user, "view")` that most reads of the model apply (`soft-delete-filter-missing`).
 - Loops and lookups over a collection of items with a deleted or hidden flag skip flagged items the way the project's other code does (a guard on the flag, a helper such as `live(items)`, a narrowed type); undo, restore and sync code reads them on purpose (`deleted-item-filter-missing`).
 - Route handlers declare the auth requirement the project's other handlers use: the same `Depends(get_current_user)` or `Security(...)` in FastAPI (or on the router), `permission_classes` in Django REST framework, the login decorator in Flask; public routes (login, health, webhooks) are the exception (`route-without-auth`).
+- A Django receiver that clears a cache on `post_save` is also connected to `post_delete` (stack both `@receiver` decorators, or add a second receiver that clears the same keys; `m2m_changed` for many-to-many data), and its module is imported from `AppConfig.ready()` (`cache-invalidated-on-save-only`, `signal-receiver-never-connected`).
+- In a project with several databases, a function that receives an alias (`using`, `db_alias`, a signal receiver's `using`, a migration's `schema_editor.connection.alias`) passes it on: `Model.objects.using(using)`, `instance.save(using=using)`, `transaction.atomic(using=using)` (`database-alias-not-passed`).
+- Django permission names carry the app label: `user.has_perm("shop.change_order")`, `@permission_required("shop.view_order")`, never a bare codename that matches no user (`permission-name-without-app-label`).
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
@@ -91,6 +94,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Blocking helpers stay out of `async def`: `await asyncio.to_thread(fetch_profile, url)` or
   `loop.run_in_executor(None, fetch_profile, url)` for a plain function that calls `requests`, `httpx.get`,
   `time.sleep` or `subprocess.run`, or an async client (`blocking-helper-in-async`; startup work takes an exception).
+  The same holds for Django ORM queries (`await sync_to_async(load)(id)` or `aget`, `acount`, `async for`),
+  `ssl.create_default_context(cafile=...)`, `Path.read_text`, thread and file locks and a hook's `get_connection`;
+  use `asyncio.get_running_loop()`, never `get_event_loop()`, in a coroutine.
 - Waits for a worker have a deadline: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`,
   `thread.join(timeout=30)` and then `thread.is_alive()`; never the no-argument form
   (`unbounded-wait`; a shutdown that joins the worker it just stopped takes an exception).

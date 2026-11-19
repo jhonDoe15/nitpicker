@@ -133,6 +133,16 @@ SQLAlchemy query loads whole only to read one known column (`[u.email for u in U
 for existence (`.count() > 0`, `.first() is not None`); `values_list`, `select(User.email)` and `.exists()` are the
 allowed forms, and relationships, properties and already narrowed queries stay quiet.
 
+Null in input: `null-valued-input-key` in the Python preset reports `.get(key, default)`, `.setdefault(key, default)` and a
+`key in mapping` guard that is followed by `mapping[key]` on parsed JSON, a response, a request body, a `cleaned_input`
+or a loosely typed `dict[str, Any]` parameter, where a key sent with `null` returns `None`; `.get(key) or ""` for an empty
+default and an `is not None` test are the allowed forms (a number default is never rewritten with `or`).
+
+Missing keys: `missing-key-subscript` in the Python preset reports `mapping[key]` reads of a request mapping
+(`request.session`, `COOKIES`, `GET`, `POST`, `headers`, `scope["cookies"]`), an untrusted token header, a `.json()`
+document named like a configuration and `self.coordinator.data` that the function neither tests with `key in mapping` nor reads in a `try` that
+catches `KeyError`; `.get(key)` with the missing case handled is the allowed form.
+
 Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()` or `flush()` that a retry loop, a
 `tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
 (`session.get`, `refresh`, a query); the row is read by id inside each attempt.
@@ -145,6 +155,13 @@ Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in
 `swapped-arguments` (a call that passes a name equal to another parameter of a project callee into the slot of
 a different parameter, such as `_pipe(pipe, docs, kwargs)` for `_pipe(docs, proc, kwargs)`; keywords, single-letter,
 numbered and `left`/`right` names stay quiet),
+`templated-field-used-in-init` (an Airflow operator `__init__` that checks, defaults or converts a parameter named in
+`template_fields`; a plain assignment and the logic in `execute()` are the allowed form),
+`filter-unescaped-value` (a function argument built into an LDAP search filter or a SCIM filter without
+`escape_filter_chars` or quoting; the escaped or quoted value is the allowed form),
+`dataloader-batch-result` (a `batch_load`/`batch_load_fn` method of a `DataLoader` subclass, or a function given to
+`DataLoader(...)`, that returns `[]`, the rows as they come or a dict, or reads `by_id[key]` for each key; one entry per
+key in key order, such as `[by_id.get(key) for key in keys]`, is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -164,7 +181,10 @@ stops the rest). It lives in `languages/python/rules/jobs/`.
 
 Python soft-delete rule: `soft-delete-filter-missing` (a Django or SQLAlchemy read of a model with a soft-delete or
 visibility column that skips the filter or helper at least 80% of the project's reads of that model apply, with at
-least five reads counted). It lives in `languages/python/rules/soft_delete/`.
+least five reads counted). It also learns activity flags (`active`, `is_active`, `enabled`, `internal`, a relation
+lookup such as `user__is_active`, any boolean field filtered with one value by at least 80% of five reads) and
+project queryset methods that take the user (`restrict(user, "view")`) from the same majority of reads, and counts
+`get()`, `first()` and `get_object_or_404` lookups as reads. It lives in `languages/python/rules/soft_delete/`.
 
 Python deleted-item rule: `deleted-item-filter-missing` (a loop, comprehension or lookup over an annotated collection of
 items that carry a deletion flag that skips the guard, helper or narrowed type that at least 80% of the project's
@@ -174,6 +194,23 @@ iterations over that item type use, with at least five iterations counted). It l
 Python route auth rule: `route-without-auth` (a FastAPI route, a Django REST framework view or a Flask route without
 the auth requirement, a `Depends(...)`, `permission_classes` or login decorator, that at least 90% of the project's
 handlers declare, with at least five handlers counted). It lives in `languages/python/rules/route_auth/`.
+
+Python signal rules: `cache-invalidated-on-save-only` (a Django `post_save` or `pre_save` receiver that invalidates a
+cache, with no `post_delete`, `pre_delete` or `m2m_changed` receiver of the same model invalidating the same cache;
+silent in a project that never deletes rows) and `signal-receiver-never-connected` (receivers in a signals module
+that no other module imports, in a project with an `AppConfig`). They live in
+`languages/python/rules/signal_receivers/`.
+
+Python database alias rule: `database-alias-not-passed` (a function that receives a database alias, a `using` or
+`db_alias` parameter, a signal receiver's `using` or a data migration's `schema_editor`, and runs a model query,
+`save`, `delete` or `transaction.atomic`, `set_rollback` or `on_commit` without it; silent in a project with one
+database; a different alias is reported as the wrong one). Functions given to `migrations.RunPython` are also checked,
+in every project, for current model classes and helpers instead of `apps.get_model`. It lives in
+`languages/python/rules/database_aliases/`.
+
+Python permission rule: `permission-name-without-app-label` (a Django `has_perm`, `has_perms`, `permission_required`
+or `perms_map` permission string without the `app_label.` prefix; a bare codename with an object in a project that
+uses django-guardian stays allowed). It lives in `languages/python/rules/permissions/`.
 
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
@@ -210,9 +247,13 @@ Kotlin preset, and `unbounded-wait` runs them in the Python preset for `concurre
 JavaScript presets have no counterpart, since a promise has no blocking wait.
 
 Blocking helpers in async code: `blocking-helper-in-async` (Python, main sources) reports a call from an `async def`
-to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system` or
-`subprocess.run` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread` or
-`run_in_executor`; a blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`.
+to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system`,
+`subprocess.run`, a Django ORM terminal (`Model.objects.get`, `count`, iteration and the others), `ssl.create_default_context`
+with a certificate file, `load_cert_chain`, `Path.read_text`, `open`, a `threading` or `filelock` lock or an Airflow
+`get_connection` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread`, `run_in_executor` or
+`sync_to_async`. A blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`, except the
+sinks ruff does not know (ORM, TLS context, `Path` reads, locks, the connection getter and `asyncio.get_event_loop()`),
+which the rule reports there as well.
 The other presets have no helper-aware counterpart.
 
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
@@ -295,6 +336,36 @@ JavaScript presets, `pmd/UninjectableDelay` in Java and Kotlin, `uninjectable-de
 `schedule`, `time.sleep`, `asyncio.sleep`, `time.Sleep`, `time.After`) that waits a constant of 500 ms or more declared in
 the same file or package, inside a public function with no parameter, field or option that can carry the delay.
 
+Django type plugin: `django-types-missing` (script, Python only) is reported once, on the first model class, when Django is a
+dependency and neither `django-stubs` (mypy plugin) nor `django-types` is configured.
+Empty Django filters: `empty-filter-condition` (script, Python only) reports an empty `Q()` (a conditional or `or` branch, a `reduce` that starts from
+`Q()`, or a `Q()` filled in a loop with no emptiness check) and a SQLAlchemy `or_()` with no arguments or spread over a list that can be
+empty, given to `filter`, `exclude`, `get`, `aget` or `where`, which selects every row; `queryset.none()` and `pk__in=ids` are the allowed forms.
+
+Django lookups of one row: `non-unique-lookup` (script, Python only) reports `get`, `aget`, `get_or_create` or `update_or_create` on a model
+manager or queryset whose lookup keywords do not cover the primary key, a unique field, a one-to-one field or a unique constraint of the
+model, an `|` of `Q` objects given to `get`, and a JSON, array or text field in the lookup of `get_or_create` or `update_or_create`.
+
+Nullable Django values: `nullable-dereference` (script, Python only) reports an attribute, call, subscript, iteration, `len()` or
+ordering comparison on a `null=True` model field, a `.first()`/`.last()` result, a `.get(key)` without a default on form or request data,
+or a signed-in-only `request.user` attribute, with no `None` test, truthiness test, `or` fallback, `is_authenticated` check or login
+decorator before it in the same function.
+
+Django query settings: `unresolved-query-field` (script, Python only) reports a `search_fields`, `ordering_fields`, `ordering`,
+`filterset_fields`, `list_filter`, django-filter `Meta.fields` or `field_name` entry that does not resolve through the model graph, and a
+`search_fields` entry that ends at a relation; `filter-model-mismatch` (script, Python only) reports a `ModelChoiceFilter` or
+`ModelMultipleChoiceFilter` whose queryset is of another model than the relation it filters, or whose `to_field_name` is not a field.
+
+Serializer null settings: `serializer-null-mismatch` (script, Python only) reports a Django REST framework serializer field over a
+`null=True` column or a reverse one-to-one relation without `allow_null=True`, a field required by default over a blank or defaulted
+column, and a `SerializerMethodField` whose method returns `None` without an `Optional` annotation or a nullable schema extension.
+
+Serializer field lists: `serializer-fields-omitted` (script, Python only) reports a `ModelSerializer` with an explicit `Meta.fields` list that
+omits a model field exposed by at least 80% of at least three other serializers of the model; variant names and `exclude` stay quiet.
+Sortable table columns: `unsortable-table-column` (script, Python only) reports a declared django-tables2 column of a table with `Meta.model`
+whose accessor is a property, a generic foreign key, a missing attribute or a many-valued relation of the model, with no `orderable=False`,
+`order_by=`, `order_<name>` method or `Meta.orderable = False`.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
@@ -305,6 +376,12 @@ Redis, `cache-manager`, `keyv` or `node-cache` write, or a `Map` filled with a r
 inside a Prisma `$transaction`, TypeORM `transaction`, Kysely `transaction().execute` or begin/commit scope. The
 allowed form is writing the cache after the transaction call returns (or from a TypeORM `afterTransactionCommit`
 subscriber); the finding names it.
+
+DataLoader batches: `nitpicker/no-dataloader-batch-mismatch` (production source, in `eslint-lint`) reports a function
+given to `new DataLoader(...)` from the `dataloader` package that returns an empty array, the rows of a query as they
+come, a lookup asserted with `!` inside a `keys.map(...)` callback, or a `throw` on a failed lookup there. The allowed form is one entry per key in key
+order (`keys.map((key) => byId.get(key) ?? null)`); the finding names it. The Python preset has the same contract in
+`dataloader-batch-result`.
 
 Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
 `nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,

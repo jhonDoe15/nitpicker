@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "missing-key-subscript",
+    "mention": ".get(key)",
+    "subject": "request|request.session[SESSION_KEY_PLAN]"
+  }
+]

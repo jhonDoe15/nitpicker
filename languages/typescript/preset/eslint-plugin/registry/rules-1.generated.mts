@@ -27,6 +27,7 @@ import { rule as ruleNoCompatibilityShim } from '../rules/signatures/no-compatib
 import { rule as ruleNoCopiedConstant } from '../test-assertions/copied-constants/no-copied-constant.mts';
 import { rule as ruleNoCopyPastedTests } from '../test-quality/no-copy-pasted-tests.mts';
 import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-forms/no-costly-collection-form.mts';
+import { rule as ruleNoDataloaderBatchMismatch } from '../rules/dataloaders/no-dataloader-batch-mismatch.mts';
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-st
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
-import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -129,6 +129,7 @@ export const partRules = {
   'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-costly-collection-form': ruleNoCostlyCollectionForm,
+  'no-dataloader-batch-mismatch': ruleNoDataloaderBatchMismatch,
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
-  'no-sql-string-building': ruleNoSqlStringBuilding,
 };

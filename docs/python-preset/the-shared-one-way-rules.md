@@ -43,7 +43,7 @@ are listed at the end.
 | Datetimes                                       | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date   | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                                                                                                                                                                                                                                                |
 | Boolean flags                                   | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                          | `boolean-flag-parameter` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Tri-state booleans                              | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                       | `tri-state-boolean` (script)                                                                                                                                                                                                                                                                                                                                                        |
-| Argument order                                  | the arguments in the order of the parameters (`_pipe(docs, pipe, kwargs)` for `def _pipe(docs, proc, kwargs)`), or keywords | `swapped-arguments` (script) |
+| Argument order                                  | the arguments in the order of the parameters (`_pipe(docs, pipe, kwargs)` for `def _pipe(docs, proc, kwargs)`), or keywords                                                            | `swapped-arguments` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | ORM schema at startup                           | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                               | `orm-schema-sync` (script)                                                                                                                                                                                                                                                                                                                                                          |
 | ORM query logging                               | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                            | `orm-query-logging` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Query rows in memory                            | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                                | `in-memory-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
@@ -53,15 +53,26 @@ are listed at the end.
 | Collection joins                                | one collection per `joinedload`/`contains_eager` query; the others with `selectinload` or `subqueryload`                                                                               | `multiple-collection-joins` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Foreign key indexes                             | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                        | `unindexed-foreign-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
+| Null in input mappings                          | `body.get("alt") or ""` for an empty default; `v if (v := body.get("n")) is not None else 0` where `0` is valid; `body.get("k") is not None` instead of `"k" in body`                  | `null-valued-input-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Missing keys in request and remote data         | `request.session.get(KEY)` with the missing case handled, a `key in mapping` guard, a `try` that catches `KeyError`                                                                    | `missing-key-subscript` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Null branch that continues                      | `if x is None:` then `return` (or `else:`), so the null case is handled once                                                                                                           | `null-branch-fall-through` (script)                                                                                                                                                                                                                                                                                                                                                 |
-| Recursion over unknown depth                    | a `for attempt in range(attempts)` loop for a retry, a loop over a worklist for a tree walk, a comprehension for flat data |
+| Recursion over unknown depth                    | a `for attempt in range(attempts)` loop for a retry, a loop over a worklist for a tree walk, a comprehension for flat data                                                             |
 | Delays tests can set                            | `def poll(delay=RETRY_DELAY)` with `time.sleep(delay)`                                                                                                                                 | `uninjectable-delay` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Django type plugin                              | `django-stubs` with its mypy plugin, or `django-types` for pyright, so `null=True` fields and `.first()` are Optional                                                                  | `django-types-missing` (script)                                                                                                                                                                                                                                                                                                                                                     |
+| Empty filter condition                          | `queryset.none()` for the empty case, `pk__in=ids` (an empty list matches nothing), or an explicit emptiness check before the query                                                    | `empty-filter-condition` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Lookups of one row                              | look up by the primary key, a unique field or every field of a unique constraint; `filter(...).first()` when several rows are possible; changing fields in `defaults={...}`            | `non-unique-lookup` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Nullable values                                 | check before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)`, `filter(field__isnull=False)`; `@login_required` or `is_authenticated` for `request.user`           | `nullable-dereference` (script)                                                                                                                                                                                                                                                                                                                                                     |
+| Query settings and filters                      | fields and `__` paths ending at a column: `search_fields = ["app__name"]`; the target model's queryset: `ModelChoiceFilter(queryset=Account.objects.all())`                            | `unresolved-query-field`, `filter-model-mismatch` (script)                                                                                                                                                                                                                                                                                                                          |
+| Serializer fields and the model                 | `allow_null=True` for a nullable column, `required=False` for a blank or default one: `GroupSerializer(source="group", read_only=True, allow_null=True)`                               | `serializer-null-mismatch` (script)                                                                                                                                                                                                                                                                                                                                                 |
+| Serializer field lists                          | list the fields the other serializers of the model expose, or name the serializer as a variant (`Brief`, `Nested`)                                                                     | `serializer-fields-omitted` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Sortable table columns                          | `orderable=False`, `order_by=(...)` or an `order_<name>` method for a column that is not a database field: `tables.BooleanColumn(orderable=False)`                                     | `unsortable-table-column` (script)                                                                                                                                                                                                                                                                                                                                                  |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
-| Changing an argument in domain code             | a comprehension or unpacking (`[*items, item]`, `sorted(items)`), or copy the argument first       
+| Changing an argument in domain code             |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Values in LDAP and SCIM filters                 | `escape_filter_chars(value)` (`ldap3.utils.conv`, `ldap.filter`) or `filter_format` inside an LDAP filter; a quoted, escaped value (`json.dumps(value)`) in a SCIM filter              | `filter-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Regex pattern parts                             | every part of a literal `re` pattern changes what it matches; the shorter form of the same pattern; no nested or overlapping quantifiers                                               | `regex-part-defect`, `regex-backtracking` (script)                                                                                                                                                                                                                                                                                                                                  |
 | Query order                                     | `order_by` on a unique key or with a tie-breaker (`order_by(User.created.desc(), User.id)`) before `limit`, `offset` or a slice; `aggregate_order_by` or `ArrayAgg(..., order_by=...)` | `unordered-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
 | Lists in queries                                | an empty check and fixed-size chunks (`itertools.batched(ids, 1000)`), or one array parameter (`any_(bindparam("ids", ids, type_=ARRAY(Integer)))`)                                    | `unbounded-query-array` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -71,14 +82,19 @@ are listed at the end.
 | Field resolvers per parent                      | a `DataLoader` created once per request (`strawberry.dataloader.DataLoader`, `aiodataloader`); data already on the parent                                                              | `resolver-query-per-parent` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
 | Cache writes inside a transaction               | write the cache after the commit: `transaction.on_commit(lambda: cache.delete(key))` in Django, after the `session.begin()` block or in an `after_commit` event in SQLAlchemy          | `cache-write-in-transaction` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Cache invalidation on delete                    | the same invalidation in a `post_delete` receiver (or one function on `post_save` and `post_delete`); signal receivers in a module that `AppConfig.ready()` or another module imports  | `cache-invalidated-on-save-only`, `signal-receiver-never-connected` (script)                                                                                                                                                                                                                                                                                                        |
+| Database alias                                  | pass the alias the function was given: `Model.objects.using(using)`, `instance.save(using=using)`, `transaction.atomic(using=using)`                                                   | `database-alias-not-passed` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Templated Airflow fields in `__init__`          | assign the parameter and nothing else in `__init__`; validate, default and convert in `execute()` or after `render_template_fields`                                                    | `templated-field-used-in-init` (script)                                                                                                                                                                                                                                                                                                                                             |
+| DataLoader batch functions                      | one entry per key in the order of the keys: `[by_id.get(key) for key in keys]`, `None` for a key with no row, `[None] * len(keys)` instead of `[]`                                     | `dataloader-batch-result` (script)                                                                                                                                                                                                                                                                                                                                                  |
 | Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Retries after a stale row                       | read the row again by id inside each attempt and apply the change again (`session.get(Order, order_id)`, then `commit()`)                                                              | `stale-retry` (script)                                                                                                                                                                                                                                                                                                                                                              |
 | Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                                                 | `dual-write-without-outbox` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Related writes                                  | one transaction through the block's session; an atomic form or a row lock for a check that decides a write                                                                             | `related-writes-without-transaction`, `write-outside-transaction`, `check-then-write-race` (script)                                                                                                                                                                                                                                                                                 |
 | Job items                                       | a `try`/`except` that records the failure around the work of one item, or one task per item (`task.delay(item)`)                                                                       | `job-item-failure-stops-run` (script)                                                                                                                                                                                                                                                                                                                                               |
-| Soft-delete filters                             | the filter or helper the project applies to most reads of the model (`deleted_at__isnull=True`, `.alive()`, a filtering default manager)                                               | `soft-delete-filter-missing` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Soft-delete filters                             | the filter or helper the project applies to most reads of the model (`deleted_at__isnull=True`, `active=True`, `.alive()`, `.restrict(user, "view")`, a filtering default manager)     | `soft-delete-filter-missing` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Deleted items in memory                         | the guard on the flag, the project's helper (`live(items)`) or the narrowed type that the other loops and lookups over the same items use                                              | `deleted-item-filter-missing` (script)                                                                                                                                                                                                                                                                                                                                              |
 | Route auth                                      | the auth requirement that at least 90% of the project's handlers declare (`Depends(get_current_user)`, `permission_classes`, `@login_required`)                                        | `route-without-auth` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Django permission names                         | the full `app_label.codename` string in `has_perm`, `has_perms`, `permission_required` and `perms_map`                                                                                 | `permission-name-without-app-label` (script)                                                                                                                                                                                                                                                                                                                                        |
 | Shareable objects                               | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets                              | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows                                   | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -97,7 +113,7 @@ are listed at the end.
 | Abandoned work                                  | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                               | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Child processes                                 | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                      |
 | Unbounded waits                                 | `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`, `thread.join(timeout=30)`                                                                                 | `unbounded-wait` (script)                                                                                                                                                                                                                                                                                                                                                           |
-| Blocking helpers                                | `await asyncio.to_thread(fetch_profile, url)`, `loop.run_in_executor(None, fetch_profile, url)`, an async client                                                                       | `blocking-helper-in-async` (script; direct calls are ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222`, `ASYNC251`)                                                                                                                                                                                                                                                               |
+| Blocking helpers                                | `await asyncio.to_thread(fetch_profile, url)`, `loop.run_in_executor(None, fetch_profile, url)`, an async client                                                                       | `blocking-helper-in-async` (script; direct HTTP, subprocess, sleep and file calls are ruff `ASYNC210` to `ASYNC251`; ORM, TLS, lock and `get_event_loop` calls are the rule's)                                                                                                                                                                                                      |
 | Test honesty                                    | a skip only on a real condition, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                  | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `copied-constant-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Float checks in tests                           | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                              | `float-equality-in-test` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Test assertions                                 | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                                                              | `weak-assertion` (script)                                                                                                                                                                                                                                                                                                                                                           |
@@ -353,25 +369,41 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   test support. TypeScript and JavaScript have no counterpart, since a promise has no blocking wait. A program whose
   purpose is to wait for the work to finish, such as a shutdown that joins the worker it just stopped, takes an
   exception.
-- `blocking-helper-in-async` reports a call from an `async def` to a plain function of the project that blocks
-  the event loop: the helper (a module function, an imported one or a `self.` method, up to three calls deep) calls
+- `blocking-helper-in-async` reports a call from an `async def` to a plain function of the project that blocks the
+  event loop: the helper (a module function, an imported one or a `self.` method, up to three calls deep) calls
   `requests` or `httpx` module-level `get`, `post`, `put`, `patch`, `delete`, `head`, `options` or `request`,
-  `urllib.request.urlopen`, `time.sleep`, `os.system` or `subprocess.run`, `call`, `check_call` or `check_output`.
-  A call that the async function makes itself is left to ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222` and
-  `ASYNC251`. A helper passed to `asyncio.to_thread`, `run_in_executor` or a lambda is not called there and is not
-  reported; neither is an async helper, a decorated helper, a method of another object, a session or client
-  instance, file I/O (`open`) and CPU work. Not in tests or test support. Work done at startup, before the loop
-  serves requests, takes an exception. The helper is found by its last definition in the module, as a `self.` or
-  `cls.` method (also of a same-module base class) or as `ClassName.method`; a name that the async function or
-  helper rebinds (a parameter, a local assignment, a nested `def`) is not followed, and a rebound `requests` or
-  `time` is not the library. A generator helper that is only called, `time.sleep(0)`, `__init__` through `A()`,
-  properties, `from helper import *` and a helper whose module is outside the project are not followed. Two
-  calls to the same helper on one line are one finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers:
-  detekt `SleepInsteadOfDelay` covers a direct `Thread.sleep` in a suspend function.
-  Sync code that runs the async twin of a method and waits for it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()`
-  when `fetch(x)` exists) has no rule: the project's own sync wrapper over the async implementation
-  (`def fetch(x): return asyncio.run(fetch_async(x))`) is the legitimate form of the same call, and a rule cannot
-  tell the two apart by reading the twin's name and parameters.
+  `urllib.request.urlopen`, `time.sleep`, `os.system` or `subprocess.run`, `call`, `check_call` or `check_output`, or
+  one of the sinks below. The sinks are: a Django ORM terminal on a manager or queryset of a model class of the
+  project (`Model.objects.get`, `first`, `last`, `count`, `exists`, `create`, `update`, `delete`, `get_or_create`,
+  `update_or_create`, `in_bulk`, `aggregate`, `earliest`, `latest`, `bulk_*`, a chain such as
+  `Model.objects.filter(...).count()`, and iteration of a queryset in a `for`, a comprehension or `list(...)`);
+  `ssl.create_default_context` with `cafile` or `capath`, and `load_verify_locations`, `load_cert_chain` or
+  `load_default_certs` in a file that imports `ssl`; `Path` `read_text`, `read_bytes`, `write_text` and `write_bytes`
+  in a file that imports `pathlib`, and `open` in a helper; `acquire` or `with` on a `threading` lock, semaphore or
+  condition assigned in the same file or on a `filelock` lock; and `get_connection` in a file that imports `airflow`,
+  and every name in `python.blockingGetters` (a method name such as `fetch_secret` or a dotted name such as
+  `hook.read_token`; it adds to the built-in Airflow getter). A call that the async function makes itself is left to
+  ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222`, `ASYNC230`, `ASYNC240` and `ASYNC251` when ruff covers it
+  (HTTP, subprocess, sleep, `open`, `os.path`); the sinks ruff does not cover are reported there too, with the subject
+  `Order.objects.first`, `ssl.create_default_context` or `LOCK.acquire`, and `asyncio.get_event_loop()` inside a
+  coroutine is reported with that name, since `asyncio.get_running_loop()` is the form that returns the running loop.
+  The async ORM forms (`aget`, `acount`, `acreate`, `async for`), a callable passed to `sync_to_async`,
+  `database_sync_to_async`, `asyncio.to_thread` or `run_in_executor` (it is not called in the async function, so it is
+  not a sink), an awaited call, an async comprehension, a non-blocking or timed lock `acquire`, `read_text` and its
+  kind on an `anyio`, `trio`, `aiopath` or `aiofiles` path, and an `ssl.create_default_context()` without a file
+  argument are not reported. A helper passed to `asyncio.to_thread`, `run_in_executor` or a lambda is not called there
+  and is not reported; neither is an async helper, a decorated helper, a method of another object, a session or client
+  instance and CPU work. Not in tests or test support. Work done at startup, before the loop serves requests, takes an
+  exception. The helper is found by its last definition in the module, as a `self.` or `cls.` method (also of a
+  same-module base class) or as `ClassName.method`; a name that the async function or helper rebinds (a parameter, a
+  local assignment, a nested `def`) is not followed, and a rebound `requests` or `time` is not the library. A
+  generator helper that is only called, `time.sleep(0)`, `__init__` through `A()`, properties, `from helper import *`
+  and a helper whose module is outside the project are not followed. Two calls to the same helper on one line are one
+  finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers: detekt `SleepInsteadOfDelay`
+  covers a direct `Thread.sleep` in a suspend function. Sync code that runs the async twin of a method and waits for
+  it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()` when `fetch(x)` exists) has no rule: the
+  project's own sync wrapper over the async implementation (`def fetch(x): return asyncio.run(fetch_async(x))`) is the
+  legitimate form of the same call, and a rule cannot tell the two apart by reading the twin's name and parameters.
 - `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
   come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
   `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,
@@ -970,6 +1002,33 @@ transaction.atomic():`, `@transaction.atomic`, `session.begin()`, `engine.begin(
   an `after_commit` listener and any write after the block are not reported. The message names the
   allowed form: `transaction.on_commit(...)` in Django, after the block or in an `after_commit` event in
   SQLAlchemy.
+- `dataloader-batch-result` reports a DataLoader batch function that does not return one entry per key in
+  the order of the keys. Batch functions are the `batch_load_fn` and `batch_load` methods of a class that
+  derives from `DataLoader` of `promise`, `aiodataloader` or `strawberry.dataloader` (also through a
+  project base), and a function given to `DataLoader(...)` as `load_fn=` or first argument. Reported: a
+  `return []` (also `list()` and `()`), except inside an `if` that tests the keys; a dict or dict
+  comprehension returned; a comprehension that returns the row itself or an attribute of it (`[row for row in rows]`) over a
+  query result (`Model.objects...`, `filter`, `all`, `scalars`, `execute`, `fetchall`, `select`, `query`, also
+  through a variable), not over gathered per-key calls; a `Model.objects...` queryset returned; and, in a
+  mapping over the keys (a comprehension, `map(lambda key: ..., keys)` or a `for key in keys` loop that
+  appends), a subscript `by_id[key]` of the loop variable. A returned variable counts through its single
+  assignment. A lookup in a map the function builds from the keys (`{key: [] for key in keys}`,
+  `defaultdict`, `Counter`, `dict.fromkeys`, a dict filled in a `for key in keys` loop), a lookup next to a `key in by_id` test or inside a `try` with a handler,
+  `.get(key)`, `[None] * len(keys)` and results built by a helper call are not reported. The subject names
+  the function, the kind (`lookup`, `empty`, `unmapped`) and the lookup; the message names
+  `[by_id.get(key) for key in keys]`. The TypeScript preset has
+  `nitpicker/no-dataloader-batch-mismatch` for the `dataloader` npm package.
+- `templated-field-used-in-init` reports, in a class that derives from an Airflow operator or sensor
+  (`BaseOperator`, `BaseSensorOperator` or another `airflow` class ending in `Operator` or `Sensor`, also
+  through a project base) and declares `template_fields` (a literal tuple or list, also built with `*Base.template_fields`, `Base.template_fields + (...)`, a module constant or a `Sequence[str]` annotation, and inherited from project bases; unknown external bases add nothing), any use in `__init__` of a parameter that
+  names a template field, or of `self.<field>` after it was assigned: a comparison, `isinstance`, `if not x`,
+  `x or y`, `x if x is not None else y`, a call that receives it or an attribute derived from it. The
+  value is still the unrendered `"{{ ... }}"` text there, so the check, default or conversion runs on
+  the template. The first use of each field is reported with the subject `Operator.field`. A plain
+  `self.field = field` (also under another parameter name when the attribute is a template field), logic
+  in `execute()` or in a `render_template_fields` override, a parameter that is not a template field, a
+  parameter handed to `super().__init__(...)` and a class without `template_fields` are not reported. The
+  message names the allowed form: only assign in `__init__`, and do the rest in `execute()`.
 - `remote-call-under-lock` reports a `remote` call inside `with lock:` or `async with lock:` where the
   lock is a `threading`, `asyncio`, `anyio`, `trio` or `multiprocessing` lock or condition assigned in
   the project (also `self._lock`) or a name ending in `lock` or `mutex`, a `filelock.FileLock(...)` or
@@ -1070,6 +1129,17 @@ transaction.atomic():`, `@transaction.atomic`, `session.begin()`, `engine.begin(
   column, the helper or column most reads use and the share. Writes, trash, restore, purge, cleanup and admin
   functions, `admin` and `migrations` files and tests are not counted. Joins of a second model and models whose
   class name exists twice in the project are not judged.
+  The rule also learns filters from the reads of a Django model, with the same share and count. A boolean flag
+  filtered with the same value counts as the project's filter when at least 80% of at least five reads apply it:
+  a field whose name is `active`, `is_active`, `enabled`, `is_enabled`, `internal`, `is_internal`, `deactivated`,
+  `mirror_dummy` or `is_user_active` (also reached through a relation, `user__is_active=True`), or any
+  `BooleanField` of the model; `exclude(flag=False)` counts as the value `True`, and a read that asks for the
+  other value is not reported. A queryset or manager method of the project that takes `user` or `request`
+  (`restrict(user, "view")`) is a required helper for the reads in views, forms, serializers, API and template tag
+  files when at least 80% of those reads call it; only a read in a function that has a user or request in scope is
+  reported. `Model.objects.get(...)`, `.first()` and `get_object_or_404(Model, ...)` lookups count as reads. A model
+  whose default manager filters in `get_queryset` is not judged, and the message names the flag with its value
+  (`active=True`) or the method (`restrict()`).
 - `deleted-item-filter-missing` reports a loop, comprehension, generator or `filter` call over a collection of items that carry a deletion or visibility flag (`deleted_at`, `is_deleted`,
   `deleted`, `archived`, `hidden`, `is_visible` and the other names of `soft-delete-filter-missing`, declared on a
   dataclass, pydantic model, plain class, Django or SQLAlchemy model of the project, also through a base class) when
@@ -1082,6 +1152,59 @@ transaction.atomic():`, `@transaction.atomic`, `session.begin()`, `engine.begin(
   with at least five iterations over the type and at least 80% of them skipping flagged items; undo, redo, sync,
   restore, trash, purge, history, snapshot, export and serialize functions and tests are not counted. Collections
   without an annotation and the rows of a query are not judged (`soft-delete-filter-missing` covers the query).
+- `cache-invalidated-on-save-only` reports a Django signal receiver for `post_save` or `pre_save` of a model
+  (`@receiver(post_save, sender=Model)`, a list of signals, or `post_save.connect(func, sender=Model)`) whose body
+  invalidates a cache: `cache.delete`, `delete_many`, `delete_pattern` or `clear` on `django.core.cache.cache`,
+  `caches[...]` or a name ending in `cache`, `cache_clear()` of a function, or a call to a function with
+  `invalidate` or `clear` and `cache` in its name; and for which no receiver of `post_delete`, `pre_delete` or
+  `m2m_changed` for the same model (or without a sender) invalidates the same cache or calls the same helper
+  (also one call deep through a project function). One function connected to both signals is the allowed form.
+  A receiver without a sender, one that only writes the cache (`cache.set`), test files and projects that never
+  delete a row (no `.delete()` call without arguments, no `DeleteView`, `DestroyModelMixin`, `ModelViewSet` or
+  `ModelAdmin`) are not reported. The message names the `post_delete` receiver as the allowed form.
+- `signal-receiver-never-connected` reports the receivers of a module whose name has the word `signal`, `signals`,
+  `receiver` or `receivers` (`signals.py`, `order_signals.py`) in a project that defines an `AppConfig` and where no
+  other non-test module imports it (`from . import signals`, `import app.signals`, `from app.signals import x` or
+  `import_module("app.signals")`, in `ready()` or anywhere else). Django only connects a receiver when the module
+  runs, so the signal does nothing. A module imported by `models.py` or by `ready()` is quiet. The message names
+  the import in `AppConfig.ready()`.
+- `database-alias-not-passed` reports work that drops the database alias its function was given, in a project whose
+  `DATABASES` setting names an alias other than `default` (a dictionary with two entries or a key other than
+  `"default"`, or an assignment to `DATABASES[...]`; a project with one database, or with no `DATABASES` in a
+  non-test file, is silent). A function has an alias in scope when it has a parameter named `using` or `db_alias`,
+  or a `database` or `connection_name` parameter that it passes to `.using()`, `db_manager()`, `using=`, `connections[...]` or the router (signal receivers and `delete(self, using=None)` overrides included), takes
+  `schema_editor` (a `RunPython` function, the alias is `schema_editor.connection.alias`), or reads
+  `kwargs["using"]` or `kwargs.get("using")`. In such a function the rule reports a query that runs (an executing or
+  writing call such as `count()`, `first()`, `update()`, `delete()` or `bulk_create()`, or a loop, comprehension or
+  `list(...)` over it) on `Model.objects` or `Model._default_manager` of a Django model of the project, a model
+  taken from `apps.get_model(...)` in the function, `sender`, `type(x)` or `x.__class__`, without `.using(...)` or
+  `.db_manager(...)` in the chain; `instance.save()` and `instance.delete()` without `using=` (and `super().save(...)` or `super().delete(...)` in an override that drops its `using` parameter)
+  on a model: `self` in a model method, a parameter annotated with a project model, the `instance` of a receiver with a
+  project-model sender, or a variable built from a model call or loaded by a model query; and `transaction.atomic()`, `transaction.set_rollback(...)`
+  and `transaction.on_commit(...)` without the alias as an argument or `using=`. The argument is compared with the
+  alias: `.using(x)`, `.db_manager(x)`, `using=x` or a positional alias that is a string literal or a name other
+  than the alias in scope is reported as the wrong alias, while the alias itself, a variable assigned from it or from `router.db_for_*` or `connections[...]`, `instance._state.db`
+  and an explicit pin (`"default"`, `DEFAULT_DB_ALIAS`) are the allowed forms. A migration function that returns early
+  when the alias is not the default one is not checked for the default-manager helper part. A second query on another manager without `.using(...)` is reported
+  even when an earlier one in the function is bound. A queryset that is returned or passed on without running and
+  one that is bound later in the function are not reported, nor are tests. The message names the calls that pass the
+  alias on. Inside a function given to `migrations.RunPython` the rule also reports a query on a model imported from
+  an app's models module (not taken from `apps.get_model(...)`) and a call of a project function that queries the
+  default manager of a model, with the `apps.get_model` and `.using(schema_editor.connection.alias)` allowed form.
+  This part applies in projects with one database too, because the historical model matters there as well.
+- `permission-name-without-app-label` reports a permission name without an app label in a Django project: a string
+  literal with no `.` given to `has_perm(...)`, `has_perms([...])`, `user_has_perm(user, ...)` (also by the keyword
+  `perm`, `perm_list` or `permission`), `permission_required(...)` from `django.contrib.auth.decorators` (a string
+  or a list), the `permission_required` attribute of a class deriving from `PermissionRequiredMixin`, and the lists in the
+  `perms_map` of a class deriving from a Django REST framework `DjangoModelPermissions` class. Django compares the
+  whole `app_label.codename` string, so a bare codename never matches a global permission and the check is false
+  for every user. A name with an app label (`"shop.change_order"`), a `%(app_label)s` template, a permission held
+  in a variable, test files and projects that do not import Django are not reported. `has_perm` and `has_perms`
+  count only on a user: `user`, `request_user`, `current_user`, any `.user` attribute, or a parameter annotated with a
+  `User` type; a class of the project that defines its own `has_perm` and `acl.has_perm(...)` are quiet, and
+  `user_has_perm` counts when it comes from Django or a project function calls `has_perm`. When the project imports
+  `guardian`, a `has_perm("codename", obj)` call with an object argument is not reported either, because the
+  object-permission backend takes the bare codename. The message names the allowed form `app_label.codename`.
 - `route-without-auth` reports a route handler without the auth requirement that at least 90% of the project's
   handlers declare, with at least five handlers counted and at least one without it. FastAPI: a function
   decorated `@router.get`, `post`, `put`, `patch`, `delete`, `api_route` or `websocket` on a name assigned from
@@ -1469,6 +1592,34 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
+- `null-valued-input-key` reports, on a mapping that comes from external input, `m.get(key, default)` and
+  `m.setdefault(key, default)` with a default that is not `None`, and `if "key" in m:` (also in a
+  conditional expression or before an `and`) whose body then reads `m["key"]` without testing the value:
+  a key sent with `null` is present, so the default never applies and the code gets `None`. The mapping
+  is the result of `json.loads`/`json.load`, `response.json()`, `request.json()`/`get_json()`, `request.data`,
+  `request.json`, a `model_dump()` that keeps nulls, a nested value read from one of those by a string key,
+  a `cleaned_input` parameter, an `input` or `data` parameter and the `**kwargs` of a mutation or resolver method
+  (`clean_input`, `perform_mutation`, `mutate`, `resolve_*`), or a parameter such as `payload` or `data`
+  annotated `dict[str, Any]` or `Mapping[str, Any]`, and a local assigned only from those. Not reported:
+  `m.get(key)` without a default, a `.get(key, default)` that is followed by `or`, compared with `==` or
+  `is`, a `TypedDict` or pydantic model, a dict the code builds itself, `model_dump(exclude_none=True)`,
+  a read that is itself tested for `None` or truth, and test files. The message names the allowed form:
+  `m.get(key) or ""` only when the default is the empty value of the type, `v if (v := m.get(key)) is not None else default`
+  where `0` or `False` is valid (the message never suggests `or` for a number default), and
+  `m.get(key) is not None` instead of `key in m`.
+- `missing-key-subscript` reports a `mapping[key]` read (not a write or `del`) where the mapping is a
+  request mapping (`request.session`, `request.COOKIES`, `request.GET`, `request.POST`, `request.headers`,
+  `request.query_params`, `request.cookies`, also through `self.request`, and `scope["cookies"]`), the
+  result of `jwt.get_unverified_header(...)`, the result of `.json()` on a request (also
+  after `await`) or, assigned to a name that contains `config`, `metadata`, `discovery`, `document`, `well_known`,
+  `manifest`, `openid` or `oidc`, on a response, or the `data` attribute of `self.coordinator` (the refreshed data
+  of a `DataUpdateCoordinator`), directly or through a local assigned only from one of these. A missing key
+  raises `KeyError`: a 500 for an expired session, a failed update for a device that left the data. Not
+  reported: a read of a key the same function tests with `key in mapping`, reads with `.get(key)` or
+  `.pop(key)`, writes the function made earlier (`request.session[key] = value`), a read inside a `try`
+  that catches `KeyError`, `LookupError` or `Exception`, a mapping the code builds itself, a typed
+  model, and test files. The message names the allowed form: `.get(key)` with the missing case handled, a
+  `key in mapping` guard or a `try` that catches `KeyError`.
 - `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
   reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
   annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
@@ -1541,6 +1692,123 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `def poll(delay=RETRY_DELAY)` with `time.sleep(delay)`, or an `__init__` that keeps the delay in a field.
   Not reported: a literal delay, a short delay, a private function, a nested function of a function, and
   test files. It is reported on the sleep call.
+- `nullable-dereference` reports, in a Django project, a value that can be `None` where the function
+  uses it as present (an attribute, a call, a subscript, a `for` loop, a `len()`, `sorted()` or `list()`
+  argument, an ordering comparison or an `in` test) with no check before the use in the same function.
+  The value is a `null=True` field of a model (any field type, also `ForeignKey`, `OneToOneField` and
+  `JSONField`) read through `self` in a method of the model or through a variable that holds one row (a
+  `get()`, `first()`, `last()`, `earliest()` or `latest()` result, a loop variable over a model queryset, or
+  a parameter annotated with the model); the result of `.first()` or `.last()` on a model queryset; a
+  `.get(key)` without a default on `cleaned_data`, `validated_data`, `attrs`, `kwargs`, `request.GET`,
+  `request.POST`, `request.data` or `request.session` (also through a variable and `a.get(x) or b.get(y)`);
+  or an attribute of `request.user` that only a signed-in user has (a field, property or reverse accessor of
+  the project's user model, or `email`, `first_name`, `last_name`, `get_full_name`). Quiet: an `is None` or
+  `is not None` test, a truthiness test, `if not x: return`, `x and x.attr`, `x or default`, `x.attr if x
+else ...`, `assert x`, `isinstance(x, ...)` before the use, an assignment to the same name or attribute
+  before the use, a use inside `try` with an `except` that catches `AttributeError`, `TypeError` or
+  `Exception`, a row from a queryset filtered with `field__isnull=False` or `field=...`, an instance made by
+  `create()` or the model constructor, a many-to-many field, a view or class marked with `login_required`,
+  `permission_required`, `LoginRequiredMixin`, `IsAuthenticated` or `permission_classes`, and test files.
+  `request.user` is checked against `is_authenticated` and `is_anonymous`. One finding per value and
+  function, on its first unguarded use. Allowed form: check the value first, use `value or default` or
+  `getattr(value, "attr", None)`, or narrow the queryset; add `django-stubs` or `django-types` so the
+  type checker sees these values as Optional.
+- `django-types-missing` reports once per run, on the first model class of the project (by path), when
+  Django is a dependency (`pyproject.toml`, `Pipfile`, `setup.cfg`, `setup.py`, `requirements*.txt` or
+  `requirements/*.txt`) and none of those files, `mypy.ini`, `tox.ini` or `pyrightconfig.json` mentions
+  `django-stubs`, `django-types` or `mypy_django_plugin`. Python has no setup-notice channel for this, so
+  it is a script rule. A project without Django models or without Django in its dependencies is not
+  reported. The project installs and configures the plugin; nitpicker changes no type checker config.
+- `non-unique-lookup` reports, in a Django project, `get`, `aget`, `get_or_create`, `aget_or_create`,
+  `update_or_create` and `aupdate_or_create` on `Model.objects`, `Model._default_manager`, `cls.objects` or a
+  queryset built from them (`filter`, `exclude`, `order_by`, `select_related` and the other chain methods,
+  also through a variable) in three cases. The lookup keywords (outside `defaults`, and with the
+  `filter(...)` keywords before the call) do not cover the primary key, a `unique=True` field, a
+  `OneToOneField` or every field of a `unique_together` or `UniqueConstraint` (a constraint with a
+  `condition` counts when the lookup names its fields; `fk_id`, `fk__pk` and `pk` count as the field);
+  `get` or `aget` is given an `|` of `Q` objects; or `get_or_create` or `update_or_create` has a
+  `JSONField`, `ArrayField` or `TextField` in its lookup keywords. One finding per call, naming the
+  keys. Quiet: a unique lookup, `filter(...).first()`, mutable fields in `defaults`, keyword expansion
+  (`**lookup`), `~Q(...)` or any lookup name the model does not declare (an annotation), a model with a
+  base class or a `Meta` constraint the rule cannot read (a base from another package, a constraint built
+  from expressions) and test files. A related manager (`site.group_set.get(...)`, a reverse accessor) is
+  checked when the owner is `self` in a model method, a parameter annotated with the model or a row from
+  `get()`, `first()` or `last()`; for a reverse foreign key the parent field counts as part of the lookup,
+  and an untyped owner is not reported. Allowed form: a unique
+  lookup, or `filter(...).first()` when several rows are possible.
+- `empty-filter-condition` reports a Django `Q` (`django.db.models.Q`) with no conditions that reaches the
+  positional argument of `filter`, `exclude`, `get` or `aget`, where a filter without conditions selects
+  every row and a later `delete()`, `update()` or add acts on the whole table. Reported forms: a literal
+  `Q()`, `Q(...) if cond else Q()` (also `x or Q()`), `functools.reduce(or_, items, Q())`, a variable
+  that holds one of these, and a variable that starts as `q = Q()` and is filled in a `for` or `while`
+  loop (`q |= Q(pk=m)`) in the same function. The message names the argument. Quiet: `queryset.none()`
+  for the empty case, `pk__in=ids`, a `Q` with conditions on every branch, a `reduce` that starts from a
+  `Q` with conditions, a loop variable whose `Q` or whose iterable is tested before the query (`if not
+ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A lookup value that is only
+  tested for emptiness elsewhere in the function is not reported. The same rule reports a SQLAlchemy
+  `or_()` with no arguments, or one spread over a list that can be empty (`or_(*items)`, also
+  over a comprehension) given to `where`, `filter`, `exclude` or `get`, unless `items` (or the comprehension's
+  iterable) is tested earlier (an `if`, a walrus test, `len()`) or is a literal list with items. Only OR
+  accumulation is reported (`|=`, `|`, `operator.or_`, `or_`): an empty AND (`q &= ...`,
+  `reduce(and_, ...)`, `and_(*conds)`) means no restriction and stays quiet.
+- `unresolved-query-field` reports, in a Django project, an entry of a setting that names a model field the
+  model does not have. Checked: `search_fields`, `ordering_fields`, `ordering`, `filterset_fields` and
+  `filter_fields` of a Django REST framework view (the model comes from `queryset = Model.objects...` or from
+  the `Meta.model` of its `serializer_class`), `search_fields`, `ordering` and `list_filter` of a
+  `ModelAdmin` registered with `@admin.register(Model)` or `admin.site.register(Model, Admin)`, and
+  `Meta.fields` and the `field_name` of a django-filter `FilterSet` with `Meta.model`. Each entry is resolved
+  through the model graph (`__` paths through foreign keys, many-to-many fields and reverse accessors, `pk`,
+  the `^`, `=`, `@`, `$` search prefixes and a leading `-`). It is reported when a part of the path is no
+  field of the model it reaches, and when a `search_fields` entry ends at a relation instead of a column.
+  Quiet: lookups after a field (`name__icontains`, `created__year`), key paths into `JSONField`,
+  `HStoreField` and `ArrayField`, `"__all__"`, `"?"`, a name given by `.annotate(...)`, `.alias(...)`,
+  `.values(name=...)` or `.extra(select=...)` anywhere in the project, a name declared as a class attribute
+  of the model (a manager, `TaggableManager`, `GenericRelation`) or of the filterset, a model with a base
+  class outside the project, and test files. Allowed form: a field or a `__` path that ends at a text
+  column, such as `["app__name", "app__slug"]`.
+- `filter-model-mismatch` reports a django-filter `ModelChoiceFilter` or `ModelMultipleChoiceFilter` in a
+  `FilterSet` with `Meta.model` whose `queryset` is the manager chain of a model other than the target of
+  the relation it filters (the `field_name`, or the filter name with and without the `_id` suffix, resolved
+  on `Meta.model`), and one whose `to_field_name` is not a field of the queryset's model. A queryset of a
+  subclass or a parent of the target, a filter that names no relation of the model, a `to_field_name` of
+  `pk` and a queryset that is not a model manager chain are not reported. Allowed form: the queryset of the
+  relation's target model, and a `to_field_name` that is one of its fields.
+- `serializer-null-mismatch` reports, in a Django REST framework serializer, a declared field whose null or
+  required setting disagrees with the model or the method behind it. In a serializer with a resolvable
+  `Meta.model`, a declared field (a serializer field, a related field or a nested serializer, with its
+  `source` or its own name resolved through the model graph, also through `a.b` paths) over a `null=True`
+  column or a reverse one-to-one relation that may be missing, without `allow_null=True`, is reported as
+  `null`; a field with no `required`, `default` or `read_only` setting over a model field with `blank=True`
+  or a default is reported as `required` (an explicit `required=True` is taken as intended). A
+  `SerializerMethodField` whose method has a `return None` or a bare `return` without an `Optional` return
+  annotation, or whose `extend_schema_field(...)` decorator does not say `allow_null` or `nullable`, is
+  reported as `method`. Quiet: `many=True` fields, many-to-many fields, a `source` that is no model field
+  (a property, a method), a field with `allow_null=True` or a non-constant `allow_null`, the automatic fields
+  of `Meta.fields` with `extra_kwargs`, a method that never returns `None`, and test files. A `Meta.fields`
+  list that leaves out fields the sibling serializers expose, and a writable relation that should be
+  `read_only`, are not checked. Allowed form: `allow_null=True`, `required=False`, an `Optional` return
+  annotation or `@extend_schema_field(...)` with `allow_null=True`.
+- `serializer-fields-omitted` reports a `ModelSerializer` with an explicit `Meta.fields` list that leaves out
+  a model field which at least 80% of the other serializers of the same model expose, when at least three
+  other serializers of the model exist. The other serializers count with an explicit list, `"__all__"` or
+  declared field names; a primary key is not reported. Quiet: serializers with `exclude`, and serializers
+  whose class name or path contains `Nested`, `Brief`, `Minimal`, `Summary`, `List`, `Write`, `Create`,
+  `Update` or `Input`, which are neither reported nor counted as peers, and test files. One finding per
+  omitted field, on the `fields` list. Allowed form: add the field, or name the serializer as a variant.
+- `unsortable-table-column` reports, in a `django_tables2.Table` with `Meta.model`, a declared column
+  (`tables.Column`, `BooleanColumn`, `TemplateColumn`, `DateTimeColumn` and the other `django_tables2` column
+  classes) that sorts by an accessor that is not a database field of the model. The accessor is the column
+  name, or the `accessor=` string (`"a.b"` or `"a__b"`, also inside `A(...)`), resolved through the model
+  graph. Reported: a name that is a property, a `GenericForeignKey`, or an attribute missing on a model
+  whose bases are all in the project; a path that goes through a relation to a name the related model does
+  not have; and an accessor that ends at a many-valued relation (a many-to-many field or a reverse
+  accessor). Quiet: a column with `orderable=False` (or any `orderable` that is not `True`), with
+  `order_by=`, with an `order_<name>` method on the table, a table with `orderable = False` in its `Meta`,
+  `CheckBoxColumn`, `ActionsColumn` and `ManyToManyColumn`, project column classes, a name given by
+  `.annotate(...)`, `.alias(...)`, `.values(name=...)` or `.extra(select=...)` anywhere in the project, a
+  class attribute of the model that is not a field (a manager, a tag manager), a model with a base class
+  outside the project, and test files. Allowed form: `orderable=False`, `order_by=` with real field names or
+  an `order_<name>` method.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a
@@ -1641,6 +1909,25 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
   (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
   the pinned ruff, so it is not selected yet.
+- `filter-unescaped-value` reports a function argument built into an LDAP search filter or a SCIM filter
+  through an f-string, `+`, `%` or `str.format`, without escaping: a parenthesis, `*`, quote or backslash in
+  the value changes which entries match or makes the filter invalid. LDAP: in a file that imports `ldap`,
+  `ldap3` or `django_auth_ldap`, a string shaped like a filter (`(attr=...)`, `(&...`, `(|...`) that is the
+  filter argument of `search`, `search_s`, `search_st`, `search_ext`, `search_ext_s` or `paged_search`, a
+  `search_filter=`, `filterstr=` or `filter=` keyword, or the value assigned to a name such as `search_filter`
+  or `filterstr`. SCIM: a string with an `attribute eq|ne|co|sw|ew|gt|ge|lt|le value` clause under a `"filter"`
+  dictionary key, a `filter=` keyword or a name such as `scim_filter`. Only the value after the operator is
+  checked (`=` in LDAP, the comparison operator in SCIM), never the attribute name, and only when it reads a
+  parameter of the enclosing function (not `self` or `cls`), directly or through a local, and the parameter is
+  not an `int`, `float`, `bool` or `complex`. A value wrapped in `escape_filter_chars` (`ldap3.utils.conv` or
+  `ldap.filter`), a helper whose name contains `escape`, `quote` or `sanitize`, or `json.dumps`, a `.replace(...)` that
+  escapes a quote, backslash, parenthesis or `*`, a parameter that the function rebinds to such a value
+  (`username = escape_filter_chars(username)`; the assigned values are evaluated, not the raw parameter),
+  `re.*` calls, a template
+  passed to `ldap.filter.filter_format`, constants, module-level code and filter-shaped strings in files that
+  do not use an LDAP library are not reported. Expect a few notes where a helper that is not named like an
+  escape already cleans the value. The message names the escaping helper. It follows the same approach as
+  `regex-unescaped-value`; the other presets have no counterpart yet.
 - `regex-part-defect` reports a literal pattern of `re.compile`, `match`, `search`, `fullmatch`,
   `findall`, `finditer`, `split`, `sub` or `subn` with a part that never changes what it matches
   (`a|b|a`, `[_a-z_]`, an empty group), that does not do what it looks like (`a\bb`, which can never

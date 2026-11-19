@@ -54,6 +54,19 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `items.append(x)`, `items.sort()` or `table.update(other)` on a parameter. Build a new value with a
   comprehension or an unpacking (`[*items, x]`, `{**table, **other}`, `sorted(items)`), or copy the argument
   first (`items = list(items)`). A list or dict created and filled in the same function is fine.
+- Parsed or posted input can hold a key with `null`: `body.get("alt", "")` and `"k" in body` then still give `None`
+  (`null-valued-input-key`). Write `body.get("alt") or ""` for an empty default, or
+  `v if (v := body.get("n")) is not None else 0` where `0` is valid, and test `body.get("k") is not None`.
+- Request, session, cookie, token-header, remote-document and coordinator data can lack a key: read it with
+  `.get(key)` and handle `None`, or test `key in data` first, never `request.session[KEY]` or
+  `self.coordinator.data[device_id]` (`missing-key-subscript`).
+- Handle an empty id list or an unsaved row before the query: `queryset.none()` or `pk__in=ids`, never an empty `Q()` branch, `reduce(or_, ..., Q())` or a `Q()` filled in a loop with no emptiness check, since a filter without conditions matches every row (`empty-filter-condition`).
+- Django `get`, `get_or_create` and `update_or_create` look up by the primary key, a unique field or every field of a unique constraint, never by a name or an `|` of `Q` objects; use `filter(...).first()` when several rows are possible and put JSON, array and text fields in `defaults={...}` (`non-unique-lookup`).
+- Django values that can be `None` (a `null=True` field, `.first()`, `.last()`, `cleaned_data.get(...)`, `request.user` attributes) are checked before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)` or `filter(field__isnull=False)` (`nullable-dereference`). A Django project configures `django-stubs` (mypy plugin) or `django-types` (pyright) so these values are Optional (`django-types-missing`).
+- Django query settings name real things: `search_fields`, `ordering`, `list_filter` and `filterset_fields` entries are fields or `__` paths that end at a column (`["app__name"]`, not the relation `"app"`), and a `ModelChoiceFilter` gets the queryset of the model its relation points to, with a `to_field_name` that exists (`unresolved-query-field`, `filter-model-mismatch`).
+- DRF serializer fields say what the model allows: `allow_null=True` over a `null=True` column or a reverse one-to-one relation (also for a nested `read_only` serializer), `required=False` over a blank or default column, and a method field that can return `None` has an `Optional` annotation or `@extend_schema_field(..., allow_null=True)` (`serializer-null-mismatch`).
+- A serializer `Meta.fields` list keeps the fields most other serializers of the model expose, or the serializer is named as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`) (`serializer-fields-omitted`).
+- A django-tables2 column over a value that is not a database field (a property, a `GenericForeignKey`, a related manager) says how it sorts: `orderable=False`, `order_by=(...)` with real fields or an `order_<name>` method (`unsortable-table-column`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are
