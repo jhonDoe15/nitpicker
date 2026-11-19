@@ -190,15 +190,21 @@ the spec for Mocha.
     `react-dom`, `enzyme`, `@vue/test-utils`, `@storybook/test`, `jest-axe` and similar) or a
     Storybook `composeStories`; imports a `.tsx`, `.jsx`, `.vue` or `.svelte` module; or reads a
     browser-only global (names from the `globals` package's `browser` set that Node does not have;
-    `navigator` only beyond `userAgent`, `language(s)`, `platform` and `hardwareConcurrency`).
+    `navigator` only beyond `userAgent`, `language(s)`, `platform` and `hardwareConcurrency`), or
+    stubs one by name: `vi.stubGlobal('document', ...)`, or `jest.replaceProperty`, `jest.spyOn`,
+    `vi.spyOn`, `Object.defineProperty`, `Reflect.defineProperty` and `Reflect.set` on `globalThis`, `global`,
+    `self` or `window` with a DOM global as the key. A stub whose name is computed is not read, so
+    the file is not reported.
     Type-only imports and type annotations do not count, nor do `react-test-renderer`,
     `react-dom/server` or `jsdom` imported as a library. When the imports reach deeper than 8
     modules or more than 200 files, or a reached module loads a computed path (`import(name)`,
     `require(name)`), the file is not reported.
   - Setup files: when the project's environment is DOM and one of its `test.setupFiles` (or a
     project module it imports) reads a browser-only global, every file in that project counts as
-    using the DOM. Importing a DOM testing package such as `@testing-library/jest-dom` in a setup
-    file does not count, since it also loads under `node`.
+    using the DOM. A setup file that imports a DOM testing package such as
+    `@testing-library/jest-dom` counts too, and so does a setup entry that is a package name
+    rather than a path (`@testing-library/jest-dom/vitest`, `jest-canvas-mock`), which the rule
+    cannot read.
   - Not seen: DOM use that only shows at run time, or behind a module nitpicker cannot resolve.
     Adding `@vitest-environment jsdom` to such a file does not clear the finding; the only way out
     is an exception for the rule in the config file.
