@@ -28,9 +28,8 @@ function isLocation(node: TSESTree.Node): boolean {
 }
 
 export function attributeSink(node: TSESTree.JSXAttribute): Sink | undefined {
-  const element = node.parent.type === AST_NODE_TYPES.JSXOpeningElement ? node.parent : undefined;
   const name = node.name.type === AST_NODE_TYPES.JSXIdentifier ? node.name.name : '';
-  const tag = element === undefined ? '' : elementName(element);
+  const tag = elementName(node.parent);
   const value =
     node.value?.type === AST_NODE_TYPES.JSXExpressionContainer ? node.value.expression : undefined;
   const matches =
@@ -54,7 +53,7 @@ export function callSink(node: TSESTree.CallExpression): Sink | undefined {
   }
   const method = nameOf(callee.property) ?? '';
   const opensWindow =
-    method === 'open' && isLocation(callee.object) === false && nameOf(callee.object) === 'window';
+    method === 'open' && !isLocation(callee.object) && nameOf(callee.object) === 'window';
   const navigates = NAVIGATION_METHODS.has(method) && isLocation(callee.object);
   return (opensWindow || navigates) && argument.type !== AST_NODE_TYPES.SpreadElement
     ? { value: argument }

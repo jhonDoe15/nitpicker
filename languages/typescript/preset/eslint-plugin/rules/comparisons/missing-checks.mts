@@ -36,11 +36,21 @@ function missingOperand(node: TSESTree.Node): TSESTree.Node | undefined {
   return isMissingValue(node.left) ? node.right : undefined;
 }
 
-function parts(node: TSESTree.Node, operator: '||' | '&&'): TSESTree.Node[] {
+function logicalArms(node: TSESTree.Node, operator: '||' | '&&'): TSESTree.Node[] {
   const value = unwrapOf(node, ASSERTION_FORMS);
   return value.type === AST_NODE_TYPES.LogicalExpression && value.operator === operator
-    ? [...parts(value.left, operator), ...parts(value.right, operator)]
-    : [value];
+    ? [value.left, value.right]
+    : [];
+}
+
+function parts(node: TSESTree.Node, operator: '||' | '&&'): TSESTree.Node[] {
+  const found: TSESTree.Node[] = [];
+  for (const item of depthFirst(node, (current) => logicalArms(current, operator))) {
+    if (logicalArms(item, operator).length === 0) {
+      found.push(unwrapOf(item, ASSERTION_FORMS));
+    }
+  }
+  return found;
 }
 
 function presentOperand(node: TSESTree.Node): TSESTree.Node | undefined {

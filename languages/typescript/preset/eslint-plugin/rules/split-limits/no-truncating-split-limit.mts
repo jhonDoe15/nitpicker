@@ -44,13 +44,16 @@ function readsLast(node: TSESTree.Node, limit: number): boolean {
     if (user.computed) {
       return user.property.type === AST_NODE_TYPES.Literal && user.property.value === limit - 1;
     }
-    return nameOf(user.property) === 'pop' || nameOf(user.property) === 'at'
-      ? readsLastCall(user, limit)
-      : false;
+    return (
+      (nameOf(user.property) === 'pop' || nameOf(user.property) === 'at') &&
+      readsLastCall(user, limit)
+    );
   }
-  return user.type === AST_NODE_TYPES.VariableDeclarator && user.init === node
-    ? destructuresLast(user.id, limit)
-    : false;
+  return (
+    user.type === AST_NODE_TYPES.VariableDeclarator &&
+    user.init === node &&
+    destructuresLast(user.id, limit)
+  );
 }
 
 function readsLastCall(member: TSESTree.MemberExpression, limit: number): boolean {

@@ -94,18 +94,18 @@ function callMutation(scope: MutationScope, node: TSESTree.CallExpression): Muta
 }
 
 export function mutationAt(scope: MutationScope, node: TSESTree.Node): Mutation | undefined {
-  switch (node.type) {
-    case AST_NODE_TYPES.CallExpression:
-      return callMutation(scope, node);
-    case AST_NODE_TYPES.AssignmentExpression:
-      return writeMutation(scope, node.left);
-    case AST_NODE_TYPES.UpdateExpression:
-      return writeMutation(scope, node.argument);
-    case AST_NODE_TYPES.UnaryExpression:
-      return node.operator === 'delete' ? writeMutation(scope, node.argument) : undefined;
-    default:
-      return undefined;
+  if (node.type === AST_NODE_TYPES.CallExpression) {
+    return callMutation(scope, node);
   }
+  if (node.type === AST_NODE_TYPES.AssignmentExpression) {
+    return writeMutation(scope, node.left);
+  }
+  if (node.type === AST_NODE_TYPES.UpdateExpression) {
+    return writeMutation(scope, node.argument);
+  }
+  return node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete'
+    ? writeMutation(scope, node.argument)
+    : undefined;
 }
 
 export function parameterWalk(scope: MutationScope): {

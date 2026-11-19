@@ -32,7 +32,7 @@ function keyNameOf(pattern: TSESTree.Node | undefined): string | undefined {
 
 function declaredName(left: TSESTree.Node): string | undefined {
   return left.type === AST_NODE_TYPES.VariableDeclaration
-    ? keyNameOf(left.declarations[0]?.id)
+    ? keyNameOf(left.declarations.at(0)?.id)
     : undefined;
 }
 

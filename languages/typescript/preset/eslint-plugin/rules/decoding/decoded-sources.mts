@@ -8,7 +8,7 @@ import {
   type Context,
 } from '../security/security-values.mts';
 
-export type SourceKind = 'decoder' | 'file';
+type SourceKind = 'decoder' | 'file';
 export type DecodedSource = { readonly kind: SourceKind; readonly path?: string | undefined };
 
 const UTF8 = /^utf-?8$/iu;
@@ -43,6 +43,14 @@ function isLenientUtf8(context: Context, decoder: TSESTree.NewExpression): boole
   return fatal === undefined || (fatal.type === AST_NODE_TYPES.Literal && fatal.value === false);
 }
 
+function initializerOf(
+  context: Context,
+  identifier: TSESTree.Identifier,
+): TSESTree.Expression | undefined {
+  const node = findVariable(context, identifier, identifier.name)?.defs.at(0)?.node;
+  return node?.type === AST_NODE_TYPES.VariableDeclarator ? (node.init ?? undefined) : undefined;
+}
+
 function decoderOf(context: Context, object: TSESTree.Node): TSESTree.NewExpression | undefined {
   const plain = unwrapped(object);
   if (isTextDecoder(plain)) {
@@ -51,10 +59,8 @@ function decoderOf(context: Context, object: TSESTree.Node): TSESTree.NewExpress
   if (plain.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
-  const definition = findVariable(context, plain, plain.name)?.defs.at(0);
-  const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : null;
-  return init !== null && isTextDecoder(init) ? init : undefined;
+  const init = initializerOf(context, plain);
+  return isTextDecoder(init) ? init : undefined;
 }
 
 function utf8Encoding(context: Context, node: TSESTree.Node | undefined): boolean {
@@ -66,24 +72,27 @@ function utf8Encoding(context: Context, node: TSESTree.Node | undefined): boolea
 }
 
 function bufferRead(context: Context, node: TSESTree.Node): string | undefined {
-  const plain = unwrapped(node);
-  const inner = plain.type === AST_NODE_TYPES.AwaitExpression ? unwrapped(plain.argument) : plain;
-  if (
-    inner.type === AST_NODE_TYPES.CallExpression &&
-    READ_FILE.has(plainName(inner.callee) ?? '')
-  ) {
-    const [path, encoding] = inner.arguments;
-    return path !== undefined && encoding === undefined
-      ? context.sourceCode.getText(path)
-      : undefined;
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const plain = unwrapped(current);
+    const inner = plain.type === AST_NODE_TYPES.AwaitExpression ? unwrapped(plain.argument) : plain;
+    if (
+      inner.type === AST_NODE_TYPES.CallExpression &&
+      READ_FILE.has(plainName(inner.callee) ?? '')
+    ) {
+      const [path, encoding] = inner.arguments;
+      return path !== undefined && encoding === undefined
+        ? context.sourceCode.getText(path)
+        : undefined;
+    }
+    const init =
+      inner.type === AST_NODE_TYPES.Identifier ? initializerOf(context, inner) : undefined;
+    if (init === undefined) {
+      return undefined;
+    }
+    pending.push(init);
   }
-  if (inner.type !== AST_NODE_TYPES.Identifier) {
-    return undefined;
-  }
-  const definition = findVariable(context, inner, inner.name)?.defs.at(0);
-  const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : null;
-  return init === null || init === undefined ? undefined : bufferRead(context, init);
+  return undefined;
 }
 
 function isAuthoredText(context: Context, path: string): boolean {

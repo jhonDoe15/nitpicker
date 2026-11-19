@@ -48,7 +48,7 @@ project.tester.run('no-lossy-json-stringify', rule, {
     typed('JSON.stringify(Object.fromEntries(map));'),
     typed('JSON.stringify(money);'),
     typed('JSON.stringify(moneys);'),
-    typed('JSON.stringify(row, (_, v) => (typeof v === "bigint" ? `${v}n` : v));'),
+    typed(`JSON.stringify(row, (_, v) => (typeof v === "bigint" ? \`\${v}n\` : v));`),
     typed('JSON.stringify(map, replacer);'),
     typed('JSON.stringify(row, ["name"]);'),
     typed('JSON.stringify(plain, null, 2).length;'),

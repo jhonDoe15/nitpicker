@@ -42,23 +42,27 @@ function isBlankTest(sourceCode: SourceCode, node: TSESTree.Node, target: string
   if (parent === undefined) {
     return false;
   }
-  switch (parent.type) {
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === '!';
-    case AST_NODE_TYPES.LogicalExpression:
-      return true;
-    case AST_NODE_TYPES.IfStatement:
-    case AST_NODE_TYPES.ConditionalExpression:
-      return parent.test === node;
-    case AST_NODE_TYPES.MemberExpression:
-      return parent.object === node && BLANK_MEMBERS.has(nameOf(parent.property) ?? '');
-    case AST_NODE_TYPES.BinaryExpression:
-      return [parent.left, parent.right].some(
-        (side) => side.type === AST_NODE_TYPES.Literal && side.value === '',
-      );
-    default:
-      return false;
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === '!';
   }
+  if (parent.type === AST_NODE_TYPES.LogicalExpression) {
+    return true;
+  }
+  if (
+    parent.type === AST_NODE_TYPES.IfStatement ||
+    parent.type === AST_NODE_TYPES.ConditionalExpression
+  ) {
+    return parent.test === node;
+  }
+  if (parent.type === AST_NODE_TYPES.MemberExpression) {
+    return parent.object === node && BLANK_MEMBERS.has(nameOf(parent.property) ?? '');
+  }
+  return (
+    parent.type === AST_NODE_TYPES.BinaryExpression &&
+    [parent.left, parent.right].some(
+      (side) => side.type === AST_NODE_TYPES.Literal && side.value === '',
+    )
+  );
 }
 
 export function isBlankChecked(
@@ -83,11 +87,11 @@ function isSelfComparison(node: TSESTree.BinaryExpression): boolean {
 
 function checkedBy(reference: TSESLint.Scope.Reference): boolean {
   const { parent } = reference.identifier;
-  if (parent?.type === AST_NODE_TYPES.BinaryExpression) {
+  if (parent.type === AST_NODE_TYPES.BinaryExpression) {
     return isSelfComparison(parent);
   }
   if (
-    parent?.type !== AST_NODE_TYPES.CallExpression ||
+    parent.type !== AST_NODE_TYPES.CallExpression ||
     parent.arguments[0] !== reference.identifier
   ) {
     return false;
@@ -106,7 +110,7 @@ function literalNumber(node: TSESTree.Node): number | undefined {
 function excludesZero(reference: TSESLint.Scope.Reference): boolean {
   const { identifier } = reference;
   const { parent } = identifier;
-  if (parent?.type !== AST_NODE_TYPES.BinaryExpression) {
+  if (parent.type !== AST_NODE_TYPES.BinaryExpression) {
     return false;
   }
   const onLeft = parent.left === identifier;

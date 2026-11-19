@@ -93,27 +93,50 @@ function byProperty(node: TSESTree.MemberExpression): Operand | undefined {
   return name === 'fsPath' ? operand('path', true, name) : byName(name);
 }
 
-export function operandOf(node: TSESTree.Node): Operand | undefined {
-  const value = unwrapOf(node, ASSERTION_FORMS);
-  switch (value.type) {
-    case AST_NODE_TYPES.ChainExpression:
-      return operandOf(value.expression);
-    case AST_NODE_TYPES.Identifier:
-      return byName(value.name);
-    case AST_NODE_TYPES.MemberExpression:
-      return byMember(value);
-    case AST_NODE_TYPES.BinaryExpression:
-      return value.operator === '+' ? operandOf(value.left) : undefined;
-    case AST_NODE_TYPES.TemplateLiteral:
-      return value.quasis[0]?.value.raw === '' && value.expressions[0] !== undefined
-        ? operandOf(value.expressions[0])
-        : undefined;
-    case AST_NODE_TYPES.CallExpression:
-      if (foldingCall(value.callee)) {
-        return { ...operand('path', false), folded: true };
-      }
-      return pathCall(value.callee) ? operand('path', true) : undefined;
-    default:
-      return undefined;
+type Step = { readonly operand: Operand | undefined } | { readonly next: TSESTree.Node };
+
+function templateStep(value: TSESTree.TemplateLiteral): Step {
+  const [first] = value.expressions;
+  return value.quasis[0]?.value.raw === '' && first !== undefined
+    ? { next: first }
+    : { operand: undefined };
+}
+
+function callStep(value: TSESTree.CallExpression): Step {
+  if (foldingCall(value.callee)) {
+    return { operand: { ...operand('path', false), folded: true } };
   }
+  return { operand: pathCall(value.callee) ? operand('path', true) : undefined };
+}
+
+function operandStep(value: TSESTree.Node): Step {
+  if (value.type === AST_NODE_TYPES.ChainExpression) {
+    return { next: value.expression };
+  }
+  if (value.type === AST_NODE_TYPES.Identifier) {
+    return { operand: byName(value.name) };
+  }
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return { operand: byMember(value) };
+  }
+  if (value.type === AST_NODE_TYPES.BinaryExpression) {
+    return value.operator === '+' ? { next: value.left } : { operand: undefined };
+  }
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return templateStep(value);
+  }
+  return value.type === AST_NODE_TYPES.CallExpression ? callStep(value) : { operand: undefined };
+}
+
+export function operandOf(node: TSESTree.Node): Operand | undefined {
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const step = operandStep(unwrapOf(current, ASSERTION_FORMS));
+    if ('next' in step) {
+      pending.push(step.next);
+    } else {
+      return step.operand;
+    }
+  }
+  return undefined;
 }

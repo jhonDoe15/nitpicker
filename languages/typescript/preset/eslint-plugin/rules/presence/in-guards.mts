@@ -65,17 +65,16 @@ function usedAsCheck(node: TSESTree.Node): boolean {
   if (parent === undefined) {
     return false;
   }
-  switch (parent.type) {
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === 'typeof' || parent.operator === '!';
-    case AST_NODE_TYPES.IfStatement:
-    case AST_NODE_TYPES.ConditionalExpression:
-      return parent.test === node;
-    case AST_NODE_TYPES.LogicalExpression:
-      return true;
-    default:
-      return isValidatorCall(parent, node);
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === 'typeof' || parent.operator === '!';
   }
+  if (
+    parent.type === AST_NODE_TYPES.IfStatement ||
+    parent.type === AST_NODE_TYPES.ConditionalExpression
+  ) {
+    return parent.test === node;
+  }
+  return parent.type === AST_NODE_TYPES.LogicalExpression || isValidatorCall(parent, node);
 }
 
 function isValidated(facts: TypedFacts, read: TSESTree.Node): boolean {

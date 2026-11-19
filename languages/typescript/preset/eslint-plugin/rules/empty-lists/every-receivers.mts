@@ -13,7 +13,7 @@ import type { TypedFacts } from '../promises/cannot-reject.mts';
 const GUARD_CALLS = new Set(['some', 'find', 'findIndex', 'at']);
 const GUARD_FUNCTIONS = new Set(['isNonEmpty', 'isEmpty', 'nonEmpty', 'hasItems', 'hasAny']);
 
-export function isFilterCall(node: TSESTree.Node): boolean {
+function isFilterCall(node: TSESTree.Node): boolean {
   return (
     node.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&
@@ -36,16 +36,13 @@ function isFilteredVariable(sourceCode: SourceCode, identifier: TSESTree.Identif
 }
 
 export function isTrackedReceiver(sourceCode: SourceCode, receiver: TSESTree.Node): boolean {
-  switch (receiver.type) {
-    case AST_NODE_TYPES.CallExpression:
-      return isFilterCall(receiver);
-    case AST_NODE_TYPES.Identifier:
-      return isParameter(sourceCode, receiver) || isFilteredVariable(sourceCode, receiver);
-    case AST_NODE_TYPES.MemberExpression:
-      return !receiver.computed;
-    default:
-      return false;
+  if (receiver.type === AST_NODE_TYPES.CallExpression) {
+    return isFilterCall(receiver);
   }
+  if (receiver.type === AST_NODE_TYPES.Identifier) {
+    return isParameter(sourceCode, receiver) || isFilteredVariable(sourceCode, receiver);
+  }
+  return receiver.type === AST_NODE_TYPES.MemberExpression && !receiver.computed;
 }
 
 function propertyName(node: TSESTree.MemberExpression): string | undefined {
@@ -53,7 +50,9 @@ function propertyName(node: TSESTree.MemberExpression): string | undefined {
 }
 
 function isGuard(facts: TypedFacts, node: TSESTree.Node, target: string): boolean {
-  const text = (value: TSESTree.Node): string => facts.sourceCode.getText(value);
+  function text(value: TSESTree.Node): string {
+    return facts.sourceCode.getText(value);
+  }
   if (node.type === AST_NODE_TYPES.MemberExpression && text(node.object) === target) {
     return propertyName(node) === 'length' || (node.computed && text(node.property) === '0');
   }

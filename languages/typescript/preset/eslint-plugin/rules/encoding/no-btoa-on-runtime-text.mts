@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
@@ -13,6 +14,7 @@ type MessageId = 'utf8First';
 
 const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self']);
 const BYTE_TEXT = /fromCharCode|fromCodePoint|encodeURI|\bescape\(|latin1|binary|ascii|hex\b/iu;
+const MAX_WRITE_DEPTH = 3;
 const BYTE_WORDS = new Set([
   'binary',
   'byte',
@@ -67,9 +69,9 @@ function pushedByteText(context: Context, call: TSESTree.CallExpression): boolea
   const variable = findVariable(context, owner, owner.name);
   return (variable?.references ?? []).some((reference) => {
     const member = reference.identifier.parent;
-    const pushed = member?.parent;
+    const pushed = member.parent;
     return (
-      member?.type === AST_NODE_TYPES.MemberExpression &&
+      member.type === AST_NODE_TYPES.MemberExpression &&
       memberName(member) === 'push' &&
       pushed?.type === AST_NODE_TYPES.CallExpression &&
       BYTE_TEXT.test(context.sourceCode.getText(pushed))
@@ -83,24 +85,34 @@ function isLocalByteCall(context: Context, node: TSESTree.Node): boolean {
   return target !== undefined && BYTE_TEXT.test(context.sourceCode.getText(target));
 }
 
-function isByteText(context: Context, node: TSESTree.Node, depth = 0): boolean {
+function isDirectByteText(context: Context, node: TSESTree.Node): boolean {
   const kind = valueKind(context, node);
-  if (
+  return (
     BYTE_TEXT.test(context.sourceCode.getText(node)) ||
     (node.type === AST_NODE_TYPES.CallExpression && pushedByteText(context, node)) ||
     isLocalByteCall(context, node) ||
     (node.type === AST_NODE_TYPES.MemberExpression && memberName(node) === 'length') ||
     kind === 'literals' ||
     kind === 'number'
-  ) {
-    return true;
-  }
-  return (
-    node.type === AST_NODE_TYPES.Identifier &&
-    depth < 3 &&
-    (isByteName(node.name) ||
-      writtenValues(context, node).some((value) => isByteText(context, value, depth + 1)))
   );
+}
+
+function isByteText(context: Context, node: TSESTree.Node): boolean {
+  const pending = [{ node, depth: 0 }];
+  for (const current of pending) {
+    if (isDirectByteText(context, current.node)) {
+      return true;
+    }
+    if (current.node.type === AST_NODE_TYPES.Identifier && current.depth < MAX_WRITE_DEPTH) {
+      if (isByteName(current.node.name)) {
+        return true;
+      }
+      for (const value of writtenValues(context, current.node)) {
+        pending.push({ node: value, depth: current.depth + 1 });
+      }
+    }
+  }
+  return false;
 }
 
 function isConstantText(context: Context, node: TSESTree.Node): boolean {
@@ -112,17 +124,20 @@ function isConstantText(context: Context, node: TSESTree.Node): boolean {
 }
 
 function isSafeText(context: Context, node: TSESTree.Node): boolean {
-  const plain = unwrapped(node);
-  if (plain.type === AST_NODE_TYPES.AwaitExpression) {
-    return isSafeText(context, plain.argument);
+  const pending = [node];
+  for (const item of pending) {
+    const plain = unwrapped(item);
+    if (plain.type === AST_NODE_TYPES.AwaitExpression) {
+      pending.push(plain.argument);
+    } else if (plain.type === AST_NODE_TYPES.TemplateLiteral) {
+      appendAll(pending, plain.expressions);
+    } else if (plain.type === AST_NODE_TYPES.BinaryExpression && plain.operator === '+') {
+      pending.push(plain.left, plain.right);
+    } else if (!(isConstantText(context, plain) || isByteText(context, plain))) {
+      return false;
+    }
   }
-  if (plain.type === AST_NODE_TYPES.TemplateLiteral) {
-    return plain.expressions.every((part) => isSafeText(context, part));
-  }
-  if (plain.type === AST_NODE_TYPES.BinaryExpression && plain.operator === '+') {
-    return isSafeText(context, plain.left) && isSafeText(context, plain.right);
-  }
-  return isConstantText(context, plain) || isByteText(context, plain);
+  return true;
 }
 
 function isCaught(node: TSESTree.Node): boolean {

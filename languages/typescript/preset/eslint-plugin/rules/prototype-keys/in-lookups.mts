@@ -11,8 +11,7 @@ function hasNullPrototype(table: TSESTree.ObjectExpression): boolean {
   return table.properties.some(
     (property) =>
       property.type === AST_NODE_TYPES.SpreadElement ||
-      (property.type === AST_NODE_TYPES.Property &&
-        !property.computed &&
+      (!property.computed &&
         (nameOf(property.key) === '__proto__' ||
           (property.key.type === AST_NODE_TYPES.Literal && property.key.value === '__proto__'))),
   );

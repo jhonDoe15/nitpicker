@@ -90,7 +90,7 @@ tester.run('no-lossy-utf8-decode', rule, {
     ),
     flagged(
       'import { readFile, writeFile } from "node:fs/promises"; export async function f(p: string) { const buf = ' +
-        'await readFile(p); const t = buf.toString("utf8"); await writeFile(p, `${t}\\n`); }',
+        `await readFile(p); const t = buf.toString("utf8"); await writeFile(p, \`\${t}\\n\`); }`,
       'file',
     ),
   ],

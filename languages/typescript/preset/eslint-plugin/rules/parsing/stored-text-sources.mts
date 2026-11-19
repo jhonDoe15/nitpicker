@@ -63,8 +63,11 @@ function isProjectFile(context: SourceContext, path: TSESTree.Node | undefined):
 }
 
 function isMessageHandler(node: TSESTree.Node | undefined): boolean {
-  const call = node?.parent;
-  if (call?.type !== AST_NODE_TYPES.CallExpression || !isFunction(node as TSESTree.Node)) {
+  if (node === undefined || !isFunction(node)) {
+    return false;
+  }
+  const call = node.parent;
+  if (call.type !== AST_NODE_TYPES.CallExpression) {
     return false;
   }
   const [event] = call.arguments;
@@ -88,15 +91,15 @@ function isMessageParameter(context: SourceContext, node: TSESTree.Node): boolea
 }
 
 function peeled(context: SourceContext, node: TSESTree.Node): TSESTree.Node {
-  let current = resolveConstant(context, unwrapOf(node, ASSERTION_FORMS)) ?? node;
-  for (let step = 0; step < MAX_PEELS; step += 1) {
-    const next = peelOnce(current);
+  const steps = [resolveConstant(context, unwrapOf(node, ASSERTION_FORMS)) ?? node];
+  for (const current of steps) {
+    const next = steps.length > MAX_PEELS ? undefined : peelOnce(current);
     if (next === undefined) {
       break;
     }
-    current = resolveConstant(context, next) ?? next;
+    steps.push(resolveConstant(context, next) ?? next);
   }
-  return current;
+  return steps.at(-1) ?? node;
 }
 
 function peelOnce(node: TSESTree.Node): TSESTree.Node | undefined {

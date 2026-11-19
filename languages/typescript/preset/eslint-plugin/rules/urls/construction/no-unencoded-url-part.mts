@@ -38,7 +38,7 @@ const MOCK_FILE = /__mocks__|\.mock\./u;
 const PATH_NAME = /(?:path|pathname|route)$/iu;
 
 function isOpen(context: RuleContext, node: TSESTree.Node): boolean {
-  return !isPlainValue(node) && !isEncodedText(context.sourceCode.getText(node));
+  return !(isPlainValue(node) || isEncodedText(context.sourceCode.getText(node)));
 }
 
 function looksLikeUrl(template: TSESTree.TemplateLiteral): boolean {
@@ -116,7 +116,7 @@ function isParsedPathname(node: TSESTree.Node): boolean {
   return (
     node.type === AST_NODE_TYPES.MemberExpression &&
     lastNameOf(node) === 'pathname' &&
-    /(?:url|uri)/iu.test(lastNameOf(node.object) ?? '')
+    /url|uri/iu.test(lastNameOf(node.object) ?? '')
   );
 }
 

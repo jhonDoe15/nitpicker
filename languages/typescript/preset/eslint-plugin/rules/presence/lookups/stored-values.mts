@@ -21,30 +21,37 @@ function isNonEmptyText(node: TSESTree.Node): boolean {
     : node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string' && node.value !== '';
 }
 
-function isNonEmpty(node: TSESTree.Node): boolean {
-  const target = unwrap(node);
-  switch (target.type) {
-    case AST_NODE_TYPES.Literal:
-      return isNonEmptyText(target) || (typeof target.value === 'number' && target.value !== 0);
-    case AST_NODE_TYPES.TemplateLiteral:
-      return isNonEmptyText(target);
-    case AST_NODE_TYPES.BinaryExpression:
-      return (
-        target.operator === '+' && (isNonEmptyText(target.left) || isNonEmptyText(target.right))
-      );
-    case AST_NODE_TYPES.CallExpression:
-      return NON_EMPTY_CALLS.has(
-        nameOf(
-          target.callee.type === AST_NODE_TYPES.MemberExpression
-            ? target.callee.property
-            : target.callee,
-        ) ?? '',
-      );
-    case AST_NODE_TYPES.ConditionalExpression:
-      return isNonEmpty(target.consequent) && isNonEmpty(target.alternate);
-    default:
-      return false;
+function isNonEmptyLeaf(target: TSESTree.Node): boolean {
+  if (target.type === AST_NODE_TYPES.Literal) {
+    return isNonEmptyText(target) || (typeof target.value === 'number' && target.value !== 0);
   }
+  if (target.type === AST_NODE_TYPES.TemplateLiteral) {
+    return isNonEmptyText(target);
+  }
+  if (target.type === AST_NODE_TYPES.BinaryExpression) {
+    return target.operator === '+' && (isNonEmptyText(target.left) || isNonEmptyText(target.right));
+  }
+  if (target.type === AST_NODE_TYPES.CallExpression) {
+    const callee =
+      target.callee.type === AST_NODE_TYPES.MemberExpression
+        ? target.callee.property
+        : target.callee;
+    return NON_EMPTY_CALLS.has(nameOf(callee) ?? '');
+  }
+  return false;
+}
+
+function isNonEmpty(node: TSESTree.Node): boolean {
+  const pending = [node];
+  for (const item of pending) {
+    const target = unwrap(item);
+    if (target.type === AST_NODE_TYPES.ConditionalExpression) {
+      pending.push(target.consequent, target.alternate);
+    } else if (!isNonEmptyLeaf(target)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function assignedTo(name: string, region: readonly TSESTree.Node[]): TSESTree.Node[] {

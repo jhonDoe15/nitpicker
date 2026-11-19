@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 import { plainName } from '../encoding/plain-names.mts';
+import { concatOperands } from './concat-operands.mts';
 import { taintOf } from './remote-text.mts';
 
 type MessageId = 'stripControls';
@@ -41,28 +42,39 @@ function isTerminalSink(call: TSESTree.CallExpression): boolean {
 
 type Carried = { readonly node: TSESTree.Node; readonly stringy: boolean };
 
-function carriedValues(node: TSESTree.Node, stringy = false): Carried[] {
-  const plain = unwrapped(node);
-  switch (plain.type) {
-    case AST_NODE_TYPES.TemplateLiteral:
-      return plain.expressions.flatMap((part) => carriedValues(part, true));
-    case AST_NODE_TYPES.BinaryExpression:
-      return plain.operator === '+'
-        ? [...carriedValues(plain.left, true), ...carriedValues(plain.right, true)]
-        : [];
-    case AST_NODE_TYPES.CallExpression: {
-      const callee = unwrapped(plain.callee);
-      if (callee.type === AST_NODE_TYPES.Identifier && callee.name === 'String') {
-        return plain.arguments.flatMap((argument) => carriedValues(argument, true));
-      }
-      return callee.type === AST_NODE_TYPES.MemberExpression &&
-        TEXT_METHODS.has(memberName(callee) ?? '')
-        ? carriedValues(callee.object, true)
-        : [{ node: plain, stringy }];
-    }
-    default:
-      return [{ node: plain, stringy }];
+function carriedChildren(plain: TSESTree.Node): readonly TSESTree.Node[] | undefined {
+  const concatenated = concatOperands(plain);
+  if (concatenated !== undefined) {
+    return concatenated;
   }
+  if (plain.type !== AST_NODE_TYPES.CallExpression) {
+    return undefined;
+  }
+  const callee = unwrapped(plain.callee);
+  if (callee.type === AST_NODE_TYPES.Identifier && callee.name === 'String') {
+    return plain.arguments;
+  }
+  return callee.type === AST_NODE_TYPES.MemberExpression &&
+    TEXT_METHODS.has(memberName(callee) ?? '')
+    ? [callee.object]
+    : undefined;
+}
+
+function carriedValues(node: TSESTree.Node): Carried[] {
+  const pending: Carried[] = [{ node, stringy: false }];
+  const leaves: Carried[] = [];
+  for (const item of pending) {
+    const plain = unwrapped(item.node);
+    const children = carriedChildren(plain);
+    if (children === undefined) {
+      leaves.push({ node: plain, stringy: item.stringy });
+    } else {
+      for (const child of children) {
+        pending.push({ node: child, stringy: true });
+      }
+    }
+  }
+  return leaves;
 }
 
 function isRemote(context: Context, node: TSESTree.Node): boolean {

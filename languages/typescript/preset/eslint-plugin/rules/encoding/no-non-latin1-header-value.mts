@@ -2,7 +2,10 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { stringValue } from '../analysis/constant-resolution.mts';
 import { memberName, staticKey, unwrapped, type Context } from '../security/security-values.mts';
 import { plainName } from './plain-names.mts';
+import { concatOperands } from '../terminal/concat-operands.mts';
+import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { valueKind } from './value-kinds.mts';
+import { chainOf } from '../typed/node-views.mts';
 
 type MessageId = 'encodeHeader';
 
@@ -26,27 +29,28 @@ const REQUEST_ROOTS = new Set(['req', 'request']);
 const REQUEST_PARTS = new Set(['params', 'query', 'body', 'cookies']);
 const PATH_FUNCTIONS = new Set(['relative', 'resolve', 'join', 'dirname', 'basename']);
 
-function rootName(node: TSESTree.Node): string | undefined {
-  const plain = unwrapped(node);
-  if (plain.type === AST_NODE_TYPES.Identifier) {
-    return plain.name;
-  }
-  return plain.type === AST_NODE_TYPES.MemberExpression ? rootName(plain.object) : undefined;
+function memberChain(node: TSESTree.Node): TSESTree.Node[] {
+  return chainOf<TSESTree.Node>(unwrapped(node), (current) =>
+    current.type === AST_NODE_TYPES.MemberExpression ? unwrapped(current.object) : undefined,
+  );
 }
 
 function isRequestData(node: TSESTree.Node): boolean {
-  const plain = unwrapped(node);
-  if (plain.type !== AST_NODE_TYPES.MemberExpression) {
+  const chain = memberChain(node);
+  const root = chain.at(-1);
+  if (
+    chain[0]?.type !== AST_NODE_TYPES.MemberExpression ||
+    root?.type !== AST_NODE_TYPES.Identifier
+  ) {
     return false;
   }
-  const root = rootName(plain);
-  const parts: string[] = [];
-  for (let current: TSESTree.Node = plain; current.type === AST_NODE_TYPES.MemberExpression;) {
-    parts.push(memberName(current) ?? '');
-    current = unwrapped(current.object);
-  }
   return (
-    root !== undefined && REQUEST_ROOTS.has(root) && parts.some((part) => REQUEST_PARTS.has(part))
+    REQUEST_ROOTS.has(root.name) &&
+    chain.some(
+      (current) =>
+        current.type === AST_NODE_TYPES.MemberExpression &&
+        REQUEST_PARTS.has(memberName(current) ?? ''),
+    )
   );
 }
 
@@ -67,37 +71,46 @@ function isCallOf(
 const DATA_NAME = /^(?:data|payload|serialized|json|state)$/iu;
 const DATA_HEADER = /data|payload|path|state|file/iu;
 
+function riskyOperands(plain: TSESTree.Node): readonly TSESTree.Node[] {
+  const concatenated = concatOperands(plain);
+  if (concatenated !== undefined) {
+    return concatenated;
+  }
+  if (plain.type === AST_NODE_TYPES.ConditionalExpression) {
+    return [plain.consequent, plain.alternate];
+  }
+  return plain.type === AST_NODE_TYPES.LogicalExpression ? [plain.left, plain.right] : [];
+}
+
+function isRiskyLeaf(plain: TSESTree.Node, header: string): boolean {
+  if (plain.type === AST_NODE_TYPES.CallExpression) {
+    return (
+      isCallOf(plain, 'JSON', new Set(['stringify'])) || isCallOf(plain, 'path', PATH_FUNCTIONS)
+    );
+  }
+  if (plain.type === AST_NODE_TYPES.Identifier || plain.type === AST_NODE_TYPES.MemberExpression) {
+    return (
+      RISKY_NAMES.has((plainName(plain) ?? '').toLowerCase()) ||
+      isRequestData(plain) ||
+      (DATA_HEADER.test(header) && DATA_NAME.test(plainName(plain) ?? ''))
+    );
+  }
+  return false;
+}
+
 function isRiskyText(context: Context, node: TSESTree.Node, header = ''): boolean {
-  const plain = unwrapped(node);
-  if (valueKind(context, plain) === 'number' || valueKind(context, plain) === 'literals') {
-    return false;
+  const pending = [node];
+  for (const item of pending) {
+    const plain = unwrapped(item);
+    const kind = valueKind(context, plain);
+    if (kind !== 'number' && kind !== 'literals') {
+      appendAll(pending, riskyOperands(plain));
+      if (isRiskyLeaf(plain, header)) {
+        return true;
+      }
+    }
   }
-  switch (plain.type) {
-    case AST_NODE_TYPES.TemplateLiteral:
-      return plain.expressions.some((part) => isRiskyText(context, part, header));
-    case AST_NODE_TYPES.BinaryExpression:
-      return (
-        plain.operator === '+' &&
-        [plain.left, plain.right].some((side) => isRiskyText(context, side, header))
-      );
-    case AST_NODE_TYPES.ConditionalExpression:
-      return [plain.consequent, plain.alternate].some((side) => isRiskyText(context, side, header));
-    case AST_NODE_TYPES.LogicalExpression:
-      return [plain.left, plain.right].some((side) => isRiskyText(context, side, header));
-    case AST_NODE_TYPES.CallExpression:
-      return (
-        isCallOf(plain, 'JSON', new Set(['stringify'])) || isCallOf(plain, 'path', PATH_FUNCTIONS)
-      );
-    case AST_NODE_TYPES.Identifier:
-    case AST_NODE_TYPES.MemberExpression:
-      return (
-        RISKY_NAMES.has((plainName(plain) ?? '').toLowerCase()) ||
-        isRequestData(plain) ||
-        (DATA_HEADER.test(header) && DATA_NAME.test(plainName(plain) ?? ''))
-      );
-    default:
-      return false;
-  }
+  return false;
 }
 
 function headerValues(node: TSESTree.CallExpression): TSESTree.Node[] {
@@ -136,14 +149,15 @@ function headerName(value: TSESTree.Node): string {
 }
 
 function isRequestOptions(node: TSESTree.Node): boolean {
-  let current: TSESTree.Node = node;
-  while (current.parent !== undefined && BRANCHES.has(current.parent.type)) {
-    current = current.parent;
-  }
+  const branches = chainOf<TSESTree.Node>(node, (current) =>
+    current.parent !== undefined && BRANCHES.has(current.parent.type) ? current.parent : undefined,
+  );
+  const current = branches.at(-1) ?? node;
   const call = current.parent;
   return (
     call?.type === AST_NODE_TYPES.NewExpression ||
-    (call?.type === AST_NODE_TYPES.CallExpression && call.arguments.includes(current as never))
+    (call?.type === AST_NODE_TYPES.CallExpression &&
+      call.arguments.some((argument) => argument === current))
   );
 }
 

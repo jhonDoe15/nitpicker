@@ -38,28 +38,27 @@ export function calleeName(call: TSESTree.CallExpression): string | undefined {
   return calleeNameOf(call.callee);
 }
 
-export function isObjectAssign(call: TSESTree.CallExpression): boolean {
+function objectStaticName(call: TSESTree.CallExpression): string | undefined {
   const { callee } = call;
-  return (
+  if (
     callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
     callee.object.type === AST_NODE_TYPES.Identifier &&
     callee.object.name === 'Object' &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.property.name === 'assign'
-  );
+    callee.property.type === AST_NODE_TYPES.Identifier
+  ) {
+    return callee.property.name;
+  }
+  return undefined;
+}
+
+export function isObjectAssign(call: TSESTree.CallExpression): boolean {
+  return objectStaticName(call) === 'assign';
 }
 
 export function isObjectDefine(call: TSESTree.CallExpression): boolean {
-  const { callee } = call;
-  return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'Object' &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    (callee.property.name === 'defineProperty' || callee.property.name === 'defineProperties')
-  );
+  const name = objectStaticName(call);
+  return name === 'defineProperty' || name === 'defineProperties';
 }
 
 export function isFreshContainer(node: TSESTree.Node): boolean {
@@ -131,11 +130,14 @@ function ownerName(owner: TSESTree.Node): string | undefined {
 }
 
 function rootName(node: TSESTree.Node): string | undefined {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
+  const chain: TSESTree.Node[] = [node];
+  for (const current of chain) {
+    if (current.type !== AST_NODE_TYPES.MemberExpression) {
+      return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
+    }
+    chain.push(current.object);
   }
-  return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
+  return undefined;
 }
 
 export function isDefaultFill(

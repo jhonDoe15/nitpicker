@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import { plainName } from '../encoding/plain-names.mts';
-import { valueKind } from '../encoding/value-kinds.mts';
+import { valueKind, type ValueKind } from '../encoding/value-kinds.mts';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 
 const BYTE_WORDS = new Set(['byte', 'bytes']);
@@ -21,7 +21,7 @@ function words(name: string): string[] {
     .map((word) => word.toLowerCase());
 }
 
-export function isByteName(name: string | undefined): boolean {
+function isByteName(name: string | undefined): boolean {
   return (
     name !== undefined &&
     !MEASURES.has(name.toLowerCase()) &&
@@ -30,10 +30,20 @@ export function isByteName(name: string | undefined): boolean {
 }
 
 export function leaves(node: TSESTree.Node): TSESTree.Node[] {
-  const plain = unwrapped(node);
-  return plain.type === AST_NODE_TYPES.BinaryExpression && ['+', '-', '*'].includes(plain.operator)
-    ? [...leaves(plain.left), ...leaves(plain.right)]
-    : [plain];
+  const found: TSESTree.Node[] = [];
+  const pending = [node];
+  for (const current of pending) {
+    const plain = unwrapped(current);
+    if (
+      plain.type === AST_NODE_TYPES.BinaryExpression &&
+      ['+', '-', '*'].includes(plain.operator)
+    ) {
+      pending.push(plain.left, plain.right);
+    } else {
+      found.push(plain);
+    }
+  }
+  return found;
 }
 
 export function hasByteName(node: TSESTree.Node): boolean {
@@ -47,8 +57,11 @@ function annotatedAsString(context: Context, identifier: TSESTree.Identifier): b
     return name.typeAnnotation.typeAnnotation.type === AST_NODE_TYPES.TSStringKeyword;
   }
   const declarator = definition?.node;
-  const init = declarator?.type === AST_NODE_TYPES.VariableDeclarator ? declarator.init : null;
-  return init !== null && init !== undefined && isTextLiteral(init);
+  return (
+    declarator?.type === AST_NODE_TYPES.VariableDeclarator &&
+    declarator.init !== null &&
+    isTextLiteral(declarator.init)
+  );
 }
 
 function isTextLiteral(node: TSESTree.Node): boolean {
@@ -59,11 +72,21 @@ function isTextLiteral(node: TSESTree.Node): boolean {
   );
 }
 
+function isTextKind(kind: Exclude<ValueKind, 'unknown'>): boolean {
+  switch (kind) {
+    case 'text':
+    case 'literals':
+      return true;
+    case 'number':
+      return false;
+  }
+}
+
 export function isText(context: Context, node: TSESTree.Node): boolean {
   const plain = unwrapped(node);
   const kind = valueKind(context, plain);
   if (kind !== 'unknown') {
-    return kind === 'text' || kind === 'literals';
+    return isTextKind(kind);
   }
   if (plain.type === AST_NODE_TYPES.Identifier) {
     return annotatedAsString(context, plain);
@@ -74,7 +97,7 @@ export function isText(context: Context, node: TSESTree.Node): boolean {
   return isTextLiteral(plain);
 }
 
-export function isTextLength(context: Context, node: TSESTree.Node): boolean {
+function isTextLength(context: Context, node: TSESTree.Node): boolean {
   const plain = unwrapped(node);
   return (
     plain.type === AST_NODE_TYPES.MemberExpression &&

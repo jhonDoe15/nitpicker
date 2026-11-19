@@ -1,11 +1,12 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mts';
-import { memberName, unwrapped, type Context } from '../security/security-values.mts';
+import { unwrapped, type Context } from '../security/security-values.mts';
 import { plainName } from '../encoding/plain-names.mts';
 import { decodedSource, type DecodedSource } from './decoded-sources.mts';
 
 type MessageId = 'decoder' | 'file';
 
+const CONTINUE = 'continue';
 const WRITES = new Set(['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync']);
 const EQUALITY = new Set(['===', '!==', '==', '!=']);
 const PASS_THROUGH = new Set<string>([
@@ -18,10 +19,13 @@ const PASS_THROUGH = new Set<string>([
 ]);
 
 function uses(context: Context, call: TSESTree.CallExpression): TSESTree.Node[] {
-  let top: TSESTree.Node = call;
-  while (top.parent !== undefined && PASS_THROUGH.has(top.parent.type)) {
-    top = top.parent;
+  const chain: TSESTree.Node[] = [call];
+  for (const link of chain) {
+    if (link.parent !== undefined && PASS_THROUGH.has(link.parent.type)) {
+      chain.push(link.parent);
+    }
   }
+  const top = chain.at(-1) ?? call;
   const declarator = top.parent;
   if (declarator?.type !== AST_NODE_TYPES.VariableDeclarator || declarator.init !== top) {
     return [call];
@@ -78,7 +82,7 @@ function carryThrough(parent: TSESTree.Node, current: TSESTree.Node): TSESTree.N
   const isMethodReceiver =
     parent.type === AST_NODE_TYPES.MemberExpression &&
     parent.object === current &&
-    parent.parent?.type === AST_NODE_TYPES.CallExpression &&
+    parent.parent.type === AST_NODE_TYPES.CallExpression &&
     parent.parent.callee === parent;
   return isMethodReceiver ? parent.parent : undefined;
 }
@@ -87,15 +91,15 @@ function sinkOutcome(
   flow: Flow,
   parent: TSESTree.Node,
   current: TSESTree.Node,
-): boolean | 'continue' {
+): boolean | typeof CONTINUE {
   if (
     parent.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments.includes(current as never)
+    parent.arguments.some((argument) => argument === current)
   ) {
     if (isSinkCall(flow, parent, current)) {
       return true;
     }
-    return flow.source.kind === 'file' ? 'continue' : false;
+    return flow.source.kind === 'file' ? CONTINUE : false;
   }
   if (parent.type === AST_NODE_TYPES.BinaryExpression && EQUALITY.has(parent.operator)) {
     const other = parent.left === current ? parent.right : parent.left;
@@ -105,14 +109,18 @@ function sinkOutcome(
 }
 
 function reachesSink(flow: Flow, start: TSESTree.Node): boolean {
-  let current = start;
-  for (let parent = current.parent; parent !== undefined; parent = current.parent) {
+  const chain: TSESTree.Node[] = [start];
+  for (const current of chain) {
+    const parent = current.parent;
+    if (parent === undefined) {
+      return false;
+    }
     const carried = carryThrough(parent, current);
-    const outcome = carried === undefined ? sinkOutcome(flow, parent, current) : 'continue';
-    if (outcome !== 'continue') {
+    const outcome = carried === undefined ? sinkOutcome(flow, parent, current) : CONTINUE;
+    if (outcome !== CONTINUE) {
       return outcome;
     }
-    current = carried ?? parent;
+    chain.push(carried ?? parent);
   }
   return false;
 }

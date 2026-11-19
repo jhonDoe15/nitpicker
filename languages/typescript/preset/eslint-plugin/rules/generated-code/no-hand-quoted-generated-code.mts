@@ -9,12 +9,12 @@ type MessageId = 'quoteValue';
 const QUOTES = ['"', "'"];
 const SOURCE_TEXT = new RegExp(
   [
-    String.raw`(?:^|[\n;])\s*import\s+[^"'\n]*\sfrom\s+["'\u0000]`,
+    String.raw`(?:^|[\n;])\s*import\s[^"'\n]*\sfrom\s+["'\u0000]`,
     String.raw`(?:^|[\n;])\s*import\s*["'\u0000][^\n]*;`,
     String.raw`(?:^|[\n;])\s*export\s+(?:\*|\{[^}]*\}|(?:default|const|let|function)\b)`,
     String.raw`\brequire\(\s*["'\u0000]`,
     String.raw`\bimport\(\s*["'\u0000]`,
-    String.raw`(?:^|[\n;])\s*(?:const|let|var)\s+[\w$\u0000{}, ]+\s*=`,
+    String.raw`(?:^|[\n;])\s*(?:const|let|var)\s[\s\w$\u0000{},]*=`,
     String.raw`\.default\(["'\u0000]`,
   ].join('|'),
   'u',
@@ -31,33 +31,43 @@ function templateText(node: TSESTree.TemplateLiteral): string {
   return node.quasis.map((quasi) => quasi.value.cooked ?? '').join('\u0000');
 }
 
-function isSafeConstant(context: Context, node: TSESTree.Node): boolean | undefined {
+const UNKNOWN = 'unknown';
+
+type ConstantSafety = 'safe' | 'unsafe' | typeof UNKNOWN;
+
+function safetyOf(safe: boolean): ConstantSafety {
+  return safe ? 'safe' : 'unsafe';
+}
+
+function isSafeConstant(context: Context, node: TSESTree.Node): ConstantSafety {
   const kind = valueKind(context, node);
   if (kind === 'number' || kind === 'literals') {
-    return true;
+    return 'safe';
   }
   const constant = resolveConstant(context, node);
   if (constant?.type === AST_NODE_TYPES.CallExpression) {
-    return FIXED_SOURCE.test(context.sourceCode.getText(constant)) || undefined;
+    return FIXED_SOURCE.test(context.sourceCode.getText(constant)) ? 'safe' : UNKNOWN;
   }
   const text = stringValue(constant);
   if (text !== undefined) {
-    return !/["'\\\n\r`$]/u.test(text);
+    return safetyOf(!/["'\\\n\r`$]/u.test(text));
   }
-  return constant?.type === AST_NODE_TYPES.Literal ? typeof constant.value === 'number' : undefined;
+  return constant?.type === AST_NODE_TYPES.Literal
+    ? safetyOf(typeof constant.value === 'number')
+    : UNKNOWN;
 }
 
 function isSafeValue(context: Context, node: TSESTree.Node): boolean {
   const plain = unwrapped(node);
   const constant = isSafeConstant(context, plain);
-  if (constant !== undefined) {
-    return constant;
+  if (constant !== UNKNOWN) {
+    return constant === 'safe';
   }
   if (plain.type === AST_NODE_TYPES.CallExpression) {
     const name = plainName(plain.callee) ?? '';
     const target = resolveFunction(context, unwrapped(plain.callee));
     const builds =
-      target !== undefined && /JSON\.stringify/u.test(context.sourceCode.getText(target));
+      target !== undefined && context.sourceCode.getText(target).includes('JSON.stringify');
     return SAFE_CALL.test(name) || name === 'Number' || name === 'parseInt' || builds;
   }
   if (plain.type === AST_NODE_TYPES.MemberExpression) {
@@ -107,7 +117,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     messages: {
       quoteValue:
         'A quote, backslash or newline in a value between hand-written quotes in generated code breaks it. ' +
-        'Write the value with `JSON.stringify(value)` in place of the quotes (`const x = ${JSON.stringify(name)}`).',
+        `Write the value with \`JSON.stringify(value)\` in place of the quotes (\`const x = \${JSON.stringify(name)}\`).`,
     },
   },
   create(context) {
@@ -120,11 +130,11 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         ) {
           return;
         }
-        node.expressions.forEach((expression, index) => {
+        for (const [index, expression] of node.expressions.entries()) {
           if (quotedBetween(node, index) && !isSafeValue(context, expression)) {
             context.report({ node: expression, messageId: 'quoteValue' });
           }
-        });
+        }
       },
     };
   },

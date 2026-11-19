@@ -1,7 +1,13 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant, stringValue } from '../../analysis/constant-resolution.mts';
 import { syntaxChildren } from '../../decided/syntax.mts';
-import { ancestorsOf, depthFirst, nameOf, type SourceCode } from '../../typed/node-views.mts';
+import {
+  ancestorsOf,
+  chainOf,
+  depthFirst,
+  nameOf,
+  type SourceCode,
+} from '../../typed/node-views.mts';
 import {
   ASSERTION_FORMS,
   NULLISH_WRAPPERS,
@@ -31,7 +37,7 @@ const BARE_SLASH_PATTERNS = new Set([
   '^\\/\\S*$',
 ]);
 const DOUBLE_SLASH_CHECK =
-  /['"`]\/\/['"`]|startsWith\(['"`]\/\/|['"`]\\\\+['"`]|%2f|%5c|\\\/\\\/|\(\?!|\[\^\/|\[\^\\\//iu;
+  /['"`]\/\/['"`]|startsWith\(['"`]\/\/|['"`]\\{2,}['"`]|%2f|%5c|\\\/\\\/|\(\?!|\[\^\/|\[\^\\\//iu;
 const HELPER_CHECK = new RegExp(
   '\\b(?:isSafe|isValid|isAllowed|isLocal|isRelative|sanitiz|safeRedirect|validateRedirect)' +
     '\\w*\\(|new URL\\(|\\.origin\\b',
@@ -63,8 +69,15 @@ function testedTarget(value: TSESTree.CallExpression): TSESTree.Node | undefined
     : undefined;
 }
 
+function slashOperand(value: TSESTree.BinaryExpression): TSESTree.Node | undefined {
+  if (isSlash(value.right)) {
+    return value.left;
+  }
+  return isSlash(value.left) ? value.right : undefined;
+}
+
 function comparedTarget(value: TSESTree.BinaryExpression): TSESTree.Node | undefined {
-  const read = isSlash(value.right) ? value.left : isSlash(value.left) ? value.right : undefined;
+  const read = slashOperand(value);
   const inner = read === undefined ? undefined : unwrapOf(read, NULLISH_WRAPPERS);
   if (inner?.type === AST_NODE_TYPES.MemberExpression && inner.computed) {
     return stringValue(inner.property) === undefined && nameOf(inner.property) === undefined
@@ -107,7 +120,9 @@ function isSink(node: TSESTree.CallExpression): boolean {
 
 function flowsTarget(context: RuleContext, node: TSESTree.Node, text: string): boolean {
   const { sourceCode } = context;
-  const mentions = (part: TSESTree.Node) => sourceCode.getText(part).includes(text);
+  function mentions(part: TSESTree.Node): boolean {
+    return sourceCode.getText(part).includes(text);
+  }
   if (node.type === AST_NODE_TYPES.ReturnStatement) {
     return node.argument !== null && mentions(node.argument);
   }
@@ -134,11 +149,11 @@ function pathnameSink(
   if (!isSink(node) || argument === undefined || argument.type === AST_NODE_TYPES.SpreadElement) {
     return undefined;
   }
-  let leading: TSESTree.Node | undefined = argument;
-  while (leading?.type === AST_NODE_TYPES.BinaryExpression) {
-    leading = leading.left;
-  }
-  const first = leading?.type === AST_NODE_TYPES.TemplateLiteral ? leading.expressions[0] : leading;
+  const leading =
+    chainOf<TSESTree.Node>(argument, (current) =>
+      current.type === AST_NODE_TYPES.BinaryExpression ? current.left : undefined,
+    ).at(-1) ?? argument;
+  const first = leading.type === AST_NODE_TYPES.TemplateLiteral ? leading.expressions[0] : leading;
   const value = first === undefined ? undefined : unwrapOf(first, ASSERTION_FORMS);
   if (value?.type !== AST_NODE_TYPES.MemberExpression || nameOf(value.property) !== 'pathname') {
     return undefined;
@@ -199,8 +214,9 @@ export const rule: TSESLint.RuleModule<MessageId> = {
   },
   create(context) {
     const { sourceCode } = context;
-    const check = (guards: readonly Guard[], region: TSESTree.Node) =>
+    function check(guards: readonly Guard[], region: TSESTree.Node): void {
       reportGuards(context, guards, region);
+    }
 
     return {
       IfStatement(node: TSESTree.IfStatement) {
@@ -213,8 +229,9 @@ export const rule: TSESLint.RuleModule<MessageId> = {
           }
         }
       },
-      ConditionalExpression: (node: TSESTree.ConditionalExpression) =>
-        check(guardsIn(node.test), node.consequent),
+      ConditionalExpression: (node: TSESTree.ConditionalExpression) => {
+        check(guardsIn(node.test), node.consequent);
+      },
       LogicalExpression: (node: TSESTree.LogicalExpression) => {
         if (node.operator === '&&') {
           check(guardsIn(node.left), node.right);

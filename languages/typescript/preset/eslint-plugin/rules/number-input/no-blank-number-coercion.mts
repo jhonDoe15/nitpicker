@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
-import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
+import { typedListeners, type TypedScope } from '../promises/cannot-reject.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { hasInputShape, isBlankChecked, isSplitPart, numberChecks } from './blank-guards.mts';
 
@@ -89,13 +89,13 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     },
   },
   create(context) {
-    const scope = typedScopeOf(context);
-    if (scope === undefined) {
-      return {};
-    }
-    return {
-      CallExpression: (node: TSESTree.CallExpression) => check(scope, node),
-      UnaryExpression: (node: TSESTree.UnaryExpression) => check(scope, node),
-    };
+    return typedListeners(context, (scope) => ({
+      CallExpression: (node: TSESTree.CallExpression) => {
+        check(scope, node);
+      },
+      UnaryExpression: (node: TSESTree.UnaryExpression) => {
+        check(scope, node);
+      },
+    }));
   },
 };

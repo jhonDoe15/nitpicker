@@ -24,7 +24,7 @@ const CLASS_NAME = /class|cls/iu;
 const REPLACERS = new Set(['replace', 'replaceAll']);
 const CONSTANT_ROOT = /^[A-Z][A-Z0-9_]*$/u;
 const COUNT_NAME = /(?:index|idx|count|month|year|num)$/iu;
-const BACKSLASH_PREFIX = /\\\$/u;
+const BACKSLASH_PREFIX = '\\$';
 
 function isSelectorCall(call: TSESTree.CallExpression): boolean {
   const callee = unwrapped(call.callee);
@@ -36,31 +36,49 @@ function isSelectorCall(call: TSESTree.CallExpression): boolean {
   return DOM_METHODS.has(method) || (TOOL_METHODS.get(owner)?.has(method) ?? false);
 }
 
-function partsOf(context: Context, node: TSESTree.Node): Part[] | undefined {
-  const plain = unwrapped(node);
+function leafParts(plain: TSESTree.Node): Part[] | undefined {
   if (plain.type === AST_NODE_TYPES.TemplateLiteral) {
     return plain.quasis.flatMap((quasi, index) => [
       { text: quasi.value.cooked ?? '' },
       ...(plain.expressions[index] === undefined ? [] : [{ node: plain.expressions[index] }]),
     ]);
   }
-  if (plain.type === AST_NODE_TYPES.BinaryExpression && plain.operator === '+') {
-    const left = partsOf(context, plain.left) ?? [{ node: plain.left }];
-    const right = partsOf(context, plain.right) ?? [{ node: plain.right }];
-    return [...left, ...right];
-  }
   const text = stringValue(plain);
   return text === undefined ? undefined : [{ text }];
 }
 
+function isConcatenation(node: TSESTree.Node): node is TSESTree.BinaryExpression {
+  return node.type === AST_NODE_TYPES.BinaryExpression && node.operator === '+';
+}
+
+function partsOf(node: TSESTree.Node): Part[] | undefined {
+  const root = unwrapped(node);
+  if (!isConcatenation(root)) {
+    return leafParts(root);
+  }
+  const operands: TSESTree.Node[] = [root.left, root.right];
+  const leaves: TSESTree.Node[] = [];
+  for (const [index, operand] of operands.entries()) {
+    const plain = unwrapped(operand);
+    if (isConcatenation(plain)) {
+      operands.splice(index + 1, 0, plain.left, plain.right);
+    } else {
+      leaves.push(operand);
+    }
+  }
+  return leaves.flatMap((leaf) => leafParts(unwrapped(leaf)) ?? [{ node: leaf }]);
+}
+
+function calleeName(callee: TSESTree.Node): string | undefined {
+  if (callee.type === AST_NODE_TYPES.MemberExpression) {
+    return memberName(callee);
+  }
+  return callee.type === AST_NODE_TYPES.Identifier ? callee.name : undefined;
+}
+
 function isEscapeCall(node: TSESTree.CallExpression): boolean {
   const callee = unwrapped(node.callee);
-  const name =
-    callee.type === AST_NODE_TYPES.MemberExpression
-      ? memberName(callee)
-      : callee.type === AST_NODE_TYPES.Identifier
-        ? callee.name
-        : undefined;
+  const name = calleeName(callee);
   return /escape/iu.test(name ?? '') || name === 'Number' || name === 'parseInt';
 }
 
@@ -101,12 +119,19 @@ function isHandEscaped(node: TSESTree.Node): boolean {
 function isBackslashEscape(node: TSESTree.CallExpression): boolean {
   const replacement = node.arguments[1];
   const text = replacement === undefined ? undefined : stringValue(replacement);
-  return text !== undefined && BACKSLASH_PREFIX.test(text);
+  return text !== undefined && text.includes(BACKSLASH_PREFIX);
 }
 
 function rootName(node: TSESTree.Node): string {
-  const plain = unwrapped(node);
-  return plain.type === AST_NODE_TYPES.MemberExpression ? rootName(plain.object) : lastName(plain);
+  const chain: TSESTree.Node[] = [node];
+  for (const link of chain) {
+    const plain = unwrapped(link);
+    if (plain.type !== AST_NODE_TYPES.MemberExpression) {
+      return lastName(plain);
+    }
+    chain.push(plain.object);
+  }
+  return '';
 }
 
 function isConstantOrCount(node: TSESTree.Node): boolean {
@@ -158,7 +183,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     messages: {
       escapeValue:
         'A runtime value in a CSS selector can hold quotes, brackets, colons, dots or a leading digit and ' +
-        'then throw or match the wrong elements. Write `#${CSS.escape(id)}` or `[data-name="${CSS.escape(name)}"]`.',
+        `then throw or match the wrong elements. Write \`#\${CSS.escape(id)}\` or \`[data-name="\${CSS.escape(name)}"]\`.`,
       handEscaped:
         'This value is escaped by hand for a CSS selector, which covers only the characters the `replace` ' +
         'names. Use `CSS.escape(value)` instead.',
@@ -169,7 +194,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
       CallExpression(node) {
         const [selector] = node.arguments;
         const parts =
-          selector === undefined || !isSelectorCall(node) ? undefined : partsOf(context, selector);
+          selector === undefined || !isSelectorCall(node) ? undefined : partsOf(selector);
         for (const found of parts === undefined ? [] : findings(context, parts)) {
           context.report({
             node: found.node,

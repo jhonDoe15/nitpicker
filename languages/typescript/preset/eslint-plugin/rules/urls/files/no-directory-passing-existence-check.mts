@@ -70,6 +70,15 @@ function awaitedExistence(expression: TSESTree.Node): TSESTree.Node | undefined 
     : undefined;
 }
 
+function probeOf(sourceCode: SourceCode, filter: TSESTree.Node): string {
+  if (filter.type === AST_NODE_TYPES.Identifier) {
+    return filter.name;
+  }
+  return isFunction(filter) && filter.body.type !== AST_NODE_TYPES.BlockStatement
+    ? sourceCode.getText(filter.body)
+    : '';
+}
+
 type FilterGuard = { readonly parameter: TSESTree.Node; readonly reader: Callback };
 
 function filterGuard(
@@ -82,12 +91,7 @@ function filterGuard(
     return undefined;
   }
   const [parameter] = reader.params;
-  const probe =
-    filter.type === AST_NODE_TYPES.Identifier
-      ? filter.name
-      : isFunction(filter) && filter.body.type !== AST_NODE_TYPES.BlockStatement
-        ? sourceCode.getText(filter.body)
-        : '';
+  const probe = probeOf(sourceCode, filter);
   const guarded =
     /^(?:existsSync|pathExistsSync)$/u.test(probe) ||
     /^(?:fs\.)?(?:existsSync|pathExistsSync)\(\w+\)$/u.test(probe);
@@ -121,7 +125,7 @@ function reportReads(found: ReadCheck, region: readonly TSESTree.Node[]) {
     return;
   }
   for (const read of region.flatMap((part) => readsOf(sourceCode, part, text))) {
-    if (!isHandled(read) && !reported.has(read)) {
+    if (!(isHandled(read) || reported.has(read))) {
       reported.add(read);
       context.report({ node: read, messageId: 'directory' });
     }
@@ -147,8 +151,13 @@ export const rule: TSESLint.RuleModule<'directory'> = {
     const { sourceCode } = context;
     const reported = new Set<TSESTree.Node>();
 
-    const check = (guarded: TSESTree.Node, path: TSESTree.Node, region: readonly TSESTree.Node[]) =>
+    function check(
+      guarded: TSESTree.Node,
+      path: TSESTree.Node,
+      region: readonly TSESTree.Node[],
+    ): void {
       reportReads({ context, reported, guarded, path }, region);
+    }
 
     function guardedRegion(test: TSESTree.Node, region: readonly TSESTree.Node[]) {
       for (const part of operandsOf(unwrapOf(test, [AST_NODE_TYPES.TSNonNullExpression]), '&&')) {
@@ -167,8 +176,9 @@ export const rule: TSESLint.RuleModule<'directory'> = {
           check(node.test, path, statementsAfter(node));
         }
       },
-      ConditionalExpression: (node: TSESTree.ConditionalExpression) =>
-        guardedRegion(node.test, [node.consequent]),
+      ConditionalExpression(node: TSESTree.ConditionalExpression) {
+        guardedRegion(node.test, [node.consequent]);
+      },
       LogicalExpression: (node: TSESTree.LogicalExpression) => {
         if (node.operator === '&&') {
           guardedRegion(node.left, [node.right]);

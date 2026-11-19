@@ -11,15 +11,20 @@ const TEST_PARENTS = new Set<string>([
 ]);
 
 function isTransparent(parent: TSESTree.Node): boolean {
-  switch (parent.type) {
-    case AST_NODE_TYPES.UnaryExpression:
-      return parent.operator === '!';
-    case AST_NODE_TYPES.LogicalExpression:
-    case AST_NODE_TYPES.TSNonNullExpression:
-      return true;
-    default:
-      return false;
+  if (parent.type === AST_NODE_TYPES.UnaryExpression) {
+    return parent.operator === '!';
   }
+  return (
+    parent.type === AST_NODE_TYPES.LogicalExpression ||
+    parent.type === AST_NODE_TYPES.TSNonNullExpression
+  );
+}
+
+type Link = { readonly child: TSESTree.Node; readonly parent: TSESTree.Node };
+
+function links(node: TSESTree.Node): Link[] {
+  const chain = [node, ...ancestorsOf(node)];
+  return chain.slice(1).map((parent, index) => ({ child: chain[index] ?? node, parent }));
 }
 
 function isBooleanArgument(parent: TSESTree.Node, child: TSESTree.Node): boolean {
@@ -43,9 +48,7 @@ function isPredicateBody(parent: TSESTree.Node, child: TSESTree.Node): boolean {
 }
 
 export function conditionRoot(node: TSESTree.Node): TSESTree.Node | undefined {
-  let child = node;
-  while (child.parent) {
-    const { parent } = child;
+  for (const { child, parent } of links(node)) {
     if (TEST_PARENTS.has(parent.type)) {
       return 'test' in parent && parent.test === child ? child : undefined;
     }
@@ -55,7 +58,6 @@ export function conditionRoot(node: TSESTree.Node): TSESTree.Node | undefined {
     if (!isTransparent(parent)) {
       return undefined;
     }
-    child = parent;
   }
   return undefined;
 }
@@ -71,16 +73,13 @@ export function presenceRoot(node: TSESTree.Node): TSESTree.Node | undefined {
   if (condition !== undefined) {
     return condition;
   }
-  let child = node;
-  while (child.parent) {
-    const { parent } = child;
+  for (const { child, parent } of links(node)) {
     if (VALUE_PARENTS.has(parent.type)) {
       return child;
     }
     if (!isTransparent(parent)) {
       return undefined;
     }
-    child = parent;
   }
   return undefined;
 }

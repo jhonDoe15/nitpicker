@@ -16,7 +16,7 @@ tester.run('no-directory-passing-existence-check', rule, {
     'if (fs.existsSync(options.file)) { fs.readFileSync(other, "utf8"); }',
     'if (fs.existsSync(options.file)) { try { fs.readFileSync(options.file, "utf8"); } catch (e) { handle(e); } }',
     'if (fs.existsSync(options.dir + "/package.json")) { fs.readFileSync(options.dir + "/package.json", "utf8"); }',
-    'if (fs.existsSync(`${options.dir}/config.json`)) { fs.readFileSync(`${options.dir}/config.json`, "utf8"); }',
+    `if (fs.existsSync(\`\${options.dir}/config.json\`)) { fs.readFileSync(\`\${options.dir}/config.json\`, "utf8"); }`,
     'if (fs.existsSync("/etc/app.conf")) { fs.readFileSync("/etc/app.conf", "utf8"); }',
     'function load(name) { if (fs.existsSync(name)) { return fs.readFileSync(name, "utf8"); } }',
     'const cache = path.join(dir, "cache"); if (fs.existsSync(cache)) { fs.readFileSync(cache); }',

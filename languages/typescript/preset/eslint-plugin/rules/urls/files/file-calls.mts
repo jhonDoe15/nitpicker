@@ -38,7 +38,7 @@ const FILE_OWNERS = new Set([
 const FILE_EXTENSION = /\.[A-Za-z][A-Za-z0-9]{0,7}$/u;
 const NON_PROBE_MODES = new Set(['X_OK', 'W_OK']);
 
-export function fileCallName(node: TSESTree.CallExpression): string | undefined {
+function fileCallName(node: TSESTree.CallExpression): string | undefined {
   const { callee } = node;
   if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name;
@@ -101,11 +101,20 @@ const ITERATION_CALLS = new Set([
 ]);
 
 function rootsOf(node: TSESTree.Node): string[] {
-  const value = unwrapOf(node, ASSERTION_FORMS);
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
-    return [...rootsOf(value.object), ...(value.computed ? [] : [nameOf(value.property) ?? ''])];
+  const names: string[] = [];
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const value = unwrapOf(current, ASSERTION_FORMS);
+    if (value.type === AST_NODE_TYPES.MemberExpression) {
+      if (!value.computed) {
+        names.push(nameOf(value.property) ?? '');
+      }
+      pending.push(value.object);
+    } else if (value.type === AST_NODE_TYPES.Identifier) {
+      names.push(value.name);
+    }
   }
-  return value.type === AST_NODE_TYPES.Identifier ? [value.name] : [];
+  return names.toReversed();
 }
 
 const PATH_PARAMETER = /(?:file|path|filename)$/iu;
@@ -115,14 +124,14 @@ function isIterationVariable(context: SourceContext, node: TSESTree.Identifier):
   if (definition?.type === TSESLint.Scope.DefinitionType.Parameter) {
     const holder = definition.node.parent;
     const iterated =
-      holder?.type === AST_NODE_TYPES.CallExpression &&
+      holder.type === AST_NODE_TYPES.CallExpression &&
       holder.callee.type === AST_NODE_TYPES.MemberExpression &&
       ITERATION_CALLS.has(nameOf(holder.callee.property) ?? '');
     return iterated || PATH_PARAMETER.test(node.name);
   }
   return (
     definition?.type === TSESLint.Scope.DefinitionType.Variable &&
-    definition.parent.parent?.type === AST_NODE_TYPES.ForOfStatement
+    definition.parent.parent.type === AST_NODE_TYPES.ForOfStatement
   );
 }
 

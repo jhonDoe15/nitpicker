@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf } from '../../typed/node-views.mts';
+import { depthFirst, nameOf } from '../../typed/node-views.mts';
 import { TYPE_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
 
 const URL_PARTS = new Set(['href', 'pathname', 'search', 'origin', 'host', 'hostname', 'protocol']);
@@ -13,16 +13,25 @@ const PLAIN_NAME = new RegExp(
 
 export const CONSTANT_NAME = /^[A-Z][A-Z\d_]*$/u;
 
-export function leafNamesOf(node: TSESTree.Node): string[] {
+function branchesOf(node: TSESTree.Node): TSESTree.Node[] {
   const value = unwrapOf(node, TYPE_WRAPPERS);
   if (value.type === AST_NODE_TYPES.LogicalExpression) {
-    return [...leafNamesOf(value.left), ...leafNamesOf(value.right)];
+    return [value.left, value.right];
   }
-  if (value.type === AST_NODE_TYPES.ConditionalExpression) {
-    return [...leafNamesOf(value.consequent), ...leafNamesOf(value.alternate)];
+  return value.type === AST_NODE_TYPES.ConditionalExpression
+    ? [value.consequent, value.alternate]
+    : [];
+}
+
+export function leafNamesOf(node: TSESTree.Node): string[] {
+  const names: string[] = [];
+  for (const item of depthFirst(node, branchesOf)) {
+    const name = branchesOf(item).length === 0 ? lastNameOf(item) : undefined;
+    if (name !== undefined) {
+      names.push(name);
+    }
   }
-  const name = lastNameOf(value);
-  return name === undefined ? [] : [name];
+  return names;
 }
 
 export function lastNameOf(node: TSESTree.Node): string | undefined {
@@ -36,11 +45,7 @@ export function lastNameOf(node: TSESTree.Node): string | undefined {
   return undefined;
 }
 
-export function isPlainValue(node: TSESTree.Node): boolean {
-  const value = unwrapOf(node, TYPE_WRAPPERS);
-  if (value.type === AST_NODE_TYPES.LogicalExpression) {
-    return isPlainValue(value.left) && isPlainValue(value.right);
-  }
+function isPlainLeaf(value: TSESTree.Node): boolean {
   if (value.type === AST_NODE_TYPES.Literal) {
     return typeof value.value !== 'string' || /^[\w.~-]*$/u.test(value.value);
   }
@@ -60,6 +65,19 @@ export function isPlainValue(node: TSESTree.Node): boolean {
     return value.operator !== '+';
   }
   return value.type === AST_NODE_TYPES.UnaryExpression;
+}
+
+export function isPlainValue(node: TSESTree.Node): boolean {
+  const pending = [node];
+  for (const item of pending) {
+    const value = unwrapOf(item, TYPE_WRAPPERS);
+    if (value.type === AST_NODE_TYPES.LogicalExpression) {
+      pending.push(value.left, value.right);
+    } else if (!isPlainLeaf(value)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function isEncodedText(text: string): boolean {

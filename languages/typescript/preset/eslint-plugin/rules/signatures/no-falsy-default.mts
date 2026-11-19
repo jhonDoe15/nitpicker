@@ -32,10 +32,11 @@ const WIDE_CLASSES: readonly (readonly [TypeScript.TypeFlags, string])[] = [
   [ts.TypeFlags.Number, NUMBER_CLASS],
   [ts.TypeFlags.BigInt, 'bigint'],
 ];
+const BOOLEAN_CLASS = 'boolean';
 const FALSY_LITERALS: readonly (readonly [string | number | boolean, string])[] = [
   ['', STRING_CLASS],
   [0, NUMBER_CLASS],
-  [false, 'boolean'],
+  [false, BOOLEAN_CLASS],
 ];
 
 function falsyClassOf(part: TypeScript.Type): string | undefined {
@@ -45,7 +46,7 @@ function falsyClassOf(part: TypeScript.Type): string | undefined {
     return wide[1];
   }
   if (flags & ts.TypeFlags.BooleanLiteral && 'intrinsicName' in part) {
-    return part.intrinsicName === 'false' ? 'boolean' : undefined;
+    return part.intrinsicName === 'false' ? BOOLEAN_CLASS : undefined;
   }
   if (part.isStringLiteral()) {
     return part.value === '' ? STRING_CLASS : undefined;
@@ -184,7 +185,7 @@ function checkDefault(
     const classes = falsyClasses(scope.services.getTypeAtLocation(identifier));
     if (
       clearsValue &&
-      !(isMemberRead(identifier) && classes.size === 1 && classes.has('boolean'))
+      !(isMemberRead(identifier) && classes.size === 1 && classes.has(BOOLEAN_CLASS))
     ) {
       continue;
     }

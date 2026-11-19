@@ -10,7 +10,7 @@ function flagged(code: string) {
 tester.run('no-btoa-on-runtime-text', rule, {
   valid: [
     { code: 'export const a = btoa("user:pass");' },
-    { code: 'const user = "admin"; export const a = btoa(`${user}:secret`);' },
+    { code: `const user = "admin"; export const a = btoa(\`\${user}:secret\`);` },
     { code: 'export const a = btoa(String.fromCharCode(...bytes));' },
     { code: 'export const a = btoa(String.fromCharCode.apply(null, bytes));' },
     { code: 'export const a = btoa(unescape(encodeURIComponent(text)));' },
@@ -36,7 +36,7 @@ tester.run('no-btoa-on-runtime-text', rule, {
     {
       code:
         'const utf8 = (x: string) => unescape(encodeURIComponent(x)); ' +
-        'export function f(t: string) { const c = utf8(t); return btoa(`${c.length}${c}`); }',
+        `export function f(t: string) { const c = utf8(t); return btoa(\`\${c.length}\${c}\`); }`,
     },
     {
       code: 'export function f(t: string) { try { return btoa(t); } catch { return fallback(t); } }',
@@ -44,7 +44,7 @@ tester.run('no-btoa-on-runtime-text', rule, {
   ],
   invalid: [
     flagged('export function f(t: string) { try { return 1; } catch { return btoa(t); } }'),
-    flagged('export const h = `Basic ${btoa(`${user}:${password}`)}`;'),
+    flagged(`export const h = \`Basic \${btoa(\`\${user}:\${password}\`)}\`;`),
     flagged('export const h = btoa(password);'),
     flagged('export const h = btoa(rawJson);'),
     flagged('export const h = btoa(rawPassword);'),
@@ -52,7 +52,7 @@ tester.run('no-btoa-on-runtime-text', rule, {
     flagged('export const h = globalThis.btoa(JSON.stringify(payload));'),
     flagged('export function f(svg: string) { return btoa(svg); }'),
     flagged(
-      'export function f(text: string) { return `data:image/svg+xml;base64,${self.btoa(text)}`; }',
+      `export function f(text: string) { return \`data:image/svg+xml;base64,\${self.btoa(text)}\`; }`,
     ),
     flagged(
       'export function f(map: object) { const text = JSON.stringify(map); return btoa(text); }',

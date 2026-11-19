@@ -15,7 +15,7 @@ export function includesNullish(type: TypeScript.Type): boolean {
   return partsOf(type).some((part) => (part.flags & (NULLISH | UNKNOWN)) !== 0);
 }
 
-function isUnconstrained(part: TypeScript.Type, checker: TypeScript.TypeChecker): boolean {
+export function isUnconstrained(part: TypeScript.Type, checker: TypeScript.TypeChecker): boolean {
   const constraint = checker.getBaseConstraintOfType(part);
   return (
     (part.flags & ts.TypeFlags.TypeParameter) !== 0 &&

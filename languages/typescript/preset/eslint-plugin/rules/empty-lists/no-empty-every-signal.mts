@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
+import { typedListeners, type TypedScope } from '../promises/cannot-reject.mts';
 import { depthFirst, nameOf } from '../typed/node-views.mts';
 import { syntaxChildren } from '../decided/syntax.mts';
 import { conditionRoot } from '../presence/conditions.mts';
@@ -77,7 +77,7 @@ function callsAction(branch: TSESTree.Node): boolean {
 }
 
 function isSignal(call: TSESTree.CallExpression): boolean {
-  const node = call.parent?.type === AST_NODE_TYPES.ChainExpression ? call.parent : call;
+  const node = call.parent.type === AST_NODE_TYPES.ChainExpression ? call.parent : call;
   const name = assignedName(node);
   if (name !== undefined) {
     return SIGNAL_NAME.test(name);
@@ -131,10 +131,10 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     },
   },
   create(context) {
-    const scope = typedScopeOf(context);
-    if (scope === undefined) {
-      return {};
-    }
-    return { CallExpression: (node: TSESTree.CallExpression) => check(scope, node) };
+    return typedListeners(context, (scope) => ({
+      CallExpression: (node: TSESTree.CallExpression) => {
+        check(scope, node);
+      },
+    }));
   },
 };

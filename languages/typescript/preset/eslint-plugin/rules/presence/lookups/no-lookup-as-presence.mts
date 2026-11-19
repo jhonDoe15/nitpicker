@@ -15,7 +15,9 @@ import { onlyStoresNonEmpty } from './stored-values.mts';
 type Docs = { readonly requiresTypeChecking: boolean };
 type MessageIds = 'cache' | 'index';
 type Scope = TypedScope<MessageIds>;
-type Kind = 'truthy' | 'undefined' | 'nullish';
+const UNDEFINED = 'undefined';
+
+type Kind = 'truthy' | typeof UNDEFINED | 'nullish';
 type Test = {
   readonly operand: TSESTree.Node;
   readonly kind: Kind;
@@ -24,9 +26,9 @@ type Test = {
 
 const FALSY_FALLBACKS = new Set<unknown>([0, '', false]);
 
-function absentKind(node: TSESTree.Node): 'undefined' | 'null' | undefined {
-  if (node.type === AST_NODE_TYPES.Identifier && node.name === 'undefined') {
-    return 'undefined';
+function absentKind(node: TSESTree.Node): typeof UNDEFINED | 'null' | undefined {
+  if (node.type === AST_NODE_TYPES.Identifier && node.name === UNDEFINED) {
+    return UNDEFINED;
   }
   return node.type === AST_NODE_TYPES.Literal && node.value === null ? 'null' : undefined;
 }
@@ -40,7 +42,7 @@ function comparisonTest(node: TSESTree.BinaryExpression): Test | undefined {
   }
   return {
     operand: node.left,
-    kind: strict ? 'undefined' : 'nullish',
+    kind: strict ? UNDEFINED : 'nullish',
     missWhenTrue: node.operator.startsWith('='),
   };
 }
@@ -66,7 +68,7 @@ function hidesStoredValue(
   switch (kind) {
     case 'truthy':
       return canBeFalsy(valueType, checker);
-    case 'undefined':
+    case UNDEFINED:
       return includesUndefinedOrUnknown(valueType);
     case 'nullish':
       return includesNullish(valueType);
@@ -127,10 +129,12 @@ function checkBranch(
 ): void {
   const test = testOf(node.test);
   const lookup = test === undefined ? undefined : boundLookup(scope, test.operand);
-  if (test !== undefined && lookup !== undefined) {
-    if (storesHiddenValue(scope, { kind: test.kind, lookup }, missRegion(node, test))) {
-      report(scope, node.test, lookup);
-    }
+  if (
+    test !== undefined &&
+    lookup !== undefined &&
+    storesHiddenValue(scope, { kind: test.kind, lookup }, missRegion(node, test))
+  ) {
+    report(scope, node.test, lookup);
   }
 }
 
@@ -176,9 +180,15 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       return {};
     }
     return {
-      IfStatement: (node: TSESTree.IfStatement) => checkBranch(scope, node),
-      ConditionalExpression: (node: TSESTree.ConditionalExpression) => checkBranch(scope, node),
-      LogicalExpression: (node: TSESTree.LogicalExpression) => checkFallback(scope, node),
+      IfStatement: (node: TSESTree.IfStatement) => {
+        checkBranch(scope, node);
+      },
+      ConditionalExpression: (node: TSESTree.ConditionalExpression) => {
+        checkBranch(scope, node);
+      },
+      LogicalExpression: (node: TSESTree.LogicalExpression) => {
+        checkFallback(scope, node);
+      },
       BinaryExpression(node: TSESTree.BinaryExpression) {
         if (isUnknownIndexTest(scope, node)) {
           context.report({ node, messageId: 'index' });

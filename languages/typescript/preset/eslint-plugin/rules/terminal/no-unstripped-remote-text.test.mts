@@ -19,14 +19,14 @@ tester.run('no-unstripped-remote-text', rule, {
   valid: [
     allowed('const res = await fetch(u); const body = await res.json(); console.log(body);'),
     allowed('socket.on("message", (data) => console.log(data));'),
-    allowed('socket.on("message", (data) => this.logger.debug(`got ${data.text}`));'),
-    allowed('const res = await fetch(u); console.log(`${res.status} ${res.statusText}`);'),
+    allowed(`socket.on("message", (data) => this.logger.debug(\`got \${data.text}\`));`),
+    allowed(`const res = await fetch(u); console.log(\`\${res.status} \${res.statusText}\`);`),
     allowed(
       'socket.on("console", (payload) => logger.info(stripVTControlCharacters(payload.text)));',
     ),
     allowed(
       'const res = await fetch(u); const body = await res.json(); console.log(`Deployed: ' +
-        '${stripVTControlCharacters(body.name)}`);',
+        `\${stripVTControlCharacters(body.name)}\`);`,
     ),
     allowed(
       'const res = await fetch(u); const body = await res.text(); console.log(JSON.stringify(body));',
@@ -51,7 +51,7 @@ tester.run('no-unstripped-remote-text', rule, {
     flagged('socket.on("console", (payload) => logger.info(payload.text));'),
     flagged('ws.on("message", (data) => console.log(data.toString()));'),
     flagged(
-      'const res = await fetch(u); const body = await res.json(); console.log(`Deployed: ${body.name}`);',
+      `const res = await fetch(u); const body = await res.json(); console.log(\`Deployed: \${body.name}\`);`,
     ),
     flagged('const res = await axios.post(u, x); console.log("Deployed: " + res.data.name);'),
     flagged('const { data } = await axios.get(u); process.stdout.write(data.message);'),
