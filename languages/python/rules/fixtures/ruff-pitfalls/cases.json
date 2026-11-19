@@ -391,6 +391,11 @@
   },
   {
     "tool": "ruff",
+    "rule": "PLW1514",
+    "mention": "encoding=\"utf-8\""
+  },
+  {
+    "tool": "ruff",
     "rule": "PLW2101",
     "mention": "with self._lock:"
   },

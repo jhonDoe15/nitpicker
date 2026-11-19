@@ -289,11 +289,18 @@ describe('config file', () => {
     [{ layout: { sourceRoots: 'lib' } }, /"layout.sourceRoots" must be an array/],
     [{ layout: { sourceRoots: [] } }, /"layout.sourceRoots" must not be empty/],
     [{ layout: { testRoots: ['../spec'] } }, /entries must be directories inside the project/],
+    [{ layout: { testRoots: ['.//'] } }, /entries must be directories inside the project/],
+    [{ layout: { testRoots: ['./.'] } }, /entries must be directories inside the project/],
+    [{ layout: { testRoots: ['.'] } }, /entries must be directories inside the project/],
     [{ layout: { sourceRoots: ['/abs'] } }, /entries must be directories inside the project/],
     [{ layout: { sourceRoots: ['lib/**'] } }, /entries must be directories inside the project/],
     [{ analyzers: [{ name: 'a', command: 'b', extra: 1 }] }, /unknown key "extra"/],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
+  });
+
+  it.each([['.'], ['./'], ['.//']])('accepts %s as a source root', (root) => {
+    expect(() => validateConfig({ layout: { sourceRoots: [root] } })).not.toThrow();
   });
 
   it('accepts the folders the duplicate scan skips, for every preset', () => {

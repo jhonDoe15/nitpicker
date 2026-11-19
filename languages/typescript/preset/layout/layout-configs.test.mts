@@ -186,6 +186,75 @@ describe('layout-aware tool configurations', () => {
     expect(layoutTransformFor('knip.json', customLayout)).toBeTypeOf('function');
     expect(layoutTransformFor('vitest.quality.config.ts', customLayout)).toBeUndefined();
   });
+  it('uses glob-safe entries and keeps dependencies and config files out for the project root', () => {
+    const rootLayout = resolveLayout({ sourceRoots: ['.'] });
+    const tsconfig = layoutTsconfig(readDefaultTsconfig('tsconfig.quality.json'), rootLayout);
+
+    expect(tsconfig.include).toEqual([
+      '**/*',
+      'test/**/*',
+      'tests/**/*',
+      '__tests__/**/*',
+      'e2e/**/*',
+      'vitest*.ts',
+    ]);
+    expect(sorted(tsconfig.exclude)).toEqual([
+      '**/.*/**',
+      '**/node_modules/**',
+      '*.conf.cjs',
+      '*.conf.js',
+      '*.config.cjs',
+      '*.config.cts',
+      '*.config.js',
+      '*.config.mjs',
+      '*.config.mts',
+      '*.config.ts',
+      '.*rc.cjs',
+      '.*rc.js',
+      '.*rc.json',
+      '.*rc.mjs',
+      '.*rc.ts',
+      '.git/**',
+      'Gruntfile.cjs',
+      'Gruntfile.js',
+      'Gruntfile.mjs',
+      'Gruntfile.ts',
+      'Gulpfile.cjs',
+      'Gulpfile.js',
+      'Gulpfile.mjs',
+      'Gulpfile.ts',
+      'babel.config.*',
+      'bench/**',
+      'benchmark/**',
+      'benchmarks/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'docs/**',
+      'example/**',
+      'examples/**',
+      'generated/**',
+      'gruntfile.cjs',
+      'gruntfile.js',
+      'gruntfile.mjs',
+      'gruntfile.ts',
+      'gulpfile.cjs',
+      'gulpfile.js',
+      'gulpfile.mjs',
+      'gulpfile.ts',
+      'jest.setup.*',
+      'out/**',
+      'public/**',
+      'reports/quality/**',
+      'storybook-static/**',
+      'target/**',
+      'temp/**',
+      'tmp/**',
+      'vitest.setup.*',
+    ]);
+    expect(tsconfig.exclude.filter((entry) => entry.includes('{'))).toEqual([]);
+    expect(layoutTransformFor('knip.json', rootLayout)).toBeTypeOf('function');
+  });
   it('move the roots and add the exclude globs for a custom layout', () => {
     const tsconfig = layoutTsconfig(readDefaultTsconfig('tsconfig.quality.json'), customLayout);
     expect(tsconfig.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);

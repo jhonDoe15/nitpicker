@@ -81,19 +81,26 @@ function validateLayoutEntry(key: string, value: unknown, allowed: readonly stri
     throw configError(`"layout.${key}" must not be empty`);
   }
   for (const root of roots) {
-    if (!isProjectRelativeDirectory(root)) {
+    if (!isProjectRelativeDirectory(root, key)) {
       throw configError(`"layout.${key}" entries must be directories inside the project: ${root}`);
     }
   }
 }
 
-function isProjectRelativeDirectory(root: string): boolean {
+function isProjectRootSpelling(normalized: string): boolean {
+  return normalized.split('/').every((segment) => segment === '' || segment === '.');
+}
+
+function isProjectRelativeDirectory(root: string, key: string): boolean {
   const normalized = root.replaceAll('\\', '/');
+  if (key !== 'sourceRoots' && isProjectRootSpelling(normalized)) {
+    return false;
+  }
   return (
     !path.isAbsolute(normalized) &&
     !DRIVE_LETTER.test(normalized) &&
     !GLOB_CHARACTER.test(normalized) &&
-    !PARENT_SEGMENT.test(normalized) &&
-    normalized.replace(/^\.\/?|\/$/g, '').length > 0
+    normalized.length > 0 &&
+    !PARENT_SEGMENT.test(normalized)
   );
 }

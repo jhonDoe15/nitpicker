@@ -4,6 +4,7 @@ import type { FixContext, Planned, Project } from '../typed/project-types.mts';
 import {
   existingRoots,
   globMatcher,
+  pathBelowRoot,
   helperName,
   testAreaGlobsFor,
 } from '../typed/preset-views.mts';
@@ -55,9 +56,7 @@ function helperTarget(context: FixContext, name: string): string {
   if (layout.colocatedTests) {
     return path.posix.join(path.posix.dirname(name), SUPPORT_DIRECTORY, path.posix.basename(name));
   }
-  const root = layout.sourceRoots.find((candidate) => name.startsWith(`${candidate}/`));
-  const rest = name
-    .slice(root === undefined ? 0 : root.length + 1)
+  const rest = pathBelowRoot(layout.sourceRoots, name)
     .split('/')
     .filter((part) => part !== SUPPORT_DIRECTORY);
   return path.posix.join(testRootOf(context), SUPPORT_DIRECTORY, ...rest);
@@ -116,9 +115,7 @@ function integrationTarget(context: FixContext, name: string): string {
   if (unitRoot !== undefined) {
     return `${unitRoot}/integration/${name.slice(unitRoot.length + '/unit/'.length)}`;
   }
-  const sourceRoot = layout.sourceRoots.find((root) => name.startsWith(`${root}/`));
-  const rest = name
-    .slice(sourceRoot === undefined ? 0 : sourceRoot.length + 1)
+  const rest = pathBelowRoot(layout.sourceRoots, name)
     .split('/')
     .filter((part) => part !== '__tests__');
   return path.posix.join(testRootOf(context), 'integration', ...rest);

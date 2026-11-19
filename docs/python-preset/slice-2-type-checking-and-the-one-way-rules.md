@@ -75,7 +75,13 @@ through the real tools.
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
-  a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
+  a prefix such as `E4` or `T20` stays when a known rule starts with it. A code the preset lists that
+  the installed ruff still has in preview (`PLW1514` unspecified-encoding, `RUF071`) runs in a second
+  `ruff check --preview --select <codes>` pass with the same options (like the stable codes the
+  preset selects, a project's own ruff `ignore` does not turn them off), and its results are merged
+  into `ruff.sarif` under their codes
+  (`adapters/project-tools/ruff/preview/ruff-preview.mts`). Preview mode never applies to the main
+  pass, so it does not change what the stable rules report. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
   [runner parity](runner-parity.md)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are

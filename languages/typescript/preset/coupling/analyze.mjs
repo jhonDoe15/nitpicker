@@ -2,6 +2,7 @@ import path from 'node:path';
 import { computeCoupling } from '../../../../shared/rules/coupling.mjs';
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { isInsideRoot, isProjectRoot, relativeToRoot } from '../layout/source-root/root-paths.mjs';
 import { isReuseProductionPath, projectPathOf } from '../structure/reuse/reuse-paths.mjs';
 import { sharedUsedByOneFeature } from './shared-usage.mjs';
 import {
@@ -14,7 +15,7 @@ import { featureLayout } from '../architecture/strict-layout.mjs';
 import { stabilityUnits } from './feature-layout.mjs';
 
 function pathWithinRoot(file, sourceRoot) {
-  return file.startsWith(`${sourceRoot}/`) ? file.slice(sourceRoot.length + 1) : file;
+  return isInsideRoot(file, sourceRoot) ? relativeToRoot(file, sourceRoot) : file;
 }
 
 function checkoutGraph(graph, projectRoot) {
@@ -42,7 +43,9 @@ export function productionFilter(layout, sourceRoot) {
 }
 
 function packageName(modulePath, sourceRoot) {
-  const relativePath = modulePath.slice(sourceRoot.length).replace(/^\//, '');
+  const relativePath = isProjectRoot(sourceRoot)
+    ? modulePath
+    : modulePath.slice(sourceRoot.length).replace(/^\//, '');
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
