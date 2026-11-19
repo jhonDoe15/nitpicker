@@ -68,11 +68,7 @@ describeRules('uninjectable-delay', () => {
       'import time\n\nDELAY = 2\nDELAY = 0\n\n\ndef poll():\n    time.sleep(DELAY)\n',
       [],
     ],
-    [
-      'a literal delay',
-      'import time\n\n\ndef poll():\n    time.sleep(2)\n',
-      [],
-    ],
+    ['a literal delay', 'import time\n\n\ndef poll():\n    time.sleep(2)\n', []],
     [
       'a test file',
       {

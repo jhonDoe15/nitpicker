@@ -28,9 +28,7 @@ function outermostFrame(source: SourceFile, index: number): Frame | undefined {
 function modifiersOf(source: SourceFile, frame: Frame): string[] {
   const line = source.tokens[frame.open - 1]?.line ?? 0;
   const before = source.tokens.slice(0, frame.open - 1).reverse();
-  const stop = before.findIndex(
-    ({ text, line: at }) => DECLARATION_BREAKS.has(text) || at < line,
-  );
+  const stop = before.findIndex(({ text, line: at }) => DECLARATION_BREAKS.has(text) || at < line);
   return before.slice(0, stop === -1 ? undefined : stop).map(({ text }) => text);
 }
 
@@ -92,7 +90,9 @@ function isShadowed(
 ): boolean {
   return source.tokens
     .slice(frame.body.from, call.index)
-    .some(({ text }, offset) => text === call.name && declaresLocal(source, frame.body.from + offset));
+    .some(
+      ({ text }, offset) => text === call.name && declaresLocal(source, frame.body.from + offset),
+    );
 }
 
 export function fixedDelayMessage(parts: {

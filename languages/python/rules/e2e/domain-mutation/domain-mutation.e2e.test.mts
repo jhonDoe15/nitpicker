@@ -38,7 +38,9 @@ describeRules('mutating-method-in-domain', () => {
   itOutcomes('allows a value the function created or copied', [
     [
       'a local list built and filled',
-      domain('def f(items):\n    out = []\n    for x in items:\n        out.append(x)\n    out.sort()\n    return out\n'),
+      domain(
+        'def f(items):\n    out = []\n    for x in items:\n        out.append(x)\n    out.sort()\n    return out\n',
+      ),
       [],
     ],
     [
@@ -54,6 +56,10 @@ describeRules('mutating-method-in-domain', () => {
       inFile('shop/service/prices.py', 'def f(items):\n    items.append(1)\n'),
       [],
     ],
-    ['a test file', inFile('tests/domain/test_prices.py', 'def f(items):\n    items.append(1)\n'), []],
+    [
+      'a test file',
+      inFile('tests/domain/test_prices.py', 'def f(items):\n    items.append(1)\n'),
+      [],
+    ],
   ]);
 });
