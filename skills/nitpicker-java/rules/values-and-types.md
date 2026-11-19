@@ -104,6 +104,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Fill each setter or builder slot with the value named for it (`config.timeColumn(timeColumn)`, not
   `config.tableName(timeColumn)`), and pass every member of a numbered family (`type1, type2, type3`),
   not one twice (`pmd/SiblingValuePassed`).
+- A `compare` or `compareTo` method and a `Comparator` lambda return `Integer.compare(a.line, b.line)`,
+  `Long.compare(a.time, b.time)` or `Double.compare(a.x, b.x)`, or build the comparator with
+  `Comparator.comparingInt(Item::count)`, never a subtraction: the difference overflows `int` and
+  `(int)` truncates a `long` or `double` difference (`pmd/SubtractionComparison`).
 - A getter returns the field it is named for (`getScrollWidth()` returns `areaWidth`, not the
   neighbouring `areaHeight`, and `getLeft()` not `right`); a cloned getter gets its field changed together with its name
   (`pmd/GetterReturnsSiblingField`).

@@ -3454,6 +3454,55 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SubtractionComparison" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This comparator returns the difference of two numbers. A difference of two ints overflows for large or negative values, and (int) of a long, float or double difference truncates, so two values that differ can compare as equal or in the wrong order, and sorting then fails only on some data (Comparison method violates its general contract). Compare with Integer.compare(a.line, b.line), Long.compare(a.time, b.time) or Double.compare(a.x, b.x), or build the comparator with Comparator.comparingInt(Item::count). An exception fits operands that are bounded by construction, such as sizes, lengths, ordinals, buffer positions and limits, status codes, chars, bytes and shorts. Two int parameters compared by a plain subtraction are left to the integer-slip check.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bounded := function($o, $local) {
+      exists($o[self::NumericLiteral])
+      or exists($o[self::MethodCall][@MethodName = ('size', 'length', 'ordinal', 'getNumericValue', 'signum', 'getMonthValue', 'getDayOfMonth', 'getDayOfWeek',
+                                                       'identityHashCode', 'remaining', 'position', 'limit', 'capacity', 'readableBytes', 'readerIndex', 'writerIndex', 'indexOf',
+                                                       'code', 'getCode', 'statusCode', 'getStatusCode')])
+      or exists($o[self::MethodCall][matches(@MethodName, '^get(.*[a-z])?Count$')])
+      or exists($o[self::MethodCall or self::VariableAccess or self::FieldAccess][matches(@MethodName | @Name, '(len|length|size|depth|remaining)$', 'i')])
+      or exists($o[self::VariableAccess][@Name = $local])
+      or exists($o[self::FieldAccess][@Name = 'length'])
+      or exists($o[pmd-java:typeIs('byte') or pmd-java:typeIs('short') or pmd-java:typeIs('char')
+                   or pmd-java:typeIs('java.lang.Byte') or pmd-java:typeIs('java.lang.Short') or pmd-java:typeIs('java.lang.Character')])
+    }
+return
+//InfixExpression[@Operator = '-'][count(*) = 2]
+  [let $anchor := ancestor::*[not(self::ParenthesizedExpression or self::CastExpression or self::ConditionalExpression)][1],
+       $cast := exists(parent::CastExpression) or exists(parent::ParenthesizedExpression/parent::CastExpression),
+       $method := $anchor/ancestor-or-self::*[self::MethodDeclaration or self::LambdaExpression][1],
+       $locals := $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name,
+       $intParam := function($o) {
+         exists($o[self::VariableAccess][@Name = $method/FormalParameters/FormalParameter
+                    [PrimitiveType[@Kind = 'int'] or ClassType[@SimpleName = 'Integer']]/VariableId/@Name]) },
+       $wide := pmd-java:typeIs('long') or pmd-java:typeIs('double') or pmd-java:typeIs('float')
+   return
+     (exists($anchor[self::ReturnStatement]) or exists($anchor[self::LambdaExpression]))
+     and (
+       exists($method[self::MethodDeclaration][@Name = 'compare'][@Arity = 2])
+       or exists($method[self::MethodDeclaration][@Name = 'compareTo'][@Arity = 1])
+       or exists($method[self::LambdaExpression][LambdaParameterList/@Size = 2]
+                 [pmd-java:typeIs('java.util.Comparator')
+                  or parent::ArgumentList/parent::MethodCall[@MethodName = ('sort', 'sorted', 'max', 'min', 'thenComparing', 'binarySearch')]
+                  or parent::ArgumentList/parent::ConstructorCall[ClassType[@SimpleName = ('TreeMap', 'TreeSet', 'PriorityQueue', 'ConcurrentSkipListMap', 'ConcurrentSkipListSet', 'PriorityBlockingQueue')]]])
+     )
+     and (
+       ($cast and $wide and not(exists($method[self::MethodDeclaration][@Name = 'compareTo']) and pmd-java:typeIs('long')))
+       or (pmd-java:typeIs('int')
+           and not(exists($method[self::MethodDeclaration]) and $intParam(*[1]) and $intParam(*[2])))
+     )
+     and not($bounded(*[1], $locals)) and not($bounded(*[2], $locals))
+]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="TimerNotStoppedOnClose" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This scheduler or timer is created by a class that has a close method, but close never shuts it down, so its scheduled tasks keep running and its thread keeps the JVM alive after close. Call shutdown() (then awaitTermination) on the executor, or cancel() on the Timer, in close (Spring beans are covered by SpringUnreleasedResource). An exception fits only when the scheduler is shared and owned elsewhere.">
     <priority>3</priority>
