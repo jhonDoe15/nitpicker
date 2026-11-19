@@ -44,11 +44,18 @@ import {
   skippedToolFindings,
 } from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
+import { sequenceGate } from '../jpa/sequence-ids.mjs';
+import { withoutSourceBackedSpotbugs } from './null-findings/spotbugs-log.mts';
+import { withoutBoundFields } from './null-findings/unwritten-fields.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type Options = Readonly<Record<string, unknown>>;
-type ReportRun = { readonly kotlinBuild: unknown; readonly foreignKeys: unknown };
+type ReportRun = {
+  readonly kotlinBuild: unknown;
+  readonly foreignKeys: unknown;
+  readonly sequenceIds: unknown;
+};
 type ModuleRun = ReportRun & { manifest: unknown; modules: readonly unknown[]; options: Options };
 type JavaReadout = { readonly findings: unknown; readonly imports: unknown };
 
@@ -97,13 +104,17 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
   const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
   const skipped = skippedSet(reportRoot);
   const structureSkipped = skipped.has(STRUCTURE_SKIPPED);
+  const sources = { projectRoot, sourceRoots: listsOf(context[MANIFEST], SOURCE_ROOTS) };
+  function spotbugsFilter(log: unknown): unknown {
+    return withoutSourceBackedSpotbugs(log, sources);
+  }
   const findings = [
     ...findingsFrom(skippedToolFindings, {
       reportRoot,
       javaStyle: context['javaStyle'],
       moduleDir: fieldOf(context['module'], 'moduleDir'),
     }),
-    ...findingsFrom(sarifFindings, context),
+    ...findingsFrom(sarifFindings, { ...context, spotbugsFilter }),
     ...findingsFrom(readErrorProneFindings, context),
     ...findingsFrom(formatFindings, context),
     ...(skipped.has(CHECKSTYLE_SKIPPED) ? [] : findingsFrom(checkstyleFindings, context)),
@@ -123,7 +134,7 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
     }),
     ...findingsFrom(testRunFindings, context, { reportRoot, projectRoot, testRoots }),
   ];
-  return listOf(callUntyped(withEffectsFindings, context, findings));
+  return withoutBoundFields(listOf(callUntyped(withEffectsFindings, context, findings)), sources);
 }
 
 function reportingOf(options: Options, module: unknown, preset: string): Options {
@@ -175,7 +186,11 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
 }
 
 function reportRun(projectRoot: string): ReportRun {
-  return { kotlinBuild: buildViews(), foreignKeys: foreignKeyGate(projectRoot) };
+  return {
+    kotlinBuild: buildViews(),
+    foreignKeys: foreignKeyGate(projectRoot),
+    sequenceIds: sequenceGate(projectRoot),
+  };
 }
 
 function wideReport(projectRoot: string, run: ModuleRun, reportBase: string): JavaReadout {

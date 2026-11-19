@@ -1,5 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { stringValue } from '../analysis/constant-resolution.mts';
+import {
+  isProcessModule,
+  isProcessValue,
+  wrapperTop,
+} from '../analysis/globals/process-values.mts';
 import { isCompositionRootFile } from '../boundaries/composition-root-files.mts';
 import { mentionsEntryPoint } from '../modules/no-process-globals-outside-main-guard.mts';
 import { ancestorsOf } from '../typed/node-views.mts';
@@ -16,12 +20,11 @@ type Member = {
 type State = {
   readonly context: TSESLint.RuleContext<MessageId, Options>;
   readonly options: EnvOptions;
-  namespaces: ReadonlySet<string>;
 };
 
 const PROCESS = 'process';
-const PROCESS_MODULES = new Set<string>(['process', 'node:process']);
-const GLOBAL_OBJECTS = new Set<string>(['globalThis', 'global', 'window', 'self']);
+const ENV_MESSAGE: MessageId = 'envOutsideRoot';
+const EXIT_MESSAGE: MessageId = 'exitOutsideRoot';
 const PROCESS_MEMBERS = new Set<string>(['env', 'exit']);
 const BUNDLER_REPLACED_VARIABLE = /^(?:NODE_ENV|(?:NEXT_PUBLIC|EXPO_PUBLIC|REACT_APP)_\w+)$/;
 
@@ -40,28 +43,6 @@ function propertyText(node: TSESTree.MemberExpression): string | undefined {
 
 function isPlainProcess(node: Node): boolean {
   return node.type === AST_NODE_TYPES.Identifier && node.name === PROCESS;
-}
-
-function isProcessObject(node: Node, namespaces: ReadonlySet<string>): boolean {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return isPlainProcess(node) || namespaces.has(node.name);
-  }
-  if (node.type === AST_NODE_TYPES.MemberExpression) {
-    return (
-      node.object.type === AST_NODE_TYPES.Identifier &&
-      GLOBAL_OBJECTS.has(node.object.name) &&
-      propertyText(node) === PROCESS
-    );
-  }
-  const module =
-    node.type === AST_NODE_TYPES.CallExpression ? stringValue(node.arguments[0]) : undefined;
-  return (
-    node.type === AST_NODE_TYPES.CallExpression &&
-    node.callee.type === AST_NODE_TYPES.Identifier &&
-    node.callee.name === 'require' &&
-    module !== undefined &&
-    PROCESS_MODULES.has(module)
-  );
 }
 
 function isBundlerReplaced(node: Node): boolean {
@@ -104,20 +85,6 @@ function insideMainGuard(node: Node): boolean {
   );
 }
 
-function importedNamespaces(program: TSESTree.Program): Set<string> {
-  return new Set(
-    program.body
-      .flatMap((statement) =>
-        statement.type === AST_NODE_TYPES.ImportDeclaration &&
-        PROCESS_MODULES.has(statement.source.value)
-          ? statement.specifiers
-          : [],
-      )
-      .filter((specifier) => specifier.type !== AST_NODE_TYPES.ImportSpecifier)
-      .map((specifier) => specifier.local.name),
-  );
-}
-
 function bindingName(value: Node): string | undefined {
   const target = value.type === AST_NODE_TYPES.AssignmentPattern ? value.left : value;
   return target.type === AST_NODE_TYPES.Identifier ? target.name : undefined;
@@ -150,9 +117,9 @@ function importedMembers(declaration: TSESTree.ImportDeclaration): Member[] {
 
 function checkMember(state: State, node: TSESTree.MemberExpression, ownerIsProcess: boolean): void {
   if (isEnvAccess(node, state.options, ownerIsProcess)) {
-    state.context.report({ node, messageId: 'envOutsideRoot' });
+    state.context.report({ node, messageId: ENV_MESSAGE });
   } else if (ownerIsProcess && propertyText(node) === 'exit' && !insideMainGuard(node)) {
-    state.context.report({ node, messageId: 'exitOutsideRoot' });
+    state.context.report({ node, messageId: EXIT_MESSAGE });
   }
 }
 
@@ -174,28 +141,64 @@ function checkMemberBindings(state: State, declaration: Node, members: readonly 
     const reads: readonly Node[] =
       local === undefined ? [node] : readsOf(state.context, declaration, local);
     for (const read of reads.filter((site) => member === 'env' || !insideMainGuard(site))) {
-      const messageId: MessageId = member === 'env' ? 'envOutsideRoot' : 'exitOutsideRoot';
+      const messageId: MessageId = member === 'env' ? ENV_MESSAGE : EXIT_MESSAGE;
       state.context.report({ node: read, messageId });
     }
   }
 }
 
+function checkRestRead(state: State, read: Node): void {
+  const top = wrapperTop(read);
+  if (top.parent?.type === AST_NODE_TYPES.MemberExpression && top.parent.object === top) {
+    checkMember(state, top.parent, true);
+  }
+}
+
+function restNames(pattern: TSESTree.ObjectPattern): string[] {
+  return pattern.properties
+    .filter((property) => property.type === AST_NODE_TYPES.RestElement)
+    .flatMap((property) => bindingName(property.argument) ?? []);
+}
+
+function checkRestReads(state: State, declarator: TSESTree.VariableDeclarator): void {
+  const { id } = declarator;
+  const names = id.type === AST_NODE_TYPES.ObjectPattern ? restNames(id) : [];
+  for (const read of names.flatMap((name) => readsOf(state.context, declarator, name))) {
+    checkRestRead(state, read);
+  }
+}
+
 function checkDeclarator(state: State, declarator: TSESTree.VariableDeclarator): void {
-  if (declarator.init === null || !isProcessObject(declarator.init, state.namespaces)) {
+  if (declarator.init === null || !isProcessValue(state.context, declarator.init)) {
     return;
   }
   if (declarator.id.type === AST_NODE_TYPES.ObjectPattern) {
     checkMemberBindings(state, declarator, destructuredMembers(declarator.id));
+    checkRestReads(state, declarator);
+  }
+}
+
+function checkReexport(state: State, declaration: TSESTree.ExportNamedDeclaration): void {
+  if (
+    declaration.source === null ||
+    !isProcessModule(declaration.source.value) ||
+    declaration.exportKind === 'type'
+  ) {
     return;
   }
-  if (declarator.id.type !== AST_NODE_TYPES.Identifier || isPlainProcess(declarator.id)) {
-    return;
-  }
-  for (const read of readsOf(state.context, declarator, declarator.id.name)) {
-    if (read.parent.type === AST_NODE_TYPES.MemberExpression && read.parent.object === read) {
-      checkMember(state, read.parent, true);
+  for (const specifier of declaration.specifiers) {
+    const { local } = specifier;
+    const member = local.type === AST_NODE_TYPES.Identifier ? local.name : local.value;
+    if (specifier.exportKind !== 'type' && PROCESS_MEMBERS.has(member)) {
+      const messageId: MessageId = member === 'env' ? ENV_MESSAGE : EXIT_MESSAGE;
+      state.context.report({ node: specifier, messageId });
     }
   }
+}
+
+function ownsProcess(state: State, node: TSESTree.MemberExpression): boolean {
+  const member = propertyText(node);
+  return (member === 'env' || member === 'exit') && isProcessValue(state.context, node.object);
 }
 
 export const rule: TSESLint.RuleModule<MessageId, Options> = {
@@ -230,21 +233,21 @@ export const rule: TSESLint.RuleModule<MessageId, Options> = {
       allowImportMetaEnv: context.options[0]?.['allowImportMetaEnv'] === true,
       allowBundlerEnv: context.options[0]?.['allowBundlerEnv'] === true,
     };
-    const state: State = { context, options, namespaces: new Set() };
+    const state: State = { context, options };
     return {
-      Program(node) {
-        state.namespaces = importedNamespaces(node);
-      },
       ImportDeclaration(node) {
-        if (PROCESS_MODULES.has(node.source.value)) {
+        if (isProcessModule(node.source.value)) {
           checkMemberBindings(state, node, importedMembers(node));
         }
+      },
+      ExportNamedDeclaration(node) {
+        checkReexport(state, node);
       },
       VariableDeclarator(node) {
         checkDeclarator(state, node);
       },
       MemberExpression(node) {
-        checkMember(state, node, isProcessObject(node.object, state.namespaces));
+        checkMember(state, node, ownsProcess(state, node));
       },
     };
   },

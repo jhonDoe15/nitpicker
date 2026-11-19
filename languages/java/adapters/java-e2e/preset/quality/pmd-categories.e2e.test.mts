@@ -35,6 +35,7 @@ const categories = new Set([
   'AvoidCalendarDateCreation',
   'AvoidFileStream',
   'AvoidInstantiatingObjectsInLoops',
+  'CheckResultSet',
   'BigIntegerInstantiation',
   'ConsecutiveAppendsShouldReuse',
   'ConsecutiveLiteralAppends',
@@ -122,6 +123,17 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
       'UnusedFormalParameter',
       'UseArraysAsList',
     ]);
+  });
+
+  it('reports a navigation result that no condition checks', () => {
+    expect(
+      findings
+        .filter(
+          ({ path: file, rule }) =>
+            file === 'src/main/java/demo/Results.java' && rule === 'CheckResultSet',
+        )
+        .map(({ location }) => location?.line),
+    ).toEqual([8, 16]);
   });
 
   it('allows the corrected forms and structurally excluded patterns', () => {

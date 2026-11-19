@@ -38,7 +38,65 @@ public final class Optionals {
   }
 
   public String checked(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
-    return value.isPresent() ? value.get() : plain; // violation: pmd/OptionalGet
+    return value.isPresent() ? value.get() : plain;
+  }
+
+  public String guardedThen(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    Optional<String> other = label;
+    if (value.isPresent() && !plain.isEmpty()) {
+      return value.get();
+    }
+    if (other.isPresent()) {
+      return value.get(); // violation: pmd/OptionalGet
+    }
+    return plain;
+  }
+
+  public String guardedExit(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    Optional<String> other = label;
+    if (value.isEmpty() || plain.isEmpty()) {
+      return plain;
+    }
+    if (!other.isPresent()) {
+      throw new IllegalStateException();
+    }
+    return value.get() + other.get();
+  }
+
+  public String wrongGuards(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    Optional<String> other = label;
+    if (value.isEmpty() && plain.isEmpty()) {
+      return plain;
+    }
+    if (other.isEmpty()) {
+      System.out.println(plain);
+    }
+    String first = value.get(); // violation: pmd/OptionalGet
+    return first + other.get(); // violation: pmd/OptionalGet
+  }
+
+  public String guardedElse(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    if (value.isEmpty() || plain.isEmpty()) {
+      return plain;
+    } else {
+      return value.get();
+    }
+  }
+
+  public String wrongElse(Optional<String> value, boolean retry) { // violation: pmd/OptionalAsFieldOrParameter
+    if (value.isEmpty() && retry) {
+      return plain;
+    } else {
+      return value.get(); // violation: pmd/OptionalGet
+    }
+  }
+
+  public String reassigned(Optional<String> value) { // violation: pmd/OptionalAsFieldOrParameter
+    if (value.isEmpty()) {
+      return plain;
+    }
+    value = label;
+    return value.get(); // violation: pmd/OptionalGet
   }
 
   static final class Printing implements Consumer<Optional<String>> {

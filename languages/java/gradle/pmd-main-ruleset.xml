@@ -555,42 +555,46 @@ return
       <property name="xpath">
         <value><![CDATA[
 let $names := 'accept(?:-charset|-encoding|-language)?|content-(?:type|disposition|language)|cache-control|if-none-match|if-match|cookie|set-cookie|forwarded|vary|prefer|link',
-    $headerArg := function($arg) {
-      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $names, ')"$'), 'i')]
-             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $names, ')$'), 'i')])
+    $headerArg := function($arg, $pattern) {
+      exists($arg[self::StringLiteral][matches(@Image, concat('^"(?:', $pattern, ')"$'), 'i')]
+             | $arg[self::FieldAccess][matches(replace(@Name, '_', '-'), concat('^(?:', $pattern, ')$'), 'i')])
     },
-    $direct := function($e) {
+    $direct := function($e, $pattern) {
       exists($e[self::MethodCall][
-        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1])
+        @MethodName = ('getHeader', 'getHeaderString', 'getFirst') and $headerArg(ArgumentList/*[1], $pattern)
         or @MethodName = 'getContentType' and ArgumentList/@Size = 0 and pmd-java:typeIs('java.lang.String')
+           and matches('content-type', concat('^(?:', $pattern, ')$'))
         or @MethodName = ('orElse', 'orElseThrow', 'get')
-           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1])]]])
+           and *[1][self::MethodCall[@MethodName = 'firstValue'][$headerArg(ArgumentList/*[1], $pattern)]]])
     },
-    $local := function($e) {
+    $local := function($e, $pattern) {
       exists($e[self::VariableAccess][let $name := @Name return
         ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
           //LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $name]]
             [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
-                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$direct(*[2])]])
+                 //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])][$direct(*[2], $pattern)]])
     },
-    $parameter := function($e) {
+    $parameter := function($e, $pattern) {
       exists($e[self::VariableAccess][let $name := @Name return
         ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter[VariableId/@Name = $name]
           [ClassType[@SimpleName = 'String']]
-          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1])]]])
+          [ModifierList/Annotation[@SimpleName = 'RequestHeader'][$headerArg(.//StringLiteral[1] | .//FieldAccess[1], $pattern)]]])
     },
-    $base := function($e) { $direct($e) or $local($e) or $parameter($e) },
-    $source := function($e) {
-      $base($e) or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1])])
+    $base := function($e, $pattern) { $direct($e, $pattern) or $local($e, $pattern) or $parameter($e, $pattern) },
+    $source := function($e, $pattern) {
+      $base($e, $pattern)
+      or exists($e[self::MethodCall][@MethodName = ('trim', 'strip')][ArgumentList/@Size = 0][$base(*[1], $pattern)])
     },
     $separator := function($e) { exists($e[self::StringLiteral][matches(@Image, '^"[\s,;\\|\[\]*+s]*[,;][\s,;\\|\[\]*+s]*"$')]) }
 return (
-  //MethodCall[@MethodName = 'split'][$source(*[1]) and $separator(ArgumentList/*[1])]
-  | //ConstructorCall[ClassType/@SimpleName = 'StringTokenizer'][$source(ArgumentList/*[1]) and $separator(ArgumentList/*[2])]
+  //MethodCall[@MethodName = 'split'][$source(*[1], $names) and $separator(ArgumentList/*[1])]
+      [not(ArgumentList/*[1][@Image = '";"'] and parent::ArrayAccess[*[2][self::NumericLiteral][@Image = '0']]
+           and $source(*[1], 'content-type'))]
+  | //ConstructorCall[ClassType/@SimpleName = 'StringTokenizer'][$source(ArgumentList/*[1], $names) and $separator(ArgumentList/*[2])]
   | //MethodCall[@MethodName = ('tokenizeToStringArray', 'commaDelimitedListToStringArray', 'commaDelimitedListToSet',
                                 'delimitedListToStringArray')]
-      [$source(ArgumentList/*[1])]
-  | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1])]
+      [$source(ArgumentList/*[1], $names)]
+  | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1], $names)]
       [*[1][self::MethodCall[@MethodName = ('on', 'onPattern', 'compile')]]]
 )
 ]]></value>
@@ -813,7 +817,7 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
     $bodies := (
       //ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
       | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'reduce', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong', 'collect')]
-          [not(*[1][pmd-java:typeIs('java.util.Optional')])]]),
+          [not(*[1][pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('reactor.core.publisher.Mono')])]]),
     $attempts := $loops/Block/TryStatement
       [Block[1]//(ReturnStatement | BreakStatement)]
       [CatchClause[not(Block/(ThrowStatement | ReturnStatement | BreakStatement))]]
@@ -922,16 +926,31 @@ return ($rows | $rows/*[1]/descendant-or-self::MethodCall | $rows ! $queryCalls(
       [let $name := @Name
        return exists(ancestor::ForeachStatement/LocalVariableDeclaration//VariableId[@Name = $name]
          | ancestor::LambdaExpression/LambdaParameterList//VariableId[@Name = $name])],
-    $bound := $elements/parent::ArgumentList/parent::MethodCall,
+    $windows := //ForStatement//MethodCall[@MethodName = 'setFirstResult']
+      [ArgumentList//VariableAccess/@Name = ancestor::ForStatement/ForInit//VariableId/@Name]
+      [let $first := .
+       return exists(($first/*[1]/descendant-or-self::MethodCall
+         | $first/ancestor::MethodCall[*[1]/descendant-or-self::MethodCall intersect $first])
+         [@MethodName = 'setMaxResults'][not(ArgumentList/*[1][@ConstValue = 1 or @ValueAsInt = 1])])],
+    $stepped := $windows | //ForStatement//MethodCall[@MethodName = 'setParameter'
+        and ArgumentList/MethodCall[@MethodName = ('subList', 'partition')]]
+      [ArgumentList//VariableAccess/@Name = ancestor::ForStatement/ForInit//VariableId/@Name],
+    $bound := $elements/parent::ArgumentList/parent::MethodCall | $stepped,
     $chunks := $bound | $bound/*[1]/descendant-or-self::MethodCall
       | //MethodCall[exists(*[1]/descendant-or-self::MethodCall intersect $bound)],
     $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging except $chunks
 return
 (
   $calls[
-    self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', 'detach', $batches))]
+    self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', 'detach',
+           'header', 'headers', 'addHeader', 'addRequestProperty', 'setRequestProperty', $batches))]
          [not(ends-with(@MethodName, 'Async'))]
-         [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
+         [not(matches(@MethodName, '^set[A-Z]') and *[1][pmd-java:typeIs('java.sql.PreparedStatement')])]
+         [not(@MethodName = ('setParameter', 'setHint', 'setFlushMode', 'setLockMode', 'setFirstResult', 'setMaxResults')
+           and *[1][pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query')])]
+         [not(@MethodName = 'contains' and *[1][pmd-java:typeIs('jakarta.persistence.EntityManager')
+           or pmd-java:typeIs('javax.persistence.EntityManager') or pmd-java:typeIs('org.hibernate.Session')])]
+         [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
             or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
             or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')
@@ -946,7 +965,8 @@ return
          [*[1][matches(@Name, '^(repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$')]]
   ]
   |
-  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')][not(*[1][pmd-java:typeIs('java.util.Optional')])]
+  //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')]
+    [not(*[1][pmd-java:typeIs('java.util.Optional') or pmd-java:typeIs('reactor.core.publisher.Mono')])]
     /ArgumentList/MethodReference
     [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
     [not(@MethodName = ('hashCode', 'toString', 'equals'))]
@@ -2323,7 +2343,7 @@ return (
     </properties>
   </rule>
   <rule name="UnclosedInlineResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) are not reported.">
+        message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) and connections the framework binds to the thread (DataSourceUtils.getConnection) are not reported.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -2350,7 +2370,8 @@ let $closeable := 'java.lang.AutoCloseable',
                 and not($n[pmd-java:typeIs('java.util.Formatter')]
                           [empty(ArgumentList/*) or ArgumentList/*[1][pmd-java:typeIs('java.lang.StringBuilder')]])
            else (matches($n/@MethodName, $opening)
-                 and not(some $t in $owners satisfies exists($n/*[1][pmd-java:typeIs($t)]))))
+                 and not(some $t in $owners satisfies exists($n/*[1][pmd-java:typeIs($t)]))
+                 and not($n/*[1][self::TypeExpression/ClassType/@SimpleName = 'DataSourceUtils'])))
     }
 return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
   [not(self::MethodCall/*[1][$fresh(., $fresh)])]
@@ -2370,7 +2391,7 @@ return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
     </properties>
   </rule>
   <rule name="UnorderedQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This query takes a page of rows (setMaxResults, setFirstResult, an unsorted PageRequest passed to findAll, or SQL LIMIT, OFFSET or FETCH) or builds an array_agg, json_agg or jsonb_agg list with no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key, or add a tie-breaker after a non-unique key: order by a.createdAt desc, a.id in the query text, criteria.orderBy(...), PageRequest.of(page, size, Sort.by(&quot;createdAt&quot;, &quot;id&quot;)), or json_agg(t.name order by t.name). setMaxResults(1) or LIMIT 1 is fine when the query selects only a constant or a count. An exception fits only a query whose rows come back in one order anyway, or a nested list that is a set whose callers never depend on its order.">
+        message="This query takes a page of rows (setMaxResults, setFirstResult, an unsorted PageRequest passed to findAll, or SQL LIMIT, OFFSET or FETCH) or builds an array_agg, json_agg or jsonb_agg list with no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. Order on a unique key, or add a tie-breaker after a non-unique key: order by a.createdAt desc, a.id in the query text, criteria.orderBy(...), PageRequest.of(page, size, Sort.by(&quot;createdAt&quot;, &quot;id&quot;)), or json_agg(t.name order by t.name). setMaxResults(1) or LIMIT 1 is fine when the query selects only a constant or a count. setMaxResults(1) or (2) is fine when the result is only tested with isEmpty() or size(). An exception fits only a query whose rows come back in one order anyway, or a nested list that is a set whose callers never depend on its order.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -2425,18 +2446,36 @@ let $plus := function($node) { exists($node/self::InfixExpression[@Operator = '+
   return ($receiver/descendant-or-self::MethodCall[@MethodName = $creators],
           $initial($held)/descendant-or-self::MethodCall[@MethodName = $creators])[1]
 },
+    $tested := function($list) {
+  exists($list/parent::MethodCall[@MethodName = ('isEmpty', 'size')][*[1] is $list])
+  or (let $stream := $list/parent::MethodCall[@MethodName = 'stream'][*[1] is $list],
+          $any := $stream/parent::MethodCall[@MethodName = 'findAny'][*[1] is $stream]
+      return exists($stream/parent::MethodCall[@MethodName = ('count', 'anyMatch', 'noneMatch')][*[1] is $stream])
+        or exists($any/parent::MethodCall[@MethodName = 'isPresent'][*[1] is $any]))
+},
+    $probed := function($call) {
+  $call/@MethodName = 'setMaxResults' and $call/ArgumentList/NumericLiteral/@Image = ('1', '2')
+  and (let $list := $call/ancestor::MethodCall[@MethodName = 'getResultList'][*[1]/descendant-or-self::*[. is $call]][1]
+       return exists($list) and (
+         $tested($list)
+         or (let $held := $call/ancestor::VariableDeclarator[*[2] is $list][1],
+                 $name := $held/VariableId/@Name
+             return exists($held)
+               and (every $use in $held/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//VariableAccess[@Name = $name]
+                    satisfies $tested($use)))))
+},
     $unorderedPage := function($call) {
   let $query := $created($call),
       $argument := $query/ArgumentList/*[1],
       $text := $text($argument),
       $criteria := $argument/self::VariableAccess[exists($initial(.)/self::MethodCall[@MethodName = 'createQuery'][ArgumentList/ClassLiteral])],
       $single := $call/@MethodName = 'setMaxResults' and $call/ArgumentList/NumericLiteral/@Image = '1'
-  return exists($query)
+  return exists($query) and not($probed($call))
     and not($call/@MethodName = 'setFirstResult' and $call/ArgumentList/NumericLiteral/@Image = '0')
     and (if (not($dynamic($text))) then not($ordered($text)) and not($single and $countOrConstant($text))
          else exists($criteria)
               and not($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
-                       //MethodCall[@MethodName = 'orderBy'][*[1][self::VariableAccess/@Name = $argument/@Name]]))
+                       //MethodCall[@MethodName = 'orderBy'][*[1]/descendant-or-self::VariableAccess[@Name = $argument/@Name]]))
 },
     $toFindAll := function($page) {
   exists($page/parent::ArgumentList/parent::MethodCall[@MethodName = 'findAll'])
@@ -2634,8 +2673,38 @@ let $mapTypes := ('Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap', 'Na
                            | $function[self::LambdaExpression]/Block//ReturnStatement/*[1])
           satisfies $nullResult($result, $function))
     },
+    $shapeOf := function($expression, $parameters) {
+      string-join($expression/descendant-or-self::*/(@MethodName | @Name | self::*[self::StringLiteral or self::NumericLiteral]/@Image)
+                  ! (if (local-name(.) = 'Name' and . = $parameters) then '#' else string(.)), '.')
+    },
+    $testedShapes := function($filter) {
+      let $lambda := $filter/ArgumentList/LambdaExpression,
+          $parameters := $lambda/LambdaParameterList//VariableId/@Name,
+          $body := $lambda/*[last()][not(self::Block)]
+      return $body/descendant-or-self::*[self::InfixExpression[@Operator = '!='][NullLiteral]
+                                         or self::MethodCall[@MethodName = 'nonNull']]
+               [. is $body or ($body/self::InfixExpression[@Operator = '&&']
+                               and empty(ancestor::*[ancestor::*[. is $body]][not(self::InfixExpression[@Operator = '&&'])]))]
+             /(self::InfixExpression/*[not(self::NullLiteral)] | self::MethodCall/ArgumentList/*[1])
+             ! $shapeOf(., $parameters)
+    },
+    $valueShape := function($function) {
+      if ($function/self::MethodReference) then concat($function/@MethodName, '.#')
+      else $shapeOf($function/self::LambdaExpression/*[last()][self::MethodCall],
+                    $function/LambdaParameterList//VariableId/@Name)
+    },
+    $filteredBefore := function($call, $function) {
+      let $shape := $valueShape($function)
+      return exists($shape) and $shape != '' and
+        (some $collect in $call/parent::ArgumentList/parent::MethodCall[@MethodName = 'collect'] satisfies
+          (some $filter in $collect/*[1]/descendant-or-self::MethodCall[@MethodName = 'filter'] satisfies
+            $shape = $testedShapes($filter)
+            and (every $step in $filter/ancestor::* intersect $collect/descendant::* satisfies
+                  ($step is $step/../*[1] and $step[self::MethodCall][@MethodName = $passThrough]))))
+    },
     $reaches := function($call, $function) {
-      $nullFunction($function) or ($entryValue($function) and $nullEntries($call))
+      ($nullFunction($function) or ($entryValue($function) and $nullEntries($call)))
+      and not($filteredBefore($call, $function))
     },
     $helpers := //MethodDeclaration[.//MethodCall[@MethodName = $valueCollectors]
                   [pmd-java:typeIs('java.util.stream.Collector')]/ArgumentList/*[2][self::VariableAccess]]
@@ -2835,7 +2904,7 @@ let $candidate := function($v) {
       or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
       or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
         and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
-      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+      or (matches($v, '^(?:bearer|basic|token)\s+[^\s"]+$', 'i')
         and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
       or (matches($v, '[?&;]password=[^&;\s]+', 'i')
         and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
@@ -2880,7 +2949,7 @@ let $words := function($s) {
       or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
       or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
         and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
-      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+      or (matches($v, '^(?:bearer|basic|token)\s+[^\s"]+$', 'i')
         and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
       or (matches($v, '[?&;]password=[^&;\s]+', 'i')
         and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
@@ -2953,8 +3022,14 @@ let $words := function($s) {
     $loggedName := function($n) {
       $secretName($n) and not(matches($n, '^(?:has|is)[A-Z_]')) and not(matches($n, '^[A-Z][A-Z0-9_]*$'))
     },
+    $enumName := function($leaf) {
+      exists($leaf[self::VariableAccess]
+        [some $call in ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1]
+           //MethodCall[@MethodName = 'valueOf'][pmd-java:typeIs('java.lang.Enum')]
+           satisfies $call/ArgumentList/*[last()][self::VariableAccess/@Name = $leaf/@Name]])
+    },
     $secret := function($leaf) {
-      exists($leaf[self::VariableAccess or self::FieldAccess][$loggedName(@Name)]
+      exists($leaf[self::VariableAccess or self::FieldAccess][$loggedName(@Name)][not($enumName(.))]
         | $leaf[self::MethodCall][ArgumentList/@Size = 0][matches(@MethodName, '^get[A-Z]')]
             [$loggedName(substring(@MethodName, 4))]
         | $leaf[self::MethodCall][@MethodName = ('getenv', 'getProperty')]

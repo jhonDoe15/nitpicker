@@ -61,14 +61,19 @@ function writeAuxClasspath({
   return file;
 }
 
+const SPRING_DATA_JAR = /(^|[\\/])spring-data-(commons|jpa)-[^\\/]*\.jar$/u;
+
 function pmdRulesets(
   context: Pick<
     PmdOptions,
-    'module' | 'reportDir' | 'configs' | 'spring' | 'springRules' | 'reactor'
+    'module' | 'reportDir' | 'configs' | 'spring' | 'springRules' | 'reactor' | 'classpaths'
   >,
 ): string {
-  const { module, reportDir } = context;
-  const written = callUntyped(writeRulesets, context);
+  const { module, reportDir, classpaths } = context;
+  const springData =
+    classpaths.mainCompile.length === 0 ||
+    classpaths.mainCompile.some((entry) => SPRING_DATA_JAR.test(entry));
+  const written = callUntyped(writeRulesets, { ...context, springData });
   const layers = fieldOf(written, 'layers');
   const project = fieldOf(layers, 'project');
   return [
@@ -84,19 +89,28 @@ function pmdRulesets(
   ].join(',');
 }
 
+function pmdArguments(files: { report: string; rulesets: string; aux: string; dirs: string[] }) {
+  return [
+    'check',
+    '--no-cache',
+    '--no-progress',
+    '--format',
+    'sarif',
+    '--report-file',
+    files.report,
+    '--rulesets',
+    files.rulesets,
+    '--aux-classpath',
+    `file:${files.aux}`,
+    '--suppress-marker',
+    'NITPICKER-NO-INLINE-SUPPRESSION',
+    '--dir',
+    files.dirs.join(','),
+  ];
+}
+
 export function runPmd(options: PmdOptions): void {
-  const {
-    module,
-    reportDir,
-    tools,
-    classpaths,
-    configs,
-    spring,
-    springRules,
-    reactor,
-    spawn,
-    timeoutMs,
-  } = options;
+  const { module, reportDir, tools, classpaths, spawn, timeoutMs } = options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -105,29 +119,13 @@ export function runPmd(options: PmdOptions): void {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
-  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const rulesets = pmdRulesets({ module, reportDir, configs, spring, springRules, reactor });
+  const aux = writeAuxClasspath({ module, reportDir, classpaths });
+  const rulesets = pmdRulesets(options);
   runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      rulesets,
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
+    args: pmdArguments({ report, rulesets, aux, dirs: linted }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
