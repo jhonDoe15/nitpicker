@@ -44,6 +44,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- Parsed or posted input can hold a key with `null`: `body.get("alt", "")` and `"k" in body` then still give `None`
+  (`null-valued-input-key`). Write `body.get("alt") or ""` for an empty default, or
+  `v if (v := body.get("n")) is not None else 0` where `0` is valid, and test `body.get("k") is not None`.
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.

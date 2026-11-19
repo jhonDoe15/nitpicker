@@ -47,6 +47,21 @@ describe('effect rules report', () => {
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',
     ],
     [
+      'null-valued-input-key',
+      "get|body.get('alt')",
+      "`body.get('alt')` falls back to its default only when the key is missing: a key sent with `null` returns `None`, which then reaches code that expects a value",
+    ],
+    [
+      'null-valued-input-key',
+      "get|usage.get('tokens')|number",
+      "`usage.get('tokens')` falls back to its default only when the key is missing: a key sent with `null` returns `None`, which then reaches code that expects a value, and `or 0` would also replace a real `0`, so test for `None` instead",
+    ],
+    [
+      'null-valued-input-key',
+      "in|'slug' in cleaned_input",
+      "`'slug' in cleaned_input` is also true when the key is present with `null`, and the read after it then gets `None`",
+    ],
+    [
       'remote-call-under-lock',
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
