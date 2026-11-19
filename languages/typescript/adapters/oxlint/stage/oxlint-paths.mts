@@ -2,6 +2,7 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { isRecord as untypedIsRecord } from '../../../../../shared/rules/facts/checks.mjs';
+import { isInsideDirectory } from '../../../../../shared/paths/contained-path.mjs';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 
 type CompilerOptions = TypeScript.CompilerOptions;
@@ -76,11 +77,6 @@ function stagedTypeDefinitions(
   };
 }
 
-function isInside(directory: string, root: string): boolean {
-  const relative = path.relative(root, directory);
-  return relative === '' || !(relative.startsWith('..') || path.isAbsolute(relative));
-}
-
 function resolvedTypeFile(
   name: string,
   directory: string,
@@ -102,7 +98,7 @@ function removedOptions(options: CompilerOptions): string[] {
 
 function stagedRootDirs(rootDirs: readonly string[], projectRoot: string, stage: string): string[] {
   return rootDirs.map((directory) => {
-    const staged = isInside(directory, projectRoot)
+    const staged = isInsideDirectory(projectRoot, directory)
       ? path.join(stage, path.relative(projectRoot, directory))
       : directory;
     return staged.replaceAll('\\', '/');
