@@ -87,6 +87,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slow tests](java-preset/slow-tests.md)
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
+- [Copy-pasted tests](java-preset/copy-pasted-tests.md)
 - [Sums that overflow a maximum value](java-preset/sums-that-overflow-a-maximum-value.md)
 - [Null branches that fall through](java-preset/null-branches-that-fall-through.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)

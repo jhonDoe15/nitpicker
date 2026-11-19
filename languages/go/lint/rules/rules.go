@@ -5,6 +5,7 @@ import (
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/concurrency"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copypasted"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
@@ -32,6 +33,7 @@ func Analyzers() []*analysis.Analyzer {
 		lifecycles.Analyzers(), httpvalues.Analyzers(),
 		[]*analysis.Analyzer{
 			copies.Analyzer,
+			copypasted.Analyzer,
 			optional.Analyzer,
 			nilbranch.Analyzer,
 			overflow.Analyzer,

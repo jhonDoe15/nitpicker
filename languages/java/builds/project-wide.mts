@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { JavaFinding } from '../adapters/typed/java-values.mts';
 import {
   copiedConstantFindings,
+  copyPastedTestFindings,
   couplingFindingsOf,
   featureGraphOf,
   fileLimitFindings,
@@ -263,6 +264,7 @@ export function projectWideReport(
     ...reuse.findings,
     ...roundTripFindings(projectRoot, { projects, kotlin, policy }),
     ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
+    ...copyPastedTestFindings(projectRoot, { projects, kotlin, policy }),
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,

@@ -19,6 +19,7 @@
   "python-rules/conditional-assertion-in-test": ["tests"],
   "python-rules/contract-infrastructure-type": ["maintainability"],
   "python-rules/copied-constant-in-test": ["tests"],
+  "python-rules/copy-pasted-tests": ["tests", "maintainability"],
   "python-rules/credential-shape": ["security"],
   "python-rules/deleted-item-filter-missing": ["bug"],
   "python-rules/dual-write-without-outbox": ["reliability", "persistence"],

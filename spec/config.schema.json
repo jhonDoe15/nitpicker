@@ -2380,6 +2380,7 @@
                             "test-runtime/test-not-run",
                             "pmd/UntestedRoundTrip",
                             "pmd/CopiedConstantInTest",
+                            "pmd/CopyPastedTest",
                             "pmd/MaxValueOverflow",
                             "pmd/NullBranchFallThrough",
                             "kotlin-source/ChildCoroutineOutlivesResource",
