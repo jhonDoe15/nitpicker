@@ -1,7 +1,7 @@
 import type { Finding } from '../static-checks/shared.mts';
 import type { CruiseReport } from './static-checks.mts';
 import type { Layout } from './head-policy.mts';
-import { toEntryPointDiffFindings as untypedToEntryPointDiffFindings } from '../entry-points.mjs';
+import { toEntryPointDiffFindings as untypedToEntryPointDiffFindings } from '../entry-points.mts';
 
 type PublicAlternativeBypass = {
   readonly source: string;

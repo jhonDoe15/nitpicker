@@ -3,7 +3,7 @@ import {
   withFixedLineEndingsOf,
   writeTexts,
   type Bytes,
-} from '../../../../core/fix/typed/fix-views.mts';
+} from '../../../../core/fix/typed/views/fix-views.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 import { applySuggestions } from '../suggestions/apply-suggestions.mts';
 import { suggestionName, type LintMessage } from '../suggestions/typed/suggestion-views.mts';

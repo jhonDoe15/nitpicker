@@ -216,7 +216,7 @@ describe('an exception for a rule only the project adds', () => {
     [{ files: ['**/*.ts'], rules: { 'no-console': 'error' } }],
     exceptions,
     { projectRules: true },
-  );
+  ).map((entry) => ({ ...entry }));
 
   it('lifts the rule once the project config adds it', async () => {
     const { rules } = await layered(

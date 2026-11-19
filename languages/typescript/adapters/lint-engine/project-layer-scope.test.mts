@@ -67,7 +67,7 @@ describe('the ESLint project config of a base snapshot', () => {
     });
     const basePolicy = withHeadCheckoutFacts(resolveHeadPolicy(config), headPolicy);
 
-    expect(basePolicy.tools.eslint).toEqual(headPolicy.tools.eslint);
+    expect(basePolicy.tools?.eslint).toEqual(headPolicy.tools?.eslint);
     expect(
       rulesOf(await lintLayered({ projectRoot: base, liveProjectRoot: head, policy: basePolicy })),
     ).toEqual([...NITPICKER_RULES, 'src/equal.ts eqeqeq', 'src/named.ts house/no-bar'].toSorted());

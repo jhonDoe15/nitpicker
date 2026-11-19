@@ -4,8 +4,8 @@ import { pathToFileURL } from 'node:url';
 import {
   NODE_TEST_OPTIONS_NITPICKER_SETS,
   RUNNER_NAMES,
-} from '../../../preset/test-runner/runners.mjs';
-import { NODE_DEFAULT_PATTERNS } from '../../../preset/test-runner/test-files/test-file-patterns.mjs';
+} from '../../../preset/test-runner/runners.mts';
+import { NODE_DEFAULT_PATTERNS } from '../../../preset/test-runner/test-files/test-file-patterns.mts';
 import { spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
 import type { RunnerCommand, TestOptions, TestRun } from '../typed/runner-types.mts';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';

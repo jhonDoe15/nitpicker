@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type TypeScript from 'typescript';
-import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mts';
 import { typescriptApi } from '../typed/typescript-program.mts';
 import {
   enclosingSymbol,

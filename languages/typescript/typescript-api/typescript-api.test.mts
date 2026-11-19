@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   PACKAGE_ROOT,
   resolveTool as untypedResolveTool,
-} from '../../../core/tooling/tool-resolution.mjs';
+} from '../../../core/tooling/tool-resolution.mts';
 import { parseJson } from '../../../shared/values/readers.mts';
 import { typescriptApi } from '../adapters/typed/typescript-program.mts';
 import {
@@ -25,8 +25,8 @@ import {
   hasJavaScriptApi,
   supportsRedirect,
   withRedirectPreload as untypedWithRedirectPreload,
-} from './api-redirect.mjs';
-import { selectTypeScriptApi } from './api-selection.mjs';
+} from './api-redirect.mts';
+import { selectTypeScriptApi } from './api-selection.mts';
 
 const resolveTool: (name: string) => { readonly root: string; readonly version: string } =
   untypedResolveTool;
@@ -42,18 +42,9 @@ const bundledVersion = resolveTool('typescript-js-api').version;
 
 type Resolved = {
   readonly url: string;
-  readonly format?: string;
+  readonly format?: 'json' | 'commonjs';
   readonly shortCircuit?: true;
 };
-type NextResolve = (specifier: string, context?: object) => Resolved;
-
-const apiResolutionHook: (
-  apiRoot: string,
-) => (
-  specifier: string,
-  context: { readonly parentURL?: string },
-  nextResolve: NextResolve,
-) => Resolved = apiResolution;
 
 function notFound(code: string): Error {
   return Object.assign(new Error(code), { code });
@@ -115,12 +106,12 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
 });
 
 describe('the resolve hook for TypeScript 7 projects', () => {
-  const resolve = apiResolutionHook(bundledRoot);
+  const resolve = apiResolution(bundledRoot);
   function toNative(): Resolved {
     return { url: pathToFileURL(nativeMain).href };
   }
   const dependency = { parentURL: 'file:///project/node_modules/typescript-eslint/dist/index.js' };
-  function redirected(file: string, format = 'commonjs'): Resolved {
+  function redirected(file: string, format: 'json' | 'commonjs' = 'commonjs'): Resolved {
     return {
       url: pathToFileURL(path.join(bundledRoot, file)).href,
       format,

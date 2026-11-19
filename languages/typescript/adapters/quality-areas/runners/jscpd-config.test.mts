@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   resolveHeadPolicy,
   withHeadPolicyFile,

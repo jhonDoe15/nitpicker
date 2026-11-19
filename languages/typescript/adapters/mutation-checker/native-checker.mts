@@ -8,7 +8,7 @@ import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs'
 import { fieldsOf, listOf, objectOf } from '../../../../shared/values/readers.mts';
 import { spawnNodeTool } from '../quality-areas/typed/tooling.mts';
 import type { QualityAreaOptions } from '../quality-areas/typed/area-types.mts';
-import type { StrykerConfig } from '../quality-areas/typed/mutation.mts';
+import type { StrykerConfig } from '../../preset/project-configs/project-config-types.mts';
 import { apiEntry, nativeDiagnostics } from '../typecheck/native-diagnostics.mts';
 import type { NativeOutcome } from '../typecheck/native-api.mts';
 import { strykerPlugins } from './plugin.mts';

@@ -7,7 +7,7 @@ import type { RunnerCommand, TestOptions, TestReport, TestRun } from '../typed/r
 import {
   MOCHA_OPTIONS_NITPICKER_SETS,
   RUNNER_NAMES,
-} from '../../../preset/test-runner/runners.mjs';
+} from '../../../preset/test-runner/runners.mts';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';
 import {
   finishedRun,
@@ -24,8 +24,8 @@ import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 
 const REQUIRE_OPTION = '--require';
 
-export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
 const sourcePath: (file: string) => string = checkoutModulePath;
+export const RESTORE_SINON_PLUGIN = sourcePath(path.join(import.meta.dirname, 'restore-sinon.mjs'));
 const UNIQUE_FILES = sourcePath(path.join(import.meta.dirname, 'mocha-files.config.mjs'));
 
 function mochaReport({

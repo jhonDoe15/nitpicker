@@ -2,7 +2,7 @@ import type TypeScript from 'typescript';
 import {
   REVIEW as untypedReview,
   SAFE as untypedSafe,
-} from '../../../../core/fix/engine/safety.mjs';
+} from '../../../../core/fix/engine/safety.mts';
 
 export type CodeFix = {
   readonly id: string;

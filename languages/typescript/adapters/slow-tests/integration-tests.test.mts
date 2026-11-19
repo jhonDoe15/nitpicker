@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout } from '../../preset/layout.mjs';
+import { defaultResolvedLayout } from '../../preset/layout.mts';
 import { isIntegrationTest } from './integration-tests.mts';
 
 describe('integration tests by path', () => {

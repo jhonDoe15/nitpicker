@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mts';
 import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
+import type { PackageAnalyzer } from '../../typescript/preset/diff/typed/analyzer-types.mts';
 import type { Layout as ProjectLayout } from '../../typescript/adapters/typed/head-policy.mts';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import {
-  applyLayout as untypedApplyLayout,
-  applyThresholds as untypedApplyThresholds,
-  configuredAnalyzers as untypedConfiguredAnalyzers,
-  javascriptAnalyzers as untypedJavascriptAnalyzers,
-} from '../../typescript/preset/diff/configured-analyzers.mjs';
+  applyLayout,
+  applyThresholds,
+  configuredAnalyzers,
+  javascriptAnalyzers,
+} from '../../typescript/preset/diff/configured-analyzers.mts';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../../typescript/preset/head-policy.mjs';
+} from '../../typescript/preset/head-policy.mts';
 import {
   type ResolvedHeadPolicy,
   resolveHeadPolicy,
@@ -21,9 +22,9 @@ import {
 import {
   resolveLayout as untypedResolveLayout,
   resolveLayoutFor as untypedResolveLayoutFor,
-} from '../../typescript/preset/layout.mjs';
-import { createQualityChecks as untypedCreateQualityChecks } from '../../typescript/preset/quality-checks.mjs';
-import { isJavascriptPolicy } from './javascript-preset.mjs';
+} from '../../typescript/preset/layout.mts';
+import { createQualityChecks as untypedCreateQualityChecks } from '../../typescript/preset/quality-checks.mts';
+import { isJavascriptPolicy } from './javascript-preset.mts';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
@@ -51,24 +52,10 @@ type QualityChecks = {
   };
 };
 
-const applyLayout: (analyzers: Analyzer[], policy: ResolvedHeadPolicy) => Analyzer[] =
-  untypedApplyLayout;
-const applyThresholds: (
-  analyzers: Analyzer[],
-  thresholds: { readonly crapLimit?: number },
-  policy: ResolvedHeadPolicy,
-) => Analyzer[] = untypedApplyThresholds;
-const configuredAnalyzers: () => Analyzer[] = untypedConfiguredAnalyzers;
-const javascriptAnalyzers: () => Analyzer[] = untypedJavascriptAnalyzers;
-const readHeadPolicy: (environment: Readonly<Record<string, string>>) => {
-  readonly preset?: string;
-} = untypedReadHeadPolicy;
+const readHeadPolicy = untypedReadHeadPolicy;
 const readLayout: (environment: Readonly<Record<string, string>>) => Layout = untypedReadLayout;
-const resolveLayout: (
-  config?: object,
-  roots?: string[],
-  options?: { javascript: boolean },
-) => Layout = untypedResolveLayout;
+const resolveLayout: (config?: object, roots?: string[], options?: { javascript: true }) => Layout =
+  untypedResolveLayout;
 const resolveLayoutFor: (policy?: ResolvedHeadPolicy) => Layout = untypedResolveLayoutFor;
 const createQualityChecks: QualityChecks['create'] = untypedCreateQualityChecks;
 
@@ -288,7 +275,7 @@ describe('javascript prettier patterns', () => {
 describe('javascript analyzers with a customized policy', () => {
   const customized = resolveHeadPolicy({ preset: 'javascript', layout: { sourceRoots: ['lib'] } });
 
-  function invocation(analyzers: Analyzer[], name: string) {
+  function invocation(analyzers: readonly Analyzer[], name: string) {
     return analyzers
       .filter(hasInvocation)
       .find((analyzer) => analyzer.name === name)
@@ -317,7 +304,13 @@ describe('javascript analyzers with a customized policy', () => {
   });
 
   it('rebuild the shared analyzers of either preset and replace nothing else', () => {
-    const custom: Analyzer = { name: 'custom', createInvocation() {} };
+    const custom: PackageAnalyzer = {
+      name: 'custom',
+      cacheKeyFiles: [],
+      createInvocation() {
+        return { args: [] };
+      },
+    };
     expect(applyLayout([custom], customized)).toEqual([custom]);
     const rebuiltTypescript = applyLayout(packageAnalyzers, customized);
     expect(analyzerNames(rebuiltTypescript)).toEqual(analyzerNames(packageAnalyzers));

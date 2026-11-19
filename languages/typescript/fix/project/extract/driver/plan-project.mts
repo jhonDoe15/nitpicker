@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
 import type TypeScript from 'typescript';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
 import type {
@@ -21,6 +23,7 @@ import {
 import { collected, nearDuplicateMatches, outcomeOf } from '../typed/typed-views.mts';
 
 const require = createRequire(import.meta.url);
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 type ReuseModules = {
   readonly units: {
@@ -42,8 +45,19 @@ function isPathsModule(value: unknown): value is ReuseModules['paths'] {
 }
 
 function reuseModules(): ReuseModules {
-  const loadedUnits: unknown = require('../../../../preset/structure/reuse/near-duplicates/units.mjs');
-  const loadedPaths: unknown = require('../../../../preset/structure/reuse/reuse-paths.mjs');
+  const loadedUnits: unknown = require(
+    checkoutModulePath(
+      path.join(
+        import.meta.dirname,
+        '../../../../preset/structure/reuse/near-duplicates/units.mjs',
+      ),
+    ),
+  );
+  const loadedPaths: unknown = require(
+    checkoutModulePath(
+      path.join(import.meta.dirname, '../../../../preset/structure/reuse/reuse-paths.mjs'),
+    ),
+  );
   if (!(isUnitsModule(loadedUnits) && isPathsModule(loadedPaths))) {
     throw new TypeError('The reuse modules do not load');
   }

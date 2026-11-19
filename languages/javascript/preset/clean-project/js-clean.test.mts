@@ -1,7 +1,6 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
@@ -11,6 +10,7 @@ import {
   readReport,
   runNitpicker,
   runSnapshot as snapshotRun,
+  useCleanProjects,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mts';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/js-clean');
@@ -170,29 +170,10 @@ export const counter = legacyCounter;
 };
 
 describe('the js-clean fixture project', () => {
-  const temporaryRoots: string[] = [];
-  let gitTemplateRoot: string;
-
-  beforeAll(() => {
-    gitTemplateRoot = createGitTemplate();
-  });
-
-  afterEach(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  const projects = useCleanProjects(process.env);
 
   function createProject(files: Record<string, string> = {}) {
-    const root = createCleanProject({
-      fixtureRoot,
-      gitTemplateRoot,
-      name: 'js-clean',
-      files,
-      environment: process.env,
-    });
-    temporaryRoots.push(root);
-    return root;
+    return projects.createProject({ fixtureRoot, name: 'js-clean', files });
   }
 
   function runSnapshot(root: string, extraArguments: string[] = []) {
@@ -378,7 +359,7 @@ it('fails on purpose', () => {
     beforeAll(() => {
       sharedRoot = createCleanProject({
         fixtureRoot,
-        gitTemplateRoot,
+        gitTemplateRoot: projects.gitTemplate(),
         name: 'js-clean',
         environment: process.env,
       });

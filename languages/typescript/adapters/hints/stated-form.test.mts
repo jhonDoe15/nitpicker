@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout } from '../../preset/layout.mjs';
+import { defaultResolvedLayout } from '../../preset/layout.mts';
 import { strictPresetConfig } from '../../preset/eslint-config/strict.mts';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';

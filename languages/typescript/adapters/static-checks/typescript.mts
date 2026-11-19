@@ -11,11 +11,11 @@ import {
   readLayout,
   typecheckEngine,
 } from '../typed/head-policy.mts';
-import { policyTestRunner } from '../../preset/test-runner/policy-runner.mjs';
+import { policyTestRunner } from '../../preset/test-runner/policy-runner.mts';
 import {
   isUntypedRunnerGlobal,
   missingRunnerTypes,
-} from '../../preset/test-runner/vocabulary/runner-types.mjs';
+} from '../../preset/test-runner/vocabulary/runner-types.mts';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
@@ -42,7 +42,7 @@ type DiagnosticFilter = {
   readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded' | 'isTestFile'>;
   readonly contextOnly: ReadonlySet<string>;
   readonly projectRoot: string;
-  readonly runner: unknown;
+  readonly runner: string;
   readonly untyped: boolean;
 };
 
@@ -53,7 +53,7 @@ function diagnosticFilter(
 ): DiagnosticFilter {
   const layout = readLayout();
   const contextOnly = contextOnlyFiles(targetPath, projectRoot, { layout, ts });
-  const runner: unknown = policyTestRunner(readHeadPolicy(), projectRoot);
+  const runner = policyTestRunner(readHeadPolicy(), projectRoot);
   const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
   return { layout, contextOnly, projectRoot, runner, untyped };
 }

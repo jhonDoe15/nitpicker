@@ -1,17 +1,17 @@
 import path from 'node:path';
 import type * as Prettier from 'prettier';
-import { textsOf } from '../../../../shared/values/readers.mts';
+import { fieldsOf, textsOf } from '../../../../shared/values/readers.mts';
 import {
   followedPrettierOptions as untypedFollowedPrettierOptions,
   prettierConventionOptions as untypedPrettierConventionOptions,
-} from '../../conventions/prettier-conventions.mjs';
+} from '../../conventions/prettier-conventions.mts';
 import {
   dataConventionOptions,
   dataFileKind,
 } from '../../conventions/measures/data-conventions.mts';
-import { readHeadPolicy as untypedReadHeadPolicy } from '../../preset/head-policy.mjs';
+import { readHeadPolicy } from '../../preset/head-policy.mts';
 
-type Conventions = Readonly<Record<string, string>>;
+type Conventions = Readonly<Record<string, unknown>>;
 type LayerSettings = {
   readonly precedence: unknown;
   readonly policyOptions: object;
@@ -31,7 +31,6 @@ const followedPrettierOptions: (conventions: Conventions) => Prettier.Options =
   untypedFollowedPrettierOptions;
 const prettierConventionOptions: (conventions: Conventions) => Prettier.Options =
   untypedPrettierConventionOptions;
-const readHeadPolicy: () => { readonly conventions: Conventions } = untypedReadHeadPolicy;
 
 const CODE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
@@ -81,7 +80,7 @@ function conventionOptions(
   relativePath: string,
   { followed }: { readonly followed: boolean },
 ): Prettier.Options {
-  const { conventions } = readHeadPolicy();
+  const conventions = fieldsOf(readHeadPolicy().conventions);
   if (CODE_FILE.test(relativePath)) {
     return followed ? followedPrettierOptions(conventions) : prettierConventionOptions(conventions);
   }

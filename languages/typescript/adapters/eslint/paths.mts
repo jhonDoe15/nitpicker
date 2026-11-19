@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { lstatIfExists } from '../../../../core/tooling/policy-links.mjs';
+import { lstatIfExists } from '../../../../core/tooling/policy-links.mts';
 import { realpathSync } from 'node:fs';
 import { normalizedRelativePath as snapshotRelativePath } from '../static-checks/arguments.mts';
 

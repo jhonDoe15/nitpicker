@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
@@ -11,6 +11,7 @@ import {
 import { runDeadCode } from '../runners/repository.mts';
 import { testOptions } from '../../test-runners/typed/test-options.mts';
 import type { Finding } from '../../static-checks/shared.mts';
+import type { HeadPolicyFile } from '../../../preset/typed/head-policy-types.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 
 const roots: string[] = [];
@@ -51,7 +52,7 @@ function createProject(
   return root;
 }
 
-function deadCode(root: string, policy: object): Finding[] {
+function deadCode(root: string, policy: HeadPolicyFile): Finding[] {
   return withHeadPolicyFile(policy, (policyFile) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
     return runDeadCode(
@@ -73,7 +74,7 @@ function reported(findings: readonly Finding[]): string[] {
     .toSorted();
 }
 
-function knipConfig(precedence: string[], preset?: string): object {
+function knipConfig(precedence: string[], preset?: string): Readonly<Record<string, unknown>> {
   return { ...(preset === undefined ? {} : { preset }), tools: { knip: { precedence } } };
 }
 

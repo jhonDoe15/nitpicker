@@ -7,15 +7,8 @@ import { usePresetConfig } from '../../../typescript/preset/test-support/preset-
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import { lintFixture } from '../../../typescript/preset/eslint-config/typed/lint-fixture.mts';
 import { reactSyntaxConfigFor } from '../../../typescript/preset/eslint-config/react/react-scope.mts';
-import { isReactProject } from '../../../typescript/preset/eslint-config/scope-support.mjs';
-import { resolveLayout as untypedResolveLayout } from '../../../typescript/preset/layout.mjs';
-import type { ResolvedLayout } from '../../../typescript/preset/eslint-config/typed/config-types.mts';
-
-const resolveLayout: (
-  layout: object,
-  exclude: string[],
-  options: { javascript: boolean },
-) => ResolvedLayout = untypedResolveLayout;
+import { isReactProject } from '../../../typescript/preset/eslint-config/scope-support.mts';
+import { resolveLayout } from '../../../typescript/preset/layout.mts';
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/react-project');
 const layout = resolveLayout({}, [], { javascript: true });
 const { linterConfigFor } = usePresetConfig('javascript-react');

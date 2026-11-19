@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
-import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mjs';
+import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';

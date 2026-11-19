@@ -1,4 +1,5 @@
 import type { Finding } from '../../static-checks/shared.mts';
+import type { Ratchet } from '../../../../../core/diff/comparison/model/finding-types.mts';
 import type { EslintOptions } from '../arguments.mts';
 import {
   testEnvironmentNotices as untypedTestEnvironmentNotices,
@@ -8,7 +9,7 @@ import {
 export type EslintFinding = Finding & {
   allowedForm?: string;
   anchor?: { readonly key: string };
-  ratchet?: Readonly<Record<string, unknown>>;
+  ratchet?: Ratchet;
 };
 
 export type TestEnvironments = {
