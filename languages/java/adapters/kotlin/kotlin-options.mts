@@ -17,6 +17,7 @@ import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
 import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-trips.mjs';
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mjs';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mjs';
+import { NULL_FALL_THROUGH_EXCEPTION_RULE } from '../review-rules/null-fall-through/null-fall-through.mjs';
 import {
   fieldOf,
   fieldsOf,
@@ -51,6 +52,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     ROUND_TRIP_EXCEPTION_RULE,
     COPIED_CONSTANT_EXCEPTION_RULE,
     MAX_VALUE_EXCEPTION_RULE,
+    NULL_FALL_THROUGH_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

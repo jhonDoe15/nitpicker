@@ -2,6 +2,11 @@ import type TypeScript from 'typescript';
 import { parentOf, ts, withoutParentheses } from '../typed/typescript-views.mts';
 import { isHelperName } from '../queries/soft-delete/columns.mts';
 import { assignsFlag, flagOf, mentionsFlag, type Flag } from './flags.mts';
+import {
+  expressionIncludesDeleted,
+  parameterSlot,
+  type ParameterSlot,
+} from './including-deleted.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Callback = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
@@ -17,6 +22,8 @@ export type Iteration = {
   readonly flag: Flag;
   readonly guarded: boolean;
   readonly type: string;
+  readonly includesDeleted: boolean;
+  readonly slot: ParameterSlot | undefined;
 };
 
 const CALLBACK_METHODS = new Set([
@@ -116,6 +123,8 @@ function describe({ checker, element, parts, elementNames }: Subject): Iteration
     flag,
     guarded,
     type: checker.typeToString(checker.getNonNullableType(type)),
+    includesDeleted: expressionIncludesDeleted(checker, parts.receiver),
+    slot: parameterSlot(checker, parts.receiver),
   };
 }
 
