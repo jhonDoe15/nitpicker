@@ -163,6 +163,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A method that wraps a same-named method returns its result: `return this.delegate.update(x)`, not a bare
+  `this.delegate.update(x)` (`nitpicker/no-dropped-delegate-result`).
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
   (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
   with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
