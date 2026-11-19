@@ -57,6 +57,16 @@ describe('effect rules report', () => {
       '`self.stage_ok()` returns a `Response`, the type this function returns, but the call stands as a statement: its result is dropped and the function goes on or ends without it',
     ],
     [
+      'unformatted-message-placeholder',
+      '{url.path}',
+      '`{url.path}` is typed inside a plain string that nothing formats, so the message keeps the braces and loses the value it was meant to show',
+    ],
+    [
+      'exception-format-arguments',
+      'ValueError|percent',
+      '`ValueError` is built like a logger call: it stores the message and the extra arguments as a tuple and never formats them, so the text keeps its placeholder and the traceback prints the tuple',
+    ],
+    [
       'cache-write-in-transaction',
       'cache.set()|transaction.atomic()',
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',
