@@ -2719,7 +2719,7 @@ runs only when `--fix --rule` names one of its rules.
 | java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks) | `java-source-safe`, `java-source-review` | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files |
 | kotlin | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst` (private properties; the others are `review`), `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags |
 | kotlin | `catch-log-without-exception`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget` | `kotlin-catch-log-without-exception` and its siblings | passes the exception to the logger, deletes commented-out code, drops the marker or focus, writes `@field:` |
-| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (needs Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
+| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (the `first()` forms only when the build files declare Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
 | python | `python-rules/catch-log-without-exception` | `python-exc-info` | adds `exc_info=True` to a standard-library `logging` call in an `except` handler (safe) |
 | python | `python-rules/falsy-default` | `python-falsy-default` | rewrites `x or d` to `x if x is not None else d` and `x if x else d` to `x if x is not None else d` (review) |
 | python | `python-rules/frozen-dataclass` | `python-frozen-dataclass` | adds `frozen=True` to a `@dataclass` with no bases, no subclass and no assigned field (review) |
@@ -3076,9 +3076,10 @@ compile, and they never run in the gate. Each check edits one file, so none rena
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`, `effects/EntityLoadedForExistence`, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`, `pmd/ReusableObjectPerCall`, `spotbugs/IIL_PREPARE_STATEMENT_IN_LOOP`, `pmd/UseEnumCollections`, `pmd/SortForExtreme`, `pmd/PlainTextRegex`, `pmd/DoNotCallGarbageCollectionExplicitly`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
-under the nearest rule. A fix that rewrites a whole statement, such as a loop whose saves are
-collected into one `saveAll`, is applied whole or not at all, also when only one of its lines
-changed. Which rules have a check, and why the others do not, is in
+under the nearest rule. Each fix reports the lines it edits, so a fix that edits several places,
+such as a loop whose saves are collected into one `saveAll` or a field added far from the call that
+uses it, is applied whole or not at all, also when only one of its lines changed. A fix nested in
+the statement of another fix stays a fix of its own. Which rules have a check, and why the others do not, is in
 `skills/nitpicker-java/SOURCES.md`.
 
 ## Java preset
