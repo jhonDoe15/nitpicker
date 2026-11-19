@@ -164,6 +164,9 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: (subject) => `The value \`${subject}\` goes into an HTML string without escaping`,
     allowed:
       'Escape it first (`html.escape(value)`, `markupsafe.escape(value)`) or build the page with a template engine that escapes, so a `<`, `&` or quote in the value cannot break the markup.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['swapped-arguments'],
     describe: swappedDescription,
     allowed:
