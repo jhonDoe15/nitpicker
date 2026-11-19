@@ -123,10 +123,8 @@ function isPathValue(node: TSESTree.Node, walk: Walk): boolean {
     if (outcome === true) {
       return true;
     }
-    if (outcome !== false) {
-      for (const next of outcome) {
-        pending.push(next);
-      }
+    for (const next of outcome === false ? [] : outcome) {
+      pending.push(next);
     }
   }
   return false;

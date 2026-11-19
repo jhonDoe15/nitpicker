@@ -99,13 +99,12 @@ export function storeCalls(
     receiver: plainText(lookup.receiver, scope.sourceCode),
     key: plainText(lookup.key, scope.sourceCode),
   };
+  const candidates = region.flatMap((root) => [...depthFirst<TSESTree.Node>(root, syntaxChildren)]);
   const stores: TSESTree.CallExpression[] = [];
-  for (const root of region) {
-    for (const candidate of depthFirst<TSESTree.Node>(root, syntaxChildren)) {
-      const call = methodCall(candidate, 'set');
-      if (call !== undefined && call === candidate && isStoreOf(scope, call, target)) {
-        stores.push(call);
-      }
+  for (const candidate of candidates) {
+    const call = methodCall(candidate, 'set');
+    if (call !== undefined && call === candidate && isStoreOf(scope, call, target)) {
+      stores.push(call);
     }
   }
   return stores;

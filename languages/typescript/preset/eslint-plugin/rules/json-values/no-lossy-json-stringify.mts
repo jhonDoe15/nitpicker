@@ -51,7 +51,11 @@ export const rule: TSESLint.RuleModule<
     return {
       CallExpression(node: TSESTree.CallExpression) {
         const [value] = node.arguments;
-        if (!isJsonCall(node.callee, 'stringify') || value === undefined || hasReplacer(node.arguments)) {
+        if (
+          !isJsonCall(node.callee, 'stringify') ||
+          value === undefined ||
+          hasReplacer(node.arguments)
+        ) {
           return;
         }
         if (value.type === AST_NODE_TYPES.SpreadElement) {

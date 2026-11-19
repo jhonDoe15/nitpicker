@@ -103,11 +103,12 @@ function isRiskyText(context: Context, node: TSESTree.Node, header = ''): boolea
   for (const item of pending) {
     const plain = unwrapped(item);
     const kind = valueKind(context, plain);
-    if (kind !== 'number' && kind !== 'literals') {
-      appendAll(pending, riskyOperands(plain));
-      if (isRiskyLeaf(plain, header)) {
-        return true;
-      }
+    if (kind === 'number' || kind === 'literals') {
+      continue;
+    }
+    appendAll(pending, riskyOperands(plain));
+    if (isRiskyLeaf(plain, header)) {
+      return true;
     }
   }
   return false;

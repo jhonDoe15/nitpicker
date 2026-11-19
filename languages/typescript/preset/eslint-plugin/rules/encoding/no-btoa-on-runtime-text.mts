@@ -103,13 +103,13 @@ function isByteText(context: Context, node: TSESTree.Node): boolean {
     if (isDirectByteText(context, current.node)) {
       return true;
     }
-    if (current.node.type === AST_NODE_TYPES.Identifier && current.depth < MAX_WRITE_DEPTH) {
-      if (isByteName(current.node.name)) {
-        return true;
-      }
-      for (const value of writtenValues(context, current.node)) {
-        pending.push({ node: value, depth: current.depth + 1 });
-      }
+    const identifier = current.node.type === AST_NODE_TYPES.Identifier ? current.node : undefined;
+    const expands = identifier !== undefined && current.depth < MAX_WRITE_DEPTH;
+    if (expands && isByteName(identifier.name)) {
+      return true;
+    }
+    for (const value of expands ? writtenValues(context, identifier) : []) {
+      pending.push({ node: value, depth: current.depth + 1 });
     }
   }
   return false;
