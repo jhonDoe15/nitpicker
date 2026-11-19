@@ -82,7 +82,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - The rules nitpicker adds are not ESLint rules, but the same `exceptions` key accepts them:
   `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `function-lines-limit`,
   `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`,
-  `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+  `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
   `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `result-slip`, `exported-name-collision`,
@@ -96,6 +96,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
+- `class-methods-limit` (20), `class-fields-limit` (10) and `inheritance-depth-limit` (3) hold a class in the
+  production sources to the same limits as the Java, Kotlin and Python presets, and the JavaScript preset runs
+  them too. A class declaration or class expression counts; an object literal or a module does not. Methods
+  include accessors and static methods but not the constructor, and an overload counts once. Fields are the
+  instance fields: class fields and constructor parameter properties, not static ones. The depth is the length of
+  the `extends` chain through the project's classes; a base class outside the project (a library class or a mixin
+  call) ends the chain and counts one level, as in Java. `thresholds.classMethods`, `classFields` and
+  `inheritanceDepth` change the limits, a class already over a limit on the base fails only when it grows, and
+  the rules take exceptions like the file limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
   `near-duplicate`, `duplicate-branch`, `result-slip`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the

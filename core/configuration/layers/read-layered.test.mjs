@@ -129,14 +129,14 @@ describe('a project config that extends a shared one', () => {
 
   it('judges a shared setting against the preset the project sets', () => {
     const root = repository({
-      'base.json': '{"thresholds":{"classMethods":9}}',
+      'base.json': '{"thresholds":{"inheritanceDepth":2}}',
       'web/nitpicker.config.json': '{"extends":"../base.json","preset":"java"}',
-      'api/nitpicker.config.json': '{"extends":"../base.json"}',
+      'api/nitpicker.config.json': '{"extends":"../base.json","preset":"go"}',
     });
 
-    expect(load(root).thresholds).toEqual({ classMethods: 9 });
+    expect(load(root).thresholds).toEqual({ inheritanceDepth: 2 });
     expect(() => load(root, 'api')).toThrow(
-      'base.json: "thresholds.classMethods" is only supported with "preset"',
+      'base.json: "thresholds.inheritanceDepth" is not supported with "preset": "go"',
     );
   });
 
