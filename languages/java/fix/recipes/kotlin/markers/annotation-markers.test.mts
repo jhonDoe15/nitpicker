@@ -54,4 +54,17 @@ describe('annotation marker recipes', () => {
       [jvmSyntheticRecipe, mutationIgnoreRecipe, generatedMarkerRecipe].map((r) => r.safety),
     ).toEqual(['review', 'review', 'safe']);
   });
+  it.each([
+    'class A(@get:GeneratedValue val id: Long)\n',
+    'class A {\n    @get:GeneratedValue\n    val id: Long = 0\n}\n',
+    '@GeneratedCode\nclass A\n',
+    '@get:DatabaseGenerated\nclass A\n',
+  ])('only removes the annotation named Generated (%s)', (text) => {
+    expect(applyRecipe(generatedMarkerRecipe, text)).toBe(text);
+  });
+  it('removes a qualified Generated annotation', () => {
+    expect(
+      applyRecipe(generatedMarkerRecipe, '@javax.annotation.processing.Generated\nclass A\n'),
+    ).toBe('class A\n');
+  });
 });

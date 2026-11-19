@@ -101,8 +101,8 @@ export const STRUCTURE_NOTES = {
     'Write the file as `.ts` or `.tsx`.',
   ],
   'committed-env-file': [
-    'A committed `.env` file (templates such as `.env.example` are fine).',
-    'An env file holds real secrets and values that differ per machine.',
+    'A committed `.env` file with secret-looking values (templates, secret-manager references and placeholders are fine).',
+    'An env file with real secrets leaks them to everyone with repository access.',
     'Remove the file from version control, ignore it, and commit a `.env.example` template.',
   ],
   'committed-private-key': [
@@ -202,7 +202,7 @@ export const STRUCTURE_NOTES = {
   ],
   'field-limit-mismatch': [
     'A bounded string column (`VARCHAR(n)` in a schema or migration, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM `size:n`) whose field is bound from a request with no validation bound at or below `n`; a validation bound or pattern (`@Size`, `@Pattern`, `@Digits`, zod, class-validator, pydantic, Go `validate` tags) that admits more than the column holds; or an OpenAPI or JSON Schema `maxLength`, `minLength` or `maximum` that differs from the validation of the same field. A generated DTO counts the spec as its validation.',
-    'Input that passes validation then fails at the database as a 500 instead of a 400, or the published contract accepts values the server rejects. Fields are matched by entity or table name and field name; a column wider than its validation is never reported.',
+    'Input that passes validation then fails at the database as a 500 instead of a 400, or the published contract accepts values the server rejects. Fields are matched by entity or table name and field name; enum fields and columns with no source declaration are skipped; a column wider than its validation is never reported.',
     'Give the field a validation bound equal to the column width (`@Size(max = 30)`, `.max(30)`, `Field(max_length=30)`, `validate:"max=30"`) and make the spec state the same bounds; only fields whose limits changed are reported on a change.',
   ],
   'foreign-state-decision': [

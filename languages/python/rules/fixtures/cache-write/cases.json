@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "cache-write-in-transaction",
+    "mention": "transaction.on_commit",
+    "subject": "cache.set()|transaction.atomic()"
+  }
+]

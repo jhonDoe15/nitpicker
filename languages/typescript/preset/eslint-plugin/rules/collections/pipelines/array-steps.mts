@@ -1,4 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { findBooleanFix } from '../../../fixes/collections/find-boolean-fix.mts';
+import { mapFlatFix } from '../../../fixes/collections/map-flat-fix.mts';
+import { lengthCheckFix } from '../../../fixes/collections/length-check-fix.mts';
+import { fixable } from '../../../fixes/support/descriptors.mts';
+import type { Context } from '../../security/security-values.mts';
 import { isNode, type SourceCode } from '../../typed/node-views.mts';
 import {
   calledMember,
@@ -40,11 +45,14 @@ function methodCall(node: TSESTree.Node, name: string): MethodCall | undefined {
     : undefined;
 }
 
-function isNothing(node: TSESTree.Node): boolean {
+function isNothing(node: TSESTree.Node, operator: string): boolean {
   const value = unwrapped(node);
   return (
     (value.type === AST_NODE_TYPES.Identifier && value.name === 'undefined') ||
-    (value.type === AST_NODE_TYPES.Literal && value.value === null && value.raw === 'null')
+    (value.type === AST_NODE_TYPES.Literal &&
+      value.value === null &&
+      value.raw === 'null' &&
+      operator.length === 2)
   );
 }
 
@@ -89,7 +97,7 @@ function isBooleanUse(outer: TSESTree.Node): boolean {
     return parent.operator === '!';
   }
   if (parent.type === AST_NODE_TYPES.BinaryExpression && EQUALITY.has(parent.operator)) {
-    return isNothing(parent.left === outer ? parent.right : parent.left);
+    return isNothing(parent.left === outer ? parent.right : parent.left, parent.operator);
   }
   return (
     parent.type === AST_NODE_TYPES.CallExpression &&
@@ -117,24 +125,27 @@ function isInlineCallback(node: TSESTree.Node | undefined): boolean {
 }
 
 export function findAsBoolean(
+  context: Context,
   call: TSESTree.CallExpression,
 ): TSESLint.ReportDescriptor<'findAsBoolean'> | undefined {
   const found = methodCall(call, 'find');
   const [test] = found?.call.arguments ?? [];
   const takesCallback = found?.call.arguments.length === 1 && isInlineCallback(test);
   return found !== undefined && takesCallback && isBooleanUse(outerOf(call))
-    ? { node: call, messageId: 'findAsBoolean' }
+    ? fixable({ node: call, messageId: 'findAsBoolean' }, findBooleanFix(context, found))
     : undefined;
 }
 
 export function mapFlat(
+  context: Context,
   call: TSESTree.CallExpression,
 ): TSESLint.ReportDescriptor<'mapFlat'> | undefined {
   const flat = methodCall(call, 'flat');
   const depth = flat?.call.arguments ?? [];
   const once = depth.length === 0 || (depth.length === 1 && numberValue(depth[0]) === 1);
-  return flat !== undefined && once && methodCall(flat.receiver, 'map') !== undefined
-    ? { node: call, messageId: 'mapFlat' }
+  const map = flat === undefined ? undefined : methodCall(flat.receiver, 'map');
+  return flat !== undefined && once && map !== undefined
+    ? fixable({ node: call, messageId: 'mapFlat' }, mapFlatFix(context, call, map.call))
     : undefined;
 }
 
@@ -190,12 +201,13 @@ function lengthRead(node: TSESTree.Node): TSESTree.MemberExpression | undefined 
 }
 
 export function lengthCheck(
-  sourceCode: SourceCode,
+  context: Context,
   logical: TSESTree.LogicalExpression,
 ): TSESLint.ReportDescriptor<'lengthCheck'> | undefined {
   if (logical.operator === '??') {
     return undefined;
   }
+  const { sourceCode } = context;
   const length = lengthTest(sourceCode, logical.left);
   const method = logical.operator === '&&' ? 'some' : 'every';
   const tests = logical.operator === '&&' ? NON_EMPTY : EMPTY;
@@ -207,10 +219,13 @@ export function lengthCheck(
     !hasCall(called.receiver) &&
     sourceCode.getText(called.receiver) === length.receiver;
   return same
-    ? {
-        node: logical.left,
-        messageId: 'lengthCheck',
-        data: { method, answer: String(method === 'every') },
-      }
+    ? fixable(
+        {
+          node: logical.left,
+          messageId: 'lengthCheck',
+          data: { method, answer: String(method === 'every') },
+        },
+        lengthCheckFix(context, logical, called.receiver),
+      )
     : undefined;
 }

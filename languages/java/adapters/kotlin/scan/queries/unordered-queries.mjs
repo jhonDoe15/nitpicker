@@ -21,14 +21,28 @@ const COUNT_OR_CONSTANT =
 const CRITERIA = /\bcreateQuery\s*\(\s*[\w.]+::class(?:\.java)?\s*\)/u;
 const PAGE_REQUEST =
   /(?<![\w$])(?:PageRequest\s*\.\s*of|(?:PageRequest|Pageable)\s*\.\s*ofSize)\s*\(/g;
+const DECLARED = /^\s*va[lr]\s+([A-Za-z_]\w*)\s*(?::[^=\n]+)?=/u;
 const HELD = /(?<![\w$])va[lr]\s+([A-Za-z_]\w*)\s*(?::\s*\w+\s*)?=\s*$/u;
 const FIND_ALL = /findAll\s*$/u;
 const RECEIVER = /([A-Za-z_]\w*)\s*$/u;
 const CONTINUED = /^\s*\./u;
+const QUERY_SETTERS = String.raw`(?:\s*\??\.\s*set\w*\s*\((?:[^()]|\([^()]*\))*\))*`;
+const RESULT_LIST = String.raw`^${QUERY_SETTERS}\s*\??\.\s*(?:getResultList\s*\(\s*\)|resultList)`;
+const LIST_PROBE = String.raw`(?:isEmpty|isNotEmpty|size|count|any|none)\b`;
+const STREAM_TEST = String.raw`(?:count\s*\(|anyMatch\s*[({]|noneMatch\s*[({]|findAny\s*\(\s*\)\s*\.\s*isPresent\b)`;
+const STREAM_PROBE = String.raw`stream\s*\(\s*\)\s*\.\s*${STREAM_TEST}`;
+const PROBE_CHAIN = new RegExp(
+  String.raw`${RESULT_LIST}\s*\??\.\s*(?:${LIST_PROBE}|${STREAM_PROBE})`,
+  'u',
+);
+const HELD_LIST = new RegExp(String.raw`${RESULT_LIST}\s*$`, 'u');
+const CHAIN = String.raw`(?:\.\s*\w+\s*\((?:[^()]|\([^()]*\))*\)\s*)`;
+const PROBE_USE = /^\s*\??\.\s*(?:isEmpty|isNotEmpty|size)\b/u;
+const PROBE_LIMIT = /^[12]$/u;
 
 export const QUERY_ORDER_MESSAGES = {
   [UNORDERED_RULE]:
-    'Order on a unique key, or add a tie-breaker after a non-unique key: `order by a.createdAt desc, a.id` in the query text, `criteria.orderBy(...)`, `PageRequest.of(page, size, Sort.by("createdAt", "id"))`, or `json_agg(t.name order by t.name)`. This query takes a page of rows (`setMaxResults`, `setFirstResult`, an unsorted `PageRequest` passed to `findAll`, or SQL `LIMIT`, `OFFSET` or `FETCH`) or builds an `array_agg`/`json_agg` list with no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. `setMaxResults(1)` or `LIMIT 1` is fine when the query selects only a constant or a count. An exception fits only a query whose rows come back in one order anyway, or a nested list that is a set whose callers never depend on its order.',
+    'Order on a unique key, or add a tie-breaker after a non-unique key: `order by a.createdAt desc, a.id` in the query text, `criteria.orderBy(...)`, `PageRequest.of(page, size, Sort.by("createdAt", "id"))`, or `json_agg(t.name order by t.name)`. This query takes a page of rows (`setMaxResults`, `setFirstResult`, an unsorted `PageRequest` passed to `findAll`, or SQL `LIMIT`, `OFFSET` or `FETCH`) or builds an `array_agg`/`json_agg` list with no ORDER BY, so which rows come back, and in which order, is up to the database and can change between runs. `setMaxResults(1)` or `LIMIT 1` is fine when the query selects only a constant or a count. `setMaxResults(1)` or `(2)` is fine when the result is only tested with `isEmpty()` or `size()`. An exception fits only a query whose rows come back in one order anyway, or a nested list that is a set whose callers never depend on its order.',
 };
 
 function textGaps(scanned) {
@@ -45,7 +59,31 @@ function isSingleRow(scanned, name, open) {
   return {
     single: name === 'setMaxResults' && value === '1',
     first: name === 'setFirstResult' && value === '0',
+    value,
   };
+}
+
+function isProbe(scanned, { match, scope, value }) {
+  if (match[1] !== 'setMaxResults' || !PROBE_LIMIT.test(value)) {
+    return false;
+  }
+  const { code } = scanned;
+  const open = match.index + match[0].length - 1;
+  const rest = code.slice(splitArguments(code, open).close + 1, statementEnd(code, open));
+  if (PROBE_CHAIN.test(rest)) {
+    return true;
+  }
+  const held = DECLARED.exec(code.slice(statementStart(code, match.index), match.index))?.[1];
+  if (held === undefined || !HELD_LIST.test(rest)) {
+    return false;
+  }
+  const uses = [
+    ...scope.text.matchAll(new RegExp(String.raw`(?<![\w$.])${escapeRegExp(held)}(?![\w$])`, 'gu')),
+  ].slice(1);
+  return (
+    uses.length > 0 &&
+    uses.every((use) => PROBE_USE.test(scope.text.slice(use.index + use[0].length)))
+  );
 }
 
 function statementStart(code, offset) {
@@ -103,8 +141,8 @@ function unorderedPage(scanned, match) {
   const open = match.index + match[0].length - 1;
   const scope = functionAround(scanned.code, match.index);
   const createOpen = createdQuery(scanned.code, match, scope);
-  const { single, first } = isSingleRow(scanned, match[1], open);
-  if (createOpen === undefined || first) {
+  const { single, first, value } = isSingleRow(scanned, match[1], open);
+  if (createOpen === undefined || first || isProbe(scanned, { match, scope, value })) {
     return false;
   }
   const text = argumentText(scanned, createOpen, scope);
@@ -114,7 +152,8 @@ function unorderedPage(scanned, match) {
   const name = argumentName(scanned, createOpen);
   const criteria = name !== undefined && CRITERIA.test(declarationOf(scanned, name, scope) ?? '');
   return (
-    criteria && !new RegExp(String.raw`(?<![\w$])${name}\s*\.\s*orderBy\s*\(`, 'u').test(scope.text)
+    criteria &&
+    !new RegExp(String.raw`(?<![\w$])${name}\s*${CHAIN}*\.\s*orderBy\s*\(`, 'u').test(scope.text)
   );
 }
 

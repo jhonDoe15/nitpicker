@@ -67,6 +67,12 @@ tester.run('handler-entity-type', rule, {
     ),
     source(`${ENTITIES}export function load(): UserEntity { return new UserEntity(); }`),
     source(
+      `${ENTITIES}${NEST}@Controller('users')\nexport class UsersController { @Get() list(): Promise<Partial<UserView>[]> { return Promise.resolve([]); } }`,
+    ),
+    source(
+      `${ENTITIES}${NEST}@Controller('users')\nexport class UsersController { @Get() list(): Promise<{ email: string }[]> { return Promise.resolve([]); } }`,
+    ),
+    source(
       `${ENTITIES}import { NextResponse } from 'next/server';\nexport async function GET(): Promise<NextResponse<UserView>> { return NextResponse.json(new UserView()); }`,
       { file: 'route.ts' },
     ),

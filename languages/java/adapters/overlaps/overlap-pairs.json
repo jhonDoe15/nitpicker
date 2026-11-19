@@ -739,6 +739,27 @@
     "scope": "field"
   },
   {
+    "primary": ["pmd/SharedStatefulHelperField"],
+    "secondary": ["errorprone/DateFormatConstant"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/SharedStatefulHelperField"],
+    "secondary": [
+      "spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE",
+      "spotbugs/STCAL_STATIC_CALENDAR_INSTANCE"
+    ],
+    "scope": "field"
+  },
+  {
+    "primary": ["pmd/SharedStatefulHelperField"],
+    "secondary": [
+      "pmd/UnsynchronizedStaticFormatter",
+      "spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE"
+    ],
+    "scope": "class"
+  },
+  {
     "primary": ["pmd/NonThreadSafeSingleton"],
     "secondary": [
       "spotbugs/LI_LAZY_INIT_STATIC",

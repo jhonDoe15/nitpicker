@@ -82,7 +82,11 @@ function usedAsKey(scanned, source, position) {
   );
 }
 
-function splitsByHand(scanned, position) {
+function readsFirstPart(scanned, close) {
+  return /^\)\s*(?:\[\s*0\s*\]|\??\.\s*first(?:OrNull)?\s*\(\s*\))/.test(scanned.code.slice(close));
+}
+
+function splitsByHand(scanned, position, header) {
   const { code } = scanned;
   if (!SPLIT_CALL.test(code.slice(position))) {
     return false;
@@ -91,17 +95,19 @@ function splitsByHand(scanned, position) {
   const text = scanned.source.slice(open + 1, close);
   const separator = /^\s*["'](?<body>[^"']*)["']/.exec(text);
   const pattern = /Regex\s*\(\s*"(?<body>[^"]*)"/.exec(text);
-  return (
+  const mediaType =
+    header === 'content-type' && /^\s*"\s*;\s*"\s*$/.test(text) && readsFirstPart(scanned, close);
+  const splitting =
     (separator !== null &&
       SEPARATORS.test(separator.groups.body) &&
       /[,;]/.test(separator.groups.body)) ||
-    (pattern !== null && /[,;]/.test(pattern.groups.body))
-  );
+    (pattern !== null && /[,;]/.test(pattern.groups.body));
+  return splitting && !mediaType;
 }
 
 function useOf(scanned, source) {
   const position = afterKept(scanned.code, source.to);
-  if (splitsByHand(scanned, position)) {
+  if (splitsByHand(scanned, position, source.header)) {
     return isStructuredHeader(source.header) ? 'HandSplitHttpHeader' : undefined;
   }
   const cased = source.kind === 'uri' || isValueHeader(source.header);

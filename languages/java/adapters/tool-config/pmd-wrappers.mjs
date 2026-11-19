@@ -9,9 +9,22 @@ function reference(file) {
   return `  <rule ref="${escapeXml(file)}"/>`;
 }
 
-function mainReferences(file, spring) {
+const SPRING_DATA_RULES = [
+  'SpringDataRowWriteInLoop',
+  'SpringDataNoFlush',
+  'SpringDataNoSaveInLoop',
+  'SpringDataSaveInLoopHelper',
+  'SpringDataNativeQuery',
+];
+
+function springReference(file, springData) {
+  const excluded = springData ? [] : SPRING_DATA_RULES.map((name) => `<exclude name="${name}"/>`);
+  return `  <rule ref="${escapeXml(file)}">${excluded.join('')}</rule>`;
+}
+
+function mainReferences(file, springData) {
   const ref = escapeXml(file);
-  return spring
+  return springData
     ? [
         `  <rule ref="${ref}"><exclude name="IoCallInLoop"/></rule>`,
         `  <rule ref="${ref}/IoCallInLoop"><properties><property name="springData" value="true"/></properties></rule>`,
@@ -40,6 +53,7 @@ export function writeRulesets({
   reportDir,
   configs,
   spring,
+  springData = false,
   springRules,
   reactor = false,
 }) {
@@ -51,10 +65,15 @@ export function writeRulesets({
       name: 'nitpicker-main',
       description: "Nitpicker's main-only rules on main sources only.",
       rules: [
-        ...mainReferences(layers.main ?? MAIN_RULESET, spring),
-        ...(spring ? [springRules ?? path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml')] : []).map(
-          reference,
-        ),
+        ...mainReferences(layers.main ?? MAIN_RULESET, spring && springData),
+        ...(spring
+          ? [
+              springReference(
+                springRules ?? path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'),
+                springData,
+              ),
+            ]
+          : []),
         ...(reactor ? [path.join(GRADLE_DIRECTORY, 'reactor-ruleset.xml')] : []).map(reference),
       ],
       roots: module.testSourceRoots,

@@ -52,7 +52,7 @@ public class SecretsConfig {
 
 class EnvHelper {
   static String region() {
-    return System.getenv("APP_REGION"); // violation: SpringTypedConfiguration
+    return System.getenv("APP_REGION");
   }
 
   static String home() {

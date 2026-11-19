@@ -122,6 +122,7 @@
   "eslint/no-redeclare": ["bug"],
   "eslint/no-regex-spaces": ["style"],
   "eslint/no-restricted-globals": ["style"],
+  "eslint/no-restricted-imports": ["tests"],
   "eslint/no-restricted-properties": ["style"],
   "eslint/no-restricted-syntax": ["style"],
   "eslint/no-self-assign": ["bug"],

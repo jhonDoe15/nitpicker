@@ -1,16 +1,21 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, chainOf, nameOf } from '../../typed/node-views.mts';
-import { vitestImportAliases } from '../vitest-aliases.mts';
+import { ancestorsOf, chainOf } from '../../typed/node-views.mts';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mts';
+import { type TimerChange, fakeTimerChange, waitKind } from '../../runner-apis/runner-doubles.mts';
 
-type Change = {
+type MessageId = 'fakeWait' | 'mockedWait' | 'clockWait';
+type Change = TimerChange & {
   readonly node: TSESTree.CallExpression;
   readonly owner: TSESTree.Node | undefined;
-  readonly fake: boolean;
 };
+type Wait = { readonly node: TSESTree.CallExpression; readonly kind: string };
 
 const TEST_BLOCKS = ['it', 'test', 'describe'];
-const VITEST_NAMES = ['vi', 'vitest'];
-const VITEST_IMPORTS: ReadonlySet<string> = new Set(VITEST_NAMES);
+const TEARDOWN_HOOKS = ['afterEach', 'afterAll', 'after'];
+const WAIT_MESSAGES: Readonly<Record<string, MessageId>> = {
+  node: 'mockedWait',
+  sinon: 'clockWait',
+};
 
 function callName(node: TSESTree.Node | undefined): string | undefined {
   if (node?.type !== AST_NODE_TYPES.CallExpression) {
@@ -53,7 +58,7 @@ function owner(node: TSESTree.Node): TSESTree.Node | undefined {
 function isInTeardown(node: TSESTree.Node): boolean {
   return ancestorsOf(node).some((current) => {
     const name = callName(current);
-    return name !== undefined && ['afterEach', 'afterAll'].includes(name);
+    return name !== undefined && TEARDOWN_HOOKS.includes(name);
   });
 }
 
@@ -76,50 +81,51 @@ function governingChange(
   return undefined;
 }
 
-export const rule: TSESLint.RuleModule<'fakeWait'> = {
+function isFakeWait(wait: Wait, change: Change | undefined): change is Change {
+  if (change?.fake !== true) {
+    return false;
+  }
+  return wait.kind === 'vitest' ? change.kind === 'vitest' : change.kind !== 'vitest';
+}
+
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     schema: [],
     messages: {
       fakeWait:
         'Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.',
+      mockedWait:
+        'Use an explicit completion signal or mock.timers.tick and a direct assertion; waitFor polls on timers that mock.timers has replaced, so it never settles.',
+      clockWait:
+        'Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.',
     },
   },
   create(context) {
-    const aliases = new Set(VITEST_NAMES);
+    const apis = createRunnerApis();
     const changes: Change[] = [];
-    const waits: TSESTree.CallExpression[] = [];
+    const waits: Wait[] = [];
     return {
-      ImportDeclaration(node) {
-        for (const alias of vitestImportAliases(VITEST_IMPORTS, node)) {
-          aliases.add(alias);
-        }
-      },
+      ...runnerApiVisitors(apis),
       CallExpression(node) {
-        const callee = node.callee;
-        if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) {
+        const kind = waitKind(apis, node);
+        if (kind !== undefined) {
+          waits.push({ node, kind });
+        }
+        const change = fakeTimerChange(apis, node);
+        if (change === undefined || isInTeardown(node)) {
           return;
         }
-        const object = nameOf(callee.object);
-        if (object === undefined || !aliases.has(object)) {
-          return;
-        }
-        const method = callee.property.name;
-        if (method === 'waitFor') {
-          waits.push(node);
-        }
-        if (!['useFakeTimers', 'useRealTimers'].includes(method)) {
-          return;
-        }
-        if (isInTeardown(node)) {
-          return;
-        }
-        changes.push({ node, owner: owner(node), fake: method === 'useFakeTimers' });
+        changes.push({ node, owner: owner(node), ...change });
       },
       'Program:exit'() {
         for (const wait of waits) {
-          if (governingChange(changes, wait)?.fake === true) {
-            context.report({ node: wait, messageId: 'fakeWait' });
+          const change = governingChange(changes, wait.node);
+          if (isFakeWait(wait, change)) {
+            context.report({
+              node: wait.node,
+              messageId: WAIT_MESSAGES[change.kind] ?? 'fakeWait',
+            });
           }
         }
       },

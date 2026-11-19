@@ -1,3 +1,4 @@
+import { verifyRunnerFixtureDependencies } from './runner-fixture-dependencies.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -66,6 +67,7 @@ export function createCleanProject({
   readonly files?: Readonly<Record<string, string>>;
 }): string {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-`));
+  verifyRunnerFixtureDependencies(fixtureRoot);
   cpSync(fixtureRoot, root, { recursive: true });
   writeFileSync(path.join(root, '.gitignore'), 'node_modules/\nreports/\n');
   symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
@@ -180,4 +182,11 @@ export function viewFindings(report: unknown): FindingView[] {
     exception: fieldOf(finding, 'exception'),
     exceptionList: fieldOf(finding, 'exceptionList'),
   }));
+}
+
+export function metricValue(findings: unknown, tool: string, identity: string): unknown {
+  const found = listOf(findings).find(
+    (finding) => fieldOf(finding, 'tool') === tool && fieldOf(finding, 'identity') === identity,
+  );
+  return fieldOf(fieldOf(found, 'metric'), 'value');
 }

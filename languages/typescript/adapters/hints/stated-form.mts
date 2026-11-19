@@ -1,3 +1,5 @@
+import type { HintedFields } from './eslint-routes.mts';
+
 const IMPERATIVE_VERBS = [
   'add',
   'assert',
@@ -141,4 +143,12 @@ export function withStatedForm(
       ? statedAllowedForm(fields.message)
       : undefined;
   return stated === undefined ? fields : { ...fields, allowedForm: stated };
+}
+
+export function hinted(text: string, hint: string): HintedFields {
+  return { message: `${text}${hint}`, allowedForm: hint.replace(/^[.\s]+/u, '') };
+}
+
+export function directive(message: string): HintedFields {
+  return { message, allowedForm: message };
 }

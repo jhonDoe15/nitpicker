@@ -12,8 +12,7 @@ const RELEASE_MESSAGES = [
   {
     rule: 'OptionalGet',
     release: 10,
-    message:
-      'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent().',
+    message: 'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get().',
   },
 ];
 

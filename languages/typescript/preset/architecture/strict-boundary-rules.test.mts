@@ -2,15 +2,30 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mjs';
 import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mjs';
-import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
-import { cruiseStrict, outputText } from './test-support/strict-cruise.mts';
+import {
+  cruiseStrict,
+  cruiseWithConfig,
+  type FixtureConfig,
+  outputText,
+} from './test-support/strict-cruise.mts';
+import untypedStrictConfig from './fixtures/dependency-cruiser.strict.fixture.config.mjs';
 import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath as untypedSharedReachPath,
   strictBoundaryRules as untypedStrictBoundaryRules,
   strictBoundaryRulesFor as untypedStrictBoundaryRulesFor,
 } from './strict-boundary-rules.mjs';
+import {
+  testFilePathPatterns as untypedTestFilePathPatterns,
+  testFilePaths as untypedTestFilePaths,
+} from './strict-layout.mjs';
+import { resolveLayout } from '../layout.mjs';
+import {
+  defaultTestFiles as untypedDefaultTestFiles,
+  testFilePatterns as untypedTestFilePatterns,
+} from '../test-runner/test-files/test-file-patterns.mjs';
 
 type StrictRule = {
   readonly name: string;
@@ -33,6 +48,14 @@ const sharedReachPath: (violation: unknown, modules: unknown) => string[] | unde
 const cruiserConfig: { readonly forbidden: readonly { readonly name: string }[] } =
   untypedCruiserConfig;
 const DEPENDENCY_RULES: readonly string[] = untypedDependencyRules;
+const strictConfig: FixtureConfig = untypedStrictConfig;
+const testFilePaths: readonly string[] = untypedTestFilePaths;
+const testFilePathPatterns: (layout: unknown, projectRoot: string) => unknown =
+  untypedTestFilePathPatterns;
+const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
+function testFilePatterns(options: { includeRegexes: string[] }): unknown {
+  return Reflect.apply(untypedTestFilePatterns, undefined, [options]);
+}
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
 
@@ -103,13 +126,13 @@ describe('strict boundary rules', () => {
         ({ name }) => name === 'domain-does-not-import-node-io',
       );
 
-    expect(rule([])?.from.pathNot).toBeUndefined();
+    expect(rule([])?.from.pathNot).toEqual(testFilePaths);
     expect(
       rule([
         { rule: 'domain-does-not-import-node-io', paths: ['src/legacy/**'], reason: 'old' },
         { rule: 'other-rule', paths: ['src/other/**'], reason: 'unrelated' },
       ])?.from.pathNot,
-    ).toEqual(['^(?:src/legacy/.*)$']);
+    ).toEqual([...testFilePaths, '^(?:src/legacy/.*)$']);
   });
 
   it('defines every strict rule the fixtures exercise', () => {
@@ -200,6 +223,79 @@ describe('the shared module a domain file reaches I/O through', () => {
       'src/main/features/calc/domain/user.ts',
     ]);
     expect(paths.map(([, via]) => via)).toEqual([undefined, undefined, undefined]);
+  });
+});
+
+describe('the test files of each runner in domain/', () => {
+  const fixture = path.join(fixturesRoot, 'domain-runner-tests');
+  const domain = 'src/main/features/auth/domain';
+  const BASE_PATTERNS = [
+    '^(?:test|tests|__tests__|e2e)/',
+    '(?:^|/)(?:src)/.*/__tests__/',
+    '(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
+  ];
+
+  function patternsFor(testFiles: unknown): string[] {
+    const layout: unknown = resolveLayout({}, [], { testFiles });
+    const patterns: unknown = testFilePathPatterns(layout, fixture);
+    return textsOf(patterns);
+  }
+
+  function cruiseWith(patterns: readonly string[]) {
+    const forbidden = strictConfig.forbidden.map((rule) =>
+      rule.name?.startsWith('domain-') === true
+        ? { ...rule, from: { ...rule.from, pathNot: [...patterns] } }
+        : rule,
+    );
+    return cruiseWithConfig(
+      { ...strictConfig, forbidden },
+      { baseDir: fixture, paths: ['src'], outputType: 'json' },
+    );
+  }
+
+  it('names the colocated node:test files by path', () => {
+    expect(patternsFor(defaultTestFiles('node'))).toEqual([
+      ...BASE_PATTERNS,
+      '(?:^|/)src/main/features/auth/domain/login-test\\.ts$',
+      '(?:^|/)src/main/features/auth/domain/test/login\\.ts$',
+    ]);
+  });
+
+  it('names the files a Jest test regex matches by path', () => {
+    const testFiles = testFilePatterns({ includeRegexes: ['-test\\.ts$'] });
+
+    expect(patternsFor(testFiles)).toEqual([
+      ...BASE_PATTERNS,
+      '(?:^|/)src/main/features/auth/domain/login-test\\.ts$',
+    ]);
+  });
+
+  it.each(['vitest', 'mocha'])('keeps only the shared test paths for %s', (runner: string) => {
+    expect(patternsFor(defaultTestFiles(runner))).toEqual(BASE_PATTERNS);
+  });
+
+  async function violationsWith(patterns: readonly string[]): Promise<string[][]> {
+    const report = parseJson(outputText(await cruiseWith(patterns)));
+    return listOf(fieldOf(fieldOf(report, 'summary'), 'violations'))
+      .map((violation) => [
+        textOf(fieldOf(violation, 'from')),
+        textOf(fieldOf(violation, 'to')),
+        textOf(fieldOf(fieldOf(violation, 'rule'), 'name')),
+      ])
+      .toSorted((left, right) => left.join(',').localeCompare(right.join(',')));
+  }
+
+  it('leaves the node:test files out of the domain rules', async () => {
+    expect(await violationsWith(patternsFor(defaultTestFiles('node')))).toEqual([]);
+  });
+
+  it('holds the same files to the domain rules when the runner does not run them', async () => {
+    expect(await violationsWith(patternsFor(defaultTestFiles('vitest')))).toEqual([
+      [`${domain}/login-test.ts`, 'fs', 'domain-does-not-import-node-io'],
+      [`${domain}/login-test.ts`, 'fs', REACH_THROUGH_SHARED_RULE],
+      [`${domain}/login-test.ts`, 'node:test', 'domain-does-not-import-node-io'],
+      [`${domain}/test/login.ts`, 'node:test', 'domain-does-not-import-node-io'],
+    ]);
   });
 });
 

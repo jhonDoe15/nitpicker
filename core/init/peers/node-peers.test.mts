@@ -180,29 +180,29 @@ describe('Node peer needs', () => {
 
   it('asks again for an installed peer older than nitpicker supports, naming the supported range', () => {
     const root = project({
-      'package.json': '{"devDependencies":{"vitest":"^3.2.0","@vitest/coverage-v8":"^3.2.0"}}',
+      'package.json': '{"devDependencies":{"vitest":"^3.1.0","@vitest/coverage-v8":"^3.1.0"}}',
       ...installed('typescript', '6.0.3'),
-      ...installed('vitest', '3.2.4'),
-      ...installed('@vitest/coverage-v8', '3.2.4'),
+      ...installed('vitest', '3.1.4'),
+      ...installed('@vitest/coverage-v8', '3.1.4'),
     });
 
     expect(nodePeerNeeds(root, NAMES)).toEqual({
-      add: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
+      add: ['vitest@^3.2.0', '@vitest/coverage-v8@^3.2.0'],
       uninstalled: [],
       absent: [],
       outdated: [
-        { name: 'vitest', installed: '3.2.4', range: '^4.1.11 || ^5.0.0' },
-        { name: '@vitest/coverage-v8', installed: '3.2.4', range: '^4.1.11 || ^5.0.0' },
+        { name: 'vitest', installed: '3.1.4', range: '^3.2.0 || ^4.1.11 || ^5.0.0' },
+        { name: '@vitest/coverage-v8', installed: '3.1.4', range: '^3.2.0 || ^4.1.11 || ^5.0.0' },
       ],
       blockers: [],
     });
   });
 
   it.each([
-    ['a declared range that admits a supported version', '^4', []],
-    ['a declared range below the supported one', '~4.0.5', ['vitest@^4.1.11']],
+    ['a declared range that admits a supported version', '^3.2', []],
+    ['a declared range below the supported one', '~3.1.5', ['vitest@^3.2.0']],
     ['a workspace protocol range', 'workspace:^1.2.3', []],
-    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest@^4.1.11']],
+    ['an npm alias below the supported range', 'npm:vitest@^3.1.0', ['vitest@^3.2.0']],
   ])('judges %s by its major and minor version', (_name, range, add) => {
     const root = project({
       'package.json': JSON.stringify({ devDependencies: { vitest: range } }),
@@ -274,7 +274,7 @@ describe('the Vite ranges of the Vitest majors', () => {
   });
 
   it('keep a constant row for the other majors', () => {
-    expect(Object.keys(vitestPeers()).map(Number)).toEqual([4, 5]);
+    expect(Object.keys(vitestPeers()).map(Number)).toEqual([3, 4, 5]);
   });
 });
 

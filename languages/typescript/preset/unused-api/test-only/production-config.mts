@@ -4,7 +4,13 @@ import { fieldsOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { type ProductionLayout, globMatcher, toPosix } from './typed/layout-views.mts';
 import type { KnipConfig } from './typed/knip-types.mts';
 
-const TEST_RUNNER_CONFIG = /^vitest/u;
+const TEST_RUNNER_CONFIG = /^(?:vitest|jest|\.mocharc)/u;
+const TEST_RUNNER_CONFIG_GLOBS = [
+  '**/jest*.config.*',
+  '**/vitest*.config.*',
+  '**/vitest.workspace.*',
+  '**/.mocharc.*',
+];
 const TEST_RUNNER_PLUGINS = [
   'ava',
   'cucumber',
@@ -19,6 +25,8 @@ const TEST_RUNNER_PLUGINS = [
   'vitest',
   'webdriver-io',
 ];
+
+const NODE_PRODUCTION_ENTRIES = ['server.js'];
 
 function isProductionEntry(pattern: string, layout: ProductionLayout): boolean {
   const underTestRoot = layout.testRoots.some((root) => pattern.startsWith(`${root}/`));
@@ -61,7 +69,7 @@ export function layoutKnipProductionConfig(
   config: KnipConfig,
   layout: ProductionLayout,
 ): KnipConfig {
-  const tests = testAndStoryGlobs(layout);
+  const tests = [...testAndStoryGlobs(layout), ...TEST_RUNNER_CONFIG_GLOBS];
   const workspaces = Object.entries(fieldsOf(config['workspaces'])).map(([name, workspace]) => [
     name,
     productionWorkspace(workspace, { layout, tests }),
@@ -69,7 +77,11 @@ export function layoutKnipProductionConfig(
   return {
     ...config,
     ...Object.fromEntries(TEST_RUNNER_PLUGINS.map((plugin) => [plugin, false])),
-    entry: textsOf(config['entry']).filter((pattern) => isProductionEntry(pattern, layout)),
+    node: false,
+    entry: [
+      ...textsOf(config['entry']).filter((pattern) => isProductionEntry(pattern, layout)),
+      ...NODE_PRODUCTION_ENTRIES,
+    ],
     project: [...textsOf(config['project']), ...tests.map((glob) => `!${glob}`)],
     ...(workspaces.length === 0 ? {} : { workspaces: Object.fromEntries(workspaces) }),
   };
