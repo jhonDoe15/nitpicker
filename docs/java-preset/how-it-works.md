@@ -139,3 +139,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   on the single-module fixture (median of 4) and 23.0 s against 28.7 s on the three-module fixture
   (median of 3). With an injected process runner (tests) the tools run one after another in the
   calling process.
+
+## Large Gradle builds
+
+- **Projects without sources.** `nitpickerPmd` is skipped, with an empty `pmd.sarif`, in a project
+  that has no main or test source folder, such as the root or an aggregate parent of a
+  multi-project build. PMD reads an empty `--dir` as its working folder, the project folder, so it
+  used to scan the sources of every subproject again: on a 436-subproject build that was about 68%
+  of all PMD time.

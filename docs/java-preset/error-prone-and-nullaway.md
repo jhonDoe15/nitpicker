@@ -320,8 +320,7 @@ Part of the [Java preset guide](../java-preset.md).
   own compiled classes on its class path, as the Lombok split already does, and keeps its own
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
   pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
-  the number of cores. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
-  with the same 8027 diagnostics.
+  the number of cores.
 - **`Immutable` only when it can match.** The check walks every supertype of every class, which
   takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
   types annotated with `com.google.errorprone.annotations.Immutable` and their subtypes, so the

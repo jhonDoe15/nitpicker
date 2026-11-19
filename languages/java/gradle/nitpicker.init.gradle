@@ -696,6 +696,14 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
+            onlyIf {
+                if (!lintedSources().isEmpty()) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('pmd.sarif').asFile.text = '{"version":"2.1.0","runs":[]}'
+                false
+            }
             // languages/java/adapters/tool-config writes a layered copy of nitpicker's ruleset when the
             // project lists its own ruleset or the tests use assertion helpers of their own, and the
             // project's ruleset without the rules nitpicker already has.
