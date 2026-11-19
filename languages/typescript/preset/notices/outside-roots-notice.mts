@@ -20,7 +20,9 @@ const EXCLUDED_FOLDER = new RegExp(EXCLUDED_PATH_PATTERN);
 
 export function outsideRootsNotices(changedFiles: Iterable<string>, headPolicy: unknown): string[] {
   const layout = resolveLayoutFor(objectOf(headPolicy) ?? {});
-  const roots = [...layout.sourceRoots, ...layout.testRoots].map((root) => `${root}/`);
+  const roots = [...layout.sourceRoots, ...layout.testRoots].map((root) =>
+    root === '.' ? '' : `${root}/`,
+  );
   const outside = [...changedFiles]
     .map((file) => file.replaceAll('\\', '/'))
     .filter(

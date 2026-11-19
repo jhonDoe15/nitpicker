@@ -56,6 +56,11 @@ export const directory = {
   allOf: [...projectPath.allOf, never(GLOB_CHARACTER.source), never(EMPTY_DIRECTORY)],
 };
 
+export const sourceDirectory = {
+  ...projectPath,
+  allOf: [...projectPath.allOf, never(GLOB_CHARACTER.source)],
+};
+
 const globProblemChecks = GLOB_PROBLEMS.flatMap(({ pattern }) =>
   pattern === undefined ? [] : [never(pattern.source)],
 );

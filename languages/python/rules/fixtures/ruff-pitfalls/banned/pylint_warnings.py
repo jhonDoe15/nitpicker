@@ -93,3 +93,12 @@ def same(value):
 
 def either(kind):
     return kind == "a" or kind == "b"
+
+
+def read_context(context_file):
+    with Path(context_file).open() as handle:
+        return handle.read()
+
+
+def write_note(name):
+    Path(name).write_text("note")

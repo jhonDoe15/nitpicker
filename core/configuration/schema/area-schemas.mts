@@ -42,6 +42,7 @@ import {
   enumeration,
   nonEmptyString,
   projectPath,
+  sourceDirectory,
   ref,
   stringArray,
   type JsonSchema,
@@ -83,7 +84,7 @@ const LAYOUT_DESCRIPTIONS: TextTable = {
 };
 
 const LAYOUT_SCHEMAS: SchemaTable = {
-  sourceRoots: { type: 'array', minItems: 1, items: directory },
+  sourceRoots: { type: 'array', minItems: 1, items: sourceDirectory },
   testRoots: { type: 'array', minItems: 1, items: directory },
   excludedGlobs: { type: 'array', items: nonEmptyString },
   entryPoints: { type: 'array', items: nonEmptyString },

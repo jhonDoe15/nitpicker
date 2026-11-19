@@ -1,6 +1,7 @@
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { rootPattern } from '../layout/source-root/root-paths.mjs';
 import { layoutFeatures, testFilePaths } from './strict-layout.mjs';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';
 import {
@@ -11,7 +12,7 @@ import {
 } from './domain-packages.mjs';
 
 const layout = readLayout();
-const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
+const sourceRoot = rootPattern(layout.sourceRoots);
 
 export function publicIndexFor({ javascript }) {
   return javascript
@@ -73,7 +74,7 @@ const baseBoundaryRules = [
     name: 'feature-internals-only-through-index',
     severity: 'error',
     comment: `Import a feature only through its ${publicIndex}, not its internal files.`,
-    from: { path: `(?:^|/)${sourceRoot}/`, pathNot: `${featureRoot}/` },
+    from: { path: `(?:^|/)${sourceRoot}`, pathNot: `${featureRoot}/` },
     to: { path: `${featureRoot}/[^/]+/(?!index${codeFile})` },
   },
   {

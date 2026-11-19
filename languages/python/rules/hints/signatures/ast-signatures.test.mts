@@ -46,6 +46,11 @@ describe('signature rule messages', () => {
       '`OldOrder` is an alias that keeps the old name of `Order` working',
     ],
     ['compatibility-shim', 'odd', '`odd` keeps an old name working'],
+    [
+      'swapped-arguments',
+      'docs|proc|pipe|docs',
+      '`docs` is passed as `proc` and `pipe` as `docs`; did you swap them?',
+    ],
   ])('describe %s for %s', (rule, subject, description) => {
     expect(describeRuleFinding(rule, subject)).toBe(description);
   });
@@ -55,6 +60,7 @@ describe('signature rule messages', () => {
     ['falsy-default', 'is not None'],
     ['parameter-mutation', 'Build and return a new value'],
     ['compatibility-shim', 'delete the old name'],
+    ['swapped-arguments', 'order of the parameters'],
   ])('name the allowed form of %s and end with the exception route', (rule, form) => {
     const { message } = withHint({
       tool: RULES_TOOL,

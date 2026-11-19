@@ -45,6 +45,7 @@
   "ruff/PLW0603": ["maintainability"],
   "ruff/PLW0604": ["simplification"],
   "ruff/PLW1510": ["reliability"],
+  "ruff/PLW1514": ["bug"],
   "ruff/PLW2901": ["maintainability"],
   "ruff/PLW3301": ["simplification"],
   "ruff/RUF005": ["simplification"],

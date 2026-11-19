@@ -225,6 +225,21 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-dropped-delegate-result`: a method or function whose last statement calls a same-named
+  method on another receiver and drops the result (`this.constructor.update(...)`, `this.delegate.update(...)`,
+  `super.update(...)`, `Model.update(...)`, or `.call` and `.apply` of those), so callers get `undefined` instead of the
+  query, promise or value. The enclosing name comes from a method, a named function expression, `X.prototype.update = function () {}`,
+  an object method or a class property function; the statements before the call may only declare variables or build
+  arguments. A bare `update()` and `this.update()` are recursion, not delegation, and are not reported. With types the
+  call is not reported when the delegate returns `void`, `undefined`, `never` or `Promise<void>`; without types
+  (plain JavaScript) it is. With types, a delegate declared in the default library or in a declaration file (`Array.push`,
+  `Map.set`, `Set.add`, emitter, stream and socket `on`, `once`, `off`, `emit`, `write`, `end`, `close`) and a callee whose type
+  is unresolved or `unknown` are not reported. Without types the names `push`, `pop`, `shift`, `unshift`, `splice`, `set`,
+  `add`, `delete`, `clear`, `on`, `once`, `off`, `emit`, `addListener`, `removeListener`, `write`, `end`, `close` and
+  `destroy` are not reported. A `super.x` or `this.constructor.x` delegate is always checked. An awaited call dropped in an async function is
+  reported the same way. Allowed forms: `return this.delegate.update(...)`, a declared `void` return type,
+  constructors, accessors, generators, and hooks whose callers ignore the result (`componentDidMount`, `componentDidUpdate`,
+  `componentWillUnmount`, `ngOnInit`, `ngOnDestroy`, `ngOnChanges`, `onX` and `handleX`).
 - `nitpicker/no-dropped-log-arguments` (needs pino, bunyan or winston in `package.json`): a log call
   (`trace` to `fatal`) whose message is a string or a template without expressions and whose values
   are lost or left unfilled. pino and bunyan read the message as the first argument, or the second
@@ -247,6 +262,22 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
   winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
   `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
+- `nitpicker/no-swapped-arguments` (needs the type checker; the JavaScript preset runs it on the same
+  program, so a callee it cannot resolve is skipped): a call that passes a plain name (or `this.name`) equal
+  to another parameter of the resolved callee, ignoring leading underscores and case, while that
+  parameter's own slot gets a different name (`pipe_(pipe, docs, kwargs)` for `pipe_(docs, proc, kwargs)`:
+  "`docs` is passed as `proc` and `pipe` as `docs`; did you swap them?"). The callee is resolved with the
+  checker (functions, methods, constructors and the overload that matches), and only when its declaration is
+  in the project, not in `node_modules`, a `.d.ts` or the standard library. One report per call. Not
+  reported: arguments that are not plain names, a spread argument and
+  everything after it, a rest or destructured parameter and the ones after it, parameters not given,
+  single-letter names (`swap(a, b)`), names that differ only by a number or a letter suffix
+  (`x1`/`x2`, `start_a`/`start_b`) and the pairs `left`/`right` and `lhs`/`rhs`
+  stay quiet; `max` passed into `min` is reported, once per swapped pair. A pair is reported when the two
+  arguments are exchanged (`clamp(value, max, min)`), or when a name moved to a later slot and the argument in
+  its own slot is not named like any parameter (`pipe_(pipe, docs, kwargs)`); a name that moved to an earlier
+  slot and a recursive call (`walk(child, node)`) are not reported, and neither is a JSDoc function type. The allowed form is the arguments in the order of the parameters. The same
+  form runs as `swapped-arguments` (Python) and Error Prone `ArgumentSelectionDefectChecker` (Java).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
@@ -1292,6 +1323,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   outside any function is not scored. A function that must stay complex gets an exception for the
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
+- `nitpicker/report-module-load-effects` does not report a member definition: an assignment to a
+  member of a function, class or fresh object declared at the top of the same file
+  (`Foo.prototype.bar = function ...`, `Foo.prototype = { ... }`, `Foo.create = function ...`,
+  `app.init = function ...` after `var app = module.exports = {}`), and `Object.assign`,
+  `Object.defineProperty` or `Object.defineProperties` on such a member, when every value is a
+  function, a class, a literal, a member of such a binding, or an object literal of those. A
+  definition on an imported or global object (`Array.prototype.last = ...`) patches shared state
+  and is still reported, and so is a value that calls something.
 - `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
   initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
   timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`
