@@ -103,8 +103,12 @@ function hasTestBody(file: KotlinFile, klass: ClassFact): boolean {
   );
 }
 
-function usesPort(annotation: AnnotationEntry): boolean {
-  const environment = annotation.arguments.find(({ name }) => name === 'webEnvironment');
+function usesPort(
+  annotation: Omit<AnnotationEntry, 'arguments'> & {
+    arguments?: AnnotationEntry['arguments'] | undefined;
+  },
+): boolean {
+  const environment = annotation.arguments?.find(({ name }) => name === 'webEnvironment');
   return RANDOM_PORT.test(environment?.text ?? '');
 }
 

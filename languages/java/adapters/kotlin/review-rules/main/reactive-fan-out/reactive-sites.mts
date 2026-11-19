@@ -46,6 +46,12 @@ export type ReactiveSite = {
 
 type SiteBase = Omit<ReactiveSite, 'line' | 'scope'>;
 
+function argumentsOf(invocation: {
+  arguments?: InvocationFact['arguments'] | undefined;
+}): InvocationFact['arguments'] {
+  return invocation.arguments ?? [];
+}
+
 function compact(text: string | undefined): string {
   return (text ?? '').replaceAll(/\s+/gu, '');
 }
@@ -58,7 +64,7 @@ function onSameLine(invocation: InvocationFact): (candidate: InvocationFact) => 
 }
 
 function takesLambda(invocation: InvocationFact): boolean {
-  return invocation.arguments.some(({ lambda, text }) => lambda || text.trim().startsWith('{'));
+  return argumentsOf(invocation).some(({ lambda, text }) => lambda || text.trim().startsWith('{'));
 }
 
 function lambdaOf(view: SpringView, invocation: InvocationFact): ScopeFact | undefined {
@@ -80,7 +86,7 @@ export function workerOf(view: SpringView, invocation: InvocationFact): Worker |
   if (scope !== undefined) {
     return { scope };
   }
-  const argument = invocation.arguments.find(({ lambda }) => !lambda);
+  const argument = argumentsOf(invocation).find(({ lambda }) => !lambda);
   const name = REFERENCE.exec((argument?.text ?? '').trim())?.[1];
   const reference =
     name === undefined
@@ -108,7 +114,7 @@ function fixedCollection(view: SpringView, scopeId: number | undefined, text: st
 
 function isSource(view: SpringView, candidate: InvocationFact): boolean {
   if (SOURCES.has(candidate.name)) {
-    return FLUX.test(candidate.receiver ?? '') && candidate.arguments.length === 1;
+    return FLUX.test(candidate.receiver ?? '') && argumentsOf(candidate).length === 1;
   }
   if (!EXTENSIONS.has(candidate.name) || candidate.receiver === undefined) {
     return false;
@@ -150,7 +156,7 @@ function grouped(view: SpringView, source: InvocationFact, invocation: Invocatio
 }
 
 function operatorSite(view: SpringView, invocation: InvocationFact): SiteBase | undefined {
-  if (!OPERATORS.has(invocation.name) || invocation.arguments.length !== 1) {
+  if (!OPERATORS.has(invocation.name) || argumentsOf(invocation).length !== 1) {
     return undefined;
   }
   const source = sourceOf(view, invocation);
@@ -167,7 +173,7 @@ function operatorSite(view: SpringView, invocation: InvocationFact): SiteBase | 
 function flowSite(invocation: InvocationFact): SiteBase | undefined {
   const unlimited =
     invocation.name === 'flatMapMerge' &&
-    invocation.arguments.some(({ lambda, text }) => !lambda && UNLIMITED.test(text));
+    argumentsOf(invocation).some(({ lambda, text }) => !lambda && UNLIMITED.test(text));
   return unlimited
     ? {
         form: 'flow',
@@ -213,8 +219,8 @@ function combinatorSite(view: SpringView, invocation: InvocationFact): SiteBase 
   const type = PUBLISHER.exec(invocation.receiver ?? '')?.[1];
   const known =
     ALL_AT_ONCE.has(invocation.name) ||
-    (UP_TO_LIMIT.has(invocation.name) && invocation.arguments.length === 1);
-  const [first] = invocation.arguments;
+    (UP_TO_LIMIT.has(invocation.name) && argumentsOf(invocation).length === 1);
+  const [first] = argumentsOf(invocation);
   if (type === undefined || !known || first === undefined || first.lambda) {
     return undefined;
   }

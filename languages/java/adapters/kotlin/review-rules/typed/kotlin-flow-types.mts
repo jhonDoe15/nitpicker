@@ -126,6 +126,6 @@ export type LoadFact = {
   text: string;
   call?: true;
   receiver: ChainSegment[];
-  arguments: { text: string }[];
+  arguments?: { text: string }[];
   context: LoadContext;
 };
