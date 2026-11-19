@@ -337,6 +337,11 @@ reaches about 125,000 items. With the type checker arrays, typed arrays, sets, m
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
 
+Discarded new values: `discarded-new-value` (script, Python) reports a statement that calls a method of a string, bytes,
+tuple, set, datetime, `Path` or Django queryset receiver that returns a new value and changes nothing (`query.filter(...)`,
+`expires.replace(...)`), and a truth test of the always-true tuple of `QuerySet.delete()` or `get_or_create()`. The allowed
+form assigns or returns the result.
+
 Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
 source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
 an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,

@@ -42,6 +42,16 @@ describe('effect rules report', () => {
       '`requests.post()` makes a remote call while `transaction.atomic()` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
     ],
     [
+      'discarded-new-value',
+      'str.strip()',
+      '`str.strip()` returns a new value and leaves the receiver unchanged, so as a statement it does nothing and the code goes on with the old value',
+    ],
+    [
+      'discarded-new-value',
+      'QuerySet.delete()|truth',
+      '`QuerySet.delete()` returns a tuple, which is always true: testing it never tells whether a row was deleted or created',
+    ],
+    [
       'cache-write-in-transaction',
       'cache.set()|transaction.atomic()',
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',

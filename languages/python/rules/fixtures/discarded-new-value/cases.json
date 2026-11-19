@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "discarded-new-value",
+    "mention": "Assign or return the result",
+    "subject": "datetime.replace()"
+  }
+]
