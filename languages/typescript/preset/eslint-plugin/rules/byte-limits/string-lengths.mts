@@ -53,8 +53,10 @@ export function hasByteName(node: TSESTree.Node): boolean {
 function annotatedAsString(context: Context, identifier: TSESTree.Identifier): boolean {
   const definition = findVariable(context, identifier, identifier.name)?.defs.at(0);
   const name = definition?.name;
-  if (name?.type === AST_NODE_TYPES.Identifier && name.typeAnnotation !== undefined) {
-    return name.typeAnnotation.typeAnnotation.type === AST_NODE_TYPES.TSStringKeyword;
+  const annotation =
+    name?.type === AST_NODE_TYPES.Identifier ? name.typeAnnotation?.typeAnnotation : undefined;
+  if (annotation !== undefined) {
+    return annotation.type === AST_NODE_TYPES.TSStringKeyword;
   }
   const declarator = definition?.node;
   return (
