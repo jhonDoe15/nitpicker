@@ -68,6 +68,7 @@ are listed at the end.
 | Serializer field lists                          | list the fields the other serializers of the model expose, or name the serializer as a variant (`Brief`, `Nested`)                                                                     | `serializer-fields-omitted` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Sortable table columns                          | `orderable=False`, `order_by=(...)` or an `order_<name>` method for a column that is not a database field: `tables.BooleanColumn(orderable=False)`                                     | `unsortable-table-column` (script)                                                                                                                                                                                                                                                                                                                                                  |
 | Results of new-value methods                    | assign or return the result: `query = query.filter(...)`, `expires = expires.replace(microsecond=0)`; unpack the tuple of `delete()` or `get_or_create()` before testing it            | `discarded-new-value` (script)                                                                                                                                                                                                                                                                                                                                                      |
+| Results returned by a function                  | `return helper(...)`, or assign the result and return it                                                                                                                               | `unreturned-result` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
@@ -1630,6 +1631,19 @@ usage.get("b") or 0` and `options.get("limit") or 10` on a parameter or annotate
   (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
   `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
 - `null-branch-fall-through` reports `if x is None:` (or `x == None:`, `None is x`, `self.field`)
+  with no `else` whose body does something (a call, a write, an append, a log, an assignment of a
+  placeholder to another variable) and does not leave (`return`, `raise`, `break`, `continue`,
+  `sys.exit`, `exit`, `os._exit`, or an assignment to `x`), when later in the same block `x` is read
+  as present: `x.attr`, `x.method()`, `x[i]`, `for item in x`, `len(x)` (also `list`, `tuple`,
+  `set`, `sorted`, `sum`, `iter`, `enumerate`, `min`, `max`), unpacking, `*x`, or an argument of a
+  call the branch also made with a placeholder (`out.append("null")` then `out.append(str(x))`). It is
+  reported on the `if` line, and the message names the first later use (`x.foo()`, shortened to 40 characters), not its line. A branch that calls a function or method other than `print`, a logging call or a writer given
+  literals does not count when `x` is `self.field` or a module variable, since that call may set
+  it; `fail(...)`, `abort`, `die`, `panic` or a same-file function that only raises count as leaving,
+  and `match x:` with a `case None` ends the search. A use inside `try` is still reported.
+  Not reported: an empty branch (`pass`), `if not x:`, a use
+  after another test of `x` (`if x is not None`, `x and x.attr`, `x if x else ...`, `assert x`,
+  `isinstance`), a lambda or function that is not called on the spot, and test files.
 - `discarded-new-value` reports an expression statement that calls a method which returns a new value and
   changes nothing, so the call does nothing and the code goes on with the old value. The receiver
   must be known from the file: a string, bytes, tuple or set literal or constructor call, a `datetime`,
@@ -1779,6 +1793,22 @@ ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A l
   class attribute of the model that is not a field (a manager, a tag manager), a model with a base class
   outside the project, and test files. Allowed form: `orderable=False`, `order_by=` with real field names or
   an `order_<name>` method.
+- `unreturned-result` reports an expression statement (also `await call()`) whose call resolves to a
+  function that returns the type the enclosing function returns, so the result is dropped where it
+  should be returned. The enclosing type is its return annotation, or, without one, the type of
+  its other `return <call>` statements. The callee is a function of the same file or one imported from the
+  project, a method found through `self` or `cls` in the class or its project bases, or `module.function`;
+  its return annotation must be a class type, not a builtin (`int`, `str`, `bool`, `list[...]`, `None`,
+  `Any`, `Self`). A union with `None` is compared without `None`, and a callee whose type is part of the
+  enclosing union counts. When a `self.method()` call has no definition in the project because a base
+  class comes from a library, the type is the one that the project's annotated functions return from that
+  same `self.method()` call, when they all agree. Only a call that ends its block is reported: the last statement of the function body, the last statement
+  of an `if`, `elif` or `else` branch (outside a loop) of a function that goes on to return something else, or the
+  last statement of a branch that reaches a bare `return`. A call in the middle of a block, or at the top
+  level of the body before a return, is a warm-up and stays quiet. Not reported: a call whose type differs, a callee that returns `self`,
+  returns one of its own parameters or is decorated (other than `staticmethod`, `classmethod`, `abstractmethod`, `override`), a call with an argument that the function returns,
+  a call on any other object, a generator, a function with no non-builtin return type, and test files.
+  A subtype of the enclosing type is not recognized. The message names `return helper(...)`. ruff `RET` and `B018` do not cover a dropped call result.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

@@ -52,6 +52,11 @@ describe('effect rules report', () => {
       '`QuerySet.delete()` returns a tuple, which is always true: testing it never tells whether a row was deleted or created',
     ],
     [
+      'unreturned-result',
+      'self.stage_ok()|Response',
+      '`self.stage_ok()` returns a `Response`, the type this function returns, but the call stands as a statement: its result is dropped and the function goes on or ends without it',
+    ],
+    [
       'cache-write-in-transaction',
       'cache.set()|transaction.atomic()',
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',

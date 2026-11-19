@@ -342,6 +342,11 @@ tuple, set, datetime, `Path` or Django queryset receiver that returns a new valu
 `expires.replace(...)`), and a truth test of the always-true tuple of `QuerySet.delete()` or `get_or_create()`. The allowed
 form assigns or returns the result.
 
+Unreturned results: `unreturned-result` (script, Python) reports a call statement that ends the function or an `if` branch and whose resolved declared return type is the
+class type the enclosing function returns (its annotation, or its other `return <call>` statements), so the result is dropped
+instead of returned. Builtin types, callees that return `self` and calls on unknown objects stay quiet. The allowed form is
+`return helper(...)`.
+
 Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
 source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
 an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,

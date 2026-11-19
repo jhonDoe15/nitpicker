@@ -61,6 +61,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A serializer `Meta.fields` list keeps the fields most other serializers of the model expose, or the serializer is named as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`) (`serializer-fields-omitted`).
 - A django-tables2 column over a value that is not a database field (a property, a `GenericForeignKey`, a related manager) says how it sorts: `orderable=False`, `order_by=(...)` with real fields or an `order_<name>` method (`unsortable-table-column`).
 - Methods that return a new value (`str.strip`, `datetime.replace`, `Path.with_suffix`, a queryset `filter`) must have their result assigned or returned (`query = query.filter(...)`); `qs.delete()` and `get_or_create()` return a tuple that is always true, so unpack it before testing (`discarded-new-value`).
+- Return the result of a helper that builds the function's own result (`return self.async_update_and_abort(...)`, `return self.executor.stage_ok()`); as the last statement of the function or of a branch it is dropped and the function goes on or ends without a result (`unreturned-result`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are
