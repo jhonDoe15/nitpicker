@@ -5,7 +5,6 @@ import {
   equalitySides,
   memberName,
   methodCallOn,
-  outerOf,
   referencesName,
   someNode,
   repeatedRole,
@@ -13,6 +12,13 @@ import {
   singleParameter,
   unwrapped,
 } from './repeated-runs.mts';
+import {
+  fieldNameOf,
+  isAssignmentTarget,
+  isDedupeComparison,
+  isPrivateField,
+  isReadOnlyUse,
+} from './receivers/read-only-uses.mts';
 
 type Finding = TSESLint.ReportDescriptor<'lookupInLoop'>;
 
@@ -68,15 +74,6 @@ function lookupKey(callback: TSESTree.Node): string | undefined {
   return keyed === undefined || isConstantValue(keyed[1]) ? undefined : keyed[0];
 }
 
-function isAssignmentTarget(node: TSESTree.Node): boolean {
-  const outer = outerOf(node);
-  const { parent } = outer;
-  return (
-    (parent?.type === AST_NODE_TYPES.AssignmentExpression && parent.left === outer) ||
-    (parent?.type === AST_NODE_TYPES.UpdateExpression && parent.argument === outer)
-  );
-}
-
 function isMutation(node: TSESTree.Node): boolean {
   const method = methodCallOn(node);
   if (method === undefined) {
@@ -103,7 +100,10 @@ function variableReceiver(
   }
   const references = variable.references.filter((reference) => !reference.init);
   const changed = references.some(
-    (reference) => reference.isWrite() || isMutation(reference.identifier),
+    (reference) =>
+      reference.isWrite() ||
+      isMutation(reference.identifier) ||
+      !isReadOnlyUse(reference.identifier),
   );
   if (changed) {
     return undefined;
@@ -113,7 +113,7 @@ function variableReceiver(
 
 function thisField(member: TSESTree.MemberExpression): string | undefined {
   const object = unwrapped(member.object);
-  return object.type === AST_NODE_TYPES.ThisExpression ? memberName(member) : undefined;
+  return object.type === AST_NODE_TYPES.ThisExpression ? fieldNameOf(member) : undefined;
 }
 
 function isConstructorCode(node: TSESTree.Node, classBody: TSESTree.ClassBody): boolean {
@@ -128,7 +128,7 @@ function changesField(node: TSESTree.Node, field: string, classBody: TSESTree.Cl
   if (isAssignmentTarget(node)) {
     return !isConstructorCode(node, classBody);
   }
-  return isMutation(node);
+  return isMutation(node) || !isReadOnlyUse(node);
 }
 
 function fieldReceiver(member: TSESTree.MemberExpression): TSESTree.ClassBody | undefined {
@@ -136,7 +136,7 @@ function fieldReceiver(member: TSESTree.MemberExpression): TSESTree.ClassBody | 
   const classBody = ancestorsOf(member).find(
     (node): node is TSESTree.ClassBody => node.type === AST_NODE_TYPES.ClassBody,
   );
-  if (field === undefined || classBody === undefined) {
+  if (field === undefined || classBody === undefined || !isPrivateField(classBody, field)) {
     return undefined;
   }
   return someNode(classBody, (node) => changesField(node, field, classBody))
@@ -152,6 +152,17 @@ function receiverBoundary(
     return variableReceiver(sourceCode, receiver);
   }
   return receiver.type === AST_NODE_TYPES.MemberExpression ? fieldReceiver(receiver) : undefined;
+}
+
+function isDedupe(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {
+  return isDedupeComparison(call, (identifier) => {
+    const definition = variableNamed(sourceCode, identifier)?.defs[0];
+    return (
+      definition?.type === DefinitionType.Parameter &&
+      'params' in definition.node &&
+      definition.node.params[1] === definition.name
+    );
+  });
 }
 
 export function keyedLookup(
@@ -173,7 +184,11 @@ export function keyedLookup(
   const key = lookupKey(argument);
   const receiver = unwrapped(callee.object);
   const boundary = key === undefined ? undefined : receiverBoundary(sourceCode, receiver);
-  if (key === undefined || boundary === undefined || repeatedRole(call, boundary) === undefined) {
+  if (key === undefined || boundary === undefined) {
+    return undefined;
+  }
+  const role = repeatedRole(call, boundary);
+  if (role === undefined || role === 'handler' || isDedupe(sourceCode, call)) {
     return undefined;
   }
   return {

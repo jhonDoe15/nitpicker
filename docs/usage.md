@@ -2896,8 +2896,10 @@ checks every recipe that applied a fix:
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
-Formatters and `eslint --fix` are trusted and are not rolled back by themselves. `--fix --dry-run`
-verifies too, so the plan only lists the fixes that would stay.
+Formatters and plain `eslint --fix` output are trusted and are not rolled back by themselves. The one
+exception is a suggestion applied with `--rule` (see [ESLint rule fixes](#eslint-rule-fixes)): each file
+it changed is verified as the recipe `eslint-suggestion <rules> <file>`, so a type error or a finding of
+that rule that is still there rolls the file back. `--fix --dry-run` verifies too, so the plan only lists the fixes that would stay.
 
 `nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
 mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
@@ -2971,6 +2973,10 @@ finding as it is. No fix adds a comment.
 | `nitpicker/test-tsconfig-pins-lib-and-types`         | safe   | adds `types: []` and `lib: ['ES2022']` to a literal `compilerOptions`                                                    |
 | `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
 | `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
+| `nitpicker/no-wasted-collection-step`                | safe   | safe: spread fallbacks and copies, length tests, `flatMap`, `some`; review: `await` in `Promise.all`, `Promise.all([p])` |
+| `nitpicker/no-accumulating-spread`                   | safe   | safe: `Object.fromEntries`, `map` or `flatMap` for a `reduce` that spreads its accumulator; review: `push` in a loop     |
+| `nitpicker/no-accumulator-concat`                    | safe   | safe: `flatMap` for a `reduce` that concatenates onto its accumulator; review: `push` for `x = x.concat(y)` in a loop    |
+| `nitpicker/no-costly-collection-form`                | review | writes a `Set` for an array used as a set, a `Map` or `Set` built once for a keyed lookup, `reduce` for a sort to an end |
 | `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
 | `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
 | `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
@@ -2981,7 +2987,12 @@ finding as it is. No fix adds a comment.
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
 (`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
-files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+files, and the other ESLint rules are not fixed in that run. ESLint reruns on the files it changed until no
+selected fix applies, at most 10 passes, so fixes whose ranges overlap are all applied; a "Fix notes:" line says when
+the cap was hit. Prettier runs after ESLint as usual. Safe fixes assume arrays have no holes, as TypeScript's types do.
+A suggestion applied this way is verified like a recipe: for each file the run reports the rules it applied
+as `eslint-lint` findings, and [Verify the fixes](#verify-the-fixes) reruns `eslint-lint` and the type check
+on the file and rolls it back when a rule's finding is still there or a compile error is new.
 
 `nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
 `--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied

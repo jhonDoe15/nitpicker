@@ -1,0 +1,120 @@
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { LOOP_TYPES, plainAssignmentStatement } from '../../../rules/collections/spread-shapes.mts';
+import { ancestorsOf, contains } from '../../../rules/typed/node-views.mts';
+
+type Variable = TSESLint.Scope.Variable;
+type Reference = TSESLint.Scope.Reference;
+export type Write = {
+  readonly statement: TSESTree.ExpressionStatement;
+  readonly assignment: TSESTree.AssignmentExpression;
+  readonly lead: TSESTree.Identifier;
+  readonly tail: readonly TSESTree.Node[];
+};
+export type Accumulation = {
+  readonly writes: readonly Write[];
+  readonly reads: readonly Reference[];
+  readonly loops: readonly TSESTree.Node[];
+};
+
+export type WriteParser = (variable: Variable, reference: Reference) => Write | undefined;
+
+function concatReceiver(
+  variable: Variable,
+  callee: TSESTree.Expression,
+): TSESTree.Identifier | undefined {
+  if (
+    callee.type !== AST_NODE_TYPES.MemberExpression ||
+    callee.computed ||
+    callee.optional ||
+    callee.property.type !== AST_NODE_TYPES.Identifier ||
+    callee.property.name !== 'concat' ||
+    callee.object.type !== AST_NODE_TYPES.Identifier
+  ) {
+    return undefined;
+  }
+  const { object } = callee;
+  return variable.references.some(({ identifier }) => identifier === object) ? object : undefined;
+}
+
+export function concatWrite(variable: Variable, reference: Reference): Write | undefined {
+  const assignment = plainAssignmentStatement(reference.identifier);
+  const call = assignment?.right;
+  if (
+    assignment === undefined ||
+    call?.type !== AST_NODE_TYPES.CallExpression ||
+    call.optional ||
+    call.typeArguments !== undefined ||
+    call.arguments.length !== 1 ||
+    call.arguments[0]?.type === AST_NODE_TYPES.SpreadElement
+  ) {
+    return undefined;
+  }
+  const lead = concatReceiver(variable, call.callee);
+  return lead === undefined
+    ? undefined
+    : { statement: assignment.parent, assignment, lead, tail: call.arguments };
+}
+
+export function spreadWrite(variable: Variable, reference: Reference): Write | undefined {
+  const assignment = plainAssignmentStatement(reference.identifier);
+  if (assignment?.right.type !== AST_NODE_TYPES.ArrayExpression) {
+    return undefined;
+  }
+  const [lead, ...tail] = assignment.right.elements;
+  const target = lead?.type === AST_NODE_TYPES.SpreadElement ? lead.argument : undefined;
+  const present = tail.filter((element) => element !== null);
+  const isSelf =
+    target?.type === AST_NODE_TYPES.Identifier &&
+    variable.references.some((candidate) => candidate.identifier === target);
+  return isSelf && present.length === tail.length && present.length > 0
+    ? { statement: assignment.parent, assignment, lead: target, tail: present }
+    : undefined;
+}
+
+function outerLoop(node: TSESTree.Node, declaration: TSESTree.Node): TSESTree.Node | undefined {
+  return ancestorsOf(node)
+    .filter((ancestor) => LOOP_TYPES.has(ancestor.type) && !contains(ancestor, declaration))
+    .at(-1);
+}
+
+type Classified = { readonly writes: Write[]; readonly reads: Reference[] };
+
+function classify(variable: Variable, parse: WriteParser): Classified | undefined {
+  const writes: Write[] = [];
+  const reads: Reference[] = [];
+  for (const reference of variable.references) {
+    if (reference.init === true) {
+      continue;
+    }
+    const write = reference.isWrite() ? parse(variable, reference) : undefined;
+    if (reference.isWrite() && write === undefined) {
+      return undefined;
+    }
+    if (write !== undefined) {
+      writes.push(write);
+    } else if (reference.from.variableScope === variable.scope.variableScope) {
+      reads.push(reference);
+    } else {
+      return undefined;
+    }
+  }
+  return { writes, reads };
+}
+
+export function accumulationOf(
+  variable: Variable,
+  declaration: TSESTree.Node,
+  parse: WriteParser,
+): Accumulation | undefined {
+  const classified = classify(variable, parse);
+  if (classified === undefined) {
+    return undefined;
+  }
+  const { writes, reads } = classified;
+  const loops = writes.map(({ statement }) => outerLoop(statement, declaration));
+  const found = loops.filter((loop) => loop !== undefined);
+  const leads = new Set<TSESTree.Node>(writes.map(({ lead }) => lead));
+  return writes.length > 0 && found.length === loops.length
+    ? { writes, reads: reads.filter(({ identifier }) => !leads.has(identifier)), loops: found }
+    : undefined;
+}
