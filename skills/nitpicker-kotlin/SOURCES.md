@@ -96,8 +96,16 @@ alone by the precondition recipes, because the rewritten call would resolve to t
 
 ## Near-duplicate extraction
 
-No recipe extracts the shared function of a `near-duplicate` pair in Kotlin. The extraction needs the
-parameter and return types of the new function, and the Kotlin recipes see only text. The finding
-stays.
-
-The same holds for a `partial-run` pair: no recipe extracts the shared statements in Kotlin, and the finding stays.
+`java-extract-near-duplicate` and `java-extract-partial-run` also read `.kt` files, as review recipes
+(nothing compiles the result). They parse the file with the Kotlin grammar of the rule and handle a
+`same` or `parameterizable` pair, or a `partial-run` pair, of two functions of one class, `object` or
+file. The shared code becomes a `private` function placed after the first copy, as a member or at the
+top level, and each copy keeps its signature and calls it. The recipes write no type they cannot read:
+a function needs a declared return type (a block body without one returns `Unit`), a differing number
+becomes a parameter only when a local with a written type or a literal initializer receives it, a
+value a run reads must be a parameter or a local with a written type that is not nullable (a smart
+cast before the run would not hold in the new function), and the one value a run defines for the code
+after it needs a written type. Copies in two files, annotated or `inline` functions, functions with
+type parameters, a receiver, default values or `vararg`, members of an interface, local functions,
+classes and objects, `super` calls, differing callees or outer names, and runs that assign a variable
+declared before them stay as findings.

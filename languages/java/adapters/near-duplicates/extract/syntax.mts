@@ -1,9 +1,11 @@
 import type { Node } from 'web-tree-sitter';
+import type { AlignState, Pair } from '../extract-types.mts';
 import { field, parentOf, present, required } from '../tree/nodes.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export const METHOD = 'method_declaration';
 export const CLASS = 'class_declaration';
+export const SHAPE = 'the copies are shaped differently';
 
 const COMMENTS = new Set(['line_comment', 'block_comment']);
 
@@ -155,4 +157,44 @@ export function pairOf<Item>(
 ): readonly [NonNullable<Item>, NonNullable<Item>] {
   const [first, second] = items;
   return [present(first), present(second)];
+}
+
+export function ancestorsWithin(node: Node, unit: Node): Node[] {
+  const found: Node[] = [];
+  const pending = [node.parent];
+  for (const current of pending) {
+    if (current !== null && current.id !== unit.id) {
+      found.push(current);
+      pending.push(current.parent);
+    }
+  }
+  return found;
+}
+
+export function hasAncestorIn(node: Node, root: Node, types: ReadonlySet<string>): boolean {
+  return ancestorsWithin(node, root).some(({ type }) => types.has(type));
+}
+
+export function identifiersWhere(root: Node, test: (node: Node) => boolean): Set<string> {
+  return new Set(
+    descendants(root)
+      .filter((node) => node.type === 'identifier' && test(node))
+      .map(({ text }) => text),
+  );
+}
+
+export function childrenStep(pair: Pair, state: AlignState): string | undefined {
+  const [x, y] = pair;
+  const [left, right] = [codeParts(x), codeParts(y)];
+  if (left.length !== right.length) {
+    return SHAPE;
+  }
+  if (left.length === 0 && x.text !== y.text) {
+    return 'the copies differ in a token';
+  }
+  appendAll(
+    state.pending,
+    left.map((child, index): Pair => [child, present(right[index])]),
+  );
+  return undefined;
 }
