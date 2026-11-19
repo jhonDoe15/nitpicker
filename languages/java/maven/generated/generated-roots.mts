@@ -2,6 +2,7 @@ import path from 'node:path';
 import { isGeneratedJvm } from '../../adapters/generated/generated-sources.mjs';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import ROOT_RULES from '../../gradle/generated/generated-roots.json' with { type: 'json' };
+import { isInsideDirectory } from '../../../../shared/paths/contained-path.mjs';
 
 export type GeneratedLocation = {
   readonly basedir: string;
@@ -14,13 +15,8 @@ const ANALYZE_KEY = 'analyze';
 export const PROCESSOR_OUTPUT = textOf(fieldOf(ROOT_RULES, 'processorOutput'));
 const PROBE_FILE = textOf(fieldOf(ROOT_RULES, 'probeFile'));
 
-export function inside(parent: string, directory: string): boolean {
-  const relative = path.relative(parent, directory);
-  return relative === '' || !(relative.startsWith('..') || path.isAbsolute(relative));
-}
-
 function strictlyInside(parent: string, directory: string): boolean {
-  return path.relative(parent, directory) !== '' && inside(parent, directory);
+  return path.relative(parent, directory) !== '' && isInsideDirectory(parent, directory);
 }
 
 export function buildDirectoryOf(module: GeneratedLocation): string {
@@ -36,7 +32,7 @@ export function isGeneratedRoot(module: GeneratedLocation, root: string): boolea
   const build = path.resolve(module.basedir, buildDirectoryOf(module));
   const relative = path.relative(module.basedir, resolved).split(path.sep).join('/');
   return (
-    (strictlyInside(module.basedir, build) && inside(build, resolved)) ||
+    (strictlyInside(module.basedir, build) && isInsideDirectory(build, resolved)) ||
     isGeneratedJvm(module.basedir, `${relative}/${PROBE_FILE}`)
   );
 }
