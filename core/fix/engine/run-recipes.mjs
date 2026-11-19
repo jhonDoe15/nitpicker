@@ -47,7 +47,7 @@ function planRecipe(recipe, snapshot, run) {
         edits.some((edit) => changesText(edit, snapshot, run.settings.projectRoot)),
       )
       .sort(fixOrder)
-      .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, fix })),
+      .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, scope: recipe.scope, fix })),
     notes: planned.notes ?? [],
   };
 }

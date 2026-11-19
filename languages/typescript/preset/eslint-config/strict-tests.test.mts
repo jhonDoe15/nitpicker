@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { failureMessagesFor } from './typed/lint-fixture.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/test-runtime/assertions/no-raised-test-timeout.mts';
+import tseslint from 'typescript-eslint';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';
+import { defaultTestFiles as untypedDefaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
 import { isStrictRule } from '../strict-rules.mts';
 import { strictPresetConfig } from './strict.mts';
 import {
@@ -12,6 +14,8 @@ import {
   strictTestRules,
   strictTestsConfig,
 } from './strict-tests.mts';
+
+const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
 
 const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =
@@ -76,6 +80,24 @@ describe('strict test rules', () => {
     expect(messages(moduleLevelArgv, 'tests/helpers/cli.mjs')).toHaveLength(1);
     expect(messages(moduleLevelArgv, 'tests/cli.test.ts')).toEqual([]);
   });
+
+  it.each([
+    ['jest', '__tests__/cli.ts', 'tests/helpers/cli.ts'],
+    ['node', 'test/cli-test.mjs', 'tests/helpers/cli.mjs'],
+    ['mocha', 'test/cli.js', 'test/helpers/cli.js'],
+  ])(
+    'treat the files %s runs as test files, not helper scripts',
+    (runner: string, testFile: string, helper: string) => {
+      const layout = resolveLayout({}, [], { testFiles: defaultTestFiles(runner) });
+      const config = [
+        { languageOptions: { parser: tseslint.parser } },
+        ...strictTestConfigFor(layout),
+      ];
+
+      expect(messages(moduleLevelArgv, testFile, config)).toEqual([]);
+      expect(messages(moduleLevelArgv, helper, config)).toHaveLength(1);
+    },
+  );
 
   it.each([
     ['for(;;)', 'for (let index = 0; index < 3; index += 1) { run(index); }', loopMessage],

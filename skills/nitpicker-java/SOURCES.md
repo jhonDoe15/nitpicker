@@ -22,14 +22,14 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
 
 ## Safe list (applied by a plain `--fix`)
 
-58 checks whose fix keeps behaviour and ends in the form the preset asks for. They are in
+57 checks whose fix keeps behaviour and ends in the form the preset asks for. They are in
 `languages/java/fix/errorprone/checks/safe-checks.mts`.
 
 - Layout and syntax with no meaning of their own: `AnnotationPosition`, `MissingBraces`,
   `MixedArrayDimensions`, `MultiVariableDeclaration`, `OperatorPrecedence`,
   `UnnecessaryParentheses`, `UnnecessarySemicolon`, `EmptyTopLevelDeclaration`,
   `UnicodeEscape`, `LongLiteralLowerCaseSuffix`.
-- Redundant code: `ExtendsObject`, `RedundantControlFlow`, `ReturnAtTheEndOfVoidFunction`,
+- Redundant code: `RedundantControlFlow`, `ReturnAtTheEndOfVoidFunction`,
   `UnnecessaryBreakInSwitch`, `UnnecessaryTypeArgument`, `UnnecessaryBoxedAssignment`,
   `ExplicitArrayForVarargs`, `MultipleParallelOrSequentialCalls`, `RedundantThrows`,
   `TransientMisuse`, `RecordComponentOverride`, `DeprecatedVariable`, `UnusedLabel`,
@@ -47,7 +47,14 @@ in `docs/java-preset/error-prone-and-nullaway.md`; this page records which Error
   `PreferThrowsTag`, `ReturnFromVoid`, `UnescapedEntity`, `UrlInSee`.
 - Dead private code: `UnusedMethod`, `UnusedNestedClass`. Removing what nothing calls keeps behaviour
   unless something reaches it by reflection, which Error Prone already exempts for the usual
-  annotations.
+  annotations. `--fix` also skips the removal when a string in a project source or config file
+  names the member, as `getDeclaredMethod("name")`, `Class.forName("a.Outer$Inner")` and
+  `@MethodSource("name")` do.
+
+`ExplicitArrayForVarargs` unpacks an array of one element only when it does not change the call:
+`count(new Object[] {x})` passes one argument, but `count(x)` passes the elements of `x` when `x` is
+an array and a null array when `x` is `null`. `--fix` skips the one-element arrays and keeps the
+others.
 
 PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat them:
 `UnusedPrivateMethod` (with `UnusedMethod`), `MissingOverride`, `UselessParentheses`,
@@ -56,6 +63,12 @@ PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat 
 `UnnecessaryVarargsArrayCreation`. Checkstyle twins: `UpperEll` (the `java-upper-ell` recipe
 already covers it, and its edit overlaps the Error Prone one, so the second is skipped),
 `ArrayTypeStyle`, `MultipleVariableDeclarations`, `NeedBraces`, `AvoidStarImport`.
+
+When a run selects only the twin (`--fix --rule pmd/MissingOverride`), the Error Prone check that
+clears it runs too, and its fixes are reported under both rules. The twins are in
+`languages/java/fix/errorprone/checks/twin-rules.mts`: `pmd/UnusedPrivateMethod` and
+`spotbugs/UPM_UNCALLED_PRIVATE_METHOD` (with `UnusedMethod`), `pmd/MissingOverride` (with
+`MissingOverride`) and `pmd/UnnecessaryVarargsArrayCreation` (with `ExplicitArrayForVarargs`).
 
 ## Near-duplicate extraction
 
@@ -166,6 +179,20 @@ removed from the files that lose them.
   passes it to `format` of a `DateFormat`. The two `write` copies and the two `read` copies of the Sql
   adapters are one fix, so the new class carries all of their shared methods at once.
 
+`jvm-shorter-condition` is a review recipe for `structure/shorter-condition` in Java and Kotlin. It
+writes the form the finding names in place of the condition, in parentheses where an operator wraps
+it, and skips a condition that holds a comment or whose text appears twice on its line. The shorter
+form evaluates fewer operands, so an operand that could throw or has a side effect no longer runs;
+that is why a person selects it.
+
+`jvm-merge-switch-labels` is a review recipe for the `structure/duplicate-branch` findings on Java
+switch cases and Kotlin `when` entries with the same body (compared as text without whitespace). It
+moves the later labels onto the first case and removes the later cases, only when no case involved
+falls through or is entered by one that does, declares a local, holds a comment, or uses a pattern,
+a guard, `null`, `default` or `else`. Java colon cases get stacked labels (`case 1: case 3:`), which
+compile on every release. Kotlin entries merge only when they are next to each other and test no
+type. A switch inside a case that another merge removes is left alone.
+
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
 method. It takes the locals and parameters the run reads, and copies the `throws` clause that the
@@ -203,9 +230,15 @@ two methods share.
 
 The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
 
+Even when the rule is selected, `--fix` skips two review fixes that break code it can see:
+`FieldCanBeFinal` on a field whose name a string in a project source or config file holds, as a
+reflective or framework injection names it, and `PrivateConstructorForUtilityClass` on a class that
+another project class extends, which then no longer compiles. The declines are in
+`languages/java/fix/errorprone/declines/`.
+
 ## Left out
 
-32 checks never get a fix from `--fix`, listed in
+33 checks never get a fix from `--fix`, listed in
 `languages/java/fix/errorprone/checks/left-out-checks.mts`:
 
 - the fix inserts a comment, which recipes never do: `MissingDefault`,
@@ -221,7 +254,9 @@ The full list is `languages/java/fix/errorprone/checks/review-checks.mts`.
   `ComparisonContractViolated`, `DistinctVarargsChecker`, `FromTemporalAccessor`,
   `FuturesGetCheckedIllegalExceptionType`, `ClassInitializationDeadlock`, `DeeplyNested`,
   `MockNotUsedInProduction`, `MoreThanOneQualifier`, `PreferTestParameter`,
-  `RobolectricShadowDirectlyOn`, `UnnecessarySetDefault`, `WakelockReleasedDangerously`.
+  `RobolectricShadowDirectlyOn`, `UnnecessarySetDefault`, `WakelockReleasedDangerously`;
+- the fix adds what the check calls redundant: `ExtendsObject` suggests `T extends @NonNull Object`,
+  which needs the Checker Framework on the classpath and breaks the compile without it.
 
 A test keeps the three lists apart and checks that none names a check the preset turns off.
 
@@ -254,6 +289,11 @@ Prone `BugChecker` that suggests it. The sources are in `languages/java/gradle/e
 | `pmd/SpringRestController`                                                                                                                           | built, safe: `@ResponseBody` is dropped inside a `@RestController`, and `@Controller` with a class-level `@ResponseBody` becomes `@RestController`                                                                                                                                                                                                                                                                                                                                        |
 | `pmd/LogStringConcatenation`                                                                                                                         | built, safe: a message built with `+` or `String.format` or `formatted` (with `%s` and `%d` only) becomes `{}` placeholders, for SLF4J and Log4j 2. Left: `java.util.logging`, `System.Logger` and Commons Logging (`{0}` formatting changes numbers and quotes, and Commons Logging has no placeholders), a message holding a brace, a constant message, a throwable operand                                                                                                             |
 | `pmd/UseCollectionIsEmpty`                                                                                                                           | built, safe: `size() == 0`, `size() > 0` and the equal forms (also with the literal first) on a `Collection` or `Map` become `isEmpty()` or `!isEmpty()`                                                                                                                                                                                                                                                                                                                                  |
+| `pmd/SimplifyBooleanReturns`                                                                                                                         | built, safe: `if (c) { return true; } else { return false; }` and `if (c) return true; return false;` become `return c;`, and the swapped literals become `return !c;`. Left: a method that returns `Boolean`, a lambda, two equal literals, a return of any other value, a comment in an arm or between the `if` and the `return`                                                                                                                                                        |
+| `pmd/SimplifiedTernary`                                                                                                                              | built, safe: `c ? true : x`, `c ? false : x`, `c ? x : true` and `c ? x : false` become `c                                                                                                                                                                                                                                                                                                                                                                                                |     | x`, `!c && x`, `!c                                                                                                                                                      |     | x`and`c && x`, and `c ? true : false`becomes`c`, with parentheses where the precedence needs them. Only when the ternary and both branches are primitive `boolean`. Left: a `Boolean`or non-boolean branch,`c ? true : true`, a comment inside |
+| `pmd/SimplifyBooleanExpressions`                                                                                                                     | built, safe: `x == true` and `x != false` become `x`, `x == false` and `x != true` become `!x`, with the literal on either side. Only when `x` is a primitive `boolean`. Left: a `Boolean` operand, whose type and null handling would change, and a comment inside the comparison                                                                                                                                                                                                        |
+| `pmd/CollapsibleIfStatements`                                                                                                                        | built, safe: `if (a) { if (b) { ... } }` becomes `if (a && b) { ... }` when the outer `if` holds only the inner one and neither has an `else`; a condition with `                                                                                                                                                                                                                                                                                                                         |     | `, `?:`or an assignment gets parentheses. Left: an`else`on either`if`, other statements in the outer block, a comment between the two `if` lines or after the inner one |
+| `pmd/UselessStringValueOf`                                                                                                                           | built, safe: `String.valueOf(x)` as an operand of a string `+` becomes `x` when the other operand is a `String` or `x` is one. Left: an array argument, the left call of two `String.valueOf` operands, and `append(String.valueOf(x))`, which PMD does not report                                                                                                                                                                                                                        |
 | `pmd/PreserveStackTrace`                                                                                                                             | built, review: `throw new X(...)` in a catch block gets the caught exception as its last argument when `X` has exactly one matching constructor that takes a `Throwable` after the same arguments                                                                                                                                                                                                                                                                                         |
 | `pmd/SpringConstructorInjection`                                                                                                                     | built, review: `@Autowired`, `@Inject` and `@Value` fields of a class with no constructor become final fields set by a new constructor (`@Qualifier`, `@Named` and `@Value` move to its parameters); the annotation on the only constructor is dropped. Left: setters, `@Resource`, `@Autowired(required = false)`, fields with other annotations, fields assigned elsewhere, Lombok constructors. It can turn a circular dependency that field injection tolerated into a start-up error |
 | `pmd/DetachedTestCase`                                                                                                                               | built, review: a public, void, parameterless, unannotated method of a test class gets the `@Test` its sibling tests use (JUnit 5, JUnit 4 or TestNG; skipped when the class mixes them). The test then runs and may fail                                                                                                                                                                                                                                                                  |

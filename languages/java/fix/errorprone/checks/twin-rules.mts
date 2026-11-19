@@ -4,6 +4,10 @@ type TwinRule = RuleRef & { readonly check: string };
 
 const TWIN_RULES: readonly TwinRule[] = Object.freeze([
   { check: 'FieldCanBeFinal', tool: 'pmd', rule: 'FieldCanBeFinal' },
+  { check: 'UnusedMethod', tool: 'pmd', rule: 'UnusedPrivateMethod' },
+  { check: 'UnusedMethod', tool: 'spotbugs', rule: 'UPM_UNCALLED_PRIVATE_METHOD' },
+  { check: 'MissingOverride', tool: 'pmd', rule: 'MissingOverride' },
+  { check: 'ExplicitArrayForVarargs', tool: 'pmd', rule: 'UnnecessaryVarargsArrayCreation' },
 ]);
 
 export function twinsOf(check: string): RuleRef[] {

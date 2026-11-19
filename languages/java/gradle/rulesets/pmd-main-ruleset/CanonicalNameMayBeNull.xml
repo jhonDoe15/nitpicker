@@ -1,0 +1,45 @@
+  <rule name="CanonicalNameMayBeNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Class.getCanonicalName() returns null for anonymous, local and hidden classes (lambdas) and for arrays of them, so using it as a map key, as a StringBuilder seed, as a call receiver or in a string that is used as a name throws a NullPointerException or yields &quot;null&quot; as soon as such a class arrives. Use getName() (or getTypeName() for arrays), or fall back to it: String name = type.getCanonicalName() != null ? type.getCanonicalName() : type.getName(). Class literals of named classes (Foo.class) never return null and are not reported, and neither are texts of exceptions, log calls and toString.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'getCanonicalName'][ArgumentList/@Size = 0]
+  [*[1][not(self::ClassLiteral)][pmd-java:typeIs('java.lang.Class')]
+        [not(self::MethodCall[@MethodName = ('annotationType', 'getDeclaringClass')])]
+        [not((self::VariableAccess | self::FieldAccess)
+               [matches(@Name, '^[A-Z][A-Z0-9_]*$') or matches(@Name, 'enum', 'i')])]
+        [not(self::MethodCall[@MethodName = 'getClass']
+               [*[1][matches(@Name, '^[A-Z][A-Z0-9_]*$') or self::StringLiteral or self::ArrayAllocation
+                     or self::ConstructorCall[empty(AnonymousClassDeclaration)]
+                     or pmd-java:typeIsExactly('java.lang.String') or pmd-java:typeIs('java.lang.Number')
+                     or pmd-java:typeIsExactly('java.lang.Boolean') or pmd-java:typeIsExactly('java.lang.Character')]])]
+        [let $name := @Name
+         return not(self::VariableAccess
+                    and exists(ancestor::CompilationUnit//VariableId[@Name = $name]
+                                 /ancestor::*[self::FieldDeclaration or self::FormalParameter
+                                              or self::LocalVariableDeclaration][1]//ClassType[@SimpleName = 'Enum']))]]
+  [let $call := .,
+       $use := parent::*
+   return exists($use/self::MethodCall[*[1] is $call])
+          or exists($use/self::ArgumentList/parent::ConstructorCall[pmd-java:typeIs('java.lang.StringBuilder')
+                                                                    or pmd-java:typeIs('java.lang.StringBuffer')])
+          or exists($use/self::ArgumentList[*[1] is $call]/parent::MethodCall
+                [@MethodName = ('get', 'put', 'putIfAbsent', 'containsKey', 'computeIfAbsent', 'remove')
+                 and *[1][pmd-java:typeIs('java.util.Map')]])
+          or exists($use/self::InfixExpression[@Operator = '+'][pmd-java:typeIs('java.lang.String')])]
+  [empty(ancestor::ThrowStatement | ancestor::MethodDeclaration[@Name = 'toString']
+         | ancestor::ConstructorCall[pmd-java:typeIs('java.lang.Throwable')]
+         | ancestor::MethodCall[@MethodName = ('trace', 'debug', 'info', 'warn', 'warning', 'error', 'fatal', 'severe',
+                                               'fine', 'log', 'because')]
+             [*[1][matches(@Name, 'log|message|condition', 'i') or pmd-java:typeIs('org.slf4j.Logger')
+                   or pmd-java:typeIs('java.util.logging.Logger')]])]
+  [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+         //MethodCall[@MethodName = ('isAnonymousClass', 'isLocalClass', 'isSynthetic', 'isPrimitive', 'isArray')])]
+  [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression
+                     or self::Initializer][1]
+         //InfixExpression[@Operator = ('==', '!=')][NullLiteral]/MethodCall[@MethodName = 'getCanonicalName'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

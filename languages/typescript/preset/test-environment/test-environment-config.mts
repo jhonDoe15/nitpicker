@@ -1,27 +1,39 @@
+import globals from 'globals';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import type { EnvironmentScope, Environments } from './typed/environment-types.mts';
 import { nitpickerRules } from '../eslint-plugin/index.mts';
-import { codeExtensions } from '../layout.mjs';
-import { TEST_ENVIRONMENTS_VARIABLE, TEST_ENVIRONMENT_RULE } from './resolve-environment.mts';
+import {
+  TEST_ENVIRONMENTS_VARIABLE,
+  TEST_ENVIRONMENT_RULE,
+  isDomEnvironment as untypedIsDomEnvironment,
+} from './environments.mjs';
+
+type RunnerLayout = Layout & { readonly runnableTestGlobs: readonly string[] };
+
+type EnvironmentOptions = {
+  readonly environment: string | undefined;
+  readonly aliases: Environments['aliases'];
+  readonly setupFiles: readonly string[];
+  readonly runner?: string;
+  readonly globalDom?: string;
+};
 
 type EnvironmentBlock = {
   readonly files: readonly string[];
   readonly ignores: string[];
+  readonly languageOptions?: { readonly globals: Readonly<Record<string, boolean | string>> };
   readonly plugins: { readonly nitpicker: unknown };
-  readonly rules: Readonly<
-    Record<
-      string,
-      readonly [
-        'error',
-        {
-          readonly environment: string | undefined;
-          readonly aliases: Environments['aliases'];
-          readonly setupFiles: readonly string[];
-        },
-      ]
-    >
-  >;
+  readonly rules: Readonly<Record<string, readonly ['error', EnvironmentOptions]>>;
 };
+
+type BlockContext = {
+  readonly aliases: Environments['aliases'];
+  readonly layout: RunnerLayout;
+  readonly runner: string | undefined;
+  readonly globalDom: string | undefined;
+};
+
+const isDomEnvironment: (environment: string | undefined) => boolean = untypedIsDomEnvironment;
 
 const UNKNOWN: Environments = { environment: undefined, scopes: [] };
 
@@ -43,32 +55,39 @@ export function testEnvironmentsFromVariables(variables: NodeJS.ProcessEnv): Env
   return Array.isArray(parsed.aliases) ? parsed : { ...parsed, aliases: [] };
 }
 
-function runnableTestGlobs(layout: Layout): string[] {
-  return [...layout.sourceRoots, ...layout.testRoots].map(
-    (root) => `${root}/**/*.{test,spec}.${codeExtensions}`,
-  );
-}
-
 function environmentBlock(
   { files, ignores = [], environment, setupFiles = [] }: EnvironmentScope,
-  aliases: Environments['aliases'],
-  layout: Layout,
+  { aliases, layout, runner, globalDom }: BlockContext,
 ): EnvironmentBlock {
   return {
     files,
     ignores: [...layout.excludedGlobs, ...ignores],
+    ...(isDomEnvironment(environment) ? { languageOptions: { globals: globals.browser } } : {}),
     plugins: { nitpicker: nitpickerRules },
-    rules: { [TEST_ENVIRONMENT_RULE]: ['error', { environment, aliases, setupFiles }] },
+    rules: {
+      [TEST_ENVIRONMENT_RULE]: [
+        'error',
+        {
+          environment,
+          aliases,
+          setupFiles,
+          ...(runner === undefined ? {} : { runner }),
+          ...(globalDom === undefined ? {} : { globalDom }),
+        },
+      ],
+    },
   };
 }
 
 export function testEnvironmentConfigFor(
-  layout: Layout,
-  { environment, scopes, aliases = [], setupFiles = [] }: Environments,
+  layout: RunnerLayout,
+  { environment, scopes, aliases = [], setupFiles = [], globalDom }: Environments,
+  runner?: string,
 ): EnvironmentBlock[] {
-  const files = runnableTestGlobs(layout);
+  const files = layout.runnableTestGlobs;
+  const context = { aliases, layout, runner, globalDom };
   return [
-    environmentBlock({ files, environment, setupFiles }, aliases, layout),
-    ...scopes.map((scope) => environmentBlock(scope, aliases, layout)),
+    environmentBlock({ files, environment, setupFiles }, context),
+    ...scopes.map((scope) => environmentBlock(scope, context)),
   ];
 }

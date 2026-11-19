@@ -46,7 +46,7 @@ export function strictTestConfigFor(
   layout: Pick<
     ScopeLayout,
     'testGlobs' | 'sourceTestDirectoryGlobs' | 'excludedGlobs' | 'sourceRoots'
-  > = defaultResolvedLayout,
+  > & { readonly runnableTestGlobs: readonly string[] } = defaultResolvedLayout,
 ): Linter.Config[] {
   return [
     {
@@ -61,7 +61,7 @@ export function strictTestConfigFor(
     },
     {
       files: testAreaGlobsFor(layout),
-      ignores: [...layout.excludedGlobs, `**/*.{test,spec}.${codeExtensions}`],
+      ignores: [...layout.excludedGlobs, ...layout.runnableTestGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: strictTestHelperRules,
     },

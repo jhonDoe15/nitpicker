@@ -24,6 +24,10 @@ public final class Walker {
     void visit(MethodFlow flow, int index, MethodInsnNode call, Ctx ctx);
 
     default void reference(MethodFlow flow, int index, String owner, String name, String desc, Ctx ctx) {}
+
+    default boolean skips(MethodFlow flow, Lambdas.Use use) {
+      return false;
+    }
   }
 
   private static final Set<String> STREAM_STEPS = Set.of("map", "forEach", "forEachOrdered", "filter", "flatMap",
@@ -97,6 +101,9 @@ public final class Walker {
       }
     }
     for (Lambdas.Use use : program.lambdas(flow)) {
+      if (visitor.skips(flow, use)) {
+        continue;
+      }
       Ctx outer = at(flow, use.index(), ctx);
       if (later(flow, use)) {
         if (tracking && (outer.element() || outer.later())) {

@@ -12,6 +12,7 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
 import { applyRunProfile, withoutTestRun } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
@@ -28,6 +29,7 @@ type ResolverOptions = {
   readonly headConfig: NitpickerConfig;
   readonly headPolicy?: unknown;
   readonly injectedAnalyzers?: readonly Analyzer[] | undefined;
+  readonly liveProjectRoot?: string | undefined;
   readonly overlay?: ProjectOverlay | undefined;
   readonly inherits?: string | undefined;
   readonly repositoryLoosenings?: readonly PolicyLoosening[];
@@ -38,14 +40,14 @@ type ResolverOptions = {
 type BaseSnapshot = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
-  readonly liveProjectRoot: string;
+  readonly liveProjectRoot?: string | undefined;
   readonly moves: ScopeInputs['moves'];
   readonly analyzers: readonly Analyzer[];
 };
 
 type MeasuredBase = Omit<
   Required<ResolverOptions>,
-  'warn' | 'injectedAnalyzers' | 'overlay' | 'inherits' | 'repositoryLoosenings'
+  'warn' | 'injectedAnalyzers' | 'liveProjectRoot' | 'overlay' | 'inherits' | 'repositoryLoosenings'
 > & {
   readonly baseConfig: NitpickerConfig;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
@@ -53,6 +55,7 @@ type MeasuredBase = Omit<
 };
 
 type BaseSetupCli = {
+  readonly currentProjectRoot?: string | undefined;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
   readonly baseConfigOverlay?: ProjectOverlay | undefined;
   readonly configOverlay?: ProjectOverlay | undefined;
@@ -60,6 +63,17 @@ type BaseSetupCli = {
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
+
+const withBaseTestRunner: (
+  setup: object,
+  context: {
+    readonly headPolicy: unknown;
+    readonly baseProjectRoot: string;
+    readonly liveProjectRoot: string | undefined;
+    readonly analyzers: readonly Analyzer[];
+    readonly warn: Warn;
+  },
+) => object = untypedWithBaseTestRunner;
 
 const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => Analyzer =
   withConfiguredTimeout;
@@ -93,6 +107,7 @@ export function baseSetupResolver(
   return createBaseSetupResolver({
     headConfig,
     headPolicy,
+    liveProjectRoot: cli.currentProjectRoot,
     injectedAnalyzers: cli.injectedAnalyzers,
     overlay: cli.baseConfigOverlay,
     inherits: cli.configOverlay?.inherits,
@@ -102,16 +117,34 @@ export function baseSetupResolver(
   });
 }
 
-export function createBaseSetupResolver({
+export function createBaseSetupResolver(
+  options: ResolverOptions,
+): (snapshot: BaseSnapshot) => object {
+  const headPolicy: unknown = options.headPolicy ?? {};
+  const warn: Warn = options.warn ?? (() => undefined);
+  const configured = configuredBaseSetup({ ...options, headPolicy, warn });
+  return (snapshot) =>
+    withBaseTestRunner(configured(snapshot), {
+      headPolicy,
+      baseProjectRoot: snapshot.baseProjectRoot,
+      liveProjectRoot: snapshot.liveProjectRoot ?? options.liveProjectRoot,
+      analyzers: snapshot.analyzers,
+      warn,
+    });
+}
+
+function configuredBaseSetup({
   headConfig,
-  headPolicy = {},
+  headPolicy,
   injectedAnalyzers,
   overlay,
   inherits,
   repositoryLoosenings = [],
   profile = {},
-  warn = () => undefined,
-}: ResolverOptions): (snapshot: BaseSnapshot) => object {
+  warn,
+}: ResolverOptions & { readonly headPolicy: unknown; readonly warn: Warn }): (
+  snapshot: BaseSnapshot,
+) => object {
   return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
     const compared = baseConfig ?? {};
@@ -120,7 +153,7 @@ export function createBaseSetupResolver({
       headConfig,
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
-      liveProjectRoot,
+      liveProjectRoot: liveProjectRoot ?? headSnapshotRoot,
       moves,
       replacedOptions: undefined,
       inherits,

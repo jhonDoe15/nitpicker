@@ -1,0 +1,30 @@
+  <rule name="CleanupThrowReplacesFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cleanup call runs in a catch block that rethrows, outside any try, so when it throws, its exception replaces the original one and the caller and the logs see the close failure instead of the real cause. Run the cleanup in its own try and add its failure to the original (try rollback() and catch (Exception e) with ex.addSuppressed(e)) before rethrowing, or log the cleanup failure and rethrow the original. A try-with-resources header, a closeQuietly helper, a plain finally that closes and a local variable are not reported. An exception fits only when the cleanup cannot throw.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $cleanup := ('close', 'abort', 'rollback', 'shutdown', 'shutdownNow', 'stop', 'disconnect', 'delete', 'cancel'),
+    $silent := ('java.util.concurrent.ExecutorService', 'java.util.concurrent.Future', 'java.util.Timer',
+                'java.lang.Thread', 'java.lang.Process', 'java.util.Collection', 'java.util.Map',
+                'java.lang.StringBuilder', 'java.util.concurrent.CountDownLatch', 'java.util.concurrent.Semaphore',
+                'java.util.concurrent.locks.Lock',
+                'io.netty.util.ReferenceCounted'),
+    $call := function($s) {
+      $s/self::ExpressionStatement/MethodCall[@MethodName = $cleanup][@MethodName = ('abort', 'rollback', 'delete') or empty(ArgumentList/*)][*[1][not(self::ArgumentList or self::TypeExpression)][not(matches(@Name, '^[A-Z][A-Z_0-9]+$'))]]
+    },
+    $quiet := function($c) {
+      exists($c/*[1][some $t in $silent satisfies pmd-java:typeIs($t)])
+      or exists($c/*[1][self::VariableAccess]
+                [@Name = $c/ancestor::MethodDeclaration[1]//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name])
+    }
+return //CatchClause[let $param := CatchParameter/VariableId/@Name, $block := Block
+              return exists($block/ThrowStatement[*[1][self::VariableAccess[@Name = $param]
+                                                      or self::ConstructorCall[ArgumentList/VariableAccess[@Name = $param]]]])]
+    /Block/ExpressionStatement[$call(.)][not($quiet($call(.)))]
+      [following-sibling::ThrowStatement]
+      /MethodCall
+]]></value>
+      </property>
+    </properties>
+  </rule>

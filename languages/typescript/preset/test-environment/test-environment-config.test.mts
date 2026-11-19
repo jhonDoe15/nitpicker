@@ -1,3 +1,4 @@
+import globals from 'globals';
 import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule } from '../eslint-plugin/rules/test-runtime/environment/no-unused-dom-environment.mts';
@@ -14,7 +15,7 @@ import { TEST_ENVIRONMENTS_VARIABLE } from './resolve-environment.mts';
 const resolveLayoutTyped: (
   config: { sourceRoots: string[]; testRoots: string[] },
   excluded: string[],
-) => Layout = resolveLayout;
+) => Layout & { readonly runnableTestGlobs: readonly string[] } = resolveLayout;
 
 const layout = resolveLayoutTyped({ sourceRoots: ['src'], testRoots: ['tests'] }, [
   '**/generated/**',
@@ -23,7 +24,9 @@ const logic = "it('adds', () => { expect(1 + 1).toBe(2); });";
 const directive = ['@vitest', 'environment'].join('-');
 const docblock = (name: string) => `/** ${directive} ${name} */`;
 const projectMessage = (environment: string) =>
-  rule.meta.messages.unusedProjectEnvironment.replaceAll('{{environment}}', environment);
+  rule.meta.messages.unusedProjectEnvironment
+    .replaceAll('{{environment}}', environment)
+    .replaceAll('{{directive}}', directive);
 const unknown = { environment: undefined, scopes: [] };
 
 function messages(projectEnvironments: Environments, filename: string, code = logic): string[] {
@@ -124,6 +127,15 @@ describe('testEnvironmentsFromVariables', () => {
     expect(
       testEnvironmentsFromVariables({ [TEST_ENVIRONMENTS_VARIABLE]: JSON.stringify(resolved) }),
     ).toEqual({ ...resolved, aliases: [] });
+  });
+
+  it('gives the blocks of a DOM environment the browser globals', () => {
+    const scopes = [{ files: ['src/ui/**/*.test.ts'], ignores: [], environment: 'happy-dom' }];
+    const blocks = testEnvironmentConfigFor(layout, { environment: 'node', scopes });
+    expect(blocks.map((block) => block.languageOptions)).toEqual([
+      undefined,
+      { globals: globals.browser },
+    ]);
   });
 
   it.each([undefined, 'not json', 'null', '{"environment":"jsdom"}'])(

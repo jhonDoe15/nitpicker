@@ -30,8 +30,8 @@ export type JournalEntry = {
     readonly alsoFixes?: readonly NonNullable<PlannedFix['finding']>[];
   };
 } & (
-  | { readonly recipe: string; readonly safety: string }
-  | { readonly recipe?: undefined; readonly safety?: undefined }
+  | { readonly recipe: string; readonly safety: string; readonly scope?: string | undefined }
+  | { readonly recipe?: undefined; readonly safety?: undefined; readonly scope?: undefined }
 );
 
 export type ApplyResult = {
@@ -40,7 +40,10 @@ export type ApplyResult = {
   readonly errors: string[];
 };
 
-export type JournalEvent = Omit<PlannedFix, 'files'> & { readonly files: readonly string[] };
+export type JournalEvent = Omit<PlannedFix, 'files'> & {
+  readonly files: readonly string[];
+  readonly scope?: string | undefined;
+};
 
 export type Journal = {
   readonly projectRoot: string;

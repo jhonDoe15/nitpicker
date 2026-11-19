@@ -65,9 +65,7 @@ class Tracked {
 
   @Override
   public boolean equals(Object other) {
-    if (loaded == null) {
-      loaded = known.findAll();
-    }
+    loaded = known.findAll();
     return other == this;
   }
 

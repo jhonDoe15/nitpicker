@@ -47,7 +47,14 @@ const DATABASE_PACKAGES = new Set([
 ]);
 const DATABASE_SCOPES = ['@mikro-orm/', 'drizzle-orm/'];
 const BUILDER_PACKAGES = new Set(['knex', 'mongoose', 'kysely', 'objection', 'drizzle-orm']);
-const CACHE_PACKAGES = new Set(['redis', '@redis/client', 'ioredis']);
+const CACHE_PACKAGES = new Set([
+  'redis',
+  '@redis/client',
+  'ioredis',
+  'cache-manager',
+  'keyv',
+  'node-cache',
+]);
 const SYNC_DATABASE_PACKAGES = new Set(['better-sqlite3', 'sqlite3', 'node:sqlite']);
 const SYNC_DATABASE_CALLS = new Set(['get', 'all', 'run', 'iterate', 'exec', 'pragma', 'each']);
 
