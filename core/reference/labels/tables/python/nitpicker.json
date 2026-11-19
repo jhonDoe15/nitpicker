@@ -4,6 +4,7 @@
   "python-rules/accumulator-copy": ["performance"],
   "python-rules/any-in-domain": ["maintainability"],
   "python-rules/assert-on-external-state": ["bug", "reliability"],
+  "python-rules/async-twin-drift": ["maintainability", "async"],
   "python-rules/atomic-update-across-await": ["bug", "async"],
   "python-rules/blind-suppress": ["reliability"],
   "python-rules/blocking-helper-in-async": ["performance", "async"],

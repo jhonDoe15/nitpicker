@@ -80,3 +80,4 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
   library that is itself the parser takes an exception.
 - Call the base member when you override one that carries state: `super().available and ...`, `super().save(*args, **kwargs)`, `super().setUp()`; the overrides of a member in the project, and the known contracts of Home Assistant, Django and test cases, build on it (`override-without-super`).
+- Keep a sync function and its async twin (`batch_iterate`/`abatch_iterate`, `_stream`/`_astream`) in step: the same parameters, early returns, caught exception types and calls, or one shared implementation both call (`async-twin-drift`).
