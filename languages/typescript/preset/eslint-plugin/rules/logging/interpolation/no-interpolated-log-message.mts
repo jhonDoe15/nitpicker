@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { readHeadPolicy, type LibraryChoices } from '../../typed/policy-views.mts';
 import { unwrapped } from '../../security/security-values.mts';
 import { isObjectArgument } from '../argument-kinds.mts';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { logReceiver, presentLibraries, presentLogger } from '../logger-calls.mts';
 
 type MessageId = 'structuredFields' | 'trailingFields';
@@ -26,7 +27,7 @@ function isStatic(node: TSESTree.Node): boolean {
     if (parts === undefined) {
       return false;
     }
-    pending.push(...parts);
+    appendAll(pending, parts);
   }
   return true;
 }

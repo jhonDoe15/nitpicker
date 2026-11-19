@@ -16,16 +16,7 @@ export type SiteResult = {
   readonly use?: Use;
 };
 
-const BOXED = new Set([
-  'Integer',
-  'Long',
-  'Short',
-  'Byte',
-  'Character',
-  'Boolean',
-  'Double',
-  'Float',
-]);
+const BOXED = new Set('Integer Long Short Byte Character Boolean Double Float'.split(' '));
 const PRIMITIVES = new Set(['int', 'long', 'short', 'byte', 'char', 'boolean', 'double', 'float']);
 const GUARD_CALLEE = /null|empty|blank|valid|check|require|assert|verify|present/iu;
 const PREDICATE_CALLEE = /^(?:is|has|can|exists|supports)[A-Z]/u;
@@ -38,17 +29,8 @@ type FrameScope = Scope & { readonly positions: Positions };
 type PassedForm = (scope: Scope, at: number) => string | undefined;
 
 function positionsIn(source: SourceFile, frame: Frame): Positions {
-  const positions = new Map<string, number[]>();
-  for (const index of between(frame.body.from, frame.body.to)) {
-    const text = source.tokens[index]?.text ?? '';
-    const known = positions.get(text);
-    if (known === undefined) {
-      positions.set(text, [index]);
-    } else {
-      known.push(index);
-    }
-  }
-  return positions;
+  const indexes = between(frame.body.from, frame.body.to);
+  return Map.groupBy(indexes, (index) => source.tokens[index]?.text ?? '');
 }
 
 function sameCallChecked(source: SourceFile, positions: Positions, site: Site): boolean {
@@ -173,10 +155,6 @@ function passedForm(scope: Scope, at: number): string | undefined {
     : undefined;
 }
 
-function laterUse(scope: Scope, later: Later): SiteResult['outcome'] | Use {
-  return scanUses(scope, later, passedForm);
-}
-
 function scanUses(
   scope: Scope,
   { name, from, to, type }: Later,
@@ -258,13 +236,14 @@ function localResult(scope: Scope, site: Site, local: Assigned): SiteResult {
   const { target } = site;
   const boxed = BOXED.has(target.method.returnType) || BOXED.has(local.cast ?? '');
   const to = partner[local.open] ?? tokens.length;
-  const later =
+  const later = { name: local.name, from: site.close + 2, to, type: local.type };
+  const found =
     PRIMITIVES.has(local.type) && boxed
       ? { line: tokens[site.name]?.line ?? 0, form: 'unboxed', variable: local.name }
-      : laterUse(scope, { name: local.name, from: site.close + 2, to, type: local.type });
-  return typeof later === 'string'
-    ? { target, outcome: later }
-    : { target, outcome: 'use', use: later };
+      : scanUses(scope, later, passedForm);
+  return typeof found === 'string'
+    ? { target, outcome: found }
+    : { target, outcome: 'use', use: found };
 }
 
 function resultOf(scope: FrameScope, site: Site): SiteResult {

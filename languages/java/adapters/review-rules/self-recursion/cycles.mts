@@ -1,3 +1,4 @@
+import { reachableFrom } from '../../../../../shared/lists/lists.mts';
 import type { Call } from './calls.mts';
 import type { Frame, SourceFile } from '../max-value-sums/sum-types.mts';
 
@@ -24,14 +25,9 @@ export type Recursion = {
 };
 
 function reachable(start: Frame, calls: readonly Call[]): Set<Frame> {
-  const seen = new Set<Frame>([start]);
-  for (const current of seen) {
-    const targets = calls.filter(({ source }) => source === current).map(({ target }) => target);
-    for (const target of targets) {
-      seen.add(target);
-    }
-  }
-  return seen;
+  return reachableFrom([start], (current) =>
+    calls.filter(({ source }) => source === current).map(({ target }) => target),
+  );
 }
 
 function startsCycle({ source, target }: Call, calls: readonly Call[]): boolean {

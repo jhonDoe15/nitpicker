@@ -31,18 +31,10 @@ export type Declared = {
 };
 
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record']);
-const MODIFIERS = new Set([
-  'public',
-  'protected',
-  'private',
-  'static',
-  'final',
-  'abstract',
-  'synchronized',
-  'native',
-  'default',
-  'strictfp',
-]);
+const MODIFIERS = new Set(
+  'public protected private static final abstract synchronized native default strictfp'.split(' '),
+);
+const QUALIFIED_STEP = -2;
 const NOT_TYPES = new Set(['return', 'else', 'new', 'throw', 'case', 'var', 'instanceof']);
 const AFTER_NAME = new Set(['=', ';', ':', ',', ')']);
 const BEFORE_DECLARATION = new Set([';', '{', '}', '(', 'final', ')']);
@@ -74,7 +66,7 @@ export function enclosingOpeners(opener: Int32Array, index: number): number[] {
 function qualifiedStart(tokens: readonly Token[], last: number): number {
   return walkWhile(
     last,
-    -2,
+    QUALIFIED_STEP,
     (start) => tokens[start - 1]?.text === '.' && tokens[start - 2]?.kind === 'identifier',
   );
 }
