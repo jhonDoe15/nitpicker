@@ -71,6 +71,24 @@ it('tells whether a project has a peer tool installed', () => {
   expect(isToolInstalled('eslint')).toBe(true);
 });
 
+it('accepts a peer TypeScript installed under an official distribution alias', () => {
+  const aliased = createTemporaryRoot('nitpicker-aliased-typescript-');
+  writeManifest(path.join(aliased, 'node_modules/typescript'), {
+    name: '@typescript/typescript6',
+    version: '6.0.2',
+  });
+  const swapped = createTemporaryRoot('nitpicker-swapped-typescript-');
+  writeManifest(path.join(swapped, 'node_modules/typescript'), {
+    name: '@someone/typescript6',
+    version: '6.0.2',
+  });
+
+  expect(resolveTool('typescript', { projectRoot: aliased }).version).toBe('6.0.2');
+  expect(() => resolveTool('typescript', { projectRoot: swapped })).toThrow(
+    'Invalid installed tool package for typescript',
+  );
+});
+
 it('names the npm 10 install failure when a Vitest peer is missing', () => {
   const hint =
     '. If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
