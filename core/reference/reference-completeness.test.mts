@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
@@ -116,6 +116,31 @@ describe('the rule reference', () => {
     expect(missingFindings(leftOut.map((rule) => ({ tool: 'pmd', rule })))).toEqual(
       leftOut.map((rule) => `pmd/${rule}`),
     );
+  });
+
+  it('has a Java entry for each rule of every PMD ruleset the Java build writes', () => {
+    const gradle = new URL('../../languages/java/gradle/', import.meta.url);
+    const files = [
+      ...readdirSync(gradle).filter((file) => file.endsWith('ruleset.xml')),
+      ...readdirSync(new URL('rules/', gradle))
+        .filter((file) => file.endsWith('ruleset.xml'))
+        .map((file) => `rules/${file}`),
+    ];
+    const rules = files.flatMap((file) =>
+      [...readFileSync(new URL(file, gradle), 'utf8').matchAll(/<rule\s+name="(\w+)"/gu)].map(
+        ([, rule = '']) => rule,
+      ),
+    );
+
+    expect(files.includes('rules/guards-ruleset.xml')).toBe(true);
+    expect(files.includes('rules/test-honesty-ruleset.xml')).toBe(true);
+    expect(rules.includes('OptionalGet')).toBe(true);
+    expect(missingFindings(rules.map((rule) => ({ tool: 'pmd', rule })))).toEqual([]);
+    expect(
+      rules
+        .map((rule) => entryForFinding(index, { tool: 'pmd', rule }))
+        .filter((entry) => !JSON.stringify(fieldAt(entry, 'analyzers')).includes('java')),
+    ).toEqual([]);
   });
 
   it('has an entry for each Error Prone check the preset turns on and each Spring and Kotlin rule', () => {
