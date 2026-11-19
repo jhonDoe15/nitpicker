@@ -1,6 +1,6 @@
-import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../modules/module-resolution.mjs';
+import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../modules/module-resolution.mts';
 import { classLimitFindings as untypedClassLimitFindings } from '../../../../../shared/rules/size/class-limits.mjs';
-import { containedPath as untypedContainedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import type { Finding } from '../../../adapters/static-checks/shared.mts';
 
 export const resolveModuleSpecifier: (
@@ -13,7 +13,7 @@ export const classLimitFindings: (
   options: {
     readonly analyzerName: string;
     readonly thresholds: unknown;
-    readonly exceptions: unknown[];
+    readonly exceptions: readonly unknown[];
   },
 ) => Finding[] = untypedClassLimitFindings;
 

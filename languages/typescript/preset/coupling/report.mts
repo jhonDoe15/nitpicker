@@ -28,8 +28,9 @@ await writeReport({
 });
 printLine(output, '\nHighest-coupled modules (fan-in / fan-out / instability):');
 for (const entry of report.hubs) {
+  const instability = typeof entry.instability === 'number' ? String(entry.instability) : 'N/A';
   printLine(
     output,
-    `${String(entry.fanIn)}\t${String(entry.fanOut)}\t${String(entry.instability ?? 'N/A')}\t${entry.source}`,
+    `${String(entry.fanIn)}\t${String(entry.fanOut)}\t${instability}\t${entry.source}`,
   );
 }

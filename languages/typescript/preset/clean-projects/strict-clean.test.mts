@@ -1,7 +1,7 @@
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
+import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mts';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';

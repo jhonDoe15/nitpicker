@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Environments } from './typed/environment-types.mts';
-import {
-  DEFAULT_ENVIRONMENT,
-  environmentsFromConfig as untypedEnvironmentsFromConfig,
-} from './environments.mjs';
-
-const environmentsFromConfig: (config: unknown, projectRoot?: string) => Environments =
-  untypedEnvironmentsFromConfig;
+import { DEFAULT_ENVIRONMENT, environmentsFromConfig } from './environments.mts';
 
 const projectRoot = '/work/app';
 

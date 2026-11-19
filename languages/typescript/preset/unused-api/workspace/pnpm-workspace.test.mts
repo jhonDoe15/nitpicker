@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pnpmPackagePatterns } from './pnpm-workspace.mjs';
+import { pnpmPackagePatterns } from './pnpm-workspace.mts';
 
 describe('pnpm workspace packages', () => {
   it('reads a block list at any indent and stops at the next key', () => {

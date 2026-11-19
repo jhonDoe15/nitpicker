@@ -18,7 +18,7 @@ import {
   readLayout,
   registerWrapperAliases,
   unusedApiFindings,
-} from './typed/analysis-views.mts';
+} from './analysis-views.mts';
 
 const ts = typescriptApi();
 
@@ -55,7 +55,13 @@ export function analyzeUnusedApi({
 }): Finding[] {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
-  const react = !layout.javascript && isReactProject({ projectRoot, react: reactPolicy });
+  const reactEnabled = reactPolicy.enabled;
+  const react =
+    !layout.javascript &&
+    isReactProject({
+      projectRoot,
+      react: typeof reactEnabled === 'boolean' ? { enabled: reactEnabled } : {},
+    });
   if (!hasCheckableDeclarations({ projectRoot, layout, react })) return [];
   const packagesInfo = loadPackages(projectRoot, layout);
   const program = createProjectProgram({ projectRoot, configPath, packagesInfo, layout });

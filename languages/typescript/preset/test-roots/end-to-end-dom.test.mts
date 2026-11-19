@@ -2,19 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import type { Layout } from '../../adapters/typed/head-policy.mts';
-import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mjs';
-
-const resolveLayout: (
-  layout?: { testRoots?: string[] },
-  exclude?: string[],
-  options?: { javascript?: boolean },
-) => Layout = untypedResolveLayout;
-const layoutTransformFor: (
-  policyFileName: string,
-  layout: Layout,
-) => ((text: string, target: string) => string) | undefined = untypedLayoutTransformFor;
+import { END_TO_END_ROOT, resolveLayout } from '../layout.mts';
+import { layoutTransformFor } from '../tool-configs.mts';
 
 type QualityTsconfig = { readonly compilerOptions: { readonly lib?: readonly string[] } };
 

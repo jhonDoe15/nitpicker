@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { cruiseWithConfig, outputText } from './test-support/strict-cruise.mts';
 import { outsideRootsRule } from './test-support/outside-roots-view.mts';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
-import productionConfig from '../defaults/dependency-cruiser.config.mjs';
+import productionConfig from '../defaults/dependency-cruiser.config.mts';
 
 const TEST_PATHS = [
   '^(?:test|tests|__tests__|e2e)/',

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { storyGlobs } from '../../eslint-config/scope-support.mjs';
+import { storyGlobs } from '../../eslint-config/scope-support.mts';
 import { fieldsOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { type ProductionLayout, globMatcher, toPosix } from './typed/layout-views.mts';
 import type { KnipConfig } from './typed/knip-types.mts';

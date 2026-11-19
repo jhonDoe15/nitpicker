@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { printLine, writeReport } from '../../../../shared/report-output/report-output.mts';
-import { cruise as untypedCruise } from '../dependency-graph/cruise.mjs';
+import { cruise as untypedCruise } from '../dependency-graph/cruise.mts';
 import { existingRoots } from '../dependency-graph/typed/graph-views.mts';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
-import { readLayout as untypedReadLayout } from '../head-policy.mjs';
+import { readLayout as untypedReadLayout } from '../head-policy.mts';
 import type { AnalysisLayout, Graph } from './analysis-types.mts';
 
 const output = process.stdout;

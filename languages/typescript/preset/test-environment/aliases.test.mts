@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { aliasesFromConfig } from './aliases.mjs';
+import { aliasesFromConfig } from './aliases.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-aliases-'));
 mkdirSync(path.join(root, 'src'));

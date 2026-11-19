@@ -1,5 +1,5 @@
 import base from './dependency-cruiser.fixture.config.mjs';
-import { strictBoundaryRules } from '../strict-boundary-rules.mjs';
+import { strictBoundaryRules } from '../strict-boundary-rules.mts';
 
 export default {
   ...base,
