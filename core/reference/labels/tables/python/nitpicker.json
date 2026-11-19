@@ -25,6 +25,7 @@
   "python-rules/dataloader-batch-result": ["bug"],
   "python-rules/deleted-item-filter-missing": ["bug"],
   "python-rules/django-types-missing": ["maintainability"],
+  "python-rules/discarded-new-value": ["bug"],
   "python-rules/dual-write-without-outbox": ["reliability", "persistence"],
   "python-rules/eager-relationship": ["performance", "persistence"],
   "python-rules/empty-filter-condition": ["bug", "persistence"],
