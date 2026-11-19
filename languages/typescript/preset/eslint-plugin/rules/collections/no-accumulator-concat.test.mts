@@ -56,9 +56,63 @@ tester.run('no-accumulator-concat with types', rule, {
         ].join('\n'),
       ),
       errors: [
-        { messageId: 'loopConcat', line: 3 },
+        {
+          messageId: 'loopConcat',
+          line: 3,
+          suggestions: [
+            {
+              messageId: 'pushOntoArray',
+              output: [
+                'export function lists(groups: number[][]) {',
+                '  const all: number[] = [];',
+                '  for (const group of groups) { for (const item of group) all.push(item); }',
+                '  return groups.reduce((acc: number[], group) => acc.concat(group), all);',
+                '}',
+              ].join('\n'),
+            },
+          ],
+        },
         { messageId: 'concat', line: 4 },
       ],
     },
   ],
+});
+
+const strings = typedIoProject('accumulator-concat-strings', 'export const none = 0;');
+
+strings.tester.run('no-accumulator-concat leaves strings and non-array unions alone', rule, {
+  valid: [
+    "export function a(parts: string[]) { let text = ''; for (const part of parts) { text = text.concat(part); } return text; }",
+    "export function b(parts: string[]) { let text: string = ''; for (const part of parts) { text = text.concat(part); } return text; }",
+    'export function c(parts: string[], text: string | string[]) { for (const part of parts) { text = text.concat(part); } return text; }',
+    "export function d(parts: string[]) { let text: string | string[] = ''; for (const part of parts) { text = text.concat(part); } return text; }",
+    'export function e(parts: string[][]) { let all: string[] | string = []; for (const part of parts) { all = all.concat(part); } return all; }',
+    'export function f(parts: Uint8Array[]) { let bytes = new Uint8Array(0); for (const part of parts) { bytes = bytes.concat(part); } return bytes; }',
+    'export function g(parts: string[], seed: any) { let all: any = seed; for (const part of parts) { all = all.concat(part); } return all; }',
+    'export function h(parts: string[], seed: unknown) { let all = seed as string; for (const part of parts) { all = all.concat(part); } return all; }',
+    "export function i(parts: string[]) { return parts.reduce((text, part) => text.concat(part), ''); }",
+    'export function j(parts: string[], seed: string | string[]) { return parts.reduce((text, part) => text.concat(part), seed); }',
+  ].map((code) => strings.typed(code)),
+  invalid: [
+    {
+      ...strings.typed(
+        'export function a(parts: string[][], make: () => string[]) { let all = make(); for (const part of parts) { all = all.concat(part); } return all; }',
+      ),
+      errors: [{ messageId: 'loopConcat' }],
+    },
+  ],
+});
+
+ruleTester.run('no-accumulator-concat without types only trusts an array literal seed', rule, {
+  valid: cases([
+    "let text = ''; for (const part of parts) { text = text.concat(part); }",
+    'let all = existing; for (const part of parts) { all = all.concat(part); }',
+    'let all = make(); for (const part of parts) { all = all.concat(part); }',
+    "let all = flag ? [] : ''; for (const part of parts) { all = all.concat(part); }",
+    'let all = new Array(); for (const part of parts) { all = all.concat(part); }',
+    'function f(all) { for (const part of parts) { all = all.concat(part); } return all; }',
+    "parts.reduce((text, part) => text.concat(part), '')",
+    'parts.reduce((all, part) => all.concat(part), existing)',
+  ]),
+  invalid: [],
 });

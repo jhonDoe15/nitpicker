@@ -46,14 +46,6 @@ export function isPresenceType(type: TypeScript.Type, checker: TypeScript.TypeCh
   );
 }
 
-export function isPresenceElement(
-  arrayType: TypeScript.Type,
-  checker: TypeScript.TypeChecker,
-): boolean {
-  const element = checker.getIndexTypeOfType(arrayType, ts.IndexKind.Number);
-  return element !== undefined && isPresenceType(element, checker);
-}
-
 export function isBooleanOnly(type: TypeScript.Type): boolean {
   const present = partsOf(type).filter((part) => (part.flags & NULLISH) === 0);
   return present.length > 0 && present.every((part) => (part.flags & BOOLEAN) !== 0);

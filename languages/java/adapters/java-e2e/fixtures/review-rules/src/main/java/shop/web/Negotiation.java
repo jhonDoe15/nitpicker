@@ -29,7 +29,7 @@ public final class Negotiation {
   }
 
   public static boolean isSecure(HttpServletRequest request) {
-    return request.getHeader("X-Forwarded-Proto").equals("https"); // violation: HttpValueCase
+    return request.getHeader("X-Forwarded-Proto").equals("https"); // violation: HttpValueCase, NullableLibraryResult
   }
 
   public static boolean isText(HttpHeaders headers) {
@@ -67,16 +67,16 @@ public final class Negotiation {
     return Objects.equals(request.getHeader("Content-Type"), "application/json"); // violation: HttpValueCase
   }
 
-  public static boolean isJsonTrimmed(HttpServletRequest request) {
-    return request.getHeader("Content-Type").trim().equals("application/json"); // violation: HttpValueCase
+  public static boolean isJsonTrimmed(HttpServletRequest r) {
+    return r.getHeader("Accept").trim().equals("application/json"); // violation: HttpValueCase, NullableLibraryResult
   }
 
   public static boolean mentionsJson(HttpServletRequest request) {
-    return request.getHeader("Accept").indexOf("json") >= 0; // violation: HttpValueCase
+    return request.getHeader("Accept").indexOf("json") >= 0; // violation: HttpValueCase, NullableLibraryResult
   }
 
   public static boolean isJsonConstant(HttpServletRequest request) {
-    return request.getHeader("Content-Type").equals(JSON); // violation: HttpValueCase
+    return request.getHeader("Content-Type").equals(JSON); // violation: HttpValueCase, NullableLibraryResult
   }
 
   public static String[] acceptedPattern(HttpServletRequest request) {
@@ -123,7 +123,7 @@ public final class Negotiation {
   }
 
   public static String[] accepted(HttpServletRequest request) {
-    return request.getHeader("Accept").split(","); // violation: HandSplitHttpHeader
+    return request.getHeader("Accept").split(","); // violation: HandSplitHttpHeader, NullableLibraryResult
   }
 
   public static String charset(HttpHeaders headers) {
@@ -131,12 +131,25 @@ public final class Negotiation {
     return type.split(";")[1]; // violation: HandSplitHttpHeader
   }
 
+  public static String mediaType(HttpServletRequest request) {
+    return request.getHeader("Content-Type").split(";")[0].trim().toLowerCase(); // violation: NullableLibraryResult
+  }
+
+  public static String heldMediaType(HttpServletRequest request) {
+    String type = request.getHeader("Content-Type");
+    return type.split(";")[0]; // violation: NullableLibraryResult
+  }
+
+  public static String firstCookie(HttpServletRequest request) {
+    return request.getHeader("Cookie").split(";")[0]; // violation: HandSplitHttpHeader, NullableLibraryResult
+  }
+
   public static String[] cookies(HttpServletRequest request) {
-    return request.getHeader("Cookie").split("; "); // violation: HandSplitHttpHeader
+    return request.getHeader("Cookie").split("; "); // violation: HandSplitHttpHeader, NullableLibraryResult
   }
 
   public static String[] forwarded(HttpServletRequest request) {
-    return request.getHeader("X-Forwarded-For").split(",");
+    return request.getHeader("X-Forwarded-For").split(","); // violation: NullableLibraryResult
   }
 
   public static MediaType parsed(HttpServletRequest request) {

@@ -19,6 +19,7 @@ import { rule as ruleNoBlankNumberCoercion } from '../rules/number-input/no-blan
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
+import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMixedHeaderMerge } from '../rules/urls/requests/no-case-mixed-header-merge.mts';
 import { rule as ruleNoCaseSensitivePathCompare } from '../rules/urls/paths/no-case-sensitive-path-compare.mts';
@@ -36,6 +37,7 @@ import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/n
 import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/files/no-directory-passing-existence-check.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
 import { rule as ruleNoDoubleDecode } from '../rules/urls/decoding/no-double-decode.mts';
+import { rule as ruleNoDroppedLogArguments } from '../rules/logging/no-dropped-log-arguments.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoDynamicImportOfPath } from '../rules/urls/paths/no-dynamic-import-of-path.mts';
@@ -78,6 +80,7 @@ import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutatin
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
+import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertion
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
-import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
-import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
-import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -121,6 +121,7 @@ export const partRules = {
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
+  'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mixed-header-merge': ruleNoCaseMixedHeaderMerge,
   'no-case-sensitive-path-compare': ruleNoCaseSensitivePathCompare,
@@ -138,6 +139,7 @@ export const partRules = {
   'no-directory-passing-existence-check': ruleNoDirectoryPassingExistenceCheck,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-double-decode': ruleNoDoubleDecode,
+  'no-dropped-log-arguments': ruleNoDroppedLogArguments,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
   'no-dynamic-import-of-path': ruleNoDynamicImportOfPath,
@@ -181,6 +183,7 @@ export const partRules = {
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
+  'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
-  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
-  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
-  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
 };

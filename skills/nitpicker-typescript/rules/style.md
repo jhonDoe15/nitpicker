@@ -13,6 +13,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- A branch that handles a null or `undefined` value either leaves or is the whole story
+  (`nitpicker/no-null-branch-fall-through`): `if (value == null) { out.append('null'); }` followed by
+  `value.name` fails on the null path or handles the value twice. End the branch with `return`
+  (or `throw`), or put the use in an `else`.
 - No method that only passes its parameters, in order, to another method of the same class
   (`total(items) { return this.sum(items); }`): call that method directly (or, when it is less visible, rename it to the alias's name and delete the alias).
 - A condition in its shortest exact form (`nitpicker/shorter-boolean-logic`): `n > 5`, not `n > 3 && n > 5`;

@@ -11,6 +11,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- A branch that handles a null or `undefined` value either leaves or is the whole story
+  (`nitpicker/no-null-branch-fall-through`): `if (value == null) { out.append('null'); }` followed by
+  `value.name` fails on the null path or handles the value twice. End the branch with `return`
+  (or `throw`), or put the use in an `else`.
 - A condition in its shortest exact form (`nitpicker/shorter-boolean-logic`): `n > 5`, not `n > 3 && n > 5`;
   `a`, not `(a && b) || (a && !b)`; `x >= 0 && x < 20`, not two adjacent ranges joined by `||`.
 - Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
@@ -109,6 +113,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
   `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
+- Write a cache (`redis.set`/`del`, `cache-manager`, a `Map` filled with a new row) after the transaction call returns, not inside
+  its callback (`nitpicker/no-cache-write-in-transaction`).
 - Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
   commits (and outside the lock), and keep only the shared-state change under the lock
   (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
@@ -216,6 +222,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-unguarded-json-parse`).
 - A temp directory or record id is not made unique by the clock alone: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))`
   and `crypto.randomUUID()`, or a timestamp next to a unique part (`nitpicker/no-time-only-unique-name`).
+- A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
+  (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
+  with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

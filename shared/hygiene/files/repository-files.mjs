@@ -11,7 +11,7 @@ import {
 import { exceptionHint } from '../rules.mjs';
 import { committedSizes } from '../tracked-files.mjs';
 import { buildOutputFolders } from './build-output.mjs';
-import { holdsOnlyPublicValues, isEnvFileName } from './env-files.mjs';
+import { holdsNoSecrets, isEnvFileName } from './env-files.mjs';
 import { committedTooling, isKeyFileName, isLockFile } from './known-files.mjs';
 import { startSchemaPushes, startSchemaPushMessage } from './start-scripts.mjs';
 import { GIT_TIMEOUT_MS } from '../../processes/deadlines.mjs';
@@ -30,7 +30,7 @@ export function collectRepositoryFindings({ projectRoot, files }) {
   const output = buildOutputFolders(projectRoot, files);
   const fileFindings = files.flatMap((file) => {
     const base = path.posix.basename(file);
-    if (isEnvFileName(base) && !isPublicEnvFile(projectRoot, file)) {
+    if (isEnvFileName(base) && !isSecretFreeEnvFile(projectRoot, file)) {
       return [problem('committedEnvFile', file, envMessage(file))];
     }
     if (keyFiles.has(file)) {
@@ -85,17 +85,24 @@ function problem(ruleName, file, text) {
   };
 }
 
-function isPublicEnvFile(projectRoot, file) {
+function isSecretFreeEnvFile(projectRoot, file) {
   const filePath = pathInside(projectRoot, file);
   if (filePath === undefined) {
     return false;
   }
   const stats = lstatSync(filePath, { throwIfNoEntry: false });
-  return stats?.isFile() === true && holdsOnlyPublicValues(readFileSync(filePath, 'utf8'));
+  return (
+    stats?.isFile() === true && stats.size <= MEGABYTE && holdsNoSecrets(readEnvText(filePath))
+  );
+}
+
+function readEnvText(filePath) {
+  const text = readFileSync(filePath, 'utf8');
+  return text.includes('\0') ? '\0' : text;
 }
 
 function envMessage(file) {
-  return `Environment file ${file} is committed and usually holds secrets. Remove it, rotate what it held, and commit a .env.example with placeholder values.`;
+  return `Environment file ${file} is committed and holds secret values. Remove it, rotate what it held, and commit a .env.example with placeholder values.`;
 }
 
 function keyMessage(file, verb) {

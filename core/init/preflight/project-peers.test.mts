@@ -137,25 +137,21 @@ describe('the project peers a run needs', () => {
     [
       'npm',
       'package-lock.json',
-      "npm install --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+      "npm install --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
     ],
-    [
-      'pnpm',
-      'pnpm-lock.yaml',
-      "pnpm add --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
-    ],
-    ['yarn', 'yarn.lock', "yarn add --dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'"],
-    ['bun', 'bun.lock', "bun add --dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'"],
+    ['pnpm', 'pnpm-lock.yaml', "pnpm add --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
+    ['yarn', 'yarn.lock', "yarn add --dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
+    ['bun', 'bun.lock', "bun add --dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
   ])(
     'asks for the supported range of an outdated Vitest under %s',
     (_manager, lockfile, command) => {
       const root = project({
-        ...withPeers({ typescript: '6.0.3', vitest: '4.0.5', '@vitest/coverage-v8': '4.0.5' }),
+        ...withPeers({ typescript: '6.0.3', vitest: '3.1.4', '@vitest/coverage-v8': '3.1.4' }),
         [lockfile]: '',
       });
 
       expect(check(root)).toThrow(
-        `vitest 4.0.5 is installed and nitpicker needs ^4.1.11 || ^5.0.0; @vitest/coverage-v8 4.0.5 is installed and nitpicker needs ^4.1.11 || ^5.0.0. Run ${command}.`,
+        `vitest 3.1.4 is installed and nitpicker needs ^3.2.0 || ^4.1.11 || ^5.0.0; @vitest/coverage-v8 3.1.4 is installed and nitpicker needs ^3.2.0 || ^4.1.11 || ^5.0.0. Run ${command}.`,
       );
     },
   );
@@ -168,12 +164,12 @@ describe('the project peers when no supported Vitest runs on the installed Vite'
         typescript: '6.0.3',
         vitest: '2.1.4',
         '@vitest/coverage-v8': '2.1.4',
-        vite: '5.4.11',
+        vite: '4.5.0',
       }),
     );
 
     expect(check(root)).toThrow(
-      /vitest 2\.1\.4 is installed and nitpicker needs \^4\.1\.11 \|\| \^5\.0\.0.*Upgrade vite first/u,
+      /vitest 2\.1\.4 is installed and nitpicker needs \^3\.2\.0 \|\| \^4\.1\.11 \|\| \^5\.0\.0.*Upgrade vite first/u,
     );
   });
 });

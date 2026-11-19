@@ -1,9 +1,7 @@
 import { readJavaExtractions as untypedReadJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees.mjs';
 import type { FixFile, FixRecipe, RecipePlan } from '../../../../../core/fix/typed/fix-types.mts';
-import { callUntyped } from '../../../adapters/typed/java-values.mts';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { exceptedOf, GENERATED, type Excepted } from '../logic/tree-fix-recipe.mts';
 
-type Excepted = (rule: string, name: string) => boolean;
 type Extraction = { readonly id: string; readonly mode: 'whole' | 'partial' };
 
 const readJavaExtractions: (
@@ -14,8 +12,6 @@ const readJavaExtractions: (
 
 const JAVA_FILE = /\.java$/u;
 const NOT_MAIN_SOURCE_SET = /(?:^|\/)src\/(?!main\/)[^/]+\//u;
-const GENERATED =
-  /(?:^|\/)(?:(?:build|target|out)\/|generated-(?:test-)?sources\/|generated\/(?:java|kotlin|sources)\/)/u;
 const RULE = 'near-duplicate';
 
 function eligible({ path: name }: FixFile, isExcepted: Excepted): boolean {
@@ -25,13 +21,6 @@ function eligible({ path: name }: FixFile, isExcepted: Excepted): boolean {
     !GENERATED.test(name) &&
     !isExcepted(RULE, name)
   );
-}
-
-function exceptedOf(inputs: unknown): Excepted {
-  const isExcepted = fieldOf(inputs, 'isExcepted');
-  return typeof isExcepted === 'function'
-    ? (rule, name) => callUntyped(isExcepted, rule, name) === true
-    : () => false;
 }
 
 export function extractionRecipe({ id, mode }: Extraction): FixRecipe {

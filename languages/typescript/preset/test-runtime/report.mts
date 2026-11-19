@@ -23,7 +23,7 @@ const report = {
     analyzeTestRuntime(graph, {
       layout,
       productionRoots: layout.sourceRoots,
-      sourceTexts: await loadModuleSources(graph, projectRoot),
+      sourceTexts: await loadModuleSources(graph, projectRoot, layout),
     }))()),
 };
 

@@ -1,6 +1,7 @@
 import { hunkEdit } from '../patch/hunk-edits.mts';
 import { ownChecksOf, ownRule } from '../own/own-checks.mts';
 import { REVIEW_CHECKS, ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
+import { twinsOf } from '../checks/twin-rules.mts';
 import type {
   FixRecipe,
   RecipeEdit,
@@ -9,10 +10,16 @@ import type {
   RuleRef,
 } from '../../../../../core/fix/typed/fix-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
+import { isDeclined } from '../declines/declined-hunks.mts';
+import { projectNames, type ProjectNames } from '../declines/reflected-names.mts';
 
 export type PatchEntries = ReadonlyMap<string, readonly LabeledHunk[]>;
 type Placed = { readonly line: number; readonly edit: RecipeEdit };
-type Labels = { readonly names: ReadonlySet<string>; readonly ruleFor: (check: string) => RuleRef };
+type Labels = {
+  readonly names: ReadonlySet<string>;
+  readonly ruleFor: (check: string) => RuleRef;
+  readonly project: ProjectNames;
+};
 type RecipeSpec = {
   readonly id: string;
   readonly checks: readonly string[];
@@ -36,15 +43,19 @@ function editOf(text: string, name: string, { hunk, line }: LabeledHunk): Placed
 function fileFixes(
   { path: name, text }: RecipeSource,
   hunks: readonly LabeledHunk[],
-  { names, ruleFor }: Labels,
+  { names, ruleFor, project }: Labels,
 ): RecipeFix[] {
   const found = new Map<string, RecipeFix>();
-  for (const entry of hunks.filter(({ label }) => names.has(label))) {
+  const wanted = hunks.filter((entry) => names.has(entry.label) && !isDeclined(entry, project));
+  for (const entry of wanted) {
     const placed = editOf(text, name, entry);
     if (placed !== undefined) {
       const key = `${entry.label}:${String(placed.line)}`;
+      const at = { path: name, line: placed.line };
+      const twins = twinsOf(entry.label).map((rule) => ({ ...rule, ...at }));
       found.set(key, {
-        finding: { ...ruleFor(entry.label), path: name, line: placed.line },
+        finding: { ...ruleFor(entry.label), ...at },
+        ...(twins.length === 0 ? {} : { alsoFixes: twins }),
         edits: [...(found.get(key)?.edits ?? []), placed.edit],
       });
     }
@@ -68,12 +79,13 @@ function recipeOf({ id, checks, safety, entries, ruleFor = ruleOf }: RecipeSpec)
   const names = new Set(checks);
   return {
     id,
-    rules: checks.map(ruleFor),
+    rules: checks.flatMap((check) => [ruleFor(check), ...twinsOf(check)]),
     presets: PRESETS,
     scope: 'file',
     safety,
-    plan({ files }) {
-      return { fixes: fixesOf(entries, files, { names, ruleFor }) };
+    plan({ files, projectRoot }) {
+      const project = projectNames(projectRoot);
+      return { fixes: fixesOf(entries, files, { names, ruleFor, project }) };
     },
   };
 }

@@ -2,6 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { publishHeadPolicy } from '../conventions/resolve.mts';
+import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import {
   configureAll,
   presetAnalyzers,
@@ -150,6 +151,41 @@ function writeOutcome({
   return result.skipped.length === 0 ? 0 : 2;
 }
 
+function configuredAnalyzers(
+  cli: CacheCli,
+  config: NitpickerConfig,
+  policy: unknown,
+): readonly ProfiledAnalyzer[] {
+  return withRepositoryChecks(
+    configureAll(presetAnalyzers(config, cli.analyzers), config, policy),
+    cli.configOverlay,
+  );
+}
+
+type PublishTarget = {
+  readonly config: NitpickerConfig;
+  readonly projectRoot: string;
+  readonly options: ShardOptions;
+};
+
+function publishedAnalyzers(
+  cli: CacheCli,
+  { config, projectRoot, options }: PublishTarget,
+): { readonly headPolicy: unknown; readonly selected: Analyzer[] } {
+  const detectedPolicy: unknown = publishHeadPolicy(config, projectRoot, {
+    maven: cli.environment['NITPICKER_MAVEN'],
+  });
+  const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {
+    projectRoot,
+    liveProjectRoot: projectRoot,
+    analyzers: selectedAnalyzers(configuredAnalyzers(cli, config, detectedPolicy), options),
+  });
+  return {
+    headPolicy,
+    selected: selectedAnalyzers(configuredAnalyzers(cli, config, headPolicy), options),
+  };
+}
+
 export function runCacheCommand(cli: CacheCli): number {
   rejectUnsupportedOptions(cli.arguments_);
   const options = parseDrillDownOptions(cli.arguments_);
@@ -165,16 +201,7 @@ export function runCacheCommand(cli: CacheCli): number {
       : realpathSync(cli.currentProjectRoot),
   );
   const config: NitpickerConfig = loadConfig(projectRoot, { overlay: cli.configOverlay });
-  const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
-    maven: cli.environment['NITPICKER_MAVEN'],
-  });
-  const selected = selectedAnalyzers(
-    withRepositoryChecks(
-      configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
-      cli.configOverlay,
-    ),
-    options,
-  );
+  const { headPolicy, selected } = publishedAnalyzers(cli, { config, projectRoot, options });
   const store = writableStore(projectRoot, cli);
   const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
   const published = publishBaseSnapshot({

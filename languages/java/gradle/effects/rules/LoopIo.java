@@ -9,13 +9,18 @@ import java.util.Set;
 import nitpicker.effects.Report;
 import nitpicker.effects.batch.Batching;
 import nitpicker.effects.flow.MethodFlow;
+import nitpicker.effects.flow.Lambdas;
 import nitpicker.effects.flow.Origins;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.flow.Walker;
 import nitpicker.effects.kinds.Kinds;
 import nitpicker.effects.kinds.Summaries;
+import nitpicker.effects.memo.Memo;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.IincInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.tree.analysis.SourceValue;
 
 public final class LoopIo {
@@ -32,12 +37,14 @@ public final class LoopIo {
       List.of("java/util/Collection", "java/lang/Iterable", "java/util/Map");
   private final Program program;
   private final Batching batching;
+  private final Memo memo;
   private final Summaries summaries;
   private final Report report;
 
   public LoopIo(Program program, Summaries summaries, Report report) {
     this.program = program;
     this.batching = new Batching(program);
+    this.memo = new Memo(program);
     this.summaries = summaries;
     this.report = report;
   }
@@ -48,7 +55,10 @@ public final class LoopIo {
       walker.walk(entry, Walker.Ctx.NONE, new Walker.Visitor() {
         @Override
         public void visit(MethodFlow flow, int index, MethodInsnNode call, Walker.Ctx ctx) {
-          if (ctx.element() && !chunked(flow, index)) {
+          if (memo.guarded(flow, index)) {
+            return;
+          }
+          if (ctx.element() && !chunked(flow, index) && !stepped(flow, index)) {
             check(flow, index, call.owner, call.name, call.desc, ctx);
           } else if (ctx.later()) {
             later(flow, index, call);
@@ -58,9 +68,14 @@ public final class LoopIo {
         @Override
         public void reference(MethodFlow flow, int index, String owner, String name, String desc, Walker.Ctx ctx) {
           boolean chunk = Arrays.stream(Type.getArgumentTypes(desc)).anyMatch(LoopIo.this::collection);
-          if (ctx.element() && !chunk) {
+          if (ctx.element() && !chunk && !memo.guarded(flow, index)) {
             check(flow, index, owner, name, desc, ctx);
           }
+        }
+
+        @Override
+        public boolean skips(MethodFlow flow, Lambdas.Use use) {
+          return memo.once(flow, use);
         }
       });
     }
@@ -127,6 +142,79 @@ public final class LoopIo {
       }
     }
     return false;
+  }
+
+  private boolean stepped(MethodFlow flow, int index) {
+    if (!flow.analyzed()) {
+      return false;
+    }
+    Origins origins = new Origins(flow);
+    boolean first = false;
+    boolean max = false;
+    int current = index;
+    for (int depth = 0; depth < 8 && flow.insns[current] instanceof MethodInsnNode call
+        && call.getOpcode() != Opcodes.INVOKESTATIC; depth++) {
+      int previous = -1;
+      for (int terminal : origins.identity(flow.receiver(current)).terminals()) {
+        if (flow.insns[terminal] instanceof MethodInsnNode) {
+          previous = terminal;
+        }
+      }
+      if (previous < 0) {
+        break;
+      }
+      MethodInsnNode step = (MethodInsnNode) flow.insns[previous];
+      if (step.name.equals("setParameter") && chunkArgument(flow, origins, previous)) {
+        return true;
+      }
+      first |= step.name.equals("setFirstResult") && advancingArgument(flow, origins, previous);
+      max |= step.name.equals("setMaxResults") && !single(flow, origins, previous);
+      current = previous;
+    }
+    return first && max;
+  }
+
+  private boolean chunkArgument(MethodFlow flow, Origins origins, int index) {
+    MethodInsnNode step = (MethodInsnNode) flow.insns[index];
+    for (int position = 0; position < Type.getArgumentTypes(step.desc).length; position++) {
+      if (origins.identity(flow.argument(index, position)).terminals().stream()
+          .anyMatch(terminal -> chunk(flow, origins, terminal, 0))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean advancingArgument(MethodFlow flow, Origins origins, int index) {
+    for (int position = 0; position < Type.getArgumentTypes(((MethodInsnNode) flow.insns[index]).desc).length;
+        position++) {
+      if (origins.dependsOn(flow.argument(index, position), at -> advancing(flow, index, at))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean single(MethodFlow flow, Origins origins, int index) {
+    Set<Integer> terminals = origins.identity(flow.argument(index, 0)).terminals();
+    return !terminals.isEmpty() && terminals.stream().allMatch(at -> flow.insns[at].getOpcode() == Opcodes.ICONST_1);
+  }
+
+  private boolean advancing(MethodFlow flow, int call, int at) {
+    if (!(flow.insns[at] instanceof VarInsnNode load) || load.getOpcode() != Opcodes.ILOAD) {
+      return false;
+    }
+    return program.loops(flow).stream().filter(loop -> loop.contains(call)).anyMatch(loop -> {
+      for (int next = loop.start(); next <= loop.end(); next++) {
+        boolean stored = flow.insns[next] instanceof IincInsnNode iinc && iinc.var == load.var
+            || flow.insns[next] instanceof VarInsnNode store && store.getOpcode() == Opcodes.ISTORE
+                && store.var == load.var;
+        if (stored) {
+          return true;
+        }
+      }
+      return false;
+    });
   }
 
   private boolean collection(Type type) {

@@ -15,7 +15,8 @@ const resolveLayout: (
 const defaults = path.join(import.meta.dirname, '..', 'defaults');
 const importConfig: (
   url: string,
-) => Promise<{ default: { forbidden: { to: { path: string } }[] } }> = (url) => import(url);
+) => Promise<{ default: { forbidden: { to: { path: readonly string[] } }[] } }> = (url) =>
+  import(url);
 
 const { projectWith: writeProject } = useTemporaryProjects('nitpicker-roots-', {
   keepForFile: true,
@@ -86,7 +87,7 @@ describe('the dependency-cruiser production-to-test rule', () => {
       const url = pathToFileURL(path.join(defaults, 'dependency-cruiser.config.mjs'));
       url.search = 'default-roots';
       const { default: config } = await importConfig(url.href);
-      return new RegExp(config.forbidden[0]?.to.path ?? '');
+      return new RegExp((config.forbidden[0]?.to.path ?? []).join('|'));
     } finally {
       vi.unstubAllEnvs();
     }

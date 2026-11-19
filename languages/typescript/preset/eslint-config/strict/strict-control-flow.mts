@@ -1,4 +1,5 @@
 import type { Linter } from 'eslint';
+import { projectRunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
 
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';
@@ -11,8 +12,7 @@ export const loopSelectors = [
   { selector: 'DoWhileStatement', message: loopMessage },
 ];
 
-const testLoopMessage =
-  'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
+const testLoopMessage = `for...of is the only loop; iterate the items with for...of, or ${projectRunnerVocabulary().eachCase}.`;
 
 const testLoopSelectors = loopSelectors.map(({ selector }) => ({
   selector,

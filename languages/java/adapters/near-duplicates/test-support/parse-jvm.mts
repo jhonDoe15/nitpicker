@@ -31,3 +31,22 @@ export function javaParser(): Promise<JvmParser> {
 export function kotlinParser(): Promise<JvmParser> {
   return jvmParser('kotlin', kotlinUnits);
 }
+
+export type JvmGrammar = {
+  readonly parser: Parser;
+  readonly unitsOf: (program: Node, file: string) => Unit[];
+};
+
+export async function jvmGrammars(): Promise<{ java: JvmGrammar; kotlin: JvmGrammar }> {
+  await Parser.init();
+  const [java, kotlin] = await Promise.all([loadGrammar('java'), loadGrammar('kotlin')]);
+  function parserOf(language: typeof java): Parser {
+    const parser = new Parser();
+    parser.setLanguage(language);
+    return parser;
+  }
+  return {
+    java: { parser: parserOf(java), unitsOf: javaUnits },
+    kotlin: { parser: parserOf(kotlin), unitsOf: kotlinUnits },
+  };
+}
