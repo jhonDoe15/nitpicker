@@ -706,7 +706,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
     servlet `@WebServlet`, `@WebFilter` and `@WebListener`, `@ServerEndpoint`, Spring Boot
     `@SpringBootConfiguration` and `@JsonComponent`, Micronaut controllers, clients, factories,
     `@ConfigurationProperties`, `@Context`, `@Prototype`, `@Bean` and filters, MicroProfile
-    `@RegisterRestClient` and `@ConfigProperties`, SmallRye `@ConfigMapping`, Quarkus `@Startup`;
+    `@RegisterRestClient` and `@ConfigProperties`, SmallRye `@ConfigMapping`, Quarkus `@Startup`,
+    and Play 1.x controllers and jobs (`play.mvc.Controller`, `play.jobs.Job`, `@On`, `@Every`,
+    `@OnApplicationStart`, `@OnApplicationStop`);
     a class also counts as wired when one of its methods or parameters carries a framework callback
     annotation: `@Bean`, `@Scheduled` (Spring, Micronaut, Quarkus), `@EventListener`,
     `@TransactionalEventListener`, `@KafkaListener`, `@RabbitListener`, `@JmsListener`, AWS
@@ -718,13 +720,20 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
     file with a top-level `fun main` (its `FileKt` facade);
   - its qualified name appears in a file the project reads by name: main sources, resources
     (`logback.xml`, `META-INF/spring/...`, `META-INF/services/...`), `src/main/webapp` (`web.xml`),
+    the `conf/` folder of the root or a module (a Play `conf/routes` action such as
+    `OrderController.show` names `controllers.OrderController`),
     or a file directly in the root or a module folder (build scripts with `implementationClass`,
     `Main-Class` or a shade `mainClass`, `template.yaml`, `plugin.xml`), and a `Dockerfile`,
     `*.Dockerfile` or `Containerfile` in any folder outside build output; comments (`//` and
     `/* */` in Java, Kotlin and Gradle scripts, `<!-- -->` in XML and `pom.xml`, `#` in YAML, TOML,
-    properties and container files) and documents (`.md`, `.adoc`, `.rst`, `.txt`) not counted;
+    properties, container files and Play `routes` files) and documents (`.md`, `.adoc`, `.rst`, `.txt`) not counted;
   - its simple name appears in the code of a main source file that sees its package (same package
     or a wildcard import);
+  - it extends or implements, directly or through other main classes, or holds a nested class
+    that does, a type that main code scans for: `ServiceLoader.load(X.class)`, Play's `getAssignableClasses(X.class)`, Reflections
+    `getSubTypesOf`, ClassGraph `getSubclasses` and `getClassesImplementing`, or Spring's
+    `AssignableTypeFilter(X.class)`. Java classes, interfaces, enums and records and Kotlin
+    classes and objects count, with or without a body. Types match by simple name;
   - or its module is a published library: on Gradle a project with a `publishing` publication, on
     Maven a `jar`, `bundle` or `maven-plugin` module with `distributionManagement` or a publishing
     plugin (`central-publishing-maven-plugin`, `nexus-staging-maven-plugin`,
@@ -734,8 +743,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 
   Kotlin sources are read the same way: each top-level class, object or interface of a `.kt` file
   is a declaration, and a file with top-level functions or properties declares its `FileKt` facade
-  (or the `@file:JvmName` name). The message names the exception for a class that a file
-  nitpicker does not read loads by name. A module without all three reports is skipped.
+  (or the `@file:JvmName` name). The message says that no production code or project file names
+  the class, asks to check for framework dispatch first, and names the exception for a class that
+  a file nitpicker does not read loads by name. A module without all three reports is skipped.
 
 **Not built.** Unused builder parameters (a Lombok `@Builder` or record builder field no caller
 sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonized`, MapStruct,
