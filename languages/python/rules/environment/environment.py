@@ -115,7 +115,8 @@ def getattr_access(node, context):
         return None
     owner = dotted_name(node.args[0], context.aliases)
     key = node.args[1]
-    if owner in {"os", "posix", "nt"} and isinstance(key, ast.Constant):
+    shadowed = not is_imported(node.args[0], context.aliases)
+    if owner in {"os", "posix", "nt"} and not shadowed and isinstance(key, ast.Constant):
         return f"{owner}.{key.value}" if key.value in ENVIRONMENT_ATTRIBUTES else None
     return None
 
@@ -125,8 +126,10 @@ def access_name(node, context):
         isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
     )
     name = dotted_name(node, context.aliases) if reads else None
-    if name in ENVIRONMENT_NAMES and not is_default_only(
-        node, context.parents, context.aliases
+    if (
+        name in ENVIRONMENT_NAMES
+        and is_imported(node, context.aliases)
+        and not is_default_only(node, context.parents, context.aliases)
     ):
         return name
     return (
