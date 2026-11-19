@@ -18,6 +18,7 @@ export type DescriptorBindings = {
 
 const FS_SYNC_MODULES = new Set([...FS_MODULES, ...FS_EXTRA_MODULES]);
 const FS_PROMISE_MODULES = new Set(nodeModule('fs/promises'));
+const CLOSE = 'close';
 const HANDLE_USES = new Set<string>([
   'read',
   'write',
@@ -80,7 +81,7 @@ export function closesDescriptor(identifier: TSESTree.Node, bindings: Descriptor
   return (
     call?.type === AST_NODE_TYPES.CallExpression &&
     call.arguments[0] === identifier &&
-    ['closeSync', 'close'].includes(importedCalleeName(call.callee, bindings.fs) ?? '')
+    ['closeSync', CLOSE].includes(importedCalleeName(call.callee, bindings.fs) ?? '')
   );
 }
 
@@ -117,7 +118,7 @@ export function keepsOwnership(identifier: TSESTree.Node, bindings: DescriptorBi
   const call = identifier.parent;
   if (
     call?.type === AST_NODE_TYPES.CallExpression &&
-    call.arguments.includes(identifier as TSESTree.CallExpressionArgument) &&
+    call.arguments.some((argument) => argument === identifier) &&
     importedCalleeName(call.callee, bindings.fs) !== undefined
   ) {
     return true;
@@ -135,8 +136,8 @@ export function handleUse(identifier: TSESTree.Node): 'close' | 'use' | 'other' 
     return 'other';
   }
   const name = nameOf(member.property) ?? '';
-  if (name === 'close' && member.parent?.type === AST_NODE_TYPES.CallExpression) {
-    return 'close';
+  if (name === CLOSE && member.parent.type === AST_NODE_TYPES.CallExpression) {
+    return CLOSE;
   }
   return HANDLE_USES.has(name) ? 'use' : 'other';
 }

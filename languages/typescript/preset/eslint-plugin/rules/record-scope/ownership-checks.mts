@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { calleeName } from '../request-inputs/bindings/request-calls.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { descendantsOf, ts } from '../typed/typescript-views.mts';
 import { isOwnerField } from './query-sites.mts';
 
 const CHECK_CALL = new RegExp(
@@ -19,11 +19,16 @@ const COMPARISONS = new Set([
 export function enclosingFunction(
   node: TypeScript.Node,
 ): TypeScript.SignatureDeclaration | undefined {
-  let current: TypeScript.Node | undefined = node.parent;
-  while (current !== undefined && !ts.isFunctionLike(current)) {
-    current = current.parent;
+  const pending = [node.parent];
+  for (const current of pending) {
+    if (ts.isFunctionLike(current)) {
+      return current;
+    }
+    if (!ts.isSourceFile(current)) {
+      pending.push(current.parent);
+    }
   }
-  return current;
+  return undefined;
 }
 
 function comparesOwner(node: TypeScript.BinaryExpression): boolean {
@@ -37,38 +42,39 @@ function comparesOwner(node: TypeScript.BinaryExpression): boolean {
 }
 
 export function hasOwnershipCheck(fn: TypeScript.Node, site: TypeScript.Node): boolean {
-  let found = false;
-  const visit = (node: TypeScript.Node) => {
-    const checkCall =
-      ts.isCallExpression(node) &&
-      node.getEnd() <= site.getStart() &&
-      CHECK_CALL.test(calleeName(node) ?? '');
-    if (checkCall || (ts.isBinaryExpression(node) && comparesOwner(node))) {
-      found = true;
-    }
-    node.forEachChild(visit);
-  };
-  visit(fn);
-  return found;
+  const siteStart = site.getStart();
+  return descendantsOf(fn).some(
+    (node) =>
+      (ts.isCallExpression(node) &&
+        node.getEnd() <= siteStart &&
+        CHECK_CALL.test(calleeName(node) ?? '')) ||
+      (ts.isBinaryExpression(node) && comparesOwner(node)),
+  );
+}
+
+function isExemptNode(node: TypeScript.Node, sourceFile: TypeScript.SourceFile): boolean {
+  const named =
+    (ts.isClassDeclaration(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isFunctionDeclaration(node)) &&
+    node.name !== undefined &&
+    EXEMPT_NAME.test(node.name.getText(sourceFile));
+  const decorators = ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
+  return named || decorators.some((decorator) => EXEMPT_NAME.test(decorator.getText(sourceFile)));
 }
 
 export function isExemptContext(site: TypeScript.Node, sourceFile: TypeScript.SourceFile): boolean {
   if (EXEMPT_NAME.test(sourceFile.fileName)) {
     return true;
   }
-  let current: TypeScript.Node | undefined = site;
-  while (current !== undefined) {
-    const named =
-      (ts.isClassDeclaration(current) ||
-        ts.isMethodDeclaration(current) ||
-        ts.isFunctionDeclaration(current)) &&
-      current.name !== undefined &&
-      EXEMPT_NAME.test(current.name.getText(sourceFile));
-    const decorators = ts.canHaveDecorators(current) ? (ts.getDecorators(current) ?? []) : [];
-    if (named || decorators.some((decorator) => EXEMPT_NAME.test(decorator.getText(sourceFile)))) {
+  const chain = [site];
+  for (const current of chain) {
+    if (isExemptNode(current, sourceFile)) {
       return true;
     }
-    current = current.parent;
+    if (!ts.isSourceFile(current)) {
+      chain.push(current.parent);
+    }
   }
   return false;
 }

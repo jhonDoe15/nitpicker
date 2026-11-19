@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../../typed/node-views.mts';
 import { type FunctionNode } from '../../typed/syntax-views.mts';
 import { enclosingComponent } from '../support/component-names.mts';
@@ -32,7 +32,9 @@ function calledMethod({ callee }: TSESTree.CallExpression): string | undefined {
 
 function addIds(known: Set<string> | undefined, text: string): Set<string> {
   const ids = known ?? new Set<string>();
-  text.split(/\s+/u).forEach((id) => ids.add(id.replace(/^#/u, '')));
+  for (const id of text.split(/\s+/u)) {
+    ids.add(id.replace(/^#/u, ''));
+  }
   return ids;
 }
 
@@ -45,7 +47,7 @@ export const rule: TSESLint.RuleModule<'literalId'> = {
       literalId:
         'This component is rendered once per item, so the literal id `{{id}}` repeats on the page ' +
         'and its label or `aria-*` reference points at the first copy. Use `useId()` ' +
-        '(`const id = useId();`), an id built from the item (`${prefix}-${item.id}`), or an id ' +
+        `(\`const id = useId();\`), an id built from the item (\`\${prefix}-\${item.id}\`), or an id ` +
         'passed in by the parent.',
     },
   },
@@ -64,7 +66,7 @@ export const rule: TSESLint.RuleModule<'literalId'> = {
     return {
       JSXAttribute(node: TSESTree.JSXAttribute) {
         const key = node.name.type === AST_NODE_TYPES.JSXIdentifier ? node.name.name : undefined;
-        const text = literalText(node.value);
+        const text = literalText(node.value ?? undefined);
         const owner = text === undefined ? undefined : enclosingComponent(node);
         if (key === 'id' && text !== undefined && owner !== undefined && text !== '') {
           candidates.push({ attribute: node, value: text, fn: owner.fn, name: owner.name });

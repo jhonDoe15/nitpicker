@@ -37,7 +37,7 @@ tester.run('no-unclosed-file-descriptor', rule, {
     invalid(`${FS} export function run(file) { fs.openSync(file, 'w'); }`, 'discarded'),
     invalid(`${NAMED} export function run(file) { openSync(file, 'w'); }`, 'discarded'),
     invalid(
-      "import * as fs from 'node:fs'; export function run(dir) { fs.openSync(`${dir}/index.ts`, 'w'); }",
+      `import * as fs from 'node:fs'; export function run(dir) { fs.openSync(\`\${dir}/index.ts\`, 'w'); }`,
       'discarded',
     ),
     invalid(`${PROMISES} export async function run(file) { await open(file, 'w'); }`, 'discarded'),

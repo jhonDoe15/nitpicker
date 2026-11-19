@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { escapeRegExp as untypedEscape } from '../../../../../../../shared/paths/glob.mjs';
 import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mjs';
 
 type Resolution = { readonly kind: string; readonly path?: string };
@@ -6,20 +7,24 @@ type Resolution = { readonly kind: string; readonly path?: string };
 const resolveModuleSpecifier: (written: string, containingFile: string) => Resolution =
   untypedResolve;
 
+const escapeRegExp: (value: string) => string = untypedEscape;
+
 const NEXT_HOOK = /\n(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|const)\s+use[A-Z]/u;
 const failureHandler = /\b(?:onError|onSettled)\b/u;
 const mutationCall = /\buseMutation\b/u;
 
-function sourceOf(file: string): string | undefined {
+type Source = { readonly kind: 'text'; readonly text: string } | { readonly kind: 'unreadable' };
+
+function sourceOf(file: string): Source {
   try {
-    return readFileSync(file, 'utf8');
+    return { kind: 'text', text: readFileSync(file, 'utf8') };
   } catch {
-    return undefined;
+    return { kind: 'unreadable' };
   }
 }
 
 function definitionOf(text: string, name: string): string | undefined {
-  const start = new RegExp(`(?:function|const)\\s+${name}\\b`, 'u').exec(text)?.index;
+  const start = new RegExp(`(?:function|const)\\s+${escapeRegExp(name)}\\b`, 'u').exec(text)?.index;
   if (start === undefined) {
     return undefined;
   }
@@ -34,8 +39,8 @@ export function projectHookLacksFailureHandler(
   name: string,
 ): boolean {
   const resolved = resolveModuleSpecifier(specifier, filename);
-  const text = resolved.kind === 'file' && resolved.path ? sourceOf(resolved.path) : undefined;
-  const definition = text === undefined ? undefined : definitionOf(text, name);
+  const source = resolved.kind === 'file' && resolved.path ? sourceOf(resolved.path) : undefined;
+  const definition = source?.kind === 'text' ? definitionOf(source.text, name) : undefined;
   return (
     definition !== undefined && mutationCall.test(definition) && !failureHandler.test(definition)
   );

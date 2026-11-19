@@ -1,8 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { depthFirst, nameOf, nodeChildren, nodesWithoutNested } from '../../typed/node-views.mts';
 
-export type Acquired = { readonly name: string; readonly index: number };
-
 const ACQUIRES = new Set<string>([
   'createQueryRunner',
   'getConnection',
@@ -36,19 +34,21 @@ const SCOPES = new Set<string>([
 ]);
 
 function unwrapped(node: TSESTree.Node): { node: TSESTree.Node; awaited: boolean } {
-  let current = node;
+  const chain = [node];
   let awaited = false;
-  while (
-    current.type === AST_NODE_TYPES.AwaitExpression ||
-    current.type === AST_NODE_TYPES.TSAsExpression ||
-    current.type === AST_NODE_TYPES.ChainExpression ||
-    current.type === AST_NODE_TYPES.TSNonNullExpression
-  ) {
-    awaited ||= current.type === AST_NODE_TYPES.AwaitExpression;
-    current =
-      current.type === AST_NODE_TYPES.AwaitExpression ? current.argument : current.expression;
+  for (const current of chain) {
+    if (current.type === AST_NODE_TYPES.AwaitExpression) {
+      awaited = true;
+      chain.push(current.argument);
+    } else if (
+      current.type === AST_NODE_TYPES.TSAsExpression ||
+      current.type === AST_NODE_TYPES.ChainExpression ||
+      current.type === AST_NODE_TYPES.TSNonNullExpression
+    ) {
+      chain.push(current.expression);
+    }
   }
-  return { node: current, awaited };
+  return { node: chain.at(-1) ?? node, awaited };
 }
 
 export function ownNodes(root: TSESTree.Node): TSESTree.Node[] {
@@ -65,7 +65,7 @@ export function acquiredName(statement: TSESTree.Node): string | undefined {
     return undefined;
   }
   const [declarator] = statement.declarations;
-  if (declarator?.id.type !== AST_NODE_TYPES.Identifier || declarator.init === null) {
+  if (declarator.id.type !== AST_NODE_TYPES.Identifier || declarator.init === null) {
     return undefined;
   }
   const { node, awaited } = unwrapped(declarator.init);
@@ -195,7 +195,7 @@ function escapesVia(identifier: TSESTree.Node): boolean {
     parent.type === AST_NODE_TYPES.CallExpression &&
     parent.callee.type === AST_NODE_TYPES.MemberExpression &&
     ESCAPING_METHODS.has(nameOf(parent.callee.property) ?? '') &&
-    parent.arguments.includes(identifier as TSESTree.CallExpressionArgument)
+    parent.arguments.some((argument) => argument === identifier)
   );
 }
 

@@ -4,13 +4,14 @@ import { partsOf } from '../../analysis/narrowing/type-parts.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import { isSignalType } from './signal-scope.mts';
 
+const SIGNAL = 'signal';
 const NOTHING = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
 
 function hasSignalProperty(checker: TypeScript.TypeChecker, type: TypeScript.Type): boolean {
   return partsOf(type)
     .filter((part) => (part.flags & NOTHING) === 0)
     .some((part) => {
-      const property = part.getProperty('signal');
+      const property = part.getProperty(SIGNAL);
       const declaration = property?.valueDeclaration ?? property?.declarations?.[0];
       return (
         property !== undefined &&
@@ -31,8 +32,8 @@ function suppliesSignal(argument: TSESTree.CallExpressionArgument | undefined): 
     (property) =>
       property.type === AST_NODE_TYPES.SpreadElement ||
       (!property.computed &&
-        ((property.key.type === AST_NODE_TYPES.Identifier && property.key.name === 'signal') ||
-          (property.key.type === AST_NODE_TYPES.Literal && property.key.value === 'signal'))),
+        ((property.key.type === AST_NODE_TYPES.Identifier && property.key.name === SIGNAL) ||
+          (property.key.type === AST_NODE_TYPES.Literal && property.key.value === SIGNAL))),
   );
 }
 

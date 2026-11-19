@@ -32,7 +32,7 @@ const CREATORS = new Set<string>([
 const CLASSES = new Set<string>(['Readable', 'Writable', 'Transform', 'PassThrough', 'Duplex']);
 const MEMBER_CREATORS = new Set<string>(['createReadStream', 'createWriteStream', 'stream']);
 const READABLE_FACTORIES = new Set<string>(['from', 'fromWeb']);
-export const LISTENERS = new Set<string>(['on', 'once', 'addListener', 'prependListener']);
+const LISTENERS = new Set<string>(['on', 'once', 'addListener', 'prependListener']);
 const MAX_DEPTH = 3;
 const COMPLETION_EVENTS = new Set<string>(['finish', 'end', 'close', 'error']);
 
@@ -77,28 +77,42 @@ function createsStream(call: TSESTree.CallExpression, bindings: ModuleBindings):
 
 export type PipeEnv = { readonly sourceCode: SourceCode; readonly bindings: ModuleBindings };
 
-function originOfCall(env: PipeEnv, call: TSESTree.CallExpression, depth: number): boolean {
+type OriginStep = boolean | { readonly node: TSESTree.Node; readonly depth: number };
+
+function originOfCall(env: PipeEnv, call: TSESTree.CallExpression, depth: number): OriginStep {
   const member = memberCall(call);
   if (member?.name === 'pipe') {
     const [target] = call.arguments;
-    return target !== undefined && isStreamOrigin(env, target, depth);
+    return target === undefined ? false : { node: target, depth };
   }
   if (member !== undefined && LISTENERS.has(member.name)) {
-    return isStreamOrigin(env, member.object, depth);
+    return { node: member.object, depth };
   }
   return createsStream(call, env.bindings);
 }
 
-export function isStreamOrigin(env: PipeEnv, node: TSESTree.Node, depth = 0): boolean {
+function originStep(env: PipeEnv, node: TSESTree.Node, depth: number): OriginStep {
   const current = unwrapped(node);
   if (current.type === AST_NODE_TYPES.NewExpression) {
     return CLASSES.has(env.bindings.named.get(nameOf(current.callee) ?? '') ?? '');
   }
   if (current.type === AST_NODE_TYPES.Identifier && depth < MAX_DEPTH) {
     const init = constantInitializer(env.sourceCode, current);
-    return init !== undefined && isStreamOrigin(env, init, depth + 1);
+    return init === undefined ? false : { node: init, depth: depth + 1 };
   }
-  return current.type === AST_NODE_TYPES.CallExpression && originOfCall(env, current, depth);
+  return current.type === AST_NODE_TYPES.CallExpression ? originOfCall(env, current, depth) : false;
+}
+
+export function isStreamOrigin(env: PipeEnv, start: TSESTree.Node): boolean {
+  const pending = [{ node: start, depth: 0 }];
+  for (const { node, depth } of pending) {
+    const step = originStep(env, node, depth);
+    if (typeof step === 'boolean') {
+      return step;
+    }
+    pending.push(step);
+  }
+  return false;
 }
 
 export function isPipe(node: TSESTree.Node): node is TSESTree.CallExpression {
@@ -117,10 +131,12 @@ export function pipeReceiver(call: TSESTree.CallExpression): TSESTree.Node {
 
 export function chainOfPipes(outer: TSESTree.CallExpression): TSESTree.CallExpression[] {
   const pipes = [outer];
-  let receiver = unwrapped(pipeReceiver(outer));
-  while (isPipe(receiver)) {
-    pipes.unshift(receiver);
-    receiver = unwrapped(pipeReceiver(receiver));
+  const receivers = [unwrapped(pipeReceiver(outer))];
+  for (const receiver of receivers) {
+    if (isPipe(receiver)) {
+      pipes.unshift(receiver);
+      receivers.push(unwrapped(pipeReceiver(receiver)));
+    }
   }
   return pipes;
 }
@@ -130,16 +146,15 @@ export function feedsPipe(call: TSESTree.CallExpression): boolean {
   return (
     member?.type === AST_NODE_TYPES.MemberExpression &&
     member.object === call &&
-    member.parent !== undefined &&
     isPipe(member.parent)
   );
 }
 
 export function resultUsed(call: TSESTree.CallExpression): boolean {
   const parent = call.parent;
-  if (parent?.type === AST_NODE_TYPES.MemberExpression && parent.object === call) {
+  if (parent.type === AST_NODE_TYPES.MemberExpression && parent.object === call) {
     const listener = parent.parent;
-    const [event] = listener?.type === AST_NODE_TYPES.CallExpression ? listener.arguments : [];
+    const [event] = listener.type === AST_NODE_TYPES.CallExpression ? listener.arguments : [];
     return (
       LISTENERS.has(nameOf(parent.property) ?? '') &&
       event?.type === AST_NODE_TYPES.Literal &&
@@ -147,7 +162,6 @@ export function resultUsed(call: TSESTree.CallExpression): boolean {
     );
   }
   return (
-    parent !== undefined &&
     parent.type !== AST_NODE_TYPES.ExpressionStatement &&
     !isPipe(parent) &&
     parent.type !== AST_NODE_TYPES.ChainExpression
@@ -155,15 +169,20 @@ export function resultUsed(call: TSESTree.CallExpression): boolean {
 }
 
 export function receiverListens(node: TSESTree.Node): boolean {
-  const current = unwrapped(node);
-  if (current.type !== AST_NODE_TYPES.CallExpression) {
-    return false;
+  const pending = [node];
+  for (const item of pending) {
+    const current = unwrapped(item);
+    if (current.type !== AST_NODE_TYPES.CallExpression) {
+      return false;
+    }
+    if (listensForError(current)) {
+      return true;
+    }
+    if (current.callee.type === AST_NODE_TYPES.MemberExpression) {
+      pending.push(current.callee.object);
+    }
   }
-  const callee = current.callee;
-  return (
-    listensForError(current) ||
-    (callee.type === AST_NODE_TYPES.MemberExpression && receiverListens(callee.object))
-  );
+  return false;
 }
 
 export function namedStreams(sourceCode: SourceCode, node: TSESTree.Node): string | undefined {

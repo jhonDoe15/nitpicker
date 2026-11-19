@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts } from '../typed/typescript-views.mts';
+import { descendantsOf, ts } from '../typed/typescript-views.mts';
 
 const OWNER_WORDS =
   'organization|org|environment|team|user|subscriber|tenant|project|workspace|account|owner|' +
@@ -26,7 +26,7 @@ export type Site = {
   readonly filter: TypeScript.ObjectLiteralExpression;
   readonly entries: readonly Entry[];
 };
-export type Entry = { readonly name: string; readonly value: TypeScript.Expression | undefined };
+type Entry = { readonly name: string; readonly value: TypeScript.Expression | undefined };
 
 const METHODS = new Set([
   'find',
@@ -108,8 +108,8 @@ function modelOf(receiver: TypeScript.Expression): string | undefined {
   return ts.isPropertyAccessExpression(receiver) ? receiver.name.text : undefined;
 }
 
-export function siteOf(node: TypeScript.Node): Site | undefined {
-  if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) {
+function siteOf(node: TypeScript.Node): Site | undefined {
+  if (!(ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression))) {
     return undefined;
   }
   const { expression } = node;
@@ -124,16 +124,7 @@ export function siteOf(node: TypeScript.Node): Site | undefined {
 }
 
 export function sitesIn(sourceFile: TypeScript.SourceFile): Site[] {
-  const sites: Site[] = [];
-  const pending: TypeScript.Node[] = [sourceFile];
-  for (const node of pending) {
-    const site = siteOf(node);
-    if (site !== undefined) {
-      sites.push(site);
-    }
-    node.forEachChild((child) => {
-      pending.push(child);
-    });
-  }
-  return sites;
+  return descendantsOf(sourceFile)
+    .map(siteOf)
+    .filter((site) => site !== undefined);
 }

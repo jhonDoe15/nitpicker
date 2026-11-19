@@ -1,6 +1,9 @@
-import { AST_NODE_TYPES, ASTUtils, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ASTUtils, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { syntaxChildren } from '../../decided/syntax.mts';
-import { depthFirst } from '../../typed/node-views.mts';
+import { ancestorsOf, chainOf, depthFirst } from '../../typed/node-views.mts';
+import { isFunction } from '../../typed/syntax-views.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 const RESPONSE_NAMES = new Set<string>(['res', 'response', 'reply']);
 const CONTINUATION_NAMES = new Set<string>(['next', 'callback', 'cb', 'done']);
@@ -27,21 +30,12 @@ const LOGGERS = new Set<string>(['console', 'logger', 'log']);
 export type Handoff = { readonly text: string; readonly name: string };
 
 function enclosingFunction(node: TSESTree.Node): TSESTree.FunctionLike | undefined {
-  for (let current = node.parent; current; current = current.parent) {
-    if (
-      current.type === AST_NODE_TYPES.FunctionDeclaration ||
-      current.type === AST_NODE_TYPES.FunctionExpression ||
-      current.type === AST_NODE_TYPES.ArrowFunctionExpression
-    ) {
-      return current;
-    }
-  }
-  return undefined;
+  return ancestorsOf(node).find(isFunction);
 }
 
 function isParameter(code: TSESLint.SourceCode, identifier: TSESTree.Identifier): boolean {
   const variable = ASTUtils.findVariable(code.getScope(identifier), identifier);
-  return variable?.defs[0]?.type === 'Parameter';
+  return variable?.defs[0]?.type === DefinitionType.Parameter;
 }
 
 function lastParameter(fn: TSESTree.FunctionLike | undefined, name: string): boolean {
@@ -61,6 +55,19 @@ function unwrapCall(statement: TSESTree.Node): TSESTree.CallExpression | undefin
   return call.type === AST_NODE_TYPES.CallExpression ? call : undefined;
 }
 
+function chainedObject(link: TSESTree.Node): TSESTree.Node | undefined {
+  if (link.type !== AST_NODE_TYPES.CallExpression) {
+    return undefined;
+  }
+  const inner = link.callee;
+  const chained =
+    inner.type === AST_NODE_TYPES.MemberExpression &&
+    !inner.computed &&
+    inner.property.type === AST_NODE_TYPES.Identifier &&
+    CHAINED.has(inner.property.name);
+  return chained ? inner.object : undefined;
+}
+
 function responseRoot(call: TSESTree.CallExpression): TSESTree.Identifier | undefined {
   const callee = call.callee;
   if (
@@ -71,21 +78,9 @@ function responseRoot(call: TSESTree.CallExpression): TSESTree.Identifier | unde
   ) {
     return undefined;
   }
-  let current: TSESTree.Node = callee.object;
-  while (current.type === AST_NODE_TYPES.CallExpression) {
-    const inner: TSESTree.Node = current.callee;
-    if (
-      inner.type !== AST_NODE_TYPES.MemberExpression ||
-      inner.computed ||
-      inner.property.type !== AST_NODE_TYPES.Identifier ||
-      !CHAINED.has(inner.property.name)
-    ) {
-      return undefined;
-    }
-    current = inner.object;
-  }
-  return current.type === AST_NODE_TYPES.Identifier && RESPONSE_NAMES.has(current.name)
-    ? current
+  const root = chainOf<TSESTree.Node>(callee.object, chainedObject).at(-1);
+  return root?.type === AST_NODE_TYPES.Identifier && RESPONSE_NAMES.has(root.name)
+    ? root
     : undefined;
 }
 
@@ -116,11 +111,10 @@ export function handoffOf(
 
 function isLogging(statement: TSESTree.Node): boolean {
   const call = unwrapCall(statement);
-  let current: TSESTree.Node | undefined = call?.callee;
-  while (current?.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
-  }
-  return current?.type === AST_NODE_TYPES.Identifier && LOGGERS.has(current.name);
+  const root = chainOf<TSESTree.Node>(call?.callee, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  ).at(-1);
+  return root?.type === AST_NODE_TYPES.Identifier && LOGGERS.has(root.name);
 }
 
 function runsCode(expression: TSESTree.Node): boolean {

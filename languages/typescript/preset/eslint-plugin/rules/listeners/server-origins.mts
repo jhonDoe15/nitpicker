@@ -16,10 +16,12 @@ function bindingNames(node: TSESTree.ImportDeclaration): string[] {
 }
 
 function noteImport(bindings: Bindings, node: TSESTree.ImportDeclaration): void {
-  const source = String(node.source.value);
+  const source = node.source.value;
   bindings.modules.add(source);
   if (SERVER_MODULES.test(source)) {
-    bindingNames(node).forEach((name) => bindings.names.add(name));
+    for (const name of bindingNames(node)) {
+      bindings.names.add(name);
+    }
   }
 }
 
@@ -70,50 +72,60 @@ function isBound(callee: TSESTree.Node, names: ReadonlySet<string>): boolean {
 type Site = {
   readonly sourceCode: SourceCode;
   readonly names: ReadonlySet<string>;
-  readonly depth: number;
 };
 
-function deeper(site: Site): Site {
-  return { ...site, depth: site.depth + 1 };
-}
-
-function isServerCall(site: Site, node: TSESTree.CallExpression): boolean {
+function nextOfCall(site: Site, node: TSESTree.CallExpression): boolean | TSESTree.Node {
   const name = calleeNameOf(node.callee);
   const created =
     isBound(node.callee, site.names) &&
     (node.callee.type === AST_NODE_TYPES.Identifier || FACTORIES.has(name ?? ''));
-  const chained =
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    CHAINED.has(name ?? '') &&
-    isServerAt(deeper(site), node.callee.object);
-  return created || chained;
+  if (created) {
+    return true;
+  }
+  return node.callee.type === AST_NODE_TYPES.MemberExpression && CHAINED.has(name ?? '')
+    ? node.callee.object
+    : false;
 }
 
-function isServerVariable(site: Site, node: TSESTree.Identifier): boolean {
+function nextOfVariable(site: Site, node: TSESTree.Identifier): boolean | TSESTree.Node {
   const variable = variableOf(site.sourceCode, node);
   const [definition] = variable?.defs ?? [];
-  return (
+  if (
     variable?.defs.length === 1 &&
     definition?.node.type === AST_NODE_TYPES.VariableDeclarator &&
-    definition.node.init !== null &&
-    isServerAt(deeper(site), definition.node.init)
-  );
+    definition.node.init !== null
+  ) {
+    return definition.node.init;
+  }
+  return false;
 }
 
-function isServerAt(site: Site, node: TSESTree.Node): boolean {
-  if (site.depth > MAX_DEPTH) {
-    return false;
-  }
+function nextStep(site: Site, node: TSESTree.Node): boolean | TSESTree.Node {
   if (node.type === AST_NODE_TYPES.NewExpression) {
     return isBound(node.callee, site.names) && CONSTRUCTORS.has(calleeNameOf(node.callee) ?? '');
   }
   if (node.type === AST_NODE_TYPES.CallExpression) {
-    return isServerCall(site, node);
+    return nextOfCall(site, node);
   }
   if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return isServerAt(deeper(site), node.argument);
+    return node.argument;
   }
-  return node.type === AST_NODE_TYPES.Identifier && isServerVariable(site, node);
+  return node.type === AST_NODE_TYPES.Identifier ? nextOfVariable(site, node) : false;
+}
+
+function isServerAt(site: Site, start: TSESTree.Node): boolean {
+  const pending = [{ node: start, depth: 0 }];
+  for (const { node, depth } of pending) {
+    if (depth > MAX_DEPTH) {
+      return false;
+    }
+    const step = nextStep(site, node);
+    if (typeof step === 'boolean') {
+      return step;
+    }
+    pending.push({ node: step, depth: depth + 1 });
+  }
+  return false;
 }
 
 export function isServer(
@@ -121,5 +133,5 @@ export function isServer(
   node: TSESTree.Node,
   names: ReadonlySet<string>,
 ): boolean {
-  return isServerAt({ sourceCode, names, depth: 0 }, node);
+  return isServerAt({ sourceCode, names }, node);
 }

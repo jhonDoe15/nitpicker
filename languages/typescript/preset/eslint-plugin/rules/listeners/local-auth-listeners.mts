@@ -48,7 +48,7 @@ function creationOf(sourceCode: SourceCode, receiver: TSESTree.Node): Creation |
   }
   const [definition] = variableOf(sourceCode, receiver)?.defs ?? [];
   const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : null;
+    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : undefined;
   return init?.type === AST_NODE_TYPES.CallExpression || init?.type === AST_NODE_TYPES.NewExpression
     ? init
     : undefined;
@@ -76,7 +76,7 @@ export function mentionsLocalHelper(listen: Listen): boolean {
 
 function closesInCallback(call: TSESTree.CallExpression, sourceCode: SourceCode): boolean {
   return call.arguments.some(
-    (argument) => isFunctionNode(argument) && /\.close\(/u.test(sourceCode.getText(argument)),
+    (argument) => isFunctionNode(argument) && sourceCode.getText(argument).includes('.close('),
   );
 }
 

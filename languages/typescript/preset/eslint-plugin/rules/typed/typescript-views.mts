@@ -46,3 +46,24 @@ export function withoutParentheses(node: TypeScript.Expression): TypeScript.Expr
   }
   return chain.at(-1) ?? node;
 }
+
+export function descendantsOf(root: TypeScript.Node): TypeScript.Node[] {
+  const found = [root];
+  for (const node of found) {
+    node.forEachChild((child) => {
+      found.push(child);
+    });
+  }
+  return found.toSorted((first, second) => first.pos - second.pos);
+}
+
+export function wrappedExpression(
+  expression: TypeScript.Expression,
+): TypeScript.Expression | undefined {
+  return ts.isParenthesizedExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isAwaitExpression(expression)
+    ? expression.expression
+    : undefined;
+}

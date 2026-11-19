@@ -14,7 +14,7 @@ const STORE = [
   'export interface Command { notificationId: string; environmentId: string; subscriberId: string }',
 ].join('\n');
 
-const COPIES = Array.from({ length: 40 }, (_, index) => index);
+const COPIES = Array.from({ length: 40 }, (_, index) => String(index));
 const CONVENTIONS = [
   "import { messageRepository, noteRepository, prisma } from './store';",
   ...COPIES.map(

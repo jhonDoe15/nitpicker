@@ -41,7 +41,7 @@ function isStoreField(
   );
 }
 
-export function createdInCall(argument: TSESTree.Node | undefined): boolean {
+function createdInCall(argument: TSESTree.Node | undefined): boolean {
   if (argument === undefined) {
     return false;
   }
@@ -80,7 +80,7 @@ export function registrationOf(
     : undefined;
 }
 
-export function assignedField(call: TSESTree.CallExpression): string | undefined {
+function assignedField(call: TSESTree.CallExpression): string | undefined {
   const { parent } = call;
   return parent.type === AST_NODE_TYPES.AssignmentExpression && parent.right === call
     ? thisField(parent.left)

@@ -25,6 +25,59 @@ function body(code: string) {
 
 const kinds = (messageId: 'collected' | 'decoded' | 'matched') => ({ messageId });
 
+type Invalid = { readonly code: string; readonly id: 'collected' | 'decoded' | 'matched' };
+
+const INVALID: readonly Invalid[] = [
+  {
+    code: 'let out = ""; child.stdout.on("data", (chunk) => { out += chunk; });',
+    id: 'collected',
+  },
+  {
+    code: 'let out = ""; child.stdout.on("data", (chunk) => { out += chunk.toString(); });',
+    id: 'collected',
+  },
+  {
+    code: 'let out = ""; child.stderr.on("data", (chunk) => { out += String(chunk); });',
+    id: 'collected',
+  },
+  {
+    code: 'let out = ""; socket.on("data", (chunk) => { out += chunk.toString("utf8"); });',
+    id: 'collected',
+  },
+  {
+    code: 'let out = ""; (async () => { for await (const chunk of child.stdout) { out += chunk; } })();',
+    id: 'collected',
+  },
+  {
+    code: 'const decoder = new TextDecoder(); const lines: string[] = []; (async () => { for await (const frame of frames) lines.push(decoder.decode(frame)); })();',
+    id: 'decoded',
+  },
+  {
+    code: 'const decoder = new TextDecoder(); socket.on("data", (chunk) => { decoder.decode(chunk); });',
+    id: 'decoded',
+  },
+  {
+    code: 'child.stdout.on("data", (chunk) => { if (String(chunk).includes(READY)) done(); });',
+    id: 'matched',
+  },
+  {
+    code: 'child.stdout.on("data", (chunk) => { if (chunk.toString().indexOf(READY) >= 0) done(); });',
+    id: 'matched',
+  },
+  {
+    code: 'socket.on("data", (chunk) => { if (chunk.includes(READY)) done(); });',
+    id: 'matched',
+  },
+  {
+    code: 'child.stdout.on("data", (chunk) => { if (/ready/.test(chunk.toString())) done(); });',
+    id: 'matched',
+  },
+  {
+    code: 'socket.on("data", (data: Buffer) => { const str = data.toString(); if (str.indexOf(READY) !== -1) done(); });',
+    id: 'matched',
+  },
+];
+
 tester.run('no-chunkwise-stream-text', rule, {
   valid: [
     'const parts: Buffer[] = []; child.stdout.on("data", (chunk: Buffer) => { parts.push(chunk); }); child.stdout.on("end", () => { Buffer.concat(parts).toString("utf8"); });',
@@ -45,54 +98,5 @@ tester.run('no-chunkwise-stream-text', rule, {
     'const source = Readable.from(["a"]); let out = ""; source.on("data", (chunk) => { out += chunk; });',
     'let out = ""; (async () => { for await (const chunk of fs.createReadStream("x", "utf8")) { out += chunk; } })();',
   ].map(body),
-  invalid: [
-    {
-      code: 'let out = ""; child.stdout.on("data", (chunk) => { out += chunk; });',
-      id: 'collected',
-    },
-    {
-      code: 'let out = ""; child.stdout.on("data", (chunk) => { out += chunk.toString(); });',
-      id: 'collected',
-    },
-    {
-      code: 'let out = ""; child.stderr.on("data", (chunk) => { out += String(chunk); });',
-      id: 'collected',
-    },
-    {
-      code: 'let out = ""; socket.on("data", (chunk) => { out += chunk.toString("utf8"); });',
-      id: 'collected',
-    },
-    {
-      code: 'let out = ""; (async () => { for await (const chunk of child.stdout) { out += chunk; } })();',
-      id: 'collected',
-    },
-    {
-      code: 'const decoder = new TextDecoder(); const lines: string[] = []; (async () => { for await (const frame of frames) lines.push(decoder.decode(frame)); })();',
-      id: 'decoded',
-    },
-    {
-      code: 'const decoder = new TextDecoder(); socket.on("data", (chunk) => { decoder.decode(chunk); });',
-      id: 'decoded',
-    },
-    {
-      code: 'child.stdout.on("data", (chunk) => { if (String(chunk).includes(READY)) done(); });',
-      id: 'matched',
-    },
-    {
-      code: 'child.stdout.on("data", (chunk) => { if (chunk.toString().indexOf(READY) >= 0) done(); });',
-      id: 'matched',
-    },
-    {
-      code: 'socket.on("data", (chunk) => { if (chunk.includes(READY)) done(); });',
-      id: 'matched',
-    },
-    {
-      code: 'child.stdout.on("data", (chunk) => { if (/ready/.test(chunk.toString())) done(); });',
-      id: 'matched',
-    },
-    {
-      code: 'socket.on("data", (data: Buffer) => { const str = data.toString(); if (str.indexOf(READY) !== -1) done(); });',
-      id: 'matched',
-    },
-  ].map(({ code, id }) => ({ ...body(code), errors: [kinds(id as 'collected')] })),
+  invalid: INVALID.map(({ code, id }) => ({ ...body(code), errors: [kinds(id)] })),
 });

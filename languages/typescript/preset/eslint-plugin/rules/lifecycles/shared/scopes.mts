@@ -32,7 +32,7 @@ export function nearestClass(node: TSESTree.Node): TSESTree.ClassBody | undefine
   );
 }
 
-export function isMethodFunction(fn: FunctionNode): boolean {
+function isMethodFunction(fn: FunctionNode): boolean {
   return (
     fn.parent.type === AST_NODE_TYPES.MethodDefinition ||
     (fn.parent.type === AST_NODE_TYPES.PropertyDefinition && fn.parent.value === fn)
@@ -83,11 +83,11 @@ export function calleeProperty(call: TSESTree.CallExpression): string | undefine
   return callee.type === AST_NODE_TYPES.Identifier ? callee.name : undefined;
 }
 
-export function isHookName(name: string | undefined): boolean {
+function isHookName(name: string | undefined): boolean {
   return name !== undefined && HOOK_NAME.test(name);
 }
 
-export function isComponentOrHook(fn: FunctionNode): boolean {
+function isComponentOrHook(fn: FunctionNode): boolean {
   const name = functionName(fn);
   if (name === undefined || isMethodFunction(fn)) {
     return false;

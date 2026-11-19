@@ -69,58 +69,58 @@ const MEMO = (body: string, params = 'base, variant, table') =>
 tester.run('no-incomplete-cache-key memo caches', rule, {
   valid: [
     MEMO(
-      'const key = `${base}:${variant}:${table}`; let m = cache.get(key); if (!m) { m = merge(base, variant, table); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}:\${table}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, table); cache.set(key, m); } return m;`,
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant); cache.set(key, m); } return m;`,
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant, logger); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, logger); cache.set(key, m); } return m;`,
       'base, variant, logger',
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant, signal); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, signal); cache.set(key, m); } return m;`,
       'base, variant, signal',
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant, fn(base)); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, fn(base)); cache.set(key, m); } return m;`,
       'base, variant, fn',
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant, c); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, c); cache.set(key, m); } return m;`,
       'base, variant, c: AbortSignal',
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { logger.debug(table); m = merge(base, variant); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { logger.debug(table); m = merge(base, variant); cache.set(key, m); } return m;`,
     ),
     MEMO(
-      'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant); log.info("m", table); cache.set(key, m); } return m;',
+      `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant); log.info("m", table); cache.set(key, m); } return m;`,
     ),
-    MEMO('const key = `${base}:${variant}`; cache.set(key, merge(base, variant, table));'),
+    MEMO(`const key = \`\${base}:\${variant}\`; cache.set(key, merge(base, variant, table));`),
     MEMO(
       'const key = "fixed"; let m = cache.get(key); if (!m) { m = merge(base, table); cache.set(key, m); } return m;',
     ),
     MEMO(
-      'const key = `${options.a}`; let m = cache.get(key); if (!m) { m = merge(options.b); cache.set(key, m); } return m;',
+      `const key = \`\${options.a}\`; let m = cache.get(key); if (!m) { m = merge(options.b); cache.set(key, m); } return m;`,
       'options',
     ),
     MEMO(
-      'const key = `${base}:${variant}`; const m = merge(base, variant); other.set(key, table); return cache.get(key) ?? m;',
+      `const key = \`\${base}:\${variant}\`; const m = merge(base, variant); other.set(key, table); return cache.get(key) ?? m;`,
     ),
-    'function build(base, table) { const cache = new Map(); const key = `${base}`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, table); cache.set(key, m); return m; }',
-    'const cache = new Map();\nfunction build(base, table) { const key = `${base}`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, table); cache.set(key, m); return m; }\nexport function reset() { cache.clear(); }',
+    `function build(base, table) { const cache = new Map(); const key = \`\${base}\`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, table); cache.set(key, m); return m; }`,
+    `const cache = new Map();\nfunction build(base, table) { const key = \`\${base}\`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, table); cache.set(key, m); return m; }\nexport function reset() { cache.clear(); }`,
     MEMO(
-      'const key = `${base}`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, token); cache.set(key, m); return m;',
+      `const key = \`\${base}\`; const hit = cache.get(key); if (hit) return hit; const m = merge(base, token); cache.set(key, m); return m;`,
       'base, token',
     ),
-    'function addPair(pairs, base, sha) { const key = `${base}`; const entry = pairs.get(key); if (entry === undefined) { pairs.set(key, { sha }); return; } entry.count += 1; }',
-    'function collect(base, sha) { const key = `${base}`; if (!seen.has(key)) { seen.set(key, { sha }); } }',
-    'function holeOf(state, kind, left) { const key = `${left}`; if (!state.holes.has(key)) { state.holes.set(key, { kind }); } return 1; }',
+    `function addPair(pairs, base, sha) { const key = \`\${base}\`; const entry = pairs.get(key); if (entry === undefined) { pairs.set(key, { sha }); return; } entry.count += 1; }`,
+    `function collect(base, sha) { const key = \`\${base}\`; if (!seen.has(key)) { seen.set(key, { sha }); } }`,
+    `function holeOf(state, kind, left) { const key = \`\${left}\`; if (!state.holes.has(key)) { state.holes.set(key, { kind }); } return 1; }`,
   ].map((code) => ({ filename, code })),
   invalid: [
     {
       code: MEMO(
-        'const key = `${base}:${variant}`; let m = cache.get(key); if (!m) { m = merge(base, variant, table); cache.set(key, m); } return m;',
+        `const key = \`\${base}:\${variant}\`; let m = cache.get(key); if (!m) { m = merge(base, variant, table); cache.set(key, m); } return m;`,
       ),
       names: '`table`',
     },
@@ -138,16 +138,16 @@ tester.run('no-incomplete-cache-key memo caches', rule, {
     },
     {
       code: MEMO(
-        'const key = `${base}`; const hit = cache.get(key); if (hit) return hit; const prepared = prepare(variant); const m = merge(base, prepared); cache.set(key, m); return m;',
+        `const key = \`\${base}\`; const hit = cache.get(key); if (hit) return hit; const prepared = prepare(variant); const m = merge(base, prepared); cache.set(key, m); return m;`,
       ),
       names: '`variant`',
     },
     {
-      code: 'const outer = new Map();\nfunction build(model, variant, table) { const key = `${model}:${variant}`; let inner = outer.get(model); if (!inner) { inner = new Map(); outer.set(model, inner); } let m = inner.get(key); if (!m) { m = merge(model, variant, table); inner.set(key, m); } return m; }',
+      code: `const outer = new Map();\nfunction build(model, variant, table) { const key = \`\${model}:\${variant}\`; let inner = outer.get(model); if (!inner) { inner = new Map(); outer.set(model, inner); } let m = inner.get(key); if (!m) { m = merge(model, variant, table); inner.set(key, m); } return m; }`,
       names: '`table`',
     },
     {
-      code: 'class R { cache = new Map(); find(host, org) { const key = `${host}`; const hit = this.cache.get(key); if (hit) return hit; const c = create(host, org); this.cache.set(key, c); return c; } }',
+      code: `class R { cache = new Map(); find(host, org) { const key = \`\${host}\`; const hit = this.cache.get(key); if (hit) return hit; const c = create(host, org); this.cache.set(key, c); return c; } }`,
       names: '`org`',
     },
     {

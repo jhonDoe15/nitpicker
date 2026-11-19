@@ -1,10 +1,18 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import {
+  ancestorsOf,
+  chainOf,
+  nameOf,
+  variableNamed,
+  type SourceCode,
+} from '../../typed/node-views.mts';
 import { projectSourceMatches } from '../support/package-facts.mts';
 import { projectHookLacksFailureHandler } from './hook-definitions.mts';
 import { mutationBinding, type Mutation } from './mutation-bindings.mts';
 import { readOptions, type OptionsReading } from './mutation-options.mts';
 
+const USE_MUTATION = 'useMutation';
+const UNKNOWN = 'unknown';
 const hookNamePattern = /^use[A-Z][A-Za-z0-9]*$/u;
 const optionsName = /opt|config|handlers|callbacks/iu;
 const centralHandler =
@@ -15,18 +23,18 @@ function importedFrom(definitions: readonly TSESLint.Scope.Definition[]): string
   return definitions.length === 1 &&
     only?.type === TSESLint.Scope.DefinitionType.ImportBinding &&
     only.parent.type === AST_NODE_TYPES.ImportDeclaration
-    ? String(only.parent.source.value)
+    ? only.parent.source.value
     : undefined;
 }
 
 function isMutationHook(sourceCode: SourceCode, callee: TSESTree.Node, filename: string): boolean {
   if (callee.type === AST_NODE_TYPES.MemberExpression) {
-    return !callee.computed && nameOf(callee.property) === 'useMutation';
+    return !callee.computed && nameOf(callee.property) === USE_MUTATION;
   }
   if (callee.type !== AST_NODE_TYPES.Identifier || !hookNamePattern.test(callee.name)) {
     return false;
   }
-  if (callee.name === 'useMutation') {
+  if (callee.name === USE_MUTATION) {
     return true;
   }
   const source = importedFrom(variableNamed(sourceCode, callee)?.defs ?? []);
@@ -38,15 +46,15 @@ function handlesRejection(call: TSESTree.CallExpression): boolean {
   if (chained.type === AST_NODE_TYPES.MemberExpression && chained.object === call) {
     return ['catch', 'then'].includes(nameOf(chained.property) ?? '');
   }
-  let node: TSESTree.Node = call;
-  for (
-    let parent: TSESTree.Node | undefined = node.parent;
-    parent !== undefined;
-    parent = node.parent
-  ) {
+  const path = [call, ...ancestorsOf(call)];
+  const links = path.flatMap((child, index) => {
+    const parent = path[index + 1];
+    return parent === undefined ? [] : [{ child, parent }];
+  });
+  for (const { child, parent } of links) {
     if (
       parent.type === AST_NODE_TYPES.TryStatement &&
-      parent.block === node &&
+      parent.block === child &&
       parent.handler !== null
     ) {
       return true;
@@ -58,27 +66,28 @@ function handlesRejection(call: TSESTree.CallExpression): boolean {
     ) {
       return false;
     }
-    node = parent;
   }
   return false;
 }
 
+function wrapperParent(link: TSESTree.Node): TSESTree.Node | undefined {
+  const parent = link.parent;
+  const wrapped =
+    parent?.type === AST_NODE_TYPES.AwaitExpression ||
+    (parent?.type === AST_NODE_TYPES.UnaryExpression && parent.operator === 'void');
+  return wrapped ? parent : undefined;
+}
+
 function resultIsDropped(call: TSESTree.CallExpression): boolean {
-  let node: TSESTree.Node = call;
-  while (
-    node.parent.type === AST_NODE_TYPES.AwaitExpression ||
-    (node.parent.type === AST_NODE_TYPES.UnaryExpression && node.parent.operator === 'void')
-  ) {
-    node = node.parent;
-  }
+  const node = chainOf<TSESTree.Node>(call, wrapperParent).at(-1) ?? call;
   return (
-    node.parent.type === AST_NODE_TYPES.ExpressionStatement ||
-    (node !== call && node.parent.type === AST_NODE_TYPES.VariableDeclarator)
+    node.parent?.type === AST_NODE_TYPES.ExpressionStatement ||
+    (node !== call && node.parent?.type === AST_NODE_TYPES.VariableDeclarator)
   );
 }
 
 function hookOptionsOf(hook: TSESTree.CallExpression): OptionsReading {
-  if (hook.callee.type === AST_NODE_TYPES.Identifier && hook.callee.name === 'useMutation') {
+  if (hook.callee.type === AST_NODE_TYPES.Identifier && hook.callee.name === USE_MUTATION) {
     return readOptions(hook.arguments[0]);
   }
   const objects = hook.arguments.filter((each) => each.type === AST_NODE_TYPES.ObjectExpression);
@@ -87,7 +96,7 @@ function hookOptionsOf(hook: TSESTree.CallExpression): OptionsReading {
       each.type === AST_NODE_TYPES.SpreadElement ||
       (each.type === AST_NODE_TYPES.Identifier && optionsName.test(each.name)),
   );
-  return opaque || objects.length > 1 ? 'unknown' : readOptions(objects[0]);
+  return opaque || objects.length > 1 ? UNKNOWN : readOptions(objects[0]);
 }
 
 function callOf(trigger: TSESTree.Node): TSESTree.CallExpression | undefined {
@@ -101,19 +110,19 @@ type Context = Readonly<TSESLint.RuleContext<'dropsFailure', []>>;
 
 function reportMutation(context: Context, { hook, triggers, looseUses }: Mutation): void {
   const hookOptions = hookOptionsOf(hook);
-  if (hookOptions === 'unknown' || hookOptions.failure) {
+  if (hookOptions === UNKNOWN || hookOptions.failure) {
     return;
   }
   const calls = [...triggers].flatMap(([trigger, kind]) => {
     const call = callOf(trigger);
     return call === undefined ? [] : [{ call, kind, options: readOptions(call.arguments[1]) }];
   });
-  if (calls.some(({ options }) => options === 'unknown')) {
+  if (calls.some(({ options }) => options === UNKNOWN)) {
     return;
   }
   const usable = calls.filter(
     ({ call, kind, options }) =>
-      options !== 'unknown' &&
+      options !== UNKNOWN &&
       !options.failure &&
       (kind === 'mutate' || (resultIsDropped(call) && !handlesRejection(call))),
   );
@@ -122,7 +131,7 @@ function reportMutation(context: Context, { hook, triggers, looseUses }: Mutatio
     return;
   }
   for (const { call, options } of usable) {
-    if (options !== 'unknown' && options.success) {
+    if (options !== UNKNOWN && options.success) {
       context.report({ node: call, messageId: 'dropsFailure' });
     }
   }

@@ -1,20 +1,15 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
+import { staticTextOf } from '../../typed/static-text.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 const listMethods = new Set(['map', 'flatMap']);
 const equalityOperators = new Set(['==', '===', '!=', '!==']);
 
-export function literalText(node: TSESTree.Node | null | undefined): string | undefined {
-  if (node?.type === AST_NODE_TYPES.JSXExpressionContainer) {
-    return literalText(node.expression);
-  }
-  if (node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') {
-    return node.value;
-  }
-  return node?.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0
-    ? (node.quasis[0]?.value.cooked ?? undefined)
-    : undefined;
+export function literalText(node: TSESTree.Node | undefined): string | undefined {
+  return staticTextOf(
+    node?.type === AST_NODE_TYPES.JSXExpressionContainer ? node.expression : node,
+  );
 }
 
 function isListCallback(node: TSESTree.Node): boolean {
@@ -37,13 +32,19 @@ function isListCallback(node: TSESTree.Node): boolean {
 }
 
 function testsEquality(test: TSESTree.Node): boolean {
-  if (test.type === AST_NODE_TYPES.BinaryExpression) {
-    return equalityOperators.has(test.operator);
+  const pending = [test];
+  for (const current of pending) {
+    if (
+      current.type === AST_NODE_TYPES.BinaryExpression &&
+      equalityOperators.has(current.operator)
+    ) {
+      return true;
+    }
+    if (current.type === AST_NODE_TYPES.LogicalExpression) {
+      pending.push(current.left, current.right);
+    }
   }
-  return (
-    test.type === AST_NODE_TYPES.LogicalExpression &&
-    (testsEquality(test.left) || testsEquality(test.right))
-  );
+  return false;
 }
 
 function isDispatchBranch(node: TSESTree.Node): boolean {

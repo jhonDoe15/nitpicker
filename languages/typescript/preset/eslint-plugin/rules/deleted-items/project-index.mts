@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { isProjectSource } from '../program-rules/project-source-files.mts';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { isReference, ts } from '../typed/typescript-views.mts';
 import { flagOf } from './flags.mts';
@@ -31,11 +32,6 @@ export function iterationsOf(
   checker: TypeScript.TypeChecker,
 ): Iteration[] {
   return cachedValue(fileIterations, sourceFile, () => iterationsIn(sourceFile, checker));
-}
-
-function isProjectSource(file: TypeScript.SourceFile): boolean {
-  const name = file.fileName.replaceAll('\\', '/');
-  return !(file.isDeclarationFile || name.includes('/node_modules/') || TEST_PATH.test(name));
 }
 
 function calleeName(call: TypeScript.CallExpression): string | undefined {
@@ -78,7 +74,7 @@ function recordHelpers(
 
 function buildIndex(program: TypeScript.Program): Map<string, Entry> {
   const checker = program.getTypeChecker();
-  const files = program.getSourceFiles().filter(isProjectSource);
+  const files = program.getSourceFiles().filter((file) => isProjectSource(file, TEST_PATH));
   const entries = new Map<string, Entry>();
   for (const file of files) {
     for (const { flag, guarded } of iterationsOf(file, checker)) {

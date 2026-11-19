@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import ts from 'typescript';
+import type TypeScript from 'typescript';
+import { ts } from '../../typed/typescript-views.mts';
 import { nameOf, type SourceCode } from '../../typed/node-views.mts';
 import { isCloseName } from '../scope/close-scopes.mts';
 import { calleeProperty } from '../shared/scopes.mts';
@@ -24,7 +25,10 @@ export function subscribingName(call: TSESTree.CallExpression): string | undefin
     : undefined;
 }
 
-function returnsVoidWithoutArguments(checker: ts.TypeChecker, type: ts.Type): boolean {
+function returnsVoidWithoutArguments(
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+): boolean {
   const signatures = type.getCallSignatures();
   return (
     signatures.length > 0 &&
@@ -46,7 +50,11 @@ function returnsVoidWithoutArguments(checker: ts.TypeChecker, type: ts.Type): bo
   );
 }
 
-function hasReleaser(checker: ts.TypeChecker, type: ts.Type, node: ts.Node): boolean {
+function hasReleaser(
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  node: TypeScript.Node,
+): boolean {
   return RELEASERS.some((name) => {
     const property = type.getProperty(name);
     return (
@@ -56,7 +64,11 @@ function hasReleaser(checker: ts.TypeChecker, type: ts.Type, node: ts.Node): boo
   });
 }
 
-export function isReleaseHandle(checker: ts.TypeChecker, type: ts.Type, node: ts.Node): boolean {
+export function isReleaseHandle(
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  node: TypeScript.Node,
+): boolean {
   const plain = checker.getNonNullableType(type);
   if ((plain.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never)) !== 0) {
     return false;

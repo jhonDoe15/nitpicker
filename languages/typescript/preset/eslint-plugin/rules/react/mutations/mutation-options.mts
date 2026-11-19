@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../../typed/node-views.mts';
 
-export type Handlers = {
+type Handlers = {
   readonly success: boolean;
   readonly failure: boolean;
 };

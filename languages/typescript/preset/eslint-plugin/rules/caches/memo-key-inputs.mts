@@ -1,6 +1,12 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { unwrapped } from '../security/security-values.mts';
-import { depthFirst, nodeChildren, type SourceCode } from '../typed/node-views.mts';
+import {
+  ancestorsOf,
+  chainOf,
+  depthFirst,
+  nodeChildren,
+  type SourceCode,
+} from '../typed/node-views.mts';
 import {
   enclosingFunction,
   isCalleeUse,
@@ -14,6 +20,7 @@ import type { FunctionNode } from '../typed/syntax-views.mts';
 
 export type MissingInput = { readonly call: TSESTree.CallExpression; readonly names: string[] };
 
+const { DefinitionType, ScopeType } = TSESLint.Scope;
 const IGNORED_NAMES = /^(logger|log|signal|abortSignal|ctx|context|ct|cancellationToken)$/i;
 const IGNORED_TYPES = /\b(Logger|AbortSignal|Context|CancellationToken)\b/;
 const LOG_ROOTS = new Set(['log', 'logger', 'console']);
@@ -30,22 +37,30 @@ function isKeyBuilder(node: TSESTree.Node): boolean {
     return false;
   }
   const callee = value.callee;
-  if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.property.type !== 'Identifier') {
+  if (
+    callee.type !== AST_NODE_TYPES.MemberExpression ||
+    callee.property.type !== AST_NODE_TYPES.Identifier
+  ) {
     return false;
   }
-  const joined = callee.property.name === 'join' && callee.object.type === 'ArrayExpression';
+  const joined =
+    callee.property.name === 'join' && callee.object.type === AST_NODE_TYPES.ArrayExpression;
   const stringified =
     callee.property.name === 'stringify' &&
-    callee.object.type === 'Identifier' &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
     callee.object.name === 'JSON';
   return joined || stringified;
 }
 
+function memberRoot(start: TSESTree.Node): TSESTree.Node {
+  const chain = chainOf<TSESTree.Node>(start, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return chain.at(-1) ?? start;
+}
+
 function callRootName(call: TSESTree.CallExpression): string | undefined {
-  let root: TSESTree.Node = call.callee;
-  while (root.type === AST_NODE_TYPES.MemberExpression) {
-    root = root.object;
-  }
+  const root = memberRoot(call.callee);
   return root.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
 }
 
@@ -61,21 +76,17 @@ function isLogCall(call: TSESTree.CallExpression): boolean {
 }
 
 function isLogged(identifier: TSESTree.Identifier): boolean {
-  let current: TSESTree.Node | null | undefined = identifier.parent;
-  while (current !== undefined && current !== null) {
-    if (current.type === AST_NODE_TYPES.CallExpression && isLogCall(current)) {
-      return true;
-    }
-    current = current.parent;
-  }
-  return false;
+  return ancestorsOf(identifier).some(
+    (node) => node.type === AST_NODE_TYPES.CallExpression && isLogCall(node),
+  );
 }
 
 function parameterVariables(scope: TSESLint.Scope.Scope): Set<Variable> {
   return new Set(
     scope.variables.filter(
       (variable) =>
-        variable.name !== 'arguments' && variable.defs.some((entry) => entry.type === 'Parameter'),
+        variable.name !== 'arguments' &&
+        variable.defs.some((entry) => entry.type === DefinitionType.Parameter),
     ),
   );
 }
@@ -95,8 +106,7 @@ function keyDeclarator(
   node: TSESTree.VariableDeclarator,
 ): { readonly name: string; readonly init: TSESTree.Expression } | undefined {
   const parent = node.parent;
-  const isConst = parent.type === AST_NODE_TYPES.VariableDeclaration && parent.kind === 'const';
-  if (!isConst || node.id.type !== AST_NODE_TYPES.Identifier || node.init === null) {
+  if (parent.kind !== 'const' || node.id.type !== AST_NODE_TYPES.Identifier || node.init === null) {
     return undefined;
   }
   return isKeyBuilder(node.init) ? { name: node.id.name, init: node.init } : undefined;
@@ -124,12 +134,10 @@ function outlivesCall(
   call: TSESTree.CallExpression,
   scope: TSESLint.Scope.Scope,
 ): boolean {
-  let root: TSESTree.Node =
+  const start =
     call.callee.type === AST_NODE_TYPES.MemberExpression ? call.callee.object : call.callee;
-  const shared = root.type === AST_NODE_TYPES.MemberExpression;
-  while (root.type === AST_NODE_TYPES.MemberExpression) {
-    root = root.object;
-  }
+  const shared = start.type === AST_NODE_TYPES.MemberExpression;
+  const root = memberRoot(start);
   if (root.type === AST_NODE_TYPES.ThisExpression) {
     return shared;
   }
@@ -141,7 +149,9 @@ function outlivesCall(
   if (!scopeContains(scope, variable.scope)) {
     return true;
   }
-  const isParameter = variable.defs.some((definition) => definition.type === 'Parameter');
+  const isParameter = variable.defs.some(
+    (definition) => definition.type === DefinitionType.Parameter,
+  );
   return (
     !isParameter &&
     variable.references.some((reference) => readsOuterCache(sourceCode, reference, scope))
@@ -162,9 +172,9 @@ function readsOuterCache(
         node.type === AST_NODE_TYPES.Identifier ? variableOf(sourceCode, node) : undefined;
       return (
         outer !== undefined &&
-        outer.scope.type !== 'global' &&
+        outer.scope.type !== ScopeType.global &&
         !scopeContains(scope, outer.scope) &&
-        outer.defs.every((definition) => definition.type !== 'ImportBinding')
+        outer.defs.every((definition) => definition.type !== DefinitionType.ImportBinding)
       );
     })
   );
@@ -175,8 +185,9 @@ function returnsCached(
   fn: FunctionNode,
   readers: readonly TSESTree.CallExpression[],
 ): boolean {
-  const isReader = (node: TSESTree.Node) =>
-    node.type === AST_NODE_TYPES.CallExpression && readers.includes(node);
+  function isReader(node: TSESTree.Node): boolean {
+    return node.type === AST_NODE_TYPES.CallExpression && readers.includes(node);
+  }
   const returned = [...depthFirst<TSESTree.Node>(fn.body, nodeChildren)].filter(
     (node) => node.type === AST_NODE_TYPES.ReturnStatement && node.argument !== null,
   );
@@ -241,7 +252,7 @@ function missingFor(
   const names = [...reachedVariables(sourceCode, value, scope)]
     .filter(([input]) => parameters.has(input) && !keyInputs.has(input))
     .filter(([input]) => !ignoredParameter(input, sourceCode))
-    .filter(([, uses]) => uses.some((use) => !isCalleeUse(use) && !isLogged(use)))
+    .filter(([, uses]) => uses.some((use) => !(isCalleeUse(use) || isLogged(use))))
     .map(([input]) => input.name);
   return names.length > 0 && !isClearedInFile(sourceCode, receiver)
     ? { call: setter, names }

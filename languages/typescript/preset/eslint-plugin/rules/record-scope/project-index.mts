@@ -1,4 +1,5 @@
 import type TypeScript from 'typescript';
+import { isProjectSource } from '../program-rules/project-source-files.mts';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 import { fieldKey, isOwnerField, sitesIn, type Site } from './query-sites.mts';
 
@@ -18,11 +19,6 @@ export function sitesOf(sourceFile: TypeScript.SourceFile): Site[] {
   return cachedValue(siteLists, sourceFile, () => sitesIn(sourceFile));
 }
 
-function isProjectSource(file: TypeScript.SourceFile): boolean {
-  const name = file.fileName.replaceAll('\\', '/');
-  return !(file.isDeclarationFile || name.includes('/node_modules/') || TEST_PATH.test(name));
-}
-
 function addSite(index: Map<string, Counts>, site: Site): void {
   const counts: Counts = index.get(site.model) ?? { total: 0, fields: new Map() };
   counts.total += 1;
@@ -36,10 +32,10 @@ function addSite(index: Map<string, Counts>, site: Site): void {
 
 function buildIndex(program: TypeScript.Program): Map<string, Counts> {
   const index = new Map<string, Counts>();
-  for (const file of program.getSourceFiles().filter(isProjectSource)) {
-    sitesOf(file).forEach((site) => {
+  for (const file of program.getSourceFiles().filter((file) => isProjectSource(file, TEST_PATH))) {
+    for (const site of sitesOf(file)) {
       addSite(index, site);
-    });
+    }
   }
   return index;
 }

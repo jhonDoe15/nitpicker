@@ -48,7 +48,7 @@ function listensForAbort(variable: TSESLint.Scope.Variable): boolean {
   return variable.references.some((reference) => {
     const member = reference.identifier.parent;
     return (
-      member?.type === AST_NODE_TYPES.MemberExpression &&
+      member.type === AST_NODE_TYPES.MemberExpression &&
       member.object === reference.identifier &&
       ABORT_LISTENERS.has(nameOf(member.property) ?? '')
     );
@@ -67,25 +67,38 @@ function valueIdentifiers(root: TSESTree.Node): TSESTree.Identifier[] {
   );
 }
 
+type Hop = { readonly node: TSESTree.Node; readonly hops: number };
+
+function initializersOf(
+  sourceCode: SourceCode,
+  identifiers: readonly TSESTree.Identifier[],
+): TSESTree.Expression[] {
+  return identifiers.flatMap((identifier) => {
+    const declarator = variableNamed(sourceCode, identifier)?.defs[0]?.node;
+    const init =
+      declarator?.type === AST_NODE_TYPES.VariableDeclarator ? declarator.init : undefined;
+    return init === null || init === undefined ? [] : [init];
+  });
+}
+
 function derivesFromSignal(
   sourceCode: SourceCode,
   node: TSESTree.Node,
-  query: { readonly names: ReadonlySet<string>; readonly hops: number },
+  names: ReadonlySet<string>,
 ): boolean {
-  const identifiers = valueIdentifiers(node);
-  if (identifiers.some((identifier) => query.names.has(identifier.name))) {
-    return true;
+  const pending: Hop[] = [{ node, hops: 0 }];
+  for (const item of pending) {
+    const identifiers = valueIdentifiers(item.node);
+    if (identifiers.some((identifier) => names.has(identifier.name))) {
+      return true;
+    }
+    if (item.hops < MAX_HOPS) {
+      for (const init of initializersOf(sourceCode, identifiers)) {
+        pending.push({ node: init, hops: item.hops + 1 });
+      }
+    }
   }
-  return (
-    query.hops < MAX_HOPS &&
-    identifiers.some((identifier) => {
-      const declarator = variableNamed(sourceCode, identifier)?.defs[0]?.node;
-      const init = declarator?.type === AST_NODE_TYPES.VariableDeclarator ? declarator.init : null;
-      return init !== null && init !== undefined
-        ? derivesFromSignal(sourceCode, init, { ...query, hops: query.hops + 1 })
-        : false;
-    })
-  );
+  return false;
 }
 
 function awaitedValues(body: TSESTree.Node): TSESTree.Node[] {
@@ -106,15 +119,13 @@ function reactsToAbort(
   const names = new Set(candidates.map((variable) => variable.name));
   return (
     candidates.some(listensForAbort) ||
-    awaitedValues(loop.body).some((value) =>
-      derivesFromSignal(sourceCode, value, { names, hops: 0 }),
-    )
+    awaitedValues(loop.body).some((value) => derivesFromSignal(sourceCode, value, names))
   );
 }
 
 export function infiniteLoopHandlers(context: Context, signals: Signals): TSESLint.RuleListener {
   function check(node: Loop): void {
-    if (!isEndless(node) || !awaitsDirectly(node.body)) {
+    if (!(isEndless(node) && awaitsDirectly(node.body))) {
       return;
     }
     const candidates = signalsInScope(context.sourceCode.getScope(node), signals);

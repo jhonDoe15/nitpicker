@@ -33,17 +33,17 @@ function neverClosed(
     return false;
   }
   const kinds = variable.references
-    .map((each) => each.identifier as TSESTree.Node)
+    .map((each): TSESTree.Node => each.identifier)
     .filter(reference)
     .map(check);
-  return !kinds.includes('close') && !kinds.includes('other');
+  return !(kinds.includes('close') || kinds.includes('other'));
 }
 
 function declaratorOf(call: TSESTree.CallExpression): TSESTree.VariableDeclarator | undefined {
-  const awaited = call.parent?.type === AST_NODE_TYPES.AwaitExpression ? call.parent : call;
+  const awaited = call.parent.type === AST_NODE_TYPES.AwaitExpression ? call.parent : call;
   const declarator = awaited.parent;
   if (
-    declarator?.type !== AST_NODE_TYPES.VariableDeclarator ||
+    declarator.type !== AST_NODE_TYPES.VariableDeclarator ||
     declarator.init !== awaited ||
     declarator.id.type !== AST_NODE_TYPES.Identifier
   ) {
@@ -55,8 +55,8 @@ function declaratorOf(call: TSESTree.CallExpression): TSESTree.VariableDeclarato
 
 function discarded(call: TSESTree.CallExpression): boolean {
   const parent = call.parent;
-  const statement = parent?.type === AST_NODE_TYPES.AwaitExpression ? parent.parent : parent;
-  return statement?.type === AST_NODE_TYPES.ExpressionStatement;
+  const statement = parent.type === AST_NODE_TYPES.AwaitExpression ? parent.parent : parent;
+  return statement.type === AST_NODE_TYPES.ExpressionStatement;
 }
 
 function insideFunction(node: TSESTree.Node): boolean {
@@ -87,7 +87,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     return {
       CallExpression(call: TSESTree.CallExpression) {
         const sync = isOpenSync(call, bindings);
-        if (!sync && !isFileHandleOpen(call, bindings)) {
+        if (!(sync || isFileHandleOpen(call, bindings))) {
           return;
         }
         if (discarded(call)) {

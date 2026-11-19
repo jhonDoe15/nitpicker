@@ -83,7 +83,7 @@ function invokedLocally(sourceCode: SourceCode, call: TSESTree.CallExpression): 
     .some((ref) => {
       const { parent: user } = ref.identifier;
       return (
-        user?.type === AST_NODE_TYPES.CallExpression &&
+        user.type === AST_NODE_TYPES.CallExpression &&
         user.callee === ref.identifier &&
         nearestFunction(user) === host
       );

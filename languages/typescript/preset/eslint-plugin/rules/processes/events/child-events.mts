@@ -80,29 +80,33 @@ function assignedNames(scope: TSESTree.Node): string[] {
   });
 }
 
+function outputAssignments(sourceCode: SourceCode, node: TSESTree.Node, child: string): string[] {
+  const heard = node.type === AST_NODE_TYPES.CallExpression ? listener(node) : undefined;
+  if (
+    heard?.event === 'data' &&
+    OUTPUT_STREAMS.has(sourceCode.getText(heard.receiver).replace(`${child}.`, '')) &&
+    sourceCode.getText(heard.receiver).startsWith(`${child}.`) &&
+    heard.handler !== undefined
+  ) {
+    return assignedNames(heard.handler);
+  }
+  if (
+    node.type === AST_NODE_TYPES.ForOfStatement &&
+    OUTPUT_STREAMS.has(sourceCode.getText(node.right).replace(`${child}.`, ''))
+  ) {
+    return assignedNames(node.body);
+  }
+  return [];
+}
+
 export function collectedOutput(
   sourceCode: SourceCode,
   scope: TSESTree.Node,
   child: string,
 ): Set<string> {
-  const names: string[] = [];
-  for (const node of depthFirst(scope, nodeChildren)) {
-    const heard = node.type === AST_NODE_TYPES.CallExpression ? listener(node) : undefined;
-    if (
-      heard?.event === 'data' &&
-      OUTPUT_STREAMS.has(sourceCode.getText(heard.receiver).replace(`${child}.`, '')) &&
-      sourceCode.getText(heard.receiver).startsWith(`${child}.`) &&
-      heard.handler !== undefined
-    ) {
-      names.push(...assignedNames(heard.handler));
-    }
-    if (
-      node.type === AST_NODE_TYPES.ForOfStatement &&
-      OUTPUT_STREAMS.has(sourceCode.getText(node.right).replace(`${child}.`, ''))
-    ) {
-      names.push(...assignedNames(node.body));
-    }
-  }
+  const names = [...depthFirst(scope, nodeChildren)].flatMap((node) =>
+    outputAssignments(sourceCode, node, child),
+  );
   return new Set(names.filter((name) => name !== ''));
 }
 
@@ -147,7 +151,7 @@ function isQuiet(value: TSESTree.Node): boolean {
 
 export function discardsOutput(child: { readonly node: TSESTree.Node }): boolean {
   const node = child.node.type === AST_NODE_TYPES.VariableDeclarator ? child.node.init : child.node;
-  const call = node === null || node === undefined ? undefined : unwrapped(node);
+  const call = node === null ? undefined : unwrapped(node);
   const options = call?.type === AST_NODE_TYPES.CallExpression ? call.arguments.at(-1) : undefined;
   return (
     options?.type === AST_NODE_TYPES.ObjectExpression &&
