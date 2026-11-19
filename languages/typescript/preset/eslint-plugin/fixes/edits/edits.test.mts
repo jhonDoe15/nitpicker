@@ -1,47 +1,20 @@
-import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { typescriptRuleTester, configuredRuleTester } from '../../test-support/rule-tester.mts';
 import tseslint from 'typescript-eslint';
-import { replacing } from '../support/ranges.mts';
 import { importingName } from './imports.mts';
 import { freeName } from './names.mts';
-import { allOf } from './plans.mts';
+import { declines, fixes, useRule } from './test-support/use-rule.mts';
 
-const rule: TSESLint.RuleModule<'use'> = {
-  meta: { type: 'problem', fixable: 'code', schema: [], messages: { use: 'use' } },
-  create(context) {
-    const { sourceCode } = context;
-    return {
-      'CallExpression[callee.name="use"]'(call: TSESTree.CallExpression) {
-        const program = sourceCode.ast;
-        const edit = importingName(sourceCode, program, {
-          sources: ['typeorm'],
-          name: 'In',
-          sites: [call],
-        });
-        const name = freeName(sourceCode, { sites: [call], within: call, base: 'byId' });
-        const fix =
-          edit === undefined || name === undefined
-            ? undefined
-            : allOf(
-                [edit.present ? undefined : edit.plan, replacing(call.range, `In(${name})`)].filter(
-                  (plan) => plan !== undefined,
-                ),
-              );
-        context.report({ node: call, messageId: 'use', ...(fix === undefined ? {} : { fix }) });
-      },
-    };
-  },
-};
-
-const ERR = [{ messageId: 'use' as const }];
-
-function fixes(code: string, output: string) {
-  return { code, output, errors: ERR };
-}
-
-function declines(code: string) {
-  return { code, output: null, errors: ERR };
-}
+const rule = useRule(({ sourceCode, call }) => {
+  const edit = importingName(sourceCode, sourceCode.ast, {
+    sources: ['typeorm'],
+    name: 'In',
+    sites: [call],
+  });
+  const name = freeName(sourceCode, { sites: [call], within: call, base: 'byId' });
+  return edit === undefined || name === undefined
+    ? undefined
+    : { imports: edit.present ? undefined : edit.plan, text: `In(${name})` };
+});
 
 typescriptRuleTester().run('fix edit helpers', rule, {
   valid: [],
@@ -82,6 +55,31 @@ typescriptRuleTester().run('fix edit helpers', rule, {
     fixes(
       'export function f() { const byId2 = 2; return () => { const byId = 1; return [byId, byId2, use()]; }; }',
       "import { In } from 'typeorm';\nexport function f() { const byId2 = 2; return () => { const byId = 1; return [byId, byId2, In(byId3)]; }; }",
+    ),
+    fixes('export const a = use()', "import { In } from 'typeorm'\nexport const a = In(byId)"),
+    fixes(
+      'import { x } from "y"\nexport const a = use()',
+      'import { x } from "y"\nimport { In } from "typeorm"\nexport const a = In(byId)',
+    ),
+    fixes(
+      "import { x } from 'y';\nimport z from 'z'\nexport const a = use()",
+      "import { x } from 'y';\nimport z from 'z'\nimport { In } from 'typeorm'\nexport const a = In(byId)",
+    ),
+    fixes(
+      "'use client'\nexport const a = use()",
+      "'use client'\nimport { In } from 'typeorm'\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export class A {}\nexport const a = use()',
+      "import { In } from 'typeorm'\nexport class A {}\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export function f() {}\nexport const a = use()',
+      "import { In } from 'typeorm'\nexport function f() {}\nexport const a = In(byId)",
+    ),
+    fixes(
+      'export function f() {}\nexport const a = use();',
+      "import { In } from 'typeorm';\nexport function f() {}\nexport const a = In(byId);",
     ),
     declines('export function f() { const In = 1; return In; }\nexport const a = use();'),
     declines('export const a = use(In);'),

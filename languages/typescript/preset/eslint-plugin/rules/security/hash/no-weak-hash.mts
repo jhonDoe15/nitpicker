@@ -1,8 +1,8 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { importedName } from '../../../fixes/support/nodes.mts';
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { bindingsOf, isModuleValue } from '../imported-names.mts';
 import { memberName, unwrapped } from '../security-values.mts';
-import { importedName } from '../../typed/node-views.mts';
 import {
   CRYPTO_JS_WEAK,
   callFinding,

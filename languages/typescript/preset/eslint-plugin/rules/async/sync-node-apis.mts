@@ -58,6 +58,17 @@ function promisified(name: string): string {
   return `\`await promisify(${asyncName(name)})(...)\` with \`promisify\` from "node:util"`;
 }
 
+const SUBPROCESS_CAVEAT =
+  'The result becomes `{ stdout, stderr }` strings instead of a Buffer and a failure rejects with a different error shape, so check what the code does with both';
+
+function subprocessAlternative(name: string): string {
+  const imports = 'from "node:child_process" and `promisify` from "node:util"';
+  if (name === 'execSync') {
+    return `\`await promisify(exec)(command)\` with \`exec\` ${imports}, which keeps the shell that \`execSync\` runs the command in (\`execFile\` runs none, so \`&&\`, pipes and globs would fail). ${SUBPROCESS_CAVEAT}`;
+  }
+  return `\`await promisify(execFile)(file, args)\` with \`execFile\` ${imports}, which runs the file without a shell. ${SUBPROCESS_CAVEAT}`;
+}
+
 export const SYNC_FAMILIES: readonly SyncFamily[] = [
   {
     modules: new Set(FS_MODULES),
@@ -74,8 +85,7 @@ export const SYNC_FAMILIES: readonly SyncFamily[] = [
   {
     modules: new Set(CHILD_PROCESS_MODULES),
     matches: (name: string) => SUBPROCESS_SYNC_CALLS.includes(name),
-    alternative: () =>
-      '`await promisify(execFile)(file, args)` with `execFile` from "node:child_process" and `promisify` from "node:util"',
+    alternative: subprocessAlternative,
   },
   {
     modules: new Set(CRYPTO_MODULES),

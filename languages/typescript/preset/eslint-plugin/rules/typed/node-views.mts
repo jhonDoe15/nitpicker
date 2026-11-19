@@ -45,14 +45,6 @@ export const objectChildren: (node: unknown) => object[] = untypedObjectChildren
 
 export const ancestorsOf: (node: TSESTree.Node) => TSESTree.Node[] = untypedAncestorsOf;
 
-export function importedName(specifier: TSESTree.ImportClause): string | undefined {
-  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
-    return undefined;
-  }
-  const { imported } = specifier;
-  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
-}
-
 export const contains: (outer: Ranged, inner: Ranged) => boolean = untypedContains;
 
 export const outermostWrapper: (
