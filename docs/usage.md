@@ -2715,6 +2715,7 @@ runs only when `--fix --rule` names one of its rules.
 | java | `pmd/StaticForwardingWrapper` | `java-static-forwarding-wrapper` | `review`: points the callers of a private or package-private static method that only passes its parameters on at the target in another class of the project, and deletes the wrapper; leaves what it cannot prove (see below) |
 | java | `pmd/CompatibilityShim` | `java-compatibility-shim` | `review`: points the callers of a private or package-private `@Deprecated` static method that only forwards to a sibling method at that method, and deletes the deprecated one with its Javadoc; leaves what it cannot prove (see below) |
 | java | `pmd/HttpWithoutTimeout` | `java-http-without-timeout` | `review`: adds a ten-second deadline to a `java.net.http` request or client, a JAX-RS `ClientBuilder` and an `HttpURLConnection` that has none; leaves an Apache client and a builder kept in a variable |
+| java | `test-runtime/test-not-run` | `java-unrun-tests` | `review`: renames a `*IT` class of a Maven module without Failsafe so that Surefire collects it; registers a `Test` task in the Gradle build file for a source set that no task runs |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | java | `pmd/CatchLogWithoutException` |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
@@ -2777,9 +2778,19 @@ public or protected method may have callers outside the project, and are left as
 
 HTTP deadlines. `java-http-without-timeout` adds a fixed ten-second deadline to the calls that
 `pmd/HttpWithoutTimeout` reports in a main source set, for `java.net.http`, `HttpURLConnection`
-and the JAX-RS `ClientBuilder`. It writes `Duration` or `TimeUnit` as the file already imports
-them, and imports them when it does not. It is a `review` recipe because a deadline changes what
+and the JAX-RS `ClientBuilder`. It writes `java.time.Duration` and `java.util.concurrent.TimeUnit` in
+full, so no import can shadow a class. It is a `review` recipe because a deadline changes what
 a slow server does to the caller; choose another duration by editing the call afterwards.
+
+Tests that no runner collects. `java-unrun-tests` fixes `test-runtime/test-not-run` in two ways.
+Maven: a class named `*IT`, `IT*` or `*ITCase` in a module that has no Failsafe configuration (no
+`pom.xml` of the project mentions Failsafe or Surefire) is renamed to `<Name>IntegrationTest`, which
+Surefire collects; it stays when another file names the class, or the new name is taken. Gradle: a
+test source set that no `Test` task runs gets a `Test` task in the `build.gradle` or
+`build.gradle.kts` of its module, wired into `check`, when that build file declares the source set;
+a build file that already registers a task of that name, declares `testing` suites or runs TestNG is
+left as is. It runs only with `--fix --rule test-runtime/test-not-run`, which also lets the fix edit
+the build file.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one

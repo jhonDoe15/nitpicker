@@ -31,3 +31,18 @@ export function projectSources(
     others: texts.filter(({ path: name }) => OTHER_SOURCE.test(name)),
   };
 }
+
+const CONFIGURED_TEXT = /\.(?:java|kt|kts|groovy|gradle|xml|ya?ml|properties)$/u;
+
+export function projectTexts(
+  projectRoot: string,
+  read: (name: string) => string | undefined,
+): { readonly path: string; readonly text: string }[] {
+  return textsOf(callUntyped(untypedProjectFilesUnder, projectRoot))
+    .map((file) => path.relative(projectRoot, file).split(path.sep).join('/'))
+    .filter((name) => CONFIGURED_TEXT.test(name) && !GENERATED.test(name))
+    .flatMap((name) => {
+      const text = read(name);
+      return text === undefined ? [] : [{ path: name, text }];
+    });
+}
