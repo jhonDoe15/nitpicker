@@ -321,6 +321,13 @@ Part of the [Java preset guide](../java-preset.md).
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
   pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
   the number of cores.
+- **The build's own compiler arguments.** On Gradle the runner gets `options.allCompilerArgs`, so
+  arguments a `CommandLineArgumentProvider` adds count too, and a `--module-path` (or `-p`) the build
+  passes that way is merged into the module path the runner builds from the classpath. When Error
+  Prone still cannot compile sources the build's own compile compiled, the module gets a
+  `tool-skipped` note for Error Prone with the first lines of the cause, and the other tools'
+  findings are kept. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
+  with the same 8027 diagnostics.
 - **`Immutable` only when it can match.** The check walks every supertype of every class, which
   takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
   types annotated with `com.google.errorprone.annotations.Immutable` and their subtypes, so the
