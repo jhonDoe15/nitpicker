@@ -16,6 +16,7 @@
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
     <exclude name="AvoidFieldNameMatchingMethodName"/>
+    <exclude name="CloseResource"/>
     <exclude name="AvoidLiteralsInIfCondition"/>
     <exclude name="AssignmentInOperand"/>
     <!-- The forbiddenapis legacy-date-time signature bans the same classes in every declaration and call, with the
@@ -23,6 +24,36 @@
          declaration line of a local, next to the one on its first use, and nothing else. -->
     <exclude name="ReplaceJavaUtilCalendar"/>
     <exclude name="ReplaceJavaUtilDate"/>
+  </rule>
+  <rule ref="category/java/errorprone.xml/CloseResource">
+    <properties>
+      <property name="allowedResourceTypes"
+                value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+let $name := string(@Name),
+    $scope := ancestor::Block[1],
+    $init := parent::VariableDeclarator/*[2],
+    $fields := ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator/VariableId/@Name
+return .[
+  $init[self::ConstructorCall][pmd-java:typeIsExactly('java.util.Formatter')]
+    [empty(ArgumentList/*) or ArgumentList/*[1][pmd-java:typeIs('java.lang.StringBuilder')
+                                               or pmd-java:typeIs('java.lang.StringBuffer')]]
+  or exists($init/(self::MethodCall | self::CastExpression/MethodCall)[@MethodName = ('unwrap', 'getCurrentSession')
+       or (@MethodName = 'getConnection' and *[1][self::TypeExpression/ClassType/@SimpleName = 'DataSourceUtils'])
+       or (@MethodName = 'get' and *[1][self::TypeExpression/ClassType/@SimpleName = 'GlobalTracer'])
+       or (@MethodName = 'putCloseable' and *[1][self::TypeExpression/ClassType/@SimpleName = 'MDC'])])
+  or exists($scope//MethodCall[@MethodName = ('shutdown', 'shutdownNow')][*[1][self::VariableAccess[@Name = $name]]])
+  or exists($scope//MethodCall[@MethodName = ('close', 'closeQuietly', 'closeSilently', 'closeStream', 'closeResource')]
+       [ancestor::FinallyClause][ArgumentList/VariableAccess[@Name = $name]])
+  or exists($scope//MethodCall[@MethodName = 'renderBinary']/ArgumentList/VariableAccess[@Name = $name])
+  or exists($scope//AssignmentExpression[*[2][self::VariableAccess[@Name = $name]]]
+       [*[1][self::FieldAccess[*[1][self::ThisExpression]]]
+        or *[1][self::VariableAccess[@Name = $fields]]])
+]
+]]></value>
+      </property>
+    </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
         message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed.">
@@ -93,6 +124,22 @@
     <properties>
       <property name="extraAssertMethodNames"
                 value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/CheckResultSet">
+    <properties>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+self::MethodCall[@MethodName = 'next'][parent::DoStatement]
+  [let $name := string(*[1][self::VariableAccess]/@Name)
+   return $name != '' and exists(../preceding-sibling::IfStatement
+     [*[1][self::UnaryExpression[@Operator = '!']
+           [MethodCall[@MethodName = 'next'][*[1][self::VariableAccess][@Name = $name]]]]]
+     [*[2][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement or self::BreakStatement
+           or self::Block/*[last()][self::ReturnStatement or self::ThrowStatement or self::ContinueStatement
+                                    or self::BreakStatement]]])]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/GuardLogStatement"

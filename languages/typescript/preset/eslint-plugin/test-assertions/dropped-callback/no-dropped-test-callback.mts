@@ -4,8 +4,10 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
+import path from 'node:path';
 import type TypeScript from 'typescript';
 import { ts } from '../../rules/typed/typescript-views.mts';
+import { readLayout } from '../../rules/typed/policy-views.mts';
 import { hasTypeInformation } from '../../rules/time/time-views.mts';
 import { unwrapped } from '../../rules/typed/syntax-views.mts';
 
@@ -15,7 +17,11 @@ const MESSAGE =
   'This call returns a function that is dropped, so it never runs and the check inside it never happens. Call it (`check(ctx)()`), pass it on (`run(check(ctx))`) or assign it. An exception fits only a function that returns a callback on purpose.';
 
 const REGISTRATIONS =
-  /^(subscribe|on|once|addListener|addEventListener|listen|watch|observe|on[A-Z].*)$/;
+  /^(sub|subscribe|on|once|add|addListener|addEventListener|listen|watch|observe|register|on[A-Z].*)$/;
+const CLEANUP_TYPES = /^(Unsubscribe|Unsubscriber|Dispose|Disposer|Cleanup|Teardown)$/;
+const TEST_HELPER_PATH =
+  /(?:^|\/)(?:test-support|testing|__tests__|tests?|specs?|fixtures|test-?utils)(?:\/|$)|\.(?:test|spec)\.[^/]+$/iu;
+const layout = readLayout();
 
 function calleeName(callee: TSESTree.Node): string {
   if (callee.type === AST_NODE_TYPES.Identifier) {
@@ -57,6 +63,53 @@ function takesFunctionReturningVoid(
   });
 }
 
+type Views = {
+  readonly checker: TypeScript.TypeChecker;
+  readonly services: ParserServicesWithTypeInformation;
+};
+
+function isVoidThunk(type: TypeScript.Type): boolean {
+  const [signature] = type.getCallSignatures();
+  return (
+    signature !== undefined &&
+    signature.getParameters().length === 0 &&
+    (signature.getReturnType().flags & ts.TypeFlags.Void) !== 0
+  );
+}
+
+function takesCallback({ checker, services }: Views, call: TSESTree.CallExpression): boolean {
+  return call.arguments.some(
+    (argument) =>
+      checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(argument)).getCallSignatures()
+        .length > 0,
+  );
+}
+
+function declaredOutsideTests(
+  { checker, services }: Views,
+  call: TSESTree.CallExpression,
+): boolean {
+  const declaration = checker.getResolvedSignature(
+    services.esTreeNodeToTSNodeMap.get(call),
+  )?.declaration;
+  if (declaration === undefined) {
+    return false;
+  }
+  const config = services.program.getCompilerOptions()['configFilePath'];
+  const root =
+    typeof config === 'string' ? path.dirname(config) : services.program.getCurrentDirectory();
+  const relative = path.relative(root, declaration.getSourceFile().fileName).replaceAll('\\', '/');
+  return (
+    relative.startsWith('..') ||
+    !(
+      TEST_HELPER_PATH.test(relative) ||
+      layout.isTestFile(relative) ||
+      layout.isTestPath(relative) ||
+      layout.isFixturePath(relative)
+    )
+  );
+}
+
 function isPlainFunction(type: TypeScript.Type): boolean {
   return type.getCallSignatures().length > 0 && type.getProperties().length === 0;
 }
@@ -70,21 +123,21 @@ function returnsVoid(contextual: TypeScript.Type | undefined): boolean {
   );
 }
 
-function returnsFunction(
-  {
-    checker,
-    services,
-  }: { checker: TypeScript.TypeChecker; services: ParserServicesWithTypeInformation },
-  call: TSESTree.CallExpression,
-): boolean {
+function returnsFunction(views: Views, call: TSESTree.CallExpression): boolean {
+  const { checker, services } = views;
   if (
     REGISTRATIONS.test(calleeName(call.callee)) ||
     takesFunctionReturningVoid(checker, services, call)
   ) {
     return false;
   }
-  const tsNode = services.esTreeNodeToTSNodeMap.get(call);
-  return isPlainFunction(checker.getTypeAtLocation(tsNode));
+  const returned = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(call));
+  return (
+    isPlainFunction(returned) &&
+    !CLEANUP_TYPES.test(returned.aliasSymbol?.name ?? '') &&
+    !(isVoidThunk(returned) && takesCallback(views, call)) &&
+    !declaredOutsideTests(views, call)
+  );
 }
 
 export const rule: TSESLint.RuleModule<'dropped', [], Docs> = {

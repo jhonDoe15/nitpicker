@@ -64,9 +64,71 @@ function regexSplits(pattern: string): boolean {
   return /[,;]|q\s*=|charset|boundary/i.test(pattern);
 }
 
+const LIST_HEADERS = new Set(['vary', 'connection', 'accept-encoding']);
+
+function toleratesSpaces(origin: HeaderOrigin, pattern: string, flags: string): boolean {
+  return (
+    flags.includes('i') &&
+    LIST_HEADERS.has(origin.header) &&
+    pattern.includes(String.raw`\s*`) &&
+    !/;|q\s*=|charset|boundary/i.test(pattern)
+  );
+}
+
+function isFirstPartRead(call: TSESTree.CallExpression, header: string): boolean {
+  const [separator, limit] = call.arguments;
+  const parent = call.parent;
+  return (
+    header === 'content-type' &&
+    stringValue(unwrap(separator)) === ';' &&
+    (limit === undefined ||
+      (limit.type === AST_NODE_TYPES.Literal && typeof limit.value === 'number')) &&
+    parent.type === AST_NODE_TYPES.MemberExpression &&
+    parent.object === call &&
+    parent.computed &&
+    parent.property.type === AST_NODE_TYPES.Literal &&
+    parent.property.value === 0
+  );
+}
+
 function headerOf(context: Context, node: MaybeNode): HeaderOrigin | undefined {
   const origin = originOf(context, node);
   return origin?.kind === 'header' ? origin : undefined;
+}
+
+type SplitForm = {
+  readonly splitting: boolean;
+  readonly regexReceiver: boolean;
+  readonly regex: ReturnType<typeof regexOf>;
+};
+
+function isTolerated(
+  call: TSESTree.CallExpression,
+  origin: HeaderOrigin,
+  form: SplitForm,
+): boolean {
+  const { splitting, regexReceiver, regex } = form;
+  if (splitting && isFirstPartRead(call, origin.header)) {
+    return true;
+  }
+  return (
+    regexReceiver && regex !== undefined && toleratesSpaces(origin, regex.pattern, regex.flags)
+  );
+}
+
+function splitForm(
+  method: Method,
+  call: TSESTree.CallExpression,
+): SplitForm & { parsing: boolean } {
+  const { name, receiver } = method;
+  const [argument] = call.arguments;
+  const regexReceiver = REGEX_USERS.has(name) && isRegex(receiver);
+  const regexArgument = REGEX_ARGUMENT_USERS.has(name) && isRegex(argument);
+  const splitting = name === 'split' && argument !== undefined && separatorsOnly(argument);
+  const regex = regexOf(regexReceiver ? receiver : argument);
+  const parsing =
+    splitting || ((regexReceiver || regexArgument) && regexSplits(regex?.pattern ?? ''));
+  return { splitting, regexReceiver, regex, parsing };
 }
 
 export function handSplit(context: Context, call: TSESTree.CallExpression): Finding | undefined {
@@ -74,16 +136,10 @@ export function handSplit(context: Context, call: TSESTree.CallExpression): Find
   if (method === undefined) {
     return undefined;
   }
-  const { name, receiver } = method;
-  const [argument] = call.arguments;
-  const regexReceiver = REGEX_USERS.has(name) && isRegex(receiver);
-  const regexArgument = REGEX_ARGUMENT_USERS.has(name) && isRegex(argument);
-  const splitting = name === 'split' && argument !== undefined && separatorsOnly(argument);
-  const subject = regexReceiver ? argument : receiver;
-  const pattern = regexOf(regexReceiver ? receiver : argument)?.pattern;
-  const parsing = splitting || ((regexReceiver || regexArgument) && regexSplits(pattern ?? ''));
-  const origin = parsing ? headerOf(context, subject) : undefined;
-  return isStructuredValue(origin)
+  const form = splitForm(method, call);
+  const subject = form.regexReceiver ? call.arguments[0] : method.receiver;
+  const origin = form.parsing ? headerOf(context, subject) : undefined;
+  return isStructuredValue(origin) && !isTolerated(call, origin, form)
     ? { node: call, messageId: 'handSplit', data: { header: origin.header } }
     : undefined;
 }

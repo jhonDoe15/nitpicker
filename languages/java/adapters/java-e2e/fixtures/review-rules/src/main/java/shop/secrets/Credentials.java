@@ -15,6 +15,8 @@ public final class Credentials {
   private final String emptyToken = "";
   private final String eosToken = "</s>1";
   private final String passwordField = "Passw0rd1";
+  private static final String CHALLENGE = "Basic realm=\"Reports\"";
+  private static final String BEARER_CHALLENGE = "Bearer realm=\"api\", error=\"invalid_token\"";
   private final String accessKey = "AKIAIOSFODNN7EXAMPLE"; // violation: CredentialLiteral
   private final String endpoint = "postgres://app:Hunter2x@db/app"; // violation: CredentialLiteral
 

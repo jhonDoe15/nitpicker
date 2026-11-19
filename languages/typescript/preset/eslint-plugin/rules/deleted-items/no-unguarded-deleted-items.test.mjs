@@ -2,7 +2,7 @@ import { typedIoProject } from '../../test-support/projects/typed-io-project.mts
 import { rule } from './no-unguarded-deleted-items.mts';
 
 const TYPES = [
-  'export interface Item { id: string; isDeleted: boolean; label: string }',
+  'export interface Item { id: string; isDeleted: boolean; label: string; groupId: string | null }',
   'export type NonDeleted<T extends Item> = T & { isDeleted: false };',
   'export declare const items: readonly Item[];',
   'export declare function isLive(item: Item): boolean;',
@@ -70,6 +70,24 @@ tester.run('no-unguarded-deleted-items', rule, {
     ),
     body('export function mark() { for (const item of items) { item.isDeleted = true; } }'),
     body('export const ids = stats.map((stat) => stat.id);'),
+    body(
+      'export function f() { for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.isDeleted) continue; console.log(item.id); } }',
+    ),
+    body(
+      'export function f(g: string) { for (let i = items.length - 1; i >= 0; i--) { const item = items[i]; if (item.groupId === g && !item.isDeleted) { return i + 1; } } return -1; }',
+    ),
+    body(
+      'export function f() { for (let i = 0; i < items.length; i++) { if (!isLive(items[i])) continue; console.log(items[i].id); } }',
+    ),
+    body(
+      'export function f(out: string[]) { for (let i = 0; i < items.length; i++) { out[i] = "x"; } }',
+    ),
+    body(
+      'export function f(list: readonly NonDeleted<Item>[]) { for (let i = 0; i < list.length; i++) { console.log(list[i].id); } }',
+    ),
+    body(
+      'export function f() { for (let i = 0; i < items.length; i++) { items[i].isDeleted = true; } }',
+    ),
   ],
   invalid: [
     {
@@ -96,6 +114,18 @@ tester.run('no-unguarded-deleted-items', rule, {
         },
       ],
     },
+    {
+      ...body(
+        'export function frameIndex(frameId: string) {\n  for (let index = items.length - 1; index >= 0; index--) {\n    const item = items[index];\n    if (item.id === frameId) {\n      return index;\n    } else if (item.groupId === frameId) {\n      return index + 1;\n    }\n  }\n  return -1;\n}',
+      ),
+      errors: [{ message: /`for` over `Item`/u }],
+    },
+    {
+      ...body(
+        'export function labels() { const out: string[] = []; for (let i = 0; i < items.length; i++) { out.push(items[i].label); } return out; }',
+      ),
+      errors: [{ messageId: 'unguarded' }],
+    },
   ],
 });
 
@@ -112,4 +142,35 @@ lowTester.run('no-unguarded-deleted-items below the threshold', rule, {
     lowTyped("import { items } from './store';\nexport const ids = items.map((item) => item.id);"),
   ],
   invalid: [],
+});
+
+const READONLY_TYPES = [
+  'type ElementBase = Readonly<{ id: string; isDeleted: boolean; frameId: string | null }>;',
+  'export type Element = ElementBase & Readonly<{ type: "rect" }>;',
+  'export declare const elements: readonly Element[];',
+].join('\n');
+const READONLY_GUARDED = Array.from(
+  { length: 5 },
+  (_, index) => `export const g${String(index)} = elements.filter((e) => !e.isDeleted).length;`,
+);
+const { tester: readonlyTester, typed: readonlyTyped } = typedIoProject(
+  'deleted-items-readonly',
+  READONLY_TYPES,
+  { 'guarded.ts': ["import { elements } from './store';", ...READONLY_GUARDED].join('\n') },
+);
+
+readonlyTester.run('no-unguarded-deleted-items on a flag declared in Readonly<{...}>', rule, {
+  valid: [
+    readonlyTyped(
+      "import { elements } from './store';\nexport const ids = elements.filter((e) => !e.isDeleted).map((e) => e.id);",
+    ),
+  ],
+  invalid: [
+    {
+      ...readonlyTyped(
+        "import { elements } from './store';\nexport function at(frameId: string) {\n  for (let index = elements.length - 1; index >= 0; index--) {\n    const element = elements[index];\n    if (element.frameId === frameId) {\n      return index + 1;\n    }\n  }\n  return -1;\n}",
+      ),
+      errors: [{ message: /`for` over `Element`/u }],
+    },
+  ],
 });

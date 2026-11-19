@@ -3,6 +3,7 @@ import { sqlColumnFacts } from './columns/column-facts.mjs';
 import { drizzleColumnFacts } from './columns/drizzle-columns.mjs';
 import { prismaColumnFacts } from './columns/prisma-columns.mjs';
 import { goFacts } from './classes/go-structs.mjs';
+import { enumNames } from './scanning/enum-names.mjs';
 import { isJvmFile, jvmClasses, jvmFacts } from './classes/jvm-classes.mjs';
 import { pythonFacts } from './classes/python-classes.mjs';
 import {
@@ -23,12 +24,17 @@ const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|mjs|cjs)$/u;
 
 function fileFacts(file, text) {
   if (isJvmFile(file)) {
-    return { jvm: jvmClasses(file, text), facts: springValidatorFacts(file, text) };
+    return {
+      jvm: jvmClasses(file, text),
+      enums: enumNames(text),
+      facts: springValidatorFacts(file, text),
+    };
   }
   if (SCRIPT_FILE.test(file)) {
     const decorated = isTypescriptFile(file) && text.includes('@');
     return {
       typescript: decorated ? typescriptClasses(file, text) : [],
+      enums: enumNames(text),
       facts: [...schemaObjectFacts(file, text), ...drizzleColumnFacts(file, text)],
     };
   }
@@ -48,7 +54,12 @@ function sourceFacts(files, readText) {
   function pick(key) {
     return parts.flatMap((part) => part[key] ?? []);
   }
-  return [...pick('facts'), ...jvmFacts(pick('jvm')), ...typescriptFacts(pick('typescript'))];
+  const enums = new Set(pick('enums'));
+  return [
+    ...pick('facts'),
+    ...jvmFacts(pick('jvm'), enums),
+    ...typescriptFacts(pick('typescript'), enums),
+  ];
 }
 
 function specFactsOf(files, readText, parseYaml) {
@@ -70,38 +81,46 @@ function primary(group) {
   );
 }
 
-function groupFindings(group, context) {
-  const { column, explicit, specs, effective, explicitBounds, limiting, bound } = analyse(
-    group,
-    context,
-  );
-  const found = [];
-  if (column !== undefined && effective.max === undefined && !effective.unresolved && bound) {
-    const fact = primary(group);
-    found.push(
-      finding({
-        fact,
-        form: 'unbounded',
-        signature: `column ${String(column.width)}`,
-        message: unboundedMessage(fact, column),
-      }),
-    );
-  }
-  if (column !== undefined && effective.max !== undefined && effective.max > column.width) {
-    found.push(
-      finding({
-        fact: limiting,
-        form: 'loose',
-        signature: `column ${String(column.width)} bound ${String(effective.max)}`,
-        message: looseMessage(limiting, column, effective.max),
-      }),
-    );
-  }
-  const validation = explicit.length === 0 ? undefined : explicit[0];
-  for (const spec of validation === undefined ? [] : specs) {
-    const differences = disagreements(spec.bounds, explicitBounds);
-    if (differences.length > 0) {
-      found.push(
+function unboundedFinding({ group, column, effective, bound }) {
+  const fact = primary(group);
+  const enumerated = group.some((member) => member.kind === 'enum');
+  const unbounded =
+    !enumerated &&
+    column !== undefined &&
+    effective.max === undefined &&
+    !effective.unresolved &&
+    bound &&
+    fact.style !== 'sql';
+  return unbounded
+    ? [
+        finding({
+          fact,
+          form: 'unbounded',
+          signature: `column ${String(column.width)}`,
+          message: unboundedMessage(fact, column),
+        }),
+      ]
+    : [];
+}
+
+function looseFinding({ column, effective, limiting }) {
+  return column !== undefined && effective.max !== undefined && effective.max > column.width
+    ? [
+        finding({
+          fact: limiting,
+          form: 'loose',
+          signature: `column ${String(column.width)} bound ${String(effective.max)}`,
+          message: looseMessage(limiting, column, effective.max),
+        }),
+      ]
+    : [];
+}
+
+function specFinding(spec, validation, explicitBounds) {
+  const differences = disagreements(spec.bounds, explicitBounds);
+  return differences.length === 0
+    ? []
+    : [
         finding({
           fact: spec,
           form: 'spec',
@@ -110,10 +129,19 @@ function groupFindings(group, context) {
             .join(','),
           message: specMessage(spec, validation, differences),
         }),
-      );
-    }
-  }
-  return found;
+      ];
+}
+
+function groupFindings(group, context) {
+  const facts = analyse(group, context);
+  const validation = facts.explicit[0];
+  return [
+    ...unboundedFinding({ group, ...facts }),
+    ...looseFinding(facts),
+    ...(validation === undefined
+      ? []
+      : facts.specs.flatMap((spec) => specFinding(spec, validation, facts.explicitBounds))),
+  ];
 }
 
 export function fieldLimitFindings(tool, { projectRoot, files, parseYaml }) {

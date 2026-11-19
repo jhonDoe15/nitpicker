@@ -157,7 +157,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
       const skipped = beforeTen ? [...pattern, 'OptionalGet'] : pattern;
       const after = beforeTen
         ? [
-            `  <rule ref="${GUARDS_RULES}/OptionalGet" message="Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent()."/>`,
+            `  <rule ref="${GUARDS_RULES}/OptionalGet" message="Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get()."/>`,
           ]
         : [];
       const root = workspace();
