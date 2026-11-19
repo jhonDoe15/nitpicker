@@ -98,7 +98,11 @@ export function ormProject(prefix: string, options: OrmProjectOptions = {}): Orm
   }
   return {
     root,
-    tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
+    tester: typescriptRuleTester({
+      project: './tsconfig.json',
+      tsconfigRootDir: root,
+      disallowAutomaticSingleRunInference: true,
+    }),
     typed,
     untyped: (code) => ({ code }),
   };
