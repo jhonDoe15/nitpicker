@@ -1,9 +1,10 @@
-import { gradleTarget } from '../gradle-wrapper/gradle-command.mts';
+import { gradleTarget, pinnedGradleVersion } from '../gradle-wrapper/gradle-command.mts';
 import { gradleOptions } from '../gradle-wrapper/gradle-stages.mts';
 import { type GradleResult, runGradle } from '../gradle-wrapper/gradle-process.mts';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mts';
 import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/failure-text.mts';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
+import { memoryAdvice } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mts';
@@ -26,6 +27,7 @@ type StageRun = Omit<StageCheck, 'command'> & {
   readonly projectRoot: string;
   readonly gradle: string | undefined;
   readonly spawn: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 const RATE_LIMIT_ADVICE =
   'A package repository rate-limited the build (HTTP 429), so this is not a problem in the project: rerun later.';
@@ -48,8 +50,18 @@ function failedStage(
   const where = policy.snapshot === 'base' ? 'on the base' : 'on your change';
   const retry = isRateLimited(outputOf(result)) ? `\n${RATE_LIMIT_ADVICE}` : '';
   return new Error(
-    `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}`,
+    `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}` +
+      memoryAdvice(outputOf(result)) +
+      pathGradleAdvice(command, projectRoot),
   );
+}
+
+function pathGradleAdvice(command: string, projectRoot: string): string {
+  const pinned: unknown = command === 'gradle' ? pinnedGradleVersion(projectRoot) : undefined;
+  return typeof pinned === 'string'
+    ? `\nThe build pins Gradle ${pinned} in gradle/wrapper/gradle-wrapper.properties, but no gradlew script ` +
+        'was found, so the gradle on the PATH ran instead: add the wrapper script or set NITPICKER_GRADLE.'
+    : '';
 }
 
 export function assertGradleSucceeded(
@@ -97,13 +109,14 @@ export function runGradleStage({
   checkTests,
   policy,
   spawn,
+  environment,
 }: StageRun): void {
-  const target: unknown = callUntyped(gradleTarget, { projectRoot, configured: gradle, args });
+  const target: unknown = gradleTarget({ projectRoot, configured: gradle, args, environment });
   const command = textOf(fieldOf(target, 'command'));
   const result = runGradle(
     command,
     textsOf(fieldOf(target, 'args')),
-    gradleOptions(fieldOf(target, 'shell'), { projectRoot, budget, spawn }),
+    gradleOptions(fieldOf(target, 'shell'), { projectRoot, budget, spawn, environment }),
   );
   assertGradleSucceeded(result, projectRoot, {
     reportBase,
