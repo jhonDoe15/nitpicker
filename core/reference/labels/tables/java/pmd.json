@@ -43,6 +43,7 @@
   "pmd/ConcatenationComparedWithNull": ["bug"],
   "pmd/ConcurrentMapCheckThenAct": ["bug", "async"],
   "pmd/ConfigurationReadOutsideCompositionRoot": ["maintainability"],
+  "pmd/ConstantIndexBeyondGuard": ["bug"],
   "pmd/ConstructorLeaksResourceOnFailure": ["bug", "reliability"],
   "pmd/CopyConstructorSharesCollection": ["bug"],
   "pmd/CopyMethodDropsField": ["bug"],
