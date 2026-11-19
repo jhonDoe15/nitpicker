@@ -10,7 +10,7 @@ import { metricChange } from './console/metric-values.mts';
 import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
-import { projectLine, scopeLine } from '../../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../../scope/scope-findings.mts';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import {

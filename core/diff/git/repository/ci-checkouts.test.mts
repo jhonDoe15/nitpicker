@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mts';
 import { writeFiles } from '../test-support/fixture-files.mts';
 import { resolveBase } from './base-ref.mts';
-import { resolveComparison } from './git.mjs';
+import { resolveComparison } from './git.mts';
 import { runCli } from '../../../cli.mts';
 import { captureOutput } from '../../reporting/test-support/output-capture.mts';
 

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mts';
 import type { AnalyzerRequest } from '../../../../execution/run-analyzers.mts';
 
 export function analyzerRequest(analyzers: readonly unknown[]): AnalyzerRequest {

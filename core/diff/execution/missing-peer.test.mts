@@ -2,9 +2,9 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT, isToolInstalled, resolveTool } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, isToolInstalled, resolveTool } from '../../tooling/tool-resolution.mts';
 import { runAnalyzers } from './run-analyzers.mts';
-import { resolveAnalyzerVersion } from '../../../languages/typescript/preset/analyzer-versions.mjs';
+import { resolveAnalyzerVersion } from '../../../languages/typescript/preset/analyzer-versions.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { parseJson, textOf } from '../../../shared/values/readers.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';

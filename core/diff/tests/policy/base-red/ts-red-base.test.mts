@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import {

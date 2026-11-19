@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mjs';
+import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mts';
+import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mts';
 import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mts';
@@ -10,23 +10,7 @@ import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { fileURLToPath } from 'node:url';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
-type CatalogAnalyzer = {
-  readonly name: string;
-  readonly concurrencyWeight?: number;
-  readonly executionPriority?: number;
-  readonly concurrencyGroup?: string;
-  readonly shardWeight: number;
-  readonly resolveVersion: (root: string) => unknown;
-  readonly createInvocation: (context: {
-    readonly projectRoot: string;
-    readonly policyRoot: string;
-    readonly toolRoot: string;
-    readonly snapshot: string;
-  }) => { readonly args: readonly string[] };
-};
-
-const catalog: () => CatalogAnalyzer[] = configuredAnalyzers;
-const packageAnalyzers = catalog();
+const packageAnalyzers = configuredAnalyzers();
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',
   'eslint-errors',
@@ -80,7 +64,7 @@ describe('quality-area analyzer catalog', () => {
   it('resolves a real version for every analyzer', () => {
     const unresolved = packageAnalyzers.map((analyzer) => [
       analyzer.name,
-      analyzer.resolveVersion(PACKAGE_ROOT) === 'unresolved',
+      analyzer.resolveVersion?.(PACKAGE_ROOT) === 'unresolved',
     ]);
     expect(unresolved).toEqual(packageAnalyzers.map((analyzer) => [analyzer.name, false]));
   });
@@ -139,7 +123,7 @@ describe('quality-area analyzer catalog', () => {
     const shards = planAnalyzerShards(packageAnalyzers, 3);
     const names = shards.map((shard) => shard.map(({ name }) => name));
     const weights = shards.map((shard) =>
-      shard.reduce((total, { shardWeight }) => total + shardWeight, 0),
+      shard.reduce((total, { shardWeight }) => total + Number(shardWeight), 0),
     );
 
     expect(names.findIndex((shard) => shard.includes('coverage'))).toBe(
@@ -242,6 +226,7 @@ describe('quality-area analyzer catalog', () => {
         projectRoot: '/project',
         policyRoot: '/policy',
         toolRoot: '/tools',
+        liveProjectRoot: '/project',
         snapshot: 'head',
       });
 

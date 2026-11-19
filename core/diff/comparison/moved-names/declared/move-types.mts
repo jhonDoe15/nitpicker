@@ -15,3 +15,21 @@ export type MoveFields = {
   readonly baseToHeadPackages?: Moves | undefined;
   readonly baseToHeadDeclared?: DeclaredMoves | undefined;
 };
+
+export type BaseMoves = {
+  readonly files: Moves;
+  readonly longestFirst: [string, string][];
+  readonly directories: Moves;
+  readonly names: Moves;
+  readonly bare: Map<string, readonly [string, string]>;
+  readonly bareNames: Moves;
+  readonly declared: DeclaredMoves;
+  readonly headPlaces: Set<string>;
+  readonly stems: Moves;
+  readonly packageNames: Moves;
+};
+
+export type DeclaredFiles = {
+  readonly base: ReadonlyMap<string, string>;
+  readonly head: ReadonlyMap<string, string>;
+};

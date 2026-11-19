@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTestFile, parseNumstat, removesTests } from './test-removal.mjs';
+import { isTestFile, parseNumstat, removesTests } from './test-removal.mts';
 
 describe('which files are tests', () => {
   it.each([

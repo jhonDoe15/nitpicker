@@ -3,19 +3,21 @@ import {
   isStrictRule,
   mustMeetOnEditedLines,
 } from '../../../../languages/typescript/preset/strict-rules.mts';
-import { readRepositoryChanges } from '../../git/patches/changes.mjs';
+import { readRepositoryChanges } from '../../git/patches/changes.mts';
 import {
   resolveBaseProjectPath,
   readProjectMoves,
   readTouchedPaths,
-} from '../../git/patches/project-moves.mjs';
-import { readChangedLines } from '../../git/patches/changed-lines.mjs';
-import { readMovedPackages } from '../moved-names/packages/read-moved-packages.mjs';
-import { readRemovesTests } from '../../git/patches/test-removal.mjs';
+} from '../../git/patches/project-moves.mts';
+import { readChangedLines } from '../../git/patches/changed-lines.mts';
+import { readMovedPackages } from '../moved-names/packages/read-moved-packages.mts';
+import { readRemovesTests } from '../../git/patches/test-removal.mts';
 import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
-} from '../../git/repository/worktree.mjs';
+} from '../../git/repository/worktree.mts';
+import type { ScopedMoves } from '../../git/patches/renames.mts';
+import type { TouchedCode } from '../model/finding-types.mts';
 import type { DeclaredMoves } from '../moved-names/declared/move-types.mts';
 import type { SharedWorktree, SnapshotRoots } from './run-types.mts';
 
@@ -25,74 +27,27 @@ export type Comparison = {
   readonly [field: string]: unknown;
 };
 
-type Changes = ReturnType<typeof readRepositoryChanges>;
-
-type Moves = {
-  readonly files: Map<string, string>;
-  readonly directories: Map<string, string>;
-  readonly inferred: Map<string, string>;
-};
+type Moves = ScopedMoves;
 
 type LayoutMoves = Moves & {
   readonly packages: Map<string, string>;
   readonly declared: DeclaredMoves;
 };
 
-type GitRange = {
-  readonly repositoryRoot: string;
-  readonly mergeBaseSha: string;
-  readonly headSha: string;
-  readonly projectRelativePath: string;
-};
-
-type ProjectRange = GitRange & { readonly baseProjectRelativePath: string };
-
 export type SnapshotLayout = {
   readonly baseProjectRelativePath: string;
   readonly moves: LayoutMoves;
   readonly touchedPaths: ReadonlySet<string>;
-  readonly touchedCode: {
-    readonly changedLines: ReadonlyMap<string, unknown>;
-    readonly isStrictRule: unknown;
-    readonly mustMeetOnEditedLines: unknown;
-    readonly testsRemoved: unknown;
-  };
+  readonly touchedCode: TouchedCode;
 };
 
 type Project = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
-  readonly warn?: unknown;
+  readonly warn?: ((message: string) => void) | undefined;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
   readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
-
-type Worktree = { readonly commitSha: string; readonly warn: unknown };
-
-type NamedWorktree = Worktree & { readonly directoryName: string };
-
-const baseProjectPath: (request: GitRange & { readonly changes: Changes }) => string =
-  resolveBaseProjectPath;
-const movesOf: (request: ProjectRange & { readonly changes: Changes }) => Moves = readProjectMoves;
-const touchedPathsOf: (
-  request: ProjectRange & { readonly changes: Changes },
-) => ReadonlySet<string> = readTouchedPaths;
-const changedLinesOf: (
-  request: ProjectRange & { readonly inferredMoves: Moves['inferred'] },
-) => ReadonlyMap<string, unknown> = readChangedLines;
-const removesTests: (request: ProjectRange) => unknown = readRemovesTests;
-const movedPackages: (
-  moves: Moves,
-  range: ProjectRange,
-) => { readonly packages: Map<string, string>; readonly declared: DeclaredMoves } =
-  readMovedPackages;
-const inWorktree: <T>(root: string, worktree: Worktree, operation: (root: string) => T) => T =
-  withTemporaryWorktree;
-const inNamedWorktree: <T>(
-  root: string,
-  worktree: NamedWorktree,
-  operation: (root: string) => T,
-) => T = withNamedTemporaryWorktree;
 
 export function readSnapshotLayout(
   { repositoryRoot, projectRelativePath }: Project,
@@ -100,18 +55,18 @@ export function readSnapshotLayout(
 ): SnapshotLayout {
   const range = { repositoryRoot, mergeBaseSha, headSha, projectRelativePath };
   const changes = readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha });
-  const baseProjectRelativePath = baseProjectPath({ ...range, changes });
+  const baseProjectRelativePath = resolveBaseProjectPath({ ...range, changes });
   const projectRange = { ...range, baseProjectRelativePath };
-  const moves = movesOf({ ...projectRange, changes });
+  const moves = readProjectMoves({ ...projectRange, changes });
   return {
     baseProjectRelativePath,
-    moves: { ...moves, ...movedPackages(moves, projectRange) },
-    touchedPaths: touchedPathsOf({ ...projectRange, changes }),
+    moves: { ...moves, ...readMovedPackages(moves, projectRange) },
+    touchedPaths: readTouchedPaths({ ...projectRange, changes }),
     touchedCode: {
-      changedLines: changedLinesOf({ ...projectRange, inferredMoves: moves.inferred }),
+      changedLines: readChangedLines({ ...projectRange, inferredMoves: moves.inferred }),
       isStrictRule,
       mustMeetOnEditedLines,
-      testsRemoved: removesTests(projectRange),
+      testsRemoved: readRemovesTests(projectRange),
     },
   };
 }
@@ -147,7 +102,7 @@ export function withSnapshotRoots<T>(
       });
     }
     return sharedHead === undefined
-      ? inNamedWorktree(
+      ? withNamedTemporaryWorktree(
           repositoryRoot,
           { commitSha: comparison.headSha, directoryName: 'head', warn },
           inHead,
@@ -155,6 +110,6 @@ export function withSnapshotRoots<T>(
       : inHead(sharedHead.root);
   }
   return shared === undefined
-    ? inWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
+    ? withTemporaryWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
     : withHead(shared.root);
 }

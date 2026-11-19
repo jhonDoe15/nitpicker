@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runJava } from '../../../../languages/java/adapters/java-runner.mts';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mts';
-import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
+import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mts';
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
 import { progressEvent } from '../graph/outcomes.mts';
 import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';

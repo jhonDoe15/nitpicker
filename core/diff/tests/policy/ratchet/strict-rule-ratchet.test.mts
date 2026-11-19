@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
-import { withEditedLineReason } from '../../../comparison/positions/touched-lines.mjs';
+import { withEditedLineReason } from '../../../comparison/positions/touched-lines.mts';
+import type { TouchedCode, TrackedFinding } from '../../../comparison/model/finding-types.mts';
+
+type Span = readonly [number, number];
 
 describe('strict rules on an edited line of a legacy function', () => {
   function pushFinding(
@@ -8,7 +11,8 @@ describe('strict rules on an edited line of a legacy function', () => {
     line: number,
     count: number,
     rule = 'no-restricted-syntax',
-  ) {
+    counted = true,
+  ): TrackedFinding {
     return {
       tool: 'eslint',
       rule,
@@ -18,13 +22,14 @@ describe('strict rules on an edited line of a legacy function', () => {
       classification: 'enforceable',
       symbol: 'f',
       location: { line },
-      ratchet: { key: 'count:push', value: count, existingCodeOnly: true },
+      ...(counted ? { ratchet: { key: 'count:push', value: count, existingCodeOnly: true } } : {}),
     };
   }
-  const strictTouched = (ranges: readonly number[][], inserted: readonly number[][] = []) => ({
+  const strictTouched = (ranges: readonly Span[], inserted: readonly Span[] = []): TouchedCode => ({
     changedLines: new Map([['src/f.ts', { added: false, ranges, inserted }]]),
     isStrictRule: () => true,
     mustMeetOnEditedLines: (rule: string) => rule === 'prettier/prettier',
+    testsRemoved: false,
   });
   it('keeps an edited line baselined when the function has no more of the violation', () => {
     const result = compareFindings({
@@ -75,7 +80,7 @@ describe('strict rules on an edited line of a legacy function', () => {
     ]);
   });
   it('keeps a strict finding without a count ratchet new on an edited line', () => {
-    const moduleLevel = { ...pushFinding('module', 4, 1), ratchet: undefined };
+    const moduleLevel = pushFinding('module', 4, 1, 'no-restricted-syntax', false);
 
     const result = compareFindings({
       baseFindings: [moduleLevel],
