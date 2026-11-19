@@ -1278,6 +1278,47 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="GetterReturnsSiblingField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This getter returns a different field than its name says: getScrollWidth() returns areaHeight although the class also has a field named for the getter, and the two names differ in a single word. A neighbouring getter was cloned and only the method name was changed, so the wrong value is served and the code still compiles. Return the field the getter is named for (return areaWidth;), or rename the getter when the sibling field is what it should expose. An exception fits a getter that deliberately exposes a related field and says so in its name.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $tokens := function($n) {
+      let $bare := if (matches($n, '^_')) then substring($n, 2)
+                   else if (matches($n, '^my[A-Z]')) then substring($n, 3)
+                   else if (matches($n, '^m[A-Z]')) then substring($n, 2)
+                   else $n
+      return tokenize(lower-case(replace($bare, '([a-z0-9])([A-Z])', '$1 $2')), ' ')
+    },
+    $typeOf := function($id) {
+      string-join($id/ancestor::FieldDeclaration[1]/*[self::ClassType or self::PrimitiveType or self::ArrayType]
+                    /descendant-or-self::*/(@SimpleName | @Kind), ',')
+    },
+    $pairs := ('width height', 'left right', 'top bottom', 'min max', 'request response', 'audio video', 'read write',
+               'input output', 'key value', 'start end', 'first last'),
+    $isPair := function($a, $b) {
+      some $p in $pairs satisfies (let $t := tokenize($p, ' ') return ($a = $t[1] and $b = $t[2]) or ($a = $t[2] and $b = $t[1]))
+    },
+    $sameWord := function($a, $b) { $a = $b or (min((string-length($a), string-length($b))) >= 3 and (starts-with($a, $b) or starts-with($b, $a))) }
+return
+//MethodDeclaration[FormalParameters/@Size = 0][@Static = false()][@Abstract = false()]
+  [matches(@Name, '^(get|is|has)[A-Z]')]
+  [Block[@Size = 1]/ReturnStatement[*[1][self::VariableAccess or (self::FieldAccess and *[1][self::ThisExpression])]]]
+  [let $cls := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1],
+       $want := $tokens(replace(@Name, '^(get|is|has)', '')),
+       $got := Block/ReturnStatement/*[1]/@Name,
+       $fields := $cls/*/FieldDeclaration/VariableDeclarator/VariableId
+   return (let $other := $fields[@Name = $got][1],
+              $named := $fields[string-join($tokens(@Name), ' ') = string-join($want, ' ')][1],
+              $have := $tokens($got)
+          return (count($want) >= 2 or $isPair($want[1], $have[1])) and exists($other) and exists($named) and $typeOf($other) = $typeOf($named)
+            and count($have) = count($want)
+            and count(for $i in 1 to count($want) return if (not($sameWord($have[$i], $want[$i]))) then 1 else ()) = 1)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HandSplitHttpHeader" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This splits a structured header by hand, which breaks on quoted values, whitespace around separators and quality weights. Parse it instead: MediaType.parseMediaType(value) or MediaType.parseMediaTypes(value) for Content-Type and Accept, ContentDisposition.parse(value), HttpCookie.parse(value) or the servlet cookie API for cookies. A library that is itself the parser takes an exceptions entry.">
     <priority>3</priority>
