@@ -29,7 +29,7 @@ describe('repository action pins', () => {
   });
 
   it.each(['java', 'kotlin'])(
-    '%s restores the Gradle dependency cache and saves it from main',
+    '%s restores the Gradle dependency cache and saves it from a green run on main',
     (language) => {
       const workflow: unknown = parse(
         readFileSync(path.join(repositoryRoot, `.github/workflows/${language}-e2e.yml`), 'utf8'),
@@ -52,10 +52,11 @@ describe('repository action pins', () => {
       const save = stepUsing('actions/cache/save@', 'modules-2');
 
       const expression = (text: string) => ['$', '{{ ', text, ' }}'].join('');
-      const prefix = `${language}-gradle-${expression('runner.os')}-${expression('matrix.shard')}-`;
+      const generation = language === 'java' ? 'v2-' : '';
+      const prefix = `${language}-gradle-${generation}${expression('runner.os')}-${expression('matrix.shard')}-`;
       const hash = expression("hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')");
       const onMain = [
-        '!cancelled()',
+        'success()',
         "github.ref == 'refs/heads/main'",
         "github.event_name != 'pull_request'",
         "steps.gradle-cache.outputs.cache-hit != 'true'",
