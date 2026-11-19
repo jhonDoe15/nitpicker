@@ -2,6 +2,7 @@ import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { productionGuardEntries } from '../production/production-rules.mts';
 import { regexpRules } from '../regexp/regexp-rules.mts';
 import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
@@ -128,6 +129,12 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
     ...textPathNumberRules,
+    'nitpicker/no-child-exit-event': 'error',
+    'nitpicker/no-pipe-dropping-errors': 'error',
+    'nitpicker/no-unclosed-file-descriptor': 'error',
+    'nitpicker/no-release-outside-finally': 'error',
+    'nitpicker/no-incomplete-cache-key': 'error',
+    'nitpicker/no-listen-on-all-interfaces': 'error',
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
@@ -194,11 +201,7 @@ function productionGuardRules({
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
-    'nitpicker/require-error-listener': 'error',
-    'nitpicker/require-promise-reject': 'error',
-    'nitpicker/promise-wait-deadline': 'error',
-    'nitpicker/unbounded-fan-out': 'error',
-    'nitpicker/unbounded-reactive-fan-out': 'error',
+    ...productionGuardEntries,
     ...learnedRules(learned),
     ...securityRules({ react, security }),
   };

@@ -46,3 +46,38 @@ export function withoutParentheses(node: TypeScript.Expression): TypeScript.Expr
   }
   return chain.at(-1) ?? node;
 }
+
+export function descendantsOf(root: TypeScript.Node): TypeScript.Node[] {
+  const found = [root];
+  for (const node of found) {
+    node.forEachChild((child) => {
+      found.push(child);
+    });
+  }
+  return found.toSorted((first, second) => first.pos - second.pos);
+}
+
+function wrappedExpression(
+  expression: TypeScript.Expression,
+): TypeScript.Expression | undefined {
+  return ts.isParenthesizedExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isAwaitExpression(expression)
+    ? expression.expression
+    : undefined;
+}
+
+export function innermostExpression(
+  expression: TypeScript.Expression,
+  inner: (current: TypeScript.Expression) => TypeScript.Expression | undefined,
+): TypeScript.Expression {
+  const chain = [expression];
+  for (const current of chain) {
+    const next = wrappedExpression(current) ?? inner(current);
+    if (next !== undefined) {
+      chain.push(next);
+    }
+  }
+  return chain.at(-1) ?? expression;
+}
