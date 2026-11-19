@@ -31,6 +31,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Give a mock of project code its shape (`mock-without-spec`): `Mock(spec=Mailer)` or
   `create_autospec(Mailer, instance=True)` where a project class is expected, and
   `patch("shop.checkout.send", autospec=True)` (or `new=`) for a project function or class.
+- Do not patch the project's own modules (`internal-module-patch`): no `patch("shop.billing.client.send")`,
+  `mocker.patch`, `patch.dict(config.SETTINGS, ...)` or `monkeypatch.setattr(billing_client, "send", ...)` on
+  code under the source roots. Take the collaborator as a parameter or constructor argument and pass a fake;
+  patch only third-party and standard-library targets (`time.sleep`, `requests.get`).
 - Patch a name where it is looked up (`patch-misses-lookup`): after `from shop.mailer import send` in
   `shop.checkout`, patch `shop.checkout.send`, not `shop.mailer.send`.
 - Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
