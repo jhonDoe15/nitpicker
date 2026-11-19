@@ -147,3 +147,6 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   multi-project build. PMD reads an empty `--dir` as its working folder, the project folder, so it
   used to scan the sources of every subproject again: on a 436-subproject build that was about 68%
   of all PMD time.
+- **`check` that depends on `jacocoTestReport`.** The walk over `check`'s dependencies that finds
+  the test tasks does not enter JaCoCo report tasks or nitpicker's own tasks, whose dependencies
+  are that walk again, and quick runs leave the project's `jacocoTestReport` as it is.

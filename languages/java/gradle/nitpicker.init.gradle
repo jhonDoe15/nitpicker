@@ -643,6 +643,7 @@ allprojects {
             while (!pending.isEmpty()) {
                 def task = pending.remove(0)
                 task.taskDependencies.getDependencies(task).findAll { it.project == project && seen.add(it) }
+                    .findAll { !(it instanceof JacocoReportBase) && !it.name.startsWith('nitpicker') }
                     .each { pending << it }
             }
             ([tasks.named('test').get()] + seen.findAll { it instanceof Test })
@@ -1126,11 +1127,14 @@ allprojects {
                     useJUnitPlatform()
                 }
             }
-            tasks.named('jacocoTestReport') {
-                enabled = true
-                classDirectories.setFrom(sourceSets.main.output.classesDirs)
-                dependsOn { checkedTestTasks() }
-                executionData.setFrom(emptyExecutionData, files { ranTestTasks().collect { jacocoExecutionFile(it) } })
+            if (!quickRun) {
+                tasks.named('jacocoTestReport') {
+                    enabled = true
+                    classDirectories.setFrom(sourceSets.main.output.classesDirs)
+                    dependsOn { checkedTestTasks() }
+                    executionData.setFrom(emptyExecutionData,
+                        files { ranTestTasks().collect { jacocoExecutionFile(it) } })
+                }
             }
         }
 
