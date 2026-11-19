@@ -2,6 +2,7 @@ import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
+import { productionGuardEntries } from '../production/production-rules.mts';
 import { regexpRules } from '../regexp/regexp-rules.mts';
 import { domainGlobsFor } from '../strict/strict-domain.mts';
 import {
@@ -125,6 +126,12 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
     ...valueAndWebRules,
+    'nitpicker/no-child-exit-event': 'error',
+    'nitpicker/no-pipe-dropping-errors': 'error',
+    'nitpicker/no-unclosed-file-descriptor': 'error',
+    'nitpicker/no-release-outside-finally': 'error',
+    'nitpicker/no-incomplete-cache-key': 'error',
+    'nitpicker/no-listen-on-all-interfaces': 'error',
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
@@ -196,6 +203,7 @@ function productionGuardRules({
     'nitpicker/unbounded-fan-out': 'error',
     'nitpicker/unbounded-reactive-fan-out': 'error',
     'nitpicker/no-lossy-json-stringify': 'error',
+    ...productionGuardEntries,
     ...learnedRules(learned),
     ...securityRules({ react, security }),
   };

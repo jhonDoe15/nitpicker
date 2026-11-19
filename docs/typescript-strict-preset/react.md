@@ -59,6 +59,60 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   rule needs no type information. The message names the form for each kind of work: data through
   `useQuery` or a route loader, an action (a save, a clipboard write) in the event handler that
   causes it, a redirect by rendering `<Navigate />`.
+- **No effect without dependencies that sets state** (`nitpicker/react-effect-needs-dependencies`).
+  `useEffect`, `useLayoutEffect` or `useInsertionEffect` called with only a callback runs after
+  every render; when the callback calls a `useState` setter, a `useReducer` dispatch, a `set*`
+  function from a hook result or a `set*` prop, each run renders again (a filter reset on every
+  keystroke, a loop). List what the effect reads (`}, [filter]);`) or `[]` to run once. A setter
+  call under an `if`, ternary or `&&` (a guard that stops the loop), a `useLayoutEffect` that
+  measures a ref, an effect that only reads, or touches refs and the DOM, an async callback, and a setter inside a nested function (a timer, a listener, a cleanup)
+  are left alone; `on*` callbacks are reported by `nitpicker/react-no-effect-event-handling`.
+- **No initial value built on every render** (`nitpicker/react-no-eager-initial-value`).
+  `useState(getTimes(range, now))` and `useRef(new Runner())` evaluate their argument on every
+  render and keep only the first result; a runner, worker or subscription is created and thrown
+  away each time, which also breaks under StrictMode. Write `useState(() => getTimes(range, now))`,
+  or `useRef<Runner | null>(null)` filled on first use. Only a `new` of a class that is not a
+  built-in (collections, `Date`, `Error`, `Promise`, `AbortController`, `URLSearchParams`) and a call
+  whose name says it does work (`parse*`, `compute*`, `build*`, `create*`, `generate*`, `load*`,
+  `read*`, `init*`, `JSON.parse`, `structuredClone`, `localStorage.getItem`, `crypto.randomUUID`) are
+  reported; getters, `t(...)`, `Promise.resolve`, array methods, type conversions, hook calls and
+  `Date.now()` are left alone. The same rule reports `createBrowserRouter`,
+  `createMemoryRouter`, `createHashRouter`, `createStore`, `configureStore` and `new QueryClient()`
+  called in a component or hook body outside `useState`, `useMemo`, `useRef` and any `if`,
+  ternary or `&&` guard, since each render builds a new one (not in an async component or a
+  `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
+  `createRef()` in a function component.
+- **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
+  `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
+  `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
+  renders (a JSX child or attribute, directly or through one variable) shows `&`, `<` and quotes
+  as `&amp;` and `&#39;`: i18next escapes the value and React escapes the text again. Set
+  `interpolation: { escapeValue: false }` once where i18next is initialised (react-i18next
+  escapes through React), or pass it in the call. Nothing is reported when any source file of the
+  package sets `escapeValue: false`; `count`, `context` and other reserved options, literal values,
+  numbers and values formatted as numbers or dates (`toLocaleString`, `Intl` formats, arithmetic),
+  `dangerouslySetInnerHTML` and text that does not reach JSX are left alone.
+- **No literal DOM id in a list component** (`nitpicker/react-no-literal-id-in-list-component`).
+  A component rendered once per item (inside a `.map`, `.flatMap` or `Array.from` callback in the
+  same file, or in another file of the package that imports it by name or as the default export)
+  that gives an element a literal `id` which a `htmlFor`, `aria-labelledby`, `aria-describedby`,
+  `aria-controls`, `aria-owns`, `list` or `form` attribute, `getElementById` or `querySelector('#...')`
+  in the same component names: every copy repeats the id, so a label points at the first row's
+  control. Use `useId()`, an id built from the item (`${prefix}-${item.id}`) or one passed in by the
+  parent. A component that takes an index prop but is never found in a list is not reported, and neither
+  is one rendered under a `switch` case or an `===` branch inside the callback (a dispatch map
+  where each component renders once).
+- **No mutation that drops failure** (`nitpicker/react-mutation-drops-failure`). A React Query
+  mutation (`useMutation`, `api.x.useMutation()`, or a hook imported from a project file that wraps
+  `useMutation` without handling failure itself) whose `onSuccess` is passed in the hook or the call
+  options while `onError` is passed nowhere and the component never reads `error`, `isError`,
+  `status` or `failureReason` from it: when the request fails nothing is shown. The call or the hook
+  options are reported; pass `onError: (error) => toast.error(error.message)` or show `error`. A
+  `mutateAsync` call inside a `try` with a `catch`, followed by `.catch(...)` or `.then(...)`, or whose
+  promise is returned is left alone, and so is a project whose source sets `MutationCache` `onError`
+  (or `defaultOptions.mutations.onError`). `throwOnError` and a `meta` option count as handling
+  failure. Hooks from packages and tuple results (RTK Query, Apollo)
+  are not read.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
   effect that calls a prop callback (`onSave(value)`, `notify(value)`, `props.onChange()`, one
   destructured with `const { onChange } = props`, also renamed as `{ onChange: report }`, or one
