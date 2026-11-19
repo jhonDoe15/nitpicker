@@ -130,7 +130,7 @@ describe('translatePlan', () => {
     expect(translated.plugins).toEqual([
       { namespace: 'nitpicker', alias: 'js-nitpicker', ruleNames: ['no-comments'] },
     ]);
-    expect(translated.typeAware).toBe(false);
+    expect([...translated.typeAwareRules]).toEqual([]);
   });
 
   it('splits groups with different settings into separate configs', () => {
