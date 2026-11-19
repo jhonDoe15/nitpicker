@@ -6,6 +6,7 @@ import { concatOperands } from '../terminal/concat-operands.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { valueKind } from './value-kinds.mts';
 import { chainOf } from '../typed/node-views.mts';
+import { memberChain } from '../collections/costly-forms/repeated-runs.mts';
 
 type MessageId = 'encodeHeader';
 
@@ -28,12 +29,6 @@ const RISKY_NAMES = new Set([
 const REQUEST_ROOTS = new Set(['req', 'request']);
 const REQUEST_PARTS = new Set(['params', 'query', 'body', 'cookies']);
 const PATH_FUNCTIONS = new Set(['relative', 'resolve', 'join', 'dirname', 'basename']);
-
-function memberChain(node: TSESTree.Node): TSESTree.Node[] {
-  return chainOf<TSESTree.Node>(unwrapped(node), (current) =>
-    current.type === AST_NODE_TYPES.MemberExpression ? unwrapped(current.object) : undefined,
-  );
-}
 
 function isRequestData(node: TSESTree.Node): boolean {
   const chain = memberChain(node);
