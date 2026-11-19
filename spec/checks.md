@@ -306,6 +306,13 @@ Django query settings: `unresolved-query-field` (script, Python only) reports a 
 `search_fields` entry that ends at a relation; `filter-model-mismatch` (script, Python only) reports a `ModelChoiceFilter` or
 `ModelMultipleChoiceFilter` whose queryset is of another model than the relation it filters, or whose `to_field_name` is not a field.
 
+Serializer null settings: `serializer-null-mismatch` (script, Python only) reports a Django REST framework serializer field over a
+`null=True` column or a reverse one-to-one relation without `allow_null=True`, a field required by default over a blank or defaulted
+column, and a `SerializerMethodField` whose method returns `None` without an `Optional` annotation or a nullable schema extension.
+
+Serializer field lists: `serializer-fields-omitted` (script, Python only) reports a `ModelSerializer` with an explicit `Meta.fields` list that
+omits a model field exposed by at least 80% of at least three other serializers of the model; variant names and `exclude` stay quiet.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
