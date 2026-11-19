@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "parenthesised-tuple-argument",
+    "mention": "(value,)"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "message-tuple-argument",
+    "mention": "separate arguments"
+  }
+]

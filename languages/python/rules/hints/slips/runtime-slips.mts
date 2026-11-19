@@ -18,4 +18,20 @@ export const RUNTIME_SLIP_HINTS: readonly RuleHint[] = [
     allowed:
       'Use the full duration: `(now - start).total_seconds()`. When the parts are meant, write them out: `delta.days * 86400 + delta.seconds`.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['parenthesised-tuple-argument'],
+    describe: (subject) =>
+      `\`${subject}\` is not a tuple, since parentheses without a comma only group the value, so the callee receives the bare value: a string is unpacked character by character, an id is not iterable, and a pickle round trip breaks`,
+    allowed:
+      'Write the one-element tuple with a trailing comma (`args=(self.pk,)`, `cursor.execute(sql, (value,))`), or pass a list (`[value]`) or a name that holds a tuple.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['message-tuple-argument'],
+    describe: (subject) =>
+      `\`${subject}\` is a tuple used as a log or exception message, so the text shows the tuple itself and the placeholders are never filled`,
+    allowed:
+      'Pass the format and its values as separate arguments: `logger.info("Processing %s for %s", item, user)`, or format first for an exception: `ValueError("Processing %s for %s" % (item, user))`. Remove a stray trailing comma that turned a message into a tuple.',
+  },
 ];

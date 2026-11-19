@@ -263,6 +263,12 @@ Time differences: `timedelta-seconds-as-total` (Python, main sources) reports `.
 `timedelta` (a difference with a `datetime` or `date` operand, a `timedelta(...)` call, or a name or field annotated
 `timedelta`) unless `.days` of the same value is read in the function. The allowed form is `total_seconds()`.
 
+Tuples: `parenthesised-tuple-argument` (Python, main sources) reports a parenthesised single value, read from the source
+text, in a slot that takes a tuple of arguments (`args=`, `parameters=`, the second argument of `execute`, `executemany`,
+`run_sql` and `apply_async`, the second item returned from `__reduce__`), and `message-tuple-argument` reports a tuple
+of a format text and its values passed as a log or exception message. The allowed forms are `(x,)` and separate
+arguments.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
