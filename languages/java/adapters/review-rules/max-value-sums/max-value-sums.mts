@@ -1,11 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
-import { pathInside, projectSourceFiles } from '../java-sources.mts';
+import { mainSourceTexts } from '../java-sources.mts';
 import { collectCarriers } from './carriers.mts';
 import { parseSource } from './source-file.mts';
 import { findSums } from './sums.mts';
+import type { MainSourceOptions } from '../java-sources.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
-import type { SourceProject } from '../review-types.mts';
 import type { NumberKind } from './sum-types.mts';
 
 export const MAX_VALUE_RULE = 'MaxValueOverflow';
@@ -37,29 +36,10 @@ function maxValueMessage({
 
 export function readMaxValueFindings(
   projectRoot: string,
-  {
-    projects,
-    kotlin,
-    policy = {},
-  }: {
-    projects: readonly SourceProject[];
-    kotlin: boolean;
-    policy?: { readonly exclude?: readonly string[] };
-  },
+  options: MainSourceOptions,
 ): ReviewFinding[] {
-  const files = [
-    ...projectSourceFiles(projectRoot, {
-      projects,
-      kotlin,
-      exclude: policy.exclude ?? [],
-      test: false,
-    }).keys(),
-  ];
-  const sources = files.map((file) =>
-    parseSource(readFileSync(pathInside(projectRoot, file), 'utf8'), {
-      file,
-      kotlin: file.endsWith('.kt'),
-    }),
+  const sources = mainSourceTexts(projectRoot, options).map(({ file, text, kotlin }) =>
+    parseSource(text, { file, kotlin }),
   );
   const state = collectCarriers(sources);
   const finding = findingFactory();

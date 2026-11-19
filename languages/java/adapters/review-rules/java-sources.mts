@@ -219,3 +219,26 @@ export function projectSourceFiles<Project extends SourceProject>(
     .filter(([file]) => !excluded.some((matcher) => matcher.test(file)));
   return new Map(found.toReversed());
 }
+
+export type MainSourceOptions = {
+  projects: readonly SourceProject[];
+  kotlin: boolean;
+  policy?: { readonly exclude?: readonly string[] };
+};
+
+export function mainSourceTexts(
+  projectRoot: string,
+  { projects, kotlin, policy = {} }: MainSourceOptions,
+): { file: string; text: string; kotlin: boolean }[] {
+  const files = projectSourceFiles(projectRoot, {
+    projects,
+    kotlin,
+    exclude: policy.exclude ?? [],
+    test: false,
+  });
+  return [...files.keys()].map((file) => ({
+    file,
+    text: readFileSync(pathInside(projectRoot, file), 'utf8'),
+    kotlin: file.endsWith('.kt'),
+  }));
+}
