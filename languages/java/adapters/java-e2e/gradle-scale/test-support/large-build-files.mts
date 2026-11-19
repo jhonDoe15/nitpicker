@@ -24,6 +24,31 @@ const VERIFICATION = `<?xml version="1.0" encoding="UTF-8"?>
 </verification-metadata>
 `;
 
+const MODULE_PATH_PROVIDER = `
+class ModulePathArguments implements CommandLineArgumentProvider {
+    @Classpath
+    final FileCollection modules
+
+    ModulePathArguments(FileCollection modules) {
+        this.modules = modules
+    }
+
+    @Override
+    Iterable<String> asArguments() {
+        ['--module-path=' + modules.asPath]
+    }
+}
+
+dependencies {
+    implementation project(':platform:base')
+}
+
+tasks.named('compileJava') {
+    options.compilerArgumentProviders.add(new ModulePathArguments(configurations.compileClasspath))
+    classpath = files()
+}
+`;
+
 export const LARGE_BUILD_FILES: Readonly<Record<string, string>> = {
   'settings.gradle':
     "rootProject.name = 'large'\ninclude 'platform', 'platform:base', 'platform:api'\n",
@@ -32,6 +57,7 @@ export const LARGE_BUILD_FILES: Readonly<Record<string, string>> = {
   'gradle/verification-metadata.xml': VERIFICATION,
   'platform/build.gradle': '',
   'platform/base/build.gradle': `apply plugin: 'jacoco'\n${JUNIT}\ntasks.named('check') {\n    dependsOn 'jacocoTestReport'\n}\n`,
+  'platform/base/src/main/java/module-info.java': 'module demo.base {\n  exports demo.base;\n}\n',
   'platform/base/src/main/java/demo/base/Counter.java':
     'package demo.base;\n\npublic final class Counter {\n  private int unused;\n\n' +
     '  public int next(int value) {\n    return value + 1;\n  }\n}\n',
@@ -39,7 +65,8 @@ export const LARGE_BUILD_FILES: Readonly<Record<string, string>> = {
     'package demo.base;\n\nimport static org.junit.jupiter.api.Assertions.assertEquals;\n\n' +
     'import org.junit.jupiter.api.Test;\n\nclass CounterTest {\n  @Test\n  void countsOn() {\n' +
     '    assertEquals(2, new Counter().next(1));\n  }\n}\n',
-  'platform/api/build.gradle': "dependencies {\n    implementation project(':platform:base')\n}\n",
+  'platform/api/build.gradle': MODULE_PATH_PROVIDER,
+  'platform/api/src/main/java/module-info.java': 'module demo.api {\n  requires demo.base;\n}\n',
   'platform/api/src/main/java/demo/api/Greeter.java':
     'package demo.api;\n\nimport demo.base.Counter;\n\npublic final class Greeter {\n' +
     '  public void greet() {\n    System.out.println(new Counter().next(1));\n  }\n}\n',

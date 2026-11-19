@@ -85,6 +85,12 @@ describe.skipIf(!enabled)(
       expect(files).toContain('Counter.java');
     });
 
+    it('compiles the module whose module path comes from an argument provider with Error Prone', () => {
+      expect(
+        rulesAt(ranOf(runs, 'quick').findings, 'platform/api/src/main/java/demo/api/Greeter.java'),
+      ).toContain('errorprone SystemOut');
+    });
+
     it('measures coverage in the full run, where check depends on jacocoTestReport', () => {
       expect(ranOf(runs, 'full').findings.some(({ tool }) => tool === 'jacoco')).toBe(true);
     });

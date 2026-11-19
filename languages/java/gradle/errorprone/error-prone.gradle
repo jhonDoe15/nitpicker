@@ -23,8 +23,6 @@ def errorProneClasspath = {
         project.dependencies.create("com.google.errorprone:error_prone_core:${versions.errorProne}"),
         project.dependencies.create("com.uber.nullaway:nullaway:${versions.nullAway}"))
     configuration.resolutionStrategy.disableDependencyVerification()
-    configuration.resolutionStrategy.disableDependencyVerification()
-    configuration.resolutionStrategy.disableDependencyVerification()
     configuration.attributes {
         attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage, Usage.JAVA_RUNTIME))
         attribute(Category.CATEGORY_ATTRIBUTE, project.objects.named(Category, Category.LIBRARY))
@@ -48,8 +46,21 @@ def projectOptions = { JavaCompile compile ->
     def release = compile.options.release.orNull
     def level = release != null ? ["--release=${release}"]
         : ["--source=${compile.sourceCompatibility}", "--target=${compile.targetCompatibility}"]
-    compile.options.compilerArgs.collect { "--project-arg=${it}".toString() } + level*.toString() +
+    compile.options.allCompilerArgs.collect { "--project-arg=${it}".toString() } + level*.toString() +
         (compile.options.encoding ? ['-encoding', compile.options.encoding] : [])
+}
+
+// The module path a build hands javac itself, often through a compiler argument provider that takes the
+// modules off the task's classpath.
+def projectModulePath = { JavaCompile compile ->
+    def args = compile.options.allCompilerArgs*.toString()
+    def values = args.withIndex().collectMany { String arg, int index ->
+        if (arg.startsWith('--module-path=')) {
+            return [arg.substring('--module-path='.length())]
+        }
+        arg in ['--module-path', '-p'] && index + 1 < args.size() ? [args[index + 1]] : []
+    }
+    values.collectMany { it.split(File.pathSeparator).findAll { it }.collect { new File(it) } }.unique()
 }
 
 // Error Prone needs JDK 21 or newer, and at least the JDK the project compiles with; with
@@ -57,7 +68,7 @@ def projectOptions = { JavaCompile compile ->
 // toolchain launcher, which Gradle finds or provisions like the project's own toolchains.
 def runnerJava = { Collection<JavaCompile> compiles ->
     def versions = compiles.collect { compilerVersion(it) }
-    def preview = compiles.any { it.options.compilerArgs.contains('--enable-preview') }
+    def preview = compiles.any { it.options.allCompilerArgs.contains('--enable-preview') }
     def wanted = preview ? versions.max() : Math.max(21, versions.max())
     if (wanted < 21) {
         throw new GradleException("Error Prone needs JDK 21 or newer, and this project compiles with " +
@@ -111,9 +122,9 @@ def isJavaModule = { File file ->
     }
 }
 
-def lookupLines = { Collection<File> classpath, Collection<File> own, String mode ->
+def lookupLines = { Collection<File> classpath, Collection<File> own, String mode, Collection<File> declared ->
     def libraries = classpath.findAll { !(it in own) && it.exists() }
-    def modules = mode == 'plain' ? [] : libraries.findAll { mode == 'all' || isJavaModule(it) }
+    def modules = mode == 'plain' ? [] : libraries.findAll { mode == 'all' || it in declared || isJavaModule(it) }
     def plain = classpath.findAll { !(it in modules) }
     (modules ? ['--module-path', paths(modules)] : []) + ['-classpath', paths(plain)]
 }
@@ -127,8 +138,9 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
     def generated = workDir.get().dir("generated/${name}").asFile
     [classes, generated]*.mkdirs()
     def own = sourceSets.main.output.classesDirs.files + (test ? sourceSets.getByName(name).output.classesDirs.files : [])
+    def declared = projectModulePath(compile)
     def lines = ['-d', classes.absolutePath, '-s', generated.absolutePath] +
-        lookupLines(compile.classpath.files, own, mode) +
+        lookupLines((compile.classpath.files + declared).unique(), own, mode, declared) +
         ['-processorpath', paths(errorProne + processors),
          '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
          '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000', classDirectories(own)] +
@@ -198,7 +210,11 @@ tasks.register('nitpickerErrorProne') {
             failure = run('all')
         }
         if (failure != null) {
-            throw new GradleException("Error Prone could not compile the sources: ${failure}")
+            def cause = failure.replace(rootDir.absolutePath + File.separator, '').readLines()
+                .findAll { it.trim() }.take(3)*.trim().join(' ')
+            skipped.text = "Error Prone could not compile the sources the build compiled itself, so its checks " +
+                "did not run: ${cause}\n"
+            report.text = '[]\n'
         }
     }
 }
