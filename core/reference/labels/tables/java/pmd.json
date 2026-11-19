@@ -1,4 +1,5 @@
 {
+  "pmd/AffixLengthMismatch": ["bug"],
   "pmd/AnnotationAttributeNotResolved": ["bug", "spring"],
   "pmd/AssertNotNullWrongCheck": ["bug", "spring"],
   "pmd/AssignmentInOperand": ["maintainability"],
