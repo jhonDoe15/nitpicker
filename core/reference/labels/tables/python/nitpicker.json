@@ -155,6 +155,7 @@
   "python-rules/unmapped-exception": ["reliability"],
   "python-rules/unordered-query": ["bug", "persistence"],
   "python-rules/unresolved-query-field": ["bug", "persistence"],
+  "python-rules/unreturned-result": ["bug"],
   "python-rules/unsafe-deserialization": ["security"],
   "python-rules/unsafe-path-join": ["security"],
   "python-rules/unshielded-cleanup-await": ["reliability", "async"],
