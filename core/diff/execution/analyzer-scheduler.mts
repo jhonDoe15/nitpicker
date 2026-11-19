@@ -1,7 +1,8 @@
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { FORCE_KILL_DELAY_MS, installShutdownHandlers } from './process.mts';
-import { resolveMaxParallel, runTaskGraph } from './graph/task-graph.mts';
+import { runTaskGraph } from './graph/task-graph.mts';
+import { resolveMaxParallel } from '../../../shared/processes/machine-capacity.mts';
 import { readStandardInput } from '../../../shared/processes/standard-input.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';

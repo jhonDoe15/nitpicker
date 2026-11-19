@@ -9,7 +9,7 @@ const entry = {
 
 describe('shared-used-by-one-feature findings', () => {
   it('fails the shared module with the allowed form and the exception that lifts the rule', () => {
-    const findings = evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling', []);
+    const findings = evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling');
     const exception = JSON.stringify({
       rule: 'shared-used-by-one-feature',
       paths: [entry.source],
@@ -40,18 +40,22 @@ describe('shared-used-by-one-feature findings', () => {
       reason: 'x',
     };
 
-    expect(evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling', [exception])).toEqual(
-      [],
-    );
     expect(
-      evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling', [
-        { ...exception, rule: 'duplicate-definition' },
-        { ...exception, paths: ['src/main/shared/other.ts'] },
-      ]),
+      evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling', {
+        exceptions: [exception],
+      }),
+    ).toEqual([]);
+    expect(
+      evaluateCoupling({ sharedUsedByOneFeature: [entry] }, 'coupling', {
+        exceptions: [
+          { ...exception, rule: 'duplicate-definition' },
+          { ...exception, paths: ['src/main/shared/other.ts'] },
+        ],
+      }),
     ).toHaveLength(1);
   });
 
   it('adds nothing when the report has no such module', () => {
-    expect(evaluateCoupling({}, 'coupling', [])).toEqual([]);
+    expect(evaluateCoupling({}, 'coupling')).toEqual([]);
   });
 });

@@ -53,6 +53,18 @@ directly or through test helpers and base classes, reference a main class of any
   classes with `ClassFileImporter`), or one whose helper or base class carries one, runs production
   code through the framework and is not reported. So does a test that drives a build with Gradle's
   `GradleRunner`.
+- **Code outside the analysed modules.** jdeps runs without the build's classpath, so a class of a
+  project the analysed modules depend on but nitpicker does not analyse (an included sibling Gradle
+  project, say) is not in `jdeps-classes.txt`. A referenced class that no analysed module holds still
+  counts as production when it is in the test's own package, since a same-package class needs no
+  import, unless its name reads as test code (`...Test`, `...IT`, `...Fixtures`, `...Fake`,
+  `...Stub`, `...Mock`, `Test...`). A class in any other package that no analysed module holds is
+  treated as a library.
+- **Production code named in strings.** A test whose source has a string literal equal to a
+  production package (`"controllers"`, `"com.acme.app"`, or a parent of two or more segments such as
+  `"com.acme"`, but not `"com"`) or class (`"com.acme.app.Cart"`, `"com.acme.app.Cart$Line"`) hands
+  production code to a helper that loads it by name or scans the package, so it is not judged; it
+  is counted as excluded.
 - **No type-only case.** The JVM has no import that exists only for the type checker, so
   `type-only-production-dependency` does not apply; a production type that a test names only as an
   erased generic argument leaves no reference in the bytecode and is reported as `no-production-runtime`.
@@ -60,7 +72,8 @@ directly or through test helpers and base classes, reference a main class of any
   `{ "rule": "no-production-runtime", "paths": ["<test file>"], "reason": "..." }`; `test-runtime/no-production-runtime`
   is accepted as the same rule and lifts the finding for the matching paths.
 - **Limits.** The check reads class references, so a test that reaches production only by reflection
-  (`Class.forName("shop.Cart")`, a service loaded by name) is reported; lift it with an exception. A
+  through a name it does not spell out (a name built at run time, a service listed in a file) is
+  reported; lift it with an exception. A
   production type used only in a field or parameter signature counts as reached. An annotation or
   base class that comes from a library jar (not from a module of the build) and starts a framework
   context is not seen, so such a test is reported. A test that extends a base class which declares

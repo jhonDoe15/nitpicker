@@ -29,6 +29,7 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoStringLengthAsByteCount } from '../rules/byte-limits/no-string-length-as-byte-count.mts';
+import { rule as ruleNoSwappedArguments } from '../rules/arguments/no-swapped-arguments.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
@@ -73,6 +74,7 @@ import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstrip
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
+import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
@@ -131,6 +133,7 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-string-length-as-byte-count': ruleNoStringLengthAsByteCount,
+  'no-swapped-arguments': ruleNoSwappedArguments,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
@@ -175,6 +178,7 @@ export const partRules = {
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
+  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,

@@ -21,13 +21,15 @@ const STRING_KIND = 'string';
 const NUMBER_KIND = 'number';
 const BOOLEAN_KIND = 'boolean';
 
-const KEYWORD_NAMES: Readonly<Record<string, (source: Node) => PlacedNode>> = {
-  true: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'true' }, source),
-  false: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'false' }, source),
-  null: (source) => at({ kind: 'literal', literal: 'null', value: 'null' }, source),
-  break: (source) => at('break', source),
-  continue: (source) => at('continue', source),
-};
+const KEYWORD_NAMES: ReadonlyMap<string, (source: Node) => PlacedNode> = new Map(
+  Object.entries({
+    true: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'true' }, source),
+    false: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'false' }, source),
+    null: (source) => at({ kind: 'literal', literal: 'null', value: 'null' }, source),
+    break: (source) => at('break', source),
+    continue: (source) => at('continue', source),
+  } satisfies Record<string, (source: Node) => PlacedNode>),
+);
 const SIMPLE_TEMPLATE = /\$([A-Za-z_]\w*)/gu;
 
 function navigationOf(source: Node, context: KotlinContext): PlacedNode {
@@ -165,7 +167,7 @@ function stringOf(source: Node, context: KotlinContext): PlacedNode {
 
 export const EXPRESSIONS: Readonly<Record<string, KotlinConverter>> = {
   identifier: (source, context) =>
-    KEYWORD_NAMES[source.text]?.(source) ?? context.name(source.text, source),
+    KEYWORD_NAMES.get(source.text)?.(source) ?? context.name(source.text, source),
   number_literal: literal(NUMBER_KIND, numberText),
   float_literal: literal(NUMBER_KIND, numberText),
   hex_literal: literal(NUMBER_KIND, numberText),

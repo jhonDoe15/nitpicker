@@ -34,7 +34,7 @@ import { buildViews, javaMentions } from './build-view.mts';
 import { childLifetimeFindings } from './coroutines/resource-lifetime.mts';
 import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mts';
 import { productionTypeResolver } from './production-types.mts';
-import { findingFactory } from './review-finding.mts';
+import { findingFactory } from './finding/review-finding.mts';
 import { springFindings } from './spring/spring-findings.mts';
 import { relaxedMockFindings } from './tests/mocks/relaxed-mocks.mts';
 import { subjectMockFindings } from './tests/mocks/subject-mocks.mts';

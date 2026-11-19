@@ -5,14 +5,14 @@ import {
   resolveLayout as untypedResolveLayout,
   resolveLayoutFor as untypedResolveLayoutFor,
 } from '../../layout.mjs';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
 import {
   isCustomLayout as untypedIsCustomLayout,
   layoutStrykerTsconfig as untypedLayoutStrykerTsconfig,
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
-  layoutTransformFor as untypedLayoutTransformFor,
   layoutTsconfig as untypedLayoutTsconfig,
-} from '../../tool-configs.mjs';
+} from '../../project-configs/typescript/layout-rewrites.mjs';
 
 export type Policy = {
   readonly exclude?: readonly string[];

@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "internal-module-patch",
+    "mention": "parameter or constructor",
+    "subject": "shop.mailer.Mailer.send"
+  }
+]

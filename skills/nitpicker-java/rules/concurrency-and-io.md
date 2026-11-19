@@ -5,6 +5,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
   (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
   (`await()` in a loop, `signalAll()`).
+- Release a lock in `finally` with `unlock()` on the same receiver that `lock()` took
+  (`finally { lock.unlock(); }`, `rwLock.readLock().unlock()`); a `lock()` there takes it a second
+  time and nothing releases it (`pmd/LockInFinally`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger. A command-line program takes a
   `PrintStream`, `Writer` or `Appendable` parameter and writes to it; only `static void main`
@@ -13,6 +16,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A logger field names the class that declares it: `LoggerFactory.getLogger(Orders.class)` in `Orders`, not the
   class it was copied from (`pmd/LoggerForOtherClass`); `MethodHandles.lookup().lookupClass()` and `getClass()`
   are fine too.
+- Give a logged exception no `{}` of its own: `log.warn("Failed for {}", id, e)` keeps the stack trace,
+  `log.warn("Failed for {} due to {}", id, e)` prints only `e.toString()`. In an SLF4J or Log4j 2 message
+  write `{}`, not `%s`, `%d` or `{0}` (`pmd/LogPlaceholderSlip`).
 - Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
@@ -104,6 +110,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `CompletableFuture` task, or in one method while another changes it under `synchronized`, is a concurrent
   collection (`ConcurrentHashMap`, `CopyOnWriteArrayList`) or is locked on every read and write
   (`pmd/UnsynchronizedSharedCollection`).
+- A stop or running flag that a `Thread` or `Runnable` polls in `while (running)` and another method clears is
+  `volatile` (or an `AtomicBoolean`, or read and written under one lock); a plain `boolean` may never be seen
+  as changed (`pmd/UnsafeStopFlag`).
 - A concurrent map is not checked and then used again for the same key (`containsKey` then `put` or `get`,
   `get(k) == null` then `put`): use `computeIfAbsent`, `putIfAbsent`, `getOrDefault`, or read once into a local
   (`pmd/ConcurrentMapCheckThenAct`).

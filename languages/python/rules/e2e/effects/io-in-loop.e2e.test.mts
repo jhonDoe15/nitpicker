@@ -3,7 +3,11 @@ import { useScripts, pythonLines as code } from '../../test-support/python-rule-
 
 const { findingsOf, itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['unbounded-fan-out', 'blocking-helper-in-async'],
+  hidden: [
+    'managed-resource-outside-composition-root',
+    'unbounded-fan-out',
+    'blocking-helper-in-async',
+  ],
 });
 
 const inFile = (file: string, source: string) => ({ file, code: source });

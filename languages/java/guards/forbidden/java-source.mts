@@ -1,4 +1,5 @@
 import { textOf } from '../../../../shared/values/readers.mts';
+import { matchingClose } from '../../../../shared/source-text/brackets/matching-close.mts';
 
 type TypeBody = { readonly name: string; readonly open: number; readonly span: Span };
 
@@ -12,19 +13,8 @@ function spaces(text: string): string {
   return text.replaceAll(/[^\n]/g, ' ');
 }
 
-export function closing(
-  text: string,
-  open: number,
-  [opening, closingCharacter]: string = '()',
-): number {
-  let depth = 0;
-  for (const [offset, character] of Array.from(text.slice(open)).entries()) {
-    depth += { [textOf(opening)]: 1, [textOf(closingCharacter)]: -1 }[character] ?? 0;
-    if (depth === 0) {
-      return open + offset;
-    }
-  }
-  return -1;
+export function closing(text: string, open: number, pair = '()'): number {
+  return matchingClose(text, open, pair);
 }
 
 export function withoutAnnotations(text: string): string {

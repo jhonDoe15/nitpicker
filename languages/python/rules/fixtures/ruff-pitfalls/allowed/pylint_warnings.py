@@ -1,6 +1,7 @@
 import math
 import subprocess
 import threading
+from pathlib import Path
 
 LOCK = threading.Lock()
 
@@ -65,3 +66,13 @@ def same(value, other):
 
 def either(kind):
     return kind in {"a", "b"}
+
+
+def read_context(context_file):
+    with Path(context_file).open(encoding="utf-8") as handle:
+        return handle.read()
+
+
+def read_bytes(context_file):
+    with Path(context_file).open("rb") as handle:
+        return handle.read()

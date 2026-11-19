@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { linterConfigs } from './typed/config-types.mts';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mts';
@@ -10,8 +11,8 @@ import {
 import { codeExtensions, builtInExcludedGlobs } from '../layout.mjs';
 
 export function adapterGlobsFor(sourceRoots: readonly string[]): string[] {
-  return sourceRoots.map(
-    (root: string) => `${root}/main/features/*/adapters/**/*.${codeExtensions}`,
+  return sourceRoots.map((root: string) =>
+    path.posix.join(root, `main/features/*/adapters/**/*.${codeExtensions}`),
   );
 }
 

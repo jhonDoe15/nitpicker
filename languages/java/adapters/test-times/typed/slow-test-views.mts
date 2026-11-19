@@ -1,6 +1,6 @@
 import type { InheritedMethod } from '../inherited-tests.mts';
 import type { Locate } from './locate-type.mts';
-import { inModule as inModuleUntyped } from '../../../builds/module-path.mts';
+import { inModule as inModuleUntyped } from '../../../builds/paths/module-path.mts';
 import { sourceLocator as sourceLocatorUntyped } from '../../reporting/kotlin-reports.mts';
 import {
   MESSAGES as MESSAGES_UNTYPED,

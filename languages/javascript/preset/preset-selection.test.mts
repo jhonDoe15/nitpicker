@@ -154,7 +154,7 @@ describe('head policy preset', () => {
       const { javascript, entryExtensions } = readLayout(environment);
       expect({ javascript, entryExtensions }).toEqual({
         javascript: true,
-        entryExtensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts'],
+        entryExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts'],
       });
     });
   });
@@ -178,11 +178,11 @@ describe('head policy preset', () => {
 describe('javascript layout', () => {
   it('lints every unit test under the source and test roots for JavaScript', () => {
     expect(resolveLayout({}, [], { javascript: true }).unitTestGlobs).toEqual([
-      'src/**/__tests__/**/*.{ts,mts,cts,js,mjs,cjs}',
-      'test/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
-      'tests/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
-      '__tests__/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
-      'e2e/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'src/**/__tests__/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      'test/unit/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      'tests/unit/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      '__tests__/unit/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      'e2e/unit/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
     ]);
     expect(resolveLayout({}, []).unitTestGlobs).toEqual([
       'src/**/__tests__/**/*.ts',
@@ -193,14 +193,21 @@ describe('javascript layout', () => {
     ]);
   });
 
-  it('reads .ts files as part of the project and leaves .jsx and .tsx files outside it', () => {
+  it('reads .ts and .jsx files as part of the project and leaves .tsx files outside it', () => {
     const layout = resolveLayout({}, [], { javascript: true });
-    expect(layout.sourceGlobs).toEqual(['src/**/*.{ts,mts,cts,js,mjs,cjs}']);
-    const read = ['src/main/a.ts', 'src/main/a.mts', 'src/main/a.cjs', 'src/main/a.js'];
-    const left = ['src/main/a.jsx', 'src/main/a.tsx'];
+    expect(layout.sourceGlobs).toEqual(['src/**/*.{ts,mts,cts,js,mjs,cjs,jsx}']);
+    const read = [
+      'src/main/a.ts',
+      'src/main/a.mts',
+      'src/main/a.cjs',
+      'src/main/a.js',
+      'src/main/a.jsx',
+    ];
+    const left = ['src/main/a.tsx'];
     expect(read.map((file) => layout.isSourceFile(file))).toEqual(read.map(() => true));
     expect(left.map((file) => layout.isSourceFile(file))).toEqual(left.map(() => false));
-    expect(layout.isRunnableTestFile('test/a.test.jsx')).toBe(false);
+    expect(layout.isRunnableTestFile('test/a.test.jsx')).toBe(true);
+    expect(layout.isRunnableTestFile('test/a.test.tsx')).toBe(false);
     expect(layout.isRunnableTestFile('test/a.test.cts')).toBe(true);
     expect(resolveLayout().isSourceFile('src/main/a.jsx')).toBe(true);
   });
@@ -233,12 +240,12 @@ describe('javascript layout', () => {
 describe('javascript prettier patterns', () => {
   it('check the JavaScript and TypeScript extensions of a JavaScript project', () => {
     expect(prettierPatterns(resolveLayout({}, [], { javascript: true }))).toEqual([
-      'src/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}',
-      'test/**/*.{ts,mts,cts,js,mjs,cjs,json}',
-      'tests/**/*.{ts,mts,cts,js,mjs,cjs,json}',
-      '__tests__/**/*.{ts,mts,cts,js,mjs,cjs,json}',
-      'e2e/**/*.{ts,mts,cts,js,mjs,cjs,json}',
-      '*.{ts,mts,cts,js,mjs,cjs,json}',
+      'src/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json,yaml,yml}',
+      'test/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json}',
+      'tests/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json}',
+      '__tests__/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json}',
+      'e2e/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json}',
+      '*.{ts,mts,cts,js,mjs,cjs,jsx,json}',
     ]);
     expect(prettierPatterns(resolveLayout())).toEqual([
       'src/**/*.{ts,tsx,mts,mjs,json,yaml,yml}',
@@ -295,10 +302,12 @@ describe('javascript analyzers with a customized policy', () => {
     const underLib = (name: string) =>
       invocation(rebuilt, name)?.args.filter((argument) => argument.startsWith('lib/'));
     expect(underLib('eslint-lint')).toEqual([
-      'lib/**/*.{ts,mts,cts,js,mjs,cjs}',
-      'lib/**/*.{test,spec}.{ts,mts,cts,js,mjs,cjs}',
+      'lib/**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      'lib/**/*.{test,spec}.{ts,mts,cts,js,mjs,cjs,jsx}',
     ]);
-    expect(underLib('prettier-format')).toEqual(['lib/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}']);
+    expect(underLib('prettier-format')).toEqual([
+      'lib/**/*.{ts,mts,cts,js,mjs,cjs,jsx,json,yaml,yml}',
+    ]);
   });
 
   it('keep the shared analyzer set when only the preset is chosen', () => {

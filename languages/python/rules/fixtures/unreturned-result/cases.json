@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unreturned-result",
+    "mention": "return helper(...)",
+    "subject": "self.stage_ok()|Response"
+  }
+]

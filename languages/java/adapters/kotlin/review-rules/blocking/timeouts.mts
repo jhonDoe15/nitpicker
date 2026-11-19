@@ -6,7 +6,7 @@ import type {
   CoroutineTimeout,
 } from '../typed/kotlin-flow-types.mts';
 import type { FindingFactory, ReviewFinding } from '../typed/review-finding-types.mts';
-import { SOURCE_TOOL } from '../review-finding.mts';
+import { SOURCE_TOOL } from '../finding/review-finding.mts';
 import { NON_SUSPENDING_STANDARD } from './blocking-catalog.mts';
 import { classifyBlocking } from './classify.mts';
 import { resolverFor } from './type-names.mts';

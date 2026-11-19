@@ -28,6 +28,9 @@ export const SOFT_DELETE_HINTS: readonly RuleHint[] = [
     rules: ['soft-delete-filter-missing'],
     describe: (subject) => {
       const { name, target, field, via, share } = rowDetails(subject);
+      if (field === via && via.endsWith('()')) {
+        return `\`${name}\` reads \`${target}\` without \`${via}\`, which ${share} of the project's \`${target}\` reads apply: rows the project hides or scopes away reach the caller`;
+      }
       return `\`${name}\` reads \`${target}\` without the filter on \`${field}\` that ${share} of the project's \`${target}\` reads apply (\`${via}\`): deleted or hidden rows reach the caller`;
     },
     allowed: (subject) =>

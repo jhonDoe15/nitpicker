@@ -9,7 +9,7 @@ import {
 import type { RuleEntry } from './typed/entry-views.mts';
 import { springMessage } from '../adapters/kotlin/review-rules/spring/spring-messages.mts';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../adapters/kotlin/review-rules/review-rules.mts';
-import { REVIEW_TOOL } from '../adapters/kotlin/review-rules/review-finding.mts';
+import { REVIEW_TOOL } from '../adapters/kotlin/review-rules/finding/review-finding.mts';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
 import {
   ESCAPING_MESSAGE,
@@ -56,6 +56,12 @@ const OWN_RULESETS: OwnRuleset[] = [
     scope: 'Test sources of a project with Spring on the compile classpath.',
     spring: true,
   },
+  {
+    file: 'reactor-ruleset.xml',
+    scope: 'Main sources of a project with Reactor on the compile classpath.',
+  },
+  { file: 'rules/guards-ruleset.xml', scope: 'Main sources only.' },
+  { file: 'rules/test-honesty-ruleset.xml', scope: 'Test sources only.' },
 ];
 const CATEGORY_BLOCK = /<rule\s+ref="category\/java\/\w+\.xml">([\s\S]*?)<\/rule>/gu;
 const EXCLUDED_RULE = /<exclude\s+name="(\w+)"/gu;

@@ -28,6 +28,7 @@ export type RunContext = {
   readonly comparison: Comparison;
   readonly analyzers: ReadonlyMap<string, readonly string[]>;
   readonly sharedBase?: SharedBase | undefined;
+  readonly sharedHead?: SharedBase | undefined;
 };
 export type Extras = { readonly options: object; readonly cli: ProjectCli };
 export type SelectedRun = { readonly reportRoot: string; readonly extras: Extras };
@@ -71,7 +72,8 @@ export function extrasOf(
     comparison,
     analyzers,
     sharedBase,
-  }: Pick<RunContext, 'comparison' | 'analyzers' | 'sharedBase'>,
+    sharedHead,
+  }: Pick<RunContext, 'comparison' | 'analyzers' | 'sharedBase' | 'sharedHead'>,
 ): Extras {
   const baseProject = comparison.basePlan?.projects.find(
     ({ path: folder }) => folder === project.path,
@@ -88,6 +90,8 @@ export function extrasOf(
       projectKey: project.folder === project.path ? undefined : project.path,
       sharedBaseWorktree:
         sharedBase?.sharers.has(project.path) === true ? sharedBase.worktree : undefined,
+      sharedHeadWorktree:
+        sharedHead?.sharers.has(project.path) === true ? sharedHead.worktree : undefined,
     },
   };
 }

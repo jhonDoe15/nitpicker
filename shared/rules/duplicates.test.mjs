@@ -54,6 +54,24 @@ describe('duplicates rule on neutral clones', () => {
     expect(identities('z', 'x', 'y')).toEqual([expect.any(String), ...both]);
   });
 
+  it('keeps the identity of a clone when it and its copy move to other lines', () => {
+    const identity = (line) =>
+      byRule(
+        evaluateDuplicates(
+          [
+            clone('a.java', 'a.java', {
+              first: { file: 'a.java', line },
+              second: { file: 'a.java', line: line + 400 },
+            }),
+          ],
+          'duplicates',
+        ),
+        'duplicate-clone',
+      ).map((finding) => finding.identity);
+
+    expect(identity(748)).toEqual(identity(757));
+  });
+
   it('ratchets each clone on its file pair and token count', () => {
     const [failure] = byRule(
       evaluateDuplicates([clone('b.java', 'a.java')], 'duplicates'),

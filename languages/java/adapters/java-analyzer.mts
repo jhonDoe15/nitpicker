@@ -54,6 +54,7 @@ const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const DESIGN_DIRECTORY = 'languages/java/gradle/design';
 const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
+const HOST_DIRECTORY = 'languages/java/gradle/host';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -99,6 +100,9 @@ const RESOURCE_FILES = [
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',
+  'languages/java/gradle/generated/generated-roots.gradle',
+  'languages/java/gradle/generated/generated-roots.json',
+  'languages/java/gradle/generated/GeneratedClasses.java',
   'languages/java/detekt/nitpicker-detekt.yml',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/messages/pmd.json',
@@ -129,6 +133,10 @@ function configurationContents(): Map<string, string> {
     recursive: true,
     encoding: 'utf8',
   });
+  const host = readdirSync(path.join(packageRoot, HOST_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
   return closureOf(
     [
       ...ENTRY_FILES,
@@ -137,6 +145,7 @@ function configurationContents(): Map<string, string> {
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
       ...javaSources(DESIGN_DIRECTORY, design),
       ...javaSources(EFFECTS_DIRECTORY, effects),
+      ...javaSources(HOST_DIRECTORY, host),
     ],
     packageRoot,
   );

@@ -33,12 +33,14 @@ import { rule as ruleNoCompatibilityShim } from '../rules/signatures/no-compatib
 import { rule as ruleNoCopiedConstant } from '../test-assertions/copied-constants/no-copied-constant.mts';
 import { rule as ruleNoCopyPastedTests } from '../test-quality/no-copy-pasted-tests.mts';
 import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-forms/no-costly-collection-form.mts';
+import { rule as ruleNoDataloaderBatchMismatch } from '../rules/dataloaders/no-dataloader-batch-mismatch.mts';
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
 import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/files/no-directory-passing-existence-check.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
 import { rule as ruleNoDoubleDecode } from '../rules/urls/decoding/no-double-decode.mts';
+import { rule as ruleNoDroppedDelegateResult } from '../rules/delegation/no-dropped-delegate-result.mts';
 import { rule as ruleNoDroppedLogArguments } from '../rules/logging/no-dropped-log-arguments.mts';
 import { rule as ruleNoDroppedSubscriptionHandle } from '../rules/lifecycles/subscriptions/no-dropped-subscription-handle.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
@@ -65,6 +67,7 @@ import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-
 import { rule as ruleNoIncompleteEscaping } from '../rules/escaping/no-incomplete-escaping.mts';
 import { rule as ruleNoInconsistentComparator } from '../rules/comparisons/no-inconsistent-comparator.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
+import { rule as ruleNoInterpolatedLogMessage } from '../rules/logging/interpolation/no-interpolated-log-message.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
@@ -98,6 +101,19 @@ import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropp
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
+import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mts';
+import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
+import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
+import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
+import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
+import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
+import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
+import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
+import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
+import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
+import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
+import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -135,12 +151,14 @@ export const partRules = {
   'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-costly-collection-form': ruleNoCostlyCollectionForm,
+  'no-dataloader-batch-mismatch': ruleNoDataloaderBatchMismatch,
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-directory-passing-existence-check': ruleNoDirectoryPassingExistenceCheck,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-double-decode': ruleNoDoubleDecode,
+  'no-dropped-delegate-result': ruleNoDroppedDelegateResult,
   'no-dropped-log-arguments': ruleNoDroppedLogArguments,
   'no-dropped-subscription-handle': ruleNoDroppedSubscriptionHandle,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
@@ -167,6 +185,7 @@ export const partRules = {
   'no-incomplete-escaping': ruleNoIncompleteEscaping,
   'no-inconsistent-comparator': ruleNoInconsistentComparator,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
+  'no-interpolated-log-message': ruleNoInterpolatedLogMessage,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
@@ -201,4 +220,17 @@ export const partRules = {
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
+  'no-production-console': ruleNoProductionConsole,
+  'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
+  'no-promise-chain': ruleNoPromiseChain,
+  'no-query-per-parent': ruleNoQueryPerParent,
+  'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
+  'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-release-outside-finally': ruleNoReleaseOutsideFinally,
+  'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
+  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
+  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
+  'no-route-without-auth': ruleNoRouteWithoutAuth,
 };

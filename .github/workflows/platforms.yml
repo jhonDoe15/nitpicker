@@ -94,11 +94,25 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+      # The Gradle dependency cache restores on every run and is saved only from a green run on main: Gradle
+      # remembers a failed download as missing, so a cache saved by a failed run fails every later run.
+      # setup-gradle saves its own cache from failed runs too, so it keeps none. setup-java saves its Maven
+      # cache only from a green run.
+      - id: gradle-cache
+        uses: actions/cache/restore@v5.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/caches/jars-*
+          key: platforms-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            platforms-gradle-${{ runner.os }}-
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
-          # Keep caching on the MIT implementation; v6 defaults to a proprietary provider.
+          # Keep the MIT implementation; v6 defaults to a proprietary provider.
           cache-provider: basic
+          cache-disabled: true
       - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.13'
@@ -113,6 +127,13 @@ jobs:
         run: >-
           node scripts/platforms/smoke.mts typescript gradle maven python
           --output "reports/platforms/${{ runner.os }}"
+      - uses: actions/cache/save@v5.1.0
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/caches/jars-*
+          key: platforms-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
       # One artifact per system, replaced when a failed job is re-run, so the platforms job of a re-run
       # compares the newest run of every system.
       - uses: actions/upload-artifact@v7.0.2

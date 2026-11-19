@@ -502,6 +502,21 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   parameter or any other variable in the name. Allowed forms: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))` for
   directories and `crypto.randomUUID()` for ids; a timestamp next to a unique part is fine. A name that is unique by
   design (one file per day) takes an exception. The rule reads no types.
+- `nitpicker/no-dropped-delegate-result`: a method or function whose last statement calls a same-named
+  method on another receiver and drops the result (`this.constructor.update(...)`, `this.delegate.update(...)`,
+  `super.update(...)`, `Model.update(...)`, or `.call` and `.apply` of those), so callers get `undefined` instead of the
+  query, promise or value. The enclosing name comes from a method, a named function expression, `X.prototype.update = function () {}`,
+  an object method or a class property function; the statements before the call may only declare variables or build
+  arguments. A bare `update()` and `this.update()` are recursion, not delegation, and are not reported. With types the
+  call is not reported when the delegate returns `void`, `undefined`, `never` or `Promise<void>`; without types
+  (plain JavaScript) it is. With types, a delegate declared in the default library or in a declaration file (`Array.push`,
+  `Map.set`, `Set.add`, emitter, stream and socket `on`, `once`, `off`, `emit`, `write`, `end`, `close`) and a callee whose type
+  is unresolved or `unknown` are not reported. Without types the names `push`, `pop`, `shift`, `unshift`, `splice`, `set`,
+  `add`, `delete`, `clear`, `on`, `once`, `off`, `emit`, `addListener`, `removeListener`, `write`, `end`, `close` and
+  `destroy` are not reported. A `super.x` or `this.constructor.x` delegate is always checked. An awaited call dropped in an async function is
+  reported the same way. Allowed forms: `return this.delegate.update(...)`, a declared `void` return type,
+  constructors, accessors, generators, and hooks whose callers ignore the result (`componentDidMount`, `componentDidUpdate`,
+  `componentWillUnmount`, `ngOnInit`, `ngOnDestroy`, `ngOnChanges`, `onX` and `handleX`).
 - `nitpicker/no-release-outside-finally`: a local assigned from `createQueryRunner()`, `getConnection()`, `await x.connect()`,
   `await x.acquire()`, `await x.lock()`, `checkout()`, `getReader()`, `startSession()` or `rollup()` and released by a later
   statement of the same block (`release`, `releaseLock`, `unlock`, `close`, `end`, `destroy`, `dispose`, `endSession`,
@@ -611,6 +626,30 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
   winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
   `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
+- `nitpicker/no-swapped-arguments` (needs the type checker; the JavaScript preset runs it on the same
+  program, so a callee it cannot resolve is skipped): a call that passes a plain name (or `this.name`) equal
+  to another parameter of the resolved callee, ignoring leading underscores and case, while that
+  parameter's own slot gets a different name (`pipe_(pipe, docs, kwargs)` for `pipe_(docs, proc, kwargs)`:
+  "`docs` is passed as `proc` and `pipe` as `docs`; did you swap them?"). The callee is resolved with the
+  checker (functions, methods, constructors and the overload that matches), and only when its declaration is
+  in the project, not in `node_modules`, a `.d.ts` or the standard library. One report per call. Not
+  reported: arguments that are not plain names, a spread argument and
+  everything after it, a rest or destructured parameter and the ones after it, parameters not given,
+  single-letter names (`swap(a, b)`), names that differ only by a number or a letter suffix
+  (`x1`/`x2`, `start_a`/`start_b`) and the pairs `left`/`right` and `lhs`/`rhs`
+  stay quiet; `max` passed into `min` is reported, once per swapped pair. A pair is reported when the two
+  arguments are exchanged (`clamp(value, max, min)`), or when a name moved to a later slot and the argument in
+  its own slot is not named like any parameter (`pipe_(pipe, docs, kwargs)`); a name that moved to an earlier
+  slot and a recursive call (`walk(child, node)`) are not reported, and neither is a JSDoc function type. The allowed form is the arguments in the order of the parameters. The same
+  form runs as `swapped-arguments` (Python) and Error Prone `ArgumentSelectionDefectChecker` (Java).
+- `nitpicker/no-interpolated-log-message` (needs pino, bunyan or winston in `package.json`): a log call
+  (`trace` to `fatal`) whose message is a template literal with expressions or a `+` concatenation with a
+  non-literal part. The message is the first argument, or the second when the first is an object (pino and
+  bunyan). Every such message differs, so the value cannot be searched as a field, and the string is built
+  even when the level is off. Allowed forms: pino and bunyan `log.info({ orderId }, 'loaded order')`, winston
+  `logger.info('loaded order', { orderId })`. Loggers are found as in `nitpicker/no-dropped-log-arguments`;
+  `console.*` stays with `nitpicker/no-production-console`. The same form runs as `pmd/LogStringConcatenation`
+  (Java), `kotlin-source/LogStringConcatenation` (Kotlin) and ruff `G001` to `G004` (Python).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
@@ -938,6 +977,16 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   after the transaction call returns (`await prisma.$transaction(...)`, then `redis.set(...)`) or
   from a TypeORM `afterTransactionCommit` subscriber; callbacks that do not run during the call
   (`setTimeout`, event handlers) are not inside the transaction. The message names that form.
+- DataLoader batch functions (`nitpicker/no-dataloader-batch-mismatch`): a batch function must return
+  one entry per requested key, in the order of the keys, with `null` or an `Error` for a key that has no
+  row. The rule reads the function given to `new DataLoader(...)` from the `dataloader` package (an
+  inline function, or a function or const declared in the file) and reports an empty array returned
+  outside an `if` that tests the keys or a value derived from them (`[...new Set(keys)]`), rows of a query returned as they come (a `findMany`, `find`,
+  `findByIds` result, directly, through a variable, or mapped without the keys), and
+  a lookup asserted with `!` inside a `keys.map(...)` callback (`byId.get(key)!`, `rows.find(...)!`), or a `throw` (or a call to a local function that only throws) that runs when that lookup fails (`if (!row) { throw ... }`, `byId.get(key) ?? notFound(key)`).
+  `keys.map((key) => byId.get(key) ?? null)`, a lookup in a map built from the keys (`new Map(keys.map((key) => [key, null]))`), a result that maps over the keys and a function that
+  builds its result elsewhere (a helper call, a variable of unknown origin) are not reported. The
+  message names the allowed form.
 - Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
   `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
   call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project
@@ -1044,7 +1093,7 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
   `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
   re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
-  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
   Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
 - Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
   as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
@@ -1156,6 +1205,18 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
   `public` or `oauth` is left alone. The service form (a request id reaching a repository call
   without the project's access check) needs data flow and is not covered.
+- No entity loaded and saved again without a version column (`nitpicker/no-unversioned-orm-entity`, the
+  TypeScript and JavaScript counterpart of the Java rule `JpaVersion`): a row loaded by `find`, `findOne`,
+  `findBy`, `findOneBy`, `findOneOrFail`, `findAll`, `findByPk` or `findAndCount` (or each row of a loaded
+  list), assigned a field, and then passed to `save` or `persistAndFlush`, saved with its own `save()` or
+  `update()`, or flushed with `flush()`, in the same function. The entity class comes from the type
+  checker. Reported: a TypeORM `@Entity` without a `@VersionColumn()` (the entity or a base class), a
+  MikroORM `@Entity` without a `@Property({ version: true })`, and a Sequelize model (`@Table` or
+  `Model.init` in the model's file) without `version: true`. Prisma and Drizzle have no version column
+  feature, so they are not reported; an entity that is only read or only inserted is left alone. Allowed:
+  `@VersionColumn() version!: number`, `@Property({ version: true }) version!: number`, or
+  `version: true` in the model options. An exception fits only when concurrent writers of the table are
+  ruled out another way, such as a pessimistic lock or a single writer.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
@@ -1628,7 +1689,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   local typed `AbortSignal`, in an enclosing function too) that awaits a call without giving it the signal, and an endless
   loop that never reads it. With types, an awaited call is reported when its resolved signature has an `AbortSignal`
   parameter that is not supplied, or an options parameter with a `signal` property (`sleep(ms, { signal })`, `fetch(url,
-  { signal })`) that is missing, not an object literal with `signal` or a spread, or not passed. An endless loop
+{ signal })`) that is missing, not an object literal with `signal` or a spread, or not passed. An endless loop
   (`while (true)`, `for (;;)`, `do ... while (true)`) that awaits and has no reference to the signal in its body is
   reported too; without types the loop check runs for a parameter named `signal` or `abortSignal`. Calls that are not
   awaited, calls with a spread argument, bounded loops and loops that read `signal.aborted`, call `throwIfAborted()`,
@@ -1710,6 +1771,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   outside any function is not scored. A function that must stay complex gets an exception for the
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
+- `nitpicker/report-module-load-effects` does not report a member definition: an assignment to a
+  member of a function, class or fresh object declared at the top of the same file
+  (`Foo.prototype.bar = function ...`, `Foo.prototype = { ... }`, `Foo.create = function ...`,
+  `app.init = function ...` after `var app = module.exports = {}`), and `Object.assign`,
+  `Object.defineProperty` or `Object.defineProperties` on such a member, when every value is a
+  function, a class, a literal, a member of such a binding, or an object literal of those. A
+  definition on an imported or global object (`Array.prototype.last = ...`) patches shared state
+  and is still reported, and so is a value that calls something.
 - `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
   initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
   timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`

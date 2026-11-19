@@ -64,7 +64,16 @@ def lineage(cls, context, classes, depth=0):
     return found
 
 
-def manager_state(call, context, classes):
+def filters_queryset(method, fields):
+    if fields is not None:
+        return mentions(method, fields)
+    return any(
+        isinstance(n, ast.Attribute) and n.attr in {"filter", "exclude"}
+        for n in ast.walk(method)
+    )
+
+
+def manager_state(call, context, classes, fields=SOFT_FIELDS):
     node = call.func
     if isinstance(node, ast.Attribute) and node.attr == "as_manager":
         return "plain"
@@ -83,16 +92,17 @@ def manager_state(call, context, classes):
             for m in members
             if isinstance(m, ast.FunctionDef) and m.name == "get_queryset"
         ]
-        return "filters" if any(mentions(m, SOFT_FIELDS) for m in queries) else "plain"
+        filters = any(filters_queryset(m, fields) for m in queries)
+        return "filters" if filters else "plain"
     return "unknown"
 
 
-def objects_state(chain, classes):
+def objects_state(chain, classes, fields=SOFT_FIELDS):
     entries = {}
     for cls, context in reversed(chain):
         for name, value in class_assignments(cls):
             if isinstance(value, ast.Call) and is_manager_call(value):
-                entries[name] = manager_state(value, context, classes)
+                entries[name] = manager_state(value, context, classes, fields)
     if not entries:
         return "plain"
     return entries.get("objects", "unknown")

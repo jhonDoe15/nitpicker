@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { probeJava } from '../../maven/programs/probe/java-probe-cache.mts';
 import { classSummaries } from '../classes/class-summary.mts';
 import {
   languageLevelOf,
@@ -39,7 +40,10 @@ type ReuseRequest = {
 const readSummaries: (directories: readonly string[]) => Summary[] = classSummaries;
 
 function javacVersion(javac: string, spawn: unknown = spawnSync): string {
-  const result = callUntyped(spawn, javac, ['-version'], { encoding: 'utf8' });
+  const result =
+    spawn === spawnSync
+      ? probeJava(javac, ['-version'], spawnSync)
+      : callUntyped(spawn, javac, ['-version'], { encoding: 'utf8' });
   const lines = [fieldOf(result, 'stdout'), fieldOf(result, 'stderr')].join('').split(/\r?\n/u);
   return lines.filter((line) => line.startsWith('javac')).join('\n');
 }

@@ -63,6 +63,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   integral literal such as `1.0` is exact and fine.
 - Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
   `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
+- Write one table instead of three copies of a test that differ only in literals (`pmd/CopyPastedTest`):
+  `@ParameterizedTest` with `@CsvSource` or `@MethodSource`, or a TestNG `@DataProvider`, with a row per case. Tests that differ in a call are not copies.
 - Never mock the class under test (`MockedSubjectInTest`): no `mock(OrderService.class)` or `@Mock`
   of it in `OrderServiceTest`, and no `spy`/`@Spy` of it whose own methods you stub. Pass its
   collaborators in through the constructor with fakes or mocks of them, and test a helper through

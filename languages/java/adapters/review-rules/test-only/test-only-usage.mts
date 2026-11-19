@@ -94,6 +94,12 @@ const WIRING_ANNOTATIONS = new Set([
   'javax.enterprise.event.Observes',
   'jakarta.ejb.Schedule',
   'javax.ejb.Schedule',
+  'play.mvc.Controller',
+  'play.jobs.Job',
+  'play.jobs.On',
+  'play.jobs.Every',
+  'play.jobs.OnApplicationStart',
+  'play.jobs.OnApplicationStop',
 ]);
 const WIRING_PATTERNS = [
   /^org\.springframework\.boot\.actuate\.endpoint\.(?:\w+\.)*\w*(?:Endpoint|Extension)$/u,

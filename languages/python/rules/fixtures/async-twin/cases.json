@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "async-twin-drift",
+    "mention": "same parameters",
+    "subject": "abatch_iterate|batch_iterate|guard|size is None or size <= 0|sync"
+  }
+]

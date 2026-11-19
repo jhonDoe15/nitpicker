@@ -40,6 +40,7 @@ export type JavaPolicy = {
   readonly testConsoleAllow?: unknown;
   readonly javaStyle?: unknown;
   readonly baselineMovesFile?: unknown;
+  readonly analyzeGeneratedSources?: unknown;
   readonly [field: string]: unknown;
 };
 

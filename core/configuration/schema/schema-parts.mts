@@ -4,7 +4,7 @@ import {
   GLOB_PROBLEMS,
   PARENT_SEGMENT,
 } from '../../../shared/config.mjs';
-import { toolsOf } from '../views/schema-views.mts';
+import { toolsOf, type SchemaTable } from '../views/schema-views.mts';
 
 export type JsonSchema = { readonly [keyword: string]: unknown };
 
@@ -56,6 +56,11 @@ export const directory = {
   allOf: [...projectPath.allOf, never(GLOB_CHARACTER.source), never(EMPTY_DIRECTORY)],
 };
 
+export const sourceDirectory = {
+  ...projectPath,
+  allOf: [...projectPath.allOf, never(GLOB_CHARACTER.source)],
+};
+
 const globProblemChecks = GLOB_PROBLEMS.flatMap(({ pattern }) =>
   pattern === undefined ? [] : [never(pattern.source)],
 );
@@ -70,3 +75,16 @@ const folderGlob = {
 export const positiveInteger = { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER };
 
 export const sharedDefinitions = { fileGlob, folderGlob };
+
+export function scope(
+  description: string,
+  keys: readonly string[],
+  properties: SchemaTable,
+): JsonSchema {
+  return {
+    description,
+    type: 'object',
+    additionalProperties: false,
+    properties: Object.fromEntries(keys.map((key) => [key, properties[key]])),
+  };
+}

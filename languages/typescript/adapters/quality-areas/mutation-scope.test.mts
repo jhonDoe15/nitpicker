@@ -36,6 +36,7 @@ function createQualityAreaAnalyzer(options: {
     configurationHash: undefined,
     exclusions: undefined,
     timeoutMs: undefined,
+    timeoutScale: undefined,
     concurrencyGroup: undefined,
   });
   return analyzer;

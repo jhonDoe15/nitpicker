@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { selectSourceFiles } from './source-files.mts';
+import { resolveInside, selectSourceFiles } from './source-files.mts';
 
 const ONE_FUNCTION = 'export const value = () => 1;\n';
 
@@ -82,5 +82,17 @@ describe('CRAP source file selection', () => {
     );
 
     expect(files).toEqual(['src/ok/a.ts', 'src/ok/c.mjs', 'src/ok/j.ts', 'src/ok/r.mts']);
+  });
+});
+
+describe('resolving a source path inside the project', () => {
+  it('accepts the project root itself, for a package whose code sits at the root', () => {
+    expect(resolveInside(root, '.')).toBe(root);
+    expect(resolveInside(root, 'src')).toBe(path.join(root, 'src'));
+  });
+
+  it('refuses a path outside the project', () => {
+    expect(() => resolveInside(root, '..')).toThrow('.. is outside the project root');
+    expect(() => resolveInside(root, '../other')).toThrow('is outside the project root');
   });
 });

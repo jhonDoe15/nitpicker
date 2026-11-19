@@ -143,6 +143,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Change or delete many rows with one statement (`update(criteria, values)`, `updateMany`, `delete(criteria)`,
   `deleteMany`, `nativeUpdate`), not by loading them, assigning a constant to each and saving them back
   (`nitpicker/no-loaded-rows-saved-back`).
+- Give an entity that is loaded, changed and saved again a version column (`nitpicker/no-unversioned-orm-entity`):
+  `@VersionColumn()` (TypeORM), `@Property({ version: true })` (MikroORM) or `version: true` in the Sequelize model
+  options, so a stale save fails instead of overwriting the other write. Prisma and Drizzle are not reported.
 - Select the one column you read (`select: { email: true }`) and test existence with `exists`/`existsBy`
   (TypeORM) or `findFirst({ where, select: { id: true } })` (Prisma), not by loading whole rows or counting
   (`nitpicker/no-whole-rows-for-one-value`).
@@ -176,6 +179,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
 - Write a cache (`redis.set`/`del`, `cache-manager`, a `Map` filled with a new row) after the transaction call returns, not inside
   its callback (`nitpicker/no-cache-write-in-transaction`).
+- A DataLoader batch function returns one entry per key in the order of the keys: `keys.map((key) => byId.get(key) ?? null)`, never the rows as they come, `[]` or `byId.get(key)!` (`nitpicker/no-dataloader-batch-mismatch`).
 - Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
   commits (and outside the lock), and keep only the shared-state change under the lock
   (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
@@ -266,6 +270,11 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Request headers from a caller are merged through `new Headers(init)` with `has` and `set` (or with every key lowercased), not spread
   into an object next to `Content-Type` or `Authorization` keys, because header names ignore case and the object keys do not
   (`nitpicker/no-case-mixed-header-merge`).
+- A method that wraps a same-named method returns its result: `return this.delegate.update(x)`, not a bare
+  `this.delegate.update(x)` (`nitpicker/no-dropped-delegate-result`).
+- Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
+  parameter of the callee is a swap (`nitpicker/no-swapped-arguments`); pass an options object when the
+  order is easy to mix up.
 - A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
   a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
 - A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
@@ -290,6 +299,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
   (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
   with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
+- A pino, bunyan or winston message stays constant: the values go in the fields (`log.info({ orderId }, 'loaded order')`,
+  winston `logger.info('loaded order', { orderId })`), never in a template or a `+` concatenation
+  (`nitpicker/no-interpolated-log-message`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
