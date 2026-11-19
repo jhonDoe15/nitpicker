@@ -17,6 +17,22 @@ function filterMismatchDescribe(subject: string): string {
   return `\`${name}\` filters a relation to \`${third}\` but takes its choices from the \`${queryset}\` queryset, so it offers rows of the wrong model and the filter matches nothing or the wrong rows`;
 }
 
+function serializerDescribe(subject: string): string {
+  const [name = '', owner = '<model>', kind = ''] = subject.split('|');
+  if (kind === 'method') {
+    return `\`${name}\` is a method field of \`${owner}\` whose method can return \`None\`, but the declared schema says it never is null, so typed clients crash on the null`;
+  }
+  if (kind === 'required') {
+    return `\`${name}\` is required by default, but the \`${owner}\` column it fills is blank or has a default, so a request that leaves it out is rejected with a 400`;
+  }
+  return `\`${name}\` reads a nullable value of \`${owner}\` without \`allow_null=True\`, so a row with no value fails serialization or is published as non-null and typed clients crash on the null`;
+}
+
+function omittedDescribe(subject: string): string {
+  const [name = '', owner = '<serializer>', model = '<model>'] = subject.split('|');
+  return `\`${owner}\` leaves out \`${name}\`, which most other serializers of \`${model}\` expose, so clients that read this endpoint miss the value or a field was dropped by accident`;
+}
+
 export const DJANGO_DECLARATION_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -31,5 +47,19 @@ export const DJANGO_DECLARATION_HINTS: readonly RuleHint[] = [
     describe: filterMismatchDescribe,
     allowed:
       'Give `ModelChoiceFilter` and `ModelMultipleChoiceFilter` the queryset of the model the relation points to (`queryset=ProviderAccount.objects.all()`), and set `to_field_name` to a field of that model such as `slug` or `pk`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['serializer-null-mismatch'],
+    describe: serializerDescribe,
+    allowed:
+      'Declare what the model allows: `allow_null=True` on a field over a `null=True` column or a reverse one-to-one relation (`GroupSerializer(source="group", read_only=True, allow_null=True)`), `required=False` for a blank column or one with a default, and for a method field either an `Optional` return annotation or `@extend_schema_field(...)` with `allow_null=True`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['serializer-fields-omitted'],
+    describe: omittedDescribe,
+    allowed:
+      'Add the field to `Meta.fields`; when the omission is intended, name the serializer as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`, `DeviceWriteSerializer`) or use `exclude` to show the intent.',
   },
 ];
