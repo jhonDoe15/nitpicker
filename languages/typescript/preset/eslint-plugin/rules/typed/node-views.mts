@@ -75,6 +75,18 @@ export function nodeChildren(node: unknown): TSESTree.Node[] {
   return objectChildren(node).filter(isNode);
 }
 
+export function nodesWithoutNested(
+  root: TSESTree.Node,
+  nested: ReadonlySet<string>,
+  children: (node: TSESTree.Node) => readonly TSESTree.Node[],
+): TSESTree.Node[] {
+  return [
+    ...depthFirst<TSESTree.Node>(root, (node) =>
+      node !== root && nested.has(node.type) ? [] : children(node),
+    ),
+  ];
+}
+
 export function isIdentifierNamed(node: TSESTree.Node, name: string): node is TSESTree.Identifier {
   return node.type === AST_NODE_TYPES.Identifier && node.name === name;
 }
