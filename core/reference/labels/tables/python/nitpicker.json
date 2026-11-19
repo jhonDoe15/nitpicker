@@ -128,6 +128,7 @@
   "python-rules/switched-off-test": ["tests"],
   "python-rules/task-outlives-resource": ["bug", "async"],
   "python-rules/tautological-assert": ["tests"],
+  "python-rules/templated-field-used-in-init": ["bug"],
   "python-rules/test-helper-in-source": ["maintainability"],
   "python-rules/test-without-assertion": ["tests"],
   "python-rules/time-unit-mismatch": ["bug"],
