@@ -117,6 +117,36 @@ describe('effect rules report', () => {
       "`count_orders` reads `Order` without the filter on `deleted_at` that 9 of 10 of the project's `Order` reads apply (`alive()`): deleted or hidden rows reach the caller",
     ],
     [
+      'cache-invalidated-on-save-only',
+      'invalidate_policy_cache|PolicyBinding|post_save|cache',
+      '`invalidate_policy_cache` clears the cache (`cache`) on `post_save` of `PolicyBinding`, but no `post_delete` receiver of `PolicyBinding` clears it: deleting a row leaves its stale entries, so a removed PolicyBinding keeps applying until they expire',
+    ],
+    [
+      'signal-receiver-never-connected',
+      'on_order|post_save|shop.signals',
+      '`on_order` is a `post_save` receiver in `shop.signals`, which no other module of the project imports: Django never runs that module, so the receiver is never connected and the signal does nothing',
+    ],
+    [
+      'soft-delete-filter-missing',
+      'images|ImageAttachment|restrict()|restrict()|9 of 10',
+      "`images` reads `ImageAttachment` without `restrict()`, which 9 of 10 of the project's `ImageAttachment` reads apply: rows the project hides or scopes away reach the caller",
+    ],
+    [
+      'database-alias-not-passed',
+      'update_paths|CablePath.objects|using',
+      '`update_paths` has the database alias `using` in scope, but `CablePath.objects` does not use it: the call goes to the default database, so it misses rows written through the other connection, writes to the wrong database, and a rollback leaves the other half committed',
+    ],
+    [
+      'database-alias-not-passed',
+      "move|Item.objects.using('default')|using|other",
+      "`move` has the database alias `using` in scope, but `Item.objects.using('default')` passes a different one: the work goes to another database than the one this call runs against, so reads miss rows, writes land in the wrong place and a rollback leaves the other half committed",
+    ],
+    [
+      'database-alias-not-passed',
+      'forwards|Item.objects|schema_editor.connection.alias|historical',
+      '`forwards` is a data migration function, but `Item.objects` uses the current model class or the default database: the class can have fields the migrated schema does not have yet, and the query ignores the database the migration runs against',
+    ],
+    [
       'deleted-item-filter-missing',
       'count_sku|LineItem|is_deleted|live()|5 of 6',
       "`count_sku` goes over a collection of `LineItem` without skipping items flagged by `is_deleted`, which 5 of 6 of the project's iterations over `LineItem` do (`live()`): deleted items take part in the result",

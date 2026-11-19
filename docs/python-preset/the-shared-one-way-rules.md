@@ -75,6 +75,8 @@ are listed at the end.
 | Field resolvers per parent                      | a `DataLoader` created once per request (`strawberry.dataloader.DataLoader`, `aiodataloader`); data already on the parent                                                              | `resolver-query-per-parent` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
 | Cache writes inside a transaction               | write the cache after the commit: `transaction.on_commit(lambda: cache.delete(key))` in Django, after the `session.begin()` block or in an `after_commit` event in SQLAlchemy          | `cache-write-in-transaction` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Cache invalidation on delete                    | the same invalidation in a `post_delete` receiver (or one function on `post_save` and `post_delete`); signal receivers in a module that `AppConfig.ready()` or another module imports  | `cache-invalidated-on-save-only`, `signal-receiver-never-connected` (script)                                                                                                                                                                                                                                                                                                        |
+| Database alias                                  | pass the alias the function was given: `Model.objects.using(using)`, `instance.save(using=using)`, `transaction.atomic(using=using)`                                                   | `database-alias-not-passed` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Retries after a stale row                       | read the row again by id inside each attempt and apply the change again (`session.get(Order, order_id)`, then `commit()`)                                                              | `stale-retry` (script)                                                                                                                                                                                                                                                                                                                                                              |
 | Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                                                 | `dual-write-without-outbox` (script)                                                                                                                                                                                                                                                                                                                                                |
@@ -1063,6 +1065,59 @@ transaction.atomic():`, `@transaction.atomic`, `session.begin()`, `engine.begin(
   with at least five iterations over the type and at least 80% of them skipping flagged items; undo, redo, sync,
   restore, trash, purge, history, snapshot, export and serialize functions and tests are not counted. Collections
   without an annotation and the rows of a query are not judged (`soft-delete-filter-missing` covers the query).
+- `cache-invalidated-on-save-only` reports a Django signal receiver for `post_save` or `pre_save` of a model
+  (`@receiver(post_save, sender=Model)`, a list of signals, or `post_save.connect(func, sender=Model)`) whose body
+  invalidates a cache: `cache.delete`, `delete_many`, `delete_pattern` or `clear` on `django.core.cache.cache`,
+  `caches[...]` or a name ending in `cache`, `cache_clear()` of a function, or a call to a function with
+  `invalidate` or `clear` and `cache` in its name; and for which no receiver of `post_delete`, `pre_delete` or
+  `m2m_changed` for the same model (or without a sender) invalidates the same cache or calls the same helper
+  (also one call deep through a project function). One function connected to both signals is the allowed form.
+  A receiver without a sender, one that only writes the cache (`cache.set`), test files and projects that never
+  delete a row (no `.delete()` call without arguments, no `DeleteView`, `DestroyModelMixin`, `ModelViewSet` or
+  `ModelAdmin`) are not reported. The message names the `post_delete` receiver as the allowed form.
+- `signal-receiver-never-connected` reports the receivers of a module whose name has the word `signal`, `signals`,
+  `receiver` or `receivers` (`signals.py`, `order_signals.py`) in a project that defines an `AppConfig` and where no
+  other non-test module imports it (`from . import signals`, `import app.signals`, `from app.signals import x` or
+  `import_module("app.signals")`, in `ready()` or anywhere else). Django only connects a receiver when the module
+  runs, so the signal does nothing. A module imported by `models.py` or by `ready()` is quiet. The message names
+  the import in `AppConfig.ready()`.
+- `database-alias-not-passed` reports work that drops the database alias its function was given, in a project whose
+  `DATABASES` setting names an alias other than `default` (a dictionary with two entries or a key other than
+  `"default"`, or an assignment to `DATABASES[...]`; a project with one database, or with no `DATABASES` in a
+  non-test file, is silent). A function has an alias in scope when it has a parameter named `using` or `db_alias`,
+  or a `database` or `connection_name` parameter that it passes to `.using()`, `db_manager()`, `using=`, `connections[...]` or the router (signal receivers and `delete(self, using=None)` overrides included), takes
+  `schema_editor` (a `RunPython` function, the alias is `schema_editor.connection.alias`), or reads
+  `kwargs["using"]` or `kwargs.get("using")`. In such a function the rule reports a query that runs (an executing or
+  writing call such as `count()`, `first()`, `update()`, `delete()` or `bulk_create()`, or a loop, comprehension or
+  `list(...)` over it) on `Model.objects` or `Model._default_manager` of a Django model of the project, a model
+  taken from `apps.get_model(...)` in the function, `sender`, `type(x)` or `x.__class__`, without `.using(...)` or
+  `.db_manager(...)` in the chain; `instance.save()` and `instance.delete()` without `using=` (and `super().save(...)` or `super().delete(...)` in an override that drops its `using` parameter)
+  on a model: `self` in a model method, a parameter annotated with a project model, the `instance` of a receiver with a
+  project-model sender, or a variable built from a model call or loaded by a model query; and `transaction.atomic()`, `transaction.set_rollback(...)`
+  and `transaction.on_commit(...)` without the alias as an argument or `using=`. The argument is compared with the
+  alias: `.using(x)`, `.db_manager(x)`, `using=x` or a positional alias that is a string literal or a name other
+  than the alias in scope is reported as the wrong alias, while the alias itself, a variable assigned from it or from `router.db_for_*` or `connections[...]`, `instance._state.db`
+  and an explicit pin (`"default"`, `DEFAULT_DB_ALIAS`) are the allowed forms. A migration function that returns early
+  when the alias is not the default one is not checked for the default-manager helper part. A second query on another manager without `.using(...)` is reported
+  even when an earlier one in the function is bound. A queryset that is returned or passed on without running and
+  one that is bound later in the function are not reported, nor are tests. The message names the calls that pass the
+  alias on. Inside a function given to `migrations.RunPython` the rule also reports a query on a model imported from
+  an app's models module (not taken from `apps.get_model(...)`) and a call of a project function that queries the
+  default manager of a model, with the `apps.get_model` and `.using(schema_editor.connection.alias)` allowed form.
+  This part applies in projects with one database too, because the historical model matters there as well.
+- `permission-name-without-app-label` reports a permission name without an app label in a Django project: a string
+  literal with no `.` given to `has_perm(...)`, `has_perms([...])`, `user_has_perm(user, ...)` (also by the keyword
+  `perm`, `perm_list` or `permission`), `permission_required(...)` from `django.contrib.auth.decorators` (a string
+  or a list), the `permission_required` attribute of a class deriving from `PermissionRequiredMixin`, and the lists in the
+  `perms_map` of a class deriving from a Django REST framework `DjangoModelPermissions` class. Django compares the
+  whole `app_label.codename` string, so a bare codename never matches a global permission and the check is false
+  for every user. A name with an app label (`"shop.change_order"`), a `%(app_label)s` template, a permission held
+  in a variable, test files and projects that do not import Django are not reported. `has_perm` and `has_perms`
+  count only on a user: `user`, `request_user`, `current_user`, any `.user` attribute, or a parameter annotated with a
+  `User` type; a class of the project that defines its own `has_perm` and `acl.has_perm(...)` are quiet, and
+  `user_has_perm` counts when it comes from Django or a project function calls `has_perm`. When the project imports
+  `guardian`, a `has_perm("codename", obj)` call with an object argument is not reported either, because the
+  object-permission backend takes the bare codename. The message names the allowed form `app_label.codename`.
 - `route-without-auth` reports a route handler without the auth requirement that at least 90% of the project's
   handlers declare, with at least five handlers counted and at least one without it. FastAPI: a function
   decorated `@router.get`, `post`, `put`, `patch`, `delete`, `api_route` or `websocket` on a name assigned from
