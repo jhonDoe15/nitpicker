@@ -28,6 +28,7 @@
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],
   "pmd/CanonicalNameMayBeNull": ["bug"],
+  "pmd/ChangeNamedEquality": ["bug"],
   "pmd/CheckResultSet": ["bug"],
   "pmd/CheckSkipResult": ["reliability"],
   "pmd/ClassLoadEffect": ["reliability"],
