@@ -17,6 +17,10 @@ import {
   securitySupportGlobs,
   type SecurityFacts,
 } from './security-facts.mts';
+import {
+  textPathNumberGuardRules,
+  textPathNumberRules,
+} from '../production/text-path-number-rules.mts';
 
 export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
@@ -123,14 +127,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
-    'nitpicker/no-unescaped-pattern-translation': 'error',
-    'nitpicker/no-unescaped-filter-value': 'error',
-    'nitpicker/no-unescaped-html-interpolation': 'error',
-    'nitpicker/no-surrogate-splitting-cut': 'error',
-    'nitpicker/no-newline-only-line-split': 'error',
-    'nitpicker/no-host-port-colon-split': 'error',
-    'nitpicker/no-ambiguous-lookup-key': 'error',
-    'nitpicker/no-truncating-pair-split': 'error',
+    ...textPathNumberRules,
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
@@ -174,12 +171,7 @@ function productionGuardRules({
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-io-in-loop': 'error',
-    'nitpicker/no-unchecked-response-json': 'error',
-    'nitpicker/no-wall-clock-elapsed': 'error',
-    'nitpicker/no-overflowing-backoff': 'error',
-    'nitpicker/no-index-bound-off-by-one': 'error',
-    'nitpicker/no-negative-count': 'error',
-    'nitpicker/no-nan-only-check': 'error',
+    ...textPathNumberGuardRules,
     'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-array-spread-arguments': 'error',
     'nitpicker/no-null-branch-fall-through': 'error',
@@ -199,15 +191,8 @@ function productionGuardRules({
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',
     'nitpicker/time-unit-mismatch': 'error',
-    'nitpicker/no-expanding-replacement-string': 'error',
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
-    'nitpicker/no-prefix-without-boundary': 'error',
-    'nitpicker/no-unanchored-affix-replace': 'error',
-    'nitpicker/no-case-mismatched-lookup': 'error',
-    'nitpicker/no-mismatched-precondition-message': 'error',
-    'nitpicker/no-malformed-query-text': 'error',
-    'nitpicker/no-unpaged-listing': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
     'nitpicker/require-promise-reject': 'error',
