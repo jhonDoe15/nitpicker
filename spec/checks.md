@@ -375,6 +375,10 @@ Message placeholders: `unformatted-message-placeholder` (script, Python) reports
 the message of an exception, a one-argument log call, `warnings.warn` or `assert`, and `exception-format-arguments` (script,
 Python) reports an exception built like a logger call (`ValueError("path %s", path)`). The allowed form formats the text first.
 
+Translated text: `gettext-format-mismatch` (script, Python) checks the placeholders of a literal gettext text against the arguments of
+the `.format(...)` or `.format_map({...})` applied to it, and reports `format_map` inside the gettext call; ruff `INT001`-`INT003`
+(selected) cover f-strings, `.format` and `%` inside the call. The allowed form formats after the lookup with matching names.
+
 Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
 source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
 an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,

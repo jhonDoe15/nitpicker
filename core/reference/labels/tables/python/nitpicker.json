@@ -48,6 +48,7 @@
   "python-rules/future-without-exception": ["bug", "async"],
   "python-rules/generated-member-cycle": ["bug"],
   "python-rules/generic-name": ["style"],
+  "python-rules/gettext-format-mismatch": ["bug"],
   "python-rules/global-state-leak-in-test": ["tests"],
   "python-rules/hand-split-http-header": ["bug"],
   "python-rules/handle-unreleased-on-close": ["reliability"],

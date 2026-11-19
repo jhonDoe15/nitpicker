@@ -67,6 +67,16 @@ describe('effect rules report', () => {
       '`ValueError` is built like a logger call: it stores the message and the extra arguments as a tuple and never formats them, so the text keeps its placeholder and the traceback prints the tuple',
     ],
     [
+      'gettext-format-mismatch',
+      'format|missing:location|unused:site',
+      'The arguments of `format` do not fit the placeholders of the translated text: the translated text needs `location`, which `format` does not give, so it raises at run time; `site` fills no placeholder of the text',
+    ],
+    [
+      'gettext-format-mismatch',
+      'format_map|before',
+      '`format_map` fills the text before the translation lookup, so the lookup uses the filled-in text, never finds the message id and the text is never translated',
+    ],
+    [
       'cache-write-in-transaction',
       'cache.set()|transaction.atomic()',
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',
