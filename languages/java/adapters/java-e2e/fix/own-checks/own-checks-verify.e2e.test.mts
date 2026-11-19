@@ -10,11 +10,32 @@ import {
   ownCheckRepository,
   PERFORMANCE_CASES,
   rulesOf,
+  type OwnCheckCase,
 } from '../../test-support/own-checks/own-check-projects.mts';
 
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
 const { fix } = useFixProject();
 const FIXED = fixedRuleFiles(PERFORMANCE_CASES);
+const REPOSITORY_AND_SPOTBUGS = new Set([
+  'SpringDataNoSaveInLoop',
+  'SpringDataBatchOfOne',
+  'EntityLoadedForExistence',
+  'DMI_RANDOM_USED_ONLY_ONCE',
+  'IIL_PREPARE_STATEMENT_IN_LOOP',
+]);
+const GROUPS: readonly (readonly [string, readonly OwnCheckCase[]])[] = [
+  [
+    'the repository and SpotBugs fixes',
+    PERFORMANCE_CASES.filter(({ check }) => REPOSITORY_AND_SPOTBUGS.has(check)),
+  ],
+  [
+    'the other PMD fixes',
+    PERFORMANCE_CASES.filter(({ check }) => !REPOSITORY_AND_SPOTBUGS.has(check)),
+  ],
+];
+const RUNS = (['gradle', 'maven'] as const).flatMap((tool) =>
+  GROUPS.map(([name, cases]) => [tool, name, cases] as const),
+);
 const REWRITTEN = new Map(
   PERFORMANCE_CASES.map(({ file, before, after }) => {
     const kept = new Set(before.split('\n'));
@@ -33,22 +54,18 @@ function leftOver(findings: unknown): string[] {
     .map(({ key, line }) => `${key}:${String(line)}`);
 }
 
-describe.skipIf(!enabled).each(['gradle', 'maven'] as const)(
-  'nitpicker --fix with every performance fix named on a %s project, then the real gate',
-  (tool) => {
+describe.skipIf(!enabled).each(RUNS)(
+  'nitpicker --fix with %s and %s named, then the real gate',
+  (tool, _name, cases) => {
     it('keeps the declined files, verifies the fixed ones and drops the finding of each fixed rule', () => {
       const result = fix({
-        ...ownCheckRepository({
-          build: BUILDS[tool],
-          config: { preset: 'java' },
-          cases: PERFORMANCE_CASES,
-        }),
-        cliArguments: ['--fix', '--no-cache', ...rulesOf(PERFORMANCE_CASES)],
+        ...ownCheckRepository({ build: BUILDS[tool], config: { preset: 'java' }, cases }),
+        cliArguments: ['--fix', '--no-cache', ...rulesOf(cases)],
         realAnalyzers: true,
       });
 
-      expect(outcomeOf(result, PERFORMANCE_CASES), result.stdout + result.stderr).toEqual(
-        expectedOutcome({ withReview: true, cases: PERFORMANCE_CASES }),
+      expect(outcomeOf(result, cases), result.stdout + result.stderr).toEqual(
+        expectedOutcome({ withReview: true, cases }),
       );
       expect(
         { toolErrors: result.toolErrors(), leftOver: leftOver(result.newFindings()) },
