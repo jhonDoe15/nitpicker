@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
 import { planAnalyzerShards } from '../../../core/diff/sharding/sharding.mts';
 import {
   configuredAnalyzers,
   javascriptAnalyzers,
-} from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { withoutCrossToolOverlaps, withoutSharedCrossToolOverlaps } from './cross-tool.mjs';
 import { CROSS_TOOL_OVERLAPS, overlapTools } from './pairs.mjs';
 

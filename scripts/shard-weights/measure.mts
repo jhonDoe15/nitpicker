@@ -150,7 +150,7 @@ function isFixtureKind(value: string | undefined): value is FixtureKind {
 
 async function projectAnalyzers(): Promise<Analyzer[]> {
   const { configuredAnalyzers } =
-    await import('../../languages/typescript/preset/diff/configured-analyzers.mjs');
+    await import('../../languages/typescript/preset/diff/configured-analyzers.mts');
   const analyzers: unknown = configuredAnalyzers();
   return listOf(analyzers).map((analyzer) => ({
     name: String(fieldAt(analyzer, 'name')),

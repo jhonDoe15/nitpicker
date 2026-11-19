@@ -1,6 +1,6 @@
 # Nitpicker checks catalog
 
-Every check category in the TypeScript preset, derived from `languages/typescript/preset/quality-checks.mjs`
+Every check category in the TypeScript preset, derived from `languages/typescript/preset/quality-checks.mts`
 and the adapters in `languages/typescript/adapters/`. Findings follow
 [`findings.schema.json`](findings.schema.json). The `javascript` preset runs the same checks on `.js`, `.mjs`
 and `.cjs` files (and on `.ts`, `.mts` and `.cts` files while a project migrates), so this catalog applies to

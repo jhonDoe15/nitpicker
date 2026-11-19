@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
 import { buildCouplingReport, evaluateCoupling } from '../coupling.mjs';
 import { withUntouchedCause } from './untouched-cause.mjs';
 import { libraryFile, libraryGraph, libraryProject } from './test-support/library-project.mjs';

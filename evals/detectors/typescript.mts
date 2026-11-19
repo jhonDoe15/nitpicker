@@ -1,5 +1,5 @@
 import type typescript from 'typescript';
-import { ts as runtimeApi } from '../../languages/typescript/typescript-api/typescript-api.mjs';
+import { ts as runtimeApi } from '../../languages/typescript/typescript-api/typescript-api.mts';
 import type { SourceComment } from './languages/masking/lines.mts';
 
 export const ts: typeof typescript = runtimeApi;
