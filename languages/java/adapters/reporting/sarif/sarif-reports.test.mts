@@ -194,6 +194,30 @@ describe('sarifFindings', () => {
     ]);
   });
 
+  it.each([
+    [
+      'UnusedAssignment',
+      "The value assigned to variable 'total' is never used (overwritten on lines 1052, 1060 and 1068)",
+      "The value assigned to variable 'total' is never used (overwritten on lines 1043, 1051 and 1059)",
+    ],
+    [
+      'AvoidDuplicateLiterals',
+      "The String literal 'id' appears 4 times in this file; the first occurrence is on line 1,114",
+      "The String literal 'id' appears 4 times in this file; the first occurrence is on line 1,105",
+    ],
+  ])('keeps the identity of %s when the lines its message names move', (rule, before, after) => {
+    const context = moduleReports({ 'spotbugs.sarif': '' });
+    const identityWith = (text: string): unknown => {
+      writeFileSync(
+        path.join(context.reportRoot, 'pmd.sarif'),
+        PMD(context.projectRoot, rule, { text }),
+      );
+      return sarifFindingsOf(context).map(({ identity }) => identity);
+    };
+
+    expect(identityWith(after)).toEqual(identityWith(before));
+  });
+
   it('prints no unrendered placeholder of a PMD message', () => {
     const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
     writeFileSync(

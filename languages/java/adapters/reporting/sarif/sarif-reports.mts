@@ -34,6 +34,8 @@ import { withPmdLevels } from './pmd-levels.mts';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mts';
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mts';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mts';
+import { pmdLogRuleCrashes, pmdLoggedCrashFiles } from './processing/pmd-rule-crashes.mts';
+import { withoutLineReferences } from '../../../../../shared/ingest/line-references.mts';
 import { withoutClassesWithoutSource } from './spotbugs-sources.mts';
 import type { SarifLog, SarifResult } from '../../jpa/jpa-types.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
@@ -69,7 +71,6 @@ const prepareSarif: (
   },
 ) => SarifLog = untypedPrepareSarif;
 
-const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
 const ALIAS_RULE = 'ForwardingMethodAlias';
 const RENAME_ALIAS_RULE = 'ForwardingMethodAliasRename';
@@ -140,9 +141,10 @@ function withOneAliasRule(log: Fields): Fields {
 function pmdFindings(raw: SarifLog, context: SarifContext): unknown {
   const { projectRoot } = context;
   const sourceText = sourceTextReader(projectRoot);
-  const prepared = preparedReport(raw, context, (result) =>
-    optionalText(fieldOf(result.message, 'text'))?.replace(LINE_NUMBER, 'line'),
-  );
+  const prepared = preparedReport(raw, context, (result) => {
+    const text = optionalText(fieldOf(result.message, 'text'));
+    return text === undefined ? undefined : withoutLineReferences(text);
+  });
   const pmd = withOneAliasRule(
     withLockEvidence(
       withPrintedRules(withLoadEffectSubjects(withPmdLevels(prepared), { projectRoot })),
@@ -219,7 +221,11 @@ export function sarifFindings(context: SarifContext): unknown[] {
   );
   return [
     ...listOf(withProjectFilters(pmdFindings(pmd, context), context)),
-    ...pmdProcessingErrors(pmd, context),
+    ...pmdProcessingErrors(pmd, {
+      ...context,
+      loggedCrashFiles: pmdLoggedCrashFiles(context.reportRoot, projectRoot),
+    }),
+    ...pmdLogRuleCrashes(context.reportRoot, projectRoot),
     ...ingestSarif(fieldsOf(secured), { tool: 'spotbugs' }).findings,
   ];
 }

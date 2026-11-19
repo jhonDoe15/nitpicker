@@ -1,4 +1,5 @@
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { matchingClose } from '../../../../../shared/source-text/brackets/matching-close.mts';
 
 type Declaration = {
   readonly name: string;
@@ -31,23 +32,6 @@ function blanked(text: string): string {
   return text.replaceAll(LITERAL, (literal) => literal.replaceAll(/[^\n]/gu, ' '));
 }
 
-function closing(text: string, open: number, pair: string): number {
-  const [left, right] = pair.split('');
-  let depth = 0;
-  for (const [offset, char] of text.slice(open).split('').entries()) {
-    if (char === left) {
-      depth += 1;
-    }
-    if (char === right) {
-      depth -= 1;
-    }
-    if (char === right && depth === 0) {
-      return open + offset;
-    }
-  }
-  return -1;
-}
-
 const RETURNS_THIS = /^\(*\s*(?:\([\w$.<>?,\s[\]]+\)\s*)?this\s*\)*$/u;
 const SELF_CALL = /^([A-Za-z_$][\w$]*)\(\s*\)$/u;
 const NESTED_SCOPE = /->|\bclass\b|\bnew\s[\s\w$.<>,?]+\([^;{}]*\)\s*\{/u;
@@ -75,7 +59,7 @@ function splitTopLevel(text: string): string[] {
 function recordAccessors(text: string): Declaration[] {
   return [...text.matchAll(RECORD)].flatMap((match) => {
     const open = match.index + match[0].length - 1;
-    const end = closing(text, open, '()');
+    const end = matchingClose(text, open, '()');
     const components = end === -1 ? [] : splitTopLevel(text.slice(open + 1, end));
     return components.flatMap((component) => {
       const name = /([\w$]+)\s*$/u.exec(component)?.[1];
@@ -96,7 +80,7 @@ function declarationHead(text: string, match: RegExpExecArray): Head | undefined
     return undefined;
   }
   const parenStart = match.index + match[0].length - 1;
-  const parenEnd = closing(text, parenStart, '()');
+  const parenEnd = matchingClose(text, parenStart, '()');
   if (parenEnd === -1) {
     return undefined;
   }
@@ -120,7 +104,7 @@ function declarationAt(text: string, match: RegExpExecArray): Declaration | unde
     return { ...declared, body: '' };
   }
   const open = text.length - head.tail.length;
-  const end = closing(text, open, '{}');
+  const end = matchingClose(text, open, '{}');
   return { ...declared, body: end === -1 ? '' : text.slice(open + 1, end) };
 }
 

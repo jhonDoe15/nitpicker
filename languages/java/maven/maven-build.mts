@@ -27,6 +27,7 @@ import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts
 import { mavenScope } from './reactor/maven-scope.mts';
 import { reactorRootFor } from './reactor/reactor-root.mts';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
+import { type FailedModule, failedModules } from './reactor/failed-modules.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
@@ -184,6 +185,21 @@ function presetTools(
   });
 }
 
+function buildReactor(
+  build: Parameters<typeof buildOrSkipTests>[0],
+  { policy, reported }: { readonly policy: JavaPolicy; readonly reported: readonly MavenModule[] },
+): { readonly timedOut: unknown[]; readonly failed: readonly FailedModule[] } {
+  try {
+    return { timedOut: buildOrSkipTests(build, policy), failed: [] };
+  } catch (error) {
+    const failed = failedModules(error, { work: build.work, modules: reported });
+    if (failed === undefined) {
+      throw error;
+    }
+    return { timedOut: [], failed };
+  }
+}
+
 function prepare(
   run: MavenRun,
   { policy, environment, configs, work, onModules }: PrepareRequest,
@@ -197,16 +213,18 @@ function prepare(
   const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - REPORT_CLOCK_SKEW_MS;
   const build = { ...run, projectRoot: run.mavenRoot, selection: scope.selection, work };
-  const timedOut = buildOrSkipTests(
+  const { timedOut, failed } = buildReactor(
     { ...build, modules: built, reruns: testReruns(configs) },
-    policy,
+    { policy, reported: modules },
   );
-  const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
+  const failedModules = new Set(failed.map((entry) => entry.module));
+  const checked = modules.filter((module) => !failedModules.has(module));
+  const analyzed = checked.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
   const tools = presetTools(
     { ...run, environment },
-    { modules, analyzed, policy, pinned: run.pinned, kotlin },
+    { modules: checked, analyzed, policy, pinned: run.pinned, kotlin },
   );
-  return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
+  return { modules: checked, built, scope, kotlin, since, analyzed, tools, timedOut, failed };
 }
 
 function presetInWork(
@@ -235,7 +253,7 @@ function presetInWork(
     mutationOff: policy['mutationOff'] === true,
   };
   const request = { policy, environment, configs, work, onModules };
-  const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, request);
+  const { modules, built, scope, kotlin, timedOut, failed, ...prepared } = prepare(run, request);
   const testsFailures = analyzeAll({
     ...run,
     ...prepared,
@@ -254,6 +272,7 @@ function presetInWork(
     testsFailures: [...testsFailures, ...timedOut],
     formatAdvice: fieldOf(fieldOf(kotlin, 'options'), 'advice'),
     notAffected: scope.notAffected,
+    failedModules: failed,
   };
 }
 

@@ -19,6 +19,14 @@ import {
   failureDetail,
 } from '../../../../shared/processes/process-failure.mjs';
 import { nativeConfigFlags } from './compatibility/native-config.mts';
+import {
+  MAX_SKIPPED_FILES,
+  type RuleCrash,
+  nextRuleCrash,
+  skippedFileArguments,
+} from './crashes/rule-crashes.mts';
+import { appendAll } from '../../../../shared/lists/items.mjs';
+import { isOutOfMemory, outOfMemoryMessage, withEslintHeap } from './memory/eslint-heap.mts';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;
@@ -32,6 +40,12 @@ type EslintInvocation = {
   readonly projectConfigPath: string | undefined;
   readonly eslintCliPath: string;
   readonly environment: Readonly<Record<string, string | undefined>>;
+  readonly crashes: RuleCrash[];
+};
+
+export type LintEngineResult = {
+  readonly results: unknown;
+  readonly crashes: readonly RuleCrash[];
 };
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -41,21 +55,24 @@ export async function runLintEngine({
   projectConfigPath,
   policyConfigPath,
   testEnvironments,
-}: LintEngineRun): Promise<unknown> {
+}: LintEngineRun): Promise<LintEngineResult> {
   const invocation = eslintInvocation({
     options,
     projectConfigPath,
     policyConfigPath,
     testEnvironments,
   });
-  if (lintEngine(options) === 'eslint') return runEslintCli(invocation, options.patterns);
-  return lintWithOxlint({
-    options,
-    environment: invocation.environment,
-    projectConfigPath,
-    runEslintCli: (patterns, extraEnvironment) =>
-      runEslintCli(invocation, patterns, extraEnvironment),
-  });
+  const results =
+    lintEngine(options) === 'eslint'
+      ? await runEslintCli(invocation, options.patterns)
+      : await lintWithOxlint({
+          options,
+          environment: invocation.environment,
+          projectConfigPath,
+          runEslintCli: (patterns, extraEnvironment) =>
+            runEslintCli(invocation, patterns, extraEnvironment),
+        });
+  return { results, crashes: invocation.crashes };
 }
 
 function lintEngine(options: LintEngineOptions): string {
@@ -74,6 +91,7 @@ function eslintInvocation({
     options,
     projectConfigPath,
     eslintCliPath: options.eslintCliPath ?? toolBinaryPath('eslint', { bin: 'bin/eslint.js' }),
+    crashes: [],
     environment: {
       ...process.env,
       ...options.environment,
@@ -95,16 +113,21 @@ function eslintInvocation({
   };
 }
 
-async function runEslintCli(
+type EslintSpawn = {
+  readonly patterns: readonly string[];
+  readonly environment: Readonly<Record<string, string | undefined>>;
+  readonly skipped: readonly RuleCrash[];
+};
+
+async function spawnEslint(
   invocation: EslintInvocation,
-  patterns: readonly string[],
-  extraEnvironment: Readonly<Record<string, string>> = {},
-): Promise<unknown> {
+  { patterns, environment, skipped }: EslintSpawn,
+): Promise<CollectedRun> {
   const { options } = invocation;
   const config = fileURLToPath(
     checkoutModuleUrl(new URL('../eslint-wrapper.config.mjs', import.meta.url)),
   );
-  const result = await spawnCollected(
+  return spawnCollected(
     process.execPath,
     [
       invocation.eslintCliPath,
@@ -115,16 +138,41 @@ async function runEslintCli(
       'json',
       '--no-color',
       '--no-error-on-unmatched-pattern',
+      ...skippedFileArguments(skipped),
       ...patterns,
     ],
     {
       cwd: options.projectRoot,
-      env: { ...invocation.environment, ...extraEnvironment },
+      env: environment,
       maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
       timeoutMs: options.timeoutMs,
     },
   );
-  assertEslintCompleted(result, options);
+}
+
+async function runEslintCli(
+  invocation: EslintInvocation,
+  patterns: readonly string[],
+  extraEnvironment: Readonly<Record<string, string>> = {},
+): Promise<unknown> {
+  const { options } = invocation;
+  const environment = withEslintHeap({ ...invocation.environment, ...extraEnvironment });
+  const skipped: RuleCrash[] = [];
+  const attempts = Array.from({ length: MAX_SKIPPED_FILES + 1 }, () => skipped);
+  for (const attempt of attempts) {
+    const result = await spawnEslint(invocation, { patterns, environment, skipped: attempt });
+    const crash = nextRuleCrash(result, options.projectRoot, attempt);
+    if (crash === undefined) {
+      assertEslintCompleted(result, options, environment['NODE_OPTIONS']);
+      appendAll(invocation.crashes, attempt);
+      return parsedResults(result);
+    }
+    attempt.push(crash);
+  }
+  throw new Error('ESLint crashed on more files than nitpicker skips');
+}
+
+function parsedResults(result: CollectedRun): unknown {
   try {
     return parseJson(result.stdout);
   } catch (error) {
@@ -139,6 +187,7 @@ async function runEslintCli(
 function assertEslintCompleted(
   result: CollectedRun,
   { timeoutMs, projectRoot }: Pick<LintEngineOptions, 'timeoutMs' | 'projectRoot'>,
+  nodeOptions: string | undefined,
 ): void {
   if (result.error !== undefined) {
     if (result.error.code === 'ETIMEDOUT') {
@@ -149,6 +198,9 @@ function assertEslintCompleted(
       );
     }
     throw result.error;
+  }
+  if (result.status !== 0 && result.status !== 1 && isOutOfMemory(result.stderr)) {
+    throw new Error(outOfMemoryMessage(nodeOptions));
   }
   if (result.status !== 0 && result.status !== 1) {
     const detail = failureDetail(result) || 'no diagnostic output';

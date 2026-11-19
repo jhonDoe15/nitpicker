@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveMaxParallel, runTaskGraph } from './graph/task-graph.mts';
+import { runTaskGraph } from './graph/task-graph.mts';
+import { resolveMaxParallel } from '../../../shared/processes/machine-capacity.mts';
 import type { AnalyzerTask } from './tasks.mts';
 import { flushScheduling, task } from './test-support/analyzer-task.mts';
 

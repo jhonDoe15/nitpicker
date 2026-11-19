@@ -209,7 +209,9 @@ function readToken(state: ScanState, { index = 0, 0: text }: RegExpMatchArray): 
     return;
   }
   if (topOf(state).mode === 'code') {
-    CODE_TOKENS[text]?.(state, index);
+    if (Object.hasOwn(CODE_TOKENS, text)) {
+      CODE_TOKENS[text]?.(state, index);
+    }
     return;
   }
   readLiteralToken(state, index, text);
