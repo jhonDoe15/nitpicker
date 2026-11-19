@@ -10,9 +10,8 @@ import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
-import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mts';
-import { applySuggestions } from './suggestions/apply-suggestions.mts';
-import type { LintMessage } from './suggestions/typed/suggestion-views.mts';
+import { selectedEslintRules } from './selection/selected-fixes.mts';
+import { newPassBudget, TOOL, writeOutputs, type Reported } from './selection/write-planned.mts';
 import { reportedFilesOf, type ReportedFile } from './typed/eslint-report.mts';
 import {
   containedPath,
@@ -20,12 +19,8 @@ import {
   formatNotes,
   readBytes,
   runFixCommand,
-  withFixedLineEndingsOf,
-  writeTexts,
-  type Bytes,
 } from '../../../core/fix/typed/fix-views.mts';
 import type { Layout } from './typed/fix-views.mts';
-import { appendAll } from '../../../shared/lists/lists.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -37,12 +32,6 @@ type EslintSettings = Pick<
   readonly eslintSettings: unknown;
   readonly layout: Layout;
 };
-type Reported = {
-  readonly name: string;
-  readonly output: unknown;
-  readonly messages: readonly LintMessage[];
-  readonly fatal: boolean;
-};
 type Attempt = {
   readonly linked: LinkedPolicyFile | undefined;
   readonly failure?: unknown;
@@ -51,7 +40,17 @@ type Attempt = {
   readonly changedMeanwhile: string[];
   readonly unformattable: string[];
   readonly unwritable: string[];
+  readonly capped: boolean;
 };
+type Totals = {
+  readonly rewritten: Set<string>;
+  readonly fixedFindings: Set<string>;
+  readonly changedMeanwhile: Set<string>;
+  readonly unformattable: Set<string>;
+  readonly unwritable: Set<string>;
+  capped: boolean;
+};
+type PassOutcome = Record<Exclude<keyof Totals, 'capped'>, readonly string[]>;
 
 function eslintCheck(name: string) {
   const found = eslintChecks.find((check) => check.name === name);
@@ -64,7 +63,7 @@ function eslintCheck(name: string) {
 const eslintPolicy = eslintCheck('eslint-lint');
 const loggingPolicy = eslintCheck('eslint-logging');
 
-const TOOL = 'eslint --fix';
+const MAX_PASSES = 10;
 
 const EXTRA_POLICY_VARIABLE = 'NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG';
 
@@ -156,64 +155,65 @@ function reportedFiles(projectRoot: string, files: readonly FixFile[], stdout: s
   );
 }
 
-function fixedText(
-  settings: EslintSettings,
-  original: string,
-  { output, messages, fatal }: Reported,
-) {
-  if (fatal) {
-    return { text: typeof output === 'string' ? output : original, applied: [] };
-  }
-  if (settings.selectedRules.length === 0) {
-    const base = typeof output === 'string' ? output : original;
-    return applySuggestions({ text: base, messages, selectedRules: [] });
-  }
-  const { text, suggested } = selectedOutput(
-    original,
-    messages,
-    selectedEslintRules(settings.selectedRules),
-  );
-  return { text: text ?? original, applied: suggested };
-}
-
-function plannedTexts(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
-  const findings: string[] = [];
-  const planned = reported.flatMap((file) => {
-    const original = before.get(file.name)?.toString('utf8') ?? '';
-    const { text: fixed, applied } = fixedText(settings, original, file);
-    appendAll(
-      findings,
-      applied.map(({ rule, line }) => `${file.name}:${String(line)} ${rule} (eslint-suggestion)`),
-    );
-    const text = withFixedLineEndingsOf(original, fixed);
-    return text === original ? [] : [{ name: file.name, text }];
-  });
-  return { planned, findings };
-}
-
-function writeOutputs(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
-  const { planned, findings } = plannedTexts(settings, before, reported);
-  const { written, changedMeanwhile, unwritable } = writeTexts(
-    settings.writer,
-    planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
-    TOOL,
-  );
-  const kept = new Set(written);
+function newTotals(): Totals {
   return {
-    rewritten: written,
-    changedMeanwhile,
-    unwritable,
-    fixedFindings: findings.filter((finding) => kept.has(finding.slice(0, finding.indexOf(':')))),
+    rewritten: new Set(),
+    fixedFindings: new Set(),
+    changedMeanwhile: new Set(),
+    unformattable: new Set(),
+    unwritable: new Set(),
+    capped: false,
   };
 }
 
-function attemptEslintFix(
-  settings: EslintSettings,
-  files: readonly FixFile[],
-  before: Bytes,
-): Attempt {
+function addPass(totals: Totals, pass: PassOutcome) {
+  for (const [key, values] of [
+    ['rewritten', pass.rewritten],
+    ['fixedFindings', pass.fixedFindings],
+    ['changedMeanwhile', pass.changedMeanwhile],
+    ['unformattable', pass.unformattable],
+    ['unwritable', pass.unwritable],
+  ] as const) {
+    for (const value of values) {
+      totals[key].add(value);
+    }
+  }
+}
+
+type PassRun = {
+  readonly files: readonly FixFile[];
+  readonly linked: LinkedPolicyFile;
+  readonly totals: Totals;
+};
+
+function runPasses(settings: EslintSettings, { files: firstFiles, linked, totals }: PassRun) {
+  const { projectRoot } = settings;
+  const passes = settings.selectedRules.length === 0 ? 1 : MAX_PASSES;
+  const budget = newPassBudget();
+  let files = firstFiles;
+  const numbers = Array.from({ length: passes }, (_, index) => index + 1);
+  for (const pass of numbers) {
+    if (files.length === 0) {
+      return;
+    }
+    const before = readBytes(projectRoot, files);
+    const reported = reportedFiles(projectRoot, files, runEslint(settings, files, linked).stdout);
+    const outcome = writeOutputs(settings, { before, reported, budget });
+    addPass(totals, {
+      ...outcome,
+      unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
+    });
+    const written = new Set(outcome.rewritten);
+    files = files.filter(({ path: name }) => written.has(name));
+    totals.capped = passes > 1 && pass === passes && files.length > 0;
+  }
+}
+
+function attemptEslintFix(settings: EslintSettings, files: readonly FixFile[]): Attempt {
   const { projectRoot, layout } = settings;
+  const totals = newTotals();
   let linked: LinkedPolicyFile | undefined;
+  let failure: unknown;
   try {
     const [policyFile] = eslintPolicy.policyFiles;
     if (policyFile === undefined) {
@@ -224,23 +224,20 @@ function attemptEslintFix(
       path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
       layoutTransformFor(policyFile, layout),
     );
-    const reported = reportedFiles(projectRoot, files, runEslint(settings, files, linked).stdout);
-    return {
-      linked,
-      unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
-      ...writeOutputs(settings, before, reported),
-    };
+    runPasses(settings, { files, linked, totals });
   } catch (error) {
-    return {
-      linked,
-      failure: error,
-      rewritten: [],
-      fixedFindings: [],
-      changedMeanwhile: [],
-      unformattable: [],
-      unwritable: [],
-    };
+    failure = error;
   }
+  return {
+    linked,
+    ...(failure === undefined ? {} : { failure }),
+    rewritten: [...totals.rewritten],
+    fixedFindings: [...totals.fixedFindings],
+    changedMeanwhile: [...totals.changedMeanwhile],
+    unformattable: [...totals.unformattable],
+    unwritable: [...totals.unwritable],
+    capped: totals.capped,
+  };
 }
 
 function removeLinkedFile(linked: LinkedPolicyFile | undefined): unknown {
@@ -258,18 +255,23 @@ export function eslintFixStep(settings: EslintSettings, files: readonly FixFile[
   if (files.length === 0 || unselected) {
     return { toolErrors: [], notes: [], fixedFindings: [] };
   }
-  const attempt = attemptEslintFix(settings, files, readBytes(settings.projectRoot, files));
+  const attempt = attemptEslintFix(settings, files);
   const removalFailure = removeLinkedFile(attempt.linked);
   const failure = attempt.failure ?? removalFailure;
   return {
     toolErrors: failure === undefined ? [] : [fixerError('eslint-fix', failure)],
     fixedFindings: attempt.fixedFindings,
-    notes: formatNotes(TOOL, {
-      rewritten: attempt.rewritten,
-      changedMeanwhile: attempt.changedMeanwhile,
-      unformattable: attempt.unformattable,
-      unwritable: attempt.unwritable,
-      keptAsIs: [],
-    }),
+    notes: [
+      ...formatNotes(TOOL, {
+        rewritten: attempt.rewritten,
+        changedMeanwhile: attempt.changedMeanwhile,
+        unformattable: attempt.unformattable,
+        unwritable: attempt.unwritable,
+        keptAsIs: [],
+      }),
+      ...(attempt.capped
+        ? [`${TOOL} stopped after ${String(MAX_PASSES)} passes: selected fixes may still apply`]
+        : []),
+    ],
   };
 }

@@ -2,6 +2,7 @@ import { LEFT_OUT_CHECKS } from './left-out-checks.mts';
 import { REVIEW_CHECKS } from './review-checks.mts';
 import { SAFE_CHECKS } from './safe-checks.mts';
 import { OWN_CHECKS, ownChecksOf, ownRule } from '../own/own-checks.mts';
+import { twinChecks } from './twin-rules.mts';
 import type { RuleRef } from '../../../../../core/fix/typed/fix-types.mts';
 
 const ERROR_PRONE_TOOL = 'errorprone';
@@ -39,7 +40,11 @@ export function patchChecks(selectedRules: readonly string[]): string[] {
     return [...SAFE_CHECKS, ...ownChecksOf('safe')];
   }
   return [
-    ...selected.filter((check) => SAFE.has(check) || REVIEW.has(check)),
-    ...ownSelected(selectedRules),
+    ...new Set([
+      ...[...selected, ...twinChecks(selectedRules)].filter(
+        (check) => SAFE.has(check) || REVIEW.has(check),
+      ),
+      ...ownSelected(selectedRules),
+    ]),
   ];
 }

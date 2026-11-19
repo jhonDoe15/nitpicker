@@ -1,13 +1,25 @@
-import { writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { vi } from 'vitest';
 import { resolveHeadPolicy } from '../../test-support/policy-views.mts';
 import type { ToolSettings } from '../../test-support/policy-views.mts';
 import { PICK_SOURCE, createRunnerProjects, rulesOf, runArea } from './runner-views.mts';
 import type { ProjectFiles } from './runner-views.mts';
+import { withProjectTestFiles as untypedWithProjectTestFiles } from '../../../test-runner/test-files/project-test-files.mjs';
+
+const withProjectTestFiles: (
+  policy: unknown,
+  options: {
+    readonly projectRoot: string;
+    readonly liveProjectRoot: string;
+    readonly analyzers: readonly object[];
+  },
+) => unknown = untypedWithProjectTestFiles;
 
 export const OPT_IN = ['project', 'nitpicker'];
+const MOCHA_TESTS = "mocha 'test/**/*.test.ts'";
 export const TESTS_FAILED = ['tool-error:tests-failed'];
+const COVERAGE_ANALYZER = { name: 'coverage', policyFromPackage: true };
 const TEST_RUN_FAILURE = /:tests-(?:failed|not-run)$/u;
 const SECOND_ATTEMPT = 'let attempts = 0;\nconst secondAttempt = () => (attempts += 1) === 2;\n';
 
@@ -48,7 +60,7 @@ export function createRetryProjects(): RetryProjects {
         ...files,
       });
     },
-    mochaProject(files: ProjectFiles, test = 'mocha'): string {
+    mochaProject(files: ProjectFiles, test = MOCHA_TESTS): string {
       return projects.project({
         'package.json': packageFile(test),
         'src/main/pick.ts': PICK_SOURCE,
@@ -76,10 +88,11 @@ export function createRetryProjects(): RetryProjects {
     },
     async coverageWith(root: string, precedence: string[]): Promise<string[]> {
       const policyFile = path.join(path.dirname(root), 'policy.json');
-      writeFileSync(
-        policyFile,
-        JSON.stringify(resolveHeadPolicy({ tools: { tests: { precedence } } }, root)),
+      const policy = withProjectTestFiles(
+        resolveHeadPolicy({ tools: { tests: { precedence } } }, root),
+        { projectRoot: root, liveProjectRoot: root, analyzers: [COVERAGE_ANALYZER] },
       );
+      await writeFile(policyFile, JSON.stringify(policy));
       vi.stubEnv('NITPICKER_POLICY', policyFile);
       return rulesOf(await runArea('coverage', root)).filter((rule) => TEST_RUN_FAILURE.test(rule));
     },

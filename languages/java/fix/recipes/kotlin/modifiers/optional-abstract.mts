@@ -1,23 +1,9 @@
+import { enclosingBodyKind } from '../shared/body-kind.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { enclosingOpen } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';
 
+const INTERFACE = 'interface';
 const ABSTRACT = /(?<![\w.@:$`])abstract[ \t]+(?=(?:interface|fun|val|var)\b)/gu;
-const INTERFACE_HEADER = /(?<![\w.])interface\s+[A-Za-z_`]/u;
-
-function insideInterface(code: string, offset: number): boolean {
-  const open = enclosingOpen(code, offset);
-  if (open === -1) {
-    return false;
-  }
-  const before = code.slice(0, open);
-  const boundary = Math.max(
-    before.lastIndexOf(';'),
-    before.lastIndexOf('{'),
-    before.lastIndexOf('}'),
-  );
-  return INTERFACE_HEADER.test(before.slice(boundary + 1));
-}
 
 export const optionalAbstractRecipe = kotlinRecipe({
   id: 'kotlin-optional-abstract-keyword',
@@ -26,8 +12,8 @@ export const optionalAbstractRecipe = kotlinRecipe({
   find: ({ code, source }) =>
     [...code.matchAll(ABSTRACT)]
       .filter(({ index, 0: text }) => {
-        const next = code.slice(index + text.length, index + text.length + 'interface'.length);
-        return next.startsWith('interface') || insideInterface(code, index);
+        const next = code.slice(index + text.length, index + text.length + INTERFACE.length);
+        return next.startsWith(INTERFACE) || enclosingBodyKind(code, index) === INTERFACE;
       })
       .map(({ index, 0: text }) => ({
         offset: index,

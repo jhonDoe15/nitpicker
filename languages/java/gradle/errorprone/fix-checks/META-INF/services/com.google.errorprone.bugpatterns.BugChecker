@@ -1,3 +1,4 @@
+nitpicker.fix.CollapsibleIfStatements
 nitpicker.fix.DetachedTestCase
 nitpicker.fix.DmiRandomUsedOnlyOnce
 nitpicker.fix.DoNotCallGarbageCollectionExplicitly
@@ -13,6 +14,9 @@ nitpicker.fix.PrepareStatementInLoop
 nitpicker.fix.PreserveStackTrace
 nitpicker.fix.RetryInTest
 nitpicker.fix.ReusableObjectPerCall
+nitpicker.fix.SimplifiedTernary
+nitpicker.fix.SimplifyBooleanExpressions
+nitpicker.fix.SimplifyBooleanReturns
 nitpicker.fix.SortForExtreme
 nitpicker.fix.SpringComposedMapping
 nitpicker.fix.SpringConstructorInjection
@@ -22,3 +26,4 @@ nitpicker.fix.SpringRestController
 nitpicker.fix.UseCollectionIsEmpty
 nitpicker.fix.UseEnumCollections
 nitpicker.fix.UseStandardCharsets
+nitpicker.fix.UselessStringValueOf

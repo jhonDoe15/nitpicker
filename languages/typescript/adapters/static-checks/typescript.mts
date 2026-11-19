@@ -5,7 +5,17 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../typed/static-checks.mts';
-import { layoutTransformFor, readLayout, typecheckEngine } from '../typed/head-policy.mts';
+import {
+  layoutTransformFor,
+  readHeadPolicy,
+  readLayout,
+  typecheckEngine,
+} from '../typed/head-policy.mts';
+import { policyTestRunner } from '../../preset/test-runner/policy-runner.mjs';
+import {
+  isUntypedRunnerGlobal,
+  missingRunnerTypes,
+} from '../../preset/test-runner/vocabulary/runner-types.mjs';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
@@ -29,10 +39,24 @@ type TypeScriptDiagnostics = {
 };
 
 type DiagnosticFilter = {
-  readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded'>;
+  readonly layout: Pick<ReturnType<typeof readLayout>, 'isExcluded' | 'isTestFile'>;
   readonly contextOnly: ReadonlySet<string>;
   readonly projectRoot: string;
+  readonly runner: unknown;
+  readonly untyped: boolean;
 };
+
+function diagnosticFilter(
+  targetPath: string,
+  projectRoot: string,
+  ts: typeof TypeScript,
+): DiagnosticFilter {
+  const layout = readLayout();
+  const contextOnly = contextOnlyFiles(targetPath, projectRoot, { layout, ts });
+  const runner: unknown = policyTestRunner(readHeadPolicy(), projectRoot);
+  const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
+  return { layout, contextOnly, projectRoot, runner, untyped };
+}
 
 export function isReportedDiagnostic(
   diagnostic: TypeScript.Diagnostic,
@@ -45,7 +69,11 @@ export function isReportedDiagnostic(
     return false;
   }
   const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
-  return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file));
+  const untypedGlobal =
+    filter.untyped &&
+    filter.layout.isTestFile(file) &&
+    isUntypedRunnerGlobal(diagnostic, filter.runner);
+  return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);
 }
 
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
@@ -65,19 +93,12 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectRoot: options.projectRoot,
       projectNative: native,
     });
-    const layout = readLayout();
-    const contextOnly = contextOnlyFiles(targetPath, options.projectRoot, { layout, ts });
+    const filter = diagnosticFilter(targetPath, options.projectRoot, ts);
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics
         .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter((diagnostic) =>
-          isReportedDiagnostic(diagnostic, {
-            layout,
-            contextOnly,
-            projectRoot: options.projectRoot,
-          }),
-        ),
+        .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter)),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath,

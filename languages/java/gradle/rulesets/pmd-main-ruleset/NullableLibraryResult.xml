@@ -1,0 +1,55 @@
+  <rule name="NullableLibraryResult" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This call returns null as a normal answer (a package without manifest metadata has no version, a request without that query string, header, parameter, path info or session has none), but the result is dereferenced without a null check, so the code throws a NullPointerException for those inputs. Check it first (String version = pkg.getImplementationVersion(); if (version != null) ...), or fall back with Objects.requireNonNullElse(request.getParameter(name), &quot;&quot;). An exception fits when the receiver is known to have the value.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $nullable := function($c) {
+      exists($c/self::MethodCall[
+        (@MethodName = ('getImplementationVersion', 'getImplementationTitle', 'getImplementationVendor',
+                           'getSpecificationVersion') and *[1][pmd-java:typeIsExactly('java.lang.Package')])
+        or (@MethodName = ('getQueryString', 'getPathInfo', 'getPathTranslated', 'getRemoteUser')
+            and ArgumentList[@Size = 0]
+            and *[1][pmd-java:typeIs('jakarta.servlet.http.HttpServletRequest')
+                     or pmd-java:typeIs('javax.servlet.http.HttpServletRequest')])
+        or (@MethodName = 'getHeader' and ArgumentList[@Size = 1]
+            and *[1][pmd-java:typeIs('jakarta.servlet.http.HttpServletRequest')
+                     or pmd-java:typeIs('javax.servlet.http.HttpServletRequest')])
+        or (@MethodName = 'getParameter' and ArgumentList[@Size = 1]
+            and *[1][pmd-java:typeIs('jakarta.servlet.ServletRequest')
+                     or pmd-java:typeIs('javax.servlet.ServletRequest')])
+        or (@MethodName = 'getSession' and ArgumentList[@Size = 1]/BooleanLiteral[@True = false()]
+            and *[1][pmd-java:typeIs('jakarta.servlet.http.HttpServletRequest')
+                     or pmd-java:typeIs('javax.servlet.http.HttpServletRequest')])])
+    },
+    $guarded := function($scope, $call) {
+      exists($scope//InfixExpression[@Operator = ('==', '!=')][NullLiteral]
+                                    [.//MethodCall[@MethodName = $call/@MethodName]])
+      or exists($scope//ArgumentList/MethodCall[@MethodName = $call/@MethodName]
+                  [string-join(ArgumentList/*/(@Image, @Name), '|')
+                     = string-join($call/ArgumentList/*/(@Image, @Name), '|')])
+    },
+    $caught := function($n) {
+      exists($n/ancestor::Block[parent::TryStatement]/parent::TryStatement
+               /CatchClause/CatchParameter//ClassType[@SimpleName = ('NullPointerException', 'RuntimeException',
+                                                                      'Exception', 'Throwable')])
+    }
+return (
+  //MethodCall[*[1][$nullable(.)]]
+    [not($guarded(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+                              or self::LambdaExpression][1], *[1]))]
+    [not($caught(.))],
+  //MethodCall[*[1][self::VariableAccess]]
+    [let $name := *[1]/@Name,
+         $decl := (ancestor::Block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name])[last()],
+         $uses := $decl/ancestor::Block[1]//VariableAccess[@Name = $name]
+     return exists($decl) and $nullable($decl/*[last()]) and *[1] is $uses[1]
+       and empty($uses[not(parent::MethodCall and . is parent::MethodCall/*[1])])
+       and empty($decl/ancestor::Block[1]//InfixExpression[@Operator = ('==', '!=')][NullLiteral]
+                                         [VariableAccess[@Name = $name]])
+       and not($caught(.))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

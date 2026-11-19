@@ -1,0 +1,24 @@
+  <rule name="AssertNotNullWrongCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The Spring methods Assert.notNull and Assert.isNull test for null, but this call checks something else: a boolean or number is boxed and never null, and a String, Collection or Map whose message says empty or blank passes when it is empty. The assertion always holds and the invalid value goes through. Test the condition with Assert.isTrue(count &gt;= 0, &quot;count must not be negative&quot;), and use Assert.hasText(name, &quot;name must not be empty&quot;), Assert.hasLength or Assert.notEmpty for text and collections. Assert.notNull(name, &quot;name must not be null&quot;) on its own is fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.springframework.util.Assert#notNull(_*)')
+             or pmd-java:matchesSig('org.springframework.util.Assert#isNull(_*)')]
+  [ArgumentList/*[1][
+      pmd-java:typeIs('boolean') or pmd-java:typeIs('int') or pmd-java:typeIs('long')
+      or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('short')
+      or pmd-java:typeIs('byte') or pmd-java:typeIs('char')
+      or self::UnaryExpression[@Operator = '!']
+      or self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||')]
+      or self::InstanceOfExpression]
+   or @MethodName = 'notNull' and ArgumentList/@Size = 2
+      and ArgumentList/*[1][self::VariableAccess or self::FieldAccess or self::MethodCall]
+        [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.util.Collection')
+         or pmd-java:typeIs('java.util.Map')]
+      and ArgumentList/*[2][self::StringLiteral][matches(@Image, '(not|n.t|never|or|nor|be|is|are) +(be +)?([Ee]mpty|[Bb]lank)([^a-z]|$)')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

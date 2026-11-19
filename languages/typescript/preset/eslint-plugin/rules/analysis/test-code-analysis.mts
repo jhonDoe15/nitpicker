@@ -43,28 +43,6 @@ export function memberName(node: TSESTree.Node): string | undefined {
     : undefined;
 }
 
-const mockRunnerNames = new Set(['vi', 'jest']);
-const moduleMockMethods = new Set(['mock', 'doMock']);
-
-export function mockedModuleSource(
-  node: TSESTree.Node | undefined,
-  runners: ReadonlySet<string> = mockRunnerNames,
-): string | undefined {
-  const callee = node?.type === AST_NODE_TYPES.CallExpression ? node.callee : undefined;
-  const method = callee === undefined ? undefined : memberName(callee);
-  const isMock =
-    callee?.type === AST_NODE_TYPES.MemberExpression &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    runners.has(callee.object.name) &&
-    method !== undefined &&
-    moduleMockMethods.has(method);
-  const [argument] = isMock && node?.type === AST_NODE_TYPES.CallExpression ? node.arguments : [];
-  const source = argument?.type === AST_NODE_TYPES.ImportExpression ? argument.source : argument;
-  return source?.type === AST_NODE_TYPES.Literal && typeof source.value === 'string'
-    ? source.value
-    : undefined;
-}
-
 const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
 
 export function isBrowserEndToEndTest({
