@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import walk_statements
+from kinds.once import once_call_ids
 
 
 def by_position(nodes):
@@ -16,5 +17,6 @@ def outer_calls(nodes):
 
 
 def calls_in_order(function):
+    once = once_call_ids(function)
     nodes = walk_statements(function.body)
-    return by_position(node for node in nodes if isinstance(node, ast.Call))
+    return by_position(node for node in nodes if isinstance(node, ast.Call) and id(node) not in once)

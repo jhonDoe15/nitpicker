@@ -102,3 +102,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
   (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
+- A null branch that does not leave is not followed by a use of the same value
+  (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
+  branch with `return` or `throw`, or put the use in an `else`.
