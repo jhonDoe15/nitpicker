@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isFile as untypedIsFile } from '../../../../shared/filesystem.mjs';
 import { readProjectText } from '../project-files.mts';
 import type { RequirementLines } from '../typed/dependency-types.mts';
 import { isDevelopmentGroup } from './requirement-names.mts';
@@ -16,9 +17,7 @@ const DIRECT = /(?:^|\s)-r\s*\S/u;
 type Entry = { line: string; via: string };
 type Pending = { file: string; development: boolean };
 
-function isFile(file: string): boolean {
-  return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
-}
+const isFile: (file: string) => boolean = untypedIsFile;
 
 function listed(directory: string, pattern: RegExp): string[] {
   return readdirSync(directory)

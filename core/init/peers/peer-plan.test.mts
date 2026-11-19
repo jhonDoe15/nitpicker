@@ -57,8 +57,8 @@ describe('peer plan for Node projects', () => {
           nitpicker: '1',
           typescript: '6.0.3',
           '@types/node': '25',
-          vitest: '4.0.5',
-          '@vitest/coverage-v8': '4.0.5',
+          vitest: '3.1.4',
+          '@vitest/coverage-v8': '3.1.4',
         },
         {},
       ),
@@ -66,28 +66,28 @@ describe('peer plan for Node projects', () => {
 
     expect(planPeers(root, nodeProject('pnpm add --save-dev'))).toEqual({
       ...NOTHING,
-      missing: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
+      missing: ['vitest@^3.2.0', '@vitest/coverage-v8@^3.2.0'],
       absent: [],
       outdated: [
-        'vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)',
-        '@vitest/coverage-v8 too old (have 4.0.5, need ^4.1.11 || ^5.0.0)',
+        'vitest too old (have 3.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
+        '@vitest/coverage-v8 too old (have 3.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
       ],
-      command: "pnpm add --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+      command: "pnpm add --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
       blockers: [],
     });
   });
 
   it('keeps a missing peer bare next to an outdated one, and matches the coverage package to Vitest', () => {
     const root = project(
-      withPeers({ nitpicker: '1', typescript: '6.0.3', '@types/node': '25', vitest: '4.0.5' }),
+      withPeers({ nitpicker: '1', typescript: '6.0.3', '@types/node': '25', vitest: '3.1.4' }),
     );
 
     expect(planPeers(root, nodeProject('npm install --save-dev'))).toEqual({
       ...NOTHING,
-      missing: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
-      absent: ['@vitest/coverage-v8@^4.1.11'],
-      outdated: ['vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)'],
-      command: "npm install --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+      missing: ['vitest@^3.2.0', '@vitest/coverage-v8@^3.2.0'],
+      absent: ['@vitest/coverage-v8@^3.2.0'],
+      outdated: ['vitest too old (have 3.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)'],
+      command: "npm install --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
       blockers: [],
     });
   });

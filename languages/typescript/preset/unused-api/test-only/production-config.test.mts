@@ -20,7 +20,26 @@ const TEST_RUNNERS = [
 ];
 
 describe('the knip config without tests', () => {
-  it('keeps the non-test entries and the rest of the config and leaves tests and stories out', () => {
+  it.each([
+    'vitest.config.ts',
+    'vitest.workspace.ts',
+    'jest.config.ts',
+    'jest.config.cjs',
+    'src/main/jest.config.mts',
+    '.mocharc.cjs',
+    '.mocharc.yml',
+  ])('leaves the %s test runner config out of the entries', (file) => {
+    const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
+
+    const config = layoutKnipProductionConfig(
+      { entry: ['src/main/main.ts', file], project: [] },
+      layout,
+    );
+
+    expect(config['entry']).toEqual(['src/main/main.ts', 'server.js']);
+  });
+
+  it('keeps the other entries and config and leaves tests, stories and runner configs out', () => {
     const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
     const config = layoutKnipProductionConfig(
       {
@@ -34,7 +53,8 @@ describe('the knip config without tests', () => {
 
     expect(config).toEqual({
       ...Object.fromEntries(TEST_RUNNERS.map((plugin) => [plugin, false])),
-      entry: ['src/main/main.ts', 'scripts/*.ts'],
+      node: false,
+      entry: ['src/main/main.ts', 'scripts/*.ts', 'server.js'],
       project: [
         'src/main/**',
         `!test/**/*.${CODE}`,
@@ -44,6 +64,10 @@ describe('the knip config without tests', () => {
         `!src/main/**/*.{test,spec}.${CODE}`,
         '!src/main/**/__tests__/**',
         `!**/*.{stories,story}.${CODE}`,
+        '!**/jest*.config.*',
+        '!**/vitest*.config.*',
+        '!**/vitest.workspace.*',
+        '!**/.mocharc.*',
       ],
       ignore: ['x'],
       vite: true,

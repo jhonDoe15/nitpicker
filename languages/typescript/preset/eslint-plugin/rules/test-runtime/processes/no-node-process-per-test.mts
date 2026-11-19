@@ -24,8 +24,11 @@ export const rule: TSESLint.RuleModule<'nodeProcessPerTest'> = {
     },
   },
   create(context) {
-    return perTestSubprocessVisitors(context, 'nodeProcessPerTest', (node, bindings) =>
-      NODE_COMMANDS.has(describeSubprocess(context, node, bindings)?.command ?? ''),
+    return perTestSubprocessVisitors(
+      context,
+      { messageId: 'nodeProcessPerTest' },
+      (node, bindings) =>
+        NODE_COMMANDS.has(describeSubprocess(context, node, bindings)?.command ?? ''),
     );
   },
 };

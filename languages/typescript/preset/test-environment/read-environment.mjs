@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chainOf } from '../../../../shared/traversal.mjs';
+import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
 import { loadInChild, loaderScript } from '../project-configs/config-module.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
-import { environmentsFromConfig } from './environments.mjs';
+import { environmentsFromConfig, testFilesFromConfig } from './environments.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
@@ -23,11 +23,6 @@ function entryOf(manifest) {
   const imported = entry?.import ?? entry;
   const resolved = typeof imported === 'string' ? imported : imported?.default;
   return resolved ?? manifest.module ?? manifest.main ?? 'index.js';
-}
-
-function parentDirectory(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? undefined : parent;
 }
 
 function viteManifestFrom(root) {
@@ -98,8 +93,11 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
   );
   const config = loaded?.config;
   return {
-    ...environmentsFromConfig(config, projectRoot),
-    aliases: aliasesFromConfig(config, projectRoot),
+    environments: {
+      ...environmentsFromConfig(config, projectRoot),
+      aliases: aliasesFromConfig(config, projectRoot),
+    },
+    testFiles: testFilesFromConfig(config, projectRoot),
     retry: serializedRetry(config?.test?.retry),
     ...projectRetries(config),
   };
