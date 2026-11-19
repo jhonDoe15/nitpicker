@@ -22,6 +22,7 @@ import {
 } from './typed/engine.mts';
 import { routedEslintFields, withoutFatalDirectives } from '../hints/eslint-hints.mts';
 import { positiveInteger } from './arguments.mts';
+import { nonRuleDiagnosticId } from './messages/non-rule-diagnostics.mts';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mts';
 import {
   type RatchetPlan,
@@ -143,7 +144,7 @@ function normalizeMessage({
 }: MessageContext): NormalizedMessage {
   assertMessageRecord(message, context);
   const messageText = validatedMessageText(message, context);
-  const ruleId = ruleIdOf(message, messageText, context);
+  const ruleId = ruleIdOf(message, messageText);
   const positions = reportedPositions(message, context, sourceFile);
   const report = locateReport(sourceFile, positions);
   const messageIdentity = messageIdentityOf(message, messageText);
@@ -182,10 +183,10 @@ function normalizeMessage({
   };
 }
 
-function ruleIdOf(message: EslintMessage, messageText: string, context: string): string {
+function ruleIdOf(message: EslintMessage, messageText: string): string {
   return typeof message.ruleId === 'string' && message.ruleId.length > 0
     ? message.ruleId
-    : nonRuleDiagnosticId(messageText, context);
+    : nonRuleDiagnosticId(messageText);
 }
 
 function findingIdentity({
@@ -285,14 +286,4 @@ function messageIdentityOf(message: EslintMessage, messageText: string): string 
   return typeof message.messageId === 'string' && message.messageId.length > 0
     ? message.messageId
     : normalizeMessageText(messageText);
-}
-
-function nonRuleDiagnosticId(message: string, context: string): string {
-  if (message.startsWith('Unused eslint-disable directive')) {
-    return 'eslint/unused-disable-directive';
-  }
-  if (message.includes("has no effect because you have 'noInlineConfig' setting")) {
-    return 'eslint/inline-config-disabled';
-  }
-  throw new Error(`${context} has no rule identifier: ${message}`);
 }
