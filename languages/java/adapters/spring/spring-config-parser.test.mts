@@ -4,7 +4,7 @@ import {
   parseProperties as parsePropertiesUntyped,
   parseYaml as parseYamlUntyped,
   relaxKey as relaxKeyUntyped,
-} from './spring-config-parser.mjs';
+} from './spring-config-parser.mts';
 
 type Entry = {
   readonly key: string;

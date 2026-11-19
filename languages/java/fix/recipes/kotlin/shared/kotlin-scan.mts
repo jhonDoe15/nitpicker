@@ -9,30 +9,17 @@ import {
   literalAt as untypedLiteralAt,
   scanKotlinSource as untypedScanKotlinSource,
   splitArguments as untypedSplitArguments,
-} from '../../../../adapters/kotlin/scan/kotlin-source.mjs';
+} from '../../../../adapters/kotlin/scan/kotlin-source.mts';
 
 export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 export type { Span };
+import type { Literal, Scanned } from '../../../../adapters/kotlin/scan/typed/scan-shapes.mts';
 
 export type KotlinEdit = Span & { readonly text: string };
 
-export type KotlinLiteral = Span & {
-  readonly bodyStart: number;
-  readonly text: string;
-  readonly template: boolean;
-  readonly raw: boolean;
-};
+export type KotlinLiteral = Literal;
 
-type KotlinComment = Span & { readonly kind: string; readonly text: string };
-
-export type ScannedKotlin = {
-  readonly source: string;
-  readonly code: string;
-  readonly contextCode: string;
-  readonly literals: readonly KotlinLiteral[];
-  readonly comments: readonly KotlinComment[];
-  readonly lineStarts: readonly number[];
-};
+export type ScannedKotlin = Scanned;
 
 export type KotlinFound = {
   readonly rule?: string;

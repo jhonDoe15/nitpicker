@@ -1,4 +1,17 @@
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+
+export type ToolClasspathLists = Record<string, string[]>;
+export type ToolDependencies = Record<string, string[]>;
+export type ToolEntry = { readonly name: string; readonly coordinates: string[] };
+export type ToolSetRequest = {
+  readonly projectRoot: string;
+  readonly maven?: string | undefined;
+  readonly tools: Readonly<Record<string, readonly string[]>>;
+  readonly spawn?: JavaSpawn | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly environment?: JavaEnvironment | undefined;
+};
 
 export type MavenModule = Readonly<Record<string, unknown>> & {
   readonly coordinates: string;

@@ -4,7 +4,7 @@ import { foundRuleSubjectLines as found } from '../typed/scan-found.mts';
 import {
   testClassesWithoutTests as untypedTestClassesWithoutTests,
   testHelpersInSource as untypedTestHelpersInSource,
-} from './tests.mjs';
+} from './tests.mts';
 
 const testClassesWithoutTests: Check<Subjected> = untypedTestClassesWithoutTests;
 const testHelpersInSource: Check<Subjected> = untypedTestHelpersInSource;

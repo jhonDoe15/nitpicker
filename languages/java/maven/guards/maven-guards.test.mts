@@ -10,8 +10,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { argumentFileToken as untypedArgumentFileToken } from '../../builds/lint/javac-options.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
+import { argumentFileToken as untypedArgumentFileToken } from '../../builds/lint/javac-options.mts';
 import { processorTool } from '../errorprone/maven-errorprone.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';

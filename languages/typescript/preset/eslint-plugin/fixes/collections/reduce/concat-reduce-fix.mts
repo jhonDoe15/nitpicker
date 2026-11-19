@@ -4,7 +4,8 @@ import { hasSingleType } from '../../../rules/support/array-items.mts';
 import type { Context } from '../../../rules/security/security-values.mts';
 import { replacing, type FixPlan } from '../../support/ranges.mts';
 import { asExpressionBody, expressionText, reduceSite, rewrittenCall } from './reduce-site.mts';
-import { hasMethod, isPlainConcatArgument } from './type-proofs.mts';
+import { hasProperty } from '../../../rules/support/checked-types.mts';
+import { isPlainConcatArgument } from './type-proofs.mts';
 
 function isOnlyConcat(
   node: TSESTree.Node,
@@ -41,7 +42,7 @@ export function concatReduceFix(context: Context, callback: Callback): FixPlan |
     argument === undefined ||
     !hasSingleType(context, argument) ||
     !isPlainConcatArgument(context, argument) ||
-    !hasMethod(context, site.receiver, 'flatMap')
+    !hasProperty(context, site.receiver, 'flatMap')
   ) {
     return undefined;
   }

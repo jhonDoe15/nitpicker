@@ -8,25 +8,12 @@ import {
 import {
   ENUM_PREDICATE_RULE,
   readEnums as untypedReadEnums,
-  withProjectEnumPredicates as untypedWithProjectEnumPredicates,
-} from './enum-predicates.mjs';
+  withProjectEnumPredicates,
+} from './enum-predicates.mts';
+import type { JavaFinding } from '../typed/java-values.mts';
 import { byText as untypedByText } from '../../../../shared/text-order/by-text.mjs';
 
-type PredicateFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly identity: string;
-  readonly message: string;
-  readonly classification: string;
-  readonly location: { readonly line: number; readonly column: number };
-};
-
 const readEnums: (projectRoot: string) => ReadonlyMap<string, unknown> = untypedReadEnums;
-const withProjectEnumPredicates: (
-  findings: readonly PredicateFinding[],
-  projectRoot: string,
-) => PredicateFinding[] = untypedWithProjectEnumPredicates;
 const byText: (left: string, right: string) => number = untypedByText;
 
 const { gitCheckout } = useGitCheckouts();
@@ -57,7 +44,7 @@ public enum Status {
 }
 `;
 
-function finding(line: number, column: number): PredicateFinding {
+function finding(line: number, column: number): JavaFinding {
   return {
     tool: 'pmd',
     rule: ENUM_PREDICATE_RULE,

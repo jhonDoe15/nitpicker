@@ -13,7 +13,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY, INIT_SCRIPT } from '../../builds/java-build.mts';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mts';
 import { JOBS, JOBS_CHECK, SAMPLES } from './test-support/jobs-sources.mts';
 import { readErrorProneFindings } from './java-errorprone.mts';

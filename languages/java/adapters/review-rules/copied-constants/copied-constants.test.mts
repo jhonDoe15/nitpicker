@@ -1,27 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
-import {
-  COPIED_CONSTANT_RULE,
-  readCopiedConstantFindings as untypedReadCopiedConstantFindings,
-} from './copied-constants.mjs';
-
-type CopiedFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly identity: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
-
-const readCopiedConstantFindings: (
-  projectRoot: string,
-  options: {
-    readonly projects: readonly unknown[];
-    readonly kotlin: boolean;
-  } & Readonly<Record<string, unknown>>,
-) => CopiedFinding[] = untypedReadCopiedConstantFindings;
+import { COPIED_CONSTANT_RULE, readCopiedConstantFindings } from './copied-constants.mts';
 
 const { temporaryRoot } = useGitFixtures();
 const PROJECT = {

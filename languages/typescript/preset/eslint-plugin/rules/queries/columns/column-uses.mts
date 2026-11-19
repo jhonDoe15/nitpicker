@@ -7,6 +7,7 @@ import { mappedField, type MappedField } from './sole-field.mts';
 import { isIdsWrite } from '../rows/row-writes.mts';
 import { isModelField } from './model-fields.mts';
 import { isBooleanUse, isCountTest } from './boolean-uses.mts';
+import { isForeignCall } from '../receivers/orm-callee.mts';
 import { isProjection, loadedRows, singleRead } from '../rows/loaded-rows.mts';
 
 export const COLUMN = 'column';
@@ -19,6 +20,7 @@ export type ColumnUse = {
   readonly node: TSESTree.Node;
   readonly shape: typeof COLUMN | typeof EXISTENCE;
   readonly field?: string;
+  readonly existence?: { readonly awaited: TSESTree.AwaitExpression; readonly site: TSESTree.Node };
 };
 
 function isMemberCall(node: TSESTree.Node): node is MemberCall {
@@ -39,7 +41,11 @@ export function columnUse(
   awaited: TSESTree.AwaitExpression,
 ): ColumnUse | undefined {
   const query = awaited.argument;
-  if (query.type !== AST_NODE_TYPES.CallExpression || !isQueryResult(scope, awaited)) {
+  if (
+    query.type !== AST_NODE_TYPES.CallExpression ||
+    isForeignCall(context, query) ||
+    !isQueryResult(scope, awaited)
+  ) {
     return undefined;
   }
   const rows = loadedRows(context, awaited);
@@ -71,7 +77,12 @@ export function existenceUse(
   awaited: TSESTree.AwaitExpression,
 ): ColumnUse | undefined {
   const call = plainCall(awaited);
-  if (call === undefined || isProjection(call) || isLocking(context, call)) {
+  if (
+    call === undefined ||
+    isProjection(call) ||
+    isLocking(context, call) ||
+    isForeignCall(context, call)
+  ) {
     return undefined;
   }
   const site = singleRead(context, awaited);
@@ -80,5 +91,7 @@ export function existenceUse(
   }
   const counted = isOrmCall(scope, call, COUNTS) && isCountTest(site);
   const found = isOrmCall(scope, call, SINGLES) && isBooleanUse(site);
-  return counted || found ? { node: call, shape: EXISTENCE } : undefined;
+  return counted || found
+    ? { node: call, shape: EXISTENCE, existence: { awaited, site } }
+    : undefined;
 }

@@ -5,7 +5,7 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import type { SourceCode } from '../../typed/node-views.mts';
+import { contains, type SourceCode } from '../../typed/node-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import { partsOf } from '../../analysis/narrowing/type-parts.mts';
 import { memberName } from '../../analysis/test-code-analysis.mts';
@@ -73,12 +73,8 @@ function isErrorParameter(services: Services, parameter: TSESTree.Identifier): b
   return isErrorType(checker, checker.getTypeAtLocation(target));
 }
 
-function within(node: TSESTree.Node, outer: TSESTree.Node): boolean {
-  return node.range[0] >= outer.range[0] && node.range[1] <= outer.range[1];
-}
-
 function settlesInside(fn: FunctionNode, variable: TSESLint.Scope.Variable): boolean {
-  return variable.references.some((reference) => within(reference.identifier, fn));
+  return variable.references.some((reference) => contains(fn, reference.identifier));
 }
 
 function isUnread(context: Context, fn: FunctionNode, parameter: TSESTree.Identifier): boolean {

@@ -3,7 +3,7 @@ import type { Loose } from '../test-support/loose-facts.mts';
 import type { UseLaunchFact } from '../test-support/facts.mts';
 import { run, sourceRouted, summary } from '../test-support/facts.mts';
 import { file, fn, importOf, klass, useLaunch } from '../test-support/loose-facts.mts';
-import { CHILD_OUTLIVES_RESOURCE_RULE, childLifetimeFindings } from './resource-lifetime.mjs';
+import { CHILD_OUTLIVES_RESOURCE_RULE, childLifetimeFindings } from './resource-lifetime.mts';
 
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
 const childMessage = (resource: string, builder = 'launch', scope = '`scope`') =>

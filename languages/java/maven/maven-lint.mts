@@ -1,21 +1,21 @@
-import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs';
+import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mts';
 import { guardCompiler } from './errorprone/maven-compiler.mts';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from './programs/java-command.mts';
 import { type SourceModule, compilerOf } from './errorprone/compiler-types.mts';
-import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
-import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mts';
+import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mts';
 import {
   NITPICKER_SPOTBUGS,
   spotbugsArguments,
-} from '../adapters/tool-config/declared/spotbugs-declared.mjs';
+} from '../adapters/tool-config/declared/spotbugs-declared.mts';
 import { type JavaSpawn, callUntyped } from '../adapters/typed/java-values.mts';
 import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
-import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mjs';
+import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mts';
 import { spotbugsLaunch } from './security/spotbugs-launch.mts';
 
 export { javaFiles } from './lint/java-files.mts';

@@ -6,7 +6,7 @@ import { arrayItemTypes } from '../../../../support/array-items.mts';
 import { ancestorsOf } from '../../../../typed/node-views.mts';
 import type { Context } from '../../../../security/security-values.mts';
 import { methodCallOn, outerOf } from '../../repeated-runs.mts';
-import { enclosingFunction } from '../../receivers/later-reads.mts';
+import { enclosingFunction } from '../../../../typed/syntax-views.mts';
 import { isAssignmentTarget } from '../../receivers/read-only-uses.mts';
 import { canBeNaN } from '../element-types.mts';
 import { needsParentheses } from '../parentheses.mts';

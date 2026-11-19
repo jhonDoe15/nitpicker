@@ -3,7 +3,7 @@ import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/t
 import {
   plainTextRegexes as untypedPlainTextRegexes,
   unquotedRegexValues as untypedUnquotedRegexValues,
-} from './regex-values.mjs';
+} from './regex-values.mts';
 
 const plainTextRegexes: Check<Subjected> = untypedPlainTextRegexes;
 const unquotedRegexValues: Check<Subjected> = untypedUnquotedRegexValues;

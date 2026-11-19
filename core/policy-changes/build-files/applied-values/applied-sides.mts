@@ -54,7 +54,7 @@ function declaredRetriesSide(side: ProjectSide): AppliedSide {
   try {
     const declarations = testRetryDeclarations(
       readDeclaredBuild({
-        paths: () => side.files,
+        paths: () => [...side.files],
         readMany: directorySource(side.root).readMany,
       }),
     );

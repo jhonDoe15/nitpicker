@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { messageFormat, printfFormat, wrongConversion } from './log-formats.mjs';
+import { messageFormat, printfFormat, wrongConversion } from './log-formats.mts';
 
 describe('printfFormat', () => {
   it.each([

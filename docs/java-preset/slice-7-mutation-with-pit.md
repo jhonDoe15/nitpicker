@@ -117,6 +117,6 @@ there, the other checks ran. Fix the tests and rerun:`) instead of Gradle's own 
 - **Path.** The source file of the mutated class, found under the manifest's source roots from the
   class's package and PIT's `sourceFile`. Mutants of classes without a source file there
   (generated code) are skipped.
-- **Tests.** `ingesters.test.mjs` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mts`
+- **Tests.** `pit.test.mts` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mts`
   (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
   change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.

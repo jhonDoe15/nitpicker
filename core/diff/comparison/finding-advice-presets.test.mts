@@ -2,12 +2,12 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
 import { applyRuleHints } from '../../../languages/python/rules/rule-hints.mts';
-import { withRuleMessage as withRuleMessageJs } from '../../../languages/java/messages/rule-messages.mjs';
+import { withRuleMessage as withRuleMessageJs } from '../../../languages/java/messages/rule-messages.mts';
 import { ingestErrorProne as ingestErrorProneJs } from '../../../languages/java/ingest/errorprone/errorprone.mts';
-import { withKotlinRuleMessage as withKotlinRuleMessageJs } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
+import { withKotlinRuleMessage as withKotlinRuleMessageJs } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mts';
 import { messagesFor, ratchetedFinding } from '../../../shared/rules/file-limits.mjs';
 import { exceptionHint as exceptionHintJs } from '../../../shared/rules/exceptions.mjs';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
 import { schemaAccepts } from './test-support/findings-schema-check.mts';
 import { type ParsedFinding, parseFinding } from './test-support/parsed-findings.mts';
 
@@ -15,8 +15,12 @@ type Fields = Readonly<Record<string, unknown>>;
 type Builder = (path: string) => Fields;
 type Sample = readonly [string, string, Builder, string, string, string];
 
-const withRuleMessage: (finding: Fields) => Fields = withRuleMessageJs;
-const withKotlinRuleMessage: (finding: Fields) => Fields = withKotlinRuleMessageJs;
+function withRuleMessage(finding: Fields): Fields {
+  return fieldsOf(Reflect.apply(withRuleMessageJs, undefined, [finding]));
+}
+function withKotlinRuleMessage(finding: Fields): Fields {
+  return fieldsOf(Reflect.apply(withKotlinRuleMessageJs, undefined, [finding]));
+}
 const ingestErrorProne: (text: string) => { readonly findings: readonly Fields[] } =
   ingestErrorProneJs;
 const exceptionHint: (rule: string, path: string) => string = exceptionHintJs;

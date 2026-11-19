@@ -3,7 +3,7 @@ import path from 'node:path';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mts';
 import { readProjectDuplicateFindings } from '../adapters/kotlin/kotlin-duplicates.mts';
 import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
-import { inModule } from './module-path.mjs';
+import { inModule } from './module-path.mts';
 import { projectWideReport } from './project-wide.mts';
 import { resolveInside } from '../../../shared/conventions/read-inside.mjs';
 import {

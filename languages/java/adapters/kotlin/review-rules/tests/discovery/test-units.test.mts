@@ -1,13 +1,14 @@
+import type { Suite, TestScanned } from '../typed/discovery-types.mts';
 import { describe, expect, it } from 'vitest';
-import { classesOf as untypedClassesOf } from './declarations.mjs';
-import { functionsOf as untypedFunctionsOf } from './functions.mjs';
+import { classesOf as untypedClassesOf } from './declarations.mts';
+import { functionsOf as untypedFunctionsOf } from './functions.mts';
 import {
   discoverSuites as untypedDiscoverSuites,
   scanTestFile as untypedScanTestFile,
   testBodies as untypedTestBodies,
-} from './test-units.mjs';
+} from './test-units.mts';
 
-type Scanned = { code: string } | undefined;
+type Scanned = TestScanned | undefined;
 type Named = { name: string };
 type Symbolic = { symbol: string };
 type ClassNode = {
@@ -17,13 +18,33 @@ type ClassNode = {
   bodyOpen: number;
 };
 type FunctionNode = { name: string; body: { start: number; end: number; expression: boolean } };
-type Suite = Symbolic & { nodes: (Symbolic & { prefix: string })[] };
 
-const scanTestFile: (text: string) => Scanned = untypedScanTestFile;
-const classesOf: (scanned: Scanned) => ClassNode[] = untypedClassesOf;
-const functionsOf: (scanned: Scanned) => FunctionNode[] = untypedFunctionsOf;
-const discoverSuites: (scanned: Scanned) => Suite[] = untypedDiscoverSuites;
-const testBodies: (scanned: Scanned, suites: Suite[]) => Symbolic[] = untypedTestBodies;
+function present(scanned: Scanned): TestScanned {
+  if (scanned === undefined) {
+    throw new Error('expected a scanned test file');
+  }
+  return scanned;
+}
+
+function scanTestFile(text: string): Scanned {
+  return untypedScanTestFile(text);
+}
+
+function classesOf(scanned: Scanned): ClassNode[] {
+  return untypedClassesOf(present(scanned));
+}
+
+function functionsOf(scanned: Scanned): FunctionNode[] {
+  return untypedFunctionsOf(present(scanned));
+}
+
+function discoverSuites(scanned: Scanned): Suite[] {
+  return untypedDiscoverSuites(present(scanned));
+}
+
+function testBodies(scanned: Scanned, suites: Suite[]): Symbolic[] {
+  return untypedTestBodies(present(scanned), suites);
+}
 
 function names(items: Named[]): string[] {
   return items.map(({ name }) => name);

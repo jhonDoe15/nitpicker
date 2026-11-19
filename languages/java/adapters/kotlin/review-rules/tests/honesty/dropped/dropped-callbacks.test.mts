@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
-import { DROPPED_RULE } from './dropped-callbacks.mjs';
+import { DROPPED_RULE } from './dropped-callbacks.mts';
 
 function dropped(text: string): string[] {
   return rulesOf(text, DROPPED_RULE);

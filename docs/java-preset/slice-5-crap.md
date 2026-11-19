@@ -15,7 +15,7 @@ Part of the [Java preset guide](../java-preset.md).
   nested and anonymous classes are units of their own and do not count towards the enclosing
   method; the same scanner counts all of them (see
   [Structure limits (SH5)](structure-limits-sh5.md)).
-- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
+- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mts`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
   the file, the method name (`<init>` is the class name) and the line match: the method's first line
   lies in the method's line range. This also joins methods of anonymous classes. A constructor is
@@ -70,6 +70,6 @@ Part of the [Java preset guide](../java-preset.md).
   git's renames. The size and CRAP ratchets are keyed by the method's name, so a method that gains a
   parameter keeps its legacy values and fails only on growth; renaming the method, or adding an
   overload of the same name above it, makes them new (#548).
-- **Tests.** `languages/java/ingest/crap.test.mjs` against the committed samples
+- **Tests.** `languages/java/ingest/crap.test.mts` against the committed samples
   `fixtures/structure.json` and `fixtures/jacoco-crap.xml`; `java-reports.test.mts` covers the glue;
   the gated e2e test has a case adding a ten-branch untested method.

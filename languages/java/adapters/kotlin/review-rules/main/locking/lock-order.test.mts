@@ -3,8 +3,8 @@ import type { FileFacts } from '../../test-support/facts.mts';
 import { run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { file, klass, parameter, property } from '../../test-support/loose-facts.mts';
-import { LOCK_ORDER_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
-import { lockOrderFindings } from './lock-order.mjs';
+import { LOCK_ORDER_RULE } from '../../../../../messages/locking/lock-evidence.mts';
+import { lockOrderFindings } from './lock-order.mts';
 
 const CLASS_SCOPE = {
   k: 'class',

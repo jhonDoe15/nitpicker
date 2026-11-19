@@ -1,7 +1,7 @@
 import { applyFindingPolicy as untypedApplyPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../shared/head-policy.mjs';
 import { parseRunnerArguments as untypedParse } from '../../../../core/tooling/runner-arguments.mjs';
-import { precedenceToolNames as untypedPrecedence } from '../../../java/adapters/gradle-presets.mjs';
+import { precedenceToolNames as untypedPrecedence } from '../../../java/adapters/gradle-presets.mts';
 import { describeError as untypedDescribeError } from '../../../../shared/messages/error-chain.mjs';
 import { sharedRouteRule as untypedSharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
 import {

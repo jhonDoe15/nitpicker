@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { type RootsFilter, project, removeProjects } from '../__tests__/spring-config-projects.mts';
-import { withoutTransactionAwareCacheWrites as awareUntyped } from './transaction-aware.mjs';
-
-const withoutTransactionAwareCacheWrites: RootsFilter = awareUntyped;
+import { project, removeProjects } from '../__tests__/spring-config-projects.mts';
+import { withoutTransactionAwareCacheWrites } from './transaction-aware.mts';
 
 const FINDINGS = [
   { tool: 'pmd', rule: 'SpringCacheWriteInTransaction', path: 'src/main/java/shop/Prices.java' },

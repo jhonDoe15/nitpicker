@@ -432,7 +432,9 @@ def writeRules = { String kind, File plan ->
     runNode(rulesWriter, [kind, plan.absolutePath], "nitpicker could not write the ${kind} configuration")
 }
 def toolCommandsFile = new File(initScriptDir, '../builds/tools/tool-commands.json').canonicalFile
-def toolCommandsScript = new File(initScriptDir, '../builds/tools/tool-commands.mjs').canonicalFile
+def toolCommandsScript = ['tool-commands.mts', 'tool-commands.mjs']
+    .collect { new File(initScriptDir, "../builds/tools/${it}").canonicalFile }
+    .find { it.exists() }
 def toolLauncher = { String tool ->
     def launcher = new groovy.json.JsonSlurper().parse(toolCommandsFile)[tool].launcher
     launcher == null ? null : new File(toolCommandsFile.parentFile, launcher).canonicalFile

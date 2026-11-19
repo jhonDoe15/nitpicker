@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pathInside as pathInsideUntyped } from '../../../../../shared/filesystem.mjs';
-import { withUnindexedForeignKeys as filterUntyped } from './key-filter.mjs';
-import { FOREIGN_KEY_RULE, foreignKeyGate } from './key-gate.mjs';
+import { withUnindexedForeignKeys as filterUntyped } from './key-filter.mts';
+import { FOREIGN_KEY_RULE, foreignKeyGate } from './key-gate.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 

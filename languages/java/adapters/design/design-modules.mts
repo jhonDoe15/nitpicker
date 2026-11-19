@@ -5,7 +5,7 @@ import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { DESIGN_FACTS_FILE, designFindings } from './design-findings.mts';
 import type { DesignModule } from './producer/design-facts.mts';
-import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
+import type { JavaFinding } from '../typed/java-values.mts';
 import type { JavaRunOptions } from '../typed/java-run-options.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -62,13 +62,14 @@ export function gradleDesignFindings({
     policy: options.policy,
     analyzerName: options.policy?.preset ?? 'java',
     output: path.join(reportBase, DESIGN_FACTS_FILE),
+    environment: options.environment,
   });
 }
 
 export function mavenDesignFindings(
   projectRoot: string,
   moduleDirs: readonly string[],
-  policy: JavaPolicy | undefined,
+  { policy, environment }: JavaRunOptions,
 ): JavaFinding[] {
   return designFindings({
     projectRoot,
@@ -76,5 +77,6 @@ export function mavenDesignFindings(
     policy,
     analyzerName: policy?.preset ?? 'java',
     output: path.join(projectRoot, MAVEN_REPORT_DIRECTORY, DESIGN_FACTS_FILE),
+    environment,
   });
 }

@@ -4,7 +4,7 @@ import {
   formatTool,
   resolveTools,
   toolDependencies,
-} from '../../../languages/java/maven/maven-tools.mjs';
+} from '../../../languages/java/maven/maven-tools.mts';
 
 const JAVA_DIRECTORY = path.resolve(import.meta.dirname, '../../../languages/java');
 const GRADLE_DIRECTORY = path.join(JAVA_DIRECTORY, 'gradle');
@@ -14,9 +14,9 @@ const GRADLE_SCRIPTS = [
   'kotlin/kotlin-detekt.gradle',
   'kotlin/kotlin-format.gradle',
 ].map((script) => path.join(GRADLE_DIRECTORY, script));
-const MAVEN_TOOLS = path.join(JAVA_DIRECTORY, 'maven', 'maven-tools.mjs');
+const MAVEN_TOOLS = path.join(JAVA_DIRECTORY, 'maven', 'maven-tools.mts');
 const PINNED_COORDINATES = /([\w.-]+):([\w.-]+):\$\{(?:\w+ \?: )?(?:pinned|versions)\.(\w+)\}/g;
-const PINNED_KEY = /\bpinned\.(\w+)/g;
+const PINNED_KEY = /\bpinned\.(\w+)|\bat\('(\w+)'\)|\bpin\(pinned, '(\w+)'\)/g;
 const NOT_DOWNLOADED = new Set(['lizard']);
 
 function source(file) {
@@ -38,7 +38,9 @@ export function gradleToolCoordinates(pinned, scripts = GRADLE_SCRIPTS.map(sourc
 export function toolsWithoutCoordinates(pinned) {
   const keys = new Set([
     ...gradleToolCoordinates(pinned).map(({ key }) => key),
-    ...[...source(MAVEN_TOOLS).matchAll(PINNED_KEY)].map(([, key]) => key),
+    ...[...source(MAVEN_TOOLS).matchAll(PINNED_KEY)].map(
+      ([, dotted, called, pinCall]) => dotted ?? called ?? pinCall,
+    ),
   ]);
   return Object.keys(pinned).filter((key) => !(keys.has(key) || NOT_DOWNLOADED.has(key)));
 }

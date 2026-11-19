@@ -10,7 +10,7 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { callUntyped } from '../typed/java-values.mts';
-import { usesJpa } from './spring-config-files.mjs';
+import { usesJpa } from './spring-config-files.mts';
 import {
   MAIN_PROPERTIES,
   OPEN_IN_VIEW_OFF,
@@ -428,13 +428,13 @@ describe('Java analyzer declaration', () => {
 
   it('hashes the Spring configuration modules', () => {
     const modules = [
-      'languages/java/adapters/spring/config-rules/diagnostics.mjs',
-      'languages/java/adapters/spring/config-rules/profiles.mjs',
-      'languages/java/adapters/spring/java-spring.mjs',
-      'languages/java/adapters/spring/spring-config-files.mjs',
-      'languages/java/adapters/spring/spring-config-parser.mjs',
-      'languages/java/adapters/spring/spring-secrets.mjs',
-      'languages/java/adapters/spring/wiring/spring-wiring.mjs',
+      'languages/java/adapters/spring/config-rules/diagnostics.mts',
+      'languages/java/adapters/spring/config-rules/profiles.mts',
+      'languages/java/adapters/spring/java-spring.mts',
+      'languages/java/adapters/spring/spring-config-files.mts',
+      'languages/java/adapters/spring/spring-config-parser.mts',
+      'languages/java/adapters/spring/spring-secrets.mts',
+      'languages/java/adapters/spring/wiring/spring-wiring.mts',
     ];
 
     expect(

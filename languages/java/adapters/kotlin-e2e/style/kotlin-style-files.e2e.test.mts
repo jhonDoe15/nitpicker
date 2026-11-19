@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mts';
 import {
   kotlinGradleArguments,

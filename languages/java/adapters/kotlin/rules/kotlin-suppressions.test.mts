@@ -9,7 +9,7 @@ import {
   kotlinFiles,
   readSuppressionFindings as untypedReadSuppressionFindings,
   suppressionTokens,
-} from './kotlin-suppressions.mjs';
+} from './kotlin-suppressions.mts';
 
 type Roots = { sourceRoots: string[]; testRoots?: string[] };
 type Files = Record<string, string>;

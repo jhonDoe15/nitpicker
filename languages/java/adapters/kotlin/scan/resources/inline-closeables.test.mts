@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { unclosedInlineResources as untypedUnclosedInlineResources } from './inline-closeables.mjs';
+import { unclosedInlineResources as untypedUnclosedInlineResources } from './inline-closeables.mts';
 
 const unclosedInlineResources: Check<Subjected> = untypedUnclosedInlineResources;
 

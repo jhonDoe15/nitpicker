@@ -6,8 +6,8 @@ import {
   kotlinRuleCases,
 } from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
 import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { withKotlinRuleMessage as untypedWithKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
-import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
+import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mts';
+import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mts';
 import { assigned } from '../test-support/views/assigned.mts';
 import {
   detektFindingsOf,
@@ -22,16 +22,6 @@ import {
 import type { KotlinRuleCase } from '../../kotlin/rules/test-support/kotlin-guard-cases.mts';
 
 type CaseFixture = { readonly project: KotlinProject };
-type RecordedFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly message: string | undefined;
-  readonly classification: string;
-};
-
-const withKotlinRuleMessage: (finding: RecordedFinding) => { readonly message: string } =
-  untypedWithKotlinRuleMessage;
 const exceptionHint: (rule: string, file: string) => string = untypedExceptionHint;
 
 const RUN_BLOCKING =
@@ -60,7 +50,7 @@ function recordedFinding(testCase: KotlinRuleCase, file: string) {
     tool: 'detekt',
     rule: testCase.rule,
     path: file,
-    message: expectedMessage(testCase, 'banned'),
+    message: assigned(expectedMessage(testCase, 'banned'), testCase.id),
     classification: 'enforceable',
   });
 }

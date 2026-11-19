@@ -1,12 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import * as prettier from 'prettier';
 import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
+import { containedPath as untypedContainedPath } from '../../shared/paths/contained-path.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { buildReference } from './build.mts';
 import { renderReference } from './render.mts';
 import type { FixSources, ReferenceEntry } from './build.mts';
 
+const containedPath: (
+  root: string,
+  relative: string,
+  options: { readonly outside: (relative: string) => string },
+) => string = untypedContainedPath;
 const pageData: (entries: readonly ReferenceEntry[]) => unknown = encodePage;
 const dataDirectory: string = REFERENCE_DATA_DIRECTORY;
 const pageIds: readonly { readonly id: string }[] = PAGES;
@@ -25,7 +30,7 @@ export {
   liveToolText,
   TOOL_TEXT_TOOLS,
   toolTextFile,
-} from '../../languages/java/reference/tool-text/tool-text.mjs';
+} from '../../languages/java/reference/tool-text/tool-text.mts';
 export {
   liveEslintInventory,
   writeEslintInventory,
@@ -34,11 +39,9 @@ export {
 const JSON_FILE = /\.json$/u;
 
 function insideRepository(repositoryRoot: string, file: string): string {
-  const target = path.resolve(repositoryRoot, file);
-  if (!target.startsWith(repositoryRoot + path.sep)) {
-    throw new Error(`The generated file ${file} is outside the repository`);
-  }
-  return target;
+  return containedPath(repositoryRoot, file, {
+    outside: (relative) => `The generated file ${relative} is outside the repository`,
+  });
 }
 
 export async function formattedText(

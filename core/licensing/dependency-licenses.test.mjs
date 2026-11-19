@@ -18,7 +18,7 @@ import {
   REJECTED,
   WEAK_COPYLEFT,
 } from './test-support/license-rule.mjs';
-import { readPinnedTools } from '../../languages/java/builds/java-build.mjs';
+import { readPinnedTools } from '../../languages/java/builds/java-build.mts';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const temporaryRoots = [];

@@ -3,7 +3,10 @@ import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../../
 import { nearDuplicateFindings as untypedNearDuplicateFindings } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import { decidedConditionFindings as untypedDecidedConditionFindings } from '../../../../../shared/rules/decided/decided-conditions.mjs';
 import { duplicateBranchFindings as untypedDuplicateBranchFindings } from '../../../../../shared/rules/branches/duplicate-branches.mjs';
-import { readJvmUnits as untypedReadJvmUnits } from '../jvm-trees.mjs';
+import { shorterConditionFindings as untypedShorterConditionFindings } from '../../../../../shared/rules/shorter/shorter-conditions.mjs';
+import { integerSlipFindings as untypedIntegerSlipFindings } from '../../../../../shared/rules/decided/slips/integer-slips.mjs';
+import { resultSlipFindings as untypedResultSlipFindings } from '../../../../../shared/rules/slips/slip-findings.mjs';
+import { readJvmUnits as untypedReadJvmUnits } from '../jvm-trees.mts';
 
 export type Refusal = {
   readonly units: readonly string[];
@@ -20,6 +23,7 @@ export type NearFinding = {
 };
 
 export type RuleFinding = {
+  readonly rule?: string;
   readonly message: string;
   readonly identity?: string;
   readonly symbol?: string | undefined;
@@ -46,6 +50,17 @@ export const decidedConditionFindings: (
   units: readonly Unit[],
   options: RuleOptions,
 ) => RuleFinding[] = untypedDecidedConditionFindings;
+
+export const shorterConditionFindings: (
+  units: readonly Unit[],
+  options: RuleOptions,
+) => RuleFinding[] = untypedShorterConditionFindings;
+
+export const integerSlipFindings: (units: readonly Unit[], options: RuleOptions) => RuleFinding[] =
+  untypedIntegerSlipFindings;
+
+export const resultSlipFindings: (units: readonly Unit[], options: RuleOptions) => RuleFinding[] =
+  untypedResultSlipFindings;
 
 export const duplicateBranchFindings: (
   units: readonly Unit[],

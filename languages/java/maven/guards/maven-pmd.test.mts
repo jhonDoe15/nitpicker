@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { runCpd, runPmd } from './maven-pmd.mts';
 

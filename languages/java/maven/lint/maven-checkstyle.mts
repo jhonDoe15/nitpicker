@@ -5,11 +5,11 @@ import path from 'node:path';
 import {
   nitpickerCheckstyleConfig,
   withGuardChecks,
-} from '../../builds/rulesets/checkstyle-config.mjs';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
-import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mjs';
-import { CHECKSTYLE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
+} from '../../builds/rulesets/checkstyle-config.mts';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
+import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mts';
+import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mts';
+import { CHECKSTYLE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, optionalText, textOf } from '../../../../shared/values/readers.mts';
 import { skipWithoutJdk, toolJava } from '../errorprone/maven-jdk.mts';

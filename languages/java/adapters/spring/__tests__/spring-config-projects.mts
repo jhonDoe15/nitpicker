@@ -1,30 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readSpringConfigFindings as readUntyped } from '../java-spring.mjs';
+import type { SpringFinding } from '../typed/spring-types.mts';
 
-export const readSpringConfigFindings: (
-  projectRoot: string,
-  options?: Readonly<Record<string, unknown>>,
-) => SpringFinding[] = readUntyped;
-
-type Candidate = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly location?: { readonly line: number; readonly column?: number };
-  readonly [field: string]: unknown;
-};
-
-export type TransactionFilters = (
-  findings: readonly Candidate[],
-  options: { projectRoot: string; allSourceRoots: string[]; manifest?: object },
-) => Candidate[];
-
-export type RootsFilter = (
-  findings: readonly Candidate[],
-  options: { projectRoot: string; roots: string[] },
-) => Candidate[];
+export { readSpringConfigFindings } from '../java-spring.mts';
 
 const roots: string[] = [];
 
@@ -62,16 +41,7 @@ const OPEN_IN_VIEW_MESSAGE =
   'Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries.';
 export const MAIN_PROPERTIES = 'src/main/resources/application.properties';
 
-export type SpringFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly identity: string;
-  readonly message: string;
-  readonly allowedForm: string;
-  readonly classification: string;
-  readonly location?: { readonly line: number };
-};
+export type { SpringFinding } from '../typed/spring-types.mts';
 
 type FindingFields = {
   readonly rule: string;

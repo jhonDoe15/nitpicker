@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readPinnedTools } from '../../languages/java/builds/java-build.mjs';
+import { readPinnedTools } from '../../languages/java/builds/java-build.mts';
 import { javaJarLicenseViolations } from './test-support/dependency-licenses.mjs';
 import {
   extraTools,

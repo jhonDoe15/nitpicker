@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { configurationReads as untypedConfigurationReads } from './configuration-reads.mjs';
+import { configurationReads as untypedConfigurationReads } from './configuration-reads.mts';
 
 const configurationReads: Check<Ruled> = untypedConfigurationReads;
 
