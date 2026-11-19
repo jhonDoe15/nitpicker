@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { ingestArchunit } from './archunit.mts';
 import { ingestCheckstyle } from './formatting/checkstyle.mts';
 import { decodeEntities as untypedDecodeEntities } from '../../../shared/ingest/common.mjs';

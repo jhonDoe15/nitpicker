@@ -5,7 +5,7 @@ import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-re
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mts';
 import { withoutGeneratedSources } from '../../generated/generated-sources.mts';
 import { sarifFindings } from './sarif-reports.mts';
 

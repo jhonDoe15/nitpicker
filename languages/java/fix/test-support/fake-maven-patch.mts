@@ -6,6 +6,13 @@ export type Reply = { readonly status: number; readonly stdout: string; readonly
 
 export type FakeInvocation = FixInvocation & { readonly operation?: string | undefined };
 
+export function cwdOf(invocation: FakeInvocation): string {
+  if (invocation.cwd === undefined) {
+    throw new TypeError('The fake tool invocation has no working directory');
+  }
+  return invocation.cwd;
+}
+
 type Diagnostic = { readonly file: string; readonly line: number; readonly message: string };
 
 export type PatchHooks = {
@@ -80,10 +87,10 @@ function errorProneRun(invocation: FakeInvocation, patch: PatchHooks | undefined
     mkdirSync(directory, { recursive: true });
     writeFileSync(
       path.join(directory, 'error-prone.patch'),
-      patch.patch(invocation.cwd, directory, checks),
+      patch.patch(cwdOf(invocation), directory, checks),
     );
   }
-  const found = patch?.diagnostics(invocation.cwd) ?? [];
+  const found = patch?.diagnostics(cwdOf(invocation)) ?? [];
   writeFileSync(
     report,
     JSON.stringify(
@@ -97,10 +104,10 @@ export function mavenPatchResponse(
   invocation: FakeInvocation,
   { patch, mavenClasspaths }: MavenOptions,
 ): Reply {
-  const { args, cwd } = invocation;
+  const { args } = invocation;
   const output = optionOf(args, '-Doutput=');
   if (output !== undefined) {
-    writeFileSync(output, pomFor(cwd));
+    writeFileSync(output, pomFor(cwdOf(invocation)));
     return OK;
   }
   if (args.includes('test-compile')) {

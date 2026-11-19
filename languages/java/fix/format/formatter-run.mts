@@ -2,12 +2,12 @@ import { isUtf8 } from 'node:buffer';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-import { fixSpawn } from '../../../../core/fix/common/fix-command.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { fixSpawn } from '../../../../core/fix/tool-steps/commands/fix-command.mts';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
+} from '../../../../core/tooling/temporary-files.mts';
 import { runJava } from '../../maven/maven-command.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';

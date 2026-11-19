@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byCodeUnits } from '../../../../../core/scope/mutation-scope.mjs';
+import { byCodeUnits } from '../../../../../core/scope/mutation-scope.mts';
 import { affectedModules, type JavaModule } from './affected-modules.mts';
 
 const MODULES: readonly JavaModule[] = [

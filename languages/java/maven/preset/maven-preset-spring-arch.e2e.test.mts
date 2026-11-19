@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 import { collectJavaFindings } from '../../adapters/java-diff.mts';
@@ -114,7 +114,7 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
     expect(
       findings
         .filter((finding) => finding.rule === 'spring-layout')
-        .map((finding) => `${finding.path} ${finding.identity ?? ''}`),
+        .map((finding) => `${finding.path} ${finding.identity}`),
     ).toEqual(SPRING_LAYOUT_FINDINGS);
     expect(rulePaths(findings, 'spring-test-placement')).toEqual(SPRING_TEST_PLACEMENT_FINDINGS);
     expect(() => findings.map((finding) => parseFinding(finding))).not.toThrow();
@@ -136,7 +136,7 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
     expect(
       findings
         .filter((finding) => finding.tool === 'archunit')
-        .map((finding) => `${finding.rule} ${finding.path} ${finding.identity ?? ''}`),
+        .map((finding) => `${finding.rule} ${finding.path} ${finding.identity}`),
     ).toEqual([
       'ddd-aggregate-reference src/main/java/sales/Order.java Order|Customer',
       'ddd-aggregate-reference src/main/java/sales/Wishlist.java Wishlist|Product',

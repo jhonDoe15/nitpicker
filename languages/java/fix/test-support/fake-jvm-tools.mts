@@ -1,10 +1,18 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath as untypedContainedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { byText as untypedByText } from '../../../../shared/text-order/by-text.mjs';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
-import { mavenPatchResponse, optionOf, requiredOption, tokensOf } from './fake-maven-patch.mts';
-import type { FakeInvocation, PatchHooks, Reply } from './fake-maven-patch.mts';
+import {
+  cwdOf,
+  mavenPatchResponse,
+  optionOf,
+  requiredOption,
+  tokensOf,
+  type FakeInvocation,
+  type PatchHooks,
+  type Reply,
+} from './fake-maven-patch.mts';
 
 const containedPath: (root: string, name: string) => string = untypedContainedPath;
 const byText: (left: string, right: string) => number = untypedByText;
@@ -114,9 +122,9 @@ function recordLaunch(invocation: FakeInvocation, launch: Launch): RecordedLaunc
   const defaults = optionOf(launch.args, DEFAULTS_OPTION);
   return {
     operation: invocation.operation,
-    cwd: invocation.cwd,
+    cwd: cwdOf(invocation),
     ...launch,
-    layout: readdirSync(workspaceOf(invocation.cwd), { recursive: true, encoding: 'utf8' }).sort(
+    layout: readdirSync(workspaceOf(cwdOf(invocation)), { recursive: true, encoding: 'utf8' }).sort(
       byText,
     ),
     defaults: defaults === undefined ? undefined : readFileSync(defaults, 'utf8'),
@@ -129,7 +137,7 @@ function formatResponse(invocation: FakeInvocation, options: Options): Reply {
   for (const file of launched(invocation).args.filter((argument) =>
     /\.kts?$|\.java$/u.test(argument),
   )) {
-    const target = containedPath(invocation.cwd, file);
+    const target = containedPath(cwdOf(invocation), file);
     const content = readFileSync(target, 'utf8');
     if (content.includes(unparsable)) {
       failed.push(parseError(invocation.operation, file));

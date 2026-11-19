@@ -11,7 +11,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fakeJvmTools } from '../test-support/fake-jvm-tools.mts';
 import type { FakeJvmTools } from '../test-support/fake-jvm-tools.mts';
-import type { FakeInvocation } from '../test-support/fake-maven-patch.mts';
+import { cwdOf, type FakeInvocation } from '../test-support/fake-maven-patch.mts';
 import {
   FIX_TOOLS_BUILD,
   TOOL_RESOLUTION_TIMEOUT_MS,
@@ -104,18 +104,19 @@ describe('resolveToolClasspaths', () => {
       ktlint: ['/fake/ktlint.jar'],
     });
     const call = firstCall(tools);
-    const directory = call.cwd.replace(/\.staging-\w+$/u, '');
+    const callCwd = cwdOf(call);
+    const directory = callCwd.replace(/\.staging-\w+$/u, '');
     expect({ ...call, cwd: directory.replace(GRADLE_TOOLS, '<tools>') }).toEqual({
       operation: 'fix-tools',
       command: 'gradle',
-      args: gradleToolArguments(TOOLS, call.cwd),
+      args: gradleToolArguments(TOOLS, callCwd),
       cwd: '<tools>',
       acceptedStatuses: [0],
       environment: {},
       input: undefined,
       timeout: TOOL_RESOLUTION_TIMEOUT_MS,
     });
-    expect(existsSync(call.cwd)).toBe(false);
+    expect(existsSync(callCwd)).toBe(false);
     expect([
       readFileSync(path.join(directory, 'build.gradle'), 'utf8'),
       readFileSync(path.join(directory, 'settings.gradle'), 'utf8'),
@@ -154,7 +155,8 @@ describe('resolveToolClasspaths', () => {
         projectRoot: root,
         environment: { XDG_CACHE_HOME: path.join(root, 'cache') },
         tools: TOOLS,
-        executeFixCommand: ({ cwd }: FakeInvocation) => {
+        executeFixCommand: (invocation: FakeInvocation) => {
+          const cwd = cwdOf(invocation);
           written.push([
             readFileSync(path.join(cwd, 'settings.gradle.kts'), 'utf8'),
             existsSync(path.join(cwd, 'settings.gradle')),

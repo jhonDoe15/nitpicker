@@ -8,7 +8,7 @@ import {
 } from '../test-support/kotlin-metrics-views.mts';
 import type { MetricsFunction } from '../test-support/kotlin-metrics-views.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
-import { parseFinding as untypedParseFinding } from '../../../../../core/diff/comparison/finding-schema.mjs';
+import { parseFinding as untypedParseFinding } from '../../../../../core/diff/comparison/finding-schema.mts';
 
 const temporaryRoots: string[] = [];
 const parseFinding: (value: unknown) => unknown = untypedParseFinding;

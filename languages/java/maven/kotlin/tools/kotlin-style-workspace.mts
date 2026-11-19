@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../../../core/tooling/temporary-files.mjs';
+} from '../../../../../core/tooling/temporary-files.mts';
 import { relativeTo } from '../../module/module-paths.mts';
 import type {
   EditorConfigFile,

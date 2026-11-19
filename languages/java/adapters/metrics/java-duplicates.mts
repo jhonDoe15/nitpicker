@@ -17,8 +17,8 @@ import {
   DUPLICATES_REPORT,
   DUPLICATES_TOOL,
   runJscpd,
-} from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { JVM_SKIPPED_FOLDERS } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
+} from '../../../../core/tooling/jscpd/run-jscpd.mts';
+import { JVM_SKIPPED_FOLDERS } from '../../../../core/tooling/jscpd/skipped-folders.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -70,6 +70,7 @@ export function runJavaDuplicates(
     ignore: [...skippedFolderGlobs(skippedFolders), ...excluded.map(literalGlob)],
     reportRoot,
     reportFile,
+    together: false,
     renamed: {
       syntax: format,
       files: sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(

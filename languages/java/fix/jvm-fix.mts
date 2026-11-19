@@ -1,6 +1,6 @@
-import { fixerError } from '../../../core/fix/common/fix-command.mjs';
-import { excludedBy } from '../../../core/fix/common/fix-files.mjs';
-import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
+import { fixerError } from '../../../core/fix/tool-steps/commands/fix-command.mts';
+import { excludedBy } from '../../../core/fix/tool-steps/fix-files.mts';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mts';
 import {
   changedFiles,
   collectFixFiles,
@@ -9,7 +9,7 @@ import {
   rewrittenPaths,
   runRecipes,
   sharedInputs,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import type {
   FixFile,
   FixOutcome,
@@ -19,7 +19,7 @@ import type {
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mts';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mts';
 import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mts';
-import { defineRecipes } from '../../../core/fix/engine/recipes.mjs';
+import { defineRecipes } from '../../../core/fix/engine/recipes.mts';
 import { errorPronePatch } from './errorprone/run/error-prone-step.mts';
 import { type PatchEntries, errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mts';
 import { JVM_RECIPES } from './recipes/jvm-recipes.mts';
