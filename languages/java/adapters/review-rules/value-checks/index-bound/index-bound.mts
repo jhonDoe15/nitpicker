@@ -1,7 +1,7 @@
 import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mjs';
 import { forward } from '../../max-value-sums/source-file.mts';
-import { eachFrame, statementEnd } from '../scan.mts';
-import type { ValueCheck, ValueFound } from '../scan.mts';
+import { blockBranch, eachFrame, statementEnd } from '../scan.mts';
+import type { Branch, ValueCheck, ValueFound } from '../scan.mts';
 import type { BareSource, Frame, SourceFile, Span } from '../../max-value-sums/sum-types.mts';
 
 const INDEX_BOUND_RULE = 'IndexBoundOffByOne';
@@ -21,7 +21,6 @@ const escapeRegExp: (value: string) => string = untypedEscape;
 
 type Pair = { readonly index: string; readonly owner: string };
 type IfStatement = { readonly index: number; readonly open: number; readonly close: number };
-type Branch = { readonly from: number; readonly to: number; readonly next: number };
 type Context = {
   readonly source: SourceFile;
   readonly statement: IfStatement;
@@ -83,14 +82,13 @@ function strictCheck(text: string, { index, owner }: Pair): boolean {
 }
 
 function branchOf(source: SourceFile, closeParen: number): Branch {
-  const { tokens, partner } = source;
   const start = closeParen + 1;
-  const close = partner[start] ?? -1;
-  if (tokens[start]?.text === '{' && close > start) {
-    return { from: start + 1, to: close, next: close + 1 };
+  const block = blockBranch(source, start);
+  if (block !== undefined) {
+    return block;
   }
   const end = statementEnd(source, start);
-  return { from: start, to: end, next: tokens[end]?.text === ';' ? end + 1 : end };
+  return { from: start, to: end, next: source.tokens[end]?.text === ';' ? end + 1 : end };
 }
 
 function leaves(source: SourceFile, { from, to }: Span): boolean {

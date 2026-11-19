@@ -1,4 +1,4 @@
-import { frameAt } from '../max-value-sums/source-file.mts';
+import { enclosingOpeners, frameAt } from '../max-value-sums/source-file.mts';
 import { methodCalls } from '../token-calls/calls.mts';
 import type { TokenCall } from '../token-calls/calls.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
@@ -62,13 +62,7 @@ function mentionsMarker(source: BareSource, body: Span, markers: ReadonlySet<str
 
 function insideLoop(source: BareSource, index: number): boolean {
   const { tokens, opener, partner } = source;
-  const chain = [opener[index] ?? -1];
-  for (const open of chain) {
-    if (open >= 0) {
-      chain.push(opener[open] ?? -1);
-    }
-  }
-  return chain.some((open) => {
+  return enclosingOpeners(opener, index).some((open) => {
     if (!(open >= 0)) {
       return false;
     }

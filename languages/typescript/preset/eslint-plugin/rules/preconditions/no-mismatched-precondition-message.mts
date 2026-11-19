@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import { ancestorsOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
+import { headWord, normalized } from '../../../../../../shared/naming/name-matching.mts';
 import { unwrapped } from '../typed/syntax-views.mts';
 
 type MessageId = 'mismatch';
@@ -16,15 +17,6 @@ const SUBJECT = new RegExp(
 );
 
 const HOOK_NAME = /^use[A-Z]/u;
-const WORD_BREAK = /(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|[_\-\s]+/u;
-
-function headWord(name: string): string {
-  return (name.split(WORD_BREAK).at(-1) ?? '').toLowerCase().replace(/s$/u, '');
-}
-
-function normalized(name: string): string {
-  return name.replaceAll(/[^a-z0-9]/giu, '').toLowerCase();
-}
 
 function operandNames(node: Node): string[] {
   const names: string[] = [];

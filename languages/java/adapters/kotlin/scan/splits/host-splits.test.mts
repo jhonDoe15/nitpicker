@@ -1,4 +1,4 @@
-import { describeBodyCases } from '../typed/body-cases.mts';
+import { describeBodyCases } from '../body-cases/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
 import { hostPortSplits as untypedHostPortSplits } from './host-splits.mts';
 

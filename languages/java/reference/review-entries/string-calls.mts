@@ -1,6 +1,5 @@
-import { counterpartsOf, ruleEntry } from '../typed/entry-views.mts';
 import type { RuleEntry } from '../typed/entry-views.mts';
-import { JVM_ANALYZERS, JVM_BUILDS } from '../catalog-rules.mts';
+import { pmdGuideEntry } from '../catalog-rules.mts';
 import {
   EXPANDING_REPLACEMENT_ALLOWED,
   EXPANDING_REPLACEMENT_RULE,
@@ -10,43 +9,9 @@ import {
   PATTERN_TRANSLATION_RULE,
 } from '../../adapters/review-rules/string-calls/string-calls.mts';
 
-const BASE = {
-  page: 'java-nitpicker',
-  analyzers: JVM_ANALYZERS,
-  builds: JVM_BUILDS,
-  tool: 'pmd',
-};
-
-function entry({
-  rule,
-  summary,
-  why,
-  allowed,
-  anchor,
-}: {
-  rule: string;
-  summary: string;
-  why: string;
-  allowed: string;
-  anchor: string;
-}): RuleEntry {
-  return ruleEntry({
-    ...BASE,
-    rule,
-    summary,
-    why,
-    allowed,
-    exception: { key: 'exceptions', rule: `pmd/${rule}` },
-    docs: [
-      { label: 'Java preset guide', path: 'docs/java-preset.md', anchor },
-      ...counterpartsOf(`pmd/${rule}`),
-    ],
-  });
-}
-
 export function stringCallEntries(): RuleEntry[] {
   return [
-    entry({
+    pmdGuideEntry({
       rule: PATTERN_TRANSLATION_RULE,
       summary:
         'A chain of two or more `replace`, `replaceAll` or `replaceFirst` calls on one value whose replacements are regex tokens (`.*`, `[^/]*`, `.`) that reaches `Pattern.compile`, `Regex` or `toRegex`, or are `LIKE` tokens (`%` and `_`), with no `Pattern.quote`, `Regex.escape` or escaping replace first.',
@@ -54,7 +19,7 @@ export function stringCallEntries(): RuleEntry[] {
       allowed: PATTERN_TRANSLATION_ALLOWED,
       anchor: 'patterns-translated-without-escaping',
     }),
-    entry({
+    pmdGuideEntry({
       rule: EXPANDING_REPLACEMENT_RULE,
       summary:
         'A `replaceAll` or `replaceFirst` with two arguments, a matcher `replaceAll(repl)`, or a Kotlin `Regex` `replace(text, repl)` whose replacement is not a literal, a constant, a lambda or `Matcher.quoteReplacement`/`Regex.escapeReplacement`.',
@@ -62,7 +27,7 @@ export function stringCallEntries(): RuleEntry[] {
       allowed: EXPANDING_REPLACEMENT_ALLOWED,
       anchor: 'replacement-strings-that-expand',
     }),
-    entry({
+    pmdGuideEntry({
       rule: UNESCAPED_HTML_RULE,
       summary: `A string literal holding an HTML tag that is concatenated, templated (\`\${value}\` in Kotlin) or formatted (\`%s\`) with a value that is not a literal, a number or the result of an escape call.`,
       why: 'A `<`, `&` or quote in a name, a title or a message breaks the markup or injects a tag into a page, an email or a rendered report. Nitpicker reads the sources of every module for it and prints it as a PMD rule.',

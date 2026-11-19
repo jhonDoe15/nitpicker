@@ -28,6 +28,17 @@ export function statementStop(source: BareSource, from: number): { index: number
   return { index: tokens.length, ends: false };
 }
 
+export type Branch = Span & { readonly next: number };
+
+export function blockBranch(source: BareSource, start: number): Branch | undefined {
+  const { tokens, partner } = source;
+  const close = partner[start] ?? -1;
+  if (tokens[start]?.text === '{' && close > start) {
+    return { from: start + 1, to: close, next: close + 1 };
+  }
+  return undefined;
+}
+
 export function statementEnd(source: BareSource, from: number): number {
   return statementStop(source, from).index;
 }

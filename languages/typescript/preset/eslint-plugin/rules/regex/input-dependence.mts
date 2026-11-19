@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
-import { callbackReceiverOf } from '../typed/syntax-views.mts';
+import { callbackReceiverOf } from '../typed/callback-receivers.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;

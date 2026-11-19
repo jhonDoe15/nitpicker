@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Check, type Ruled, scanKotlinSource } from './typed-scan.mts';
+import { type Check, type Ruled, scanKotlinSource } from '../typed/typed-scan.mts';
 
 type Case = [string, string];
 

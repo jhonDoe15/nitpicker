@@ -1,3 +1,4 @@
+import { enclosingOpeners } from '../../max-value-sums/source-file.mts';
 import type { Token } from '../../../reuse/jvm-reuse-types.mts';
 import type { BareSource } from '../../max-value-sums/sum-types.mts';
 
@@ -59,13 +60,7 @@ export function isDiagnosticText(
   { tokens, opener }: Pick<BareSource, 'tokens' | 'opener'>,
   index: number,
 ): boolean {
-  const chain = [opener[index] ?? -1];
-  for (const open of chain) {
-    if (open >= 0) {
-      chain.push(opener[open] ?? -1);
-    }
-  }
-  return chain.some(
+  return enclosingOpeners(opener, index).some(
     (open) => open >= 0 && tokens[open]?.text === '(' && isDiagnosticOpener(tokens, open),
   );
 }
