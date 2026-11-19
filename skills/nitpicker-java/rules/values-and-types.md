@@ -85,6 +85,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A field the constructor sets and a getter exposes belongs in `equals` and `hashCode`: add the new field to both
   methods (`Objects.equals(extension, that.extension)`, `Objects.hash(groupId, artifactId, extension)`), or mark it
   `transient` or name it as a cache, lock or listener when it is not part of the value (`pmd/EqualsLeavesOutField`).
+- Write each early out of `equals(Object)` in the same direction: return `false` when a field differs
+  (`if (!name.equals(that.name)) return false;`, `if (type != that.type || !key.equals(that.key)) return false;`),
+  never when it matches (`pmd/InvertedEqualsCheck`).
+- Put parentheses around a conditional that sits inside a concatenation:
+  `"id=" + (name != null ? name.trim() : "none")`. Written without them, `+` binds first and the
+  concatenation, which is never `null`, is what `!= null` tests (`pmd/ConcatenationComparedWithNull`).
 - A copy constructor, `clone()`, `toBuilder()` or `copy()` copies every field the class declares: when you add a
   field, add it to the copy too (`.tracker(this.tracker)`, `this.tracker = other.tracker`). A field that starts fresh
   in the copy (a lock, a cache, a counter, a listener list) is `transient` or named as such (`pmd/CopyMethodDropsField`).
