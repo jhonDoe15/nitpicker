@@ -81,8 +81,8 @@ function statementBindings(statement: TSESTree.Node): Entry[] {
   });
 }
 
-function isOrmModule(source: string): boolean {
-  return FAMILIES.some(([, matches]) => matches(source));
+export function ormFamilyOf(source: string): string | undefined {
+  return FAMILIES.find(([, matches]) => matches(source))?.[0];
 }
 
 export function moduleScope(context: Context): ModuleScope {
@@ -99,12 +99,12 @@ export function ormLocals(
   name: string,
 ): Set<string | undefined> {
   const locals = [...scope.bindings]
-    .filter(([, { source, imported }]) => isOrmModule(source) && imported === name)
+    .filter(([, { source, imported }]) => ormFamilyOf(source) !== undefined && imported === name)
     .map(([local]) => local);
   return new Set<string | undefined>(locals);
 }
 
-function rootName(node: TSESTree.Node): string | undefined {
+export function rootName(node: TSESTree.Node): string | undefined {
   const steps = chainOf(unwrapped(node), (current) => {
     if (current.type === AST_NODE_TYPES.MemberExpression) {
       return unwrapped(current.object);
@@ -121,7 +121,11 @@ export function isForeignReceiver(
 ): boolean {
   const name = rootName(receiver);
   const binding = name === undefined ? undefined : scope.bindings.get(name);
-  return binding !== undefined && !binding.source.startsWith('.') && !isOrmModule(binding.source);
+  return (
+    binding !== undefined &&
+    !binding.source.startsWith('.') &&
+    ormFamilyOf(binding.source) === undefined
+  );
 }
 
 export function calleeLabel(

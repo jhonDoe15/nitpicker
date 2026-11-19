@@ -5,6 +5,7 @@ import { ancestorsOf } from '../typed/node-views.mts';
 import { outermostOf, TYPE_WRAPPERS } from '../typed/syntax-views.mts';
 import { readsOnlyFields } from './row-callbacks.mts';
 import { libraryBinding, variableOf } from '../persistence/library-bindings.mts';
+import { isColumnComparison } from './receivers/filter-tests.mts';
 
 export const COUNT = 'count';
 export const FILTER = 'filter';
@@ -143,7 +144,11 @@ function methodShape(context: Context, member: TSESTree.MemberExpression): Use |
   }
   const method = memberName(member);
   const [callback] = call.arguments;
-  if (FILTER_METHODS.has(method) && readsOnlyFields(context, callback, { rows: 1 })) {
+  if (
+    FILTER_METHODS.has(method) &&
+    isColumnComparison(context, callback, member.object) &&
+    readsOnlyFields(context, callback, { rows: 1 })
+  ) {
     return { node: call, shape: FILTER };
   }
   if (SORT_METHODS.has(method) && readsOnlyFields(context, callback, { rows: 2 })) {

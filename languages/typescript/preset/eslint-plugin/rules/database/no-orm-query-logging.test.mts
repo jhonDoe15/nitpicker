@@ -2,6 +2,9 @@ import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-orm-query-logging.mts';
 
 const tester = typescriptRuleTester();
+const fixes = (form: string, output: string) => [
+  { messageId: 'queryLogging', data: { form }, suggestions: [{ messageId: 'quiet', output }] },
+];
 const logs = (form: string) => [{ messageId: 'queryLogging', data: { form } }];
 const TYPEORM = 'import { DataSource } from "typeorm";';
 const SEQUELIZE = 'import { Sequelize } from "sequelize";';
@@ -37,15 +40,24 @@ tester.run('no-orm-query-logging', rule, {
   invalid: [
     {
       code: `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: true });`,
-      errors: logs('logging'),
+      errors: fixes(
+        'logging',
+        `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: ['error', 'warn'] });`,
+      ),
     },
     {
       code: `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: "all" });`,
-      errors: logs('logging'),
+      errors: fixes(
+        'logging',
+        `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: ['log', 'info', 'warn', 'error', 'schema', 'migration'] });`,
+      ),
     },
     {
       code: `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: ["query", "error"] });`,
-      errors: logs('logging'),
+      errors: fixes(
+        'logging',
+        `${TYPEORM} export const db = new DataSource({ type: "postgres", logging: ["error"] });`,
+      ),
     },
     {
       code: 'export default { type: "mysql", entities: ["dist/**/*.entity.js"], logging: process.env.NODE_ENV !== "production" };',
@@ -53,7 +65,10 @@ tester.run('no-orm-query-logging', rule, {
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: console.log });`,
-      errors: logs('logging'),
+      errors: fixes(
+        'logging',
+        `${SEQUELIZE} export const db = new Sequelize(url, { logging: false });`,
+      ),
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: isDev ? console.log : false });`,
@@ -61,31 +76,52 @@ tester.run('no-orm-query-logging', rule, {
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: false, logQueryParameters: true });`,
-      errors: logs('logQueryParameters'),
+      errors: fixes(
+        'logQueryParameters',
+        `${SEQUELIZE} export const db = new Sequelize(url, { logging: false, logQueryParameters: false });`,
+      ),
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize(process.env.DATABASE_URL);`,
-      errors: logs('new Sequelize(...)` without `logging: false'),
+      errors: fixes(
+        'new Sequelize(...)` without `logging: false',
+        `${SEQUELIZE} export const db = new Sequelize(process.env.DATABASE_URL, { logging: false });`,
+      ),
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize("app", "user", password);`,
-      errors: logs('new Sequelize(...)` without `logging: false'),
+      errors: fixes(
+        'new Sequelize(...)` without `logging: false',
+        `${SEQUELIZE} export const db = new Sequelize("app", "user", password, { logging: false });`,
+      ),
     },
     {
       code: `${SEQUELIZE} export const db = new Sequelize(url, { dialect: "postgres", pool: { max: 5 } });`,
-      errors: logs('new Sequelize(...)` without `logging: false'),
+      errors: fixes(
+        'new Sequelize(...)` without `logging: false',
+        `${SEQUELIZE} export const db = new Sequelize(url, { dialect: "postgres", pool: { max: 5 }, logging: false });`,
+      ),
     },
     {
       code: `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", models: [User] });`,
-      errors: logs('SequelizeModule.forRoot(...)` without `logging: false'),
+      errors: fixes(
+        'SequelizeModule.forRoot(...)` without `logging: false',
+        `${NEST_SEQUELIZE} export const m = SequelizeModule.forRoot({ dialect: "postgres", models: [User], logging: false });`,
+      ),
     },
     {
       code: `${MIKRO} export default defineConfig({ dbName: "app", debug: true });`,
-      errors: logs('debug'),
+      errors: fixes(
+        'debug',
+        `${MIKRO} export default defineConfig({ dbName: "app", debug: false });`,
+      ),
     },
     {
       code: `${MIKRO} export default defineConfig({ dbName: "app", debug: ["query", "query-params"] });`,
-      errors: logs('debug'),
+      errors: fixes(
+        'debug',
+        `${MIKRO} export default defineConfig({ dbName: "app", debug: false });`,
+      ),
     },
     {
       code: 'module.exports = { client: "pg", connection: process.env.DATABASE_URL, debug: true };',
@@ -93,11 +129,11 @@ tester.run('no-orm-query-logging', rule, {
     },
     {
       code: `${PRISMA} export const prisma = new PrismaClient({ log: ["query", "error"] });`,
-      errors: logs('log'),
+      errors: fixes('log', `${PRISMA} export const prisma = new PrismaClient({ log: ["error"] });`),
     },
     {
       code: `${PRISMA} export const prisma = new PrismaClient({ log: [{ emit: "stdout", level: "query" }] });`,
-      errors: logs('log'),
+      errors: fixes('log', `${PRISMA} export const prisma = new PrismaClient({ log: [] });`),
     },
     {
       code: `${PRISMA} export class Db extends PrismaClient { constructor() { super({ log: isDev ? ["query"] : [] }); } }`,
@@ -105,27 +141,42 @@ tester.run('no-orm-query-logging', rule, {
     },
     {
       code: `${DRIZZLE} export const db = drizzle(pool, { logger: true });`,
-      errors: logs('logger'),
+      errors: fixes('logger', `${DRIZZLE} export const db = drizzle(pool, { logger: false });`),
     },
     {
       code: 'import { drizzle as dz, DefaultLogger } from "drizzle-orm/node-postgres"; export const db = dz(pool, { logger: new DefaultLogger() });',
-      errors: logs('logger'),
+      errors: fixes(
+        'logger',
+        'import { drizzle as dz, DefaultLogger } from "drizzle-orm/node-postgres"; export const db = dz(pool, { logger: false });',
+      ),
     },
     {
-      code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: (sql) => logger.debug(sql) });`,
-      errors: logs('logging'),
+      code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: (sql) => logger.info(sql) });`,
+      errors: fixes(
+        'logging',
+        `${SEQUELIZE} export const db = new Sequelize(url, { logging: false });`,
+      ),
     },
     {
       code: 'import { Sequelize as SQ } from "@sequelize/core"; export const db = new SQ("postgres://db/app");',
-      errors: logs('new Sequelize(...)` without `logging: false'),
+      errors: fixes(
+        'new Sequelize(...)` without `logging: false',
+        'import { Sequelize as SQ } from "@sequelize/core"; export const db = new SQ("postgres://db/app", { logging: false });',
+      ),
     },
     {
       code: `${NEST_SEQUELIZE} export const m = SequelizeModule.forRootAsync({ useFactory: () => ({ dialect: "postgres", autoLoadModels: false }) });`,
-      errors: logs('SequelizeModule.forRootAsync(...)` without `logging: false'),
+      errors: fixes(
+        'SequelizeModule.forRootAsync(...)` without `logging: false',
+        `${NEST_SEQUELIZE} export const m = SequelizeModule.forRootAsync({ useFactory: () => ({ dialect: "postgres", autoLoadModels: false, logging: false }) });`,
+      ),
     },
     {
       code: 'import { PrismaClient } from "@prisma/client"; export const prisma = new PrismaClient({ log: [{ level: "query" }] });',
-      errors: logs('log'),
+      errors: fixes(
+        'log',
+        'import { PrismaClient } from "@prisma/client"; export const prisma = new PrismaClient({ log: [] });',
+      ),
     },
     {
       code: 'module.exports = { client: "mysql2", debug: process.env.DB_DEBUG === "1" };',

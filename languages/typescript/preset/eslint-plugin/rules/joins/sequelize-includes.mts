@@ -163,3 +163,24 @@ export function includeJoins(
   });
   return groups.map((joined) => ({ orm: 'sequelize', node: options, joined: new Map(joined) }));
 }
+
+export type TopInclude = {
+  readonly entry: TSESTree.Node;
+  readonly name: string;
+  readonly many: boolean;
+};
+
+export function topLevelIncludes(
+  context: Context,
+  types: Types,
+  {
+    call,
+    options,
+  }: { readonly call: TSESTree.CallExpression; readonly options: TSESTree.ObjectExpression },
+): TopInclude[] {
+  const owner = resultEntity(types, call);
+  return entriesOf(context, propertyNamed(context, options, INCLUDE)).flatMap((entry) => {
+    const found = includedRelation(context, types, { owner, entry });
+    return found === undefined ? [] : [{ entry, name: found.name, many: found.relation.many }];
+  });
+}
