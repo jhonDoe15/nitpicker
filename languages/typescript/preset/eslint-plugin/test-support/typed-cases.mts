@@ -45,7 +45,11 @@ export function typedCases(
   function typed(code: string): TypedCase;
   function typed(code: string, errors: CaseError[]): InvalidCase;
   function typed(code: string, errors?: CaseError[]): TypedCase | InvalidCase {
-    const filename = path.join(root, `src/case-${randomUUID()}.${extension}`);
+    const filename = path.join(
+      root,
+      'src',
+      extension === 'tsx' ? `case-${randomUUID()}.tsx` : `case-${randomUUID()}.ts`,
+    );
     writeFileSync(filename, code);
     return errors === undefined ? { filename, code } : { filename, code, errors };
   }
