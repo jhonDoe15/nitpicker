@@ -129,6 +129,24 @@ describe('an unused eslint-disable directive reported by several ESLint analyzer
     expect(result['eslint-errors']).toEqual(['no-debugger src/a.ts']);
   });
 
+  it('reports an unused eslint-enable directive once as well', () => {
+    const enable = (tool: string) => ({
+      ...unused(tool, 'src/a.ts'),
+      rule: 'eslint/unused-enable-directive',
+    });
+    const result = merged({
+      'eslint-lint': [enable('eslint-lint')],
+      'eslint-errors': [enable('eslint-errors')],
+      'eslint-logging': [enable('eslint-logging')],
+    });
+
+    expect(result).toEqual({
+      'eslint-lint': ['eslint/unused-enable-directive src/a.ts'],
+      'eslint-errors': [],
+      'eslint-logging': [],
+    });
+  });
+
   it('leaves a run with no ESLint analyzer as it is', () => {
     const original = run({ 'entry-points': [other('entry-points')] });
 

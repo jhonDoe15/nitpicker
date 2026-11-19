@@ -3946,6 +3946,9 @@ not once per ESLint analyzer: a directive counts as unused only when every ESLin
 file found nothing for it to suppress, so a directive that `eslint-errors` or `eslint-logging` needs is
 not reported by `eslint-lint`. This holds for the `oxlint` and `eslint` engines and in the JavaScript
 preset.
+An `eslint-enable` comment with no `eslint-disable` before it is reported once the same way, as
+`eslint/unused-enable-directive`. Any other ESLint message that names no rule is kept as
+`eslint/unattributed-message` rather than failing the analyzer.
 
 So, as for PMD, listing `"project"` never switches a nitpicker rule off, and `["project"]` is the same as
 `["project", "nitpicker"]`. A rule is lifted for some paths with an `exceptions` entry, the one reviewed
