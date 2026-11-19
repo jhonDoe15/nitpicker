@@ -118,6 +118,7 @@
   "pmd/LinearLookupInLoop": ["performance"],
   "pmd/ListUsedAsSet": ["performance"],
   "pmd/LiteralsFirstInComparisons": ["bug"],
+  "pmd/LockInFinally": ["bug"],
   "pmd/LockOrderInversion": ["bug"],
   "pmd/LogExceptionFirst": ["reliability"],
   "pmd/LogFormatArguments": ["bug"],

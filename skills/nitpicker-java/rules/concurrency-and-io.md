@@ -5,6 +5,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
   (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
   (`await()` in a loop, `signalAll()`).
+- Release a lock in `finally` with `unlock()` on the same receiver that `lock()` took
+  (`finally { lock.unlock(); }`, `rwLock.readLock().unlock()`); a `lock()` there takes it a second
+  time and nothing releases it (`pmd/LockInFinally`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger. A command-line program takes a
   `PrintStream`, `Writer` or `Appendable` parameter and writes to it; only `static void main`
