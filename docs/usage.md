@@ -2217,7 +2217,10 @@ run; its quick results are cached apart from its full ones.
 
 Each analyzer has a deadline: 5 minutes unless the analyzer sets its own (30 minutes for `python` and `go`,
 70 for the Python `mutation` analyzer, two Gradle or Maven commands plus a minute for `java` and
-`kotlin`). An analyzer that runs out of time is a tool error that names this setting. On a large
+`kotlin`). The TypeScript and JavaScript analyzers whose work grows with the code (`coding-standards`,
+`coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code` and `policy-tests`) get 5 minutes plus
+2 minutes for each started thousand source files of the project, so a project of 10,000 files gets
+25 minutes. An analyzer that runs out of time is a tool error that names this setting. On a large
 project, give it more time:
 
 ```json
@@ -3977,6 +3980,9 @@ not once per ESLint analyzer: a directive counts as unused only when every ESLin
 file found nothing for it to suppress, so a directive that `eslint-errors` or `eslint-logging` needs is
 not reported by `eslint-lint`. This holds for the `oxlint` and `eslint` engines and in the JavaScript
 preset.
+An `eslint-enable` comment with no `eslint-disable` before it is reported once the same way, as
+`eslint/unused-enable-directive`. Any other ESLint message that names no rule is kept as
+`eslint/unattributed-message` rather than failing the analyzer.
 
 So, as for PMD, listing `"project"` never switches a nitpicker rule off, and `["project"]` is the same as
 `["project", "nitpicker"]`. A rule is lifted for some paths with an `exceptions` entry, the one reviewed
@@ -4879,5 +4885,10 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   Analyzer versions include the runtime for Java and Kotlin (the JDK), Python and Go, so run the
   aggregate job with the same toolchain as the shards.
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
-  one job. It also sizes the ESLint heap: three quarters of the memory less 1.5 GB for each other
-  analyzer that can run at once, unless `NODE_OPTIONS` already sets `--max-old-space-size`.
+  one job. It also sizes the heap of every built-in Node analyzer (and of the Node tools it starts,
+  ESLint among them): three quarters of the memory less 1.5 GB for each other analyzer that can run at
+  once, unless `NODE_OPTIONS` already sets `--max-old-space-size`. Analyzers that build whole-project
+  programs also carry a memory estimate from the project's number of source files, and one starts
+  only when its estimate fits in three quarters of the memory beside the ones already running (one
+  whose estimate is larger than that runs alone), so a large project runs fewer of them at once
+  instead of running out of memory.
