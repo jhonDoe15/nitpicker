@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts } from '../typed/typescript-views.mts';
+import { ts, wrappedExpression } from '../typed/typescript-views.mts';
 
 export type Step = { readonly via: string };
 
@@ -38,26 +38,23 @@ export type Scope = {
   readonly isType: boolean;
 };
 
+function fallbackLeft(expression: TypeScript.Expression): TypeScript.Expression | undefined {
+  return ts.isBinaryExpression(expression) &&
+    (expression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+      expression.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+    ? expression.left
+    : undefined;
+}
+
 export function unwrap(expression: TypeScript.Expression): TypeScript.Expression {
-  let current = expression;
-  for (;;) {
-    if (
-      ts.isParenthesizedExpression(current) ||
-      ts.isNonNullExpression(current) ||
-      ts.isAsExpression(current) ||
-      ts.isAwaitExpression(current)
-    ) {
-      current = current.expression;
-    } else if (
-      ts.isBinaryExpression(current) &&
-      (current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
-        current.operatorToken.kind === ts.SyntaxKind.BarBarToken)
-    ) {
-      current = current.left;
-    } else {
-      return current;
+  const chain = [expression];
+  for (const current of chain) {
+    const inner = wrappedExpression(current) ?? fallbackLeft(current);
+    if (inner !== undefined) {
+      chain.push(inner);
     }
   }
+  return chain.at(-1) ?? expression;
 }
 
 function isParam(expression: TypeScript.Expression, scope: Scope): boolean {
@@ -67,21 +64,25 @@ function isParam(expression: TypeScript.Expression, scope: Scope): boolean {
 
 function chainStep(expression: TypeScript.Expression, scope: Scope): Step | undefined {
   const names: string[] = [];
-  let current = unwrap(expression);
-  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+  const pending = [unwrap(expression)];
+  for (const current of pending) {
     if (ts.isPropertyAccessExpression(current)) {
       names.unshift(current.name.text);
     }
-    current = unwrap(current.expression);
+    if (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+      pending.push(unwrap(current.expression));
+    }
   }
+  const root = pending.at(-1);
   const known = names.some(
     (name) => CYCLIC_PROPERTIES.has(name) || (scope.isType && TYPE_PROPERTIES.has(name)),
   );
-  return ts.isIdentifier(current) &&
-    scope.checker.getSymbolAtLocation(current) === scope.param &&
+  return root !== undefined &&
+    ts.isIdentifier(root) &&
+    scope.checker.getSymbolAtLocation(root) === scope.param &&
     names.length > 0 &&
     known
-    ? { via: `${current.text}.${names.join('.')}` }
+    ? { via: `${root.text}.${names.join('.')}` }
     : undefined;
 }
 
@@ -100,12 +101,6 @@ function callbackReceiver(declaration: TypeScript.Declaration): TypeScript.Expre
     : undefined;
 }
 
-function viaVariable(declaration: TypeScript.VariableDeclaration, scope: Scope, depth: number) {
-  const loop = declaration.parent.parent;
-  const source = ts.isForOfStatement(loop) ? loop.expression : declaration.initializer;
-  return source === undefined ? undefined : stepOf(source, scope, depth + 1);
-}
-
 function viaBinding(declaration: TypeScript.BindingElement, scope: Scope): Step | undefined {
   const name = declaration.propertyName ?? declaration.name;
   const owner = declaration.parent.parent;
@@ -115,49 +110,58 @@ function viaBinding(declaration: TypeScript.BindingElement, scope: Scope): Step 
     ts.isVariableDeclaration(owner) &&
     owner.initializer !== undefined &&
     isParam(owner.initializer, scope);
-  return known && fromParam ? { via: String(text) } : undefined;
+  return known && fromParam ? { via: text } : undefined;
 }
 
-function viaDeclaration(
-  declaration: TypeScript.Declaration | undefined,
-  scope: Scope,
-  depth: number,
-): Step | undefined {
-  if (declaration === undefined || depth > MAX_DEPTH) {
-    return undefined;
-  }
+type Advance = Step | TypeScript.Expression | undefined;
+
+function advanceDeclaration(declaration: TypeScript.Declaration, scope: Scope): Advance {
   if (ts.isVariableDeclaration(declaration)) {
-    return viaVariable(declaration, scope, depth);
+    const loop = declaration.parent.parent;
+    return ts.isForOfStatement(loop) ? loop.expression : declaration.initializer;
   }
   if (ts.isParameter(declaration)) {
-    const receiver = callbackReceiver(declaration);
-    return receiver === undefined ? undefined : stepOf(receiver, scope, depth + 1);
+    return callbackReceiver(declaration);
   }
   return ts.isBindingElement(declaration) ? viaBinding(declaration, scope) : undefined;
 }
 
-export function stepOf(
-  expression: TypeScript.Expression,
-  scope: Scope,
-  depth = 0,
-): Step | undefined {
+function advanceCall(call: TypeScript.CallExpression, scope: Scope): Step | undefined {
+  const name = ts.isPropertyAccessExpression(call.expression)
+    ? call.expression.name.text
+    : undefined;
+  const [first] = call.arguments;
+  return scope.isType &&
+    name !== undefined &&
+    TYPE_CALLS.has(name) &&
+    first !== undefined &&
+    isParam(first, scope)
+    ? { via: `${name}(${scope.param.name})` }
+    : undefined;
+}
+
+function advance(expression: TypeScript.Expression, scope: Scope, depth: number): Advance {
   const inner = unwrap(expression);
   if (ts.isCallExpression(inner)) {
-    const name = ts.isPropertyAccessExpression(inner.expression)
-      ? inner.expression.name.text
-      : undefined;
-    const [first] = inner.arguments;
-    return scope.isType &&
-      name !== undefined &&
-      TYPE_CALLS.has(name) &&
-      first !== undefined &&
-      isParam(first, scope)
-      ? { via: `${name}(${scope.param.name})` }
-      : undefined;
+    return advanceCall(inner, scope);
   }
   if (ts.isIdentifier(inner)) {
-    const symbol = scope.checker.getSymbolAtLocation(inner);
-    return viaDeclaration(symbol?.valueDeclaration, scope, depth);
+    const declaration = scope.checker.getSymbolAtLocation(inner)?.valueDeclaration;
+    return declaration === undefined || depth > MAX_DEPTH
+      ? undefined
+      : advanceDeclaration(declaration, scope);
   }
   return chainStep(inner, scope);
+}
+
+export function stepOf(expression: TypeScript.Expression, scope: Scope): Step | undefined {
+  const pending = [{ expression, depth: 0 }];
+  for (const hop of pending) {
+    const result = advance(hop.expression, scope, hop.depth);
+    if (result === undefined || 'via' in result) {
+      return result;
+    }
+    pending.push({ expression: result, depth: hop.depth + 1 });
+  }
+  return undefined;
 }

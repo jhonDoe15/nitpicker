@@ -41,8 +41,12 @@ function recordCall(sourceCode: SourceCode, call: TSESTree.CallExpression, facts
   }
   const name = nameOf(callee.type === AST_NODE_TYPES.MemberExpression ? callee.property : callee);
   if (PIPELINES.has(name ?? '')) {
-    const names = call.arguments.map((argument) => namedStreams(sourceCode, argument));
-    names.forEach((text) => text !== undefined && facts.handled.add(text));
+    for (const argument of call.arguments) {
+      const text = namedStreams(sourceCode, argument);
+      if (text !== undefined) {
+        facts.handled.add(text);
+      }
+    }
   }
 }
 
@@ -51,10 +55,10 @@ function dropsErrors(env: PipeEnv, facts: Facts, outer: TSESTree.CallExpression)
   const [first] = pipes;
   const root = first === undefined ? undefined : pipeReceiver(first);
   const middles = pipes.slice(0, -1).flatMap((each) => each.arguments[0] ?? []);
-  const unhandled = (stream: TSESTree.Node): boolean => {
+  function unhandled(stream: TSESTree.Node): boolean {
     const name = namedStreams(env.sourceCode, stream);
     return !receiverListens(stream) && (name === undefined || !facts.handled.has(name));
-  };
+  }
   const target = pipes.length === 1 ? outer.arguments[0] : undefined;
   const awaited =
     target !== undefined && facts.completed.has(namedStreams(env.sourceCode, target) ?? '');

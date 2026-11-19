@@ -1,8 +1,14 @@
-import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { hookName, isFunctionNode } from '../react-effects.mts';
 import { functionLabel } from '../support/component-names.mts';
+
+const STATE_HOOKS = new Set<string | undefined>(['useState', 'useRef']);
+
+function isStateHook(hook: string | undefined): boolean {
+  return STATE_HOOKS.has(hook);
+}
 
 type CallLike = TSESTree.CallExpression | TSESTree.NewExpression;
 
@@ -133,7 +139,7 @@ export const rule: TSESLint.RuleModule<'eagerInitial' | 'recreated'> = {
     return {
       CallExpression(node: TSESTree.CallExpression) {
         const hook = hookName(sourceCode, node.callee);
-        if ((hook === 'useState' || hook === 'useRef') && eagerArgument(node) !== undefined) {
+        if (isStateHook(hook) && eagerArgument(node) !== undefined) {
           context.report({ node, messageId: 'eagerInitial', data: { hook } });
           return;
         }
@@ -145,8 +151,7 @@ export const rule: TSESLint.RuleModule<'eagerInitial' | 'recreated'> = {
         if (
           name !== undefined &&
           statefulFactories.has(name) &&
-          parentHook !== 'useState' &&
-          parentHook !== 'useRef' &&
+          !isStateHook(parentHook) &&
           isBodyLevel(node, context.filename)
         ) {
           context.report({ node, messageId: 'recreated', data: { name } });
@@ -161,8 +166,7 @@ export const rule: TSESLint.RuleModule<'eagerInitial' | 'recreated'> = {
             : undefined;
         if (
           name === 'QueryClient' &&
-          parentHook !== 'useState' &&
-          parentHook !== 'useRef' &&
+          !isStateHook(parentHook) &&
           isBodyLevel(node, context.filename)
         ) {
           context.report({ node, messageId: 'recreated', data: { name: 'new QueryClient' } });

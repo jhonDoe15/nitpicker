@@ -26,11 +26,15 @@ function receiverOf(call: TSESTree.CallExpression): TSESTree.Node | undefined {
 }
 
 function rootName(node: TSESTree.Node): string | undefined {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
+  const pending = [node];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
+      pending.push(current.object);
+    } else {
+      return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
+    }
   }
-  return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
+  return undefined;
 }
 
 function isParameterOf(fn: FunctionNode, name: string | undefined): boolean {

@@ -1,7 +1,6 @@
-import type { TSESLint } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { typeServices } from '../security/security-values.mts';
-import { ts } from '../typed/typescript-views.mts';
+import { typedProgramRule, type ProgramFinding } from '../program-rules/typed-program-rule.mts';
+import { descendantsOf, ts } from '../typed/typescript-views.mts';
 import { stepOf, unwrap } from './cyclic-steps.mts';
 
 type Checker = TypeScript.TypeChecker;
@@ -29,12 +28,12 @@ type Named = {
 };
 
 function functionOf(node: TypeScript.Node): Named | undefined {
-  const declared =
+  if (
     (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) &&
     node.body !== undefined &&
     node.name !== undefined &&
-    ts.isIdentifier(node.name);
-  if (declared && node.name !== undefined && ts.isIdentifier(node.name)) {
+    ts.isIdentifier(node.name)
+  ) {
     return { fn: node, name: node.name.text, nameNode: node.name };
   }
   const init = ts.isVariableDeclaration(node) ? node.initializer : undefined;
@@ -46,16 +45,12 @@ function functionOf(node: TypeScript.Node): Named | undefined {
 }
 
 function isGuarded(fn: TypeScript.Node, checker: Checker): boolean {
-  let guarded = false;
-  const visit = (node: TypeScript.Node) => {
-    if (ts.isIdentifier(node)) {
-      const type = checker.getTypeAtLocation(node);
-      guarded ||= GUARD_NAME.test(node.text) || GUARD_TYPES.has(type.getSymbol()?.getName() ?? '');
-    }
-    node.forEachChild(visit);
-  };
-  visit(fn);
-  return guarded;
+  return descendantsOf(fn).some(
+    (node) =>
+      ts.isIdentifier(node) &&
+      (GUARD_NAME.test(node.text) ||
+        GUARD_TYPES.has(checker.getTypeAtLocation(node).getSymbol()?.getName() ?? '')),
+  );
 }
 
 function isSyntaxType(type: TypeScript.Type): boolean {
@@ -93,17 +88,17 @@ function recursiveTarget(node: TypeScript.CallExpression): TypeScript.MemberName
 }
 
 function recursiveCalls({ fn, name, symbol }: Walk, checker: Checker): TypeScript.CallExpression[] {
-  const calls: TypeScript.CallExpression[] = [];
-  const visit = (node: TypeScript.Node) => {
-    const target = ts.isCallExpression(node) ? recursiveTarget(node) : undefined;
-    const recursive = target?.text === name && checker.getSymbolAtLocation(target) === symbol;
-    if (ts.isCallExpression(node) && recursive) {
-      calls.push(node);
-    }
-    node.forEachChild(visit);
-  };
-  fn.body?.forEachChild(visit);
-  return calls;
+  const { body } = fn;
+  if (body === undefined) {
+    return [];
+  }
+  return descendantsOf(body)
+    .filter((node) => node !== body)
+    .filter(ts.isCallExpression)
+    .filter((node) => {
+      const target = recursiveTarget(node);
+      return target?.text === name && checker.getSymbolAtLocation(target) === symbol;
+    });
 }
 
 function findingOfWalk(walk: Walk, checker: Checker): Finding | undefined {
@@ -124,17 +119,15 @@ function walkOf(node: TypeScript.Node, checker: Checker): Walk | undefined {
     : undefined;
 }
 
-export function findingsIn(sourceFile: TypeScript.SourceFile, checker: Checker): Finding[] {
+function findingsIn(sourceFile: TypeScript.SourceFile, checker: Checker): Finding[] {
   const findings: Finding[] = [];
-  const visit = (node: TypeScript.Node) => {
+  for (const node of descendantsOf(sourceFile)) {
     const walk = walkOf(node, checker);
     const finding = walk === undefined ? undefined : findingOfWalk(walk, checker);
     if (walk !== undefined && finding !== undefined && !isGuarded(walk.fn, checker)) {
       findings.push(finding);
     }
-    node.forEachChild(visit);
-  };
-  visit(sourceFile);
+  }
   return findings;
 }
 
@@ -168,42 +161,17 @@ function findingOf(
   return undefined;
 }
 
-export const rule: TSESLint.RuleModule<'cyclic', [], { readonly requiresTypeChecking: boolean }> = {
-  meta: {
-    type: 'problem',
-    docs: {
-      description:
-        'Report a recursive walk over a graph that can contain cycles, with no visited set or depth limit',
-      requiresTypeChecking: true,
-    },
-    schema: [],
-    messages: {
-      cyclic:
-        '`{{name}}` recurses into `{{via}}` with no visited set or depth limit, so a cycle (a recursive type, a dependency graph, an error cause chain) overflows the stack. Pass a `Set` of visited values and return when the value is in it, or stop at a depth limit.',
-    },
-  },
-  create(context) {
-    const services = typeServices(context);
-    if (services === undefined) {
-      return {};
-    }
-    return {
-      Program(program) {
-        const { program: tsProgram, esTreeNodeToTSNodeMap } = services;
-        const sourceFile = esTreeNodeToTSNodeMap.get(program);
-        for (const { call, name, via } of findingsIn(sourceFile, tsProgram.getTypeChecker())) {
-          const start = sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile));
-          const end = sourceFile.getLineAndCharacterOfPosition(call.getEnd());
-          context.report({
-            loc: {
-              start: { line: start.line + 1, column: start.character },
-              end: { line: end.line + 1, column: end.character },
-            },
-            messageId: 'cyclic',
-            data: { name, via },
-          });
-        }
-      },
-    };
-  },
-};
+const MESSAGE =
+  '`{{name}}` recurses into `{{via}}` with no visited set or depth limit, so a cycle (a recursive type, a dependency graph, an error cause chain) overflows the stack. Pass a `Set` of visited values and return when the value is in it, or stop at a depth limit.';
+
+export const rule = typedProgramRule({
+  description:
+    'Report a recursive walk over a graph that can contain cycles, with no visited set or depth limit',
+  messageId: 'cyclic',
+  messages: { cyclic: MESSAGE },
+  findings: ({ sourceFile, checker }): ProgramFinding[] =>
+    findingsIn(sourceFile, checker).map(({ call, name, via }) => ({
+      node: call,
+      data: { name, via },
+    })),
+});

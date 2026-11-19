@@ -1,6 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { syntaxChildren } from '../../decided/syntax.mts';
-import { contains, nameOf, nodesWithoutNested } from '../../typed/node-views.mts';
+import {
+  ancestorsOf,
+  chainOf,
+  contains,
+  nameOf,
+  nodesWithoutNested,
+} from '../../typed/node-views.mts';
 import { GUARD_NAME } from './disposal-flags.mts';
 
 const FUNCTIONS = new Set<string>([
@@ -25,11 +31,10 @@ export function nodesOf(root: TSESTree.Node): readonly TSESTree.Node[] {
 }
 
 function rootsAtThis(node: TSESTree.Node): boolean {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
-  }
-  return current.type === AST_NODE_TYPES.ThisExpression;
+  const chain = chainOf<TSESTree.Node>(node, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return chain.at(-1)?.type === AST_NODE_TYPES.ThisExpression;
 }
 
 function calleeName(call: TSESTree.CallExpression): string | undefined {
@@ -58,7 +63,7 @@ function memberResource(name: string, receiver: TSESTree.Expression): boolean {
   );
 }
 
-export function useOf(node: TSESTree.Node): Use | undefined {
+function useOf(node: TSESTree.Node): Use | undefined {
   const name = node.type === AST_NODE_TYPES.CallExpression ? calleeName(node) : undefined;
   if (node.type !== AST_NODE_TYPES.CallExpression || name === undefined) {
     return undefined;
@@ -85,14 +90,19 @@ function isGuard(node: TSESTree.Node, flags: ReadonlySet<string>): boolean {
 }
 
 function blockOf(node: TSESTree.Node): TSESTree.Node | undefined {
-  for (let current = node.parent; current; current = current.parent) {
-    if (current.type !== AST_NODE_TYPES.BlockStatement) {
-      continue;
+  const pending = [node];
+  for (const current of pending) {
+    const block = ancestorsOf(current).find(
+      (entry) => entry.type === AST_NODE_TYPES.BlockStatement,
+    );
+    if (block === undefined) {
+      return undefined;
     }
-    const owner = current.parent;
-    return owner.type === AST_NODE_TYPES.TryStatement || owner.type === AST_NODE_TYPES.CatchClause
-      ? blockOf(owner)
-      : current;
+    const owner = block.parent;
+    if (owner.type !== AST_NODE_TYPES.TryStatement && owner.type !== AST_NODE_TYPES.CatchClause) {
+      return block;
+    }
+    pending.push(owner);
   }
   return undefined;
 }

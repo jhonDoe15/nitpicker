@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode } from '../caches/scope-names.mts';
-import { isProbeOrOptions, mentionsLocalHelper } from './local-helper.mts';
+import { isProbeOrOptions, mentionsLocalHelper } from './local-auth-listeners.mts';
 import { isServer, serverBindings } from './server-origins.mts';
 
 const LOCAL_HOSTS = new Set(['electron', 'vscode']);
@@ -14,10 +14,9 @@ function hasHost(argument: TSESTree.CallExpressionArgument | undefined): boolean
     return argument.properties.some(
       (property) =>
         property.type === AST_NODE_TYPES.SpreadElement ||
-        (property.type === AST_NODE_TYPES.Property &&
-          (property.computed ||
-            (property.key.type === AST_NODE_TYPES.Identifier &&
-              ['host', 'hostname', 'path'].includes(property.key.name)))),
+        property.computed ||
+        (property.key.type === AST_NODE_TYPES.Identifier &&
+          ['host', 'hostname', 'path'].includes(property.key.name)),
     );
   }
   return false;
@@ -39,7 +38,7 @@ function listensWithoutHost(call: TSESTree.CallExpression): boolean {
   );
 }
 
-export const rule: TSESLint.RuleModule<'allInterfaces', []> = {
+export const rule: TSESLint.RuleModule<'allInterfaces'> = {
   meta: {
     type: 'problem',
     docs: {

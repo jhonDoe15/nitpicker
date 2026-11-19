@@ -13,6 +13,8 @@ import {
 
 type MessageId = 'store' | 'process';
 
+const PROCESS = 'process';
+
 const EXCEPTION = ' An exception fits only when the method is meant to run once.';
 const PROCESS_RELEASES = new Set<string>(['off', 'removeListener', 'removeAllListeners']);
 
@@ -25,7 +27,7 @@ function processListener(call: TSESTree.CallExpression): boolean {
   return (
     callee.type === AST_NODE_TYPES.MemberExpression &&
     !callee.computed &&
-    nameOf(callee.object) === 'process' &&
+    nameOf(callee.object) === PROCESS &&
     (nameOf(callee.property) === 'on' || nameOf(callee.property) === 'addListener') &&
     isCreatedHandler(call.arguments[1])
   );
@@ -36,7 +38,7 @@ function removesProcessListener(method: TSESTree.Node): boolean {
     (call) =>
       PROCESS_RELEASES.has(calleeProperty(call) ?? '') &&
       call.callee.type === AST_NODE_TYPES.MemberExpression &&
-      nameOf(call.callee.object) === 'process',
+      nameOf(call.callee.object) === PROCESS,
   );
 }
 
@@ -80,7 +82,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
             data: { ...data, store: registration.label },
           });
         } else if (process && !removesProcessListener(perItem.method)) {
-          context.report({ node: call, messageId: 'process', data });
+          context.report({ node: call, messageId: PROCESS, data });
         }
       },
     };

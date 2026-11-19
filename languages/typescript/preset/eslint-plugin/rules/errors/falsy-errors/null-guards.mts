@@ -35,15 +35,23 @@ function guards(node: TSESTree.Node, text: string, code: TSESLint.SourceCode): b
   );
 }
 
+function enclosingScope(from: TSESTree.Node): TSESTree.Node {
+  const ancestors = [from];
+  for (const node of ancestors) {
+    if (FUNCTIONS.has(node.type) || node.parent === undefined) {
+      return node;
+    }
+    ancestors.push(node.parent);
+  }
+  return from;
+}
+
 export function hasNullGuard(
   code: TSESLint.SourceCode,
   from: TSESTree.Node,
   value: TSESTree.Node,
 ): boolean {
-  let scope: TSESTree.Node = from;
-  while (!FUNCTIONS.has(scope.type) && scope.parent !== undefined) {
-    scope = scope.parent;
-  }
+  const scope = enclosingScope(from);
   const text = plain(value, code);
   return [...depthFirst<TSESTree.Node>(scope, syntaxChildren)].some((node) =>
     guards(node, text, code),

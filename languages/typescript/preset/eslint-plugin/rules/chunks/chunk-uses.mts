@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { scopeChain } from '../typed/node-views.mts';
 import type { Chunk } from './chunk-sources.mts';
 
 export type Use =
@@ -63,18 +64,16 @@ function targetName(
   if (target.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
-  let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(inside);
-  while (scope !== null) {
-    const variable = scope.set.get(target.name);
-    if (variable !== undefined) {
-      const declaredInside = variable.identifiers.some(
-        (id) => id.range[0] >= inside.range[0] && id.range[1] <= inside.range[1],
-      );
-      return declaredInside ? undefined : target.name;
-    }
-    scope = scope.upper;
+  const variable = scopeChain(sourceCode.getScope(inside))
+    .map((scope) => scope.set.get(target.name))
+    .find((found) => found !== undefined);
+  if (variable === undefined) {
+    return undefined;
   }
-  return undefined;
+  const declaredInside = variable.identifiers.some(
+    (id) => id.range[0] >= inside.range[0] && id.range[1] <= inside.range[1],
+  );
+  return declaredInside ? undefined : target.name;
 }
 
 function isCollected(
@@ -98,9 +97,7 @@ function hasStreamOption(argument: TSESTree.CallExpressionArgument | undefined):
     argument.properties.some(
       (property) =>
         property.type === AST_NODE_TYPES.SpreadElement ||
-        (property.type === AST_NODE_TYPES.Property &&
-          property.key.type === AST_NODE_TYPES.Identifier &&
-          property.key.name === 'stream'),
+        (property.key.type === AST_NODE_TYPES.Identifier && property.key.name === 'stream'),
     )
   );
 }

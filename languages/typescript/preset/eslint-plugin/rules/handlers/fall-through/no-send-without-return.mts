@@ -1,30 +1,37 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import {
+  AST_NODE_TYPES,
+  AST_TOKEN_TYPES,
+  type TSESLint,
+  type TSESTree,
+} from '@typescript-eslint/utils';
+import { chainOf } from '../../typed/node-views.mts';
 import { handoffOf, isRealWork } from './response-calls.mts';
 
 function chainRoot(node: TSESTree.IfStatement): TSESTree.IfStatement {
-  let current = node;
-  while (
-    current.parent.type === AST_NODE_TYPES.IfStatement &&
-    current.parent.alternate === current
-  ) {
-    current = current.parent;
+  const chain = chainOf<TSESTree.IfStatement>(node, (link) =>
+    link.parent.type === AST_NODE_TYPES.IfStatement && link.parent.alternate === link
+      ? link.parent
+      : undefined,
+  );
+  return chain.at(-1) ?? node;
+}
+
+function siblingsOf(parent: TSESTree.Node): readonly TSESTree.Node[] {
+  if (parent.type === AST_NODE_TYPES.BlockStatement || parent.type === AST_NODE_TYPES.Program) {
+    return parent.body;
   }
-  return current;
+  return parent.type === AST_NODE_TYPES.SwitchCase ? parent.consequent : [];
 }
 
 function followingStatements(root: TSESTree.IfStatement): readonly TSESTree.Node[] {
-  const parent = root.parent;
-  const siblings =
-    parent.type === AST_NODE_TYPES.BlockStatement || parent.type === AST_NODE_TYPES.Program
-      ? parent.body
-      : parent.type === AST_NODE_TYPES.SwitchCase
-        ? parent.consequent
-        : [];
+  const siblings = siblingsOf(root.parent);
   return siblings.slice(siblings.indexOf(root) + 1);
 }
 
 function testMentions(test: TSESTree.Node, name: string, code: TSESLint.SourceCode): boolean {
-  return code.getTokens(test).some((token) => token.type === 'Identifier' && token.value === name);
+  return code
+    .getTokens(test)
+    .some((token) => token.type === AST_TOKEN_TYPES.Identifier && token.value === name);
 }
 
 function lastStatement(branch: TSESTree.Statement): TSESTree.Node | undefined {

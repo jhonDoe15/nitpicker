@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { staticTextOf } from '../../rules/typed/static-text.mts';
 
 export type ModuleLoad = {
   readonly specifier: string;
@@ -7,15 +8,6 @@ export type ModuleLoad = {
 };
 
 const ACTUAL_LOADS = new Set(['requireActual', 'importActual']);
-
-function specifierOf(node: TSESTree.Node | undefined): string | undefined {
-  if (node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') {
-    return node.value;
-  }
-  return node?.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0
-    ? (node.quasis[0]?.value.cooked ?? undefined)
-    : undefined;
-}
 
 function isLoadCall(callee: TSESTree.Node): boolean {
   if (callee.type === AST_NODE_TYPES.Identifier) {
@@ -67,18 +59,18 @@ export function loadedModule(
   node: TSESTree.CallExpression | TSESTree.ImportExpression | TSESTree.TSImportEqualsDeclaration,
 ): ModuleLoad | undefined {
   if (node.type === AST_NODE_TYPES.ImportExpression) {
-    const specifier = specifierOf(node.source);
+    const specifier = staticTextOf(node.source);
     return specifier === undefined ? undefined : boundLoad(specifier, boundNames(node));
   }
   if (node.type === AST_NODE_TYPES.TSImportEqualsDeclaration) {
     const reference = node.moduleReference;
     const specifier =
       reference.type === AST_NODE_TYPES.TSExternalModuleReference && node.importKind !== 'type'
-        ? specifierOf(reference.expression)
+        ? staticTextOf(reference.expression)
         : undefined;
     return specifier === undefined ? undefined : { specifier, names: new Map(), whole: true };
   }
-  const specifier = isLoadCall(node.callee) ? specifierOf(node.arguments[0]) : undefined;
+  const specifier = isLoadCall(node.callee) ? staticTextOf(node.arguments[0]) : undefined;
   return specifier === undefined ? undefined : boundLoad(specifier, boundNames(node));
 }
 

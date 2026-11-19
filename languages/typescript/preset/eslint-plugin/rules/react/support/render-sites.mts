@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import type TypeScript from 'typescript';
 import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mjs';
 import { scriptKindOf as untypedScriptKindOf } from '../../../../modules/module-sources.mjs';
 import { ts } from '../../typed/typescript-views.mts';
+import { readTextFile } from './file-reads.mts';
 import { projectSourceFiles } from './package-facts.mts';
 
 type Resolution = { readonly kind: string; readonly path?: string };
@@ -45,12 +46,14 @@ function importedNames(statement: TypeScript.ImportDeclaration, exportName: stri
 function localNames(sourceFile: TypeScript.SourceFile, { file, target, exportName }: Target) {
   const names = new Set<string>();
   for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
+    if (!(ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier))) {
       continue;
     }
     const resolved = resolveModuleSpecifier(statement.moduleSpecifier.text, file);
     if (resolved.kind === 'file' && resolved.path === target) {
-      importedNames(statement, exportName).forEach((name) => names.add(name));
+      for (const name of importedNames(statement, exportName)) {
+        names.add(name);
+      }
     }
   }
   return names;
@@ -61,7 +64,7 @@ function isListCallback(node: TypeScript.Node): boolean {
     return false;
   }
   const call = node.parent;
-  if (!ts.isCallExpression(call) || !(ts.isArrowFunction(node) || ts.isFunctionExpression(node))) {
+  if (!(ts.isCallExpression(call) && (ts.isArrowFunction(node) || ts.isFunctionExpression(node)))) {
     return false;
   }
   const callee = call.expression;
@@ -78,17 +81,18 @@ function isListCallback(node: TypeScript.Node): boolean {
 }
 
 function testsEquality(test: TypeScript.Expression): boolean {
-  if (ts.isParenthesizedExpression(test)) {
-    return testsEquality(test.expression);
+  const pending = [test];
+  for (const current of pending) {
+    if (ts.isParenthesizedExpression(current)) {
+      pending.push(current.expression);
+    } else if (ts.isBinaryExpression(current)) {
+      if (equalityOperators.has(current.operatorToken.kind)) {
+        return true;
+      }
+      pending.push(current.left, current.right);
+    }
   }
-  if (!ts.isBinaryExpression(test)) {
-    return false;
-  }
-  return (
-    equalityOperators.has(test.operatorToken.kind) ||
-    testsEquality(test.left) ||
-    testsEquality(test.right)
-  );
+  return false;
 }
 
 function isDispatchBranch(node: TypeScript.Node): boolean {
@@ -133,26 +137,22 @@ function renderedIn(site: Target, text: string): boolean {
   return names.size > 0 && rendersInList(sourceFile, names);
 }
 
+function renderedInFile(site: Target, regexp: RegExp, stem: string): boolean {
+  const read = readTextFile(site.file);
+  return (
+    read.kind === 'read' &&
+    site.file !== site.target &&
+    read.text.includes(stem) &&
+    regexp.test(read.text) &&
+    renderedIn(site, read.text)
+  );
+}
+
 export function renderedPerItemElsewhere(target: string, exportName: string): boolean {
-  const key = `${target}\0${exportName}`;
-  const known = verdicts.get(key);
-  if (known !== undefined) {
-    return known;
-  }
-  const stem = path.basename(target).replace(/\.[^.]+$/u, '');
-  const verdict = projectSourceFiles(target).some((file) => {
-    try {
-      const text = readFileSync(file, 'utf8');
-      return (
-        file !== target &&
-        text.includes(stem) &&
-        /\b(?:map|flatMap|from)\s*\(/u.test(text) &&
-        renderedIn({ file, target, exportName }, text)
-      );
-    } catch {
-      return false;
-    }
+  return cachedValue(verdicts, `${target}\0${exportName}`, () => {
+    const stem = path.basename(target).replace(/\.[^.]+$/u, '');
+    return projectSourceFiles(target).some((file) =>
+      renderedInFile({ file, target, exportName }, /\b(?:map|flatMap|from)\s*\(/u, stem),
+    );
   });
-  verdicts.set(key, verdict);
-  return verdict;
 }

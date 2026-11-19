@@ -10,15 +10,22 @@ import { depthFirst } from '../../typed/node-views.mts';
 import { hasNullGuard } from './null-guards.mts';
 import { isCaughtValue, isUntypedErrorProperty } from './error-sources.mts';
 
-type MessageId = 'truthiness' | 'typeofObject';
+const TRUTHINESS = 'truthiness';
+
+type MessageId = typeof TRUTHINESS | 'typeofObject';
 
 function withoutNegation(node: TSESTree.Node): TSESTree.Node {
-  if (node.type === AST_NODE_TYPES.ChainExpression) {
-    return node.expression;
+  const pending = [node];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.ChainExpression) {
+      return current.expression;
+    }
+    if (current.type !== AST_NODE_TYPES.UnaryExpression || current.operator !== '!') {
+      return current;
+    }
+    pending.push(current.argument);
   }
-  return node.type === AST_NODE_TYPES.UnaryExpression && node.operator === '!'
-    ? withoutNegation(node.argument)
-    : node;
+  return node;
 }
 
 type Checker = {
@@ -36,12 +43,12 @@ function isSource(checker: Checker, node: TSESTree.Node): boolean {
 function checkTest(
   checker: Checker,
   test: TSESTree.Node,
-  branches: readonly (TSESTree.Node | null)[],
+  branches: readonly (TSESTree.Node | undefined)[],
 ): void {
   const target = withoutNegation(test);
   const text = checker.code.getText(target).replaceAll('?.', '.');
   if (isSource(checker, target) && !dereferences(branches, text, checker.code)) {
-    checker.report(target, 'truthiness', checker.code.getText(target));
+    checker.report(target, TRUTHINESS, checker.code.getText(target));
   }
 }
 
@@ -51,7 +58,7 @@ function checkFallback(checker: Checker, node: TSESTree.LogicalExpression): void
     (node.right.type === AST_NODE_TYPES.MemberExpression ||
       node.right.type === AST_NODE_TYPES.Identifier);
   if (fallback && isUntypedErrorProperty(checker.services, node.left)) {
-    checker.report(node.left, 'truthiness', checker.code.getText(node.left));
+    checker.report(node.left, TRUTHINESS, checker.code.getText(node.left));
   }
 }
 
@@ -68,7 +75,7 @@ function checkCoercion(checker: Checker, node: TSESTree.UnaryExpression): void {
   if (coerces && !testPosition) {
     const target = withoutNegation(inner);
     if (isSource(checker, target)) {
-      checker.report(target, 'truthiness', checker.code.getText(target));
+      checker.report(target, TRUTHINESS, checker.code.getText(target));
     }
   }
 }
@@ -93,13 +100,13 @@ function checkTypeof(checker: Checker, node: TSESTree.UnaryExpression): void {
 }
 
 function dereferences(
-  branches: readonly (TSESTree.Node | null)[],
+  branches: readonly (TSESTree.Node | undefined)[],
   text: string,
   code: TSESLint.SourceCode,
 ): boolean {
   return branches.some(
     (branch) =>
-      branch !== null &&
+      branch !== undefined &&
       [...depthFirst<TSESTree.Node>(branch, syntaxChildren)].some(
         (node) =>
           node.type === AST_NODE_TYPES.MemberExpression &&
@@ -110,20 +117,30 @@ function dereferences(
 
 const LOGGERS = new Set<string>(['console', 'logger']);
 
-function onlyLogs(branch: TSESTree.Node | null): boolean {
+function loggerRoot(statement: TSESTree.Node | undefined): TSESTree.Node | undefined {
+  if (
+    statement?.type !== AST_NODE_TYPES.ExpressionStatement ||
+    statement.expression.type !== AST_NODE_TYPES.CallExpression
+  ) {
+    return undefined;
+  }
+  const pending: TSESTree.Node[] = [statement.expression.callee];
+  for (const current of pending) {
+    if (current.type !== AST_NODE_TYPES.MemberExpression) {
+      return current;
+    }
+    pending.push(current.object);
+  }
+  return undefined;
+}
+
+function onlyLogs(branch: TSESTree.Node | undefined): boolean {
   const statements = branch?.type === AST_NODE_TYPES.BlockStatement ? branch.body : [branch];
   return (
     statements.length > 0 &&
     statements.every((statement) => {
-      let current: TSESTree.Node | undefined =
-        statement?.type === AST_NODE_TYPES.ExpressionStatement &&
-        statement.expression.type === AST_NODE_TYPES.CallExpression
-          ? statement.expression.callee
-          : undefined;
-      while (current?.type === AST_NODE_TYPES.MemberExpression) {
-        current = current.object;
-      }
-      return current?.type === AST_NODE_TYPES.Identifier && LOGGERS.has(current.name);
+      const root = loggerRoot(statement);
+      return root?.type === AST_NODE_TYPES.Identifier && LOGGERS.has(root.name);
     })
   );
 }
@@ -154,24 +171,34 @@ export const rule: TSESLint.RuleModule<
     const checker: Checker = {
       code,
       services,
-      report: (node, messageId, name) => context.report({ node, messageId, data: { name } }),
+      report: (node, messageId, name) => {
+        context.report({ node, messageId, data: { name } });
+      },
     };
 
     return {
       IfStatement(node) {
-        if (node.alternate === null && onlyLogs(node.consequent)) {
+        const alternate = node.alternate ?? undefined;
+        if (alternate === undefined && onlyLogs(node.consequent)) {
           return;
         }
+        checkTest(checker, node.test, [node.consequent, alternate]);
+      },
+      WhileStatement: (node) => {
+        checkTest(checker, node.test, [node.body]);
+      },
+      ConditionalExpression: (node) => {
         checkTest(checker, node.test, [node.consequent, node.alternate]);
       },
-      WhileStatement: (node) => checkTest(checker, node.test, [node.body]),
-      ConditionalExpression: (node) =>
-        checkTest(checker, node.test, [node.consequent, node.alternate]),
-      LogicalExpression: (node) => checkFallback(checker, node),
-      "UnaryExpression[operator='!']": (node: TSESTree.UnaryExpression) =>
-        checkCoercion(checker, node),
-      "UnaryExpression[operator='typeof']": (node: TSESTree.UnaryExpression) =>
-        checkTypeof(checker, node),
+      LogicalExpression: (node) => {
+        checkFallback(checker, node);
+      },
+      "UnaryExpression[operator='!']": (node: TSESTree.UnaryExpression) => {
+        checkCoercion(checker, node);
+      },
+      "UnaryExpression[operator='typeof']": (node: TSESTree.UnaryExpression) => {
+        checkTypeof(checker, node);
+      },
     };
   },
 };

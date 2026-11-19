@@ -65,7 +65,7 @@ function calledPerItem(ref: TSESTree.MemberExpression): boolean {
   return caller !== undefined && !isConstructorFunction(caller) && insideLoop(ref, caller);
 }
 
-export function usedPerItem(classBody: TSESTree.ClassBody, name: string): boolean {
+function usedPerItem(classBody: TSESTree.ClassBody, name: string): boolean {
   return thisReferences(classBody, name).some((ref) =>
     isCalled(ref) ? calledPerItem(ref) : givenToSubscriber(boundForm(ref)),
   );

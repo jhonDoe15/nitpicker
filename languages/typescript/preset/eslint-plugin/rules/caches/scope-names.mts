@@ -1,5 +1,12 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { depthFirst, nodeChildren, type SourceCode } from '../typed/node-views.mts';
+import {
+  ancestorsOf,
+  depthFirst,
+  nodeChildren,
+  scopeChain,
+  variableNamed,
+  type SourceCode,
+} from '../typed/node-views.mts';
 import type { FunctionNode } from '../typed/syntax-views.mts';
 
 export type Variable = TSESLint.Scope.Variable;
@@ -26,11 +33,7 @@ export function isAuthName(name: string): boolean {
 }
 
 function isInTypePosition(identifier: TSESTree.Identifier): boolean {
-  let node: TSESTree.Node | null | undefined = identifier.parent;
-  while (node !== undefined && node !== null && !TYPE_CONTEXTS.has(node.type)) {
-    node = node.parent;
-  }
-  return node !== undefined && node !== null;
+  return ancestorsOf(identifier).some((node) => TYPE_CONTEXTS.has(node.type));
 }
 
 export function isFunctionNode(node: TSESTree.Node | undefined): node is FunctionNode {
@@ -38,14 +41,10 @@ export function isFunctionNode(node: TSESTree.Node | undefined): node is Functio
 }
 
 export function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
-  let current: TSESTree.Node | null | undefined = node.parent;
-  while (current !== undefined && current !== null && !isFunctionNode(current)) {
-    current = current.parent;
-  }
-  return current ?? undefined;
+  return ancestorsOf(node).find(isFunctionNode);
 }
 
-export function isReadPosition(identifier: TSESTree.Identifier): boolean {
+function isReadPosition(identifier: TSESTree.Identifier): boolean {
   const parent = identifier.parent;
   if (parent.type === AST_NODE_TYPES.MemberExpression && parent.property === identifier) {
     return parent.computed;
@@ -67,26 +66,11 @@ export function variableOf(
   sourceCode: SourceCode,
   identifier: TSESTree.Identifier,
 ): Variable | undefined {
-  let scope: TSESLint.Scope.Scope | null = sourceCode.getScope(identifier);
-  while (scope !== null) {
-    const variable = scope.set.get(identifier.name);
-    if (variable !== undefined) {
-      return variable;
-    }
-    scope = scope.upper;
-  }
-  return undefined;
+  return variableNamed(sourceCode, identifier);
 }
 
 export function scopeContains(outer: TSESLint.Scope.Scope, inner: TSESLint.Scope.Scope): boolean {
-  let scope: TSESLint.Scope.Scope | null = inner;
-  while (scope !== null) {
-    if (scope === outer) {
-      return true;
-    }
-    scope = scope.upper;
-  }
-  return false;
+  return scopeChain(inner).includes(outer);
 }
 
 export function isBareCallee(identifier: TSESTree.Identifier): boolean {
@@ -99,13 +83,24 @@ export function isCalleeUse(identifier: TSESTree.Identifier): boolean {
   if (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === identifier) {
     return true;
   }
-  const grand = parent.parent;
   return (
     parent.type === AST_NODE_TYPES.MemberExpression &&
     parent.object === identifier &&
-    grand?.type === AST_NODE_TYPES.CallExpression &&
-    grand.callee === parent
+    parent.parent.type === AST_NODE_TYPES.CallExpression &&
+    parent.parent.callee === parent
   );
+}
+
+type Reached = { readonly identifier: TSESTree.Identifier; readonly depth: number };
+
+function writtenIdentifiers(variable: Variable, depth: number): Reached[] {
+  return variable.references.flatMap((reference) => {
+    const written = reference.writeExpr;
+    if (written === null || written === undefined) {
+      return [];
+    }
+    return identifiersIn(written).map((identifier) => ({ identifier, depth }));
+  });
 }
 
 export function reachedVariables(
@@ -113,29 +108,28 @@ export function reachedVariables(
   start: TSESTree.Node,
   within: TSESLint.Scope.Scope,
 ): Map<Variable, TSESTree.Identifier[]> {
-  const found = new Map<Variable, TSESTree.Identifier[]>();
   const visited = new Set<Variable>();
-  const visit = (identifier: TSESTree.Identifier, depth: number) => {
-    const variable = variableOf(sourceCode, identifier);
-    if (variable === undefined || !scopeContains(within, variable.scope)) {
-      return;
-    }
-    found.set(variable, [...(found.get(variable) ?? []), identifier]);
-    if (visited.has(variable) || depth >= MAX_DEPTH) {
-      return;
+  function resolve(item: Reached): Variable | undefined {
+    const variable = variableOf(sourceCode, item.identifier);
+    return variable !== undefined && scopeContains(within, variable.scope) ? variable : undefined;
+  }
+  function expand(item: Reached): Reached[] {
+    const variable = resolve(item);
+    if (variable === undefined || visited.has(variable) || item.depth >= MAX_DEPTH) {
+      return [];
     }
     visited.add(variable);
-    for (const reference of variable.references) {
-      if (reference.writeExpr !== null && reference.writeExpr !== undefined) {
-        walk(reference.writeExpr, depth + 1);
-      }
+    return writtenIdentifiers(variable, item.depth + 1);
+  }
+  const reached = identifiersIn(start).flatMap((identifier) => [
+    ...depthFirst({ identifier, depth: 0 }, expand),
+  ]);
+  const found = new Map<Variable, TSESTree.Identifier[]>();
+  for (const item of reached) {
+    const variable = resolve(item);
+    if (variable !== undefined) {
+      found.set(variable, [...(found.get(variable) ?? []), item.identifier]);
     }
-  };
-  const walk = (node: TSESTree.Node, depth: number) => {
-    for (const identifier of identifiersIn(node)) {
-      visit(identifier, depth);
-    }
-  };
-  walk(start, 0);
+  }
   return found;
 }

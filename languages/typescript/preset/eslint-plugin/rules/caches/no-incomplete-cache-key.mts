@@ -5,7 +5,7 @@ import { enclosingFunction } from './scope-names.mts';
 
 type MessageId = 'queryKey' | 'cacheKey';
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {

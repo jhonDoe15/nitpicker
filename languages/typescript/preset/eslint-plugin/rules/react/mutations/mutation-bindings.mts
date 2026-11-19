@@ -12,7 +12,6 @@ export type Mutation = {
 };
 
 const readNames = new Set(['error', 'isError', 'status', 'failureReason', 'isIdle']);
-const triggerNames = new Set(['mutate', 'mutateAsync']);
 const harmlessNames = new Set([
   'isPending',
   'isLoading',
@@ -84,16 +83,20 @@ function readProperty(
   return { failureRead: false, loose: key === undefined };
 }
 
-function patternBinding(site: Site, pattern: TSESTree.ObjectPattern): Mutation {
-  const found: Found = new Map();
-  const variables = site.sourceCode.getDeclaredVariables(site.declarator);
-  const readings = pattern.properties.map((property) => readProperty(property, variables, found));
+function summarized(site: Site, found: Found, readings: readonly Reading[]): Mutation {
   return {
     hook: site.hook,
     triggers: found,
     looseUses: readings.some(({ loose }) => loose),
     failureRead: readings.some(({ failureRead }) => failureRead),
   };
+}
+
+function patternBinding(site: Site, pattern: TSESTree.ObjectPattern): Mutation {
+  const found: Found = new Map();
+  const variables = site.sourceCode.getDeclaredVariables(site.declarator);
+  const readings = pattern.properties.map((property) => readProperty(property, variables, found));
+  return summarized(site, found, readings);
 }
 
 function readUse(reference: TSESLint.Scope.Reference, found: Found): Reading {
@@ -127,12 +130,7 @@ function wholeBinding(site: Site, id: TSESTree.Identifier): Mutation {
     .getDeclaredVariables(site.declarator)
     .find(({ name }) => name === id.name);
   const readings = (variable?.references ?? []).map((reference) => readUse(reference, found));
-  return {
-    hook: site.hook,
-    triggers: found,
-    looseUses: readings.some(({ loose }) => loose),
-    failureRead: readings.some(({ failureRead }) => failureRead),
-  };
+  return summarized(site, found, readings);
 }
 
 export function mutationBinding(

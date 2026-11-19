@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { staticKey } from '../security/security-values.mts';
 import { nameOf, type SourceCode } from '../typed/node-views.mts';
 import {
@@ -12,6 +12,8 @@ import {
   variableOf,
   type Variable,
 } from './scope-names.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 export type QueryParts = {
   readonly key: TSESTree.ArrayExpression;
@@ -34,7 +36,7 @@ export function importsQueryLibrary(program: TSESTree.Program): boolean {
   return program.body.some(
     (statement) =>
       statement.type === AST_NODE_TYPES.ImportDeclaration &&
-      QUERY_MODULE.test(String(statement.source.value)),
+      QUERY_MODULE.test(statement.source.value),
   );
 }
 
@@ -45,7 +47,7 @@ export function queryParts(object: TSESTree.ObjectExpression): QueryParts | unde
       return undefined;
     }
     const name = staticKey(property);
-    if (name !== undefined && property.type === AST_NODE_TYPES.Property) {
+    if (name !== undefined) {
       properties.set(name, property.value);
     }
   }
@@ -53,7 +55,9 @@ export function queryParts(object: TSESTree.ObjectExpression): QueryParts | unde
   const queryFn = properties.get('queryFn');
   const keyed = key?.type === AST_NODE_TYPES.ArrayExpression;
   const inline =
-    queryFn !== undefined && isFunctionNode(queryFn) && queryFn.type !== 'FunctionDeclaration';
+    queryFn !== undefined &&
+    isFunctionNode(queryFn) &&
+    queryFn.type !== AST_NODE_TYPES.FunctionDeclaration;
   return keyed && inline ? { key, queryFn } : undefined;
 }
 
@@ -79,8 +83,8 @@ function isIgnoredVariable(variable: Variable, uses: readonly TSESTree.Identifie
   const definition = variable.defs[0];
   return (
     definition === undefined ||
-    definition.type === 'ImportBinding' ||
-    definition.type === 'FunctionName' ||
+    definition.type === DefinitionType.ImportBinding ||
+    definition.type === DefinitionType.FunctionName ||
     variable.defs.length > 1 ||
     variable.name === 'queryClient' ||
     isAuthName(variable.name) ||

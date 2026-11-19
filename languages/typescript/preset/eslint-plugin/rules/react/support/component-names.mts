@@ -10,14 +10,18 @@ export function functionLabel(fn: TSESTree.Node): string | undefined {
   if (named !== undefined) {
     return named;
   }
-  let owner: TSESTree.Node | undefined = fn.parent;
-  while (
-    owner?.type === AST_NODE_TYPES.CallExpression &&
-    componentWrappers.has(nameOf(unwrapped(owner.callee)) ?? '')
-  ) {
-    owner = owner.parent;
+  const owners: (TSESTree.Node | undefined)[] = [fn.parent];
+  for (const owner of owners) {
+    if (
+      owner?.type === AST_NODE_TYPES.CallExpression &&
+      componentWrappers.has(nameOf(unwrapped(owner.callee)) ?? '')
+    ) {
+      owners.push(owner.parent);
+    } else {
+      return owner?.type === AST_NODE_TYPES.VariableDeclarator ? nameOf(owner.id) : undefined;
+    }
   }
-  return owner?.type === AST_NODE_TYPES.VariableDeclarator ? nameOf(owner.id) : undefined;
+  return undefined;
 }
 
 export function enclosingComponent(

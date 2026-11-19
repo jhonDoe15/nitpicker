@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { ancestorsOf, nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { attributeNamed } from '../jsx.mts';
 import { packageDependsOn, projectSourceMatches } from '../support/package-facts.mts';
@@ -50,7 +50,7 @@ function importSource(
   const [definition] = variableNamed(sourceCode, identifier)?.defs ?? [];
   return definition?.type === TSESLint.Scope.DefinitionType.ImportBinding &&
     definition.parent.type === AST_NODE_TYPES.ImportDeclaration
-    ? String(definition.parent.source.value)
+    ? definition.parent.source.value
     : undefined;
 }
 
@@ -118,18 +118,16 @@ function isFormattedCall(node: TSESTree.CallExpression): boolean {
 
 function isPlainValue(value: TSESTree.Node): boolean {
   const node = unwrapped(value);
-  switch (node.type) {
-    case AST_NODE_TYPES.Literal:
-      return true;
-    case AST_NODE_TYPES.TemplateLiteral:
-      return node.expressions.length === 0;
-    case AST_NODE_TYPES.BinaryExpression:
-      return arithmetic.has(node.operator);
-    case AST_NODE_TYPES.CallExpression:
-      return isFormattedCall(node);
-    default:
-      return false;
+  if (node.type === AST_NODE_TYPES.Literal) {
+    return true;
   }
+  if (node.type === AST_NODE_TYPES.TemplateLiteral) {
+    return node.expressions.length === 0;
+  }
+  if (node.type === AST_NODE_TYPES.BinaryExpression) {
+    return arithmetic.has(node.operator);
+  }
+  return node.type === AST_NODE_TYPES.CallExpression && isFormattedCall(node);
 }
 
 function interpolatesValues(options: TSESTree.ObjectExpression): boolean {
@@ -140,9 +138,11 @@ function interpolatesValues(options: TSESTree.ObjectExpression): boolean {
     !keys.some((property) => nameOf(property.key) === 'interpolation') &&
     keys.some(
       (property) =>
-        !property.computed &&
-        !reservedOptions.has(nameOf(property.key) ?? '') &&
-        !isPlainValue(property.value),
+        !(
+          property.computed ||
+          reservedOptions.has(nameOf(property.key) ?? '') ||
+          isPlainValue(property.value)
+        ),
     )
   );
 }
@@ -158,10 +158,7 @@ function optionsOf(call: TSESTree.CallExpression): TSESTree.ObjectExpression | u
 }
 
 function renderedByJsx(node: TSESTree.Node): boolean {
-  let container: TSESTree.Node | undefined = node.parent;
-  while (container !== undefined && wrapperKinds.has(container.type)) {
-    container = container.parent;
-  }
+  const container = ancestorsOf(node).find((ancestor) => !wrapperKinds.has(ancestor.type));
   if (container?.type !== AST_NODE_TYPES.JSXExpressionContainer) {
     return false;
   }

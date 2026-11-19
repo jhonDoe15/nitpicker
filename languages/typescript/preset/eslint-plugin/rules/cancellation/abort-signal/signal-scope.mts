@@ -1,6 +1,9 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { partsOf } from '../../analysis/narrowing/type-parts.mts';
+import { scopeChain } from '../../typed/node-views.mts';
+
+const { DefinitionType, ScopeType } = TSESLint.Scope;
 
 export type Signals = {
   readonly checker: TypeScript.TypeChecker | undefined;
@@ -24,7 +27,7 @@ function isSignalVariable(variable: TSESLint.Scope.Variable, signals: Signals): 
     return isSignalType(signals.typeOf(definition.name));
   }
   return (
-    definition.type === 'Parameter' &&
+    definition.type === DefinitionType.Parameter &&
     UNTYPED_NAMES.has(variable.name) &&
     definition.name.typeAnnotation === undefined
   );
@@ -34,15 +37,9 @@ export function signalsInScope(
   scope: TSESLint.Scope.Scope,
   signals: Signals,
 ): readonly TSESLint.Scope.Variable[] {
-  const found: TSESLint.Scope.Variable[] = [];
-  for (
-    let current: TSESLint.Scope.Scope | null = scope;
-    current !== null;
-    current = current.upper
-  ) {
-    if (current.type !== 'global' && current.type !== 'module') {
-      found.push(...current.variables.filter((variable) => isSignalVariable(variable, signals)));
-    }
-  }
-  return found;
+  return scopeChain(scope)
+    .filter((current) => current.type !== ScopeType.global && current.type !== ScopeType.module)
+    .flatMap((current) =>
+      current.variables.filter((variable) => isSignalVariable(variable, signals)),
+    );
 }

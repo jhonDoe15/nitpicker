@@ -2,11 +2,12 @@ import {
   AST_NODE_TYPES,
   ASTUtils,
   type ParserServicesWithTypeInformation,
-  type TSESLint,
+  TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
 import { ts } from '../../typed/typescript-views.mts';
 
+const { DefinitionType } = TSESLint.Scope;
 const UNKNOWN = ts.TypeFlags.Any | ts.TypeFlags.Unknown;
 const ERROR_PROPERTIES = new Set<string>(['error', 'cause']);
 
@@ -46,12 +47,12 @@ export function isCaughtValue(sourceCode: TSESLint.SourceCode, node: TSESTree.Id
   if (definition === undefined || definition.name.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  if (definition.type === 'CatchClause') {
+  if (definition.type === DefinitionType.CatchClause) {
     return definition.node.param === definition.name;
   }
   const owner = definition.node;
   return (
-    definition.type === 'Parameter' &&
+    definition.type === DefinitionType.Parameter &&
     (owner.type === AST_NODE_TYPES.FunctionExpression ||
       owner.type === AST_NODE_TYPES.ArrowFunctionExpression) &&
     owner.params[0] === definition.name &&

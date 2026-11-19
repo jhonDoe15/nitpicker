@@ -12,9 +12,16 @@ import {
   type Chunk,
   type Services,
 } from './chunk-sources.mts';
-import { usesOf } from './chunk-uses.mts';
+import { usesOf, type Use } from './chunk-uses.mts';
 
 type MessageId = 'collected' | 'decoded' | 'matched';
+
+function reportData(use: Use): Record<string, string> {
+  if (use.kind === 'collected') {
+    return { target: use.target };
+  }
+  return use.kind === 'matched' ? { method: use.method } : {};
+}
 
 function judged(
   context: Readonly<TSESLint.RuleContext<MessageId, []>>,
@@ -75,16 +82,11 @@ export const rule: TSESLint.RuleModule<MessageId, [], { readonly requiresTypeChe
         if (chunk === undefined || !judged(context, resolved, chunk)) {
           return;
         }
-        const isDecoder = (receiver: TSESTree.Node) =>
-          typeNames(resolved, receiver).includes('TextDecoder');
+        function isDecoder(receiver: TSESTree.Node): boolean {
+          return typeNames(resolved, receiver).includes('TextDecoder');
+        }
         for (const use of usesOf(sourceCode, chunk, isDecoder)) {
-          const data =
-            use.kind === 'collected'
-              ? { target: use.target }
-              : use.kind === 'matched'
-                ? { method: use.method }
-                : {};
-          context.report({ node: use.node, messageId: use.kind, data });
+          context.report({ node: use.node, messageId: use.kind, data: reportData(use) });
         }
       }
       return {

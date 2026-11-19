@@ -3,7 +3,7 @@ import { nameOf, scopeChain, type SourceCode } from '../../typed/node-views.mts'
 
 const NAMES = new Set<string>(['debounce', 'throttle']);
 const LIBRARIES =
-  /^(lodash([.\-/].*)?|lodash-es(\/.*)?|es-toolkit(\/.*)?|throttle-debounce|just-(debounce-it|throttle)|underscore)$/u;
+  /^(lodash([.\-/].*)?|es-toolkit(\/.*)?|throttle-debounce|just-(debounce-it|throttle)|underscore)$/u;
 const { DefinitionType } = TSESLint.Scope;
 
 function definitionsOf(
@@ -30,7 +30,6 @@ function isLocalFunction(definition: TSESLint.Scope.Definition): boolean {
   return (
     definition.type === DefinitionType.FunctionName ||
     (definition.type === DefinitionType.Variable &&
-      definition.node.type === AST_NODE_TYPES.VariableDeclarator &&
       (definition.node.init?.type === AST_NODE_TYPES.ArrowFunctionExpression ||
         definition.node.init?.type === AST_NODE_TYPES.FunctionExpression))
   );
