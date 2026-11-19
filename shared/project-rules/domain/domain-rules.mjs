@@ -57,7 +57,7 @@ export function domainRules(ids) {
     {
       id: ids.domainImportsFrameworkContext,
       check: 'coupling',
-      limit: `domain code that looks collaborators up in the framework container: Spring \`ApplicationContext\`, \`BeanFactory\` and their \`*Aware\` callbacks, \`Environment\`, CDI \`CDI\` and \`BeanManager\`, Micronaut \`ApplicationContext\` and \`BeanContext\`, Quarkus \`Arc\`. ${JVM}; TypeScript, JavaScript and Python have no framework container the presets know`,
+      limit: `domain code that looks collaborators up in the framework container: Spring \`ApplicationContext\`, \`BeanFactory\` and their \`*Aware\` callbacks, \`Environment\`, CDI \`CDI\` and \`BeanManager\`, Micronaut \`ApplicationContext\` and \`BeanContext\`, Quarkus \`Arc\`. ${JVM}; TypeScript, JavaScript and Python do not report it as a domain rule: their service-locator rules (TypeScript and JavaScript \`nitpicker/no-service-locator\`, which knows inversify, tsyringe, typedi, awilix and NestJS \`ModuleRef\`; Python \`service-locator-lookup\`) report a container lookup in any production code, domain code included`,
       enforcedBy: enforcedBy(false, false, false),
       notApplicable: {
         go: 'Go has no framework container: dependencies are passed in by the code that builds them',

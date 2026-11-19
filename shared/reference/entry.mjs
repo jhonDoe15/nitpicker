@@ -56,16 +56,20 @@ export function joinedWords(words) {
 /**
  * The config list and rule that accept a finding of the entry in `preset`, or undefined when no
  * exception applies there. `presetKeys` and `presetRules` name the list and the rule a preset uses
- * instead of the entry's own; `presetNotes` says why a preset has no exception for the rule.
+ * instead of the entry's own (a preset's own rule takes paths, not packages); `presetNotes` says why a preset
+ * has no exception for the rule.
  */
 export function exceptionFor({ exception }, preset) {
   if (exception.key === undefined || exception.presetNotes?.[preset] !== undefined) {
     return undefined;
   }
+  const nativeRule = exception.presetRules?.[preset];
+  const { packages, ...route } = exception;
   return {
-    ...exception,
+    ...route,
+    ...(nativeRule === undefined && packages !== undefined ? { packages } : {}),
     key: exception.presetKeys?.[preset] ?? exception.key,
-    rule: exception.presetRules?.[preset] ?? exception.rule,
+    rule: nativeRule ?? exception.rule,
   };
 }
 

@@ -105,8 +105,8 @@ export const HYGIENE_RULES = [
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: DEAD_CODE,
     limit:
-      "a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes) that nothing imports or runs",
-    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, go: true },
+      "a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes; Java and Kotlin: a dependency declared for the main sources that no main class uses, reported as `dependencies/unused-declared-dependency`) that nothing imports or runs",
+    enforcedBy: { ...TYPESCRIPT_AND_PYTHON, java: true, kotlin: true, go: true },
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,

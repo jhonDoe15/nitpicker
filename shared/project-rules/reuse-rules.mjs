@@ -3,6 +3,8 @@ const STRUCTURE_TOOL = 'structure';
 const COUPLING = 'coupling';
 const QUALIFIED_NAMES =
   "Go code names another package's export through the package (`billing.Total`, `report.Total`), so two exports with one name never meet unqualified, and two dot imports that both define a name do not compile";
+const GO_NO_IMPORT_CYCLES =
+  'the Go compiler rejects an import cycle between packages, so a cycle never builds and there is nothing for the rule to report';
 const NO_REEXPORT =
   'the language has no re-exports: a class has one importable name, in the package that declares it, so there is no public path to the same class to go around (a facade is a different class)';
 
@@ -110,6 +112,7 @@ export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
       limit:
         'packages that depend on each other in a loop, one finding per package (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count); a cycle that a reported `feature-cycle` fully explains (its packages lie in two or more features of that cycle, and removing the edges of that feature cycle leaves no cycle) is left to that rule',
       enforcedBy: withoutTypescript,
+      notApplicable: { go: GO_NO_IMPORT_CYCLES },
     },
   ];
 }
