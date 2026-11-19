@@ -1,0 +1,28 @@
+  <rule name="InvertedEqualsCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This early out in equals(Object) returns false when the compared field is equal, while the other checks of the method return false when a field differs. The test is inverted: two equal objects compare as unequal and the method carries on for objects that differ, so equals is not even reflexive and sets and maps lose entries. Negate the comparison: if (!name.equals(that.name)) return false;.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//IfStatement[count(*) = 2]
+  [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]
+        or self::Block[count(*) = 1]/ReturnStatement[BooleanLiteral[@True = false()]]]]
+  [let $m := ancestor::MethodDeclaration[1],
+       $p := string($m/FormalParameters/FormalParameter/VariableId/@Name),
+       $aliases := ($p, $m//VariableDeclarator[.//CastExpression/VariableAccess[@Name = $p]]/VariableId/@Name,
+                    $m//TypePattern/VariableId/@Name),
+       $cond := *[1],
+       $last := if ($cond[self::InfixExpression[@Operator = '||']]) then $cond/*[2] else $cond,
+       $call := $last[self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = (1, 2)]]
+   return exists($m[@Name = 'equals'][@Arity = 1][FormalParameters/FormalParameter/ClassType[@SimpleName = 'Object']])
+     and exists($call)
+     and (some $v in $call//VariableAccess satisfies $v/@Name = $aliases)
+     and exists($m//IfStatement[count(*) = 2]
+                  [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]
+                        or self::Block[count(*) = 1]/ReturnStatement[BooleanLiteral[@True = false()]]]]
+                  /*[1]/descendant-or-self::*[self::UnaryExpression[@Operator = '!'][.//MethodCall[@MethodName = 'equals']]
+                        or self::InfixExpression[@Operator = '!='][empty(.//MethodCall[@MethodName = 'getClass'])]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -2387,6 +2387,7 @@
                             "pmd/CopiedConstantInTest",
                             "pmd/MaxValueOverflow",
                             "pmd/NullBranchFallThrough",
+                            "pmd/NullableReturnUse",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

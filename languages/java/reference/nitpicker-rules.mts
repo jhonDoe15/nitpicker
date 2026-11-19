@@ -31,6 +31,7 @@ import {
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { maxValueEntry } from './review-entries/max-value.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
+import { nullableReturnEntry } from './review-entries/nullable-return.mts';
 import { springConfigForms } from './spring-config-messages.mts';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -250,6 +251,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     copiedConstantEntry(),
     maxValueEntry(),
     nullFallThroughEntry(),
+    nullableReturnEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

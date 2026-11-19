@@ -62,6 +62,7 @@
   "pmd/MaxValueOverflow": ["bug"],
   "pmd/NullBranchFallThrough": ["bug"],
   "pmd/NullMapValue": ["bug"],
+  "pmd/NullableReturnUse": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UntestedRoundTrip": ["tests"],
   "spotbugs/InlineSuppression": ["maintainability"],
