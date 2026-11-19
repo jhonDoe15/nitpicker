@@ -561,6 +561,11 @@ name bound in the same function from a dict or cache `get`, a query row (`first`
 a nullable model field or an HTTP or SDK client result. An explicit `if x is None:` guard, an `assert` on a value the
 function built and test files are left alone; ruff `S101` stays unselected.
 
+Warning filters in library code: `warning-filter-in-function` in the Python preset reports `warnings.catch_warnings`,
+`simplefilter`, `filterwarnings` and `resetwarnings` inside a function of production code, because the filters are
+process-wide and racy across threads. Module level calls, `main` of a script, `__main__.py`, console-script entry
+points, click and typer commands and test code are left alone.
+
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
 close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing

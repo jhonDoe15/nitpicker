@@ -168,6 +168,7 @@
   "python-rules/untested-round-trip": ["tests"],
   "python-rules/untrimmed-request-text": ["bug"],
   "python-rules/unused-option": ["simplification"],
+  "python-rules/warning-filter-in-function": ["reliability"],
   "python-rules/weak-assertion": ["tests"],
   "python-rules/weak-hmac": ["security"],
   "python-rules/write-outside-transaction": ["reliability", "persistence"],
