@@ -1,10 +1,24 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, type SourceCode } from '../rules/typed/node-views.mts';
+import {
+  type RunnerApis,
+  createRunnerApis,
+  runnerApiVisitors,
+} from '../rules/runner-apis/runner-apis.mts';
+import { setsFakeClock, spiedMember } from '../rules/runner-apis/runner-doubles.mts';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 
 type Options = readonly [Readonly<Record<string, unknown>>?];
 type Binding = { readonly allowed: ReadonlySet<string>; readonly imported: string | undefined };
 type Bindings = Map<string, Binding>;
 type NetworkContext = { readonly sourceCode: SourceCode; readonly bindings: Bindings };
+type MessageId = 'clock' | 'random' | 'network';
+type Context = Readonly<TSESLint.RuleContext<MessageId, Options>>;
+type FakeState = { fakeClock: boolean; randomSpy: boolean };
+type Unfaked = {
+  readonly clockCalls: readonly (TSESTree.NewExpression | TSESTree.CallExpression)[];
+  readonly randomCalls: readonly TSESTree.CallExpression[];
+};
 
 const RANDOM_METHOD = 'random';
 const NETWORK_MODULES = new Map([
@@ -40,24 +54,13 @@ function isMemberCall(
   );
 }
 
-function isFakeClockSetup(node: TSESTree.CallExpression): boolean {
-  const callee = node.callee;
+function isRandomSpy(apis: RunnerApis, node: TSESTree.CallExpression): boolean {
+  const spied = spiedMember(apis, node);
   return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    ['useFakeTimers', 'setSystemTime'].includes(nameOf(callee.property) ?? '')
-  );
-}
-
-function isRandomSpy(node: TSESTree.CallExpression): boolean {
-  const [target, method] = node.arguments;
-  return (
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    nameOf(node.callee.property) === 'spyOn' &&
-    target?.type === AST_NODE_TYPES.Identifier &&
-    target.name === 'Math' &&
-    method?.type === AST_NODE_TYPES.Literal &&
-    method.value === RANDOM_METHOD
+    spied?.target.type === AST_NODE_TYPES.Identifier &&
+    spied.target.name === 'Math' &&
+    spied.property.type === AST_NODE_TYPES.Literal &&
+    spied.property.value === RANDOM_METHOD
   );
 }
 
@@ -111,22 +114,37 @@ function isNetworkCall(
   return binding !== undefined && property !== undefined && binding.allowed.has(property);
 }
 
-export const rule: TSESLint.RuleModule<'clock' | 'random' | 'network', Options> = {
+function reportUnfaked(
+  context: Context,
+  state: FakeState,
+  { clockCalls, randomCalls }: Unfaked,
+): void {
+  const { fakeClock, fixRandom } = vocabularyOf(context);
+  const unfaked = [
+    ...(state.fakeClock ? [] : clockCalls.map((node) => ({ node, messageId: 'clock' as const }))),
+    ...(state.randomSpy ? [] : randomCalls.map((node) => ({ node, messageId: 'random' as const }))),
+  ];
+  for (const report of unfaked) {
+    context.report({ ...report, data: { fakeClock, fixRandom } });
+  }
+}
+
+export const rule: TSESLint.RuleModule<MessageId, Options> = {
   meta: {
     type: 'problem',
     docs: { description: 'Keep the real clock, randomness and network out of tests' },
     schema: [
       {
         type: 'object',
-        properties: { network: { type: 'boolean' } },
+        properties: { network: { type: 'boolean' }, ...RUNNER_OPTION_PROPERTY },
         additionalProperties: false,
       },
     ],
     messages: {
       clock:
-        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with `vi.useFakeTimers()` and `vi.setSystemTime(...)`.',
+        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with {{fakeClock}}.',
       random:
-        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with `vi.spyOn(Math, "random")`.',
+        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with {{fixRandom}}.',
       network: 'A unit test must not reach the network. Inject the client and fake it.',
     },
   },
@@ -134,11 +152,15 @@ export const rule: TSESLint.RuleModule<'clock' | 'random' | 'network', Options> 
     const checksNetwork = context.options[0]?.['network'] === true;
     const clockCalls: (TSESTree.NewExpression | TSESTree.CallExpression)[] = [];
     const randomCalls: TSESTree.CallExpression[] = [];
-    const state = { fakeClock: false, randomSpy: false };
+    const state: FakeState = { fakeClock: false, randomSpy: false };
     const networkBindings: Bindings = new Map();
     const network = { sourceCode: context.sourceCode, bindings: networkBindings };
+    const apis = createRunnerApis();
+    const visitors = runnerApiVisitors(apis);
     return {
+      ...visitors,
       ImportDeclaration(node) {
+        visitors.ImportDeclaration(node);
         trackNetworkImport(networkBindings, node);
       },
       NewExpression(node) {
@@ -160,23 +182,14 @@ export const rule: TSESLint.RuleModule<'clock' | 'random' | 'network', Options> 
         if (isMemberCall(node, 'Math', RANDOM_METHOD)) {
           randomCalls.push(node);
         }
-        state.fakeClock ||= isFakeClockSetup(node);
-        state.randomSpy ||= isRandomSpy(node);
+        state.fakeClock ||= setsFakeClock(apis, node);
+        state.randomSpy ||= isRandomSpy(apis, node);
         if (checksNetwork && isNetworkCall(network, node)) {
           context.report({ node, messageId: 'network' });
         }
       },
       'Program:exit'() {
-        if (!state.fakeClock) {
-          for (const node of clockCalls) {
-            context.report({ node, messageId: 'clock' });
-          }
-        }
-        if (!state.randomSpy) {
-          for (const node of randomCalls) {
-            context.report({ node, messageId: 'random' });
-          }
-        }
+        reportUnfaked(context, state, { clockCalls, randomCalls });
       },
     };
   },

@@ -82,3 +82,17 @@ export function isIdentifierNamed(node: TSESTree.Node, name: string): node is TS
 export function nameOf(node: unknown): string | undefined {
   return isNode(node) && 'name' in node && typeof node.name === 'string' ? node.name : undefined;
 }
+
+export function requiredLiteral(
+  init: TSESTree.Node | undefined,
+): TSESTree.Literal['value'] | undefined {
+  if (
+    init?.type !== AST_NODE_TYPES.CallExpression ||
+    init.callee.type !== AST_NODE_TYPES.Identifier ||
+    init.callee.name !== 'require'
+  ) {
+    return undefined;
+  }
+  const [first] = init.arguments;
+  return first?.type === AST_NODE_TYPES.Literal ? first.value : undefined;
+}

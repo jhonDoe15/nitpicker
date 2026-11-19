@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import path from 'node:path';
 import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
-import { chainOf } from '../../../../shared/traversal.mjs';
+import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 
 const CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];
@@ -28,11 +28,6 @@ function fixedOptions(ts) {
 }
 
 const resolvers = new Map();
-
-function parentDirectory(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? undefined : parent;
-}
 
 function nearestConfig(directory) {
   return chainOf(directory, parentDirectory)

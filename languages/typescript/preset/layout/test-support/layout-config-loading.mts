@@ -23,6 +23,7 @@ export const defaults = path.join(fileURLToPath(new URL('../../', import.meta.ur
 
 export const customPolicy: Policy = {
   exclude: ['lib/legacy/**'],
+  react: { enabled: false },
   layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
 };
 

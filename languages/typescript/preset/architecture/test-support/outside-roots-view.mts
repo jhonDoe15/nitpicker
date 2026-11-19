@@ -1,13 +1,18 @@
 import type { DependencyType } from 'dependency-cruiser';
 import { outsideRootsRule as untypedOutsideRootsRule } from '../outside-roots/outside-roots.mjs';
 
+export type ProductionSource = {
+  readonly path: string;
+  readonly pathNot?: string | string[];
+};
+
 export type OutsideRootsOptions = {
   readonly excludePattern?: string;
   readonly generatedFilePattern?: string;
 };
 
 type OutsideRootsRequest = {
-  readonly productionSource: string;
+  readonly productionSource: ProductionSource;
   readonly roots: readonly string[];
   readonly excludePattern: string | undefined;
   readonly generatedFilePattern: string | undefined;
@@ -17,7 +22,7 @@ type OutsideRootsRule = {
   readonly name: string;
   readonly severity: 'error';
   readonly comment: string;
-  readonly from: { readonly path: string };
+  readonly from: ProductionSource;
   readonly to: { readonly pathNot: string; readonly dependencyTypesNot: DependencyType[] };
 };
 
@@ -30,7 +35,7 @@ function isOutsideRootsRule(value: unknown): value is OutsideRootsRule {
 }
 
 export function outsideRootsRule(
-  productionSource: string,
+  productionSource: ProductionSource,
   roots: readonly string[],
   { excludePattern, generatedFilePattern }: OutsideRootsOptions = {},
 ): OutsideRootsRule {
