@@ -3,6 +3,7 @@ import { declarationParts, fileBindings, freeBindings } from './bindings.mjs';
 import { leafTexts, normalizedTexts } from './tokens.mjs';
 import { untypedParts } from './type-syntax.mjs';
 import { appendAll } from '../../../../../../shared/lists/items.mjs';
+import { expandsFully } from '../../../../../../shared/traversal.mjs';
 
 const WRAPPERS = new Set(['memo', 'forwardRef']);
 const LITERAL_KINDS = new Set([
@@ -58,13 +59,7 @@ function literalChildren(node) {
 }
 
 function isLiteralOnly(expression) {
-  const pending = [expression];
-  for (const node of pending) {
-    const children = literalChildren(node);
-    if (children === undefined) return false;
-    appendAll(pending, children);
-  }
-  return true;
+  return expandsFully(expression, literalChildren);
 }
 
 function isComponentInitializer(expression) {

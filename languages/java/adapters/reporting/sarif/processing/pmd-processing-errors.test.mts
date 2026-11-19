@@ -98,4 +98,23 @@ describe('pmdProcessingErrors', () => {
     expect(processingErrors({ runs: [{ results: [] }] }, context)).toEqual([]);
     expect(processingErrors({ runs: [] }, context)).toEqual([]);
   });
+
+  it('leaves a rule that crashed on a file to the rule-crash note the PMD log gives', () => {
+    const crash = log(
+      notification(
+        'A.java',
+        'ContextedRuntimeException: java.lang.NullPointerException: type is null\nException Context:\n\t[1:Rule applied on node=!debug only! [MethodDeclaration:1:16]void bad() {}]',
+      ),
+    );
+    const logged = (files: readonly string[]) =>
+      processingErrors(crash, { ...context, loggedCrashFiles: new Set(files) }).map(
+        ({ path: file }) => file,
+      );
+
+    expect([logged(['/work/app/A.java']), logged(['/work/app/B.java']), logged([])]).toEqual([
+      [],
+      ['A.java'],
+      ['A.java'],
+    ]);
+  });
 });

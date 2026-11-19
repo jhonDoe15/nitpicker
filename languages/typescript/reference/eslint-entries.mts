@@ -42,13 +42,14 @@ const PLUGIN_WHY: Readonly<Record<string, string>> = {
   vitest: 'The preset turns on this rule of the Vitest plugin for tests.',
 };
 const RESTRICTED = /^(?:[\w-]+\/)?no-restricted-/u;
-const REACT_SCOPE = 'A TypeScript project with React: `react` in package.json or `react.enabled`.';
+const REACT_SCOPE =
+  'A TypeScript or JavaScript project with React: `react` in package.json or `react.enabled`.';
 const I18N_SCOPE = 'A TypeScript project with `i18n.enabled` or an i18n library.';
 const TYPESCRIPT_ONLY_SCOPE = 'The TypeScript preset only.';
 const JAVASCRIPT_ONLY_SCOPE = 'The JavaScript preset only.';
 const PRESET_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   typescript: ['typescript', 'typescript-react'],
-  javascript: ['javascript'],
+  javascript: ['javascript', 'javascript-react'],
 };
 
 function pageOf(id: string): string {

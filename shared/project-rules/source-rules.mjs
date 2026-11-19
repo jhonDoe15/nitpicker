@@ -1,6 +1,11 @@
 const FIX_TEXT = '{fix}';
 const STRUCTURE_TOOL = 'structure';
 
+const DOUBLE_NUMBERS =
+  'every number is a double and never wraps: there is no wrapping difference and no smallest value whose `Math.abs` stays negative, which are the shapes the rule proves';
+const UNBOUNDED_INTEGERS =
+  'integers have no fixed width and never overflow: there is no wrapping difference and no smallest value whose `abs` stays negative, which are the shapes the rule proves';
+
 export const SOURCE_RULE_IDS = {
   componentStoryMissing: 'component-story-missing',
   javascriptInTypescriptProject: 'javascript-in-typescript-project',
@@ -24,14 +29,14 @@ export function sourceRuleMessages(exceptionHint, allowed) {
   };
 }
 
-export function sourceRules(ids, enforcedBy) {
+function conditionRules(ids, enforcedBy) {
   return [
     {
       id: ids.componentStoryMissing,
       check: STRUCTURE_TOOL,
       limit:
         'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-      enforcedBy: { ...enforcedBy, javascript: 'partial' },
+      enforcedBy,
     },
     {
       id: ids.javascriptInTypescriptProject,
@@ -46,6 +51,11 @@ export function sourceRules(ids, enforcedBy) {
       limit:
         'an `if`, `while`, `when` arm, ternary or `&&`/`||` operand in a production function that the guards before it decide, proved by a solver (Z3, fixed resource limit): enclosing `if`s and their `else`, guard clauses that return, throw, break or continue, earlier `when` arms, the arms of a `switch`, `when (subject)` or `match` (the label in its own arm, every earlier label excluded in `default`/`else`, nothing for fall-through, pattern or guarded arms) and a `case` label the facts before the switch rule out, precondition calls and asserts matched by their import (`Objects.requireNonNull`, Guava `Preconditions`, Spring `Assert`, commons-lang `Validate`, Kotlin `require`/`check`/`requireNotNull`, `node:assert`, project `asserts` functions; a Java, Kotlin or Python `assert` may be switched off at run time, so it only reports a check as redundant, never code as dead), the left side of `&&`/`||`, a coercion of the tested value that the same guards settle (`Boolean.TRUE.equals(x)` under `if (x != null && x)`, Kotlin `x == true` under `if (x == true)`, Python `bool(x)` under `if x:`, TypeScript `Boolean(x)` or `!!x` under `if (x)`), the test of a counted loop (Java and TypeScript `for`, Python `range`, Kotlin `until`, `..` and `downTo`), the branches of a ternary or `if` expression, and facts about names a lambda captures when they cannot change; Java and Kotlin `equals` and `Objects.equals` against a string, boolean or enum constant count as `==`; sizes and lengths (Go `len` and `cap` too; whole numbers, never negative, `isEmpty()` meaning a size of 0), index searches (at least -1; Go `strings`/`bytes`/`slices` `Index` functions and Python `str.find`/`rfind` too), absolute values of floating-point numbers and `Math.random()` are known by the declared types of their receivers (TypeScript: the type checker), a same-file getter that only returns a field and a known pure library method return the same value until something changes, never for a volatile field, a Kotlin property with a custom getter or delegate, or a TypeScript accessor or property the type checker does not show as plain data, which are new values at every read; `==` on Java references, Kotlin `===` and Python `is` (except `is None`) are identity tests that never relate to equality; a collection type counts only when it resolves to the library type; the smaller or larger of two integers (`Math.min`/`max`, `minOf`/`maxOf`, Python `min`/`max`) is known, a call of a same-file function that cannot be overridden (Java `private`/`static`/`final`, a TypeScript or Python module function) and only returns a side-effect-free condition is read as that condition, through at most 2 levels, and the message names the helper; a declaration or plain assignment of a literal (or of a local of an exact type) to a local, until the next write to it; a write to a name, or a call that is not pure, forgets what was known about it; Java and Kotlin `int`/`long` arithmetic, Go integer arithmetic of every width (`int` is 64 bits, nothing is promoted, unsigned types wrap) and Python integer sums, differences and products are exact to the solver (fixed-width integers wrap around on overflow), other arithmetic is an opaque value; in Go, a name whose address is taken, or that a method is called on, counts as changeable by any call and `if err != nil` tells only about `err`; TypeScript and JavaScript report it as `nitpicker/no-decided-condition`',
     },
+  ];
+}
+
+function slipRules(ids) {
+  return [
     {
       id: ids.duplicateBranch,
       check: STRUCTURE_TOOL,
@@ -62,7 +72,12 @@ export function sourceRules(ids, enforcedBy) {
       id: ids.integerSlip,
       check: STRUCTURE_TOOL,
       limit:
-        'Java, Kotlin and Go integer arithmetic that a solver shows wrong for some input, with the guards before it known (`int`/`long` are fixed-width and overflow, sizes are bounded): a difference compared with 0 by order (never `==`/`!=`, which wrapping cannot change; Go unsigned integers wrap too) or returned from `compareTo`/`compare` (it overflows, use `Integer.compare`), `Math.abs` of an `int` or `long` (`byte`, `short` and `char` promote) used as an index or a `%` bucket (the smallest value stays negative; Go `math.Abs` is a float function and has no such slip), and in Kotlin and Go a `%` result compared with a positive value for a parameter that can be negative (Java keeps SpotBugs `IM_BAD_CHECK_FOR_ODD`); only operands that are parameters never reassigned, fields and calls are probed, a local has no known range and is skipped; the message names the inputs; Go integers are read at their declared width (`int` is 64 bits); TypeScript numbers are doubles and Python integers are unbounded, so neither has these slips',
+        'Java, Kotlin and Go integer arithmetic that a solver shows wrong for some input, with the guards before it known (`int`/`long` are fixed-width and overflow, sizes are bounded): a difference compared with 0 by order (never `==`/`!=`, which wrapping cannot change; Go unsigned integers wrap too) or returned from `compareTo`/`compare` (it overflows, use `Integer.compare`), `Math.abs` of an `int` or `long` (`byte`, `short` and `char` promote) used as an index or a `%` bucket (the smallest value stays negative; Go `math.Abs` is a float function and has no such slip), and in Kotlin and Go a `%` result compared with a positive value for a parameter that can be negative (Java keeps SpotBugs `IM_BAD_CHECK_FOR_ODD`); only operands that are parameters never reassigned, fields and calls are probed, a local has no known range and is skipped; the message names the inputs; Go integers are read at their declared width (`int` is 64 bits)',
+      notApplicable: {
+        typescript: DOUBLE_NUMBERS,
+        javascript: DOUBLE_NUMBERS,
+        python: UNBOUNDED_INTEGERS,
+      },
     },
     {
       id: ids.shorterCondition,
@@ -80,4 +95,8 @@ export function docCommentRule(ids) {
     limit:
       'a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (a Go `Deprecated:` paragraph or code block says more; TypeScript and JavaScript report it as `nitpicker/no-comments`)',
   };
+}
+
+export function sourceRules(ids, enforcedBy) {
+  return [...conditionRules(ids, enforcedBy), ...slipRules(ids)];
 }

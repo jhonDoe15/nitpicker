@@ -1,4 +1,4 @@
-import { frameAt, splitTopLevel } from '../max-value-sums/source-file.mts';
+import { frameAt, splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import { methodCalls, shortText, textOf } from '../token-calls/calls.mts';
 import type { TokenCall } from '../token-calls/calls.mts';
 import { initializerOf, literalText } from '../affix-boundaries/boundaries.mts';

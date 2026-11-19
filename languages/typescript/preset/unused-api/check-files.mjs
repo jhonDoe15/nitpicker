@@ -4,6 +4,7 @@ import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 export const DEAD_CODE_CHECK_FILES = [
   'languages/typescript/preset/defaults/knip.json',
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
   'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',

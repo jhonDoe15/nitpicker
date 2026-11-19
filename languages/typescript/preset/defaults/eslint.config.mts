@@ -63,7 +63,6 @@ const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({
   projectRoot: analyzedProjectRoot(),
   react: policy.react,
-  javascript: layout.javascript,
 });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
 const i18n = isI18nProject({

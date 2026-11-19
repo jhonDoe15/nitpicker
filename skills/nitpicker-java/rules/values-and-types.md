@@ -34,6 +34,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- In a date-time pattern, `mm` is the minute and `MM` the month (`dd.MM.yyyy HH:mm`), the year is `yyyy` or `yy`,
+  the 24-hour clock is `HH` (not `kk`), and `hh` or `KK` needs `a`; none of these throws when written wrong
+  (`pmd/DatePatternLetterSlip`).
 - HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
   host, cookie name or file extension before comparing it (`toLowerCase(Locale.ROOT)`, `equalsIgnoreCase`) and
   parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `MediaType.parseMediaTypes`,
@@ -80,6 +83,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
+  Do not hand a regex to `replace` (`replace("\\s+", "")` removes nothing) or plain text with a
+  metacharacter to `replaceAll` (`replaceAll(".tmp", "")`, `replaceAll("?", v)`), and give
+  `replaceAll` `Matcher.quoteReplacement(File.separator)` instead of a raw separator
+  (`pmd/ReplaceWithWrongLiteralKind`).
   Every part of a literal pattern must change what it matches (`"a|b|a"`, `"[\\w_]"` and `"x{1}"` are
   `pmd/RegexPartDefect`), and nested quantifiers such as `"(\\s*\\w+)*x"` are `pmd/BacktrackingRegex`.
 - Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
@@ -97,6 +104,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A field the constructor sets and a getter exposes belongs in `equals` and `hashCode`: add the new field to both
   methods (`Objects.equals(extension, that.extension)`, `Objects.hash(groupId, artifactId, extension)`), or mark it
   `transient` or name it as a cache, lock or listener when it is not part of the value (`pmd/EqualsLeavesOutField`).
+- Write each early out of `equals(Object)` in the same direction: return `false` when a field differs
+  (`if (!name.equals(that.name)) return false;`, `if (type != that.type || !key.equals(that.key)) return false;`),
+  never when it matches (`pmd/InvertedEqualsCheck`).
+- Put parentheses around a conditional that sits inside a concatenation:
+  `"id=" + (name != null ? name.trim() : "none")`. Written without them, `+` binds first and the
+  concatenation, which is never `null`, is what `!= null` tests (`pmd/ConcatenationComparedWithNull`).
 - A copy constructor, `clone()`, `toBuilder()` or `copy()` copies every field the class declares: when you add a
   field, add it to the copy too (`.tracker(this.tracker)`, `this.tracker = other.tracker`). A field that starts fresh
   in the copy (a lock, a cache, a counter, a listener list) is `transient` or named as such (`pmd/CopyMethodDropsField`).
@@ -116,6 +129,22 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Fill each setter or builder slot with the value named for it (`config.timeColumn(timeColumn)`, not
   `config.tableName(timeColumn)`), and pass every member of a numbered family (`type1, type2, type3`),
   not one twice (`pmd/SiblingValuePassed`).
+- A `compare` or `compareTo` method and a `Comparator` lambda return `Integer.compare(a.line, b.line)`,
+  `Long.compare(a.time, b.time)` or `Double.compare(a.x, b.x)`, or build the comparator with
+  `Comparator.comparingInt(Item::count)`, never a subtraction: the difference overflows `int` and
+  `(int)` truncates a `long` or `double` difference (`pmd/SubtractionComparison`).
+- A getter returns the field it is named for (`getScrollWidth()` returns `areaWidth`, not the
+  neighbouring `areaHeight`, and `getLeft()` not `right`); a cloned getter gets its field changed together with its name
+  (`pmd/GetterReturnsSiblingField`).
+- Assign a bound from the accessor that carries its name (`int max = range.getMax();`,
+  `afterPath = getAfterPath(change)`, not the accessor of the opposite end); a copied line gets both
+  sides edited (`pmd/OppositeBoundAssigned`).
+- A method or variable named for a change (`isModified`, `hasChanged`, `dirty`) is computed with a
+  negated comparison (`return !saved.equals(edited);`), not plain equality, which says the opposite
+  (`pmd/ChangeNamedEquality`).
+- Do not pass a variable to a setter or mutator called on itself (`defaults.putAll(defaults)`,
+  `node.setPeer(node)`, `node.attach(node)`) when another variable of that type is in scope; name the
+  one that was meant (`pmd/ReceiverPassedAsArgument`).
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
@@ -176,6 +205,18 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A loop uses its loop variable (`pmd/LoopVariableUnused`): `for (String name : names) ctx.getBean(name, type)`,
   `delegates.get(i).handle(ctx)`, not `names[0]` or `delegates.get(0)` on every pass. A loop that only repeats
   work names its variable `ignored`.
+- A counting `for` loop updates its index toward its exit condition (`pmd/LoopUpdateAwayFromExit`):
+  `for (int i = list.size() - 1; i >= 0; i--)` and `for (int i = 0; i < n; i++)`, not `i >= 0` with `i++`
+  or `i < n` with `i--`, which never ends.
+- A literal index stays inside the length its own guard proved: `params.length > 2 ? params[2] : null`,
+  `if (parts.length < 2) return;` before `parts[1]`, `list.size() >= 3` before `list.get(2)`; a guard one short
+  of the index lets through exactly the length that throws (`pmd/ConstantIndexBeyondGuard`).
+- Cut exactly the affix you tested: `path.substring("file://".length())` after `startsWith("file://")`, and
+  `s.substring(1, s.length() - 1)` after checking both quotes, not a hard-coded offset that is one off
+  (`pmd/AffixLengthMismatch`).
+- A null check does not make a list, array or string non-empty: read `get(0)`, `[0]`, `charAt(0)` or
+  `iterator().next()` after `!isEmpty()`, `size() > 0` or `length > 0`
+  (`pmd/FirstElementOfMaybeEmpty`).
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
@@ -211,3 +252,17 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
+- The result of a project method that can return `null` is checked before it is used
+  (`pmd/NullableReturnUse`): `Point v = line.intersection(other); line.toSubSpace(v);` throws when the lines are
+  parallel and the method returns `null`. A plain `return null` is reported only where other callers check the
+  result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
+  or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
+- A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A public method or constructor does not wait a constant it cannot override
+  (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
+  `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
+  sets, that defaults to the constant (`this(RETRY_DELAY_MS)`).
+- Domain code does not change what it was given (`pmd/MutatingMethodInDomain`, classes of a `domain` package):
+  `items.add(x)`, `index.put(k, v)`, `list.sort(...)` or `date.setTime(...)` on a parameter. Build a new value:
+  `List.copyOf` plus the change, `Stream.toList()`, `Map.copyOf`, or a new collection created and filled
+  in the same method.

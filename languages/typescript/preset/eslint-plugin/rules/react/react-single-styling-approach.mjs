@@ -1,6 +1,7 @@
 import { cssInJsSource, stylesheetSpecifier } from '../../../layout.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { appendAll } from '../../../../../../shared/lists/items.mjs';
+import { expandsFully } from '../../../../../../shared/traversal.mjs';
 
 const approaches = {
   'class-names': {
@@ -147,15 +148,7 @@ function staticChildren(node) {
 }
 
 function isStaticValue(root) {
-  const pending = [root];
-  for (const node of pending) {
-    const children = staticChildren(node);
-    if (children === undefined) {
-      return false;
-    }
-    appendAll(pending, children);
-  }
-  return true;
+  return expandsFully(root, staticChildren);
 }
 
 function isInlineStyleObject(sourceCode, attribute) {

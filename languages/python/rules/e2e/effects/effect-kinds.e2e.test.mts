@@ -3,7 +3,11 @@ import { useScripts, pythonLines as code } from '../../test-support/python-rule-
 
 const { findingsOf, itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['swallowed-exception', 'test-without-assertion'],
+  hidden: [
+    'managed-resource-outside-composition-root',
+    'swallowed-exception',
+    'test-without-assertion',
+  ],
 });
 
 describeRules('effect kinds', () => {

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "copy-pasted-tests",
+    "mention": "Put the cases in one table"
+  }
+]

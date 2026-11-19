@@ -3,7 +3,12 @@ import { changedLines, hunkLines } from './hunk-edits.mts';
 import type { Hunk, HunkLine } from './unified-diff.mts';
 
 export type Touched = ReadonlySet<number> | 'all';
-export type LabeledHunk = { readonly label: string; readonly hunk: Hunk; readonly line?: number };
+export type LabeledHunk = {
+  readonly label: string;
+  readonly hunk: Hunk;
+  readonly line?: number;
+  readonly group?: string;
+};
 
 const IMPORT_LINE = /^\s*import\s+(?:static\s+)?([\w.$]+?)(?:\.(\*|[\w$]+))?\s*;\s*$/u;
 const BLANK = /^\s*$/u;
@@ -34,27 +39,96 @@ function usedIn(name: string, texts: readonly string[]): boolean {
   return wordIn(name, texts, /(?<![\w$])/u);
 }
 
-function keptAdditions(hunk: Hunk, keptTexts: readonly string[]): Hunk | undefined {
-  const lines = hunk.lines
-    .filter(({ kind, text }) => {
-      const name = importedName(text);
-      return kind !== '+' || (name !== undefined && (name === '*' || usedIn(name, keptTexts)));
-    })
-    .map((line): HunkLine => (line.kind === '-' ? { ...line, kind: ' ' } : line));
-  return lines.some(({ kind }) => kind === '+') ? { ...hunk, lines } : undefined;
+function removedLines(hunk: Hunk): number[] {
+  const removed: number[] = [];
+  let line = hunk.oldStart;
+  for (const { kind } of hunk.lines) {
+    if (kind === '-') {
+      removed.push(line);
+    }
+    line += kind === '+' ? 0 : 1;
+  }
+  return removed;
 }
 
-export function selectHunks(entries: readonly LabeledHunk[], touched: Touched): LabeledHunk[] {
+function finalTexts(text: string | undefined, kept: readonly Hunk[]): string[] | undefined {
+  if (text === undefined) {
+    return undefined;
+  }
+  const removed = new Set(kept.flatMap(removedLines));
+  const left = text
+    .split('\n')
+    .filter((line, index) => !(removed.has(index + 1) || IMPORT_LINE.test(line)));
+  const added = kept.flatMap(({ lines }) =>
+    lines.filter(({ kind }) => kind === '+').map(({ text: line }) => line),
+  );
+  return [...left, ...added];
+}
+
+function keptLine(
+  line: HunkLine,
+  keptTexts: readonly string[],
+  finalText: readonly string[] | undefined,
+): boolean {
+  const name = importedName(line.text);
+  if (line.kind === '+') {
+    return name !== undefined && (name === '*' || usedIn(name, keptTexts));
+  }
+  return (
+    line.kind === ' ' ||
+    (finalText !== undefined && name !== undefined && name !== '*' && !usedIn(name, finalText))
+  );
+}
+
+function keptImports(
+  hunk: Hunk,
+  keptTexts: readonly string[],
+  finalText: readonly string[] | undefined,
+): Hunk | undefined {
+  const lines = hunk.lines
+    .filter((line) => line.kind !== '+' || keptLine(line, keptTexts, finalText))
+    .map((line): HunkLine =>
+      line.kind === '-' && !keptLine(line, keptTexts, finalText) ? { ...line, kind: ' ' } : line,
+    );
+  return lines.some(({ kind }) => kind !== ' ') ? { ...hunk, lines } : undefined;
+}
+
+function stillUnused(hunk: Hunk, finalText: readonly string[] | undefined): boolean {
+  return (
+    finalText === undefined ||
+    hunk.lines
+      .filter(({ kind }) => kind === '-')
+      .map(({ text }) => importedName(text))
+      .every((name) => name === undefined || name === '*' || !usedIn(name, finalText))
+  );
+}
+
+export function selectHunks(
+  entries: readonly LabeledHunk[],
+  touched: Touched,
+  text?: string,
+): LabeledHunk[] {
   const importOnly = entries.filter(({ hunk }) => isImportOnly(hunk));
   const body = entries.filter((entry) => !importOnly.includes(entry));
-  const keptBody = body.filter(({ hunk }) => touches(hunk, touched));
+  const touchedGroups = new Set(
+    body
+      .filter(({ hunk }) => touches(hunk, touched))
+      .flatMap(({ group }) => (group === undefined ? [] : [group])),
+  );
+  const keptBody = body.filter(({ hunk, group }) =>
+    group === undefined ? touches(hunk, touched) : touchedGroups.has(group),
+  );
   const keptTexts = keptBody.flatMap(({ hunk }) => hunkLines(hunk).after);
+  const finalText = finalTexts(
+    text,
+    keptBody.map(({ hunk }) => hunk),
+  );
   const imports = importOnly.flatMap((entry): LabeledHunk[] => {
     const removes = entry.hunk.lines.some(({ kind }) => kind === '-');
-    if (removes && touches(entry.hunk, touched)) {
+    if (removes && touches(entry.hunk, touched) && stillUnused(entry.hunk, finalText)) {
       return [entry];
     }
-    const hunk = touched === 'all' ? entry.hunk : keptAdditions(entry.hunk, keptTexts);
+    const hunk = touched === 'all' ? entry.hunk : keptImports(entry.hunk, keptTexts, finalText);
     return hunk === undefined ? [] : [{ ...entry, hunk }];
   });
   return [...imports, ...keptBody];

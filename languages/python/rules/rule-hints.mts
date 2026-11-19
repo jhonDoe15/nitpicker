@@ -6,6 +6,8 @@ import type { Libraries } from './libraries/typed/library-types.mts';
 import { LOCATOR_HINTS } from './hints/ast/locators.mts';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mts';
 import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mts';
+import { COPY_PASTED_HINTS } from './hints/tests/copy-pasted-hints.mts';
+import { RECURSION_HINTS } from './hints/ast/ast-recursion.mts';
 import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mts';
 import { CONTAINER_HINTS } from './hints/containers/containers.mts';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mts';
@@ -13,10 +15,15 @@ import { SMELL_HINTS } from './hints/ast/ast-smells.mts';
 import { EFFECT_HINTS } from './hints/effects/index.mts';
 import { WRITE_HINTS } from './hints/writes/index.mts';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mts';
+import { COMPOSITION_HINTS } from './hints/composition/composition-hints.mts';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mts';
+import { DJANGO_DECLARATION_HINTS } from './hints/django/declaration-hints.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mts';
+import { FORWARDED_HINTS } from './hints/forwarding/forwarded.mts';
+import { ONE_SHOT_HINTS } from './hints/iterators/one-shot.mts';
+import { SHARED_STATE_HINTS } from './hints/signatures/shared-state.mts';
 import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mts';
 import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mts';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mts';
@@ -28,13 +35,23 @@ import { STYLE_HINTS } from './hints/ruff-style.mts';
 import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mts';
 import { STREAM_HINTS } from './hints/streams/streams.mts';
 import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
+import { FAILURE_HINTS } from './hints/failures/failures.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
+import { RUNTIME_SLIP_HINTS } from './hints/slips/runtime-slips.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
+import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
+import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
+import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
 import { VALUE_HINTS } from './hints/values/value-bugs.mts';
 import { TEXT_SPLIT_HINTS } from './hints/text/text-splits.mts';
 import { MINED_HINTS } from './hints/mined/mined-rules.mts';
+import { RESULT_HINTS } from './hints/results/results.mts';
+import { OVERRIDE_HINTS } from './hints/overrides/overrides.mts';
+import { TWIN_HINTS } from './hints/twins/twins.mts';
+import { MESSAGE_HINTS } from './hints/messages/messages.mts';
+import { TRANSLATION_HINTS } from './hints/translations/translations.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];
@@ -89,7 +106,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...RECURSION_HINTS,
   ...ROUND_TRIP_HINTS,
+  ...COPY_PASTED_HINTS,
   ...TYPING_HINTS,
   ...LOCATOR_HINTS,
   ...CONTRACT_HINTS,
@@ -98,20 +117,35 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...EFFECT_HINTS,
   ...WRITE_HINTS,
   ...MOCK_HINTS,
+  ...COMPOSITION_HINTS,
   ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,
+  ...SHARED_STATE_HINTS,
+  ...ONE_SHOT_HINTS,
+  ...FORWARDED_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
+  ...DJANGO_DECLARATION_HINTS,
   ...PERSISTENCE_HINTS,
   ...QUERY_HINTS,
   ...TIME_UNIT_HINTS,
   ...CONTAINER_HINTS,
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
+  ...FAILURE_HINTS,
   ...HTTP_VALUE_HINTS,
   ...VALUE_HINTS,
   ...TEXT_SPLIT_HINTS,
   ...MINED_HINTS,
+  ...AIRFLOW_HINTS,
+  ...DATALOADER_HINTS,
+  ...QUERY_FILTER_HINTS,
+  ...RUNTIME_SLIP_HINTS,
+  ...RESULT_HINTS,
+  ...OVERRIDE_HINTS,
+  ...TWIN_HINTS,
+  ...MESSAGE_HINTS,
+  ...TRANSLATION_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

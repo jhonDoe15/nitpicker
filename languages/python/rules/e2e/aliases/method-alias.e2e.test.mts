@@ -11,7 +11,7 @@ import {
 } from '../../test-support/python-rule-scripts.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
-const scripts = createScripts();
+const scripts = createScripts({ hidden: ['self-recursion'] });
 const { cleanup, reportOf } = scripts;
 const bare = (text: string) => text.replace(/ via .*$/u, '');
 const findingsOf = (files: ScriptFiles) => scripts.findingsOf(files).map(bare);

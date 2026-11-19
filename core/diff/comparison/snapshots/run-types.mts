@@ -23,12 +23,14 @@ export type RunSettings = {
   readonly outputRoot: string;
   readonly runTasks?: unknown;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
+  readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
 export type SnapshotRoots = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
   readonly sharedBase?: SharedWorktree | undefined;
+  readonly sharedHead?: SharedWorktree | undefined;
 };
 
 export type SkipPlan = {

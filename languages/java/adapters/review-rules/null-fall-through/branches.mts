@@ -1,6 +1,6 @@
 import { isField, initialises } from './fields.mts';
 import { useText } from './use-text.mts';
-import { frameAt, startsNewLine } from '../max-value-sums/source-file.mts';
+import { frameAt, startsNewLine } from '../max-value-sums/source/source-file.mts';
 import { blockBranch, statementStop } from '../value-checks/scan.mts';
 import type { Branch } from '../value-checks/scan.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';

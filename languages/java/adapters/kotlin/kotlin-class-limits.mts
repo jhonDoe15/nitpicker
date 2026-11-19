@@ -1,6 +1,6 @@
 import { classLimitFindings as untypedClassLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
 import { inheritanceDepths } from '../size/inheritance.mts';
-import { inModule } from '../../builds/module-path.mts';
+import { inModule } from '../../builds/paths/module-path.mts';
 import type { KotlinFinding, Metrics } from './kotlin-metrics.mts';
 
 type FileInfo = { package: string; imports: readonly string[] };

@@ -3,12 +3,14 @@
     "tool": "python-rules",
     "rule": "io-in-loop",
     "mention": "asyncio.Semaphore",
-    "subject": "requests.get()|remote"
+    "subject": "requests.get()|remote",
+    "alongside": ["managed-resource-outside-composition-root"]
   },
   {
     "tool": "python-rules",
     "rule": "io-in-loop",
     "mention": "unbounded-fan-out",
-    "subject": "requests.get()|remote"
+    "subject": "requests.get()|remote",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

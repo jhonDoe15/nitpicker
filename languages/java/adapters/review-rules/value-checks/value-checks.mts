@@ -1,7 +1,7 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { mainSourceTexts } from '../java-sources.mts';
 import type { MainSourceOptions } from '../java-sources.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
 import type { ValueCheck, ValueFound } from './scan.mts';
 import type {
   FindingFactory,

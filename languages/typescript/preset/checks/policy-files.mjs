@@ -75,6 +75,8 @@ export const DEPENDENCY_GRAPH_FILES = [
   POLICY_TYPESCRIPT_CONFIG,
   'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
   'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+  'languages/typescript/adapters/dependency-graph/shared-graph/compact-graph.mjs',
+  'languages/typescript/adapters/dependency-graph/shared-graph/project-modules.mjs',
   ...PROJECT_TOOL_FILES,
 ];
 

@@ -1,3 +1,6 @@
+import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
+import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
+import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
@@ -22,6 +25,7 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSurrogateSplittingCut } from '../rules/text-truncation/no-surrogate-splitting-cut.mts';
+import { rule as ruleNoSwappedArguments } from '../rules/arguments/no-swapped-arguments.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
@@ -65,6 +69,7 @@ import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-uns
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
+import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
@@ -93,13 +98,11 @@ import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles
 import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
 import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
-import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
-import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
-import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
-import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
-import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 
 export const partRules = {
+  'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
+  'no-promise-chain': ruleNoPromiseChain,
+  'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
@@ -124,6 +127,7 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-surrogate-splitting-cut': ruleNoSurrogateSplittingCut,
+  'no-swapped-arguments': ruleNoSwappedArguments,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
@@ -167,6 +171,7 @@ export const partRules = {
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
+  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,
@@ -195,9 +200,4 @@ export const partRules = {
   'report-module-load-effects': ruleReportModuleLoadEffects,
   'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
   'require-atomic-updates': ruleRequireAtomicUpdates,
-  'require-client-timeout': ruleRequireClientTimeout,
-  'require-error-listener': ruleRequireErrorListener,
-  'require-http-timeout': ruleRequireHttpTimeout,
-  'require-process-timeout': ruleRequireProcessTimeout,
-  'require-promise-reject': ruleRequirePromiseReject,
 };

@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "iterator-read-twice",
+    "mention": "items = list(items)",
+    "subject": "names (merge)"
+  }
+]

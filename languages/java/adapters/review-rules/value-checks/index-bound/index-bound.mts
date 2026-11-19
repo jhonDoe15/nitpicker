@@ -1,5 +1,5 @@
 import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mjs';
-import { forward } from '../../max-value-sums/source-file.mts';
+import { forward } from '../../max-value-sums/source/source-file.mts';
 import { blockBranch, eachFrame, statementEnd } from '../scan.mts';
 import type { Branch, ValueCheck, ValueFound } from '../scan.mts';
 import type { BareSource, Frame, SourceFile, Span } from '../../max-value-sums/sum-types.mts';

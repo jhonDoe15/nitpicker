@@ -1,11 +1,8 @@
 import type { SpawnSyncReturns } from 'node:child_process';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import {
-  type CruiseReport,
-  loadDependencyGraph,
-} from '../../dependency-graph/project-dependency-graph.mts';
+import type { CruiseReport } from '../../dependency-graph/project-dependency-graph.mts';
+import { loadProjectModules } from '../../dependency-graph/shared-graph/project-modules.mts';
 import { existingRoots } from '../../typed/static-checks.mts';
-import { EXCLUDED_PATH_PATTERN } from '../../../preset/dependency-graph/cruise.mjs';
 import { spawnSyncWithOutputFile, toolBinaryPath, toolNameForPath } from '../../typed/tooling.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
@@ -38,17 +35,12 @@ const policyModulePath: (file: string) => string = checkoutModulePath;
 export const TRUSTED_TOOL_ROOT: string = PACKAGE_ROOT;
 
 export function runDependencyCruiser(options: QualityAreaOptions, layout: Layout): CruiseReport {
-  const report = loadDependencyGraph({
+  return loadProjectModules({
     projectRoot: options.projectRoot,
     policyRoot: options.policyRoot,
     liveProjectRoot: options.liveProjectRoot,
     patterns: existingRoots(options.projectRoot, layout.graphRoots),
-    exclude: EXCLUDED_PATH_PATTERN,
   });
-  if (!Array.isArray(report.modules)) {
-    throw new TypeError('dependency-cruiser report is missing its modules array');
-  }
-  return report;
 }
 
 export function runNodeTool({

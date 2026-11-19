@@ -87,6 +87,14 @@ describe('Kotlin trees for near-duplicate detection', () => {
     ]);
   });
 
+  it('reads identifiers named like Object members as plain names', () => {
+    const source =
+      'class A {\n  fun f(constructor: Int, toString: Int) = constructor + toString\n}\n';
+    const unit = present(unitsOf(source, 'A.kt').at(0));
+
+    expect(namesIn(unit.tree)).toEqual(['constructor', 'toString']);
+  });
+
   it('skips a declaration the grammar cannot parse', () => {
     const units = unitsOf('class A {\n  fun ok() { run() }\n  fun broken() { val = }\n}\n', 'A.kt');
 

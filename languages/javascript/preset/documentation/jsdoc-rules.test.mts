@@ -93,6 +93,11 @@ tester.run('no-comments with JSDoc types', noComments, {
       ],
     },
     {
+      code: '/**\n * @constructor\n * @param {number} size\n */\nexport function Shape(size) {\n  this.size = size;\n}',
+      options: jsdocTypes,
+      errors: [{ messageId: 'jsdocUnsupportedTag', data: { tag: 'constructor' } }],
+    },
+    {
       code: '/** @param name */\nexport function greet(name) { return name; }',
       options: jsdocTypes,
       errors: [{ messageId: 'jsdocMalformed', data: { usage: '@param {Type} name' } }],

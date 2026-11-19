@@ -30,14 +30,21 @@ function readPolicy(file: string | undefined): NitpickerPolicy {
   return isPolicy(parsed) ? parsed : {};
 }
 const policy = readPolicy(process.env.NITPICKER_POLICY);
+const PROJECT_ROOT = /^\.?(?:[/\\]\.?)*$/u;
+function under(root: string, glob: string): string {
+  return PROJECT_ROOT.test(root) ? glob : `${root}/${glob}`;
+}
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
 const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests', '__tests__'];
+const ROOT_FOLDERS =
+  '{coverage,reports,target,out,public,storybook-static,tmp,temp,docs,bench{,mark,marks},example{,s}}';
+const ROOT_EXCLUDES = ['**/.*/**', `${ROOT_FOLDERS}/**`];
 const exclude: string[] = policy.exclude ?? [];
 const testSupportDirectories = policy.layout?.colocatedTests === true ? ['test-support'] : [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];
 function testFiles(root: string) {
-  return [`${root}/**/*.test.${codeExtensions}`, `${root}/**/*.spec.${codeExtensions}`];
+  return ['test', 'spec'].map((kind) => under(root, `**/*.${kind}.${codeExtensions}`));
 }
 const PROJECT_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
   ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
@@ -87,13 +94,11 @@ function pinnedInline(entry: InlineProject, extended: Timeouts = {}): InlineProj
     test: { ...entry.test, ...perProjectPins, ...timeoutPins({ ...extended, ...entry.test }) },
   };
 }
-
 function configIn(directory: string) {
   return PROJECT_CONFIG_NAMES.map((name) => path.join(directory, name)).find((file) =>
     existsSync(file),
   );
 }
-
 function workspaceConfig(root: string): string | undefined {
   const folders = [root];
   for (const folder of folders) {
@@ -110,14 +115,12 @@ function workspaceConfig(root: string): string | undefined {
   }
   return undefined;
 }
-
 function fromWorkspace<T extends { setupFiles?: unknown }>(test: T, directory: string) {
   const setupFiles = setupFilesOf(test.setupFiles).map((file) =>
     file.startsWith('.') ? path.resolve(directory, file) : file,
   );
   return { ...test, include: undefined, projects: undefined, workspace: undefined, setupFiles };
 }
-
 async function projectAt(projectPath: string): Promise<InlineProject> {
   const isFile = statSync(projectPath).isFile();
   const configFile = isFile ? projectPath : configIn(projectPath);
@@ -128,11 +131,9 @@ async function projectAt(projectPath: string): Promise<InlineProject> {
   const loaded = await loadConfigFromFile(configFile);
   return pinnedInline({ extends: configFile, root }, loaded?.config.test);
 }
-
 function isProjectMatch(match: string) {
   return statSync(match).isDirectory() || PROJECT_CONFIG_FILE.test(path.basename(match));
 }
-
 function projectPaths(patterns: readonly string[], root: string) {
   const negated = patterns
     .filter((pattern) => pattern.startsWith('!'))
@@ -150,7 +151,6 @@ function projectPaths(patterns: readonly string[], root: string) {
       (match) => !negated.some((pattern) => path.matchesGlob(path.relative(root, match), pattern)),
     );
 }
-
 function pinnedProjects(
   entries: readonly TestProjectConfiguration[],
   root: string,
@@ -171,19 +171,19 @@ function pinnedProjects(
     }),
   ];
 }
-
 const coverage = {
   provider: 'v8' as const,
   experimentalAstAwareRemapping: true,
-  include: sourceRoots.map((root) => `${root}/**/*.${codeExtensions}`),
+  include: sourceRoots.map((root) => under(root, `**/*.${codeExtensions}`)),
   exclude: [
     ...sourceRoots.flatMap((root) => [
-      `${root}/**/__tests__/**`,
-      ...testSupportDirectories.map((directory) => `${root}/**/${directory}/**`),
-      `${root}/**/*.{test,spec}.${codeExtensions}`,
+      under(root, '**/__tests__/**'),
+      ...testSupportDirectories.map((directory) => under(root, `**/${directory}/**`)),
+      under(root, `**/*.{test,spec}.${codeExtensions}`),
     ]),
+    ...(sourceRoots.some((root) => PROJECT_ROOT.test(root)) ? ROOT_EXCLUDES : []),
     ...['dist/**', 'build/**', 'generated/**', '**/*.d.ts'],
-    ...sourceRoots.flatMap((root) => [`${root}/vitest.config.ts`, `${root}/main/vitest.config.ts`]),
+    ...sourceRoots.map((root) => under(root, '{main/,}vitest.config.ts')),
     ...exclude,
   ],
   reporter: ['text', 'json'],

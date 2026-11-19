@@ -5,7 +5,7 @@ import {
   frameAt,
   splitTopLevel,
   startsNewLine,
-} from './source-file.mts';
+} from './source/source-file.mts';
 import { accessorName, valueKind } from './values/values.mts';
 import type { CarrierState, Frame, KindMap, Mark, NumberKind, SourceFile } from './sum-types.mts';
 

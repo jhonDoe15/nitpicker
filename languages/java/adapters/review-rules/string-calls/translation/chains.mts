@@ -1,4 +1,4 @@
-import { frameAt } from '../../max-value-sums/source-file.mts';
+import { frameAt } from '../../max-value-sums/source/source-file.mts';
 import type { SourceFile, Span } from '../../max-value-sums/sum-types.mts';
 import { isOperator, methodCalls, receiverStart, singleToken, stringValue } from '../calls.mts';
 import type { MethodCall } from '../calls.mts';

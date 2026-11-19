@@ -28,7 +28,7 @@ type GroupContext = RuleContext & {
   readonly typedPluginRules: ReadonlySet<string>;
   readonly ruleNames: Map<string, string>;
   readonly plugins: Map<string, BridgedPlugin>;
-  readonly typeAware: { value: boolean };
+  readonly typeAwareRules: Set<string>;
 };
 
 type TranslatedGroup = { readonly override: Override; readonly residualRules: string[] };
@@ -141,7 +141,7 @@ function translateGroup(group: PlanGroup, context: GroupContext): TranslatedGrou
     rules[translated.name] = oxlintSetting(translated.name, setting);
     context.ruleNames.set(translated.name, ruleId);
     if (translated.plugin !== undefined) addBridgedRule(context.plugins, translated.plugin, ruleId);
-    if (translated.typeAware) context.typeAware.value = true;
+    if (translated.typeAware) context.typeAwareRules.add(translated.name);
   }
   return {
     override: { files: group.files.map(escapeGlob), globals: group.globals ?? {}, rules },
@@ -170,7 +170,7 @@ export function translatePlan(
     typedPluginRules: new Set(plan.typedPluginRules),
     ruleNames: new Map(),
     plugins: new Map(),
-    typeAware: { value: false },
+    typeAwareRules: new Set(),
   };
   const translated = plan.groups.map((group) => ({ group, ...translateGroup(group, context) }));
   return {
@@ -180,7 +180,7 @@ export function translatePlan(
       .map(({ group, residualRules }) => ({ files: group.files, rules: residualRules })),
     ruleNames: context.ruleNames,
     plugins: [...context.plugins.values()],
-    typeAware: context.typeAware.value,
+    typeAwareRules: context.typeAwareRules,
   };
 }
 

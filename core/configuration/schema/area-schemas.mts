@@ -1,5 +1,3 @@
-import { JAVA_KEYS } from '../../../languages/java/builds/build-tool/build-tool-setting.mts';
-import { JAVA_BUILD_TOOLS } from '../../../languages/java/builds/java-build.mts';
 import {
   DUPLICATES_KEYS,
   SKIPPED_FOLDER_NAME,
@@ -17,23 +15,6 @@ import {
 } from '../../../shared/project-rules/size-rules.mjs';
 import { sourceRoots, testRoots } from '../../../languages/typescript/preset/layout.mjs';
 import { stylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
-import {
-  KOTLIN_FORMATTERS,
-  KOTLIN_KEYS,
-} from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
-import {
-  ENVIRONMENTS,
-  FORMATTERS as PYTHON_FORMATTERS,
-  PYTHON_TEST_RUNNERS,
-  SETTING_KEYS,
-  TYPE_CHECKERS,
-  WINDOWS_ABSOLUTE,
-} from '../../../languages/python/adapters/configuration/python-config.mts';
-import {
-  BUILD_TAG,
-  GO_SETTING_KEYS,
-} from '../../../languages/go/adapters/configuration/go-config.mts';
-import { FORMATTERS as GO_FORMATTERS } from '../../../languages/go/adapters/formatting/go-formatters.mts';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mts';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mts';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mts';
@@ -41,17 +22,13 @@ import {
   directory,
   enumeration,
   nonEmptyString,
-  projectPath,
+  sourceDirectory,
   ref,
+  scope,
   stringArray,
   type JsonSchema,
 } from './schema-parts.mts';
 import type { SchemaTable, TextTable } from '../views/schema-views.mts';
-import {
-  exceptionList,
-  pathProblemRestriction,
-  pythonOwnRestriction,
-} from './exception-schema.mts';
 
 const FILES = FILE_LIMIT_DEFAULTS;
 const CLASSES = CLASS_LIMIT_DEFAULTS;
@@ -64,9 +41,9 @@ const THRESHOLD_DESCRIPTIONS: TextTable = {
   lineLength: `Characters per line (default ${String(FILES.lineLength)}).`,
   folderFiles: `Source files, and separately test files, directly in one folder (default ${String(FILES.folderFiles)}).`,
   folderDepth: `Folders below the feature layer (TypeScript, JavaScript; default ${String(DEPTHS.typescript)}) or packages below the root package (default ${String(DEPTHS.java)} for Java and Kotlin, ${String(DEPTHS.python)} for Python).`,
-  classMethods: `Methods per class (Java, Kotlin, Python; default ${String(CLASSES.classMethods)}).`,
-  classFields: `Instance fields per class (Java, Kotlin, Python; default ${String(CLASSES.classFields)}).`,
-  inheritanceDepth: `Superclasses per class (Java, Kotlin, Python; default ${String(CLASSES.inheritanceDepth)}).`,
+  classMethods: `Methods per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.classMethods)}).`,
+  classFields: `Instance fields per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.classFields)}).`,
+  inheritanceDepth: `Superclasses per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.inheritanceDepth)}).`,
   unitTestSeconds: `Seconds one unit test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.unitTestSeconds)}).`,
   integrationTestSeconds: `Seconds one integration test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)}).`,
 };
@@ -83,7 +60,7 @@ const LAYOUT_DESCRIPTIONS: TextTable = {
 };
 
 const LAYOUT_SCHEMAS: SchemaTable = {
-  sourceRoots: { type: 'array', minItems: 1, items: directory },
+  sourceRoots: { type: 'array', minItems: 1, items: sourceDirectory },
   testRoots: { type: 'array', minItems: 1, items: directory },
   excludedGlobs: { type: 'array', items: nonEmptyString },
   entryPoints: { type: 'array', items: nonEmptyString },
@@ -125,15 +102,6 @@ export const layout = {
   ),
 };
 
-function scope(description: string, keys: readonly string[], properties: SchemaTable): JsonSchema {
-  return {
-    description,
-    type: 'object',
-    additionalProperties: false,
-    properties: Object.fromEntries(keys.map((key) => [key, properties[key]])),
-  };
-}
-
 function enabled(what: string): JsonSchema {
   return {
     description: `true or false forces the ${what} on or off; without it nitpicker decides from the project's dependencies.`,
@@ -141,13 +109,17 @@ function enabled(what: string): JsonSchema {
   };
 }
 
-export const react = scope('The React rule scope (TypeScript preset only).', REACT_KEYS, {
-  enabled: enabled('React rules'),
-  styling: enumeration(
-    'The one styling approach the project uses; inferred from the sources when unset.',
-    stylingApproaches,
-  ),
-});
+export const react = scope(
+  'The React rule scope (TypeScript and JavaScript presets).',
+  REACT_KEYS,
+  {
+    enabled: enabled('React rules'),
+    styling: enumeration(
+      'The one styling approach the project uses; inferred from the sources when unset.',
+      stylingApproaches,
+    ),
+  },
+);
 
 export const i18n = scope(
   'The i18n rule scope for react-intl (TypeScript preset only).',
@@ -227,68 +199,3 @@ export const analyzers = {
     ),
   },
 };
-
-const pythonProperties = {
-  environment: {
-    description:
-      'The tool that manages the environment, or the directory of a virtual environment.',
-    anyOf: [{ enum: ENVIRONMENTS }, { pattern: `^/|${WINDOWS_ABSOLUTE.source}` }, projectPath],
-  },
-  formatter: enumeration('The format check to run.', PYTHON_FORMATTERS),
-  testRunner: enumeration('The test runner.', PYTHON_TEST_RUNNERS),
-  typeChecker: enumeration('The type checker.', TYPE_CHECKERS),
-  importLinter: { description: 'false turns the import-linter check off.', type: 'boolean' },
-  sourceRoots: {
-    description: 'Directories with the production code.',
-    type: 'array',
-    minItems: 1,
-    items: projectPath,
-  },
-  entryPoints: {
-    description: 'Files that are started or loaded by path and so are never imported.',
-    type: 'array',
-    items: projectPath,
-  },
-  exceptions: exceptionList(
-    'Exceptions for the Python rules that the top-level "exceptions" does not take.',
-    [pythonOwnRestriction, pathProblemRestriction],
-  ),
-};
-
-export const python = scope(
-  'Overrides for what nitpicker detects in a Python project (python preset only).',
-  SETTING_KEYS,
-  pythonProperties,
-);
-
-export const kotlin = scope('Kotlin preset settings.', KOTLIN_KEYS, {
-  formatter: enumeration('The format check to run; detected when absent.', KOTLIN_FORMATTERS),
-  detektConfig: {
-    description: 'Path of the detekt config inside the project; detected when absent.',
-    ...projectPath,
-  },
-});
-
-export const java = scope('Java and Kotlin build settings (java and kotlin presets).', JAVA_KEYS, {
-  buildTool: enumeration(
-    'The build tool when the project has both a pom.xml and a Gradle build: "maven" or "gradle". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.',
-    JAVA_BUILD_TOOLS,
-  ),
-});
-
-export const go = scope('Go preset settings.', GO_SETTING_KEYS, {
-  formatters: {
-    description:
-      'The format checks to run; detected from go.mod and the golangci-lint config when absent.',
-    type: 'array',
-    minItems: 1,
-    uniqueItems: true,
-    items: { enum: GO_FORMATTERS },
-  },
-  buildTags: stringArray(
-    'Build tags passed as -tags to go vet and go test, such as "integration".',
-    {
-      items: { type: 'string', pattern: BUILD_TAG.source },
-    },
-  ),
-});

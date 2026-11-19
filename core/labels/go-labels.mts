@@ -138,6 +138,7 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['lone_interface', MAINTAINABILITY],
   ['once_keeps_error', RELIABLE_ASYNC],
   ['test_without_assertion', TESTS],
+  ['copy_pasted_tests', TESTS],
   ['ticker_not_stopped', RELIABLE_ASYNC],
   ['any_in_exported_signature', MAINTAINABILITY],
   ['cleanup_skipped', RELIABILITY],
@@ -195,6 +196,8 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['write_outside_transaction', ['bug', PERSISTENCE]],
   ['writes_without_transaction', ['bug', PERSISTENCE]],
   ['copied_constant_in_test', TESTS],
+  ['self_recursion', [RELIABILITY_LABEL, ...MAINTAINABILITY]],
+  ['uninjectable_delay', [...TESTS, ...MAINTAINABILITY]],
 ]);
 
 function staticcheckLabels(rule: string): Labels {

@@ -9,23 +9,25 @@ const SUFFIX_NULLABLE = /[\w$>\])]\s*\?(?=\s*(?:$|[|>]))/;
 const TAG_LINE = /^\s*@(\w+)/;
 const COMMENT_PREFIX = /^\s*\*?\s?/;
 
-const GRAMMARS = {
-  param: { type: 'required', name: NAME, usage: '@param {Type} name' },
-  property: { type: 'required', name: NAME, usage: '@property {Type} name' },
-  prop: { type: 'required', name: NAME, usage: '@prop {Type} name' },
-  typedef: { type: 'required', name: NAME, usage: '@typedef {Type} Name' },
-  returns: { type: 'required', usage: '@returns {Type}' },
-  return: { type: 'required', usage: '@return {Type}' },
-  type: { type: 'required', usage: '@type {Type}' },
-  satisfies: { type: 'required', usage: '@satisfies {Type}' },
-  extends: { type: 'required', usage: '@extends {Type}' },
-  augments: { type: 'required', usage: '@augments {Type}' },
-  this: { type: 'required', usage: '@this {Type}' },
-  callback: { name: NAME, usage: '@callback Name' },
-  template: { type: 'optional', name: NAME_LIST, usage: '@template T' },
-  import: { whole: IMPORT_FORM, usage: "@import {Name} from 'module'" },
-  overload: { usage: '@overload' },
-};
+const GRAMMARS = new Map(
+  Object.entries({
+    param: { type: 'required', name: NAME, usage: '@param {Type} name' },
+    property: { type: 'required', name: NAME, usage: '@property {Type} name' },
+    prop: { type: 'required', name: NAME, usage: '@prop {Type} name' },
+    typedef: { type: 'required', name: NAME, usage: '@typedef {Type} Name' },
+    returns: { type: 'required', usage: '@returns {Type}' },
+    return: { type: 'required', usage: '@return {Type}' },
+    type: { type: 'required', usage: '@type {Type}' },
+    satisfies: { type: 'required', usage: '@satisfies {Type}' },
+    extends: { type: 'required', usage: '@extends {Type}' },
+    augments: { type: 'required', usage: '@augments {Type}' },
+    this: { type: 'required', usage: '@this {Type}' },
+    callback: { name: NAME, usage: '@callback Name' },
+    template: { type: 'optional', name: NAME_LIST, usage: '@template T' },
+    import: { whole: IMPORT_FORM, usage: "@import {Name} from 'module'" },
+    overload: { usage: '@overload' },
+  }),
+);
 
 export function isJsdocBlock(comment) {
   return comment.type === 'Block' && comment.value.startsWith('*');
@@ -87,7 +89,7 @@ function parseBody(grammar, body) {
 }
 
 function parseTag(segment) {
-  const grammar = GRAMMARS[segment.tag];
+  const grammar = GRAMMARS.get(segment.tag);
   if (grammar === undefined) {
     return {
       problems: [{ messageId: 'jsdocUnsupportedTag', data: { tag: segment.tag } }],

@@ -1,4 +1,4 @@
-import { forward } from '../source-file.mts';
+import { forward } from '../source/source-file.mts';
 import type { CarrierState, Context, NumberKind, Ref, SourceFile, Span } from '../sum-types.mts';
 
 const MAX_NAMES = new Map<string, NumberKind>([

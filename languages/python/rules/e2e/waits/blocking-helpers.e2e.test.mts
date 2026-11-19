@@ -1,4 +1,4 @@
-import { useRuleScripts } from '../../test-support/python-rule-scripts.mts';
+import { useRuleScripts, pythonLines as code } from '../../test-support/python-rule-scripts.mts';
 
 const RULE = 'blocking-helper-in-async';
 
@@ -62,4 +62,282 @@ describeRules('blocking-helper-in-async', () => {
       [],
     ],
   ]);
+
+  const MODELS = [
+    'from django.db import models',
+    '',
+    '',
+    'class Order(models.Model):',
+    '    total = models.IntegerField()',
+    '',
+    '',
+  ];
+
+  itOutcomes('reports ORM, TLS, file, lock and framework calls', [
+    [
+      'ORM terminals made directly and through a helper',
+      code(
+        ...MODELS,
+        'def credits(team_id):',
+        '    return Order.objects.filter(team=team_id).count()',
+        '',
+        '',
+        'async def usage(team_id):',
+        '    first = Order.objects.first()',
+        '    created = Order.objects.create(total=1)',
+        '    Order.objects.filter(total=2).delete()',
+        '    return credits(team_id), first, created',
+      ),
+      [
+        `${RULE}:13 Order.objects.first`,
+        `${RULE}:14 Order.objects.create`,
+        `${RULE}:15 Order.objects.delete`,
+        `${RULE}:16 credits calls Order.objects.count`,
+      ],
+    ],
+    [
+      'iteration of a queryset',
+      code(
+        ...MODELS,
+        'async def usage():',
+        '    rows = [row for row in Order.objects.all()]',
+        '    for row in Order.objects.filter(total=1):',
+        '        rows.append(row)',
+        '    return list(Order.objects.all()), rows',
+      ),
+      [
+        `${RULE}:9 Order.objects.iterate`,
+        `${RULE}:10 Order.objects.iterate`,
+        `${RULE}:12 Order.objects.iterate`,
+      ],
+    ],
+    [
+      'a TLS context that reads certificate files',
+      code(
+        'import ssl',
+        '',
+        '',
+        'def context(path):',
+        '    return ssl.create_default_context(cafile=path)',
+        '',
+        '',
+        'async def connect(path):',
+        '    ctx = ssl.create_default_context(cafile=path)',
+        '    ctx.load_cert_chain(path)',
+        '    return context(path), ctx',
+      ),
+      [
+        `${RULE}:9 ssl.create_default_context`,
+        `${RULE}:10 load_cert_chain`,
+        `${RULE}:11 context calls ssl.create_default_context`,
+      ],
+    ],
+    [
+      'a file read through a helper, and a Path read directly',
+      code(
+        'from pathlib import Path',
+        '',
+        '',
+        'def load(name):',
+        '    with open(name, encoding="utf-8") as handle:',
+        '        return handle.read()',
+        '',
+        '',
+        'async def schema(name):',
+        '    text = Path(name).read_text()',
+        '    return load(name), text',
+      ),
+      [`${RULE}:10 read_text`, `${RULE}:11 load calls open`],
+    ],
+    [
+      'get_event_loop in a coroutine',
+      code(
+        'import asyncio',
+        '',
+        '',
+        'async def run(work):',
+        '    loop = asyncio.get_event_loop()',
+        '    return await loop.run_in_executor(None, work)',
+      ),
+      [`${RULE}:5 asyncio.get_event_loop`],
+    ],
+    [
+      'a thread lock and a file lock',
+      code(
+        'import threading',
+        'import filelock',
+        '',
+        'LOCK = threading.Lock()',
+        '',
+        '',
+        'def read():',
+        '    with filelock.FileLock("a.lock"):',
+        '        return 1',
+        '',
+        '',
+        'async def run():',
+        '    LOCK.acquire()',
+        '    with LOCK:',
+        '        pass',
+        '    return read()',
+      ),
+      [
+        `${RULE}:13 LOCK.acquire`,
+        `${RULE}:14 LOCK.acquire`,
+        `${RULE}:16 read calls filelock.FileLock.acquire`,
+      ],
+    ],
+    [
+      'the synchronous connection getter of an Airflow hook',
+      code(
+        'from airflow.hooks.base import BaseHook',
+        '',
+        '',
+        'class Hook(BaseHook):',
+        '    async def connect(self, conn_id):',
+        '        return self.get_connection(conn_id)',
+      ),
+      [`${RULE}:6 self.get_connection`],
+    ],
+  ]);
+
+  itOutcomes('passes offloaded and asynchronous forms of the same work', [
+    [
+      'async ORM methods, sync_to_async and an executor',
+      code(
+        'import asyncio',
+        'from asgiref.sync import sync_to_async',
+        ...MODELS,
+        'def credits(team_id):',
+        '    return Order.objects.filter(team=team_id).count()',
+        '',
+        '',
+        'async def usage(team_id):',
+        '    first = await Order.objects.aget(pk=1)',
+        '    total = await Order.objects.acount()',
+        '    async for row in Order.objects.all():',
+        '        first = row',
+        '    value = await sync_to_async(credits)(team_id)',
+        '    other = await sync_to_async(lambda: Order.objects.first())()',
+        '    loop = asyncio.get_running_loop()',
+        '    return first, total, value, other, loop',
+      ),
+      [],
+    ],
+    [
+      'a model-like name that is not a Django model, and a plain manager call',
+      code(
+        'class Order:',
+        '    objects = []',
+        '',
+        '',
+        'async def usage(cache):',
+        '    Order.objects.first()',
+        '    return cache.objects.count()',
+      ),
+      [],
+    ],
+    [
+      'a default TLS context, a file open in a coroutine and a lock in sync code',
+      code(
+        'import ssl',
+        'import threading',
+        '',
+        'LOCK = threading.Lock()',
+        '',
+        '',
+        'def guarded():',
+        '    with LOCK:',
+        '        return 1',
+        '',
+        '',
+        'async def run(path):',
+        '    ctx = ssl.create_default_context()',
+        '    with open(path) as handle:',
+        '        handle.read()',
+        '    return ctx',
+        '',
+        '',
+        'def main():',
+        '    return guarded()',
+      ),
+      [],
+    ],
+    [
+      'a file read and a getter in a helper offloaded to a thread',
+      code(
+        'import asyncio',
+        'from pathlib import Path',
+        '',
+        '',
+        'def load(name):',
+        '    return Path(name).read_text()',
+        '',
+        '',
+        'async def run(name):',
+        '    return await asyncio.to_thread(load, name)',
+      ),
+      [],
+    ],
+    [
+      'an async comprehension over a queryset',
+      code(
+        ...MODELS,
+        'async def usage():',
+        '    return [row async for row in Order.objects.all()]',
+      ),
+      [],
+    ],
+    [
+      'awaited file reads of async path libraries',
+      code(
+        'import anyio',
+        'from pathlib import Path',
+        '',
+        '',
+        'async def read(name):',
+        '    first = await anyio.Path(name).read_text()',
+        '    second = await (anyio.Path(name) / "a").read_bytes()',
+        '    return first, second',
+      ),
+      [],
+    ],
+    [
+      'non-blocking and bounded lock acquires',
+      code(
+        'import threading',
+        '',
+        'LOCK = threading.Lock()',
+        '',
+        '',
+        'async def run():',
+        '    LOCK.acquire(blocking=False)',
+        '    LOCK.acquire(False)',
+        '    LOCK.acquire(timeout=1)',
+      ),
+      [],
+    ],
+    [
+      'a getter on an object when no framework is imported',
+      code('async def run(client):', '    return client.get_connection("x")'),
+      [],
+    ],
+  ]);
+
+  itOutcomes(
+    'reports the configured getters and no other name',
+    [
+      [
+        'a method name, a dotted name and an unconfigured name',
+        code(
+          'async def run(client, hook):',
+          '    client.fetch_secret("a")',
+          '    hook.read_token("b")',
+          '    return client.get_secret("c")',
+        ),
+        [`${RULE}:2 client.fetch_secret`, `${RULE}:3 hook.read_token`],
+      ],
+    ],
+    { blockingGetters: ['fetch_secret', 'hook.read_token'] },
+  );
 });

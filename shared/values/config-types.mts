@@ -50,6 +50,7 @@ export type NitpickerConfig = {
     readonly sourceRoots?: readonly string[];
     readonly exceptions?: readonly ExceptionConfig[];
     readonly entryPoints?: readonly string[];
+    readonly blockingGetters?: readonly string[];
     readonly importLinter?: unknown;
     readonly [field: string]: unknown;
   };

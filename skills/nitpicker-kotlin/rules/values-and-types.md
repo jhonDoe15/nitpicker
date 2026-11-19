@@ -165,3 +165,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { log.warn(...) }` followed by `value!!.length` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
+- A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (an `ArrayDeque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A public function does not wait a constant it cannot override (`pmd/UninjectableDelay`):
+  `delay(RETRY_DELAY)` on a top-level `const val` makes a test wait it out. Take the delay as a parameter with the
+  constant as its default (`delayMs: Long = RETRY_DELAY`).
+- Domain code does not change what it was given (`pmd/MutatingMethodInDomain`, classes of a `domain` package):
+  `items.add(x)`, `index.put(k, v)`, `list.sort()` or `date.setTime(...)` on a parameter. Build a new value:
+  `buildList { addAll(items); add(x) }`, `items + x`, or `toMutableList()` filled and returned.

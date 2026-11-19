@@ -12,6 +12,8 @@ import {
 
 const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
 const TYPESCRIPT_OR_JSX_FILE = /\.(?:ts|tsx|mts|cts|jsx)$/u;
+const TOOL_CONFIG_FILE =
+  /\.(?:config|conf)\.[cm]?[jt]sx?$|^(?:Gruntfile|Gulpfile|gruntfile|gulpfile)\./u;
 const KOTLIN_FILE = /\.kt$/u;
 const JAVA_FILE = /\.java$/u;
 const MINIFIED_FILE = /\.min\.[cm]?js$/u;
@@ -75,7 +77,7 @@ export function scriptProjectPreset(config, projectRoot) {
   }
   const typed =
     existsSync(path.join(projectRoot, 'tsconfig.json')) ||
-    scripts.some((name) => TYPESCRIPT_OR_JSX_FILE.test(name)) ||
+    scripts.some((name) => TYPESCRIPT_OR_JSX_FILE.test(name) && !TOOL_CONFIG_FILE.test(name)) ||
     firstJsxFile(config, projectRoot) !== undefined;
   return typed ? 'typescript' : 'javascript';
 }

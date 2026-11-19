@@ -1,4 +1,4 @@
-import { forward, startsNewLine } from '../max-value-sums/source-file.mts';
+import { forward, startsNewLine } from '../max-value-sums/source/source-file.mts';
 import { OPAQUE } from '../../../../../shared/rules/query-text/query-text.mjs';
 import { literalText } from '../affix-boundaries/boundaries.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';

@@ -1,4 +1,4 @@
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
 import type { SourceFile } from '../max-value-sums/sum-types.mts';
 
 export const parse: (text: string, options: { file: string; kotlin: boolean }) => SourceFile =

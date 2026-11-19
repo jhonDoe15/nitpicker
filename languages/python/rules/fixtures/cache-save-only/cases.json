@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "cache-invalidated-on-save-only",
+    "mention": "post_delete",
+    "subject": "invalidate_policy_cache|PolicyBinding|post_save|cache"
+  }
+]

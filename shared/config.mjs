@@ -21,11 +21,13 @@ export const THRESHOLD_KEYS = [
   'unitTestSeconds',
   'integrationTestSeconds',
 ];
+const PRESETS_WITH_INHERITANCE = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
+const EVERY_PRESET = [...PRESETS_WITH_INHERITANCE, 'go'];
 export const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python', 'go'],
-  classMethods: ['java', 'kotlin', 'python', 'go'],
-  classFields: ['java', 'kotlin', 'python', 'go'],
-  inheritanceDepth: ['java', 'kotlin', 'python'],
+  folderDepth: EVERY_PRESET,
+  classMethods: EVERY_PRESET,
+  classFields: EVERY_PRESET,
+  inheritanceDepth: PRESETS_WITH_INHERITANCE,
 };
 export const WHOLE_NUMBER_THRESHOLD_KEYS = [
   'fileLines',

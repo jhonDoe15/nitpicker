@@ -30,6 +30,11 @@ type Direction = {
 type CouplingReport = {
   readonly summary: object;
   readonly modules: readonly { readonly source: string }[];
+  readonly moduleImports: readonly {
+    readonly from: string;
+    readonly to: string;
+    readonly typeOnly: boolean;
+  }[];
   readonly packages: readonly { readonly name: string; readonly cohesion: object }[];
   readonly stabilityDirection: readonly Direction[];
   readonly sharedUsedByOneFeature: readonly SharedEntry[];

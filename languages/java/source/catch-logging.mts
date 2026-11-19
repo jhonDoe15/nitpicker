@@ -76,6 +76,10 @@ export type CatchLogCall = {
   call: LogCall;
 };
 
+export function endOfText(code: string, from: number): number {
+  return code.slice(0, from).trimEnd().length;
+}
+
 export function catchLogCalls(
   code: string,
   language: string,

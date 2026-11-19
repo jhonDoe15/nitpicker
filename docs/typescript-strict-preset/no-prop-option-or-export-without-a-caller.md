@@ -24,6 +24,9 @@ from a real caller) and the `exceptions` entry that lifts it.
   `params`, `args`, typed `...Options`, `...Opts`, `...Config` or `...Settings`, or destructured in
   the signature. A call sets the properties of its object-literal argument; any other argument, or a
   spread before it, sets all of them. A function nothing calls is not judged.
+  In a JavaScript project the options are the properties destructured in the parameter of an exported
+  function (`function run(task, { retries = 1, label } = {})`); no types are read, so a parameter that
+  is not destructured is not judged.
 - **Only the type of one component or function.** A props or options type that several
   declarations use (a domain type such as `Rect` or `User`, a shared `PluginOptions`) is not judged:
   each of them may read a different subset of it. A parameter typed by a type parameter is not

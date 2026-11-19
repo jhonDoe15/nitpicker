@@ -3,6 +3,8 @@ import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { nameOf, topLevelImport, type ImportBinding } from './import-bindings.mts';
 
+const MAX_BASES = 3;
+
 export type DecoratorCall = {
   readonly name: string | undefined;
   readonly base: TypeScript.Identifier | undefined;
@@ -210,6 +212,38 @@ export function resolvedExpression(
 
 export function decoratorsOf(node: TypeScript.Node): readonly TypeScript.Decorator[] {
   return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
+}
+
+export function decoratorName(decorator: TypeScript.Decorator): string | undefined {
+  const { expression } = decorator;
+  const callee = ts.isCallExpression(expression) ? expression.expression : expression;
+  return ts.isIdentifier(callee) ? callee.text : undefined;
+}
+
+function baseDeclaration(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration,
+): TypeScript.ClassDeclaration | undefined {
+  const clause = declaration.heritageClauses?.find(
+    (each) => each.token === ts.SyntaxKind.ExtendsKeyword,
+  );
+  const base = clause?.types[0];
+  const symbol = base === undefined ? undefined : checker.getTypeAtLocation(base).getSymbol();
+  return symbol?.declarations?.find(ts.isClassDeclaration);
+}
+
+export function classChain(
+  checker: TypeScript.TypeChecker,
+  declaration: TypeScript.ClassDeclaration,
+): TypeScript.ClassDeclaration[] {
+  const chain = [declaration];
+  for (const current of chain.slice(0, MAX_BASES)) {
+    const base = baseDeclaration(checker, current);
+    if (base !== undefined) {
+      chain.push(base);
+    }
+  }
+  return chain;
 }
 
 function exportedName(identifier: TypeScript.Node): string | undefined {

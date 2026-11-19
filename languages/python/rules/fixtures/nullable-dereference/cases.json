@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "nullable-dereference",
+    "mention": "filter(field__isnull=False)",
+    "subject": "self.parent|null=True field"
+  }
+]

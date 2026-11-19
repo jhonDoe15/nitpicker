@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import { rootsRemovedAfterAll } from '../../typescript/adapters/test-support/temporary-roots.mts';
 import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../../typescript/preset/tool-configs.mjs';
 import {
   jsonTransform as untypedJsonTransform,
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
-  layoutTransformFor as untypedLayoutTransformFor,
   layoutTsconfig as untypedLayoutTsconfig,
-} from '../../typescript/preset/tool-configs.mjs';
+} from '../../typescript/preset/project-configs/typescript/layout-rewrites.mjs';
 
 type Layout = ReturnType<typeof untypedResolveLayout>;
 type Json = Readonly<Record<string, unknown>>;
@@ -146,6 +146,25 @@ describe('generated tsconfig.quality.json', () => {
     });
   });
 
+  it('sets the automatic JSX runtime only when the project sets no jsx option', () => {
+    const own = projectWith('tsconfig.json');
+    writeFileSync(
+      path.join(own, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: { jsx: 'react', jsxFactory: 'h', types: [], lib: ['ES2022'] },
+      }),
+    );
+    const kept = transformed('tsconfig.quality.json', javascriptLayout, own);
+    const unset = transformed(
+      'tsconfig.quality.json',
+      javascriptLayout,
+      projectWith('tsconfig.json'),
+    );
+
+    expect(compilerOptions(kept)).not.toHaveProperty('jsx');
+    expect(compilerOptions(unset)['jsx']).toBe('react-jsx');
+  });
+
   it('prefers tsconfig.json over jsconfig.json', () => {
     const config = transformed(
       'tsconfig.quality.json',
@@ -221,14 +240,14 @@ describe('generated knip.json', () => {
     const config = layoutKnipConfig(base, javascriptLayout);
     expect(textsOf(config['entry']).slice(0, textsOf(base['entry']).length)).toEqual(base['entry']);
     const added = [
-      'src/main.{js,mjs,cjs}',
-      'vitest.config.{js,mjs,cjs}',
-      'jest.config.{js,mjs,cjs}',
-      'tests/jest.config.{js,mjs,cjs}',
-      'tests/fixtures/*harness*.{js,mjs,cjs}',
+      'src/main.{js,mjs,cjs,jsx}',
+      'vitest.config.{js,mjs,cjs,jsx}',
+      'jest.config.{js,mjs,cjs,jsx}',
+      'tests/jest.config.{js,mjs,cjs,jsx}',
+      'tests/fixtures/*harness*.{js,mjs,cjs,jsx}',
     ];
     expect(added.filter((entry) => !textsOf(config['entry']).includes(entry))).toEqual([]);
-    expect(config['project']).toEqual([...textsOf(base['project']), '*.config.{js,mjs,cjs}']);
+    expect(config['project']).toEqual([...textsOf(base['project']), '*.config.{js,mjs,cjs,jsx}']);
   });
 
   it('lists the Jest and Mocha config files in the shared entries, for both presets', () => {
@@ -252,20 +271,20 @@ describe('generated knip.json', () => {
     };
     const config = layoutKnipConfig(base, layout);
     expect(textsOf(config['entry']).filter((entry) => entry.includes('main.{js'))).toEqual([
-      'lib/main.{js,mjs,cjs}',
-      'lib/main/main.{js,mjs,cjs}',
+      'lib/main.{js,mjs,cjs,jsx}',
+      'lib/main/main.{js,mjs,cjs,jsx}',
     ]);
     expect(textsOf(config['entry']).at(-1)).toBe('tools/run.js');
-    expect(textsOf(config['project']).filter((entry) => entry.endsWith('{js,mjs,cjs}'))).toEqual([
-      '*.config.{js,mjs,cjs}',
-    ]);
+    expect(
+      textsOf(config['project']).filter((entry) => entry.endsWith('{js,mjs,cjs,jsx}')),
+    ).toEqual(['*.config.{js,mjs,cjs,jsx}']);
   });
 
   it('is rewritten for the default JavaScript layout', () => {
     const config = transformed('knip.json', javascriptLayout, projectWith());
     expect(textsOf(config['entry']).filter((entry) => entry.startsWith('vitest.config'))).toEqual([
       'vitest.config.ts',
-      'vitest.config.{js,mjs,cjs}',
+      'vitest.config.{js,mjs,cjs,jsx}',
     ]);
   });
 });

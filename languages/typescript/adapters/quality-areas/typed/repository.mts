@@ -8,7 +8,7 @@ import { typescriptStructureProjectFindings as untypedStructureProjectFindings }
 import {
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
-} from '../../../preset/tool-configs.mjs';
+} from '../../../preset/project-configs/typescript/layout-rewrites.mjs';
 import { layeredJscpdConfig as untypedLayeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
 import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mts';

@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unsortable-table-column",
+    "mention": "orderable=False",
+    "subject": "is_primary|Address|not a field"
+  }
+]

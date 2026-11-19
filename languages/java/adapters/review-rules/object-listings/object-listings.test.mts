@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as parse } from '../max-value-sums/source-file.mts';
+import { parseSource as parse } from '../max-value-sums/source/source-file.mts';
 import { findUnpagedListings } from './object-listings.mts';
 
 function java(imports: string, body: string) {

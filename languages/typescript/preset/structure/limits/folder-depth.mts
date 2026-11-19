@@ -1,5 +1,9 @@
 import type { Finding } from '../../../adapters/static-checks/shared.mts';
-import { FOLDER_DEPTH_DEFAULTS, escapeRegExp, folderDepthFindings } from '../typed/rule-views.mts';
+import {
+  FOLDER_DEPTH_DEFAULTS,
+  folderDepthFindings,
+  rootExpression,
+} from '../typed/rule-views.mts';
 import type { SizedFile, StructureLayout, StructurePolicy } from '../typed/structure-types.mts';
 
 const WORDING = {
@@ -19,8 +23,8 @@ function countedFolders(rest: string): number {
 }
 
 function featureDepthPattern(layout: StructureLayout): RegExp {
-  const roots = [...layout.sourceRoots, ...layout.testRoots].map(escapeRegExp).join('|');
-  return new RegExp(`^(?:${roots})/(?:[^/]+/)*?features/[^/]+/[^/]+/(?<rest>.+)$`);
+  const roots = rootExpression([...layout.sourceRoots, ...layout.testRoots]);
+  return new RegExp(`^${roots.source}(?:[^/]+/)*?features/[^/]+/[^/]+/(?<rest>.+)$`);
 }
 
 export function typescriptFolderDepthFindings(

@@ -7,8 +7,11 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/backoff"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/concurrency"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copypasted"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/delays"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/domainmutation"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/guards"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/honesty"
@@ -26,6 +29,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/preconditions"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/querytext"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/recursion"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/replacements"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/requests"
@@ -58,8 +62,11 @@ func Analyzers() []*analysis.Analyzer {
 		affixes.Analyzers(),
 		[]*analysis.Analyzer{
 			copies.Analyzer,
+			copypasted.Analyzer,
+			delays.Analyzer,
 			optional.Analyzer,
 			nilbranch.Analyzer,
+			domainmutation.Analyzer,
 			overflow.Analyzer,
 			requests.Analyzer,
 			jobs.Analyzer,
@@ -79,4 +86,6 @@ func Analyzers() []*analysis.Analyzer {
 			listings.Analyzer,
 		},
 	)
+			recursion.Analyzer,
+		})
 }

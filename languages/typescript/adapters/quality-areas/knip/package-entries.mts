@@ -106,7 +106,7 @@ function sourcePattern(
     return [];
   }
   const stem = rest.join('/').replace(OUTPUT_FILE, '');
-  return sourceRoots.map((root) => `${root}/${stem}.${SOURCE_EXTENSIONS}`);
+  return sourceRoots.map((root) => path.posix.join(root, `${stem}.${SOURCE_EXTENSIONS}`));
 }
 
 export function publishedSourceEntries(
