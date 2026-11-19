@@ -213,11 +213,11 @@ function isSkipped(file: UriFile, match: RegExpExecArray, imported = file.import
 type CallPattern = {
   readonly pattern: RegExp;
   readonly caught: Set<string>;
-  readonly imported?: boolean;
+  readonly imported: boolean;
   readonly maximum?: number;
 };
 
-function callsOf(file: UriFile, { pattern, caught, imported = file.imported, maximum = 1 }: CallPattern): UriHit[] {
+function callsOf(file: UriFile, { pattern, caught, imported, maximum = 1 }: CallPattern): UriHit[] {
   const { code } = file.scanned;
   return [...code.matchAll(pattern)].flatMap((match) => {
     const argument = leadingArgument(code, match, maximum);
@@ -248,8 +248,8 @@ export function dynamicUris(scanned: Scanned): UriHit[] {
     names: new Map(),
   };
   return [
-    ...callsOf(file, { pattern: CREATE, caught: CREATE_CAUGHT }),
-    ...callsOf(file, { pattern: CONSTRUCTOR, caught: CONSTRUCTOR_CAUGHT }),
+    ...callsOf(file, { pattern: CREATE, caught: CREATE_CAUGHT, imported: file.imported }),
+    ...callsOf(file, { pattern: CONSTRUCTOR, caught: CONSTRUCTOR_CAUGHT, imported: file.imported }),
     ...callsOf(file, {
       pattern: DECODE,
       caught: CREATE_CAUGHT,

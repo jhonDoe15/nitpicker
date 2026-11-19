@@ -86,3 +86,13 @@ export function eachFrame<Found>(
     visit({ from: frame.body.from, to: frame.body.to }, frame),
   );
 }
+
+export function enclosingOpeners(opener: Int32Array, index: number): number[] {
+  const chain = [opener[index] ?? -1];
+  for (const open of chain) {
+    if (open >= 0) {
+      chain.push(opener[open] ?? -1);
+    }
+  }
+  return chain;
+}
