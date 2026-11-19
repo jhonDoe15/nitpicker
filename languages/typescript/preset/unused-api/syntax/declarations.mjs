@@ -1,10 +1,12 @@
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import {
+  bindingMembers,
   candidatesOf,
   isComponentCandidate,
   isOptionsParameter,
   isWrapperCall,
 } from './candidates.mjs';
+import { isJavascriptFile } from '../context.mjs';
 import { ownedMembers } from './members.mjs';
 import { unwrapExpression } from './passes.mjs';
 import { addAlias, createRegistry, register, targetOf } from './resolve.mjs';
@@ -22,11 +24,17 @@ function exportedDeclarations(sourceFile, checker) {
   );
 }
 
-function parameterTarget({ candidate, file, context, index }) {
-  const parameter = candidate.fn.parameters[index];
+function parameterMembers({ parameter, context }) {
+  if (isJavascriptFile(parameter.getSourceFile().fileName)) {
+    return bindingMembers(parameter);
+  }
   const type = context.checker.getTypeAtLocation(parameter);
-  if (type.flags & ts.TypeFlags.TypeParameter) return undefined;
-  const members = ownedMembers({ checker: context.checker, type, owned: context.owned });
+  if (type.flags & ts.TypeFlags.TypeParameter) return new Map();
+  return ownedMembers({ checker: context.checker, type, owned: context.owned });
+}
+
+function parameterTarget({ candidate, file, context, index }) {
+  const members = parameterMembers({ parameter: candidate.fn.parameters[index], context });
   return members.size === 0
     ? undefined
     : { name: candidate.name, path: file.path, package: file.package, refs: [], members, index };

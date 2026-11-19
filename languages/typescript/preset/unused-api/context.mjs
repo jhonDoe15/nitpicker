@@ -5,6 +5,7 @@ import { codeExtensionNames, globMatcher, toPosix } from '../layout.mjs';
 const TYPESCRIPT_EXTENSIONS = new Set(
   codeExtensionNames.filter((name) => name.includes('ts')).map((name) => `.${name}`),
 );
+const JAVASCRIPT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.jsx']);
 const SUPPORT_DIRECTORY = /(?:^|\/)(?:\.storybook|test-support)\//u;
 const STORY_FILE = storyGlobs.map((glob) => globMatcher(glob));
 const GENERATED_MARKER =
@@ -13,6 +14,15 @@ const HEADER_LENGTH = 1000;
 
 export function isTypeScriptFile(file) {
   return TYPESCRIPT_EXTENSIONS.has(path.extname(file));
+}
+
+export function isJavascriptFile(file) {
+  return JAVASCRIPT_EXTENSIONS.has(path.extname(file));
+}
+
+/** A TypeScript file, or in the JavaScript preset a JavaScript file. */
+export function isAnalyzedFile(file, layout) {
+  return isTypeScriptFile(file) || (layout.javascript === true && isJavascriptFile(file));
 }
 
 function isSupportPath(relative, layout) {
@@ -48,7 +58,7 @@ function isOwnable(entry, sourceFile, layout) {
   return (
     entry.insideProject &&
     entry.role === 'production' &&
-    isTypeScriptFile(entry.path) &&
+    isAnalyzedFile(entry.path, layout) &&
     layout.isSourceFile(entry.path) &&
     !isGenerated(sourceFile)
   );

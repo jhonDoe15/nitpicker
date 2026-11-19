@@ -6,6 +6,8 @@ import type { Libraries } from './libraries/typed/library-types.mts';
 import { LOCATOR_HINTS } from './hints/ast/locators.mts';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mts';
 import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mts';
+import { COPY_PASTED_HINTS } from './hints/tests/copy-pasted-hints.mts';
+import { RECURSION_HINTS } from './hints/ast/ast-recursion.mts';
 import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mts';
 import { CONTAINER_HINTS } from './hints/containers/containers.mts';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mts';
@@ -13,6 +15,7 @@ import { SMELL_HINTS } from './hints/ast/ast-smells.mts';
 import { EFFECT_HINTS } from './hints/effects/index.mts';
 import { WRITE_HINTS } from './hints/writes/index.mts';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mts';
+import { COMPOSITION_HINTS } from './hints/composition/composition-hints.mts';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
@@ -86,7 +89,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...RECURSION_HINTS,
   ...ROUND_TRIP_HINTS,
+  ...COPY_PASTED_HINTS,
   ...TYPING_HINTS,
   ...LOCATOR_HINTS,
   ...CONTRACT_HINTS,
@@ -95,6 +100,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...EFFECT_HINTS,
   ...WRITE_HINTS,
   ...MOCK_HINTS,
+  ...COMPOSITION_HINTS,
   ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,
   ...TEST_SWITCH_HINTS,

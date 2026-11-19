@@ -143,14 +143,14 @@ function storyConfigFor() {
   ];
 }
 
-async function reactTypedConfigFor(layout: ScopeLayout) {
+async function reactTypedConfigFor(layout: ResolvedLayout) {
   const { reactPlugins } = await import('./react-plugins.mts');
   return [
     {
       ...productionScope(layout),
       plugins: { '@typescript-eslint': tseslint.plugin, 'react-x': reactPlugins['react-x'] },
       rules: {
-        ...Object.fromEntries(typedRuleIds.map((id) => [id, 'error'])),
+        ...(layout.javascript ? {} : Object.fromEntries(typedRuleIds.map((id) => [id, 'error']))),
         '@typescript-eslint/no-confusing-void-expression': [
           'error',
           { ignoreVoidReturningFunctions: true },

@@ -127,6 +127,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-dropped-delegate-result': 'error',
     'nitpicker/no-swapped-arguments': 'error',
+    'nitpicker/no-interpolated-log-message': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -184,6 +185,7 @@ function productionGuardRules({
     'nitpicker/no-orm-query-logging': 'error',
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-unindexed-foreign-key': 'error',
+    'nitpicker/no-unversioned-orm-entity': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',

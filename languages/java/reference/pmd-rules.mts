@@ -56,6 +56,12 @@ const OWN_RULESETS: OwnRuleset[] = [
     scope: 'Test sources of a project with Spring on the compile classpath.',
     spring: true,
   },
+  {
+    file: 'reactor-ruleset.xml',
+    scope: 'Main sources of a project with Reactor on the compile classpath.',
+  },
+  { file: 'rules/guards-ruleset.xml', scope: 'Main sources only.' },
+  { file: 'rules/test-honesty-ruleset.xml', scope: 'Test sources only.' },
 ];
 const CATEGORY_BLOCK = /<rule\s+ref="category\/java\/\w+\.xml">([\s\S]*?)<\/rule>/gu;
 const EXCLUDED_RULE = /<exclude\s+name="(\w+)"/gu;

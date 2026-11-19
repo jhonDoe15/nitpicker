@@ -12,7 +12,7 @@ import {
   declaresCheckable,
   exceptionMatcher,
   isReactProject,
-  isTypeScriptFile,
+  isAnalyzedFile,
   loadPackages,
   readHeadPolicy,
   readLayout,
@@ -38,7 +38,7 @@ function hasCheckableDeclarations({
 }): boolean {
   return layout
     .projectCodeFiles(projectRoot)
-    .filter((file) => layout.isSourceFile(file) && isTypeScriptFile(file))
+    .filter((file) => layout.isSourceFile(file) && isAnalyzedFile(file, layout))
     .some((file) => declaresCheckable(parsedSource(projectRoot, file), react));
 }
 
@@ -55,7 +55,7 @@ export function analyzeUnusedApi({
 }): Finding[] {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
-  const react = isReactProject({ projectRoot, react: reactPolicy, javascript: layout.javascript });
+  const react = !layout.javascript && isReactProject({ projectRoot, react: reactPolicy });
   if (!hasCheckableDeclarations({ projectRoot, layout, react })) return [];
   const packagesInfo = loadPackages(projectRoot, layout);
   const program = createProjectProgram({ projectRoot, configPath, packagesInfo, layout });

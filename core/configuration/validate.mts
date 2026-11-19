@@ -161,10 +161,6 @@ function validateScalars(config: NitpickerConfig): void {
 
 const JAVASCRIPT_UNSUPPORTED_KEYS: readonly (readonly [string, string])[] = [
   [
-    'react',
-    'React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
-  ],
-  [
     'i18n',
     'the message rules check react-intl messages and the text in JSX, which belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a project with translated messages',
   ],

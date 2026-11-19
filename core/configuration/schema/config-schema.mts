@@ -140,7 +140,9 @@ const TOP_LEVEL: SchemaTable = {
 
 function unavailableKeys(preset: string): string[] {
   return [
-    ...(preset === 'typescript' ? [] : SCOPE_KEYS),
+    ...(preset === 'typescript'
+      ? []
+      : SCOPE_KEYS.filter((key) => preset !== 'javascript' || key !== 'react')),
     ...(preset === 'python' ? [] : ['python']),
     ...(preset === 'kotlin' ? [] : ['kotlin']),
     ...(preset === 'go' ? [] : ['go']),

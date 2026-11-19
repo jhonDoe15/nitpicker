@@ -43,6 +43,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
   `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
   holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- A public function does not sleep a module constant it cannot override (`uninjectable-delay`):
+  `time.sleep(RETRY_DELAY)` or `asyncio.sleep(RETRY_DELAY)` makes a test wait it out. Take
+  `delay=RETRY_DELAY` as a parameter (or a constructor argument kept in a field).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru) for diagnostics,
   never bare `print`; a `domain` package returns a result instead and leaves logging to `adapters/`.
   A program's own output (what a command prints) goes through a `TextIO` parameter: `out.write(...)`
@@ -63,6 +66,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
 - Let the database change rows too: `Model.objects.filter(...).update(status="expired")` or `session.execute(update(Model).where(...).values(...))` instead of loading rows, assigning the same value to each and calling `bulk_update` or `commit` (`in-memory-update`).
+- Give a model that the code loads, changes and saves again a version column (`unversioned-orm-entity`): `version: Mapped[int] = mapped_column(default=1)` and `__mapper_args__ = {"version_id_col": version}`, so a stale commit raises `StaleDataError` instead of overwriting the other write. Django models are not reported.
 - Ask for what you use: `values_list("email", flat=True)` or `select(User.email)` instead of loading whole rows to read one column (`row-for-one-column`), and `.exists()` or `select(exists().where(...))` instead of `.count() > 0` or `.first() is not None` (`row-for-existence`).
 - Optimistic-lock retries: retry a `StaleDataError` by reading the row again inside each attempt (`order = session.get(Order, order_id)`, apply the change, `commit()`), never by committing the object loaded before the retry (`stale-retry`).
 - Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
@@ -107,6 +111,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Test an environment variable for a value, not for `None`: `if not os.environ.get("API_URL"):` and
   `os.environ.get("PORT") or "8000"`, never `is not None`, `in os.environ` or a `getenv` default; `API_URL=`
   gives `""`, which those count as set (`env-none-only-check`).
+- Build engines, pools, clients and apps in the composition root only (`managed-resource-outside-composition-root`):
+  `create_engine`, `asyncpg.create_pool`, `redis.Redis`, `httpx.Client`, `requests.Session`, `aiohttp.ClientSession`,
+  `boto3.client` and `Celery(...)` go in `main.py`, `server.py` or `composition_root.py`, and the feature code takes
+  the object as a parameter. The root only wires (`branch-in-composition-root`): no `if`, loop, `match` or `or`
+  default there; pick an implementation by configuration through a lookup table (`BACKENDS[settings.store]()`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.

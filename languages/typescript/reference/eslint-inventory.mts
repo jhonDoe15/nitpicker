@@ -79,6 +79,12 @@ const JAVASCRIPT_SAMPLES = [
   'test/support/helper.js',
   'e2e/flow.spec.js',
 ];
+const JAVASCRIPT_REACT_SAMPLES = [
+  ...JAVASCRIPT_SAMPLES,
+  'src/main/ui/panel.jsx',
+  'src/main/features/x/adapters/panel.jsx',
+  'src/test/ui/panel.test.jsx',
+];
 
 export const ESLINT_VARIANTS: Readonly<Record<string, ProjectVariant>> = {
   typescript: {
@@ -100,7 +106,15 @@ export const ESLINT_VARIANTS: Readonly<Record<string, ProjectVariant>> = {
     files: JAVASCRIPT_SAMPLES,
     project: {
       'package.json': JSON.stringify(FULL_MANIFEST),
-      [POLICY_FILE]: JSON.stringify({ preset: 'javascript' }),
+      [POLICY_FILE]: JSON.stringify({ preset: 'javascript', react: { enabled: false } }),
+    },
+  },
+  'javascript-react': {
+    files: JAVASCRIPT_REACT_SAMPLES,
+    project: {
+      'package.json': JSON.stringify(FULL_MANIFEST),
+      'vitest.config.ts': VITEST_CONFIG,
+      [POLICY_FILE]: JSON.stringify({ preset: 'javascript', react: { enabled: true } }),
     },
   },
 };

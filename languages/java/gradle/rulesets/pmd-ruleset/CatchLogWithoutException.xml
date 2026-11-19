@@ -1,0 +1,30 @@
+  <rule name="CatchLogWithoutException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This log call in a catch leaves the caught exception out, so the stack trace and the cause are lost. SLF4J and Log4j 2 take the exception last (log.warn(&quot;could not load '{}'&quot;, id, e)); JBoss Logging and Quarkus Log take it first in the formatted forms (log.warnf(e, &quot;could not load %s&quot;, id)) and last in log.warn(&quot;could not load&quot;, e); java.util.logging and System.Logger take log(Level.WARNING, &quot;could not load&quot;, e). Name the catch parameter ignored when the failure is expected and needs no trace.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
+    or pmd-java:typeIs('org.jboss.logging.BasicLogger') or pmd-java:typeIs('io.quarkus.logging.Log')]]
+  [@MethodName = ('warn', 'error', 'fatal', 'warnf', 'errorf', 'fatalf', 'warnv', 'errorv', 'fatalv',
+                  'warning', 'severe')
+    or (@MethodName = ('log', 'logf', 'logv')
+        and ArgumentList/*[1][self::FieldAccess][@Name = ('WARN', 'WARNING', 'ERROR', 'FATAL', 'SEVERE')])]
+  [let $catch := ancestor::CatchClause[1],
+       $caught := string($catch/CatchParameter/VariableId/@Name),
+       $arguments := ArgumentList/*
+   return exists($catch)
+     and not(matches($caught, '^(?:_|ignore\w*|expected\w*|unused\w*)$', 'i'))
+     and empty(($arguments | $arguments/ArrayInitializer/*)[not(self::NullLiteral)]
+       [(self::VariableAccess and @Name = $caught)
+         or (self::CastExpression and *[last()][self::VariableAccess and @Name = $caught])
+         or pmd-java:typeIs('java.lang.Throwable')
+         or (self::ConstructorCall and ArgumentList/VariableAccess[@Name = $caught])])
+     and empty($catch/Block//ThrowStatement[*[1][(self::VariableAccess and @Name = $caught)
+         or (self::ConstructorCall and ArgumentList/VariableAccess[@Name = $caught])]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

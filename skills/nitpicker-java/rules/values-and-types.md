@@ -209,3 +209,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   parallel and the method returns `null`. A plain `return null` is reported only where other callers check the
   result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
   or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
+- A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A public method or constructor does not wait a constant it cannot override
+  (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
+  `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
+  sets, that defaults to the constant (`this(RETRY_DELAY_MS)`).
+- Domain code does not change what it was given (`pmd/MutatingMethodInDomain`, classes of a `domain` package):
+  `items.add(x)`, `index.put(k, v)`, `list.sort(...)` or `date.setTime(...)` on a parameter. Build a new value:
+  `List.copyOf` plus the change, `Stream.toList()`, `Map.copyOf`, or a new collection created and filled
+  in the same method.

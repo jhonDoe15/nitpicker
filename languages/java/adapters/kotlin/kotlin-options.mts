@@ -17,8 +17,11 @@ import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mts';
 import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-trips.mts';
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mts';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mts';
+import { FIXED_DELAY_EXCEPTION_RULE } from '../review-rules/fixed-delays/fixed-delays.mts';
+import { MUTATING_METHOD_EXCEPTION_RULE } from '../review-rules/mutating-methods/mutating-methods.mts';
 import { NULL_FALL_THROUGH_EXCEPTION_RULE } from '../review-rules/null-fall-through/null-fall-through.mts';
 import { NULLABLE_RETURN_EXCEPTION_RULE } from '../review-rules/nullable-returns/nullable-returns.mts';
+import { SELF_RECURSION_EXCEPTION_RULE } from '../review-rules/self-recursion/self-recursion.mts';
 import {
   fieldOf,
   fieldsOf,
@@ -55,6 +58,9 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     MAX_VALUE_EXCEPTION_RULE,
     NULL_FALL_THROUGH_EXCEPTION_RULE,
     NULLABLE_RETURN_EXCEPTION_RULE,
+    SELF_RECURSION_EXCEPTION_RULE,
+    FIXED_DELAY_EXCEPTION_RULE,
+    MUTATING_METHOD_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

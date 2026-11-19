@@ -49,6 +49,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
+- A function does not call itself, directly or through another function of the module or class (`self-recursion`): a retry or poll is a `for attempt in range(attempts)` loop, a tree walk is a loop over a worklist that each step extends with the node's children, flat data is a comprehension. An exception fits only when the recursion is bounded and deliberate.
+- Domain code (a `domain` directory) does not change what it was given (`mutating-method-in-domain`):
+  `items.append(x)`, `items.sort()` or `table.update(other)` on a parameter. Build a new value with a
+  comprehension or an unpacking (`[*items, x]`, `{**table, **other}`, `sorted(items)`), or copy the argument
+  first (`items = list(items)`). A list or dict created and filled in the same function is fine.
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are

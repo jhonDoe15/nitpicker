@@ -55,7 +55,10 @@ are listed at the end.
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Null branch that continues                      | `if x is None:` then `return` (or `else:`), so the null case is handled once                                                                                                           | `null-branch-fall-through` (script)                                                                                                                                                                                                                                                                                                                                                 |
+| Recursion over unknown depth                    | a `for attempt in range(attempts)` loop for a retry, a loop over a worklist for a tree walk, a comprehension for flat data |
+| Delays tests can set                            | `def poll(delay=RETRY_DELAY)` with `time.sleep(delay)`                                                                                                                                 | `uninjectable-delay` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Changing an argument in domain code             | a comprehension or unpacking (`[*items, item]`, `sorted(items)`), or copy the argument first       
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -218,6 +221,29 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `branch-in-composition-root` (TypeScript: `nitpicker/no-branch-in-composition-root`) reports a branch in a
+  file that only wires the program together: `main.py`, `server.py` or `composition_root.py` in the root
+  package (the top-level package, a folder with an `__init__.py` whose parent has none), a file under a
+  `composition_root/` folder of it, or a file listed in `python.entryPoints`. Reported: `if`, a
+  conditional expression, `match`, `for` and `while` loops, and `or` with a literal, collection or call on
+  its right (`settings.get("port") or 3000`), at module level and inside functions. Not reported:
+  `if __name__ == "__main__":`, `if TYPE_CHECKING:`, a guard whose body only raises
+  (`if url is None: raise RuntimeError("DATABASE_URL is missing")`), `and`/`or` between plain values, and
+  `try` statements. Allowed: choose an implementation by configuration through a lookup table
+  (`BACKENDS = {"memory": MemoryStore, "redis": RedisStore}` then `BACKENDS[settings.store]()`), and put
+  other decisions in a factory of the feature. A branch that belongs in the root needs an exception for
+  the rule.
+- `managed-resource-outside-composition-root` (TypeScript:
+  `nitpicker/no-managed-resource-construction-outside-composition-roots`) reports a call that builds a
+  managed resource in a file that is not a composition root: SQLAlchemy `create_engine` and
+  `create_async_engine`, `asyncpg.create_pool`, `redis.Redis`, `redis.StrictRedis`, `Redis.from_url` and
+  `redis.from_url`, `httpx.Client` and `AsyncClient`, `requests.Session`, `aiohttp.ClientSession`,
+  `boto3` and `aioboto3` `client` and `resource`, and `celery.Celery`, also through `from ... import`
+  and aliases. A composition root here is a file named for `branch-in-composition-root` above, or any
+  file `process-env-access` treats as one (`app.py`, `cli.py`, a file with a main guard, a factory such
+  as `create_app`). Tests are skipped. Allowed: build the resource once in the composition root and pass it
+  to the code that uses it as a parameter or constructor argument. An exception fits only for a script or
+  tool outside the application that owns a short-lived resource.
 - `env-none-only-check` reports an environment variable tested only for being missing, which
   counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
   on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
@@ -1390,6 +1416,17 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   models are left to the migrations when the project has an Alembic `versions/` folder with a
   revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
   revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
+- `unversioned-orm-entity` (Java and Kotlin: `JpaVersion`; TypeScript: `nitpicker/no-unversioned-orm-entity`)
+  reports a SQLAlchemy model that the project loads, changes and saves again without a `version_id_col`
+  in its `__mapper_args__` (on the class or a base class): two requests that update the same row both
+  succeed and the later one silently overwrites the earlier one. The row is loaded by `session.get`,
+  `session.scalars(select(Model))`, `session.execute(select(Model))` or `session.query(Model)` (a single
+  row through `first()`, `one()` or `scalar_one()`, or each row of a loop), assigned an attribute, and the
+  function then commits, flushes, or calls `add` or `merge`. Django has no built-in version column, so
+  Django models are not reported, and neither are models that are only read or only inserted. Allowed:
+  `version: Mapped[int] = mapped_column(default=1)` with `__mapper_args__ = {"version_id_col": version}`.
+  An exception fits only when concurrent writers of the table are ruled out another way, such as
+  `with_for_update()` or a single writer.
 - `in-memory-update` reports rows loaded only to set model fields to the same value and write them back, where one update
   statement does it without loading anything. The rows are a query result as `in-memory-query` reads it
   (a Django queryset or `list()` of one, a SQLAlchemy `.all()` list, or `session.scalars(select(Model))`
@@ -1472,6 +1509,16 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `charset` or `boundary`. Allowed form: `email.message.Message`, `werkzeug.http`
   (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
   `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
+- `self-recursion` reports a function or method that calls itself, and functions of one module (or
+  methods of one class, called as `self.name(...)` or `cls.name(...)`) that call each other
+  (`is_even` and `is_odd`), in production code. A function passed to `map`, `filter`, `sorted`, `min`,
+  `max` or `reduce` counts as called; a call inside a nested function counts for that function, and a
+  call to a nested function's enclosing function is reported on the enclosing function. A cycle is
+  reported once, on the call of the function declared first. The allowed forms are a `for` loop over
+  `range(attempts)` for a retry or poll, a loop over a worklist that each step extends with the
+  node's children for a tree walk, and a comprehension or `itertools.chain.from_iterable` for flat data;
+  a call on another object (`child.walk()`) and tests are not reported. A bounded, deliberate
+  recursion takes an exception.
 - `null-branch-fall-through` reports `if x is None:` (or `x == None:`, `None is x`, `self.field`)
   with no `else` whose body does something (a call, a write, an append, a log, an assignment of a
   placeholder to another variable) and does not leave (`return`, `raise`, `break`, `continue`,
@@ -1486,6 +1533,14 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   Not reported: an empty branch (`pass`), `if not x:`, a use
   after another test of `x` (`if x is not None`, `x and x.attr`, `x if x else ...`, `assert x`,
   `isinstance`), a lambda or function that is not called on the spot, and test files.
+- `uninjectable-delay` reports `time.sleep`, `asyncio.sleep`, `trio.sleep`, `anyio.sleep` or `gevent.sleep` (the
+  delay as the first argument or `seconds`/`secs`/`delay`) whose delay is a module constant of 500 ms or
+  more (a number, or a product or sum of numbers and such constants, assigned once), inside a public
+  function or method (no name starting with an underscore) with no parameter that has a default or is named
+  like `delay`, `interval`, `timeout`, `options` or `config`. A test of it waits the delay out. Allowed form:
+  `def poll(delay=RETRY_DELAY)` with `time.sleep(delay)`, or an `__init__` that keeps the delay in a field.
+  Not reported: a literal delay, a short delay, a private function, a nested function of a function, and
+  test files. It is reported on the sleep call.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a
@@ -1559,6 +1614,18 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   ORM entity) are skipped like class instances in the TypeScript preset. A constructor
   that changes its argument is reported like any other function. The allowed form returns a new
   value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `mutating-method-in-domain` reports, in a file under a `domain` directory (not tests; the scope of
+  `any-in-domain` and `io-in-domain`), a function that calls `.append`, `.extend`, `.insert`, `.pop`,
+  `.remove`, `.sort`, `.update`, `.setdefault`, `.add`, `.discard`, `.clear` or another mutator of its type on a
+  parameter it did not create. A parameter annotated as a container (the types of `parameter-mutation`) takes
+  every mutator of its type; an unannotated parameter takes only `.append`, `.appendleft`, `.extend`,
+  `.extendleft`, `.insert`, `.sort`, `.setdefault`, `.discard` and `.popitem`, since `.add`, `.pop` or `.update`
+  can belong to any object. Unlike `parameter-mutation`, it also covers private helpers, nested functions and
+  `pytest_*` hooks; a call that `parameter-mutation` already reports is reported once, by that rule. Not
+  reported: a list, dict or set created and filled in the same function, a parameter rebound before the first
+  call (`items = list(items)`), `self` and `cls`, and a one-hop alias. There is no automatic fix. The message
+  names the building forms: a comprehension, an unpacking (`[*items, item]`, `{**table, key: value}`),
+  `sorted(items)`, or a copy first.
 - `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
   call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
   also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,
@@ -1900,6 +1967,17 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; `patch-misses-lookup` covers
   patch targets that miss. Allowed: pass the collaborators in and give the test a fake of them, and
   test a helper through the public function that calls it.
+- `internal-module-patch` (Java and Kotlin: `StaticMockOfProjectType`; TypeScript:
+  `nitpicker/no-internal-module-mocks`) reports, in a test file, a patch of the project's own code:
+  `patch`, `patch.object` and `patch.dict` (also through `mocker`, the pytest-mock fixture) and
+  `monkeypatch.setattr` whose target is a function, class or method of a module under the
+  source roots, and `patch.dict` of a dictionary of one (`patch("shop.billing.client.send")`,
+  `monkeypatch.setattr(billing_client, "send", fake)`, `patch.dict(config.SETTINGS, {...})`). The module the test is named after is left to
+  `mocked-subject-in-test`. Allowed: patching third-party and standard-library targets (`time.sleep`,
+  `requests.get`, `os.environ`), a module constant (`monkeypatch.setattr(settings, "DEBUG", True)`), and
+  passing a fake through a parameter or constructor
+  (`Checkout(FakeMailer()).pay()`). An exception fits only for code that cannot take a parameter, such as a
+  module-level singleton read at import time or a framework hook.
 - `mock-without-spec` (the Kotlin preset's `RelaxedMockInTest` covers the MockK form, a relaxed mock) reports, in a test file, a mock of project code
   that accepts any call. A `Mock`, `MagicMock`, `AsyncMock`, `NonCallableMock` or
   `NonCallableMagicMock` with no spec (no first argument, `spec`, `spec_set` or `wraps`), passed
