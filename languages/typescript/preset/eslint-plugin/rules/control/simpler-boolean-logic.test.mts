@@ -23,9 +23,84 @@ afterAll(() => {
 const untyped = typescriptRuleTester();
 const typedTester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
+const FIXED = new Map<string, string>([
+  [
+    'function f(a, b) { if (a < b) { return true; } return false; }',
+    'function f(a, b) { return a < b; }',
+  ],
+  [
+    'function f(a, b) { if (a < b) { return false; } else { return true; } }',
+    'function f(a, b) { return !(a < b); }',
+  ],
+  ['function f(a) { if (a) { return false; } return true; }', 'function f(a) { return !a; }'],
+  ['function f(a, b) { return !(a === b); }', 'function f(a, b) { return a !== b; }'],
+  [
+    'function f(a, b) { const same = !(a == b); return same; }',
+    'function f(a, b) { const same = a != b; return same; }',
+  ],
+  ['function f(a, b) { return !a && !b; }', 'function f(a, b) { return !(a || b); }'],
+  [
+    'function f(a, b, c) { return !a || !b || !c; }',
+    'function f(a, b, c) { return !(a && b && c); }',
+  ],
+  ['function f(a, b) { return (a < b) ? true : false; }', 'function f(a, b) { return a < b; }'],
+  ['function f(a, b) { return (a < b) ? false : true; }', 'function f(a, b) { return !(a < b); }'],
+  [
+    'function f(a, b, c) { return a ? false : b < c; }',
+    'function f(a, b, c) { return !a && b < c; }',
+  ],
+  [
+    'function f(a, b, c) { return a ? b < c : true; }',
+    'function f(a, b, c) { return !a || b < c; }',
+  ],
+  [
+    'function f(a, b) { return !(a.find((x) => x) == b); }',
+    'function f(a, b) { return a.find((x) => x) != b; }',
+  ],
+  ['function f(a, b, c) { return !a ? b : c; }', 'function f(a, b, c) { return a ? c : b; }'],
+  ['function f(a, b) { return !!(a < b); }', 'function f(a, b) { return a < b; }'],
+  [
+    'function f(a, b) { while (!(a == b)) { step(); } }',
+    'function f(a, b) { while (a != b) { step(); } }',
+  ],
+  ['const x = (a, b) => !a && !b;', 'const x = (a, b) => !(a || b);'],
+  [
+    'function f(a, b, c) { if (c) { if (!(a == b)) { run(); } } else { stop(); } }',
+    'function f(a, b, c) { if (c) { if (a != b) { run(); } } else { stop(); } }',
+  ],
+  ['function f(a, b, c) { return !!a ? b : c; }', 'function f(a, b, c) { return a ? b : c; }'],
+  ['function f(a, b, c) { return !!!a ? b : c; }', 'function f(a, b, c) { return a ? c : b; }'],
+  [
+    'export function f(ready: boolean) { if (ready) { return true; } return false; }',
+    'export function f(ready: boolean) { return ready; }',
+  ],
+  [
+    'export function f(ready: boolean) { return ready ? true : false; }',
+    'export function f(ready: boolean) { return ready; }',
+  ],
+  [
+    'export function f(ready: boolean) { return !!ready; }',
+    'export function f(ready: boolean) { return ready; }',
+  ],
+  [
+    'export function f(ready: boolean, b: boolean) { return ready ? b : false; }',
+    'export function f(ready: boolean, b: boolean) { return ready && b; }',
+  ],
+  [
+    'export function f(items: string[]) { return items.includes("a") ? true : false; }',
+    'export function f(items: string[]) { return items.includes("a"); }',
+  ],
+]);
+
+function fixedOutput(code: string): { output?: string } {
+  const output = FIXED.get(code);
+  return output === undefined ? {} : { output };
+}
+
 function reported(code: string, ...forms: string[]) {
   return {
     code,
+    ...fixedOutput(code),
     errors: forms.map((form) =>
       form.startsWith('swapped ')
         ? { messageId: 'swapped', data: { form: form.slice('swapped '.length) } }
@@ -35,7 +110,10 @@ function reported(code: string, ...forms: string[]) {
 }
 
 type TypedCase = { filename: string; code: string };
-type TypedReported = TypedCase & { errors: { messageId: string; data: { form: string } }[] };
+type TypedReported = TypedCase & {
+  errors: { messageId: string; data: { form: string } }[];
+  output?: string;
+};
 
 function typed(code: string): TypedCase;
 function typed(code: string, form: string, ...forms: string[]): TypedReported;

@@ -1,9 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
+import { ORM_PACKAGES } from '../../test-support/projects/orm/orm-stubs.mts';
 import { rule } from './no-in-memory-query.mts';
 
 const TYPEORM = 'import { Repository } from "typeorm";';
@@ -79,11 +76,97 @@ tester.run('no-in-memory-query', rule, {
     inService(DRIZZLE, 'return (await db.select().from(orders).limit(5)).length;'),
     inService(TYPEORM, 'return (await repo.createQueryBuilder("o").take(5).getMany()).length;'),
     inService(TYPEORM, 'return (await repo.find()).filter((row) => typeof row.a === "string");'),
+    inService(
+      TYPEORM,
+      'const rows = await repo.find(); const parents = new Set(rows.map((row) => row.parentId)); return rows.filter((row) => parents.has(row.id));',
+    ),
+    inService(
+      TYPEORM,
+      'const rows = await repo.find(); const names = rows.map((row) => row.name); return rows.filter((row) => names.includes(row.alias));',
+    ),
+    inService(
+      TYPEORM,
+      'return (await repo.find({ lock: { mode: "pessimistic_write" } })).filter((row) => row.id !== id);',
+    ),
+    inService(
+      TYPEORM,
+      'const rows = await repo.find({ lock: { mode: "pessimistic_read" } }); return rows.length;',
+    ),
+    inService(
+      TYPEORM,
+      'return (await repo.createQueryBuilder("o").setLock("pessimistic_write").getMany()).length;',
+    ),
+    inService(SEQUELIZE, 'return (await Order.findAll({ lock: true })).length;'),
+    inService(
+      TYPEORM,
+      'return (await repo.find({ where: { id }, lock: { mode: "pessimistic_write" } })).length;',
+    ),
+    inService(TYPEORM, 'return (await repo.query("SELECT * FROM orders FOR UPDATE")).length;'),
+    inService(TYPEORM, 'return (await repo.query(`select * from orders for share`)).length;'),
+    inService(
+      TYPEORM,
+      'return (await repo.query("select * from orders lock in share mode")).length;',
+    ),
+    inService(TYPEORM, 'return (await repo.createQueryBuilder("o").forUpdate().getMany()).length;'),
+    inService(
+      TYPEORM,
+      'return (await repo.createQueryBuilder("o").lock("update").getMany()).length;',
+    ),
+    inService(
+      PRISMA,
+      'return (await prisma.order.findMany({ where: { id } })).filter((row) => row.items.length === 1);',
+    ),
+    inService(TYPEORM, 'return (await repo.find()).filter((row) => row.items.length === 1);'),
+    inService(TYPEORM, 'return (await repo.find()).filter(({ items }) => items.length > 0);'),
+    inService(
+      TYPEORM,
+      'return (await repo.find()).filter((row): row is Order => row.status !== null);',
+    ),
   ],
   invalid: [
     {
+      code: inService(
+        TYPEORM,
+        'const rows = await repo.find(); return rows.filter((row) => ids.includes(row.status));',
+      ),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(
+        TYPEORM,
+        'const seen = new Set(ids); const rows = await repo.find(); return rows.filter((row) => seen.has(row.id));',
+      ),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(TYPEORM, 'return (await repo.find()).filter((row) => !known.has(row.id));'),
+      errors: errors('filter'),
+    },
+    {
+      code: inService(
+        TYPEORM,
+        'return (await repo.find()).find((row) => lookup.has(row.customerId));',
+      ),
+      errors: errors('filter'),
+    },
+    {
       code: inService(TYPEORM, 'const rows = await repo.find(); return rows.length > 0;'),
       errors: errors('count'),
+    },
+    {
+      code: inService(TYPEORM, 'return (await repo.find({ where: { lock: false } })).length;'),
+      errors: errors('count'),
+    },
+    {
+      code: inService(TYPEORM, 'return (await repo.find({ where: { status: "lock" } })).length;'),
+      errors: errors('count'),
+    },
+    {
+      code: inService(
+        TYPEORM,
+        'return (await repo.find({ where: { lock: { mode: "x" } } })).filter((row) => row.id !== id);',
+      ),
+      errors: errors('filter'),
     },
     {
       code: inService(TYPEORM, 'return (await repo.findBy({ status: "open" })).length === 0;'),
@@ -142,10 +225,7 @@ tester.run('no-in-memory-query', rule, {
       errors: errors('filter'),
     },
     {
-      code: inService(
-        TYPEORM,
-        'return (await repo.find())?.find((row) => ids.includes(row.customerId));',
-      ),
+      code: inService(TYPEORM, 'return (await repo.find())?.find((row) => row.tags.includes(id));'),
       errors: errors('filter'),
     },
     {
@@ -236,50 +316,53 @@ tester.run('no-in-memory-query', rule, {
   ],
 });
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-in-memory-query-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
+const STORE = [
+  "import { Repository } from 'typeorm';",
+  'export class Order { status = ""; first = ""; last = ""; get fullName() { return this.first + this.last; } }',
+  'export declare class Wrapper {',
+  '  find(workspaceId: string, options?: { where?: object }): Promise<Order[]>;',
+  '  findBy(where: object): Promise<Order[]>;',
+  '}',
+  'export declare class Overriding extends Repository<Order> {',
+  '  find(): Promise<Order[]>;',
+  '}',
+].join('\n');
+
+const { tester: typedTester, typed: typedFile } = typedIoProject(
+  'in-memory-query',
+  STORE,
+  {},
+  ORM_PACKAGES,
 );
-mkdirSync(path.join(root, 'src'));
+const TYPED_HEADER = [
+  "import { Repository } from 'typeorm';",
+  "import { PrismaClient } from '@prisma/client';",
+  "import { Order, Wrapper, Overriding } from './store';",
+  'declare const repo: Repository<Order>;',
+  'declare const wrapperRepo: Wrapper;',
+  'declare const overridingRepo: Overriding;',
+  'declare const prisma: PrismaClient;',
+  'declare const name: string;',
+  '',
+].join('\n');
 
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const ENTITY = `${TYPEORM} class Order { status = ""; first = ""; last = ""; get fullName() { return this.first + this.last; } }`;
-const typedTester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-function typed(body: string): { filename: string; code: string };
+function typed(body: string): { filename?: string; code: string };
 function typed(
   body: string,
   messageId: string,
-): { filename: string; code: string; errors: { messageId: string }[] };
+): { filename?: string; code: string; errors: { messageId: string }[] };
 function typed(body: string, messageId?: string) {
-  const code = `${ENTITY} export async function run(repo: { find(): Promise<Order[]> }, name: string) { ${body} }`;
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
-  writeFileSync(file, code);
-  return {
-    filename: file,
-    code,
-    ...(messageId === undefined ? {} : { errors: errors(messageId) }),
-  };
+  const file = typedFile(`${TYPED_HEADER}export async function run() { ${body} }`);
+  return messageId === undefined ? file : { ...file, errors: errors(messageId) };
 }
 
 typedTester.run('no-in-memory-query with types', rule, {
   valid: [
     typed('return (await repo.find()).filter((row) => row.fullName === name);'),
     typed('return (await repo.find()).sort((a, b) => a.fullName.localeCompare(b.fullName));'),
+    typed('return (await wrapperRepo.find("workspace", { where: { id: name } })).length;'),
+    typed('return (await wrapperRepo.findBy({ id: name })).filter((row) => row.status === name);'),
+    typed('return (await overridingRepo.find()).length;'),
   ],
   invalid: [
     typed('return (await repo.find()).filter((row) => row.status === name);', 'filter'),

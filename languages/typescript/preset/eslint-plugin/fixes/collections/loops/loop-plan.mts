@@ -4,7 +4,7 @@ import { contains } from '../../../rules/typed/node-views.mts';
 import { allOf, type FixPlans } from '../../edits/plans.mts';
 import { hasCommentIn, replacing, type FixPlan } from '../../support/ranges.mts';
 import { accumulationOf, type Accumulation, type Write, type WriteParser } from './loop-writes.mts';
-import { hasMethod } from '../reduce/type-proofs.mts';
+import { hasProperty } from '../../../rules/support/checked-types.mts';
 
 type Variable = TSESLint.Scope.Variable;
 type Declaration = {
@@ -92,7 +92,7 @@ function isPushable(context: Context, { declarator }: Declaration): boolean {
   if (typeServices(context) === undefined) {
     return declarator.id.typeAnnotation === undefined;
   }
-  return hasMethod(context, declarator.id, 'push');
+  return hasProperty(context, declarator.id, 'push');
 }
 
 export type LoopRewrite = {
