@@ -2408,6 +2408,7 @@
                             "pmd/SelfRecursion",
                             "pmd/UninjectableDelay",
                             "pmd/MutatingMethodInDomain",
+                            "pmd/DelegateSkipsDefaultMethod",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

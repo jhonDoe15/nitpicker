@@ -12,6 +12,7 @@ import { readStringCallFindings } from '../../adapters/review-rules/string-calls
 import { readValueCheckFindings } from '../../adapters/review-rules/value-checks/value-checks.mts';
 import { readMinedFindings } from '../../adapters/review-rules/mined/mined-rules.mts';
 import { readMutatingMethodFindings } from '../../adapters/review-rules/mutating-methods/mutating-methods.mts';
+import { readDelegateSkipsDefaultFindings } from '../../adapters/review-rules/delegate-defaults/delegate-skips-default.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
 import { readNullableReturnFindings } from '../../adapters/review-rules/nullable-returns/nullable-returns.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
@@ -174,4 +175,10 @@ export function fixedDelayFindings(projectRoot: string, options: WideOptions): J
 }
 export function mutatingMethodFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMutatingMethodFindings, projectRoot, options));
+}
+export function delegateSkipsDefaultFindings(
+  projectRoot: string,
+  options: WideOptions,
+): JavaFinding[] {
+  return findingsOf(callUntyped(readDelegateSkipsDefaultFindings, projectRoot, options));
 }
