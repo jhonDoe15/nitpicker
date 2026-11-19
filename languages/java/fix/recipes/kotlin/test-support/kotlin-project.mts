@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { FixRecipe } from '../../../../../../core/fix/typed/fix-types.mts';
+import { applyRecipe } from './apply-recipe.mts';
 
 const HERMETIC = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const GIT_TIMEOUT = 10_000;
@@ -31,4 +33,12 @@ export function kotlinProject(files: Readonly<Record<string, string>>): {
       rmSync(root, { recursive: true, force: true });
     },
   };
+}
+
+export function fixerIn(
+  recipe: FixRecipe,
+  files: Readonly<Record<string, string>>,
+): { readonly root: string; readonly remove: () => void; readonly fix: (text: string) => string } {
+  const project = kotlinProject(files);
+  return { ...project, fix: (text) => applyRecipe(recipe, text, undefined, project.root) };
 }

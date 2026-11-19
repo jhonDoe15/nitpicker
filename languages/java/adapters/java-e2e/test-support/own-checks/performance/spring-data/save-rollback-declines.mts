@@ -7,7 +7,7 @@ const COLLECTED = `    for (String name : names) {
     }`;
 
 const UNPROTECTED_BODY = `
-  void outsideTransaction(List<String> names) {
+  public void outsideTransaction(List<String> names) {
 ${COLLECTED}
   }
 `;
@@ -17,11 +17,11 @@ const RISKY_BODY = `
     boolean passes(Item item);
   }
 
-  void checked(List<String> names) throws Exception {
+  public void checked(List<String> names) throws Exception {
 ${COLLECTED}
   }
 
-  void caught(List<String> names) {
+  public void caught(List<String> names) {
     try {
 ${COLLECTED.replaceAll(/^/gmu, '  ')}
     } catch (IllegalStateException failure) {
@@ -29,32 +29,48 @@ ${COLLECTED.replaceAll(/^/gmu, '  ')}
     }
   }
 
-  void entry(List<String> names) {
+  public void entry(List<String> names) {
     reused(names);
   }
 
-  void reused(List<String> names) {
+  public void reused(List<String> names) {
 ${COLLECTED}
   }
 
   @Transactional(noRollbackFor = IllegalStateException.class)
-  void keeps(List<String> names) {
+  public void keeps(List<String> names) {
 ${COLLECTED}
   }
 
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
-  void suspended(List<String> names) {
+  public void suspended(List<String> names) {
 ${COLLECTED}
   }
 
-  void deferred(List<String> names) {
+  public void deferred(List<String> names) {
     Runnable later = () -> {
 ${COLLECTED.replaceAll(/^/gmu, '  ')}
     };
     later.run();
   }
 
-  void opaque(List<Item> all, Check check) {
+  void hidden(List<String> names) {
+${COLLECTED}
+  }
+
+  public final void unproxied(List<String> names) {
+${COLLECTED}
+  }
+
+  public void written(List<String> names) throws java.io.UncheckedIOException {
+    for (String name : names) {
+      Item item = new Item();
+      item.setName(String.valueOf(java.nio.file.Files.exists(java.nio.file.Path.of(name))));
+      items.save(item);
+    }
+  }
+
+  public void opaque(List<Item> all, Check check) {
     for (Item item : all) {
       if (check.passes(item)) {
         item.setName("checked");

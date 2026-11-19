@@ -87,24 +87,16 @@ function findingLines(findings: readonly AnalyzedFinding[]): Map<string, number[
   return lines;
 }
 
-export function verifyFixes({
-  journal,
-  analyze,
-  mode = 'narrow',
-  narrow = false,
-}: VerifyRequest): VerifyResult {
-  const runs = recipeRuns(journal.events);
-  if (runs.length === 0) {
-    return { rolledBack: [], leftOut: [], notes: [] };
-  }
-  const tools = runs.flatMap((run) => run.findings.map(({ tool }) => tool));
-  const files = runs.flatMap((run) => [...run.files]);
-  const request = { tools: [...new Set(tools)], files: [...new Set(files)], mode };
-  const analyses = bothAnalyses(journal, analyze, request);
-  if (analyses.failure !== undefined) {
-    return skipped(analyses.failure);
-  }
-  const { after, before } = analyses;
+type Verdict = {
+  readonly journal: Journal;
+  readonly runs: readonly RecipeRun[];
+  readonly after: Analysis;
+  readonly before: Analysis;
+  readonly mode: string;
+  readonly narrow: boolean;
+};
+
+function judged({ journal, runs, after, before, mode, narrow }: Verdict): VerifyResult {
   const judgement = {
     runs,
     before: before.findings,
@@ -137,4 +129,23 @@ export function verifyFixes({
       ...kept.map(keptNote),
     ],
   };
+}
+
+export function verifyFixes({
+  journal,
+  analyze,
+  mode = 'narrow',
+  narrow = false,
+}: VerifyRequest): VerifyResult {
+  const runs = recipeRuns(journal.events);
+  if (runs.length === 0) {
+    return { rolledBack: [], leftOut: [], notes: [] };
+  }
+  const tools = runs.flatMap((run) => run.findings.map(({ tool }) => tool));
+  const files = runs.flatMap((run) => [...run.files]);
+  const request = { tools: [...new Set(tools)], files: [...new Set(files)], mode };
+  const analyses = bothAnalyses(journal, analyze, request);
+  return analyses.failure === undefined
+    ? judged({ journal, runs, ...analyses, mode, narrow })
+    : skipped(analyses.failure);
 }

@@ -10,7 +10,7 @@ const BODY = `
     }
   }
 
-  void built(List<String> names) {
+  public void built(List<String> names) {
     for (String name : names) {
       Item item = new Item();
       item.setName(name);
@@ -24,7 +24,7 @@ const AFTER = `
     items.saveAll(all);
   }
 
-  void built(List<String> names) {
+  public void built(List<String> names) {
     List<Item> toSave = new ArrayList<>();
     for (String name : names) {
       Item item = new Item();

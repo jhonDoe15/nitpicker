@@ -70,7 +70,7 @@ final class OpaqueTypes {
             && !symbol.getQualifiedName().contentEquals("java.lang.Record") && opaque(current, state, seen);
       }
       for (Symbol member : symbol.members().getSymbols()) {
-        if (member instanceof Symbol.VarSymbol field && !field.isStatic() && opaque(field.type, state, seen)) {
+        if (member instanceof Symbol.VarSymbol field && opaque(field.type, state, seen)) {
           return true;
         }
       }

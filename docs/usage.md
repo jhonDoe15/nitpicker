@@ -2932,7 +2932,7 @@ checks every recipe that applied a fix:
    The fixes to blame are the ones of a rule that is still reported, and the ones that edited the
    lines a new finding is reported on (layout changes of a formatter are ignored for this). A
    "Fix notes:" line names each fix that was left out:
-   `--fix left out the fix of <file>:<line> <tool>/<rule> and kept the other fixes of the file: <reason>`.
+   `--fix left out the fix of <file>:<line> <tool>/<rule>: <reason>`.
    The file is rolled back whole, as in step 3, when a new finding sits on a line no fix edited,
    when every fix of the file is to blame, when a recipe that edits several files touched it, or
    when the second verification fails too. The second run happens at most once and only after a

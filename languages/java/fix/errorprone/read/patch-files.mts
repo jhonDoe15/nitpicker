@@ -2,7 +2,8 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type Hunk, parseUnifiedDiff } from '../patch/unified-diff.mts';
-import type { Diagnostic, LineRange } from './label-hunks.mts';
+import type { Diagnostic } from './label-hunks.mts';
+import type { LineSpan } from '../../../../../core/fix/lines/line-map.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Entry<T> = readonly [string, T];
@@ -10,7 +11,7 @@ type Entry<T> = readonly [string, T];
 const PATCH_NAME = 'error-prone.patch';
 const REPORT_NAME = 'errorprone.json';
 const CHECK = /^\[(\w+)\]/u;
-const EDITS = /\(edits: (\d+-\d+(?:,\d+-\d+)*)\)/u;
+const EDITS = / \(edits: (\d+-\d+(?:,\d+-\d+)*)\)$/mu;
 
 function filesNamed(directory: string, name: string): string[] {
   const pending = [directory];
@@ -59,10 +60,10 @@ function patchEntries(patchFile: string, projectRoot: string): Entry<readonly Hu
   );
 }
 
-function editsOf(message: string): LineRange[] | undefined {
+function editsOf(message: string): LineSpan[] | undefined {
   return EDITS.exec(message)?.[1]
     ?.split(',')
-    .map((range): LineRange => {
+    .map((range): LineSpan => {
       const [from = '', to = ''] = range.split('-');
       return [Number(from), Number(to)];
     });

@@ -33,6 +33,10 @@ describe('declaredKotlinVersions', () => {
     ['build.gradle.kts', 'languageVersion.set(KotlinVersion.KOTLIN_1_6)\n', [[1, 6]]],
     ['build.gradle.kts', 'kotlinOptions { languageVersion = "1.5" }\n', [[1, 5]]],
     ['build.gradle.kts', 'languageVersion.set(JavaLanguageVersion.of(17))\n', []],
+    ['build.gradle.kts', 'freeCompilerArgs.add("-api-version=1.6")\n', [[1, 6]]],
+    ['build.gradle.kts', 'freeCompilerArgs += listOf("-language-version", "1.5")\n', [[1, 5]]],
+    ['pom.xml', '<arg>-language-version</arg>\n<arg>1.6</arg>\n', [[0, 0]]],
+    ['gradle.properties', 'kotlinPluginVersion=1.5.0\n', [[0, 0]]],
     ['build.gradle.kts', '// kotlin("jvm") version "1.3.0"\n', []],
     ['gradle/libs.versions.toml', 'kotlin-logging = "3.0.5"\nkotlinx-coroutines = "1.6.4"\n', []],
   ])('reads %s: %s', (name, text, expected) => {

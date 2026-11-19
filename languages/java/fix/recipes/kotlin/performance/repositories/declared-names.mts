@@ -74,7 +74,7 @@ function reactiveFile(code: string): boolean {
   return REACTIVE.test(code);
 }
 
-export function repositoryTypeOf(code: string, name: string): string | undefined {
+function repositoryTypeOf(code: string, name: string): string | undefined {
   const types = new Set(
     bindingsOf(code, name).map((binding) =>
       binding.kind === 'typed' && !binding.type.endsWith('?') ? baseName(binding.type) : '',

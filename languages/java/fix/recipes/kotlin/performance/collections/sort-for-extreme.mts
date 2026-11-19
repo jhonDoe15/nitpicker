@@ -5,6 +5,7 @@ import type { KotlinFound, ScannedKotlin } from '../../shared/kotlin-scan.mts';
 
 const SORT_CALL =
   /\.\s*(sorted|sortedDescending|sortedBy|sortedByDescending|sortedWith)(?=\s*[({])/gu;
+const BUILD_LOGIC = /(?:^|\/)(?:buildSrc|build-logic)\/|\.gradle\.kts$/u;
 const TAKE = /^\s*\.\s*(first|firstOrNull)\s*\(\s*\)/u;
 const OPENING = /^\s*([({])/u;
 const TRAILING_LAMBDA = /^[ \t]*\{/u;
@@ -126,12 +127,15 @@ export const sortForExtremeRecipe = kotlinRecipe({
   rules: [{ tool: 'kotlin-source', rule: 'SortForExtreme' }],
   safety: 'review',
   keepComments: true,
-  find(scanned, _file, projectRoot): readonly KotlinFound[] {
+  find(scanned, file, projectRoot): readonly KotlinFound[] {
     const found = [...scanned.code.matchAll(SORT_CALL)].flatMap((match) => {
       const candidate = candidateAt(scanned, match);
       return candidate === undefined ? [] : [candidate];
     });
-    const nonNull = found.some(({ orNull }) => !orNull) && hasNonNullExtremes(projectRoot);
+    const nonNull =
+      found.some(({ orNull }) => !orNull) &&
+      !BUILD_LOGIC.test(file.path) &&
+      hasNonNullExtremes(projectRoot);
     return found
       .filter(
         (outer) =>

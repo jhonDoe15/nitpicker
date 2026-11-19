@@ -16,7 +16,7 @@ import {
   type Original,
 } from './journal-types.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';
-import { isLeftOut, originalEditLines } from '../verify/narrow/edit-lines.mts';
+import { isLeftOut, originalEditLines } from '../lines/edit-lines.mts';
 
 export function createJournal(projectRoot: string): Journal {
   return {
@@ -157,7 +157,9 @@ export function journalWriter(journal: Journal): JournalWriter {
       noteOriginals(journal, planned);
       const linesOf = originalEditLines((name) => originalText(journal, name), snapshot);
       const lines = new Map(planned.map((entry) => [entry, linesOf(entry)]));
-      const entries = planned.filter((entry) => !isLeftOut(journal, entry, lines.get(entry)));
+      const entries = planned.filter(
+        (entry) => !isLeftOut(journal.leftOut, entry, lines.get(entry)),
+      );
       saveAll(journal);
       const result = applyFixes(journal.projectRoot, snapshot, entries);
       noteFixed(journal, entries);

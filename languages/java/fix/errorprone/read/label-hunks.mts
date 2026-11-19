@@ -2,13 +2,13 @@ import { changedLines } from '../patch/hunk-edits.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import type { Hunk } from '../patch/unified-diff.mts';
 import { largest, smallest } from '../../../../../shared/lists/lists.mts';
+import type { LineSpan } from '../../../../../core/fix/lines/line-map.mts';
 
-export type LineRange = readonly [number, number];
 export type Diagnostic = {
   readonly check: string;
   readonly line: number;
   readonly endLine?: number;
-  readonly edits?: readonly LineRange[];
+  readonly edits?: readonly LineSpan[];
 };
 type Placed = Diagnostic & { readonly gap: number };
 type Scope = {
@@ -40,11 +40,11 @@ function slackOf(hunk: Hunk): number {
   return hunk.lines.some(({ kind }) => kind === '-') ? 0 : 1;
 }
 
-function edited(edits: readonly LineRange[], line: number, slack: number): boolean {
+function edited(edits: readonly LineSpan[], line: number, slack: number): boolean {
   return edits.some(([from, to]) => line >= from - slack && line <= to + slack);
 }
 
-function editSize(edits: readonly LineRange[]): number {
+function editSize(edits: readonly LineSpan[]): number {
   return edits.reduce((sum, [from, to]) => sum + to - from + 1, 0);
 }
 
@@ -134,30 +134,41 @@ function spanFor(hunk: Hunk, scope: Scope, nearest: Placed | undefined): Diagnos
   return onLine ? undefined : span;
 }
 
-function labeled(hunk: Hunk, scope: Scope): LabeledHunk[] {
-  const { diagnostics, checks } = scope;
-  const nearest = nearestDiagnostic(hunk, diagnostics, checks);
-  const exact = editing(hunk, diagnostics, scope.spanChecks);
-  if (exact !== undefined) {
-    const rival =
-      nearest !== undefined && nearest.gap === 0 && !scope.spanChecks.has(nearest.check)
-        ? nearest
-        : exact;
-    return [{ label: rival.check, hunk, line: rival.line, group: groupOf(exact) }];
+function editedBy(hunk: Hunk, scope: Scope, nearest: Placed | undefined): LabeledHunk | undefined {
+  const exact = editing(hunk, scope.diagnostics, scope.spanChecks);
+  if (exact === undefined) {
+    return undefined;
   }
-  const own = ownLine(hunk, diagnostics, new Set(checks));
-  if (own !== undefined) {
-    return [{ label: own.check, hunk, line: own.line }];
-  }
+  const rival =
+    nearest !== undefined && nearest.gap === 0 && !scope.spanChecks.has(nearest.check)
+      ? nearest
+      : exact;
+  return { label: rival.check, hunk, line: rival.line, group: groupOf(exact) };
+}
+
+function nearestLabel(hunk: Hunk, scope: Scope, nearest: Placed | undefined): LabeledHunk[] {
   const span = spanFor(hunk, scope, nearest);
   if (span !== undefined) {
     return [{ label: span.check, hunk, line: span.line, group: groupOf(span) }];
   }
-  const label = nearest?.check ?? (checks.length === 1 ? checks[0] : undefined);
+  const label = nearest?.check ?? (scope.checks.length === 1 ? scope.checks[0] : undefined);
   if (label === undefined) {
     return [];
   }
   return [nearest === undefined ? { label, hunk } : { label, hunk, line: nearest.line }];
+}
+
+function labeled(hunk: Hunk, scope: Scope): LabeledHunk[] {
+  const { diagnostics, checks } = scope;
+  const nearest = nearestDiagnostic(hunk, diagnostics, checks);
+  const exact = editedBy(hunk, scope, nearest);
+  if (exact !== undefined) {
+    return [exact];
+  }
+  const own = ownLine(hunk, diagnostics, new Set(checks));
+  return own === undefined
+    ? nearestLabel(hunk, scope, nearest)
+    : [{ label: own.check, hunk, line: own.line }];
 }
 
 function groupOf({ check, line }: Diagnostic): string {

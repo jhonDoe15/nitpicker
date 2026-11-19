@@ -2,12 +2,13 @@ import { locate } from '../../dry-run/journal.mts';
 import type { Journal, JournalEvent, LeftOutFix } from '../../dry-run/journal-types.mts';
 import { addedFindings, findingKeyOf, ownersOf, unfixedFindings } from '../judge-findings.mts';
 import type { CountedFinding, FindingLines, Judgement, RecipeRun } from '../verify-types.mts';
-import { changedBlocks, overlaps, withoutLayout, type Block } from './line-map.mts';
+import { changedBlocks, overlaps, withoutLayout, type Block } from '../../lines/line-map.mts';
 
 const SLACK = 1;
 
 export type Blame = Judgement & {
   readonly journal: Journal;
+  readonly blocks?: Map<string, readonly Block[] | undefined>;
   readonly lines: FindingLines;
   readonly reasons: ReadonlyMap<string, readonly string[]>;
 };
@@ -40,6 +41,13 @@ function blocksOf(journal: Journal, name: string): readonly Block[] | undefined 
     : changedBlocks(original, fixed, withoutLayout);
 }
 
+function cachedBlocks(blame: Blame, name: string): readonly Block[] | undefined {
+  if (blame.blocks?.has(name) !== true) {
+    blame.blocks?.set(name, blocksOf(blame.journal, name));
+  }
+  return blame.blocks?.get(name) ?? blocksOf(blame.journal, name);
+}
+
 function unfixedBy(run: RecipeRun, events: readonly Located[], blame: Blame): Located[] {
   const keys = new Set(unfixedFindings(run, blame).map(findingKeyOf));
   return events.filter(
@@ -54,14 +62,18 @@ function addedBy(
   events: readonly Located[],
   blame: Blame,
 ): Located[] | undefined {
-  const blocks = blocksOf(blame.journal, added.path) ?? [];
-  const hits = (blame.lines.get(findingKeyOf(added)) ?? []).flatMap((line) =>
-    blocks.filter(({ after }) => overlaps(after, [line, line], SLACK)),
-  );
+  const lines = blame.lines.get(findingKeyOf(added)) ?? [];
+  const blocks = cachedBlocks(blame, added.path) ?? [];
+  const hits = lines.flatMap((line) => {
+    const hit = blocks.find(({ after }) => overlaps(after, [line, line], SLACK));
+    return hit === undefined ? [] : [hit];
+  });
   const owners = hits.map(({ before }) =>
-    events.filter(({ lines }) => lines.some((range) => overlaps(range, before, SLACK))),
+    events.filter(({ lines: edited }) => edited.some((range) => overlaps(range, before, SLACK))),
   );
-  return hits.length < added.count || owners.some((found) => found.length === 0)
+  return lines.length !== added.count ||
+    hits.length !== lines.length ||
+    owners.some((found) => found.length === 0)
     ? undefined
     : owners.flat();
 }
@@ -93,7 +105,8 @@ function reasonOf(event: Located, rolled: readonly RecipeRun[], blame: Blame): s
   return [...new Set(reasons)].join('; ');
 }
 
-export function fixesToLeaveOut(rolled: readonly RecipeRun[], blame: Blame): LeftOutFix[] {
+export function fixesToLeaveOut(rolled: readonly RecipeRun[], judged: Blame): LeftOutFix[] {
+  const blame = { ...judged, blocks: new Map<string, readonly Block[] | undefined>() };
   const stray = addedFindings(blame).some(
     (finding) =>
       !blame.runs.some((run) => run.files.has(finding.path)) &&

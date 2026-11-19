@@ -56,6 +56,11 @@ describe('repositoryTypes', () => {
     ['extends the bare marker', 'interface OrderRepository : Repository<Order, Long>\n'],
     ['is a plain class', 'class OrderRepository(private val jdbc: JdbcTemplate)\n'],
     ['is reactive', 'interface OrderRepository : ReactiveCrudRepository<Order, Long>\n'],
+    ['names a base only in a comment', 'class OrderRepository // delegates: JpaRepository\n'],
+    [
+      'is also declared in a commented line',
+      '// interface OrderRepository : JpaRepository<A, Long>\nclass OrderRepository(val jdbc: Jdbc)\n',
+    ],
     ['only pages', 'interface OrderRepository : PagingAndSortingRepository<Order, Long>\n'],
     ['is not declared in the project', 'interface OtherRepository : JpaRepository<A, Long>\n'],
     [
