@@ -19,10 +19,6 @@ import {
   securitySupportGlobs,
   type SecurityFacts,
 } from './security-facts.mts';
-import {
-  textPathNumberGuardRules,
-  textPathNumberRules,
-} from '../production/text-path-number-rules.mts';
 
 export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
@@ -129,7 +125,6 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
-    ...textPathNumberRules,
     'nitpicker/no-child-exit-event': 'error',
     'nitpicker/no-pipe-dropping-errors': 'error',
     'nitpicker/no-unclosed-file-descriptor': 'error',
@@ -183,7 +178,6 @@ function productionGuardRules({
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-io-in-loop': 'error',
-    ...textPathNumberGuardRules,
     'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-array-spread-arguments': 'error',
     'nitpicker/no-null-branch-fall-through': 'error',

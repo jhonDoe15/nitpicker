@@ -1,6 +1,6 @@
-import type { RuleEntry } from '../typed/entry-views.mts';
-import { pmdGuideEntry } from '../catalog-rules.mts';
-import { VALUE_CHECKS } from '../../adapters/review-rules/value-checks/value-checks.mts';
+import type { RuleEntry } from '../../typed/entry-views.mts';
+import { pmdGuideEntry } from '../../catalog-rules.mts';
+import { VALUE_CHECKS } from '../../../adapters/review-rules/value-checks/value-checks.mts';
 import { VALUE_CHECK_TEXTS } from './value-check-texts.mts';
 
 function entryOf({ rule, allowed }: { rule: string; allowed: string }): RuleEntry {

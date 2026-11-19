@@ -1,5 +1,5 @@
 import { frameAt } from '../max-value-sums/source/source-file.mts';
-import { enclosingOpeners } from '../value-checks/scan.mts';
+import { enclosingOpeners } from '../nullable-returns/declarations.mts';
 import { methodCalls } from '../token-calls/calls.mts';
 import type { TokenCall } from '../token-calls/calls.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';

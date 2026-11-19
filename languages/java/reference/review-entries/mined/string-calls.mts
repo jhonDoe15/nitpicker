@@ -1,5 +1,5 @@
-import type { RuleEntry } from '../typed/entry-views.mts';
-import { pmdGuideEntry } from '../catalog-rules.mts';
+import type { RuleEntry } from '../../typed/entry-views.mts';
+import { pmdGuideEntry } from '../../catalog-rules.mts';
 import {
   EXPANDING_REPLACEMENT_ALLOWED,
   EXPANDING_REPLACEMENT_RULE,
@@ -7,7 +7,7 @@ import {
   UNESCAPED_HTML_ALLOWED,
   UNESCAPED_HTML_RULE,
   PATTERN_TRANSLATION_RULE,
-} from '../../adapters/review-rules/string-calls/string-calls.mts';
+} from '../../../adapters/review-rules/string-calls/string-calls.mts';
 
 export function stringCallEntries(): RuleEntry[] {
   return [

@@ -232,6 +232,26 @@ export function reportModuleProjects(
   }));
 }
 
+function reviewRuleFindings(
+  projectRoot: string,
+  options: Pick<WideRun, 'projects' | 'kotlin' | 'policy'>,
+): JavaFinding[] {
+  return [
+    ...roundTripFindings(projectRoot, options),
+    ...copiedConstantFindings(projectRoot, options),
+    ...copyPastedTestFindings(projectRoot, options),
+    ...maxValueFindings(projectRoot, options),
+    ...stringCallFindings(projectRoot, options),
+    ...valueCheckFindings(projectRoot, options),
+    ...minedFindings(projectRoot, options),
+    ...nullFallThroughFindings(projectRoot, options),
+    ...nullableReturnFindings(projectRoot, options),
+    ...selfRecursionFindings(projectRoot, options),
+    ...fixedDelayFindings(projectRoot, options),
+    ...mutatingMethodFindings(projectRoot, options),
+  ];
+}
+
 export function projectWideReport(
   projectRoot: string,
   { projects, mergedRoot, manifest, kotlin, policy }: WideRun,
@@ -269,18 +289,7 @@ export function projectWideReport(
     ...testOnlyFindings(projectRoot, { projects }),
     ...testRuntimeFindings(projectRoot, { projects }),
     ...reuse.findings,
-    ...roundTripFindings(projectRoot, { projects, kotlin, policy }),
-    ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
-    ...copyPastedTestFindings(projectRoot, { projects, kotlin, policy }),
-    ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
-    ...stringCallFindings(projectRoot, { projects, kotlin, policy }),
-    ...valueCheckFindings(projectRoot, { projects, kotlin, policy }),
-    ...minedFindings(projectRoot, { projects, kotlin, policy }),
-    ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
-    ...nullableReturnFindings(projectRoot, { projects, kotlin, policy }),
-    ...selfRecursionFindings(projectRoot, { projects, kotlin, policy }),
-    ...fixedDelayFindings(projectRoot, { projects, kotlin, policy }),
-    ...mutatingMethodFindings(projectRoot, { projects, kotlin, policy }),
+    ...reviewRuleFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

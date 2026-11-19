@@ -1,36 +1,36 @@
-import { counterpartsOf, ruleEntry } from '../typed/entry-views.mts';
-import type { RuleEntry } from '../typed/entry-views.mts';
-import { JVM_ANALYZERS, JVM_BUILDS } from '../catalog-rules.mts';
+import { counterpartsOf, ruleEntry } from '../../typed/entry-views.mts';
+import type { RuleEntry } from '../../typed/entry-views.mts';
+import { JVM_ANALYZERS, JVM_BUILDS } from '../../catalog-rules.mts';
 import {
   AFFIX_BOUNDARY_ALLOWED,
   AFFIX_BOUNDARY_EXCEPTION_RULE,
   AFFIX_BOUNDARY_RULE,
-} from '../../adapters/review-rules/affix-boundaries/affix-boundaries.mts';
+} from '../../../adapters/review-rules/affix-boundaries/affix-boundaries.mts';
 import {
   AFFIX_REPLACE_ALLOWED,
   AFFIX_REPLACE_EXCEPTION_RULE,
   AFFIX_REPLACE_RULE,
-} from '../../adapters/review-rules/affix-replace/affix-replace.mts';
+} from '../../../adapters/review-rules/affix-replace/affix-replace.mts';
 import {
   CASE_LOOKUP_ALLOWED,
   CASE_LOOKUP_EXCEPTION_RULE,
   CASE_LOOKUP_RULE,
-} from '../../adapters/review-rules/case-lookups/case-lookups.mts';
+} from '../../../adapters/review-rules/case-lookups/case-lookups.mts';
 import {
   PRECONDITION_MESSAGE_ALLOWED,
   PRECONDITION_MESSAGE_EXCEPTION_RULE,
   PRECONDITION_MESSAGE_RULE,
-} from '../../adapters/review-rules/precondition-messages/precondition-messages.mts';
+} from '../../../adapters/review-rules/precondition-messages/precondition-messages.mts';
 import {
   QUERY_TEXT_ALLOWED,
   QUERY_TEXT_EXCEPTION_RULE,
   QUERY_TEXT_RULE,
-} from '../../adapters/review-rules/query-text/query-text.mts';
+} from '../../../adapters/review-rules/query-text/query-text.mts';
 import {
   OBJECT_LISTING_ALLOWED,
   OBJECT_LISTING_EXCEPTION_RULE,
   OBJECT_LISTING_RULE,
-} from '../../adapters/review-rules/object-listings/object-listings.mts';
+} from '../../../adapters/review-rules/object-listings/object-listings.mts';
 
 const READ_FOR_IT =
   'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';

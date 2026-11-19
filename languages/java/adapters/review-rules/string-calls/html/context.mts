@@ -1,4 +1,4 @@
-import { enclosingOpeners } from '../../value-checks/scan.mts';
+import { enclosingOpeners } from '../../nullable-returns/declarations.mts';
 import type { Token } from '../../../reuse/jvm-reuse-types.mts';
 import type { BareSource } from '../../max-value-sums/sum-types.mts';
 
