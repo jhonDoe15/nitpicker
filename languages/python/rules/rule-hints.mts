@@ -32,6 +32,7 @@ import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
+import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
 import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
 import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
@@ -112,6 +113,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...HTTP_VALUE_HINTS,
   ...AIRFLOW_HINTS,
   ...DATALOADER_HINTS,
+  ...QUERY_FILTER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

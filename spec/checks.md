@@ -154,6 +154,8 @@ Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in
 `transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
 `templated-field-used-in-init` (an Airflow operator `__init__` that checks, defaults or converts a parameter named in
 `template_fields`; a plain assignment and the logic in `execute()` are the allowed form),
+`filter-unescaped-value` (a function argument built into an LDAP search filter or a SCIM filter without
+`escape_filter_chars` or quoting; the escaped or quoted value is the allowed form),
 `dataloader-batch-result` (a `batch_load`/`batch_load_fn` method of a `DataLoader` subclass, or a function given to
 `DataLoader(...)`, that returns `[]`, the rows as they come or a dict, or reads `by_id[key]` for each key; one entry per
 key in key order, such as `[by_id.get(key) for key in keys]`, is the allowed form),

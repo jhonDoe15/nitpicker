@@ -34,6 +34,7 @@
   "python-rules/explicit-any": ["maintainability"],
   "python-rules/falsy-default": ["bug"],
   "python-rules/filter-model-mismatch": ["bug", "persistence"],
+  "python-rules/filter-unescaped-value": ["bug", "security"],
   "python-rules/float-equality-in-test": ["tests"],
   "python-rules/forwarding-method-alias": ["simplification"],
   "python-rules/forwarding-wrapper": ["simplification"],

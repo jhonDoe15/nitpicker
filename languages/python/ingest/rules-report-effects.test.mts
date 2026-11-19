@@ -117,6 +117,11 @@ describe('effect rules report', () => {
       '`group_dn` is put into an LDAP search filter as plain text, so a parenthesis, `*`, quote or backslash in it changes which entries match or makes the filter invalid',
     ],
     [
+      'dataloader-batch-result',
+      'ChannelLoader.batch_load|lookup|by_id[key]',
+      'The batch function `ChannelLoader.batch_load` reads `by_id[key]` for every key: a key with no row raises, which fails the whole batch and every caller waiting on it',
+    ],
+    [
       'resolver-query-per-parent',
       'Order.customer|strawberry|database|services.load() > session.get()',
       'The resolver `customer` of `Order` runs once per parent and sends a database query with `services.load()` (which calls `session.get()`) each time, so a list of N parents costs N queries',
