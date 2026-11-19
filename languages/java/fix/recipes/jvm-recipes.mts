@@ -42,6 +42,7 @@ import {
   compatibilityShimRecipe,
   staticForwardingWrapperRecipe,
 } from './forwarders/forwarder-recipes.mts';
+import { httpWithoutTimeoutRecipe } from './http-timeout/http-timeout.mts';
 import { shorterConditionRecipe } from './logic/shorter-condition.mts';
 import { switchLabelsRecipe } from './logic/switch-labels.mts';
 
@@ -90,4 +91,5 @@ export const JVM_RECIPES = defineRecipes([
   switchLabelsRecipe,
   staticForwardingWrapperRecipe,
   compatibilityShimRecipe,
+  httpWithoutTimeoutRecipe,
 ]);
