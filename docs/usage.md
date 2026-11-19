@@ -2718,6 +2718,7 @@ runs only when `--fix --rule` names one of its rules.
 | java | `test-runtime/test-not-run` | `java-unrun-tests` | `review`: renames a `*IT` class of a Maven module without Failsafe so that Surefire collects it; registers a `Test` task in the Gradle build file for a source set that no task runs |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | java | `pmd/CatchLogWithoutException` |
+| java | `pmd/CommentedOutCode` | `java-commented-out-code` | deletes the lines of commented-out code, from its first code line to the end of the comment, and keeps a sentence above it; leaves prose, Javadoc, licence headers, tool directives such as `CHECKSTYLE:OFF`, `NOSONAR` or `@formatter:off`, a lone call or assignment, and a comment that mixes code with prose |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes) | `java-error-prone-safe`, `java-error-prone-review` | applies the fix Error Prone suggests, to the changed lines of `.java` files |
 | java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks) | `java-source-safe`, `java-source-review` | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files |

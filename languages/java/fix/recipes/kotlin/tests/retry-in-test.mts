@@ -8,7 +8,7 @@ import type { TestScanned } from '../../../../adapters/kotlin/review-rules/tests
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { closingIndex, escapeRegExp, splitArguments } from '../shared/kotlin-scan.mts';
 import type { KotlinEdit, KotlinFound } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const RULE = 'RetryInTest';
 const JUPITER_TEST = 'org.junit.jupiter.api.Test';

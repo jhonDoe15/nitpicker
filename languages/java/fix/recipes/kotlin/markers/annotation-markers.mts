@@ -1,7 +1,7 @@
 import { annotationMarkers as untypedAnnotationMarkers } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinFound, KotlinMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const TOOL = 'kotlin-source';
 const EXACT_GENERATED: ReadonlySet<string> = new Set(['Generated']);
@@ -20,7 +20,7 @@ function removals(
       .map(({ offset, end }) => ({
         rule,
         offset,
-        edits: [{ ...removalSpan(scanned.source, offset, end), text: '' }],
+        edits: [removalSpan(scanned.source, offset, end)],
       }));
 }
 

@@ -10,7 +10,7 @@ import {
   parameterTypes,
   withoutAnnotations,
 } from './java-source.mts';
-import { statementPrefix } from '../../fix/recipes/kotlin/shared/spans.mts';
+import { statementPrefix } from '../../fix/recipes/shared/spans.mts';
 import { largest } from '../../../../shared/lists/lists.mts';
 
 type Naming = RegExp;

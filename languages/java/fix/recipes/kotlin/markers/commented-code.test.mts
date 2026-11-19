@@ -19,6 +19,14 @@ describe('commentedCodeRecipe', () => {
       'fun f() {}\nfun g() {}\n',
     );
   });
+  it.each([
+    ['val a = foo(1,/* val b = 2 */b)\n', 'val a = foo(1,b)\n'],
+    ['fun f() = return/* val x = compute(1) */y\n', 'fun f() = return y\n'],
+    ['val a = 1-/* val x = compute(1) */-b\n', 'val a = 1- -b\n'],
+    ['val a = x/* val b = compute(2) */ y\n', 'val a = x y\n'],
+  ])('keeps the neighbours of a block comment on one line apart (%j)', (text, expected) => {
+    expect(applyRecipe(commentedCodeRecipe, text)).toBe(expected);
+  });
   it('keeps prose, KDoc and TODO comments', () => {
     const text = '// This explains the choice below\n/** val x = 1 */\n// TODO x = 1\nfun f() {}\n';
 

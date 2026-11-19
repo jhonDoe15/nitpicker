@@ -2,7 +2,7 @@ import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { enclosingBodyKind, kindOfBody } from '../shared/body-kind.mts';
 import { closingIndex, enclosingOpen } from '../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin, Span } from '../shared/kotlin-scan.mts';
-import { indicesDown, removalSpan } from '../shared/spans.mts';
+import { indicesDown, removalSpan } from '../../shared/spans.mts';
 
 const CLASS_HEAD = /(?<![\w.:])class\s+[A-Za-z_]/gu;
 const EMPTY_BRACES = /^\{\s*\}/u;
