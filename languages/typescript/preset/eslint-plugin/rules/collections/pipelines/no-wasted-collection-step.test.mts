@@ -18,6 +18,10 @@ tester.run('no-wasted-collection-step', rule, {
     'const hit = items.find((item) => item.paid) ?? fallback;',
     'const any = items.some((item) => item.paid);',
     'if (items.find((item) => item.paid) === target) { run(); }',
+    'const missing = items.find((item) => item.paid) === null;',
+    'const present = items.find((item) => item.paid) !== null;',
+    'const swapped = null === items.find((item) => item.paid);',
+    'const swappedNot = null !== items.find((item) => item.paid);',
     'const nested = items.map(split).flat(2);',
     'const flatOnly = rows.flat();',
     'const flattened = items.flatMap(split);',
@@ -50,7 +54,12 @@ tester.run('no-wasted-collection-step', rule, {
   invalid: [
     {
       code: 'async function f() { return Promise.race([load(a)]); }',
-      errors: [error('singlePromise', { method: 'race', form: '`await promise`' })],
+      errors: [
+        error('singlePromise', {
+          method: 'race',
+          advice: 'Use the promise itself: `await promise`.',
+        }),
+      ],
     },
     {
       code: 'const first = items.filter((item) => item.paid)[0];',
@@ -89,14 +98,17 @@ tester.run('no-wasted-collection-step', rule, {
     {
       code: 'const keys = [...Object.keys(record)];',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'const keys = Object.keys(record);',
     },
     {
       code: 'const pair = [...[first, second]];',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'const pair = [first, second];',
     },
     {
       code: 'async function f() { return [...(await Promise.all(tasks))]; }',
       errors: [error('uselessSpread', { what: 'an array that is already new' })],
+      output: 'async function f() { return await Promise.all(tasks); }',
     },
     {
       code: 'const unique = new Set([...items]);',
@@ -132,7 +144,12 @@ tester.run('no-wasted-collection-step', rule, {
     },
     {
       code: 'async function f() { return Promise.all([load(a)]); }',
-      errors: [error('singlePromise', { method: 'all', form: '`[await promise]`' })],
+      errors: [
+        error('singlePromise', {
+          method: 'all',
+          advice: 'Await the promise itself where the array result is not used.',
+        }),
+      ],
     },
     {
       code: 'async function f() { return Promise.allSettled([await load(a), load(b)]); }',

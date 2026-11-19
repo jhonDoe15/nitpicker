@@ -1,0 +1,43 @@
+  <rule name="BlockingInCompletionStage" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Hand the wait to an executor or compose instead of blocking: use the Async variant with an executor (source.thenAcceptAsync(value -&gt; save(value), executor)), return the next stage from thenCompose instead of calling join() on it, or read an already completed future with getNow(null). A stage without the Async suffix runs on the thread that completes its source future, often a Netty I/O thread or a client callback thread, so a get(), join(), await(), take() or sleep() here stalls every other task queued on that thread and can deadlock when the awaited work needs the same thread. An exception fits when the source always completes on a pool made for blocking work.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [(@MethodName = 'join' and ArgumentList[@Size = 0]
+      and *[1][pmd-java:typeIs('java.util.concurrent.CompletableFuture') or pmd-java:typeIs('java.util.concurrent.ForkJoinTask')])
+    or (@MethodName = 'get' and ArgumentList[@Size = 0] and *[1][pmd-java:typeIs('java.util.concurrent.Future')])
+    or (@MethodName = 'get' and ArgumentList[@Size = 2][not(*[1][self::NumericLiteral][@ValueAsInt = 0])]
+        and *[1][pmd-java:typeIs('java.util.concurrent.Future')])
+    or (@MethodName = 'await' and *[1][pmd-java:typeIs('java.util.concurrent.CountDownLatch')])
+    or (@MethodName = 'take' and *[1][pmd-java:typeIs('java.util.concurrent.BlockingQueue')])
+    or (@MethodName = 'put' and *[1][pmd-java:typeIs('java.util.concurrent.BlockingQueue')])
+    or (@MethodName = ('acquire', 'acquireUninterruptibly') and *[1][pmd-java:typeIs('java.util.concurrent.Semaphore')])
+    or (pmd-java:matchesSig('java.lang.Thread#sleep(_*)') and not(ArgumentList/*[1][self::NumericLiteral][@ValueAsInt = 0]))]
+  [not(@MethodName = 'put')
+   or (let $queue := string(*[1]/@Name)
+       return empty(ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $queue]/ConstructorCall
+         [ClassType[@SimpleName = 'LinkedTransferQueue'] or (ClassType[@SimpleName = ('LinkedBlockingQueue', 'LinkedBlockingDeque')]
+                                                              and ArgumentList[@Size = 0])]))]
+  [let $lambda := ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][1][self::LambdaExpression],
+       $stage := $lambda/parent::ArgumentList/parent::MethodCall
+         [@MethodName = ('thenAccept', 'thenApply', 'thenCompose', 'thenRun', 'thenCombine', 'thenAcceptBoth',
+                         'whenComplete', 'handle', 'exceptionally', 'applyToEither', 'acceptEither')]
+         [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]],
+       $root := (*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess])[1],
+       $receiver := string($root/@Name),
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+   return exists($stage)
+     and not($receiver = $lambda/LambdaParameterList//VariableId/@Name)
+     and empty(ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $receiver]/*[2]
+                 /descendant-or-self::MethodCall[@MethodName = ('completedFuture', 'failedFuture', 'completedStage')])
+     and not($receiver = $stage/*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name)
+     and not($receiver = $method//ForeachStatement/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+     and empty($lambda//MethodCall[@MethodName = ('isDone', 'isCompletedExceptionally', 'isCancelled')]
+                 [*[1][self::VariableAccess or self::FieldAccess][@Name = $receiver]])
+     and empty($method//MethodCall[@MethodName = ('allOf', 'anyOf', 'waitForAll')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

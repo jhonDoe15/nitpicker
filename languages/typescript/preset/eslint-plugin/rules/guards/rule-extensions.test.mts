@@ -264,6 +264,8 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     'function f(value: unknown) { return key in value; }',
     'function overload(text: string): Ok; function overload(text: string): Ok | Failed { return text; }',
     'function overload(text: string): unknown { return text; }',
+    'export default function overload(text: string): unknown { return text; }',
+    'switch (kind) { case 1: function overload(text: string): unknown { return text; } }',
     "function code(error: unknown) { return error instanceof Error && 'code' in error && error.code === 'ENOENT'; }",
     "function code(error: unknown) { if (error instanceof Error) { return 'code' in error; } return false; }",
     "function code(error: unknown) { if (!(error instanceof Error)) { return false; } return 'code' in error; }",

@@ -60,6 +60,8 @@ import {
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mts';
 import type { Environments } from '../test-environment/typed/environment-types.mts';
+import { withRunnerTestPaths as untypedWithRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
+import { policyTestRunner as untypedPolicyTestRunner } from '../test-runner/policy-runner.mjs';
 
 export type Entry = Linter.Config;
 
@@ -84,6 +86,7 @@ export type StrictOptions = {
 };
 
 export type PresetLayout = Layout & {
+  readonly runnableTestGlobs: readonly string[];
   readonly testGlobs: readonly string[];
   readonly unitTestGlobs: readonly string[];
   readonly endToEndGlobs: readonly string[];
@@ -161,7 +164,14 @@ export const securityFactsFor: (
   projectRoot: string,
   isProductionFile: (file: string) => boolean,
 ) => SecurityFacts = untypedSecurityFactsFor;
-export const setupFilesIn: (projectRoot: string) => string[] = untypedSetupFilesIn;
+export const setupFilesIn: (projectRoot: string, runner: string) => string[] = untypedSetupFilesIn;
+export const policyTestRunner: (policy: PresetPolicy, projectRoot: string) => string =
+  untypedPolicyTestRunner;
+export const withRunnerTestPaths: (layout: PresetLayout, projectRoot: string) => PresetLayout =
+  untypedWithRunnerTestPaths;
+
+export { testRunnerLintConfig } from '../eslint-config/runner/runner-lint-config.mts';
+export { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mts';
 export const stubRestoresIn: (projectRoot: string) => unknown[] = untypedStubRestoresIn;
 export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
   untypedExistingRoots;
@@ -242,6 +252,7 @@ export function nestScopeConfigFor(files: readonly string[]): Entry[] {
 export function testHonestyConfigFor(
   layout: PresetLayout,
   options: {
+    readonly runner: string;
     readonly assertionFunctionNames: readonly string[];
     readonly setupFiles: readonly string[];
     readonly stubRestores: readonly unknown[];
@@ -254,9 +265,10 @@ export function testHonestyConfigFor(
 export function testEnvironmentConfigFor(
   layout: PresetLayout,
   environments: TestEnvironments,
+  runner: string,
 ): Entry[] {
   return entriesOf(
-    Reflect.apply(untypedTestEnvironmentConfigFor, undefined, [layout, environments]),
+    Reflect.apply(untypedTestEnvironmentConfigFor, undefined, [layout, environments, runner]),
   );
 }
 

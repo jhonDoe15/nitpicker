@@ -34,3 +34,11 @@ export function readJavaExtractions(projectRoot, texts, mode) {
     ? { fixes: [], notes: [] }
     : runTrees({ root: projectRoot, files, texts, mode });
 }
+
+export function readShorterConditionFixes(projectRoot, texts) {
+  return readJavaExtractions(projectRoot, texts, 'shorter');
+}
+
+export function readSwitchLabelFixes(projectRoot, texts) {
+  return readJavaExtractions(projectRoot, texts, 'switches');
+}

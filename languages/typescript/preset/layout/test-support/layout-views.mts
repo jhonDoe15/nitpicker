@@ -16,6 +16,7 @@ import {
 
 export type Policy = {
   readonly exclude?: readonly string[];
+  readonly react?: { readonly enabled: boolean };
   readonly layout?: {
     readonly sourceRoots?: readonly string[];
     readonly testRoots?: readonly string[];

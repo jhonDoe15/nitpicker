@@ -15,6 +15,7 @@ export type PluginLayout = {
   readonly isFixturePath: (file: string) => boolean;
   readonly isGeneratedPath: (file: string) => boolean;
   readonly isRunnableTestFile: (file: string) => boolean;
+  readonly isRunnerTestFile: (file: string) => boolean;
   readonly isSourceFile: (file: string) => boolean;
   readonly isTestFile: (file: string) => boolean;
   readonly isTestPath: (file: string) => boolean;

@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 59,
+      classes: 70,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -115,6 +115,25 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       path: ['ValueOperations.get()'],
       store: 'redis',
     });
+  });
+
+  it('reports a find, a single-row query or an equals that reads per item, not references, containment, pages or id chunks', () => {
+    expect(
+      methodsOf(run.report, 'IoCallInLoop').filter((method) => /^(Paging|Tracked)\./u.test(method)),
+    ).toEqual(['Paging.perIdQueries', 'Paging.lookups', 'Paging.singles', 'Paging.comparisons']);
+  });
+
+  it('treats once-per-class initialisation as one-off but keeps item, trailing and per-item memo I/O', () => {
+    expect(
+      methodsOf(run.report, 'IoCallInLoop').filter((method) => method.startsWith('Memos.')),
+    ).toEqual([
+      'Memos.relationOfItem',
+      'Memos.afterTheMemo',
+      'Memos.dirtyOr',
+      'Memos.dirtyAnd',
+      'Memos.afterInit',
+      'Memos.keyedByItem',
+    ]);
   });
 
   it('leaves paging, chunks and concurrent calls alone and records the exempt calls', () => {

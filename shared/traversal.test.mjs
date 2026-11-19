@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { chainOf, depthFirst, expandsFully, foldTree, whileHolds } from './traversal.mjs';
+import {
+  chainOf,
+  depthFirst,
+  expandsFully,
+  foldTree,
+  parentDirectory,
+  whileHolds,
+} from './traversal.mjs';
 
 describe('iterative tree traversal', () => {
   it('visits children before the next sibling in their original order', () => {
@@ -62,5 +69,11 @@ describe('iterative tree traversal', () => {
 
     expect(expandsFully('a', (node) => tree[node])).toBe(true);
     expect(expandsFully('a', (node) => (node === 'd' ? undefined : tree[node]))).toBe(false);
+  });
+});
+
+describe('parentDirectory', () => {
+  it('walks up to the file system root and stops there', () => {
+    expect(chainOf('/a/b', parentDirectory)).toEqual(['/a/b', '/a', '/']);
   });
 });

@@ -24,7 +24,6 @@ describe('varCouldBeValRecipe', () => {
     'var a = 1\n    --a',
     'var a = 1\n    run { a = 3 }',
     'var a = 1\n    val r = ::a',
-    'var a = 1\n    foo(a = 2)',
     'var a = 1\n    run { var a = 2; a = 3 }',
     'var a by lazy { 1 }',
     'var a: Int\n    a = 1',
@@ -55,6 +54,34 @@ describe('varCouldBeValRecipe', () => {
   });
   it('leaves a name that is assigned before the declaration', () => {
     const text = inFunction('    while (more()) {\n        total = 1\n    }\n    var total = 0');
+
+    expect(fix(text)).toBe(text);
+  });
+  it('is not misled by a brace-less declaration before the function', () => {
+    expect(fix('class Box(var n: Int = 0)\n\nfun f() {\n    var a = 1\n    use(a)\n}\n')).toBe(
+      'class Box(var n: Int = 0)\n\nfun f() {\n    val a = 1\n    use(a)\n}\n',
+    );
+    expect(fix('val log = Foo::class.java\nfun f() {\n    var a = 1\n    use(a)\n}\n')).toBe(
+      'val log = Foo::class.java\nfun f() {\n    val a = 1\n    use(a)\n}\n',
+    );
+  });
+  it('rewrites a var that only looks reassigned as a named argument', () => {
+    expect(fix(inFunction('    var a = 1\n    foo(b, a = 2)'))).toBe(
+      inFunction('    val a = 1\n    foo(b, a = 2)'),
+    );
+  });
+  it('rewrites a function-typed var', () => {
+    expect(fix(inFunction('    var f: (Int) -> Int = { it + 1 }\n    f(1)'))).toBe(
+      inFunction('    val f: (Int) -> Int = { it + 1 }\n    f(1)'),
+    );
+    const again = inFunction('    var f: (Int) -> Int = { it }\n    f = { 2 }');
+
+    expect(fix(again)).toBe(again);
+  });
+  it('leaves constructor parameters of a local class alone', () => {
+    const text = inFunction(
+      '    class Local(\n        var n: Int = 1,\n    )\n    val l = Local()\n    l.n = 6',
+    );
 
     expect(fix(text)).toBe(text);
   });

@@ -449,6 +449,28 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   parameter or any other variable in the name. Allowed forms: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))` for
   directories and `crypto.randomUUID()` for ids; a timestamp next to a unique part is fine. A name that is unique by
   design (one file per day) takes an exception. The rule reads no types.
+- `nitpicker/no-dropped-log-arguments` (needs pino, bunyan or winston in `package.json`): a log call
+  (`trace` to `fatal`) whose message is a string or a template without expressions and whose values
+  are lost or left unfilled. pino and bunyan read the message as the first argument, or the second
+  when the first is an object (an object literal, an `Error`, or a value the type checker shows as an
+  object) and count `%s`, `%d`, `%i`, `%f`, `%j`, `%o`, `%O` (`%%` takes none). pino drops every
+  value past the last placeholder (`log.info('loaded config', config)`, `log.info('loaded %s', a, b)`;
+  a plain object is only merged when it comes first). pino and bunyan log a placeholder with no value
+  as written (`log.info('loaded %s %s', a)`); bunyan appends extra values, so those pass. winston
+  fills `%` placeholders only when the logger's format includes `format.splat()`, so values after a
+  message with a placeholder are dropped without it; after a placeholder-free message an object is
+  metadata and passes, while a string, number or any value after that object is dropped. Loggers are
+  found by their factory in the same file (`pino()`, `require('pino')()`, `bunyan.createLogger`,
+  `winston.createLogger`, `createLogger` imported from either, and `.child(...)` of those) and, with
+  the type checker, by a type declared in pino, bunyan or winston (`pino.Logger`, a `Logger` from
+  `winston`), including class fields. winston is reported only when the `createLogger` options are
+  readable in the file and contain no `splat()` (a `format` or `transports` value that is imported,
+  spread or built by another function counts as unknown); a typed winston logger from elsewhere is
+  not. `console.*`, `util.format`, a message built from a variable or a template with expressions,
+  and calls with a spread argument are not reported. Allowed forms: the values in the fields object
+  (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
+  winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
+  `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
@@ -760,6 +782,22 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   and awaits the lazy relation of that parameter in its body is reported at the call, with the
   message naming the helper and the access it awaits. Prisma has no lazy loading, and Sequelize
   association getters are explicit calls that `nitpicker/no-io-in-loop` reports.
+- Cache writes inside a transaction (`nitpicker/no-cache-write-in-transaction`): a rollback undoes the
+  database change but not a cache write made inside the transaction, so other requests and nodes
+  keep reading a value or an eviction that never happened until it expires. Transactions are the
+  callback (with a parameter) of Prisma's `$transaction`, TypeORM `dataSource.transaction(...)` and
+  `manager.transaction(...)`, Kysely `db.transaction().execute(...)`, `transactional(...)` and
+  similar openers, and the calls between `startTransaction()`/`beginTransaction()` and the next
+  commit or rollback. Cache clients are `redis`/`ioredis`/`@redis/client`, `cache-manager`, `keyv`
+  and `node-cache` values (imported, built with `new`, or held in a field named after redis, keyv or
+  a cache) calling `set`, `setex`, `del`, `hset`, `expire`, `incr`, `reset`, `clear` and the other
+  Redis write commands, and `delete` on a cache-named client. A `Map`, `WeakMap` or `Set` field or
+  variable counts only for `map.set(...)` of a value that comes from an ORM write in the same
+  callback (`const user = await tx.user.create(...); this.cache.set(user.id, user)`); a map filled
+  from a read, or a `Set`/`Map` `delete`, is not reported. The allowed form is to write the cache
+  after the transaction call returns (`await prisma.$transaction(...)`, then `redis.set(...)`) or
+  from a TypeORM `afterTransactionCommit` subscriber; callbacks that do not run during the call
+  (`setTimeout`, event handlers) are not inside the transaction. The message names that form.
 - Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
   `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
   call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project
@@ -926,7 +964,8 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   a trash, restore, purge or admin query takes the exception.
 - Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
   the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
-  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal (`for...of`, or an inline callback of `map`, `filter`,
+  `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal, also one wrapped in `Readonly<...>` or an intersection
+  (`for...of`, an indexed `for` loop that reads `items[i]`, or an inline callback of `map`, `filter`,
   `some`, `every`, `find`, `findIndex`, `findLast`, `findLastIndex`, `forEach` or `flatMap`, which covers lookups and index
   computations) is judged against the whole checked program, not the changed file: it follows the flag when at least five
   iterations over that item type exist in non-test source and at least 80% of them skip flagged items. An iteration skips
@@ -935,7 +974,12 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   (`filter(isLive)`) or called on the item in the body (`if (!isLive(item)) continue`), or when the item type is narrowed, the flag
   declared as `false` (`true` for `isVisible`, `null` or `undefined` for `deletedAt`), as in `NonDeleted<T>`. A changed
   iteration that does not is reported with the flag, the share, the guard form, the most used helper that returns narrowed
-  items and the narrowed type alias. A flag below the threshold is never followed, an iteration with a function reference
+  items and the narrowed type alias. Iterations over a collection that is meant to include flagged items are left out of both the
+  share and the report: a receiver whose name says so (`elementsIncludingDeleted`, `withDeletedItems()`, `getAllIncludingDeleted()`, also
+  through a `const` it was assigned to), and an iteration over a parameter that every call site in the program fills with
+  such a value. The bar stays at 80%: on a large editor codebase where only about half of the iterations skip deleted items,
+  most of the rest read ids, indexes and positions of items that callers already filtered, and a lower bar reports those
+  as often as it finds a real miss, so a project below it is not followed. A flag below the threshold is never followed, an iteration with a function reference
   instead of an inline callback is not judged, a loop that assigns the flag is skipped, and undo, trash, restore and sync code takes the exception. Without a type
   program (no `tsconfig`) the rule is silent, so JavaScript projects without type information are not covered.
 - Route handlers without the project's auth requirement (`nitpicker/no-route-without-auth`, syntactic): the followed
@@ -1802,6 +1846,31 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   When `0`, `''` or `false` must take the default (a page size of 0 meaning "unset"), keep `||` with an
   exception or normalise first. In the JavaScript preset the type comes from JSDoc; without JSDoc types the
   rule sees nothing.
+  fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
+  parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
+  nothing.
+- `nitpicker/no-null-branch-fall-through`: `if (x === null)`, `x == null`, `x === undefined` or
+  `x == undefined` (also `x === null || x === undefined`, and `this.field`) with no `else` whose
+  body does something (a call, a write, a log, an assignment of a placeholder to another variable)
+  and does not leave, followed in the same block by `x.foo`, `x.foo()`, `x[i]`, a destructuring or
+  spread of `x`, `for (... of x)`, or `x` passed to a call the branch also made with a placeholder
+  (`out.append('null')` then `out.append(String(x))`), in all production code. On the null path the
+  later use throws a `TypeError` or handles the value twice; add `return` (or an `else`). It is
+  reported on the `if` test, and the message names the first later use (`x.foo()`, shortened to 40 characters), not its line. Not reported: a branch that returns, throws, breaks, continues, calls
+  `process.exit` or assigns `x` (`x = ...`, `x ??= ...`), an empty branch, `if (!x)`, a later use
+  that is guarded (`x?.foo`, `x && x.foo`, `x ? ... : ...`, `if (x != null)`) or that follows another
+  null check of `x`, and a function that only mentions `x` unless it is called on the spot. The rule
+  stays quiet when x is a field (`this.x`) or a module-level variable and the branch calls a
+  function or method other than a logger or a writer given literals (`this.connect()`, `init()`),
+  since that call may set it. It also stays quiet when the branch leaves through `process.abort()`,
+  `fail`, `abort`, `die`, `panic`, `unreachable`, `assertNever` or a same-file function that only
+  throws, or assigns x by destructuring (`({ x } = load())`), and when `assert(x)`,
+  `assert.ok(x)`, `invariant(x)`, `expect(x)`, a `switch (x)` or a one-argument guard call
+  (`if (isNil(x))`) comes before the use. A use inside `try` is still reported. The rule
+  reads syntax only, so it does not overlap with `no-unnecessary-condition` (which needs types and
+  never looks at the branch); with `strictNullChecks` TypeScript reports the use as an error too,
+  but only on a typed value, so the rule matters most in JavaScript and in `any` or non-strict
+  code, and its message names the missing `return`.
 - `nitpicker/strict-boolean-expressions` (type-aware, wraps typescript-eslint's
   `strict-boolean-expressions`; production and test files): a number tested for truthiness
   (`if (count)`, `retry ? a : b`, `!id`, `index && ...`, `cells[0] || ''`, `end - start ? a : b`, a
@@ -1824,7 +1893,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
 - `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
   findings print as design notes and never fail the change): an optional string
   (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
-  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  truthiness as a presence check, where `''` or `false` reads as missing. It reports only when the
+  project shows that falsy value is valid there, and the message names the evidence: the value's
+  type is a type parameter (`items.filter((item) => item)` in a generic helper) or a literal union
+  that contains `''` or `false` (`'' | 'auto'`), or the same variable, property or parameter
+  receives a literal `''`, `0` or `false` elsewhere in the project (a call argument, an object
+  property, an assignment to a property of another object), tests included. A declaration
+  initialised to `''`, `0` or `false`, a parameter default and a reassigned local are the "not set
+  yet" value and are not evidence. An optional `string` read from a
+  request, with no such evidence, is not reported. Reported: a conditional
   or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
   `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
   `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
@@ -1900,6 +1977,8 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `x ? ... : ...`, `x.trim()`, `x.length`, `x === ''`), a result that is also checked against the zero boundary
   (`> 0`, `>= 1`, `<= 0`, `< 1`), text taken from a destructured `split(...)` part, an `x || 'text'` default, text that is a non-blank literal union, and `unknown`
   values outside the input shapes above.
+  from JSDoc and inference (`checkJs`); a type parameter needs `@template`, and the literal
+  evidence works the same without types.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,
