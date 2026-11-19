@@ -1,4 +1,4 @@
-import { gradleTarget } from '../gradle-wrapper/gradle-command.mjs';
+import { gradleTarget, pinnedGradleVersion } from '../gradle-wrapper/gradle-command.mjs';
 import { gradleOptions } from '../gradle-wrapper/gradle-stages.mts';
 import { type GradleResult, runGradle } from '../gradle-wrapper/gradle-process.mts';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mts';
@@ -48,8 +48,17 @@ function failedStage(
   const where = policy.snapshot === 'base' ? 'on the base' : 'on your change';
   const retry = isRateLimited(outputOf(result)) ? `\n${RATE_LIMIT_ADVICE}` : '';
   return new Error(
-    `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}`,
+    `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}` +
+      pathGradleAdvice(command, projectRoot),
   );
+}
+
+function pathGradleAdvice(command: string, projectRoot: string): string {
+  const pinned: unknown = command === 'gradle' ? pinnedGradleVersion(projectRoot) : undefined;
+  return typeof pinned === 'string'
+    ? `\nThe build pins Gradle ${pinned} in gradle/wrapper/gradle-wrapper.properties, but no gradlew script ` +
+        'was found, so the gradle on the PATH ran instead: add the wrapper script or set NITPICKER_GRADLE.'
+    : '';
 }
 
 export function assertGradleSucceeded(
