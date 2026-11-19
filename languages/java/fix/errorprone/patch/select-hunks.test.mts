@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { selectHunks } from './select-hunks.mts';
 import { labeledHunk } from './test-support/labeled-hunks.mts';
+import type { LabeledHunk } from './select-hunks.mts';
 
 const BODY = labeledHunk(
   'MissingOverride',
@@ -84,5 +85,92 @@ describe('selectHunks', () => {
       ' import b.B;',
     ]);
     expect(selectHunks([swap], new Set([99]))).toEqual([]);
+  });
+});
+
+describe('selectHunks imports', () => {
+  const removal = labeledHunk(
+    'UseEnumCollections',
+    ' import a.A;\n-import java.util.HashSet;\n+import java.util.EnumSet;\n import b.B;\n',
+    '@@ -3,3 +3,3 @@',
+  );
+  const body = labeledHunk(
+    'UseEnumCollections',
+    '-    Set<C> s = new HashSet<>();\n+    Set<C> s = EnumSet.noneOf(C.class);\n',
+    '@@ -9,1 +9,1 @@',
+  );
+  const file = (rest: string): string =>
+    `package p;\n\nimport a.A;\nimport java.util.HashSet;\nimport b.B;\nclass X {\n  void f() {\n${rest}\n    Set<C> s = new HashSet<>();\n  }\n}\n`;
+
+  it('removes an import the kept hunks leave unnamed in the file', () => {
+    const kept = selectHunks([removal, body], new Set([9]), file('    A.run();'));
+
+    expect(kept[0]?.hunk.lines.map(({ kind, text }) => `${kind}${text}`)).toEqual([
+      ' import a.A;',
+      '-import java.util.HashSet;',
+      '+import java.util.EnumSet;',
+      ' import b.B;',
+    ]);
+  });
+
+  it('keeps an import that other code of the file still names', () => {
+    const kept = selectHunks([removal, body], new Set([9]), file('    new HashSet<>();'));
+
+    expect(kept[0]?.hunk.lines.map(({ kind, text }) => `${kind}${text}`)).toEqual([
+      ' import a.A;',
+      ' import java.util.HashSet;',
+      '+import java.util.EnumSet;',
+      ' import b.B;',
+    ]);
+  });
+});
+
+describe('selectHunks touched import removals', () => {
+  const removal = labeledHunk(
+    'UnnecessarilyFullyQualified',
+    ' package p;\n-import java.util.List;\n class X {\n',
+    '@@ -1,3 +1,2 @@',
+  );
+  const body = labeledHunk(
+    'UnnecessarilyFullyQualified',
+    '-  List<String> l = a;\n+  var l = a;\n',
+    '@@ -20,1 +20,1 @@',
+  );
+  const file = `package p;\nimport java.util.List;\nclass X {\n${'\n'.repeat(16)}  List<String> l = a;\n}\n`;
+
+  it('keeps the removal of an import the file no longer names', () => {
+    expect(selectHunks([removal, body], new Set([2, 20]), file)).toHaveLength(2);
+  });
+
+  it('drops the removal of an import the file still names', () => {
+    expect(selectHunks([removal, body], new Set([2]), file)).toEqual([]);
+  });
+});
+
+describe('selectHunks groups', () => {
+  const grouped = (start: number, group: string): LabeledHunk => ({
+    ...labeledHunk(
+      'SaveInLoop',
+      ' a\n-  x();\n+  y();\n b\n',
+      `@@ -${String(start)},3 +${String(start)},3 @@`,
+    ),
+    group,
+  });
+  const before = grouped(10, 'SaveInLoop:11');
+  const inside = grouped(20, 'SaveInLoop:11');
+  const after = grouped(40, 'SaveInLoop:11');
+  const other = grouped(60, 'SaveInLoop:61');
+
+  it('keeps every hunk of a fix when one of them touches a changed line', () => {
+    expect(selectHunks([before, inside, after, other], new Set([21]))).toEqual([
+      before,
+      inside,
+      after,
+    ]);
+  });
+
+  it('drops every hunk of a fix when none of them touches a changed line', () => {
+    expect(selectHunks([before, inside, after, other], new Set([61]))).toEqual([other]);
+    expect(selectHunks([before, inside, after], new Set([30]))).toEqual([]);
   });
 });

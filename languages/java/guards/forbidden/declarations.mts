@@ -10,6 +10,7 @@ import {
   parameterTypes,
   withoutAnnotations,
 } from './java-source.mts';
+import { statementPrefix } from '../../fix/recipes/kotlin/shared/spans.mts';
 import { largest } from '../../../../shared/lists/lists.mts';
 
 type Naming = RegExp;
@@ -26,18 +27,12 @@ function simpleName(qualified: string): string {
   return textOf(qualified.split(/[.$]/).at(-1));
 }
 
-function prefixBefore(text: string, index: number): string {
-  const before = text.slice(0, index);
-  const start = Math.max(before.lastIndexOf(';'), before.lastIndexOf('{'), before.lastIndexOf('}'));
-  return before.slice(start + 1);
-}
-
 function methodCandidate(
   text: string,
   match: RegExpExecArray,
   { naming, constructor }: MethodOptions,
 ): Candidate | undefined {
-  const prefix = prefixBefore(text, match.index);
+  const prefix = statementPrefix(text, match.index);
   if (NOT_A_DECLARATION.test(prefix) || (!constructor && prefix.trim() === '')) {
     return undefined;
   }
