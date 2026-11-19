@@ -161,7 +161,10 @@ stops the rest). It lives in `languages/python/rules/jobs/`.
 
 Python soft-delete rule: `soft-delete-filter-missing` (a Django or SQLAlchemy read of a model with a soft-delete or
 visibility column that skips the filter or helper at least 80% of the project's reads of that model apply, with at
-least five reads counted). It lives in `languages/python/rules/soft_delete/`.
+least five reads counted). It also learns activity flags (`active`, `is_active`, `enabled`, `internal`, a relation
+lookup such as `user__is_active`, any boolean field filtered with one value by at least 80% of five reads) and
+project queryset methods that take the user (`restrict(user, "view")`) from the same majority of reads, and counts
+`get()`, `first()` and `get_object_or_404` lookups as reads. It lives in `languages/python/rules/soft_delete/`.
 
 Python deleted-item rule: `deleted-item-filter-missing` (a loop, comprehension or lookup over an annotated collection of
 items that carry a deletion flag that skips the guard, helper or narrowed type that at least 80% of the project's
