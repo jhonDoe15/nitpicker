@@ -29,6 +29,7 @@ import { saveInLoopRecipe } from './kotlin/performance/repositories/loops/save-i
 import { sleepInsteadOfDelayRecipe } from './kotlin/performance/coroutines/sleep-instead-of-delay.mts';
 import { entityExistsRecipe } from './kotlin/performance/repositories/existence/entity-exists.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
+import { kotlinRetryInTestRecipe } from './kotlin/tests/retry-in-test.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
 import {
   javaRestatingDocCommentRecipe,
@@ -83,6 +84,7 @@ export const JVM_RECIPES = defineRecipes([
   sleepInsteadOfDelayRecipe,
   entityExistsRecipe,
   focusedTestRecipe,
+  kotlinRetryInTestRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
