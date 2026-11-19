@@ -2,6 +2,7 @@ import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { resolveModuleSpecifier } from './class-views.mts';
 import type { ClassMeasure } from './class-measures.mts';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ts = typescriptApi();
 
@@ -191,7 +192,7 @@ export function resolveBase(
     if (found !== undefined) {
       return found;
     }
-    pending.push(...steps);
+    appendAll(pending, steps);
   }
   return undefined;
 }

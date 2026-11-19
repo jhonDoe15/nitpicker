@@ -13,7 +13,7 @@ import type {
   Reference,
   ResolvedModule,
 } from './typed/graph-types.mts';
-import { appendAll } from '../../../../../shared/lists/lists.mts';
+import { appendAll, reachableFrom } from '../../../../../shared/lists/lists.mts';
 
 export const EVERYTHING = '<everything>';
 export const NAMED_EXPORTS = '<named exports>';
@@ -52,14 +52,9 @@ function usedNames({
   aliases: readonly Alias[];
   referenced: Iterable<string>;
 }): Set<string> {
-  const used = new Set(referenced);
-  for (const name of used) {
-    const locals = aliases.filter(({ exported }) => exported === name).map(({ local }) => local);
-    for (const local of locals) {
-      used.add(local);
-    }
-  }
-  return used;
+  return reachableFrom(referenced, (name) =>
+    aliases.filter(({ exported }) => exported === name).map(({ local }) => local),
+  );
 }
 
 function rootOf(name: string, aliases: readonly Alias[]): string {

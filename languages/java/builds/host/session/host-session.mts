@@ -11,7 +11,7 @@ import { exportHostsDirectory, hostEnvironment } from '../config/host-environmen
 import { attempt } from '../../../../../shared/values/attempt/attempt.mts';
 
 export type ToolHosts = { readonly stop: () => void };
-export type HostProgram = {
+type HostProgram = {
   readonly compile: typeof compiledProgram;
   readonly root: string;
   readonly sources: () => string[];
