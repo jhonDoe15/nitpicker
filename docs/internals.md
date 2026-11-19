@@ -95,7 +95,7 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
   (other Kotlin claims can still be met by a Java file the Kotlin pipeline runs, or by a shared one guarded by a preset
   check). Each failure names the catalog file to fix. The only allowed second case is a rule the adapter emits that is
   switched off for a preset by a guard in the code (the Java and Kotlin facts run only the reuse rules, Go has no
-  inheritance, JavaScript projects skip `unused-prop`, `unused-option` and `javascript-in-typescript-project`); the
+  inheritance, JavaScript projects skip `unused-prop` and `javascript-in-typescript-project`); the
   test lists each in
   `NOT_ENFORCED_ALTHOUGH_EMITTED` with the file and the pattern that proves it. `reports-docs.test.mts` in
   `core/diff/reporting/` does the same for the report files: the lists in `docs/usage.md` and `docs/agents-snippet.md`

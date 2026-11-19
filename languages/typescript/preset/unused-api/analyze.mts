@@ -12,7 +12,7 @@ import {
   declaresCheckable,
   exceptionMatcher,
   isReactProject,
-  isTypeScriptFile,
+  isAnalyzedFile,
   loadPackages,
   readHeadPolicy,
   readLayout,
@@ -38,7 +38,7 @@ function hasCheckableDeclarations({
 }): boolean {
   return layout
     .projectCodeFiles(projectRoot)
-    .filter((file) => layout.isSourceFile(file) && isTypeScriptFile(file))
+    .filter((file) => layout.isSourceFile(file) && isAnalyzedFile(file, layout))
     .some((file) => declaresCheckable(parsedSource(projectRoot, file), react));
 }
 

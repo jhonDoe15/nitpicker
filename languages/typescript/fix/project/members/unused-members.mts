@@ -149,11 +149,15 @@ function planFinding(
   if (own.declined !== undefined) {
     return declined(`${target.name}.${member} ${own.declined}`);
   }
-  const removal = removeMember(project, memberDeclaration);
-  if (![removal.path, target.path].every((name) => context.accepts(name))) {
+  const untyped = ts.isBindingElement(memberDeclaration);
+  if (untyped && own.edit === undefined) {
+    return declined(`${target.name}.${member} is not in a destructured parameter`);
+  }
+  const removal = untyped ? undefined : removeMember(project, memberDeclaration);
+  if (![removal?.path ?? target.path, target.path].every((name) => context.accepts(name))) {
     return declined('the type sits in a file --fix does not cover');
   }
-  const edits = [removal, ...(own.edit === undefined ? [] : [own.edit])];
+  const edits = [removal, own.edit].filter((edit) => edit !== undefined);
   const unsafe = verifyEdits(context, project, edits);
   return unsafe === undefined ? { edits } : declined(unsafe);
 }
