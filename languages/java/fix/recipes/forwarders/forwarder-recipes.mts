@@ -16,3 +16,8 @@ export const staticForwardingWrapperRecipe = forwarderRecipe('java-static-forwar
   kind: 'wrapper',
   rule: 'StaticForwardingWrapper',
 });
+
+export const compatibilityShimRecipe = forwarderRecipe('java-compatibility-shim', {
+  kind: 'shim',
+  rule: 'CompatibilityShim',
+});

@@ -38,7 +38,10 @@ import { upperEllRecipe } from './upper-ell.mts';
 import { javaCatchLogRecipe } from './java/catch-log.mts';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mts';
 import { javaExtractPartialRunRecipe } from './extract/partial/partial-run-extract.mts';
-import { staticForwardingWrapperRecipe } from './forwarders/forwarder-recipes.mts';
+import {
+  compatibilityShimRecipe,
+  staticForwardingWrapperRecipe,
+} from './forwarders/forwarder-recipes.mts';
 import { shorterConditionRecipe } from './logic/shorter-condition.mts';
 import { switchLabelsRecipe } from './logic/switch-labels.mts';
 
@@ -86,4 +89,5 @@ export const JVM_RECIPES = defineRecipes([
   shorterConditionRecipe,
   switchLabelsRecipe,
   staticForwardingWrapperRecipe,
+  compatibilityShimRecipe,
 ]);
