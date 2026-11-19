@@ -1,0 +1,22 @@
+function double(value: number): number {
+  return value * 2;
+}
+
+const holder = {
+  factor: 3,
+  times(value: number): number {
+    return value * this.factor;
+  },
+};
+
+export function direct(): number {
+  return double.call(undefined, 2);
+}
+
+export function method(): number {
+  return holder.times.call(holder, 2);
+}
+
+export function probe(): unknown {
+  return [direct(), method()];
+}

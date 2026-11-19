@@ -1,0 +1,5 @@
+export const joined = 'ab';
+export const lines = 'first line, second line';
+export function probe(): unknown {
+  return [joined, lines];
+}

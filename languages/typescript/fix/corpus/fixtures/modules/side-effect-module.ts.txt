@@ -1,0 +1,8 @@
+declare global {
+  var registeredCount: number | undefined;
+}
+globalThis.registeredCount = (globalThis.registeredCount ?? 0) + 1;
+export const registered = true;
+export function probe(): unknown {
+  return registered;
+}

@@ -1,0 +1,27 @@
+export async function* numbers(limit: number): AsyncGenerator<number> {
+  for (let value = 0; value < limit; value += 1) {
+    yield value;
+  }
+}
+
+export function* counted(log: string[]): Generator<number> {
+  log.push('start');
+  yield 1;
+  log.push('end');
+}
+
+export async function collect(limit: number): Promise<number[]> {
+  const values: number[] = [];
+  for await (const value of numbers(limit)) {
+    values.push(value);
+  }
+  return values;
+}
+
+export async function probe(): Promise<unknown> {
+  const log: string[] = [];
+  const pending = counted(log);
+  log.push('created');
+  const first = pending.next().value;
+  return [await collect(3), first, log];
+}

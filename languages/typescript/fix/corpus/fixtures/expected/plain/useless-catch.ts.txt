@@ -1,0 +1,16 @@
+export function rethrow(run: () => number): number {
+  return run();
+}
+
+export function rethrowWithFinally(run: () => number, log: string[]): number {
+  try {
+    return run();
+  } finally {
+    log.push('done');
+  }
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  return [rethrow(() => 1), rethrowWithFinally(() => 2, log), log];
+}

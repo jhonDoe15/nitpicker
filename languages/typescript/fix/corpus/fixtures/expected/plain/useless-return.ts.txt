@@ -1,0 +1,35 @@
+export function early(flag: boolean, log: string[]): void {
+  if (flag) {
+    log.push('flag');
+    return;
+  }
+  log.push('end');
+}
+
+export function inSwitch(kind: string, log: string[]): void {
+  switch (kind) {
+    case 'a':
+      log.push('a');
+      return;
+    default:
+      log.push('other');
+  }
+}
+
+export function inTry(log: string[]): void {
+  try {
+    log.push('try');
+  } finally {
+    log.push('finally');
+  }
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  early(true, log);
+  early(false, log);
+  inSwitch('a', log);
+  inSwitch('b', log);
+  inTry(log);
+  return log;
+}
