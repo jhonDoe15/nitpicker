@@ -124,7 +124,7 @@ export type TomlArray = {
   readonly elements: TomlElement[];
 };
 
-export type TextEdit = { readonly start: number; readonly end: number; readonly text: string };
+export type TextEdit = Pick<ReplaceEdit, 'start' | 'end' | 'text'>;
 
 export type DeclaredEntry = {
   readonly kind: 'array' | 'table';
@@ -135,11 +135,16 @@ export type DeclaredEntry = {
   readonly raw: string;
 };
 
-type ScriptFix = { readonly finding: RecipeFinding; readonly edits: readonly PlanEdit[] };
+type ScriptFix = {
+  readonly finding: RecipeFinding;
+  readonly edits: readonly PlanEdit[];
+  readonly kind?: string;
+};
 export type Decline = {
   readonly rule: string;
   readonly path: string;
   readonly line: number;
   readonly reason: string;
+  readonly kind?: string;
 };
 export type ScriptResult = { readonly fixes: readonly ScriptFix[]; readonly declines: Decline[] };
