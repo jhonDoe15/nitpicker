@@ -84,6 +84,15 @@ def projectFlags = {
     file == null ? [] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
 }
 
+def generatedLines = { Collection<File> sourceDirs ->
+    if (project.ext.nitpickerAnalyzeGenerated) {
+        return []
+    }
+    def handWritten = project.ext.nitpickerHandWrittenDirs(sourceDirs)
+    ['--skip-generated'] +
+        sourceDirs.findAll { !handWritten.contains(it) }.collect { "--generated-root=${it.absolutePath}".toString() }
+}
+
 def classDirectories = { Collection<File> directories ->
     "--own-classes=${directories*.absolutePath.join(File.pathSeparator)}".toString()
 }
@@ -130,6 +139,7 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
          '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
          '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000', classDirectories(own)] +
         projectOptions(compile) + projectFlags().collect { "--errorprone-flag=${it}".toString() } +
+        generatedLines(sourceSets.getByName(name).allJava.srcDirs) +
         (test ? ['--test-only'] : []) + ['--sources'] + sources*.absolutePath
     def file = workDir.get().file("${name}.args").asFile
     file.setText(lines.collect { it + '\n' }.join(''), 'UTF-8')

@@ -1,5 +1,4 @@
 import { tmpdir } from 'node:os';
-import { spawnSync } from 'node:child_process';
 import {
   closeSync,
   cpSync,
@@ -15,6 +14,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { hostedToolSpawn } from '../host/client/host-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
@@ -84,6 +84,7 @@ function runJdepsCommand({ command, cwd, directories, outputFile, spawn }: Jdeps
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', output, 'pipe'],
+      stdoutFile: outputFile,
     });
     const error = fieldOf(result, 'error');
     const status = fieldOf(result, 'status');
@@ -179,7 +180,7 @@ export function writeJdepsReports({
   mainDirectory,
   testDirectory,
   reportDir,
-  spawn = spawnSync,
+  spawn = hostedToolSpawn,
 }: JdepsReports): void {
   const mainClasses = classNamesIn(mainDirectory);
   const testClasses = classNamesIn(testDirectory);

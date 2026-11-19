@@ -24,6 +24,7 @@ import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
 import { effectsOptions } from '../adapters/effects/effects-options.mts';
 import { dependencyFile } from './quick/maven-build-arguments.mts';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
+import { startToolHosts } from '../builds/host/session/host-session.mts';
 import { mavenScope } from './reactor/maven-scope.mts';
 import { reactorRootFor } from './reactor/reactor-root.mts';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
@@ -227,22 +228,12 @@ function prepare(
   return { modules: checked, built, scope, kotlin, since, analyzed, tools, timedOut, failed };
 }
 
-function presetInWork(
+function mavenRunOf(
   projectRoot: string,
-  {
-    maven,
-    policy = {},
-    configs,
-    environment = {},
-    spawn,
-    timeoutMs,
-    pitDeadline,
-    onModules,
-  }: MavenPresetOptions,
-  work: string,
-): MavenPresetRun {
+  { maven, policy = {}, spawn, timeoutMs }: MavenPresetOptions,
+): MavenRun {
   const other = policy.snapshot === 'base' ? policy.policyRoot : policy.baselineRoot;
-  const run: MavenRun = {
+  return {
     projectRoot,
     mavenRoot: textOf(callUntyped(reactorRootFor, projectRoot, other)),
     maven,
@@ -252,21 +243,42 @@ function presetInWork(
     quick: policy.quick === true,
     mutationOff: policy['mutationOff'] === true,
   };
+}
+
+function presetInWork(
+  projectRoot: string,
+  options: MavenPresetOptions,
+  work: string,
+): MavenPresetRun {
+  const { policy = {}, configs, environment = {}, pitDeadline, onModules } = options;
+  const run = mavenRunOf(projectRoot, options);
   const request = { policy, environment, configs, work, onModules };
   const { modules, built, scope, kotlin, timedOut, failed, ...prepared } = prepare(run, request);
-  const testsFailures = analyzeAll({
-    ...run,
-    ...prepared,
-    testsSkipped: timedOut.length > 0,
-    pitDeadline,
-    environment,
-    configs,
-    policy,
-    kotlin,
+  const hosts = startToolHosts({
     work,
-    effectsOptions: effectsOptions(projectRoot),
-    project: guardProject(projectRoot, policy, built),
+    modules: modules.length,
+    tools: prepared.tools,
+    pinned: run.pinned,
+    warn: options.warn ?? { write: () => undefined },
   });
+  let testsFailures: unknown[];
+  try {
+    testsFailures = analyzeAll({
+      ...run,
+      ...prepared,
+      testsSkipped: timedOut.length > 0,
+      pitDeadline,
+      environment,
+      configs,
+      policy,
+      kotlin,
+      work,
+      effectsOptions: effectsOptions(projectRoot),
+      project: guardProject(projectRoot, policy, built),
+    });
+  } finally {
+    hosts?.stop();
+  }
   return {
     moduleDirs: modules.map((module) => module.basedir),
     testsFailures: [...testsFailures, ...timedOut],
