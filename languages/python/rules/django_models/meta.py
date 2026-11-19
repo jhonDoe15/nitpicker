@@ -30,41 +30,50 @@ def unique_together(value):
         single = strings_of(value)
         if single:
             return [UniqueSet(frozenset(single), False)]
-    return []
-
-
-def constraint_set(call, context):
-    dotted = dotted_name(call.func, context.aliases) or ""
-    if not dotted.endswith("UniqueConstraint") or call.args:
         return None
+    empty = isinstance(value, (ast.List, ast.Tuple)) and not value.elts
+    return [] if empty else None
+
+
+def is_unique_constraint(item, context):
+    if not isinstance(item, ast.Call):
+        return False
+    return (dotted_name(item.func, context.aliases) or "").endswith("UniqueConstraint")
+
+
+def constraint_set(call):
     fields = strings_of(keyword(call, "fields") or ast.Constant(value=None))
-    if not fields:
+    if call.args or not fields:
         return None
-    conditional = keyword(call, "condition") is not None
-    return UniqueSet(frozenset(fields), conditional)
+    return UniqueSet(frozenset(fields), keyword(call, "condition") is not None)
 
 
 def constraint_sets(value, context):
     if not isinstance(value, (ast.List, ast.Tuple)):
-        return []
-    found = [
-        constraint_set(item, context)
-        for item in value.elts
-        if isinstance(item, ast.Call)
-    ]
-    return [item for item in found if item is not None]
+        return None
+    found = []
+    for item in value.elts:
+        if isinstance(item, ast.Starred) or not isinstance(item, ast.Call):
+            return None
+        if is_unique_constraint(item, context):
+            unique = constraint_set(item)
+            if unique is None:
+                return None
+            found.append(unique)
+    return found
 
 
 def meta_facts(cls, context):
     meta = meta_class(cls)
     if meta is None:
         return False, [], False
-    abstract, uniques = False, []
+    abstract, uniques, opaque = False, [], False
     for name, value in class_assignments(meta):
         if name == "abstract":
             abstract = constant(value) is True
-        elif name == "unique_together":
-            uniques.extend(unique_together(value))
-        elif name == "constraints":
-            uniques.extend(constraint_sets(value, context))
-    return abstract, uniques, True
+        elif name in ("unique_together", "constraints"):
+            reader = unique_together if name == "unique_together" else None
+            found = reader(value) if reader else constraint_sets(value, context)
+            opaque = opaque or found is None
+            uniques.extend(found or [])
+    return abstract, uniques, opaque

@@ -66,6 +66,7 @@
   "python-rules/network-in-test": ["tests"],
   "python-rules/no-inline-suppression": ["maintainability"],
   "python-rules/no-type-check": ["maintainability"],
+  "python-rules/non-unique-lookup": ["bug", "persistence"],
   "python-rules/not-type-checking": ["maintainability"],
   "python-rules/null-branch-fall-through": ["bug"],
   "python-rules/nullable-dereference": ["bug"],

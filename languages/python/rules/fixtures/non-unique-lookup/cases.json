@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "non-unique-lookup",
+    "mention": "filter(...).first()",
+    "subject": "Group.get|not-unique|name"
+  }
+]
