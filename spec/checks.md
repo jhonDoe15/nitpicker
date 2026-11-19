@@ -394,6 +394,11 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+Dropped delegate results: `nitpicker/no-dropped-delegate-result` (production source, in `eslint-lint`) reports a
+function or method whose last statement calls a same-named method on another receiver (`this.delegate.update()`,
+`super.update()`, `.call`, `.apply`) without returning it, unless the type checker shows a `void`, `undefined`, `never` or
+`Promise<void>` result or the delegate is declared in the default library or a declaration file (collection, emitter and stream methods; without types, a fixed list of their names). Lifecycle and event hooks, constructors, accessors and a declared `void` return are allowed.
+
 Dropped log arguments: `nitpicker/no-dropped-log-arguments` (production source, in `eslint-lint`, when the project
 depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose literal message has fewer placeholders than
 values (pino: the extra values are dropped; winston without `format.splat()`: every value after a message with a

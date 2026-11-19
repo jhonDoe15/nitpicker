@@ -135,6 +135,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/modules/entry/main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',
   'languages/typescript/preset/eslint-plugin/rules/logging/no-dropped-log-arguments.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/delegation/no-dropped-delegate-result.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/delegation/enclosing-names.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/node/call-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/logging/argument-kinds.mjs',
   'languages/typescript/preset/eslint-plugin/rules/logging/placeholders.mjs',

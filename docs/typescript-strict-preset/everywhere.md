@@ -225,6 +225,21 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-dropped-delegate-result`: a method or function whose last statement calls a same-named
+  method on another receiver and drops the result (`this.constructor.update(...)`, `this.delegate.update(...)`,
+  `super.update(...)`, `Model.update(...)`, or `.call` and `.apply` of those), so callers get `undefined` instead of the
+  query, promise or value. The enclosing name comes from a method, a named function expression, `X.prototype.update = function () {}`,
+  an object method or a class property function; the statements before the call may only declare variables or build
+  arguments. A bare `update()` and `this.update()` are recursion, not delegation, and are not reported. With types the
+  call is not reported when the delegate returns `void`, `undefined`, `never` or `Promise<void>`; without types
+  (plain JavaScript) it is. With types, a delegate declared in the default library or in a declaration file (`Array.push`,
+  `Map.set`, `Set.add`, emitter, stream and socket `on`, `once`, `off`, `emit`, `write`, `end`, `close`) and a callee whose type
+  is unresolved or `unknown` are not reported. Without types the names `push`, `pop`, `shift`, `unshift`, `splice`, `set`,
+  `add`, `delete`, `clear`, `on`, `once`, `off`, `emit`, `addListener`, `removeListener`, `write`, `end`, `close` and
+  `destroy` are not reported. A `super.x` or `this.constructor.x` delegate is always checked. An awaited call dropped in an async function is
+  reported the same way. Allowed forms: `return this.delegate.update(...)`, a declared `void` return type,
+  constructors, accessors, generators, and hooks whose callers ignore the result (`componentDidMount`, `componentDidUpdate`,
+  `componentWillUnmount`, `ngOnInit`, `ngOnDestroy`, `ngOnChanges`, `onX` and `handleX`).
 - `nitpicker/no-dropped-log-arguments` (needs pino, bunyan or winston in `package.json`): a log call
   (`trace` to `fatal`) whose message is a string or a template without expressions and whose values
   are lost or left unfilled. pino and bunyan read the message as the first argument, or the second
