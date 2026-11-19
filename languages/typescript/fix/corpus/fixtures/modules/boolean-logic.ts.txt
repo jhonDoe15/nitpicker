@@ -1,0 +1,39 @@
+export function redundant(a: boolean, b: boolean): boolean {
+  return (a && b) || (a && !b);
+}
+
+export function valued(a: string, b: string): string {
+  return (a && b) || (a && 'fallback');
+}
+
+export function sideEffects(read: () => boolean, log: string[]): boolean {
+  const check = (): boolean => {
+    log.push('check');
+    return read();
+  };
+  return (check() && true) || (check() && false);
+}
+
+export function decided(count: number): string {
+  if (count > 2 || count > 5) {
+    return 'big';
+  }
+  return 'small';
+}
+
+export function absorbed(a: boolean, b: boolean): boolean {
+  return a || (a && b);
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  return [
+    redundant(true, false),
+    valued('', 'b'),
+    valued('a', ''),
+    sideEffects(() => true, log),
+    log,
+    decided(3),
+    absorbed(false, true),
+  ];
+}

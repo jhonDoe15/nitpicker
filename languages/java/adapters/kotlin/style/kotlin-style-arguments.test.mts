@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 import { collectJavaFindings } from '../../kotlin-e2e/test-support/views/kotlin-e2e-views.mts';
 import { textsOf } from '../../../../../shared/values/readers.mts';
 import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
@@ -154,7 +154,7 @@ describe('what runs with the project listed', () => {
       conventions: { 'kotlin.lineLength': '100', 'kotlin.trailingCommas': 'never' },
     });
 
-    expect(style?.editorconfigs.map(({ path: file, text }) => [file, text])).toEqual([
+    expect(style?.editorconfigs?.map(({ path: file, text }) => [file, text])).toEqual([
       [
         '.editorconfig',
         'root = true\n\n[*.kt]\nmax_line_length = 300\n\n[*.{kt,kts}]\nmax_line_length = 100\n',

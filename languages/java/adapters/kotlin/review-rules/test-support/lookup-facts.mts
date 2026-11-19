@@ -2,7 +2,7 @@ import { routed, run, type FileFacts, type ImportFact, type RuleFinding } from '
 import {
   SERVICE_LOOKUP_RULE,
   serviceLookupFindings,
-} from '../main/service-lookups/service-lookups.mjs';
+} from '../main/service-lookups/service-lookups.mts';
 
 type Fact = Record<string, unknown>;
 

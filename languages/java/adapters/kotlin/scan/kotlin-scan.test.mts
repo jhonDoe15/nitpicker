@@ -5,27 +5,11 @@ import {
 import { useTempProjects } from '../rules/test-support/temp-projects.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { describe, expect, it } from 'vitest';
-import { type Allowed, withFrameworkAllowances } from './typed/typed-allowances.mts';
-import {
-  KOTLIN_SOURCE_RULES as UNTYPED_KOTLIN_SOURCE_RULES,
-  readKotlinSourceFindings as untypedReadKotlinSourceFindings,
-} from './kotlin-scan.mjs';
-
-type SourceFinding = Allowed & {
-  identity: string;
-  classification: string;
-};
-
-type Manifest = {
-  kotlinSourceRoots: string[];
-  kotlinTestSourceRoots: string[];
-};
+import { withFrameworkAllowances } from './framework-allowances.mts';
+import { KOTLIN_SOURCE_RULES, readKotlinSourceFindings } from './kotlin-scan.mts';
 
 type FilesByPath = Record<string, string>;
 
-const readKotlinSourceFindings: (projectRoot: string, manifest: Manifest) => SourceFinding[] =
-  untypedReadKotlinSourceFindings;
-const KOTLIN_SOURCE_RULES: string[] = UNTYPED_KOTLIN_SOURCE_RULES;
 const nestedCheckout: (directory: string, files: FilesByPath) => FilesByPath =
   untypedNestedCheckout;
 const { gitCheckout: untypedGitCheckout } = useGitCheckouts();

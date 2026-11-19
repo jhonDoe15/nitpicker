@@ -7,7 +7,7 @@ import {
   springFindings,
   type Loose,
 } from '../../spring-test-facts.mts';
-import { FOREIGN_KEY_RULES } from './foreign-keys.mjs';
+import { FOREIGN_KEY_RULES } from './foreign-keys.mts';
 
 const JPA = { path: 'jakarta.persistence', all: true };
 

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { blankComments, javaFilesUnder, packageOf } from '../../review-rules/java-sources.mjs';
+import { blankComments, javaFilesUnder, packageOf } from '../../review-rules/java-sources.mts';
 import {
   ADVICE as ADVICE_GROUP,
   ASPECT as ASPECT_GROUP,
@@ -7,13 +7,13 @@ import {
   CONSTRAINTS as CONSTRAINTS_GROUP,
   META_PROXIED as META_PROXIED_GROUP,
   PROXIED as PROXIED_GROUP,
-} from '../../kotlin/review-rules/spring/spring-types.mjs';
+} from '../../kotlin/review-rules/spring/spring-types.mts';
 import {
   closingOf as untypedClosingOf,
   javaResolver as untypedJavaResolver,
   topLevel as untypedTopLevel,
   typeDeclarations as untypedTypeDeclarations,
-} from './java-declarations.mjs';
+} from './java-declarations.mts';
 import { textOf, textsOf } from '../../../../../shared/values/readers.mts';
 
 type TypeDeclaration = {

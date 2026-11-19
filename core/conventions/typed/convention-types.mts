@@ -30,7 +30,7 @@ export type LazyConfigRoot = {
   readonly dispose: () => void;
 };
 
-type ProjectChoice = { readonly choice: string; readonly from: string };
+type ProjectChoice = { readonly choice: unknown; readonly from: string };
 
 export type StyleParts = {
   readonly unused: Readonly<Record<string, string>>;

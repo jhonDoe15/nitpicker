@@ -39,7 +39,11 @@ const MIKRO = [
 ].join('\n');
 const SEQUELIZE = "import { Invoice, Line } from './entities';";
 
-type JoinError = { messageId: string; data: { first: string; second: string } };
+type JoinError = {
+  messageId: string;
+  data: { first: string; second: string };
+  suggestions?: { messageId: string; output: string }[];
+};
 type JoinCase = { filename: string; code: string };
 type JoinCaseWithErrors = JoinCase & { errors: JoinError[] };
 type CaseSource = { header: string; body: string };
@@ -69,6 +73,16 @@ function typed(header: string, body: string, errors?: JoinError[]): JoinCase | J
 
 function crossed(messageId: string, first: string, second: string): JoinError[] {
   return [{ messageId, data: { first, second } }];
+}
+
+function suggested(
+  header: string,
+  output: string,
+  errors: JoinError[],
+  messageId: string,
+): JoinError[] {
+  const text = `${header}\nexport async function run() {\n${output}\n}\n`;
+  return errors.map((error) => ({ ...error, suggestions: [{ messageId, output: text }] }));
 }
 
 tester.run('no-multiple-collection-joins', rule, {
@@ -147,7 +161,12 @@ tester.run('no-multiple-collection-joins', rule, {
     typed(
       TYPEORM,
       'return orders.findOne({ relations: { items: true, payments: true } });',
-      crossed('typeorm', 'items', 'payments'),
+      suggested(
+        TYPEORM,
+        "return orders.findOne({ relations: { items: true, payments: true }, relationLoadStrategy: 'query' });",
+        crossed('typeorm', 'items', 'payments'),
+        'queryStrategy',
+      ),
     ),
     typed(
       TYPEORM,
@@ -192,7 +211,12 @@ tester.run('no-multiple-collection-joins', rule, {
     typed(
       MIKRO,
       "return em.find(Author, {}, { populate: ['books', 'prizes'] });",
-      crossed('mikroOrm', 'books', 'prizes'),
+      suggested(
+        MIKRO,
+        "return em.find(Author, {}, { populate: ['books', 'prizes'], strategy: 'select-in' });",
+        crossed('mikroOrm', 'books', 'prizes'),
+        'selectIn',
+      ),
     ),
     typed(
       MIKRO,

@@ -3,16 +3,16 @@ import { formatNotes } from '../../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../../core/fix/common/tool-precedence.mjs';
 import type { FixFile, FixStep, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
-import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mjs';
+import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mts';
 import {
   javaFormatterFlags,
   javaFormatterSettings,
   javaStyle,
-} from '../../adapters/style/java-style.mjs';
-import { readPinnedTools } from '../../builds/java-build.mjs';
+} from '../../adapters/style/java-style.mts';
+import { readPinnedTools } from '../../builds/java-build.mts';
 import { formatterJava } from '../../maven/errorprone/maven-jdk.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, optionalText, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import { type Classpaths, resolveToolClasspaths } from '../tools/tool-classpath.mts';
 import type { FormatterPlan } from './formatter-run.mts';
@@ -174,7 +174,7 @@ function classpathsFor(settings: FormatSettings, active: readonly FormatStep[]):
     ? {}
     : resolveToolClasspaths({
         projectRoot: settings.projectRoot,
-        buildTool: fieldOf(fieldOf(settings.config, 'java'), 'buildTool'),
+        buildTool: optionalText(fieldOf(fieldOf(settings.config, 'java'), 'buildTool')),
         environment: settings.environment,
         executeFixCommand: settings.executeFixCommand,
         tools: Object.fromEntries(active.flatMap(({ plan }) => Object.entries(plan.tools))),

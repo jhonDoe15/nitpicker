@@ -1,6 +1,7 @@
 import { LOOSE_STATEMENT as untypedLooseStatement } from '../../../../../../../shared/rules/security/sql-text.mjs';
 import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
 import type { CallArgument, CallView } from './call-views.mts';
+import { isPlainCall } from './names/plain-calls.mts';
 import { isCachePackage, type IoKind } from './packages.mts';
 
 export type Effects = Map<string, string[]>;
@@ -122,7 +123,7 @@ export function namedKind(view: CallView): IoKind | undefined {
   }
   const searches =
     CALLBACK_SEARCHES.has(method) && view.args.some((arg) => arg.type === 'function');
-  if (names.length < 2 || searches || !isInputOutputMethod(method)) {
+  if (names.length < 2 || searches || !isInputOutputMethod(method) || isPlainCall(view)) {
     return undefined;
   }
   const kinds = names.slice(0, -1).map((owner) => ownerKind(owner, method));

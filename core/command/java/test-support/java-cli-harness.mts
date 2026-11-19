@@ -15,14 +15,15 @@ import {
 } from '../../../../languages/java/adapters/test-support/in-process-gradle.mts';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mts';
-import { readCatalog as readRuleCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
+import { readCatalog as readRuleCatalog } from '../../../../languages/java/messages/rule-messages.mts';
 import { exceptionHint as renderExceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mts';
 
 export const exceptionHint: (rule: string, file: string) => string = renderExceptionHint;
 
-const readCatalog: (tool: string) => { readonly UnusedPrivateField: { readonly fix: string } } =
-  readRuleCatalog;
+function unusedFieldFix(): string {
+  return readRuleCatalog('pmd')['UnusedPrivateField']?.fix ?? '';
+}
 
 export type { GradleFixtures, MavenFixtures } from '../../test-support/fixture-types.mts';
 export { fakeGradle };
@@ -177,20 +178,20 @@ export function useMavenFixtures(runNitpickerCli: RunNitpickerCli): MavenFixture
 }
 
 export function unusedFieldMessage(name: string, file = SOURCE_FILE): string {
-  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  const fix = unusedFieldFix();
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint(UNUSED_FIELD_RULE, file)}`;
 }
 
 export function unusedFieldFields(file = SOURCE_FILE): UnusedFieldFields {
   return {
-    allowedForm: readCatalog('pmd').UnusedPrivateField.fix,
+    allowedForm: unusedFieldFix(),
     exception: { rule: UNUSED_FIELD_RULE, paths: [file], reason: '...' },
     exceptionList: 'exceptions',
   };
 }
 
 export function unusedFieldConsoleEntry(name: string, line: number, file = SOURCE_FILE): string {
-  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  const fix = unusedFieldFix();
   return [
     `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
     `    ${file}:${String(line)}`,

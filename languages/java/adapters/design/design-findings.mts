@@ -3,7 +3,12 @@ import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rul
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { type DesignModule, produceDesignFacts } from './producer/design-facts.mts';
 import { fieldsOf } from '../../../../shared/values/readers.mts';
-import { type JavaFinding, type JavaPolicy, findingsOf } from '../typed/java-values.mts';
+import {
+  type JavaEnvironment,
+  type JavaFinding,
+  type JavaPolicy,
+  findingsOf,
+} from '../typed/java-values.mts';
 
 type Evaluate = (facts: unknown, options: Readonly<Record<string, unknown>>) => unknown;
 type DesignRequest = {
@@ -13,6 +18,7 @@ type DesignRequest = {
   readonly analyzerName?: string;
   readonly output?: string | undefined;
   readonly evaluate?: Evaluate;
+  readonly environment?: JavaEnvironment | undefined;
 };
 
 export const DESIGN_FACTS_FAILURE_RULE = 'design-facts-failure';
@@ -50,12 +56,18 @@ export function designFindings({
   analyzerName = 'java',
   output,
   evaluate = sharedFactFindings,
+  environment,
 }: DesignRequest): JavaFinding[] {
   if (analyzerName !== 'java') {
     return [];
   }
   try {
-    const facts = produceDesignFacts({ projectRoot, modules: listModules(), output });
+    const facts = produceDesignFacts({
+      projectRoot,
+      modules: listModules(),
+      output,
+      environment,
+    });
     return findingsOf(
       evaluate(facts, {
         language: 'java',

@@ -1,17 +1,22 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findShorter as untypedFindShorter } from '../../../../../../shared/logic/shorter/find-shorter.mjs';
+import { renderSkeleton as untypedRenderSkeleton } from '../../../../../../shared/logic/shorter/render.mjs';
 import { skeletonOf as untypedSkeletonOf } from '../../../../../../shared/logic/shorter/skeleton.mjs';
 import { isNot as untypedIsNot } from '../../../../../../shared/logic/terms.mjs';
 import type { Term } from '../analysis/logic/term-views.mts';
 import { conditionTerm } from '../decided/facts.mts';
-import { chainOf } from '../typed/node-views.mts';
+import { chainOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { booleanParts } from './boolean-leaves.mts';
 import { isNarrowingLeaf } from './narrowing-leaf.mts';
 import { isTestOf } from './test-positions.mts';
 
 type Leaf = { readonly op: 'leaf'; readonly term: Term; readonly text: string };
 type Skeleton = object;
-type Found = { readonly form: string; readonly reasons: readonly string[] };
+type Found = {
+  readonly form: string;
+  readonly reasons: readonly string[];
+  readonly skeleton: Skeleton;
+};
 type Options = {
   readonly booleanContext: boolean;
   readonly isPinned: (leaf: Leaf, leaves: readonly Leaf[]) => boolean;
@@ -26,8 +31,20 @@ type Source = {
 const findShorter: (skeleton: Skeleton, options: Options) => Found | undefined = untypedFindShorter;
 const skeletonOf: (root: Term, source: Source) => Skeleton = untypedSkeletonOf;
 const isNot: (node: Term) => boolean = untypedIsNot;
+const renderSkeleton: (
+  skeleton: Skeleton,
+  style: undefined,
+  textOf: (leaf: Leaf) => string,
+) => string = untypedRenderSkeleton;
 
 const CONNECTIVES = new Set<string>(['&&', '||']);
+const TYPE_SYNTAX = new Set<string>([
+  AST_NODE_TYPES.TSAsExpression,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.TSSatisfiesExpression,
+  AST_NODE_TYPES.TSTypeAssertion,
+  AST_NODE_TYPES.TSInstantiationExpression,
+]);
 const TEST_PARENTS = new Set<string>([
   AST_NODE_TYPES.IfStatement,
   AST_NODE_TYPES.WhileStatement,
@@ -47,6 +64,12 @@ function isConnective(node: TSESTree.Node | undefined): boolean {
   return node?.type === AST_NODE_TYPES.LogicalExpression && CONNECTIVES.has(node.operator);
 }
 
+function holdsTypeSyntax(node: TSESTree.Node): boolean {
+  return [...depthFirst<TSESTree.Node>(node, nodeChildren)].some(({ type }) =>
+    TYPE_SYNTAX.has(type),
+  );
+}
+
 function topOf(node: TSESTree.Node): TSESTree.Node {
   const chain = chainOf(node, (current) =>
     isConnective(current.parent) ? current.parent : undefined,
@@ -57,9 +80,10 @@ function topOf(node: TSESTree.Node): TSESTree.Node {
 export const rule: TSESLint.RuleModule<'shorter'> = {
   meta: {
     type: 'suggestion',
+    fixable: 'code',
     docs: {
       description:
-        'Report a condition that has an exactly equivalent form with fewer operands, and print it',
+        'Report a condition that has an exactly equivalent form with fewer operands, print it, and write it',
     },
     schema: [],
     messages: {
@@ -88,9 +112,14 @@ export const rule: TSESLint.RuleModule<'shorter'> = {
         isBoolean: booleanParts(top, sourceCode.parserServices),
       });
       if (found !== undefined) {
+        const keepsText = !holdsTypeSyntax(top) && sourceCode.getCommentsInside(top).length === 0;
+        const text = renderSkeleton(found.skeleton, undefined, ({ term: leaf }) =>
+          sourceCode.text.slice(...(leaf.range ?? [0, 0])),
+        );
         context.report({
           node: top,
           messageId: 'shorter',
+          ...(keepsText ? { fix: (fixer) => fixer.replaceText(top, text) } : {}),
           data: {
             condition: singleLine(sourceCode.getText(top)),
             form: found.form,

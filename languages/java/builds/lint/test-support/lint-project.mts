@@ -11,7 +11,7 @@ import {
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand } from '../../../maven/maven-command.mjs';
+import { javaCommand } from '../../../maven/maven-command.mts';
 import { lintFingerprint } from '../lint-baseline.mts';
 import { runJavacLint } from '../javac-lint-runner.mts';
 import { type LintCompiler, type LintPlan } from '../../typed/lint-plan.mts';

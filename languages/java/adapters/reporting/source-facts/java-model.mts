@@ -1,4 +1,4 @@
-import { blanked as blankedUntyped } from '../sarif/crypto-keys/java-scopes.mjs';
+import { blanked as blankedUntyped } from '../sarif/crypto-keys/java-scopes.mts';
 import {
   BRACES as BRACES_UNTYPED,
   balancedEnd as balancedEndUntyped,

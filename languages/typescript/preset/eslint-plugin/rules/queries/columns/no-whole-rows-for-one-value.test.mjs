@@ -1,4 +1,6 @@
 import { typedIoProject } from '../../../test-support/projects/typed-io-project.mts';
+import { IO_PACKAGES } from '../../../test-support/projects/io-packages.mts';
+import { ORM_PACKAGES } from '../../../test-support/projects/orm/orm-stubs.mts';
 import { rule } from './no-whole-rows-for-one-value.mts';
 
 const STORE = [
@@ -9,26 +11,57 @@ const STORE = [
   '  get label() { return this.status; }',
   '  describe() { return this.status; }',
   '}',
-  'export declare class MikroManager {',
-  '  find<T>(entity: new () => T, where?: object): Promise<T[]>;',
-  '  count(entity: unknown, where?: object): Promise<number>;',
-  '}',
 ].join('\n');
 
-const { tester, typed } = typedIoProject('one-value', STORE, {
-  'sequelize-store.ts':
-    "import { Model } from 'sequelize';\nexport class Account extends Model { declare status: string; static findAll(options?: object): Promise<Account[]> { return Promise.resolve([]); } static findOne(options?: object): Promise<Account | null> { return Promise.resolve(null); } static count(options?: object): Promise<number> { return Promise.resolve(0); } }",
-});
+const { tester, typed } = typedIoProject(
+  'one-value',
+  STORE,
+  {
+    'sequelize-store.ts':
+      "import { Model } from 'sequelize';\nexport class Account extends Model { declare status: string; }",
+    'wrappers.ts': [
+      "import { Order } from './store';",
+      'export declare class Wrapper {',
+      '  findOne(workspaceId: string, options?: { where?: object }): Promise<Order | null>;',
+      '  findOneBy(where: object): Promise<Order | null>;',
+      '  count(options?: object): Promise<number>;',
+      '}',
+    ].join('\n'),
+    'repositories.ts': [
+      "import { Repository } from 'typeorm';",
+      "import { Order } from './store';",
+      'export class Inheriting extends Repository<Order> {}',
+      'export class Overriding extends Repository<Order> {',
+      '  findOneBy(where: object): Promise<Order | null> { return super.findOneBy(where); }',
+      '}',
+    ].join('\n'),
+    'generated-client.ts': [
+      "import type * as runtime from '@prisma/client/runtime/library';",
+      'type Row = { id: string };',
+      'export declare const prismaGenerated: {',
+      '  order: { findFirst(args?: { where?: object }): Promise<Row | null> };',
+      '};',
+      'export type Runtime = typeof runtime;',
+    ].join('\n'),
+  },
+  { ...IO_PACKAGES, ...ORM_PACKAGES },
+);
 
 const HEADER = [
   "import { Repository } from 'typeorm';",
-  "import type { EntityManager as Unused } from '@mikro-orm/core';",
+  "import { EntityManager } from '@mikro-orm/core';",
   "import { PrismaClient } from '@prisma/client';",
   "import { Account } from './sequelize-store';",
-  "import { Order, MikroManager } from './store';",
+  "import { Order } from './store';",
+  "import { Wrapper } from './wrappers';",
+  "import { Inheriting, Overriding } from './repositories';",
+  "import { prismaGenerated } from './generated-client';",
+  'declare const inheritingRepo: Inheriting;',
+  'declare const overridingRepo: Overriding;',
   'declare const orderRepo: Repository<Order>;',
   'declare const looseRepo: Repository<any>;',
-  'declare const em: MikroManager;',
+  'declare const em: EntityManager;',
+  'declare const workspaceRepo: Wrapper;',
   'declare const prisma: PrismaClient;',
   'declare const cache: { count(): Promise<number> };',
   'declare function use(value: unknown): void;',
@@ -41,6 +74,18 @@ const column = (body, field) => ({
   errors: [{ messageId: 'column', data: { field } }],
 });
 const exists = (body) => ({ ...inRun(body), errors: [{ messageId: 'existence' }] });
+const fixed = (body, output, suggestion = { messageId: 'useExists' }) => ({
+  ...inRun(body),
+  errors: [
+    {
+      messageId: 'existence',
+      suggestions: [
+        { ...suggestion, output: `${HEADER}export async function run() { ${output} }` },
+      ],
+    },
+  ],
+});
+const selecting = { messageId: 'selectOneField', data: { field: 'id' } };
 
 tester.run('no-whole-rows-for-one-value', rule, {
   valid: [
@@ -71,6 +116,10 @@ tester.run('no-whole-rows-for-one-value', rule, {
     'return !!(await prisma.order.findFirst({ where: { id: "a" }, select: { id: true } }));',
     'return (await orderRepo.findOne({ where: { status: "a" }, select: { id: true } })) !== null;',
     'return (await orderRepo.find()).length > 0;',
+    'return !!(await workspaceRepo.findOne("workspace", { where: { id: "a" } }));',
+    'const found = await workspaceRepo.findOneBy({ status: "a" }); if (!found) { use(1); }',
+    'return (await workspaceRepo.count()) > 0;',
+    'return !!(await overridingRepo.findOneBy({ status: "a" }));',
     'return (await Account.findAll()).map((row) => row.missing);',
     'return (await em.find(Order, {})).map((row) => row.label);',
     'return (await prisma.order.findUnique(args => args)) !== null;',
@@ -110,33 +159,73 @@ tester.run('no-whole-rows-for-one-value', rule, {
       'return (await orderRepo.createQueryBuilder("o").getMany()).map((order) => order.status);',
       'status',
     ),
-    exists('return (await orderRepo.count({ where: { status: "a" } })) > 0;'),
-    exists('return (await orderRepo.countBy({ status: "a" })) >= 1;'),
-    exists('return (await orderRepo.count()) !== 0;'),
-    exists('return (await orderRepo.count()) === 0;'),
-    exists('return 0 < (await orderRepo.count());'),
-    exists('return (await orderRepo.count()) < 1;'),
-    exists('const total = await orderRepo.count({ where: { status: "a" } }); return total > 0;'),
-    exists('if (await orderRepo.count({ where: { status: "a" } })) { use(1); }'),
+    fixed(
+      'return (await orderRepo.count({ where: { status: "a" } })) > 0;',
+      'return await orderRepo.exists({ where: { status: "a" } });',
+    ),
+    fixed(
+      'return (await orderRepo.countBy({ status: "a" })) >= 1;',
+      'return await orderRepo.existsBy({ status: "a" });',
+    ),
+    fixed('return (await orderRepo.count()) !== 0;', 'return await orderRepo.exists();'),
+    fixed('return (await orderRepo.count()) === 0;', 'return !(await orderRepo.exists());'),
+    fixed('return 0 < (await orderRepo.count());', 'return await orderRepo.exists();'),
+    fixed('return (await orderRepo.count()) < 1;', 'return !(await orderRepo.exists());'),
+    fixed(
+      'const total = await orderRepo.count({ where: { status: "a" } }); return total > 0;',
+      'const total = await orderRepo.exists({ where: { status: "a" } }); return total;',
+    ),
+    fixed(
+      'if (await orderRepo.count({ where: { status: "a" } })) { use(1); }',
+      'if (await orderRepo.exists({ where: { status: "a" } })) { use(1); }',
+    ),
     exists('return (await prisma.order.count({ where: { id: "a" } })) > 0;'),
     exists('return (await Account.count({ where: { status: "a" } })) > 0;'),
     exists('return (await em.count(Order, { status: "a" })) > 0;'),
-    exists('return !!(await orderRepo.findOneBy({ status: "a" }));'),
-    exists('return (await orderRepo.findOneBy({ status: "a" })) !== null;'),
-    exists('return (await orderRepo.findOne({ where: { status: "a" } })) != undefined;'),
-    exists('if (await orderRepo.findOneBy({ status: "a" })) { use(1); }'),
-    exists(
+    fixed(
+      'return !!(await orderRepo.findOneBy({ status: "a" }));',
+      'return !!(await orderRepo.existsBy({ status: "a" }));',
+    ),
+    fixed(
+      'return !!(await inheritingRepo.findOneBy({ status: "a" }));',
+      'return !!(await inheritingRepo.existsBy({ status: "a" }));',
+    ),
+    fixed(
+      'return !!(await prismaGenerated.order.findFirst({ where: { id: "a" } }));',
+      'return !!(await prismaGenerated.order.findFirst({ where: { id: "a" }, select: { id: true } }));',
+      selecting,
+    ),
+    fixed(
+      'return (await orderRepo.findOneBy({ status: "a" })) !== null;',
+      'return await orderRepo.existsBy({ status: "a" });',
+    ),
+    fixed(
+      'return (await orderRepo.findOne({ where: { status: "a" } })) != undefined;',
+      'return await orderRepo.exists({ where: { status: "a" } });',
+    ),
+    fixed(
+      'if (await orderRepo.findOneBy({ status: "a" })) { use(1); }',
+      'if (await orderRepo.existsBy({ status: "a" })) { use(1); }',
+    ),
+    fixed(
       'const existing = await orderRepo.findOneBy({ status: "a" }); if (existing) { throw new Error("taken"); }',
+      'const existing = await orderRepo.existsBy({ status: "a" }); if (existing) { throw new Error("taken"); }',
     ),
-    exists(
+    fixed(
       'const existing = await orderRepo.findOneBy({ status: "a" }); if (!existing) { use(1); }',
+      'const existing = await orderRepo.existsBy({ status: "a" }); if (!existing) { use(1); }',
     ),
-    exists(
+    fixed(
       'const existing = await prisma.order.findFirst({ where: { id: "a" } }); return Boolean(existing);',
+      'const existing = await prisma.order.findFirst({ where: { id: "a" }, select: { id: true } }); return Boolean(existing);',
+      selecting,
     ),
     exists(
       'const existing = await Account.findOne({ where: { status: "a" } }); return existing === null;',
     ),
-    exists('const existing = await orderRepo.findOneBy({ status: "a" }); return existing ? 1 : 2;'),
+    fixed(
+      'const existing = await orderRepo.findOneBy({ status: "a" }); return existing ? 1 : 2;',
+      'const existing = await orderRepo.existsBy({ status: "a" }); return existing ? 1 : 2;',
+    ),
   ],
 });

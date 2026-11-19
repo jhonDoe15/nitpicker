@@ -7,7 +7,7 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, forbidden-apis.txt, cpd.xml, dependencies.json, guards-plan.json, javac-lint.txt, permits.txt, manifest.json}
      (nitpickerLint runs node languages/java/adapters/gradle-reports/gradle-guards.mjs on its guards-plan.json)
   -> languages/java/adapters/reporting/java-reports.mts       (readJavaFindings, via the ingesters)
-  -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
+  -> languages/java/adapters/spring/java-spring.mts    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
 
@@ -17,7 +17,7 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
-  exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8, google-java-format 1.35.0,
+  exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8 with the find-sec-bugs plugin 1.14.0, google-java-format 1.35.0,
   JaCoCo 0.8.16, PIT 1.22.1, Checkstyle 13.5.0, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per

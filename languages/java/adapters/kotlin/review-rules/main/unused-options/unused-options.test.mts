@@ -11,7 +11,7 @@ import {
   parameter,
   testFile,
 } from '../../test-support/loose-facts.mts';
-import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
+import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mts';
 
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];
 const helper = (overrides: Loose = {}) =>

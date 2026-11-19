@@ -1,4 +1,4 @@
-import { productionTypeResolver as untypedResolver } from '../production-types.mjs';
+import { productionTypeResolver as untypedResolver } from '../production-types.mts';
 import {
   fn as baseFn,
   wait as baseWait,

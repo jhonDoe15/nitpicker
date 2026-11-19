@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mts';
-import { DISABLED_RULE } from './skipped-tests.mjs';
+import { DISABLED_RULE } from './skipped-tests.mts';
 
 function skipped(text: string): string[] {
   return rulesOf(text, DISABLED_RULE);

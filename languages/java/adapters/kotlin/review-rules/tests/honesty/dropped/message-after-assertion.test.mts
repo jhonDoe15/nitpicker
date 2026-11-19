@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mts';
-import { MESSAGE_RULE } from './message-after-assertion.mjs';
+import { MESSAGE_RULE } from './message-after-assertion.mts';
 
 function messages(text: string): string[] {
   return rulesOf(text, MESSAGE_RULE);

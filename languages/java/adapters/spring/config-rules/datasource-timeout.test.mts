@@ -9,7 +9,7 @@ import {
   sourceRoots,
   readSpringConfigFindings,
 } from '../__tests__/spring-config-projects.mts';
-import { DATASOURCE_TIMEOUT_MESSAGE } from './datasource-timeout.mjs';
+import { DATASOURCE_TIMEOUT_MESSAGE } from './datasource-timeout.mts';
 
 afterEach(removeProjects);
 

@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type Check,
-  type Messaged,
-  type Subjected,
-  lineOf,
-  scanKotlinSource,
-} from '../../typed/typed-scan.mts';
-import { timeUnitMismatches as untypedTimeUnitMismatches } from './time-units.mjs';
-
-const timeUnitMismatches: Check<Subjected & Messaged> = untypedTimeUnitMismatches;
+import { lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { timeUnitMismatches } from './time-units.mts';
 
 function found(lines: string[], imports: string[] = []) {
   const header = imports.map((line) => `${line}\n`).join('');

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { findingFactory, fixtureFacts, springFindings } from '../spring-test-facts.mts';
-import { REPOSITORY_WRITES, WRITE_VERB } from './writes.mjs';
+import { REPOSITORY_WRITES, WRITE_VERB } from './writes.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const PROJECT = path.join(FIXTURES, 'kotlin-spring-project');

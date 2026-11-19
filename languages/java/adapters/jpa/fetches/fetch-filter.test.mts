@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { COLLECTION_FETCH_RULE, withCrossedFetches as filterUntyped } from './fetch-filter.mjs';
+import { COLLECTION_FETCH_RULE, withCrossedFetches as filterUntyped } from './fetch-filter.mts';
 import { SOURCES } from './test-support/fetch-sources.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
 

@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { failedCaseEntries, freshReports, moduleName } from '../../builds/test-failures.mjs';
+import {
+  failedCaseEntries,
+  freshReports,
+  moduleName,
+  type TestFailure,
+} from '../../builds/test-failures.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
-type FailingTests = {
-  readonly module: string;
-  readonly tests: readonly string[];
-  readonly details: readonly unknown[];
-};
 type ResultsRequest = {
   readonly reportBase: string;
   readonly since: number;
@@ -16,19 +16,19 @@ type ResultsRequest = {
 
 const TEST_RESULTS_FILE = 'test-results.json';
 
-function failingModule(entry: unknown, since: number, retriesPass: boolean): FailingTests {
+function failingModule(entry: unknown, since: number, retriesPass: boolean): TestFailure {
   const entries = textsOf(fieldOf(entry, 'results'))
-    .flatMap((directory) => textsOf(freshReports(directory, since)))
+    .flatMap((directory) => freshReports(directory, since))
     .sort()
-    .flatMap((report) => listOf(failedCaseEntries(report, { retriesPass })));
+    .flatMap((report) => failedCaseEntries(report, { retriesPass }));
   return {
-    module: textOf(moduleName(fieldOf(entry, 'dir'))),
-    tests: entries.map((failure) => textOf(fieldOf(failure, 'text'))),
-    details: entries.map((failure) => fieldOf(failure, 'detail')),
+    module: moduleName(textOf(fieldOf(entry, 'dir'))),
+    tests: entries.map(({ text }) => text),
+    details: entries.map(({ detail }) => detail),
   };
 }
 
-export function failingTestsOf({ reportBase, since, retriesPass }: ResultsRequest): FailingTests[] {
+export function failingTestsOf({ reportBase, since, retriesPass }: ResultsRequest): TestFailure[] {
   const file = path.join(reportBase, TEST_RESULTS_FILE);
   if (!existsSync(file)) {
     return [];

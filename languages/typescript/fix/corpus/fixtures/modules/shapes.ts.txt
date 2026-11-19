@@ -1,0 +1,4 @@
+export type Shape = { readonly kind: string };
+export function probe(): unknown {
+  return 'shapes';
+}

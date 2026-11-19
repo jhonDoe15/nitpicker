@@ -14,7 +14,7 @@ import type {
   DomainFinding,
   LibraryUse,
 } from './domain-types.mts';
-import { simpleName as simpleNameUntyped } from '../../ingest/class-names.mjs';
+import { simpleName as simpleNameUntyped } from '../../ingest/class-names.mts';
 import { grouped, isAdapter, isDomain, libraryPackage } from './domain-roles.mts';
 import { concernOf } from './infrastructure-classes.mts';
 import { randomSourceCalls } from './random-sources.mts';

@@ -6,7 +6,7 @@ import {
   lineOf,
   scanKotlinSource,
 } from '../typed/typed-scan.mts';
-import { repeatedStringLiterals as untypedRepeatedStringLiterals } from './repeated-strings.mjs';
+import { repeatedStringLiterals as untypedRepeatedStringLiterals } from './repeated-strings.mts';
 
 const repeatedStringLiterals: Check<Subjected & Messaged> = untypedRepeatedStringLiterals;
 

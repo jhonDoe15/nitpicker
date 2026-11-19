@@ -4,17 +4,16 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mts';
-import { buildViews as untypedBuildViews } from './build-view.mjs';
+import { buildViews as untypedBuildViews } from './build-view.mts';
 import {
   REVIEW_TOOL,
   SOURCE_TOOL,
   withoutCoveredFindings as untypedWithoutCovered,
-} from './review-finding.mjs';
-import { readKotlinFacts } from './report/kotlin-report.mjs';
-import { readKotlinReviewFindings as untypedReadFindings } from './review-findings.mjs';
-import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
-import { SPRING_RULES } from './spring/spring-messages.mjs';
-import type { FileFacts } from './test-support/facts.mts';
+} from './review-finding.mts';
+import { readKotlinFacts } from './report/kotlin-report.mts';
+import { readKotlinReviewFindings as untypedReadFindings } from './review-findings.mts';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mts';
+import { SPRING_RULES } from './spring/spring-messages.mts';
 import { testMethod } from './test-support/facts.mts';
 import type { Loose } from './test-support/loose-facts.mts';
 import {
@@ -38,12 +37,25 @@ type ReviewContext = {
   modules?: Loose[];
 };
 
-const readKotlinReviewFindings: (context: ReviewContext) => Finding[] = untypedReadFindings;
-const buildViews: () => (input: { reportRoot: string; projectRoot: string; modules: Loose[] }) => {
-  files: FileFacts[];
-} = untypedBuildViews;
 function isFinding(value: unknown): value is Finding {
   return typeof fieldOf(value, 'rule') === 'string';
+}
+
+function readKotlinReviewFindings(context: ReviewContext): Finding[] {
+  const found: unknown = Reflect.apply(untypedReadFindings, undefined, [context]);
+  return listOf(found).filter(isFinding);
+}
+
+function buildViews(): (input: {
+  reportRoot: string;
+  projectRoot: string;
+  modules: Loose[];
+}) => unknown {
+  const views = untypedBuildViews();
+  return (input) => {
+    const view: unknown = Reflect.apply(views, undefined, [input]);
+    return view;
+  };
 }
 
 function withoutCoveredFindings(
@@ -271,7 +283,10 @@ describe('readKotlinReviewFindings across the project', () => {
     expect(
       views({ reportRoot: modules[1]?.reportRoot ?? '', projectRoot: first.root, modules }),
     ).toBe(view);
-    expect(view.files.map(({ test }) => test)).toEqual([false, true]);
+    expect(listOf(fieldOf(view, 'files')).map((entry) => fieldOf(entry, 'test'))).toEqual([
+      false,
+      true,
+    ]);
   });
 
   it('does not stop at a Kotlin name that is not a valid pattern when it scans Java sources', () => {

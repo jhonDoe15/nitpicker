@@ -4,7 +4,7 @@ Part of the [Java preset guide](../java-preset.md).
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
 (`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
-Maven, anything else Gradle (`detectJavaBuild` in `languages/java/builds/java-build.mjs`). The choice
+Maven, anything else Gradle (`detectJavaBuild` in `languages/java/builds/java-build.mts`). The choice
 is never a finding: both builds are valid. A project that has both can pick one with
 `"java": { "buildTool": "maven" }` (or `"gradle"`) in `nitpicker.config.json`; the setting replaces
 the detection for the Java and Kotlin presets. `nitpicker init` names the build it chose and why when
@@ -45,7 +45,7 @@ by field. Per snapshot:
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
    `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
    exist), so the project's `settings.xml` mirrors apply.
-4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google
+4. Per module, outside Maven: PMD, SpotBugs (with the find-sec-bugs plugin, its exclusion filter and the same sink files, resolved as a `spotbugsPlugins` tool), google-java-format, Checkstyle (the bundled Google
    checks without inline suppression filters, as in the init script), `StructureMetrics.java`,
    jdeps, the JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script
    tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class

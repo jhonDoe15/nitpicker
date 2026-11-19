@@ -106,8 +106,10 @@ export type Candidates<C> = { readonly candidates: C[]; readonly notes: string[]
 export type Strategy<C extends Candidate, Input> = {
   readonly candidatesOf: (matches: unknown) => Candidates<C>;
   readonly inputOf: (candidate: C, found: Found) => Input;
-  readonly extract: (input: Input, env: ExtractEnv) => Planned<ReplaceEdit>;
+  readonly extract: (input: Input, env: ExtractEnv) => Extracted;
 };
+
+export type Extracted = Planned<ReplaceEdit> & { readonly widened?: readonly ReplaceEdit[] };
 
 export type WholeInput = {
   readonly units: Both<UnitNode>;

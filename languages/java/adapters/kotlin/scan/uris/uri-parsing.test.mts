@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { dynamicUris as untypedDynamicUris } from './uri-parsing.mjs';
+import { dynamicUris as untypedDynamicUris } from './uri-parsing.mts';
 
 const dynamicUris: Check<Ruled> = untypedDynamicUris;
 

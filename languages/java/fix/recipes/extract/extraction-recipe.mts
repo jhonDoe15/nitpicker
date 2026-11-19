@@ -1,4 +1,4 @@
-import { readJavaExtractions as untypedReadJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees.mjs';
+import { readJavaExtractions as untypedReadJavaExtractions } from '../../../adapters/near-duplicates/jvm-trees.mts';
 import type { FixFile, FixRecipe, RecipePlan } from '../../../../../core/fix/typed/fix-types.mts';
 import { exceptedOf, GENERATED, type Excepted } from '../logic/tree-fix-recipe.mts';
 

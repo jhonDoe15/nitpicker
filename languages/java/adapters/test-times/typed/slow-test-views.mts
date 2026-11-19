@@ -1,6 +1,7 @@
-import type { InheritedMethod, Locate } from '../inherited-tests.mts';
-import { inModule as inModuleUntyped } from '../../../builds/module-path.mjs';
-import { sourceLocator as sourceLocatorUntyped } from '../../reporting/kotlin-reports.mjs';
+import type { InheritedMethod } from '../inherited-tests.mts';
+import type { Locate } from './locate-type.mts';
+import { inModule as inModuleUntyped } from '../../../builds/module-path.mts';
+import { sourceLocator as sourceLocatorUntyped } from '../../reporting/kotlin-reports.mts';
 import {
   MESSAGES as MESSAGES_UNTYPED,
   RULE_IDS as RULE_IDS_UNTYPED,
@@ -18,8 +19,8 @@ import {
   isSpringBootTest as isSpringBootTestUntyped,
   isUnitTestTask as isUnitTestTaskUntyped,
   sourceOf as sourceOfUntyped,
-} from '../integration-tests.mjs';
-import { DECLARES_KOTEST_SPEC as DECLARES_KOTEST_SPEC_UNTYPED } from '../../test-runs/unrun-tests.mjs';
+} from '../integration-tests.mts';
+import { DECLARES_KOTEST_SPEC as DECLARES_KOTEST_SPEC_UNTYPED } from '../../test-runs/unrun-tests.mts';
 
 export type TestCase = {
   readonly task: string;

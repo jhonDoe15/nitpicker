@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { futuresWithoutException as untypedFuturesWithoutException } from './future-completions.mjs';
+import { futuresWithoutException as untypedFuturesWithoutException } from './future-completions.mts';
 
 const futuresWithoutException: Check<Ruled> = untypedFuturesWithoutException;
 

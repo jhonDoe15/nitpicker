@@ -1,4 +1,5 @@
 import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { GENERIC_FORM } from './advice/batch-forms.mts';
 import { rule as ioInLoop } from './no-io-in-loop.mts';
 
 const ruleTester = typescriptRuleTester();
@@ -132,11 +133,16 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
     ].map((code) => ({ code, errors: [{ messageId: 'request' }] })),
     {
       code: inLoop('await userRepository.findById(id);'),
-      errors: [{ messageId: 'query', data: { callee: '`userRepository.findById()`' } }],
+      errors: [
+        {
+          messageId: 'query',
+          data: { callee: '`userRepository.findById()`', form: GENERIC_FORM },
+        },
+      ],
     },
     {
       code: inLoop('await db.select().from(users).where(id);'),
-      errors: [{ messageId: 'query', data: { callee: '`db.select()`' } }],
+      errors: [{ messageId: 'query', data: { callee: '`db.select()`', form: GENERIC_FORM } }],
     },
   ],
 });

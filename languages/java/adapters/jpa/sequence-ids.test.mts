@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { withoutMysqlSequenceIds as filterUntyped, SEQUENCE_RULE } from './sequence-ids.mjs';
-import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
+import { withoutMysqlSequenceIds, SEQUENCE_RULE } from './sequence-ids.mts';
+import type { JavaFinding } from '../typed/java-values.mts';
 
 const ENTITY_FILE = 'src/main/java/shop/Order.java';
 const FINDING: JavaFinding = { tool: 'pmd', rule: SEQUENCE_RULE, path: ENTITY_FILE };
@@ -22,7 +22,7 @@ function keptIn(files: Readonly<Record<string, string>>, found: JavaFinding): st
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, text);
     }
-    return findingsOf(callUntyped(filterUntyped, [found], { projectRoot })).map(({ rule }) => rule);
+    return withoutMysqlSequenceIds([found], { projectRoot }).map(({ rule }) => rule);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

@@ -11,8 +11,6 @@ export const PROJECT = {
   kotlinTestSourceRoots: ['src/test/kotlin'],
 };
 
-export type ReadOptions = { readonly projects: readonly unknown[]; readonly kotlin: boolean };
-
 export function useTempProjects(
   prefix: string,
 ): (files: Readonly<Record<string, string>>) => string {

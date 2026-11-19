@@ -1,0 +1,11 @@
+import { registered } from './side-effect-module.js';
+import type { Shape } from './shapes.js';
+import { unusedHelper, usedHelper } from './helpers.js';
+
+export function area(): number {
+  return usedHelper(2);
+}
+
+export function probe(): unknown {
+  return [area(), globalThis.registeredCount];
+}

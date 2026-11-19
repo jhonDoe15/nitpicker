@@ -1,5 +1,5 @@
 import { javaHeadFacts } from '../../languages/java/adapters/facts/head-facts.mts';
-import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
+import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mts';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import type { NitpickerConfig as Config } from '../../shared/values/config-types.mts';
 

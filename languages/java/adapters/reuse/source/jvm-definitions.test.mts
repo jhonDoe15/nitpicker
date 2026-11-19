@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readJvmDefinitions, type Token } from '../jvm-reuse-types.mts';
-import { tokenizeJvm as untypedTokenizeJvm } from './jvm-tokens.mjs';
-
-const tokenizeJvm: (source: string, options?: { kotlin?: true | false }) => Token[] =
-  untypedTokenizeJvm;
+import { readJvmDefinitions } from './jvm-definitions.mts';
+import { tokenizeJvm } from './jvm-tokens.mts';
 
 function summary(source: string, kotlin = false) {
   return readJvmDefinitions(source, { kotlin }).definitions.map(

@@ -7,7 +7,7 @@ import {
   lineText as untypedLineText,
   literalAt as untypedLiteralAt,
   splitArguments as untypedSplitArguments,
-} from './kotlin-source.mjs';
+} from './kotlin-source.mts';
 import { type Literal, type Scanned, lineOf, scanKotlinSource } from './typed/typed-scan.mts';
 
 type Argument = {

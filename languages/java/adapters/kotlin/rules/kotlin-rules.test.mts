@@ -17,17 +17,14 @@ import {
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
-} from './kotlin-rules.mjs';
+} from './kotlin-rules.mts';
 import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mts';
 import { fileURLToPath } from 'node:url';
-import { repeatedStringLiterals as untypedRepeatedStringLiterals } from '../scan/literals/repeated-strings.mjs';
+import { repeatedStringLiterals } from '../scan/literals/repeated-strings.mts';
 import { scanKotlinSource } from '../scan/typed/typed-scan.mts';
 
 type Section = Record<string, string | undefined>;
 type Ruleset = { settings: Section; rules: Record<string, Section> };
-
-const repeatedStringLiterals: (scanned: unknown) => { rule: string; message: string }[] =
-  untypedRepeatedStringLiterals;
 
 function bannedMessage(testCase: KotlinRuleCase) {
   return assigned(expectedMessage(testCase, 'banned'), 'banned message');

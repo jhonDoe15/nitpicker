@@ -3,13 +3,13 @@ import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
-import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mts';
 import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
-import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
+import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mts';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mts';
 import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
-import { javaCommand } from '../maven/maven-command.mjs';
+import { javaCommand } from '../maven/maven-command.mts';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
@@ -79,6 +79,10 @@ const RESOURCE_FILES = [
   'languages/java/adapters/gradle-reports/gradle-guards.mjs',
   'languages/java/gradle/pmd-test-ruleset.xml',
   'languages/java/gradle/spring-test-ruleset.xml',
+  'languages/java/gradle/security/exclude.xml',
+  'languages/java/gradle/security/jakarta-sinks.txt',
+  'languages/java/gradle/security/path-sinks.txt',
+  'languages/java/gradle/security/spring-jdbc-sinks.txt',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',

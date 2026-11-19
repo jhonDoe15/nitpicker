@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CONFIGURATION_READ_RULE,
   withoutSpringCoveredReads as filterUntyped,
-} from './covered-reads.mjs';
+} from './covered-reads.mts';
 
 type Candidate = {
   readonly tool: string;

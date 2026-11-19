@@ -13,11 +13,11 @@ import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktre
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { javaRouteRule } from './java-policy.mts';
 import { withoutFollowedImports } from './imports/followed-imports.mts';
-import { withoutGeneratedSources } from './generated/generated-sources.mjs';
+import { withoutGeneratedSources } from './generated/generated-sources.mts';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
 import { withJavaColumns } from './reporting/columns/java-columns.mts';
-import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
-import { sourceTextReader } from './reporting/function-locator.mjs';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mts';
+import { sourceTextReader } from './reporting/function-locator.mts';
 import { withTestsFailures } from './red-base/tests-failed.mts';
 import { isJavaTouchedRule } from './touched-rules.mts';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
