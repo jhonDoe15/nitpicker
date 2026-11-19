@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName, unwrapped, type Context } from '../security/security-values.mts';
 import { plainName } from '../encoding/plain-names.mts';
-import { concatOperands } from './concat-operands.mts';
+import { concatOperands } from '../typed/concat-operands.mts';
 import { taintOf } from './remote-text.mts';
 
 type MessageId = 'stripControls';

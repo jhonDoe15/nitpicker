@@ -14,7 +14,7 @@ tester.run('no-incomplete-escaping', rule, {
     { code: `export const q = \`"\${value.replace(/[\\\\"]/g, (c) => \`\\\\\${c}\`)}"\`;` },
     { code: 'export const q = value.replace(/[\\\\"]/g, "\\\\$&");' },
     { code: 'export const q = value.replace(/\\\\/g, "\\\\\\\\").replace(/"/g, \'\\\\"\');' },
-    { code: 'export const r = text.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");' },
+    { code: 'export const r = text.replace(/[.*+?^{}$()|[\\]\\\\]/g, "\\\\$&");' },
     { code: 'export const q = JSON.stringify(value);' },
     { code: 'export const q = value.replace(/"/g, "&quot;");' },
     { code: `export const q = value.replace(/"/g, (c) => \`\\\\\${c}\`);` },
