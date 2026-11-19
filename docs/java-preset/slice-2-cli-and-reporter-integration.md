@@ -41,10 +41,14 @@ Part of the [Java preset guide](../java-preset.md).
   snapshot (`base` or `head`), skips the comparison for the analyzer and exits with 2; nothing
   throws and no partial result is compared.
 - **Gradle binary.** The command in `NITPICKER_GRADLE` when it is set; otherwise the analyzed
-  project's own wrapper (`gradlew`, or `gradlew.bat` on Windows) when the project root has
-  one (a `gradlew` without the executable bit runs as `sh gradlew`); otherwise `gradle` from the PATH
-  (through the shell on Windows, where it is `gradle.bat`). The wrapper is looked up in each snapshot's
-  project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
+  project's own wrapper (`gradlew`, or `gradlew.bat` on Windows), the nearest one from the project
+  folder up to the root of the build (the first folder with a `settings.gradle(.kts)`, `.mvn` or
+  `.git`), so a project that is a subproject of a bigger build runs that build's wrapper (a
+  `gradlew` without the executable bit runs as `sh gradlew`); otherwise `gradle` from the PATH
+  (through the shell on Windows, where it is `gradle.bat`), and a failure then names the version the
+  build pins in `gradle/wrapper/gradle-wrapper.properties`. `mvnw` is looked up the same way. The
+  wrapper is looked up in each snapshot (base and head are separate worktrees), so each side runs the
+  Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
 - **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java

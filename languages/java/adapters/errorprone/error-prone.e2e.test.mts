@@ -401,16 +401,17 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     expect(regularClass(root).equals(regularBefore)).toBe(true);
   });
 
-  it('fails the build, with no report, when its own compile fails', () => {
+  it('notes a setup gap with an empty report, and keeps the build going, when only its own compile fails', () => {
     const broken = project(BREAK_ONLY_THE_EXTRA_COMPILE);
     const result = runGradle(broken, 'nitpickerErrorProne');
-    const cause = /Error Prone could not compile the sources: (.*)$/m.exec(result.stderr)?.[1];
+    const reports = path.join(broken, 'build/nitpicker');
 
-    expect(result.status).toBe(1);
-    expect(cause).toBe(
-      `${path.join(broken, 'src/main/java/demo/Broken.java')}:1: incompatible types: java.lang.String cannot be converted to int`,
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(path.join(reports, 'errorprone-skipped.txt'), 'utf8')).toBe(
+      'Error Prone could not compile the sources the build compiled itself, so its checks did not run: ' +
+        'src/main/java/demo/Broken.java:1: incompatible types: java.lang.String cannot be converted to int\n',
     );
-    expect(existsSync(path.join(broken, 'build/nitpicker/errorprone.json'))).toBe(false);
+    expect(readFileSync(path.join(reports, 'errorprone.json'), 'utf8')).toBe('[]\n');
   }, 180_000);
 
   it('turns off a check that crashes, names it, and keeps the findings of the others', () => {

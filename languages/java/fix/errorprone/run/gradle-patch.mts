@@ -73,6 +73,7 @@ export function runGradlePatch({
     projectRoot,
     configured: configuredTool(environment, 'NITPICKER_GRADLE'),
     args: gradleArguments({ settingsFile, reportRoot }),
+    environment,
   });
   callUntyped(runFixCommand, {
     operation: 'error-prone-patch',

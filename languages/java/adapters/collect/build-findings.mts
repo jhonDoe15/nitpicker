@@ -17,6 +17,7 @@ import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mts';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
+import { gradleWorkerArguments } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
@@ -62,12 +63,14 @@ function runJavaPreset(
     budget = budgetOf(gradleBudget()),
     testsFailedModules = [],
     testsSkipped,
+    environment,
   }: PresetRun,
 ): void {
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlinArguments(kotlinRun, (kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
+      ...gradleWorkerArguments(projectRoot, environment ?? {}),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -83,9 +86,9 @@ function runJavaPreset(
       budget,
     });
     const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
+    const options = { projectRoot, gradle, budget, reportBase, since, policy, spawn, environment };
     for (const stage of stages) {
-      runGradleStage({ args: stage(), ...options });
+      runGradleStage({ args: stage(), checkTests, ...options });
     }
   });
 }

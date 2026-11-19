@@ -12,6 +12,7 @@ import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts'
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';
 import type { GradleOptions } from './gradle-process.mts';
+import { gradleToolEnvironment } from './memory/gradle-memory.mts';
 
 type ExportRequest = {
   readonly initScript: string;
@@ -29,6 +30,7 @@ type OptionsRequest = {
   readonly projectRoot: string;
   readonly budget: JavaBudget;
   readonly spawn: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -58,7 +60,7 @@ function exportArguments(
 
 export function gradleOptions(
   shell: unknown,
-  { projectRoot, budget, spawn }: OptionsRequest,
+  { projectRoot, budget, spawn, environment }: OptionsRequest,
 ): GradleOptions {
   return {
     cwd: projectRoot,
@@ -66,6 +68,7 @@ export function gradleOptions(
     maxBuffer: MAX_OUTPUT_BYTES,
     shell,
     timeout: budget.commandTimeoutMs,
+    ...(environment === undefined ? {} : { env: gradleToolEnvironment(environment) }),
     spawn,
   };
 }

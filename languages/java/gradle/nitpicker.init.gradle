@@ -478,6 +478,8 @@ allprojects {
     if (gradle.parent != null) {
         return
     }
+    configurations.matching { it.name.startsWith('nitpicker') || it.name in ['jacocoAgent', 'jacocoAnt'] }
+        .configureEach { resolutionStrategy.disableDependencyVerification() }
     if (nitpickerArgument('nitpicker.kotlin') == 'true') {
         project.ext.nitpickerKotlinSourceModule = [quick: quickRun, testsFailed: (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }, kotlinTooling: kotlinTooling, initScriptDir: initScriptDir, pinned: pinned, reportBase: reportBase, modules: javaModules,
             moduleKey: moduleKeyOf, selected: kotlinSourceModule, buildFacts: kotlinCallerGaps,
@@ -661,6 +663,7 @@ allprojects {
             while (!pending.isEmpty()) {
                 def task = pending.remove(0)
                 task.taskDependencies.getDependencies(task).findAll { it.project == project && seen.add(it) }
+                    .findAll { !(it instanceof JacocoReportBase) && !it.name.startsWith('nitpicker') }
                     .each { pending << it }
             }
             ([tasks.named('test').get()] + seen.findAll { it instanceof Test })
@@ -714,7 +717,14 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
-            onlyIf { !lintedSources().isEmpty() }
+            onlyIf {
+                if (!lintedSources().isEmpty()) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('pmd.sarif').asFile.text = '{"version":"2.1.0","runs":[]}'
+                false
+            }
             // PMD warns on stderr when a rule throws on a file; the log keeps those warnings for the report.
             def pmdLog = new ByteArrayOutputStream()
             def pmdStderr = System.err
@@ -854,7 +864,8 @@ allprojects {
             doLast {
                 def exit = executionResult.get().exitValue
                 if (exit != 0) {
-                    def detail = formatErrors.toString('UTF-8').readLines().findAll { it.trim() && !it.startsWith('Picked up ') }.take(20).join('\n')
+                    def detail = formatErrors.toString('UTF-8').readLines()
+                        .findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\n')
                     throw new GradleException("${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +
                         "failed with exit code ${exit}: ${detail}")
                 }
@@ -1180,11 +1191,14 @@ allprojects {
                     useJUnitPlatform()
                 }
             }
-            tasks.named('jacocoTestReport') {
-                enabled = true
-                classDirectories.setFrom(sourceSets.main.output.classesDirs)
-                dependsOn { checkedTestTasks() }
-                executionData.setFrom(emptyExecutionData, files { ranTestTasks().collect { jacocoExecutionFile(it) } })
+            if (!quickRun) {
+                tasks.named('jacocoTestReport') {
+                    enabled = true
+                    classDirectories.setFrom(sourceSets.main.output.classesDirs)
+                    dependsOn { checkedTestTasks() }
+                    executionData.setFrom(emptyExecutionData,
+                        files { ranTestTasks().collect { jacocoExecutionFile(it) } })
+                }
             }
         }
 
