@@ -2806,6 +2806,35 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ReceiverPassedAsArgument" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A call passes its own receiver as an argument (defaults.putAll(defaults), node.setPeer(node)). Another variable of the same type is in scope, so the author most likely typed the wrong name: the call is then a no-op or corrupts the object, and the intended argument is never used. Pass the variable that was meant (defaults.putAll(transientVariables)). An exception fits a method that really takes the object it is called on, such as a self-registration or a self-comparison in a contract test.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $typeOf := function($id) {
+      string-join($id/ancestor::*[self::FormalParameter or self::LocalVariableDeclaration or self::FieldDeclaration][1]
+                    /*[self::ClassType or self::PrimitiveType or self::ArrayType]
+                    /descendant-or-self::*/(@SimpleName | @Kind | self::ArrayDimensions/@Size), ',')
+    }
+return
+//MethodCall[ArgumentList/@Size = 1][ArgumentList/VariableAccess][*[1][self::VariableAccess]]
+  [matches(@MethodName, '^(set|put|add|remove|register|append|insert|link|attach|assign|bind|apply|update|with)([A-Z]|$)')]
+  [not(@MethodName = ('addAll', 'removeAll', 'add'))]
+  [not(matches(@MethodName, '(Next|Prev|Previous|Head|Tail|Link|Parent|List)([A-Z]|$)'))]
+  [let $name := *[1]/@Name,
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $cls := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1],
+       $decl := (($scope//VariableId[@Name = $name]), ($cls/*/FieldDeclaration/VariableDeclarator/VariableId[@Name = $name]))[1],
+       $type := $typeOf($decl)
+   return exists(ArgumentList/VariableAccess[@Name = $name]) and exists($scope) and $type != ''
+     and exists((($scope//VariableId[ancestor::*[self::FormalParameter or self::LocalVariableDeclaration][1]]),
+                 ($cls/*/FieldDeclaration/VariableDeclarator/VariableId))
+                [@Name != $name][$typeOf(.) = $type])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="RecursiveMapUpdate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Change the map after its computeIfAbsent, compute, computeIfPresent or merge returns, not inside the function passed to it or a callback or same-class method that function starts: build the value there and attach the cleanup to the result (map.computeIfAbsent(key, k -&gt; start(k)).whenComplete((r, e) -&gt; map.remove(key, r))). A ConcurrentHashMap otherwise throws IllegalStateException (Recursive update) or deadlocks, and a HashMap throws ConcurrentModificationException.">
     <priority>3</priority>
