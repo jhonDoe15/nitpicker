@@ -8,7 +8,8 @@ const DURATION_UNITS = new Map([
   ['hours', 3_600_000],
 ]);
 const DECLARATION_BREAKS = new Set([';', '{', '}']);
-const OPERAND = /^(\d[\d_]*(?:\.\d[\d_]*)?)[lLfFdDuU]*(?:\.(milliseconds|seconds|minutes|hours))?$/u;
+const OPERAND =
+  /^(\d[\d_]*(?:\.\d[\d_]*)?)[lLfFdDuU]*(?:\.(milliseconds|seconds|minutes|hours))?$/u;
 const NAMED_UNIT = /^(\w+)\.(milliseconds|seconds|minutes|hours)$/u;
 const TYPE_WINDOW = 4;
 
@@ -82,14 +83,17 @@ function assignmentOf(source: SourceFile, name: number): number {
   if (next === '=') {
     return name + 1;
   }
-  const typed = source.kotlin && next === ':' ? source.tokens.slice(name + 2, name + TYPE_WINDOW + 2) : [];
+  const typed =
+    source.kotlin && next === ':' ? source.tokens.slice(name + 2, name + TYPE_WINDOW + 2) : [];
   const offset = typed.findIndex(({ text }) => text === '=');
   return offset === -1 ? -1 : name + 2 + offset;
 }
 
 function valueEnd(source: SourceFile, assign: number): number {
   const end = source.tokens.findIndex(
-    (token, at) => at > assign + 1 && (token.text === ';' || token.text === '}' || startsNewLine(source.tokens, at)),
+    (token, at) =>
+      at > assign + 1 &&
+      (token.text === ';' || token.text === '}' || startsNewLine(source.tokens, at)),
   );
   return end === -1 ? source.tokens.length : end;
 }

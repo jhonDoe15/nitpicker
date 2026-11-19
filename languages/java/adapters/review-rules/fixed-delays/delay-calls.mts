@@ -26,7 +26,12 @@ export type DelayCall = {
   readonly millis: number;
 };
 
-type Timer = { readonly name: string; readonly open: number; readonly unit: number; readonly from: number };
+type Timer = {
+  readonly name: string;
+  readonly open: number;
+  readonly unit: number;
+  readonly from: number;
+};
 
 const WINDOW = 7;
 const SLEEP = /^Thread \. sleep \(/u;

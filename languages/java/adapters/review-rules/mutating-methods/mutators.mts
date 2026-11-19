@@ -109,7 +109,8 @@ const FORMS = new Map<Kind, Forms>([
     'list',
     {
       java: '`List.copyOf(x)`, `Stream.toList()` or a new `ArrayList<>(x)` filled before it is returned',
-      kotlin: '`buildList { addAll(x); ... }`, `x + item` or `x.toMutableList()` filled before it is returned',
+      kotlin:
+        '`buildList { addAll(x); ... }`, `x + item` or `x.toMutableList()` filled before it is returned',
     },
   ],
   [
@@ -123,21 +124,24 @@ const FORMS = new Map<Kind, Forms>([
     'set',
     {
       java: '`Set.copyOf(x)`, `Collectors.toUnmodifiableSet()` or a new `HashSet<>(x)` filled before it is returned',
-      kotlin: '`buildSet { addAll(x); ... }`, `x + item` or `x.toMutableSet()` filled before it is returned',
+      kotlin:
+        '`buildSet { addAll(x); ... }`, `x + item` or `x.toMutableSet()` filled before it is returned',
     },
   ],
   [
     'map',
     {
       java: '`Map.copyOf(x)`, `Collectors.toUnmodifiableMap(...)` or a new `HashMap<>(x)` filled before it is returned',
-      kotlin: '`buildMap { putAll(x); ... }`, `x + (key to value)` or `x.toMutableMap()` filled before it is returned',
+      kotlin:
+        '`buildMap { putAll(x); ... }`, `x + (key to value)` or `x.toMutableMap()` filled before it is returned',
     },
   ],
   [
     DATE,
     {
       java: 'a `java.time` value (`Instant.plus(...)`, `LocalDate.withDayOfMonth(...)`) built from it',
-      kotlin: 'a `java.time` value (`Instant.plus(...)`, `LocalDate.withDayOfMonth(...)`) built from it',
+      kotlin:
+        'a `java.time` value (`Instant.plus(...)`, `LocalDate.withDayOfMonth(...)`) built from it',
     },
   ],
   [

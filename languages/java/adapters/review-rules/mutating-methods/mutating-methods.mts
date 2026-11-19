@@ -22,9 +22,7 @@ const MODIFIERS = new Set(['final', 'val', 'vararg']);
 function withoutAnnotations(tokens: readonly Token[]): Token[] {
   return tokens.filter(
     (token, index) =>
-      token.text !== '@' &&
-      tokens[index - 1]?.text !== '@' &&
-      !MODIFIERS.has(token.text),
+      token.text !== '@' && tokens[index - 1]?.text !== '@' && !MODIFIERS.has(token.text),
   );
 }
 
