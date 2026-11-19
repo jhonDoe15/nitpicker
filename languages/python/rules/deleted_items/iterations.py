@@ -38,6 +38,21 @@ def is_intentional(qualified):
     return bool(words & INTENT_WORDS)
 
 
+INCLUDING_WORDS = {"including", "include", "includes", "with"}
+
+
+COLLECTION_NOUNS = {"items", "elements", "list", "rows", "records", "entries", "nodes"}
+
+
+def names_include_deleted(text):
+    words = words_of(text.replace(".", "_")) if text else []
+    if words and words[-1] in COLLECTION_NOUNS:
+        words = words[:-1]
+    return (
+        len(words) >= 2 and words[-1] == "deleted" and words[-2] in INCLUDING_WORDS
+    )
+
+
 def reference_text(node):
     if isinstance(node, ast.Name):
         return node.id
@@ -116,6 +131,8 @@ def iterations_of(context):
                 ).items()
             }
             for node, source, region in iterables(function):
+                if names_include_deleted(reference_text(source)):
+                    continue
                 verdict = classify(source, typed, helpers, types)
                 if verdict is None:
                     continue

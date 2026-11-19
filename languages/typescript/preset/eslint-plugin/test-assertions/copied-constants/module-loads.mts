@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { staticTextOf } from '../../rules/typed/static-text.mts';
+import { literalText } from '../../rules/analysis/node/call-text.mts';
 
 export type ModuleLoad = {
   readonly specifier: string;
@@ -59,18 +59,18 @@ export function loadedModule(
   node: TSESTree.CallExpression | TSESTree.ImportExpression | TSESTree.TSImportEqualsDeclaration,
 ): ModuleLoad | undefined {
   if (node.type === AST_NODE_TYPES.ImportExpression) {
-    const specifier = staticTextOf(node.source);
+    const specifier = literalText(node.source);
     return specifier === undefined ? undefined : boundLoad(specifier, boundNames(node));
   }
   if (node.type === AST_NODE_TYPES.TSImportEqualsDeclaration) {
     const reference = node.moduleReference;
     const specifier =
       reference.type === AST_NODE_TYPES.TSExternalModuleReference && node.importKind !== 'type'
-        ? staticTextOf(reference.expression)
+        ? literalText(reference.expression)
         : undefined;
     return specifier === undefined ? undefined : { specifier, names: new Map(), whole: true };
   }
-  const specifier = isLoadCall(node.callee) ? staticTextOf(node.arguments[0]) : undefined;
+  const specifier = isLoadCall(node.callee) ? literalText(node.arguments[0]) : undefined;
   return specifier === undefined ? undefined : boundLoad(specifier, boundNames(node));
 }
 

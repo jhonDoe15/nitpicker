@@ -1,3 +1,6 @@
+import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
+import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
+import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
@@ -89,6 +92,9 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-send-without-return': ruleNoSendWithoutReturn,
+  'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
+  'no-service-locator': ruleNoServiceLocator,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,

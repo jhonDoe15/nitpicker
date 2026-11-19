@@ -1,7 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { PROJECT, useTempProjects, type ReadOptions } from '../test-support/temp-projects.mts';
 import {
   MAX_VALUE_RULE,
   readMaxValueFindings as untypedReadMaxValueFindings,
@@ -14,25 +12,10 @@ type MaxValueFinding = {
   readonly location: { readonly line: number };
 };
 
-const readMaxValueFindings: (
-  projectRoot: string,
-  options: { readonly projects: readonly unknown[]; readonly kotlin: boolean },
-) => MaxValueFinding[] = untypedReadMaxValueFindings;
+const readMaxValueFindings: (projectRoot: string, options: ReadOptions) => MaxValueFinding[] =
+  untypedReadMaxValueFindings;
 
-const roots: string[] = [];
-const PROJECT = {
-  qualifier: '',
-  sourceRoots: ['src/main/java'],
-  testSourceRoots: ['src/test/java'],
-  kotlinSourceRoots: ['src/main/kotlin'],
-  kotlinTestSourceRoots: ['src/test/kotlin'],
-};
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-jvm-max-');
 
 function lines({
   files,
@@ -41,13 +24,7 @@ function lines({
   readonly files: Readonly<Record<string, string>>;
   readonly kotlin: boolean;
 }) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jvm-max-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return readMaxValueFindings(root, { projects: [PROJECT], kotlin }).map(
+  return readMaxValueFindings(projectWith(files), { projects: [PROJECT], kotlin }).map(
     ({ rule, path: file, location }) => `${rule} ${file}:${String(location.line)}`,
   );
 }
@@ -229,13 +206,10 @@ describe('Java sums that overflow on a maximum-value sentinel', () => {
   });
 
   it('names the allowed forms and the exception route in the message', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jvm-max-'));
-    roots.push(root);
-    mkdirSync(path.join(root, 'src/main/java/shop'), { recursive: true });
-    writeFileSync(
-      path.join(root, JAVA_FILE),
-      'package shop;\nclass Text {\n  int f(int start) {\n    int w = Integer.MAX_VALUE;\n    return Math.min(start + w, 3);\n  }\n}\n',
-    );
+    const root = projectWith({
+      [JAVA_FILE]:
+        'package shop;\nclass Text {\n  int f(int start) {\n    int w = Integer.MAX_VALUE;\n    return Math.min(start + w, 3);\n  }\n}\n',
+    });
     const [found] = readMaxValueFindings(root, { projects: [PROJECT], kotlin: false });
     expect(found?.message).toBe(
       '`w` can hold Integer.MAX_VALUE (a "no limit" value), so `start + w` overflows to a negative number that is then used as an index, length, bound or comparison. Compare without adding (`width >= length - start`), widen first (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic (`if (w == Integer.MAX_VALUE) ...`). If this is intended, add {"rule":"pmd/MaxValueOverflow","paths":["src/main/java/shop/Text.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',

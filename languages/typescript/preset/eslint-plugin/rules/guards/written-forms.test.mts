@@ -26,8 +26,63 @@ tester.run(
         code: 'export const api = process.env.EXPO_PUBLIC_API_URL; export const cra = process.env["REACT_APP_API_URL"];',
         options: [{ allowBundlerEnv: true }],
       },
+      { filename: adapter, code: 'export function f(process) { return process.env.K; }' },
+      { filename: adapter, code: 'const process = fake(); export const k = process.env.K;' },
+      { filename: adapter, code: 'export function f(process) { process.exit(1); }' },
+      {
+        filename: adapter,
+        code: 'const process = fake(); const { env } = process; export const k = env;',
+      },
+      { filename: adapter, code: 'const process = fake(); export const k = (process as any).env;' },
+      {
+        filename: adapter,
+        code: 'export function f(globalThis) { return globalThis.process.env.K; }',
+      },
+      { filename: adapter, code: 'const { ...rest } = process; export const a = rest.argv;' },
+      { filename: adapter, code: 'export { argv } from "node:process";' },
     ],
     invalid: [
+      { filename: adapter, code: 'export const k = (process as any).env.K;', errors: env },
+      { filename: adapter, code: 'export const k = (<any>process).env.K;', errors: env },
+      { filename: adapter, code: 'export const k = process!.env.K;', errors: env },
+      {
+        filename: adapter,
+        code: 'export const k = (process satisfies object).env.K;',
+        errors: env,
+      },
+      {
+        filename: adapter,
+        code: 'export function f() { (process as any).exit(1); }',
+        errors: exit,
+      },
+      { filename: adapter, code: 'export function f() { process!.exit(1); }', errors: exit },
+      { filename: adapter, code: 'export { env } from "node:process";', errors: env },
+      { filename: adapter, code: 'export { exit as stop } from "process";', errors: exit },
+      {
+        filename: adapter,
+        code: 'const { env } = await import("node:process"); export const k = env.K;',
+        errors: env,
+      },
+      {
+        filename: adapter,
+        code: 'const g = globalThis; export const k = g.process.env.K;',
+        errors: env,
+      },
+      {
+        filename: adapter,
+        code: 'const { ...rest } = process; export const k = rest.env.K;',
+        errors: env,
+      },
+      {
+        filename: adapter,
+        code: 'const { ...rest } = process; export function f() { rest.exit(1); }',
+        errors: exit,
+      },
+      {
+        filename: adapter,
+        code: 'export function f() { const process = fake(); return process.env; } export const k = process.env.K;',
+        errors: env,
+      },
       {
         filename: adapter,
         code: 'import { env } from "node:process"; export const k = env["K"];',

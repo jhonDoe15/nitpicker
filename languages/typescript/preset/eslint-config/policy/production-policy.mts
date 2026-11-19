@@ -130,6 +130,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-release-outside-finally': 'error',
     'nitpicker/no-incomplete-cache-key': 'error',
     'nitpicker/no-listen-on-all-interfaces': 'error',
+    'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -146,6 +147,18 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
   };
 }
 
+function transactionGuardRules(): RuleEntries {
+  return {
+    'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-cache-write-in-transaction': 'error',
+    'nitpicker/no-whole-rows-for-one-value': 'error',
+    'nitpicker/no-remote-call-under-lock': 'error',
+    'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-stale-retry-after-conflict': 'error',
+    'nitpicker/no-dual-write': 'error',
+  };
+}
+
 function productionGuardRules({
   react,
   security,
@@ -159,6 +172,28 @@ function productionGuardRules({
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-io-in-loop': 'error',
+    'nitpicker/no-accumulator-concat': 'error',
+    'nitpicker/no-array-spread-arguments': 'error',
+    'nitpicker/no-null-branch-fall-through': 'error',
+    'nitpicker/no-lazy-relation-in-loop': 'error',
+    'nitpicker/no-lookup-per-element': 'error',
+    'nitpicker/no-query-per-parent': 'error',
+    ...transactionGuardRules(),
+    'nitpicker/no-unisolated-job-loop': 'error',
+    'nitpicker/no-unguarded-deleted-items': 'error',
+    'nitpicker/no-in-memory-query': 'error',
+    'nitpicker/no-loaded-rows-saved-back': 'error',
+    'nitpicker/no-multiple-collection-joins': 'error',
+    'nitpicker/no-orm-query-logging': 'error',
+    'nitpicker/no-orm-schema-sync': 'error',
+    'nitpicker/no-unindexed-foreign-key': 'error',
+    'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/require-process-timeout': 'error',
+    'nitpicker/require-client-timeout': 'error',
+    'nitpicker/time-unit-mismatch': 'error',
+    'nitpicker/no-sync-node-api-in-async': 'error',
+    'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     ...productionGuardEntries,
     ...learnedRules(learned),

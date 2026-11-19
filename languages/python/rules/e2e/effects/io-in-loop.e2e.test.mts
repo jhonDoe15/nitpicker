@@ -397,6 +397,64 @@ describeRules('io-in-loop through wrappers', () => {
     ]);
   });
 
+  const memo = (helper: string, call = 'get()') =>
+    `import functools\nimport requests\n\n_cache = None\n\n\n${helper}\n\n\ndef f(items):\n    for item in items:\n        ${call}\n`;
+
+  itOutcomes('treats a module-level memo as one-off and keeps the other helpers', [
+    [
+      'assigned in the branch that tests it',
+      memo(
+        'def get():\n    global _cache\n    if _cache is None:\n        _cache = requests.get("u").json()\n    return _cache',
+      ),
+      [],
+    ],
+    [
+      'returned early when set',
+      memo(
+        'def get():\n    global _cache\n    if _cache is not None:\n        return _cache\n    _cache = requests.get("u").json()\n    return _cache',
+      ),
+      [],
+    ],
+    [
+      'a cached function without arguments',
+      memo('@functools.cache\ndef get():\n    return requests.get("u")'),
+      [],
+    ],
+    [
+      'a call outside the branch',
+      memo(
+        'def get():\n    global _cache\n    if _cache is None:\n        _cache = {}\n    requests.get("u")\n    return _cache',
+      ),
+      ['io-in-loop:17 get() > requests.get()|remote'],
+    ],
+    [
+      'a memo keyed by the argument, early return',
+      memo(
+        'def get(k):\n    global _cache\n    if _cache is not None and k in _cache:\n        return _cache[k]\n    _cache = {}\n    _cache[k] = requests.get(k)\n    return _cache[k]',
+        'get(item)',
+      ),
+      ['io-in-loop:18 get() > requests.get()|remote'],
+    ],
+    [
+      'a memo keyed by the argument, or-test',
+      memo(
+        'def get(k):\n    global _cache\n    if _cache is None or k not in _cache:\n        _cache = {}\n        _cache[k] = requests.get(k)\n    return _cache[k]',
+        'get(item)',
+      ),
+      ['io-in-loop:17 get() > requests.get()|remote'],
+    ],
+    [
+      'an unmemoised helper',
+      memo('def get():\n    return requests.get("u").json()'),
+      ['io-in-loop:13 get() > requests.get()|remote'],
+    ],
+    [
+      'a cache keyed by the argument',
+      memo('@functools.cache\ndef get(key):\n    return requests.get(key)', 'get(item)'),
+      ['io-in-loop:14 get() > requests.get()|remote'],
+    ],
+  ]);
+
   itOutcomes('counts paging only when the tested name comes from the input and output call', [
     [
       'a loop that shrinks a list',
